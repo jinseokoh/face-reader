@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
-import 'face_mesh_page.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-void main() {
+import 'package:face_reader/core/hive/hive_setup.dart';
+import 'package:face_reader/core/theme.dart';
+import 'package:face_reader/app.dart';
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MyApp());
+  await initHive();
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {
@@ -12,12 +17,10 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Face Mesh',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
-        useMaterial3: true,
-      ),
-      home: const FaceMeshPage(),
+      title: 'AI 관상',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.light,
+      home: const MainApp(),
     );
   }
 }

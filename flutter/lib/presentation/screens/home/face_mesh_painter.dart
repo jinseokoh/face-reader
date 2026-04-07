@@ -19,7 +19,6 @@ class FaceMeshPainter extends CustomPainter {
       ..strokeWidth = 0.5
       ..style = PaintingStyle.stroke;
 
-    // Draw mesh triangles
     for (final triangle in result.triangles) {
       final points = triangle.points;
       if (points.length == 3) {
@@ -35,7 +34,6 @@ class FaceMeshPainter extends CustomPainter {
       }
     }
 
-    // Draw landmark points
     final pointPaint = Paint()
       ..color = overlayColor
       ..strokeWidth = 2.0

@@ -1,0 +1,423 @@
+import 'dart:async';
+import 'dart:io';
+import 'dart:math';
+
+import 'package:camera/camera.dart';
+import 'package:face_reader/domain/models/face_analysis.dart';
+import 'package:face_reader/presentation/providers/age_group_provider.dart';
+import 'package:face_reader/presentation/providers/ethnicity_provider.dart';
+import 'package:face_reader/presentation/providers/gender_provider.dart';
+import 'package:face_reader/presentation/providers/history_provider.dart';
+import 'package:face_reader/presentation/providers/tab_provider.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mediapipe_face_mesh/mediapipe_face_mesh.dart';
+
+import 'face_mesh_painter.dart';
+
+class FaceMeshPage extends ConsumerStatefulWidget {
+  const FaceMeshPage({super.key});
+
+  @override
+  ConsumerState<FaceMeshPage> createState() => _FaceMeshPageState();
+}
+
+class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBindingObserver {
+  CameraController? _cameraController;
+  List<CameraDescription> _cameras = [];
+  int _cameraIndex = 0;
+
+  FaceMeshProcessor? _meshProcessor;
+  FaceMeshResult? _meshResult;
+  bool _isProcessing = false;
+  bool _isInitialized = false;
+  String? _error;
+
+  bool _isCapturing = false;
+  final List<List<FaceMeshLandmark>> _capturedFrames = [];
+
+  List<FaceMeshLandmark>? _prevLandmarks;
+  Color _overlayColor = Colors.redAccent;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      child: SafeArea(
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            automaticallyImplyLeading: false,
+            centerTitle: true,
+            title: const Text(
+              '카메라',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            actions: [
+              IconButton(
+                onPressed: _close,
+                icon: const Icon(Icons.close, color: Colors.white),
+              ),
+            ],
+          ),
+          body: _buildBody(),
+        ),
+      ),
+    );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_cameraController == null || !_cameraController!.value.isInitialized) {
+      return;
+    }
+    if (state == AppLifecycleState.inactive) {
+      _cameraController?.dispose();
+      _cameraController = null;
+    } else if (state == AppLifecycleState.resumed) {
+      _startCamera();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _cameraController?.dispose();
+    _meshProcessor?.close();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _initialize();
+  }
+
+  Widget _buildBody() {
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            _error!,
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+
+    if (!_isInitialized || _cameraController == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final controller = _cameraController!;
+    final isFront = _cameras[_cameraIndex].lensDirection == CameraLensDirection.front;
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Camera preview + mesh overlay
+        Builder(builder: (context) {
+          final previewSize = controller.value.previewSize;
+          if (previewSize == null) return const SizedBox();
+          final previewW = previewSize.height;
+          final previewH = previewSize.width;
+
+          return SizedBox.expand(
+            child: FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: previewW,
+                height: previewH,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    CameraPreview(controller),
+                    if (_meshResult != null)
+                      IgnorePointer(
+                        child: CustomPaint(
+                          painter: FaceMeshPainter(
+                            result: _meshResult!,
+                            isFrontCamera: isFront,
+                            overlayColor: _overlayColor,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+        // Bottom buttons: switch (left) and analyze (right)
+        if (_isInitialized)
+          Positioned(
+            left: 20,
+            right: 20,
+            bottom: MediaQuery.of(context).padding.bottom + 24,
+            child: Center(
+              child: SizedBox(
+                  width: 140,
+                  height: 52,
+                  child: ElevatedButton.icon(
+                    onPressed: _isCapturing || _meshResult == null
+                        ? null
+                        : _startCapture,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _isCapturing
+                          ? const Color(0xFFFF9800)
+                          : Colors.white.withValues(alpha: 0.85),
+                      foregroundColor: _isCapturing
+                          ? Colors.white
+                          : const Color(0xFF333333),
+                      disabledBackgroundColor: Colors.white.withValues(alpha: 0.3),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    icon: _isCapturing
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.analytics, size: 20),
+                    label: Text(
+                      _isCapturing
+                          ? '${_capturedFrames.length}/5'
+                          : '분석',
+                      style: const TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+            ),
+          ),
+        // Instruction banner (on top of camera)
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            color: Colors.black.withValues(alpha: 0.6),
+            child: const Text(
+              '폰을 벽면에 대고 좌표계와 얼굴 중심을 정확하게 일치시키면 좌표계가 녹색으로 변합니다. 그 때 분석 버튼을 누르세요.',
+              style: TextStyle(color: Colors.white, fontSize: 12, height: 1.4),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _close() {
+    _closeCamera();
+    Navigator.of(context).pop();
+  }
+
+  Future<void> _closeCamera() async {
+    try {
+      await _cameraController?.stopImageStream();
+    } catch (_) {}
+    await _cameraController?.dispose();
+    _cameraController = null;
+    _meshProcessor?.close();
+    _meshProcessor = null;
+    _meshResult = null;
+    _prevLandmarks = null;
+    _isInitialized = false;
+    _isProcessing = false;
+  }
+
+  Color _computeOverlayColor(FaceMeshResult result) {
+    final landmarks = result.landmarks;
+    if (landmarks.isEmpty) return Colors.redAccent;
+
+    final highConfidence = result.score >= 0.85;
+
+    bool stable = false;
+    if (_prevLandmarks != null && _prevLandmarks!.length == landmarks.length) {
+      double totalDist = 0;
+      for (int i = 0; i < landmarks.length; i++) {
+        final dx = landmarks[i].x - _prevLandmarks![i].x;
+        final dy = landmarks[i].y - _prevLandmarks![i].y;
+        totalDist += sqrt(dx * dx + dy * dy);
+      }
+      final avgDist = totalDist / landmarks.length;
+      stable = avgDist < 0.005;
+    }
+
+    if (landmarks.length > 454) {
+      final faceWidth = (landmarks[454].x - landmarks[234].x).abs();
+      final largEnough = faceWidth > 0.25;
+
+      if (highConfidence && stable && largEnough) {
+        return Colors.greenAccent;
+      }
+    }
+
+    return Colors.redAccent;
+  }
+
+  void _finishCapture() {
+    _isCapturing = false;
+    if (_capturedFrames.isEmpty) return;
+
+    final averaged = averageLandmarks(_capturedFrames);
+    final ethnicity = ref.read(ethnicityProvider);
+    final gender = ref.read(genderProvider);
+    final ageGroup = ref.read(ageGroupProvider);
+    final report = analyzeFaceReading(
+      landmarks: averaged,
+      ethnicity: ethnicity,
+      gender: gender,
+      ageGroup: ageGroup,
+    );
+    _capturedFrames.clear();
+
+    if (mounted) {
+      setState(() => _isCapturing = false);
+      ref.read(historyProvider.notifier).add(report);
+      ref.read(selectedTabProvider.notifier).selectTab(1);
+      Navigator.of(context).pop();
+    }
+  }
+
+  Future<void> _initialize() async {
+    try {
+      _cameras = await availableCameras();
+      if (_cameras.isEmpty) {
+        setState(() => _error = 'No cameras found');
+        return;
+      }
+
+      _cameraIndex = _cameras.indexWhere(
+        (c) => c.lensDirection == CameraLensDirection.front,
+      );
+      if (_cameraIndex < 0) _cameraIndex = 0;
+
+      _meshProcessor = await FaceMeshProcessor.create(
+        delegate: FaceMeshDelegate.xnnpack,
+        enableRoiTracking: true,
+        enableSmoothing: true,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5,
+      );
+
+      await _startCamera();
+    } catch (e) {
+      setState(() => _error = e.toString());
+    }
+  }
+
+  void _onCameraFrame(CameraImage image) {
+    if (_isProcessing || _meshProcessor == null) return;
+    _isProcessing = true;
+
+    _processFrame(image).then((result) {
+      if (mounted && result != null) {
+        final color = _computeOverlayColor(result);
+        setState(() {
+          _meshResult = result;
+          _overlayColor = color;
+        });
+        _prevLandmarks = List.of(result.landmarks);
+        if (_isCapturing && result.landmarks.isNotEmpty) {
+          _capturedFrames.add(List.of(result.landmarks));
+          if (_capturedFrames.length >= 5) {
+            _finishCapture();
+          }
+        }
+      }
+      _isProcessing = false;
+    }).catchError((e) {
+      _isProcessing = false;
+    });
+  }
+
+  Future<FaceMeshResult?> _processFrame(CameraImage image) async {
+    final camera = _cameras[_cameraIndex];
+    final rotationDegrees = camera.sensorOrientation;
+    final isFront = camera.lensDirection == CameraLensDirection.front;
+
+    try {
+      if (Platform.isAndroid) {
+        final fullBuffer = image.planes[0].bytes;
+        final ySize = image.width * image.height;
+        final yPlane = fullBuffer.buffer.asUint8List(fullBuffer.offsetInBytes, ySize);
+        final vuPlane = fullBuffer.buffer.asUint8List(fullBuffer.offsetInBytes + ySize, fullBuffer.length - ySize);
+        final nv21Image = FaceMeshNv21Image(
+          yPlane: yPlane,
+          vuPlane: vuPlane,
+          width: image.width,
+          height: image.height,
+        );
+        return _meshProcessor!.processNv21(
+          nv21Image,
+          rotationDegrees: rotationDegrees,
+          mirrorHorizontal: isFront,
+        );
+      } else {
+        final pixels = image.planes[0].bytes;
+        final meshImage = FaceMeshImage(
+          pixels: pixels,
+          width: image.width,
+          height: image.height,
+        );
+        return _meshProcessor!.process(
+          meshImage,
+          rotationDegrees: rotationDegrees,
+          mirrorHorizontal: isFront,
+        );
+      }
+    } catch (e) {
+      debugPrint('Face mesh error: $e');
+      return null;
+    }
+  }
+
+  Future<void> _startCamera() async {
+    final camera = _cameras[_cameraIndex];
+
+    _cameraController?.dispose();
+    _cameraController = CameraController(
+      camera,
+      ResolutionPreset.medium,
+      enableAudio: false,
+      imageFormatGroup: Platform.isAndroid
+          ? ImageFormatGroup.nv21
+          : ImageFormatGroup.bgra8888,
+    );
+
+    await _cameraController!.initialize();
+
+    if (!mounted) return;
+
+    _cameraController!.startImageStream(_onCameraFrame);
+
+    setState(() {
+      _isInitialized = true;
+      _error = null;
+    });
+  }
+
+  void _startCapture() {
+    if (_meshResult == null) return;
+    setState(() {
+      _isCapturing = true;
+      _capturedFrames.clear();
+    });
+  }
+}

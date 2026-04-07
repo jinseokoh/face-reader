@@ -50,11 +50,97 @@ CameraController.startImageStream()
   3. Face width > 25% of frame
 
 ### Facial Analysis
-- 12 metrics computed from landmark ratios (face proportions, eyes, nose, mouth)
-- Compared against population averages (Farkas anthropometric studies, PMC9029890)
-- 6 ethnicity groups supported (default: East Asian)
-- Z-score interpretation: ±0.5 = average, ±1.0 = slight, ±2.0 = notable, ±3.0 = significant
-- 5-frame averaging reduces measurement noise
+
+#### 12 Metrics
+
+| # | Metric | Formula | Description |
+|---|--------|---------|-------------|
+| 1 | 얼굴 종횡비 | face_height / face_width | 세로/가로 비율 |
+| 2 | 상안면 비율 | dist(10,168) / face_height | 이마 비율 (forehead~nasion) |
+| 3 | 중안면 비율 | dist(168,94) / face_height | 코 영역 (nasion~subnasale) |
+| 4 | 하안면 비율 | dist(94,152) / face_height | 턱 영역 (subnasale~chin) |
+| 5 | 눈 사이 거리 | dist(133,362) / face_width | 내안각 거리 / 얼굴 폭 |
+| 6 | 눈 길이 | avg(EFL) / face_width | 눈 가로 길이 / 얼굴 폭 |
+| 7 | 눈 크기 | avg(eye_h) / avg(eye_w) | 눈 세로/가로 비율 |
+| 8 | 코 너비 | dist(98,327) / dist(133,362) | 콧볼 폭 / 내안각 거리 |
+| 9 | 코 길이 | dist(168,94) / face_height | 코 길이 / 얼굴 높이 |
+| 10 | 입 너비 | dist(61,291) / face_width | 입 폭 / 얼굴 폭 |
+| 11 | 입술 두께 | dist(0,17) / face_height | 입술 높이 / 얼굴 높이 |
+| 12 | 입꼬리 각도 | atan2(corner_y - center_y, dx) | 양수=올라감, 음수=내려감 (degrees) |
+
+#### Reference Data Sources
+
+**1. Farkas Anthropometric Studies**
+- Leslie Farkas (1915–2008), craniofacial anthropometry의 표준 체계 수립
+- 2,500명+ 대상, 166개 비율 인덱스, 5개 얼굴 영역
+- Neoclassical canons: 얼굴 수직 3등분 (이마:코:턱 = 1:1:1), 수평 5등분
+- 사용 데이터: 얼굴 종횡비, 눈 길이, 눈 크기, 코 너비/길이, 입 너비, 입술 두께의 인종별 평균 및 표준편차
+- 참고: Farkas LG. "Anthropometry of the Head and Face." Raven Press, 1994
+
+**2. ICD Meta-Analysis (PMC9029890)**
+- "Expanding the Classic Facial Canons: A Systematic Review and Meta-Analysis of the Intercanthal Distance"
+- 67개 연구, 22,638명, 118개 인종 코호트 분석
+- 6개 인종 그룹별 ICD(눈 사이 거리) 평균±표준편차 (mm):
+  - 동아시아: 36.4 ± 1.6
+  - 백인: 31.4 ± 2.5
+  - 아프리카: 38.5 ± 3.2
+  - 동남아시아: 32.8 ± 2.0
+  - 히스패닉: 32.3 ± 2.0
+  - 중동: 31.2 ± 1.5
+- 사용 데이터: `intercanthalRatio`의 인종별 기준값 산출에 사용 (ICD/bizygomatic width로 비율 변환)
+- URL: https://pmc.ncbi.nlm.nih.gov/articles/PMC9029890/
+
+**3. Neoclassical Canon Validation (PMC4369102)**
+- "Are Neoclassical Canons Still Valid in People From the Arabian Peninsula?"
+- N=168 (남 84, 여 84), 사우디아라비아 성인
+- 얼굴 3등분 비율의 실제 유효성 검증 (30~40%만 정확히 1:1:1)
+- 사용 데이터: 상/중/하안면 비율의 평균±표준편차 참고
+- URL: https://pmc.ncbi.nlm.nih.gov/articles/PMC4369102/
+
+**4. NIOSH Facial Anthropometric Dataset**
+- 미국 3,997명 근로자, 18개 얼굴 측정값
+- 인종(백인, 아프리카계, 히스패닉, 아시아계) 및 성별별 분류
+- 사용 데이터: 인종 간 코 너비, 입 너비 등의 차이 패턴 참고
+- URL: https://stacks.cdc.gov/view/cdc/187926
+- 논문: https://pubmed.ncbi.nlm.nih.gov/20219836/
+
+**5. MediaPipe Face Mesh Landmark Map**
+- Google MediaPipe 공식 소스: `face_mesh_connections.py`
+- 468개 랜드마크의 그룹 정의 (LIPS, LEFT_EYE, RIGHT_EYE, NOSE, FACE_OVAL 등)
+- 개별 인덱스 매핑은 커뮤니티 참고 (GitHub Issue #1615)
+- URL: https://github.com/google-ai-edge/mediapipe/blob/master/mediapipe/python/solutions/face_mesh_connections.py
+
+#### East Asian Reference Values (Default)
+
+비율 기준값은 위 문헌의 mm 측정값을 얼굴 폭/높이 대비 비율로 변환하여 산출:
+
+| Metric | Mean | SD | Derivation |
+|--------|------|----|------------|
+| faceAspectRatio | 1.38 | 0.08 | Farkas: 동아시아 얼굴 높이/폭 |
+| upperFaceRatio | 0.33 | 0.03 | Neoclassical 3등분 기준 |
+| midFaceRatio | 0.33 | 0.02 | Neoclassical 3등분 기준 |
+| lowerFaceRatio | 0.34 | 0.03 | Neoclassical 3등분 기준 |
+| intercanthalRatio | 0.27 | 0.02 | PMC9029890: ICD 36.4mm / bizygomatic ~135mm |
+| eyeFissureRatio | 0.24 | 0.02 | Farkas: EFL ~32mm / bizygomatic ~135mm |
+| eyeOpenness | 0.35 | 0.05 | Farkas: 동아시아 눈높이/눈길이 비 |
+| nasalWidthRatio | 1.05 | 0.10 | Farkas: 콧볼 폭 ~38mm / ICD ~36mm |
+| nasalHeightRatio | 0.30 | 0.02 | Farkas: 코 길이 / 얼굴 높이 |
+| mouthWidthRatio | 0.38 | 0.03 | Farkas: 입 폭 / 얼굴 폭 |
+| lipFullnessRatio | 0.10 | 0.02 | Farkas: 입술 높이 / 얼굴 높이 |
+| mouthCornerAngle | 0.0° | 3.0° | 중립 기준, 각도 편차 |
+
+#### Z-Score Interpretation
+- |z| < 0.5 → "평균"
+- 0.5 ≤ |z| < 1.0 → "약간 큼/작음"
+- 1.0 ≤ |z| < 2.0 → "큼/작음"
+- |z| ≥ 2.0 → "매우 큼/작음"
+
+#### Analysis Process
+1. 5프레임 연속 캡처 후 랜드마크 좌표 평균화 (노이즈 감소)
+2. 평균 랜드마크에서 12개 비율 계산
+3. 선택된 인종의 reference data (mean, SD)와 비교하여 Z-score 산출
+4. Z-score에 따른 판정 텍스트 생성
+5. 리포트 페이지에서 카테고리별 (얼굴, 눈, 코, 입) 결과 표시
 
 ### Landmark Indices (most used)
 | Point | Index |
