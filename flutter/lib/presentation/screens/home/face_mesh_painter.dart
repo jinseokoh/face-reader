@@ -5,11 +5,15 @@ class FaceMeshPainter extends CustomPainter {
   final FaceMeshResult result;
   final bool isFrontCamera;
   final Color overlayColor;
+  final int sensorOrientation;
+  final bool unrotateForDisplay;
 
   FaceMeshPainter({
     required this.result,
     required this.isFrontCamera,
     this.overlayColor = Colors.redAccent,
+    this.sensorOrientation = 0,
+    this.unrotateForDisplay = false,
   });
 
   @override
@@ -46,8 +50,26 @@ class FaceMeshPainter extends CustomPainter {
   }
 
   Offset _toOffset(FaceMeshLandmark lm, Size size) {
-    final x = lm.x.clamp(0.0, 1.0);
-    final y = lm.y.clamp(0.0, 1.0);
+    double x = lm.x.clamp(0.0, 1.0);
+    double y = lm.y.clamp(0.0, 1.0);
+
+    // On iOS the CameraPreview shows the raw landscape texture while
+    // landmarks are in the rotated portrait space. Un-rotate them so
+    // they match the displayed texture.
+    if (unrotateForDisplay) {
+      final ox = x;
+      final oy = y;
+      if (sensorOrientation == 90) {
+        // portrait(x,y) → landscape(y, 1-x)
+        x = oy;
+        y = 1.0 - ox;
+      } else if (sensorOrientation == 270) {
+        // portrait(x,y) → landscape(1-y, x)
+        x = 1.0 - oy;
+        y = ox;
+      }
+    }
+
     if (isFrontCamera) {
       return Offset((1.0 - x) * size.width, y * size.height);
     }

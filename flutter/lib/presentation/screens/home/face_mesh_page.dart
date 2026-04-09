@@ -36,6 +36,9 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
   bool _isCapturing = false;
   final List<List<FaceMeshLandmark>> _capturedFrames = [];
 
+  // Actual camera frame dimensions (may differ from previewSize on iOS)
+  Size? _frameSize;
+
   List<FaceMeshLandmark>? _prevLandmarks;
   Color _overlayColor = Colors.redAccent;
 
@@ -127,21 +130,19 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
         Builder(builder: (context) {
           final previewSize = controller.value.previewSize;
           if (previewSize == null) return const SizedBox();
-          final previewW = previewSize.height;
-          final previewH = previewSize.width;
+          // Portrait aspect ratio (swap sensor landscape → display portrait)
+          final aspectRatio = previewSize.height / previewSize.width;
 
-          return SizedBox.expand(
-            child: FittedBox(
-              fit: BoxFit.cover,
-              child: SizedBox(
-                width: previewW,
-                height: previewH,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    CameraPreview(controller),
-                    if (_meshResult != null)
-                      IgnorePointer(
+          return Center(
+            child: AspectRatio(
+              aspectRatio: aspectRatio,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  CameraPreview(controller),
+                  if (_meshResult != null)
+                    Positioned.fill(
+                      child: IgnorePointer(
                         child: CustomPaint(
                           painter: FaceMeshPainter(
                             result: _meshResult!,
@@ -150,8 +151,8 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
                           ),
                         ),
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
             ),
           );
@@ -326,8 +327,34 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
     if (_isProcessing || _meshProcessor == null) return;
     _isProcessing = true;
 
+    // Capture actual frame dimensions on first frame
+    if (_frameSize == null) {
+      final camera = _cameras[_cameraIndex];
+      final rot = camera.sensorOrientation;
+      final swapped = (rot == 90 || rot == 270);
+      final w = swapped ? image.height.toDouble() : image.width.toDouble();
+      final h = swapped ? image.width.toDouble() : image.height.toDouble();
+      _frameSize = Size(w, h);
+      final ps = _cameraController?.value.previewSize;
+      // ignore: avoid_print
+      print('[FaceMesh] frameSize=$_frameSize  previewSize=$ps  '
+          'bytesPerRow=${image.planes[0].bytesPerRow}  '
+          'sensorOrientation=$rot');
+    }
+
     _processFrame(image).then((result) {
       if (mounted && result != null) {
+        // Log Dart-level landmark values (once)
+        if (_frameSize != null && result.landmarks.isNotEmpty && _meshResult == null) {
+          final lm0 = result.landmarks[0];
+          final lm234 = result.landmarks[234];
+          final lm454 = result.landmarks[454];
+          // ignore: avoid_print
+          print('[FaceMesh-Dart] imageW=${result.imageWidth} imageH=${result.imageHeight} '
+              'lm0=(${lm0.x.toStringAsFixed(4)},${lm0.y.toStringAsFixed(4)}) '
+              'lm234=(${lm234.x.toStringAsFixed(4)},${lm234.y.toStringAsFixed(4)}) '
+              'lm454=(${lm454.x.toStringAsFixed(4)},${lm454.y.toStringAsFixed(4)})');
+        }
         final color = _computeOverlayColor(result);
         setState(() {
           _meshResult = result;
@@ -375,6 +402,8 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
           pixels: pixels,
           width: image.width,
           height: image.height,
+          bytesPerRow: image.planes[0].bytesPerRow,
+          pixelFormat: FaceMeshPixelFormat.bgra,
         );
         return _meshProcessor!.process(
           meshImage,

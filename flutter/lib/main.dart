@@ -1,9 +1,8 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'package:face_reader/app.dart';
 import 'package:face_reader/core/hive/hive_setup.dart';
 import 'package:face_reader/core/theme.dart';
-import 'package:face_reader/app.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,7 +16,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'AI 관상',
+      title: '위험한 관상가',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       home: const MainApp(),
