@@ -10,6 +10,7 @@ import 'package:face_reader/presentation/providers/gender_provider.dart';
 import 'package:face_reader/presentation/providers/history_provider.dart';
 import 'package:face_reader/presentation/providers/tab_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mediapipe_face_mesh/mediapipe_face_mesh.dart';
 
@@ -41,6 +42,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
 
   List<FaceMeshLandmark>? _prevLandmarks;
   Color _overlayColor = Colors.redAccent;
+  int _rotationCompensation = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -121,7 +123,6 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
     }
 
     final controller = _cameraController!;
-    final isFront = _cameras[_cameraIndex].lensDirection == CameraLensDirection.front;
 
     return Stack(
       fit: StackFit.expand,
@@ -130,8 +131,10 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
         Builder(builder: (context) {
           final previewSize = controller.value.previewSize;
           if (previewSize == null) return const SizedBox();
-          // Portrait aspect ratio (swap sensor landscape → display portrait)
-          final aspectRatio = previewSize.height / previewSize.width;
+          // Portrait aspect ratio: always shorter / longer so ratio < 1
+          final shorter = min(previewSize.width, previewSize.height);
+          final longer = max(previewSize.width, previewSize.height);
+          final aspectRatio = shorter / longer;
 
           return Center(
             child: AspectRatio(
@@ -146,7 +149,8 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
                         child: CustomPaint(
                           painter: FaceMeshPainter(
                             result: _meshResult!,
-                            isFrontCamera: isFront,
+                            rotationCompensation: _rotationCompensation,
+                            lensDirection: _cameras[_cameraIndex].lensDirection,
                             overlayColor: _overlayColor,
                           ),
                         ),
@@ -214,7 +218,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
             color: Colors.black.withValues(alpha: 0.6),
             child: const Text(
               '폰을 벽면에 대고 좌표계와 얼굴 중심을 정확하게 일치시키면 좌표계가 녹색으로 변합니다. 그 때 분석 버튼을 누르세요.',
-              style: TextStyle(color: Colors.white, fontSize: 12, height: 1.4),
+              style: TextStyle(color: Colors.white, fontSize: 16, height: 1.4),
               textAlign: TextAlign.center,
             ),
           ),
@@ -270,6 +274,37 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
     }
 
     return Colors.redAccent;
+  }
+
+  /// Compute rotation compensation following the official mediapipe_face_mesh
+  /// camera demo (flutter_vision_ai_demos).
+  int? _computeRotationCompensation() {
+    const Map<DeviceOrientation, int> deviceOrientationDegrees = {
+      DeviceOrientation.portraitUp: 0,
+      DeviceOrientation.landscapeLeft: 90,
+      DeviceOrientation.portraitDown: 180,
+      DeviceOrientation.landscapeRight: 270,
+    };
+
+    final controller = _cameraController;
+    if (controller == null) return null;
+
+    final camera = _cameras[_cameraIndex];
+    final deviceRotation = deviceOrientationDegrees[controller.value.deviceOrientation];
+    if (deviceRotation == null) return null;
+
+    if (Platform.isAndroid) {
+      if (camera.lensDirection == CameraLensDirection.front) {
+        return (camera.sensorOrientation + deviceRotation) % 360;
+      }
+      return (camera.sensorOrientation - deviceRotation + 360) % 360;
+    }
+
+    if (Platform.isIOS) {
+      return deviceRotation;
+    }
+
+    return null;
   }
 
   void _finishCapture() {
@@ -336,10 +371,15 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
       final h = swapped ? image.width.toDouble() : image.height.toDouble();
       _frameSize = Size(w, h);
       final ps = _cameraController?.value.previewSize;
+      final shorter = min(ps!.width, ps.height);
+      final longer = max(ps.width, ps.height);
       // ignore: avoid_print
-      print('[FaceMesh] frameSize=$_frameSize  previewSize=$ps  '
+      print('[FaceMesh] platform=${Platform.operatingSystem}  '
+          'rawFrame=${image.width}x${image.height}  '
+          'previewSize=$ps  aspectRatio=${(shorter / longer).toStringAsFixed(4)}  '
           'bytesPerRow=${image.planes[0].bytesPerRow}  '
-          'sensorOrientation=$rot');
+          'sensorOrientation=$rot  rotationCompensation=$_rotationCompensation  '
+          'isFront=${_cameras[_cameraIndex].lensDirection == CameraLensDirection.front}');
     }
 
     _processFrame(image).then((result) {
@@ -375,9 +415,9 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
   }
 
   Future<FaceMeshResult?> _processFrame(CameraImage image) async {
-    final camera = _cameras[_cameraIndex];
-    final rotationDegrees = camera.sensorOrientation;
-    final isFront = camera.lensDirection == CameraLensDirection.front;
+    final rotComp = _computeRotationCompensation();
+    if (rotComp == null) return null;
+    _rotationCompensation = rotComp;
 
     try {
       if (Platform.isAndroid) {
@@ -393,8 +433,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
         );
         return _meshProcessor!.processNv21(
           nv21Image,
-          rotationDegrees: rotationDegrees,
-          mirrorHorizontal: isFront,
+          rotationDegrees: rotComp,
         );
       } else {
         final pixels = image.planes[0].bytes;
@@ -407,8 +446,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
         );
         return _meshProcessor!.process(
           meshImage,
-          rotationDegrees: rotationDegrees,
-          mirrorHorizontal: isFront,
+          rotationDegrees: rotComp,
         );
       }
     } catch (e) {

@@ -37,6 +37,7 @@ dependencies:
   # Local Storage
   hive_ce: ^2.19.3
   hive_ce_flutter: ^2.3.4
+  kakao_flutter_sdk: ^2.0.0+1
 
 dev_dependencies:
   flutter_test:

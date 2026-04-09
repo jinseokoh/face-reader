@@ -760,7 +760,7 @@ class _ScoreBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = score > 0 ? '+$score' : '$score';
+    final label = _scoreLabel(score);
     final color = _scoreColor(score);
 
     return Container(
@@ -773,6 +773,19 @@ class _ScoreBadge extends StatelessWidget {
           style: TextStyle(
               color: color, fontSize: 14, fontWeight: FontWeight.bold)),
     );
+  }
+
+  String _scoreLabel(int s) {
+    switch (s) {
+      case 3:  return '매우 큼';
+      case 2:  return '큼';
+      case 1:  return '약간 큼';
+      case 0:  return '평균';
+      case -1: return '약간 작음';
+      case -2: return '작음';
+      case -3: return '매우 작음';
+      default: return s > 0 ? '매우 큼' : '매우 작음';
+    }
   }
 
   Color _scoreColor(int s) {

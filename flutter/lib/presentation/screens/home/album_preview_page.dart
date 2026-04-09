@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mediapipe_face_mesh/mediapipe_face_mesh.dart';
@@ -73,7 +74,8 @@ class AlbumPreviewPage extends ConsumerWidget {
                           child: CustomPaint(
                             painter: FaceMeshPainter(
                               result: meshResult,
-                              isFrontCamera: false,
+                              rotationCompensation: 0,
+                              lensDirection: CameraLensDirection.back,
                               overlayColor: Colors.greenAccent,
                             ),
                           ),

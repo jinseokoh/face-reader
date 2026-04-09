@@ -1,19 +1,27 @@
+import 'dart:io';
+
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:mediapipe_face_mesh/mediapipe_face_mesh.dart';
 
+/// Renders face mesh landmarks over a CameraPreview.
+///
+/// Follows the official mediapipe_face_mesh camera demo approach:
+/// - Landmarks are returned in raw camera-frame coordinates by the C layer
+/// - Painter applies rotation compensation to map to screen-upright space
+/// - Android front camera: OS mirrors the preview, so flip x to match
+/// - iOS front camera: CameraPreview does NOT mirror, so no flip needed
 class FaceMeshPainter extends CustomPainter {
   final FaceMeshResult result;
-  final bool isFrontCamera;
+  final int rotationCompensation;
+  final CameraLensDirection lensDirection;
   final Color overlayColor;
-  final int sensorOrientation;
-  final bool unrotateForDisplay;
 
   FaceMeshPainter({
     required this.result,
-    required this.isFrontCamera,
+    required this.rotationCompensation,
+    required this.lensDirection,
     this.overlayColor = Colors.redAccent,
-    this.sensorOrientation = 0,
-    this.unrotateForDisplay = false,
   });
 
   @override
@@ -50,30 +58,40 @@ class FaceMeshPainter extends CustomPainter {
   }
 
   Offset _toOffset(FaceMeshLandmark lm, Size size) {
-    double x = lm.x.clamp(0.0, 1.0);
-    double y = lm.y.clamp(0.0, 1.0);
+    double xOut = lm.x.clamp(0.0, 1.0);
+    double yOut = lm.y.clamp(0.0, 1.0);
 
-    // On iOS the CameraPreview shows the raw landscape texture while
-    // landmarks are in the rotated portrait space. Un-rotate them so
-    // they match the displayed texture.
-    if (unrotateForDisplay) {
-      final ox = x;
-      final oy = y;
-      if (sensorOrientation == 90) {
-        // portrait(x,y) → landscape(y, 1-x)
-        x = oy;
-        y = 1.0 - ox;
-      } else if (sensorOrientation == 270) {
-        // portrait(x,y) → landscape(1-y, x)
-        x = 1.0 - oy;
-        y = ox;
-      }
+    // Landmarks are in raw camera-frame coordinates.
+    // Apply rotation compensation to map into screen-upright space.
+    switch (rotationCompensation) {
+      case 90:
+        final ox = xOut;
+        xOut = 1.0 - yOut;
+        yOut = ox;
+        break;
+      case 180:
+        xOut = 1.0 - xOut;
+        yOut = 1.0 - yOut;
+        break;
+      case 270:
+        final ox = xOut;
+        xOut = yOut;
+        yOut = 1.0 - ox;
+        break;
+      default:
+        break;
     }
 
-    if (isFrontCamera) {
-      return Offset((1.0 - x) * size.width, y * size.height);
+    // Android front camera preview is mirrored by the OS → flip x.
+    // iOS front camera preview is NOT mirrored → no flip.
+    if (!Platform.isIOS && lensDirection == CameraLensDirection.front) {
+      xOut = 1.0 - xOut;
     }
-    return Offset(x * size.width, y * size.height);
+
+    return Offset(
+      xOut.clamp(0.0, 1.0) * size.width,
+      yOut.clamp(0.0, 1.0) * size.height,
+    );
   }
 
   @override
