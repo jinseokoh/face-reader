@@ -167,7 +167,7 @@ const metricInfoList = [
 const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = {
   Ethnicity.eastAsian: {
     Gender.male: {
-      'faceAspectRatio': MetricReference(1.40, 0.08),
+      'faceAspectRatio': MetricReference(1.19, 0.07),
       'upperFaceRatio': MetricReference(0.33, 0.03),
       'midFaceRatio': MetricReference(0.33, 0.02),
       'lowerFaceRatio': MetricReference(0.34, 0.03),
@@ -188,7 +188,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
       'philtrumLength': MetricReference(0.085, 0.015),
     },
     Gender.female: {
-      'faceAspectRatio': MetricReference(1.36, 0.07),
+      'faceAspectRatio': MetricReference(1.16, 0.06),
       'upperFaceRatio': MetricReference(0.33, 0.03),
       'midFaceRatio': MetricReference(0.33, 0.02),
       'lowerFaceRatio': MetricReference(0.34, 0.03),
@@ -211,7 +211,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
   },
   Ethnicity.caucasian: {
     Gender.male: {
-      'faceAspectRatio': MetricReference(1.37, 0.08),
+      'faceAspectRatio': MetricReference(1.16, 0.07),
       'upperFaceRatio': MetricReference(0.33, 0.03),
       'midFaceRatio': MetricReference(0.34, 0.02),
       'lowerFaceRatio': MetricReference(0.33, 0.03),
@@ -232,7 +232,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
       'philtrumLength': MetricReference(0.082, 0.015),
     },
     Gender.female: {
-      'faceAspectRatio': MetricReference(1.33, 0.07),
+      'faceAspectRatio': MetricReference(1.13, 0.06),
       'upperFaceRatio': MetricReference(0.33, 0.03),
       'midFaceRatio': MetricReference(0.34, 0.02),
       'lowerFaceRatio': MetricReference(0.33, 0.03),
@@ -255,7 +255,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
   },
   Ethnicity.african: {
     Gender.male: {
-      'faceAspectRatio': MetricReference(1.34, 0.08),
+      'faceAspectRatio': MetricReference(1.14, 0.07),
       'upperFaceRatio': MetricReference(0.32, 0.03),
       'midFaceRatio': MetricReference(0.32, 0.02),
       'lowerFaceRatio': MetricReference(0.36, 0.03),
@@ -276,7 +276,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
       'philtrumLength': MetricReference(0.088, 0.015),
     },
     Gender.female: {
-      'faceAspectRatio': MetricReference(1.30, 0.07),
+      'faceAspectRatio': MetricReference(1.11, 0.06),
       'upperFaceRatio': MetricReference(0.32, 0.03),
       'midFaceRatio': MetricReference(0.32, 0.02),
       'lowerFaceRatio': MetricReference(0.36, 0.03),
@@ -299,7 +299,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
   },
   Ethnicity.southeastAsian: {
     Gender.male: {
-      'faceAspectRatio': MetricReference(1.38, 0.08),
+      'faceAspectRatio': MetricReference(1.17, 0.07),
       'upperFaceRatio': MetricReference(0.33, 0.03),
       'midFaceRatio': MetricReference(0.33, 0.02),
       'lowerFaceRatio': MetricReference(0.34, 0.03),
@@ -320,7 +320,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
       'philtrumLength': MetricReference(0.086, 0.015),
     },
     Gender.female: {
-      'faceAspectRatio': MetricReference(1.34, 0.07),
+      'faceAspectRatio': MetricReference(1.14, 0.06),
       'upperFaceRatio': MetricReference(0.33, 0.03),
       'midFaceRatio': MetricReference(0.33, 0.02),
       'lowerFaceRatio': MetricReference(0.34, 0.03),
@@ -343,7 +343,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
   },
   Ethnicity.hispanic: {
     Gender.male: {
-      'faceAspectRatio': MetricReference(1.37, 0.08),
+      'faceAspectRatio': MetricReference(1.16, 0.07),
       'upperFaceRatio': MetricReference(0.33, 0.03),
       'midFaceRatio': MetricReference(0.33, 0.02),
       'lowerFaceRatio': MetricReference(0.34, 0.03),
@@ -364,7 +364,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
       'philtrumLength': MetricReference(0.084, 0.015),
     },
     Gender.female: {
-      'faceAspectRatio': MetricReference(1.33, 0.07),
+      'faceAspectRatio': MetricReference(1.13, 0.06),
       'upperFaceRatio': MetricReference(0.33, 0.03),
       'midFaceRatio': MetricReference(0.33, 0.02),
       'lowerFaceRatio': MetricReference(0.34, 0.03),
@@ -387,7 +387,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
   },
   Ethnicity.middleEastern: {
     Gender.male: {
-      'faceAspectRatio': MetricReference(1.38, 0.08),
+      'faceAspectRatio': MetricReference(1.17, 0.07),
       'upperFaceRatio': MetricReference(0.33, 0.03),
       'midFaceRatio': MetricReference(0.34, 0.02),
       'lowerFaceRatio': MetricReference(0.33, 0.03),
@@ -408,7 +408,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
       'philtrumLength': MetricReference(0.083, 0.015),
     },
     Gender.female: {
-      'faceAspectRatio': MetricReference(1.34, 0.07),
+      'faceAspectRatio': MetricReference(1.14, 0.06),
       'upperFaceRatio': MetricReference(0.33, 0.03),
       'midFaceRatio': MetricReference(0.34, 0.02),
       'lowerFaceRatio': MetricReference(0.33, 0.03),

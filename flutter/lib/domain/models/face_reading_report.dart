@@ -21,11 +21,14 @@ class MetricResult {
   });
 }
 
+enum AnalysisSource { camera, album }
+
 class FaceReadingReport {
   final Ethnicity ethnicity;
   final Gender gender;
   final AgeGroup ageGroup;
   final DateTime timestamp;
+  final AnalysisSource source;
 
   /// 17 metric results
   final Map<String, MetricResult> metrics;
@@ -44,6 +47,7 @@ class FaceReadingReport {
     required this.gender,
     required this.ageGroup,
     required this.timestamp,
+    required this.source,
     required this.metrics,
     required this.attributeScores,
     required this.archetype,

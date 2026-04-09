@@ -110,13 +110,25 @@ CameraController.startImageStream()
 - 개별 인덱스 매핑은 커뮤니티 참고 (GitHub Issue #1615)
 - URL: https://github.com/google-ai-edge/mediapipe/blob/master/mediapipe/python/solutions/face_mesh_connections.py
 
+#### faceAspectRatio 보정 (MediaPipe Landmark 10 한계)
+
+MediaPipe Face Mesh의 landmark 10(foreheadTop)은 실제 헤어라인/이마 상단까지 도달하지 않고 이마 중상부에 위치한다.
+따라서 Farkas 인체계측학 기준(헤어라인~턱)으로 산출된 faceAspectRatio 레퍼런스 값을 그대로 사용하면,
+faceHeight가 체계적으로 과소측정되어 모든 얼굴이 "가로로 넓은 얼굴형"으로 오판된다.
+
+**보정 내용 (2026-04-10)**:
+- 보정 계수: **0.85** (landmark 10이 실제 이마 상단 대비 약 15% 낮은 위치에 있음을 반영)
+- 적용 대상: 전체 6개 인종 × 2개 성별 = 12개 faceAspectRatio 레퍼런스 (mean × 0.85, SD × 0.85)
+- 예시: 동아시아 남성 1.40±0.08 → **1.19±0.07**
+- 보정 계수 0.85는 추정치이며, 실측 데이터에 기반한 정밀 보정이 필요할 수 있음
+
 #### East Asian Reference Values (Default)
 
-비율 기준값은 위 문헌의 mm 측정값을 얼굴 폭/높이 대비 비율로 변환하여 산출:
+비율 기준값은 위 문헌의 mm 측정값을 얼굴 폭/높이 대비 비율로 변환하여 산출 (faceAspectRatio는 MediaPipe 보정 적용):
 
 | Metric | Mean | SD | Derivation |
 |--------|------|----|------------|
-| faceAspectRatio | 1.38 | 0.08 | Farkas: 동아시아 얼굴 높이/폭 |
+| faceAspectRatio | 1.19 | 0.07 | Farkas 기준 1.40 × 0.85 보정 (MediaPipe landmark 10 한계) |
 | upperFaceRatio | 0.33 | 0.03 | Neoclassical 3등분 기준 |
 | midFaceRatio | 0.33 | 0.02 | Neoclassical 3등분 기준 |
 | lowerFaceRatio | 0.34 | 0.03 | Neoclassical 3등분 기준 |

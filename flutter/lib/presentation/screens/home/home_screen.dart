@@ -134,53 +134,57 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             const SizedBox(height: 24),
 
             // Camera button
-            ElevatedButton.icon(
-              onPressed: _openCamera,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.textPrimary,
-                foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+            SizedBox(
+              width: 200,
+              height: 56,
+              child: ElevatedButton.icon(
+                onPressed: _openCamera,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.textPrimary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
-              ),
-              icon: const Icon(Icons.camera_alt),
-              label: const Text(
-                '카메라 열기',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                icon: const Icon(Icons.camera_alt),
+                label: const Text(
+                  '카메라 열기',
+                  style: TextStyle(fontFamily: '', fontSize: 15, fontWeight: FontWeight.w600),
+                ),
               ),
             ),
             const SizedBox(height: 12),
 
             // Album button
-            ElevatedButton.icon(
-              onPressed: _isProcessing ? null : _openAlbum,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: AppTheme.textPrimary,
-                disabledBackgroundColor: AppTheme.surface,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(color: AppTheme.border),
+            SizedBox(
+              width: 200,
+              height: 56,
+              child: ElevatedButton.icon(
+                onPressed: _isProcessing ? null : _openAlbum,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: AppTheme.textPrimary,
+                  disabledBackgroundColor: AppTheme.surface,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(color: AppTheme.border),
+                  ),
                 ),
-              ),
-              icon: _isProcessing
-                  ? SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppTheme.textHint,
-                      ),
-                    )
-                  : const Icon(Icons.photo_library),
-              label: Text(
-                _isProcessing ? '분석 중...' : '앨범 열기',
-                style: const TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.w600),
+                icon: _isProcessing
+                    ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppTheme.textHint,
+                        ),
+                      )
+                    : const Icon(Icons.photo_library),
+                label: Text(
+                  _isProcessing ? '분석 중...' : '앨범 열기',
+                  style: const TextStyle(
+                      fontFamily: '', fontSize: 15, fontWeight: FontWeight.w600),
+                ),
               ),
             ),
           ],
@@ -293,12 +297,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         minTrackingConfidence: 0.5,
       );
 
+      debugPrint('[Album] image=${image.width}x${image.height} '
+          'rgba.length=${rgba.length} '
+          'expected=${image.width * image.height * 4} '
+          'bbox=$bbox clamped=$clamped '
+          'platform=${Platform.operatingSystem}');
+
+      // Both platforms: use RGBA + process() for static images
+      // (matches plugin author's static image example)
       final meshImage = FaceMeshImage(
         pixels: rgba,
         width: image.width,
         height: image.height,
       );
-
+      debugPrint('[Album] calling process...');
       final result = processor.process(
         meshImage,
         box: box,
@@ -306,6 +318,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         boxMakeSquare: true,
         rotationDegrees: 0,
       );
+      debugPrint('[Album] landmarks=${result.landmarks.length} '
+          'score=${result.score.toStringAsFixed(4)}');
       processor.close();
 
       if (result.landmarks.isEmpty) {

@@ -18,6 +18,7 @@ FaceReadingReport analyzeFaceReading({
   required Ethnicity ethnicity,
   required Gender gender,
   required AgeGroup ageGroup,
+  required AnalysisSource source,
 }) {
   final isOver50 = ageGroup.isOver50;
 
@@ -94,6 +95,7 @@ FaceReadingReport analyzeFaceReading({
     gender: gender,
     ageGroup: ageGroup,
     timestamp: DateTime.now(),
+    source: source,
     metrics: metricResults,
     attributeScores: normalizedScores,
     archetype: archetype,

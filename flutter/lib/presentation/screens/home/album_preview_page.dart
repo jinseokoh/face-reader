@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mediapipe_face_mesh/mediapipe_face_mesh.dart';
 
 import 'package:face_reader/domain/models/face_analysis.dart';
+import 'package:face_reader/domain/models/face_reading_report.dart';
 import 'package:face_reader/presentation/providers/age_group_provider.dart';
 import 'package:face_reader/presentation/providers/ethnicity_provider.dart';
 import 'package:face_reader/presentation/providers/gender_provider.dart';
@@ -85,6 +86,21 @@ class AlbumPreviewPage extends ConsumerWidget {
                   ),
                 ),
               ),
+              // Instruction banner
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  color: Colors.black.withValues(alpha: 0.6),
+                  child: const Text(
+                    '정면을 바라보는 사진을 사용해야만 왜곡을 줄일 수 있습니다.',
+                    style: TextStyle(color: Colors.white, fontSize: 16, height: 1.4),
+                    textAlign: TextAlign.left,
+                  ),
+                ),
+              ),
               // Analyze button
               Positioned(
                 left: 20,
@@ -104,11 +120,11 @@ class AlbumPreviewPage extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(14),
                         ),
                       ),
-                      icon: const Icon(Icons.analytics, size: 20),
+                      icon: const Icon(Icons.check, size: 20),
                       label: const Text(
                         '분석',
                         style: TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.w600),
+                            fontFamily: '', fontSize: 15, fontWeight: FontWeight.w600),
                       ),
                     ),
                   ),
@@ -131,6 +147,7 @@ class AlbumPreviewPage extends ConsumerWidget {
       ethnicity: ethnicity,
       gender: gender,
       ageGroup: ageGroup,
+      source: AnalysisSource.album,
     );
 
     ref.read(historyProvider.notifier).add(report);

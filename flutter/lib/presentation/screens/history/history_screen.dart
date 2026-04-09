@@ -89,7 +89,13 @@ class _HistoryItem extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                Icon(Icons.face, color: AppTheme.textSecondary, size: 36),
+                Icon(
+                  report.source == AnalysisSource.camera
+                      ? Icons.camera_alt
+                      : Icons.photo_library,
+                  color: AppTheme.textSecondary,
+                  size: 36,
+                ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(

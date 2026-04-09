@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:camera/camera.dart';
 import 'package:face_reader/domain/models/face_analysis.dart';
+import 'package:face_reader/domain/models/face_reading_report.dart';
 import 'package:face_reader/presentation/providers/age_group_provider.dart';
 import 'package:face_reader/presentation/providers/ethnicity_provider.dart';
 import 'package:face_reader/presentation/providers/gender_provider.dart';
@@ -196,13 +197,13 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
                               color: Colors.white,
                             ),
                           )
-                        : const Icon(Icons.analytics, size: 20),
+                        : const Icon(Icons.check, size: 20),
                     label: Text(
                       _isCapturing
                           ? '${_capturedFrames.length}/5'
                           : '분석',
                       style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w600),
+                          fontFamily: '', fontSize: 15, fontWeight: FontWeight.w600),
                     ),
                   ),
                 ),
@@ -217,9 +218,9 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             color: Colors.black.withValues(alpha: 0.6),
             child: const Text(
-              '폰을 벽면에 대고 좌표계와 얼굴 중심을 정확하게 일치시키면 좌표계가 녹색으로 변합니다. 그 때 분석 버튼을 누르세요.',
+              '폰을 벽면에 대고 얼굴 중심이 녹색 좌표계로 변할때까지 움직이세요. 왜곡을 줄여야 정확해집니다.',
               style: TextStyle(color: Colors.white, fontSize: 16, height: 1.4),
-              textAlign: TextAlign.center,
+              textAlign: TextAlign.left,
             ),
           ),
         ),
@@ -320,6 +321,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
       ethnicity: ethnicity,
       gender: gender,
       ageGroup: ageGroup,
+      source: AnalysisSource.camera,
     );
     _capturedFrames.clear();
 
@@ -399,6 +401,9 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
         setState(() {
           _meshResult = result;
           _overlayColor = color;
+          // Processor already applied rotation via rotationDegrees,
+          // so landmarks are in screen-upright space — no painter rotation needed.
+          _rotationCompensation = 0;
         });
         _prevLandmarks = List.of(result.landmarks);
         if (_isCapturing && result.landmarks.isNotEmpty) {
@@ -421,15 +426,42 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
 
     try {
       if (Platform.isAndroid) {
-        final fullBuffer = image.planes[0].bytes;
-        final ySize = image.width * image.height;
-        final yPlane = fullBuffer.buffer.asUint8List(fullBuffer.offsetInBytes, ySize);
-        final vuPlane = fullBuffer.buffer.asUint8List(fullBuffer.offsetInBytes + ySize, fullBuffer.length - ySize);
+        final planes = image.planes;
+        if (planes.isEmpty) return null;
+
+        final Uint8List yPlane;
+        final Uint8List vuPlane;
+        final int yBytesPerRow;
+        final int vuBytesPerRow;
+
+        if (planes.length >= 2) {
+          // Multi-plane NV21: planes[0] = Y, planes[1] = VU interleaved
+          yPlane = planes[0].bytes;
+          vuPlane = planes[1].bytes;
+          yBytesPerRow = planes[0].bytesPerRow;
+          vuBytesPerRow = planes[1].bytesPerRow;
+        } else {
+          // Single-plane NV21: Y + VU packed in one buffer
+          final plane = planes.first;
+          final rowStride = plane.bytesPerRow;
+          final ySize = rowStride * image.height;
+          final chromaHeight = (image.height + 1) ~/ 2;
+          final vuSize = rowStride * chromaHeight;
+          if (plane.bytes.length < ySize + vuSize) return null;
+          final bytes = plane.bytes;
+          yPlane = Uint8List.sublistView(bytes, 0, ySize);
+          vuPlane = Uint8List.sublistView(bytes, ySize, ySize + vuSize);
+          yBytesPerRow = rowStride;
+          vuBytesPerRow = rowStride;
+        }
+
         final nv21Image = FaceMeshNv21Image(
           yPlane: yPlane,
           vuPlane: vuPlane,
           width: image.width,
           height: image.height,
+          yBytesPerRow: yBytesPerRow,
+          vuBytesPerRow: vuBytesPerRow,
         );
         return _meshProcessor!.processNv21(
           nv21Image,
