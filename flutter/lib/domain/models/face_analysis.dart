@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:mediapipe_face_mesh/mediapipe_face_mesh.dart';
 
 import 'package:face_reader/data/enums/age_group.dart';
@@ -19,12 +20,29 @@ FaceReadingReport analyzeFaceReading({
   required Gender gender,
   required AgeGroup ageGroup,
   required AnalysisSource source,
+  required int imageWidth,
+  required int imageHeight,
 }) {
   final isOver50 = ageGroup.isOver50;
 
   // Step 1: Compute 15 raw metrics
   final faceMetrics = FaceMetrics(landmarks);
   final measured = faceMetrics.computeAll();
+
+  // Correct faceAspectRatio:
+  // 1) Non-square image: landmarks normalized 0~1 independently per axis
+  // 2) Landmark 10 (foreheadTop) sits below actual hairline
+  //    → Adjust this single value to fine-tune face shape classification
+  const kLandmark10Correction = 1.05; // > 1.0 = 더 길게 보정
+  final aspectCorrection = imageHeight / imageWidth;
+  measured['faceAspectRatio'] =
+      measured['faceAspectRatio']! * aspectCorrection * kLandmark10Correction;
+
+  debugPrint('[Analysis] faceAspectRatio raw=${measured['faceAspectRatio']?.toStringAsFixed(4)} '
+      'faceH=${faceMetrics.faceHeight.toStringAsFixed(4)} '
+      'faceW=${faceMetrics.faceWidth.toStringAsFixed(4)} '
+      'aspectCorrection=${aspectCorrection.toStringAsFixed(4)} '
+      'landmark10Correction=$kLandmark10Correction');
 
   // Step 2: Z-score with gender-specific reference
   final refs = referenceData[ethnicity]![gender]!;
@@ -33,6 +51,9 @@ FaceReadingReport analyzeFaceReading({
     final ref = refs[entry.key]!;
     zScores[entry.key] = (entry.value - ref.mean) / ref.sd;
   }
+
+  debugPrint('[Analysis] faceAspectRatio z=${zScores['faceAspectRatio']?.toStringAsFixed(4)} '
+      'ref mean=${refs['faceAspectRatio']!.mean} sd=${refs['faceAspectRatio']!.sd}');
 
   // Step 3: Age adjustment (over50 only)
   final zAdjusted = <String, double>{};

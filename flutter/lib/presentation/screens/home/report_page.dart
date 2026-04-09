@@ -789,9 +789,6 @@ class _ScoreBadge extends StatelessWidget {
   }
 
   Color _scoreColor(int s) {
-    final abs = s.abs();
-    if (abs == 0) return _Palette.olive;
-    if (abs == 1) return _Palette.amber;
     return _Palette.darkBrown;
   }
 }

@@ -51,9 +51,11 @@ class FaceMeshPainter extends CustomPainter {
       ..strokeWidth = 2.0
       ..style = PaintingStyle.fill;
 
+    final pointRadius = size.shortestSide * 0.006;
+
     for (final lm in result.landmarks) {
       final offset = _toOffset(lm, size);
-      canvas.drawCircle(offset, 1.5, pointPaint);
+      canvas.drawCircle(offset, pointRadius, pointPaint);
     }
   }
 

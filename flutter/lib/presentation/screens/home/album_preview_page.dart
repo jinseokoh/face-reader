@@ -148,6 +148,8 @@ class AlbumPreviewPage extends ConsumerWidget {
       gender: gender,
       ageGroup: ageGroup,
       source: AnalysisSource.album,
+      imageWidth: imageWidth,
+      imageHeight: imageHeight,
     );
 
     ref.read(historyProvider.notifier).add(report);

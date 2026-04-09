@@ -316,12 +316,17 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
     final ethnicity = ref.read(ethnicityProvider);
     final gender = ref.read(genderProvider);
     final ageGroup = ref.read(ageGroupProvider);
+    final lastResult = _meshResult;
+    debugPrint('[Camera] imageW=${lastResult?.imageWidth} imageH=${lastResult?.imageHeight} '
+        'frames=${_capturedFrames.length}');
     final report = analyzeFaceReading(
       landmarks: averaged,
       ethnicity: ethnicity,
       gender: gender,
       ageGroup: ageGroup,
       source: AnalysisSource.camera,
+      imageWidth: lastResult?.imageWidth ?? 1,
+      imageHeight: lastResult?.imageHeight ?? 1,
     );
     _capturedFrames.clear();
 
