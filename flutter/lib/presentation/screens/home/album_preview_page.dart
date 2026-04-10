@@ -156,8 +156,11 @@ class AlbumPreviewPage extends ConsumerWidget {
     ref.read(historyProvider.notifier).add(report);
     ref.read(selectedTabProvider.notifier).selectTab(1);
     Navigator.of(context).pop();
-    // Save to Supabase in background (fire-and-forget)
-    SupabaseService().saveMetrics(report).then((_) {}).catchError((e) {
+    // Save to Supabase in background, store UUID back
+    SupabaseService().saveMetrics(report).then((uuid) {
+      report.supabaseId = uuid;
+      ref.read(historyProvider.notifier).updateHive();
+    }).catchError((e) {
       debugPrint('[Supabase] save error: $e');
     });
   }

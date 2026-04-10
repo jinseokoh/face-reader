@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
@@ -18,17 +16,15 @@ class SupabaseService {
   /// Returns the generated UUID for sharing.
   Future<String> saveMetrics(FaceReadingReport report) async {
     final id = _uuid.v4();
-    final expiresAt =
-        DateTime.now().add(const Duration(days: 90)).toUtc().toIso8601String();
 
     final data = {
       'id': id,
-      'metrics_json': _reportToJson(report),
+      'metrics_json': report.toJsonString(),
       'source': report.source.name,
       'ethnicity': report.ethnicity.name,
       'gender': report.gender.name,
       'age_group': report.ageGroup.name,
-      'expires_at': expiresAt,
+      'expires_at': report.expiresAt.toUtc().toIso8601String(),
     };
 
     await _client.from('metrics').insert(data);
@@ -56,42 +52,4 @@ class SupabaseService {
     return List<Map<String, dynamic>>.from(response);
   }
 
-  String _reportToJson(FaceReadingReport report) {
-    final metricsMap = <String, dynamic>{};
-    for (final entry in report.metrics.entries) {
-      metricsMap[entry.key] = {
-        'rawValue': entry.value.rawValue,
-        'zScore': entry.value.zScore,
-        'zAdjusted': entry.value.zAdjusted,
-        'metricScore': entry.value.metricScore,
-      };
-    }
-
-    final attributesMap = <String, double>{};
-    for (final entry in report.attributeScores.entries) {
-      attributesMap[entry.key.name] = entry.value;
-    }
-
-    final data = {
-      'metrics': metricsMap,
-      'attributeScores': attributesMap,
-      'archetype': {
-        'primary': report.archetype.primary.name,
-        'secondary': report.archetype.secondary.name,
-        'primaryLabel': report.archetype.primaryLabel,
-        'secondaryLabel': report.archetype.secondaryLabel,
-        'specialArchetype': report.archetype.specialArchetype,
-      },
-      'triggeredRules': report.triggeredRules
-          .map((r) => {
-                'id': r.id,
-                'effects': {
-                  for (final e in r.effects.entries) e.key.name: e.value,
-                },
-              })
-          .toList(),
-    };
-
-    return jsonEncode(data);
-  }
 }

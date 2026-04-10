@@ -1,4 +1,5 @@
 import 'package:face_reader/app.dart';
+import 'package:face_reader/core/hive/hive_setup.dart';
 import 'package:face_reader/core/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -12,6 +13,7 @@ void main() async {
     url: dotenv.env['SUPABASE_URL']!,
     anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
+  await initHive();
   runApp(const ProviderScope(child: MyApp()));
 }
 
