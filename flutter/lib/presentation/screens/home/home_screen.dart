@@ -44,6 +44,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             Text(
               '위험한 관상가',
               style: TextStyle(
+                fontFamily: 'SongMyung',
                 color: AppTheme.textPrimary,
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
@@ -149,7 +150,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 icon: const Icon(Icons.camera_alt),
                 label: const Text(
                   '카메라 열기',
-                  style: TextStyle(fontFamily: '', fontSize: 15, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                 ),
               ),
             ),
@@ -183,7 +184,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 label: Text(
                   _isProcessing ? '분석 중...' : '앨범 열기',
                   style: const TextStyle(
-                      fontFamily: '', fontSize: 15, fontWeight: FontWeight.w600),
+                      fontSize: 15, fontWeight: FontWeight.w600),
                 ),
               ),
             ),

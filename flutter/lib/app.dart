@@ -31,8 +31,6 @@ class MainApp extends ConsumerWidget {
         unselectedItemColor: AppTheme.textHint,
         type: BottomNavigationBarType.fixed,
         elevation: 8,
-        selectedLabelStyle: const TextStyle(fontFamily: ''),
-        unselectedLabelStyle: const TextStyle(fontFamily: ''),
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home),

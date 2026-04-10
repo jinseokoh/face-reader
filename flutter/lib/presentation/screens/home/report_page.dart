@@ -755,7 +755,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                       Icon(Icons.copy, color: AppTheme.textSecondary),
                   title: Text('클립보드에 복사',
                       style: TextStyle(
-                          fontFamily: '', color: AppTheme.textPrimary)),
+                          color: AppTheme.textPrimary)),
                   onTap: () {
                     Clipboard.setData(
                         ClipboardData(text: _generateText()));
@@ -771,7 +771,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                       Icon(Icons.picture_as_pdf, color: AppTheme.textSecondary),
                   title: Text('PDF로 저장',
                       style: TextStyle(
-                          fontFamily: '', color: AppTheme.textPrimary)),
+                          color: AppTheme.textPrimary)),
                   onTap: () async {
                     Navigator.pop(ctx);
                     await _saveToPdf(context);

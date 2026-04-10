@@ -125,7 +125,7 @@ class AlbumPreviewPage extends ConsumerWidget {
                       label: const Text(
                         '분석',
                         style: TextStyle(
-                            fontFamily: '', fontSize: 15, fontWeight: FontWeight.w600),
+                            fontSize: 15, fontWeight: FontWeight.w600),
                       ),
                     ),
                   ),

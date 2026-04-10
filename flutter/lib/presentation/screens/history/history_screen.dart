@@ -103,7 +103,7 @@ class _HistoryItem extends StatelessWidget {
                         children: [
                           Text(faceShape,
                               style: TextStyle(
-                                  fontFamily: '',
+                                  
                                   color: AppTheme.textPrimary,
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600)),
@@ -112,7 +112,7 @@ class _HistoryItem extends StatelessWidget {
                             child: Text(
                                 timeago.format(report.timestamp, locale: 'ko'),
                                 style: TextStyle(
-                                    fontFamily: '',
+                                    
                                     color: AppTheme.textHint,
                                     fontSize: 13)),
                           ),
@@ -121,7 +121,7 @@ class _HistoryItem extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text('${report.ethnicity.labelKo} / ${report.ageGroup.labelKo} / ${report.gender.labelKo}',
                           style: TextStyle(
-                              fontFamily: '',
+                              
                               color: AppTheme.textHint,
                               fontSize: 13)),
                     ],

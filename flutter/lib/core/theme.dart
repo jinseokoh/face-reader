@@ -16,7 +16,6 @@ class AppTheme {
 
   static ThemeData get light => ThemeData(
         brightness: Brightness.light,
-        fontFamily: 'SongMyung',
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.grey,
           brightness: Brightness.light,
@@ -27,6 +26,12 @@ class AppTheme {
           foregroundColor: textPrimary,
           elevation: 0,
           scrolledUnderElevation: 0.5,
+          titleTextStyle: TextStyle(
+            fontFamily: 'SongMyung',
+            color: textPrimary,
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         useMaterial3: true,
       );

@@ -204,7 +204,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
                           ? '${_capturedFrames.length}/5'
                           : '분석',
                       style: const TextStyle(
-                          fontFamily: '', fontSize: 15, fontWeight: FontWeight.w600),
+                          fontSize: 15, fontWeight: FontWeight.w600),
                     ),
                   ),
                 ),
