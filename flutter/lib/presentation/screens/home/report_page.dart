@@ -311,40 +311,56 @@ class _ReportPageState extends ConsumerState<ReportPage> {
         ),
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Text('당신의 관상',
-              style: TextStyle(
-                  color: _Palette.sand, fontSize: 16, letterSpacing: 1)),
-          const SizedBox(height: 8),
-          Text(arch.primaryLabel,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
-          Text('${arch.secondaryLabel} 기질',
-              style: TextStyle(
-                  color: _Palette.sand, fontSize: 16)),
-          if (arch.specialArchetype != null) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.3)),
-              ),
-              child: Text(arch.specialArchetype!,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600)),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('당신의 관상',
+                    style: TextStyle(
+                        color: _Palette.sand, fontSize: 16, letterSpacing: 1)),
+                const SizedBox(height: 8),
+                Text(arch.primaryLabel,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text('${arch.secondaryLabel} 기질',
+                    style: TextStyle(
+                        color: _Palette.sand, fontSize: 16)),
+                if (arch.specialArchetype != null) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.3)),
+                    ),
+                    child: Text(arch.specialArchetype!,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600)),
+                  ),
+                ],
+              ],
             ),
-          ],
+          ),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(
+              'https://jicaenyzunjdlcxcdbfb.supabase.co/storage/v1/object/public/images/archetypes/${report.gender.name}.${arch.primary.name}.png',
+              width: 100,
+              height: 100,
+              fit: BoxFit.cover,
+              errorBuilder: (_, e, st) => const SizedBox.shrink(),
+            ),
+          ),
         ],
       ),
     );

@@ -119,8 +119,38 @@ class AuthService {
     _box.put('nickname', nickname ?? '');
     _box.put('coins', _currentUser!.coins.toString());
 
+    // Link existing metrics to this user
+    await _linkExistingMetrics();
+
     debugPrint('[Auth] logged in: $nickname, coins: ${_currentUser!.coins}');
     return _currentUser!;
+  }
+
+  /// Link existing Hive metrics (created before login) to this user in Supabase
+  Future<void> _linkExistingMetrics() async {
+    if (_currentUser == null) return;
+    final historyBox = Hive.box<String>(HiveBoxes.history);
+    final supabaseIds = <String>[];
+
+    for (int i = 0; i < historyBox.length; i++) {
+      final json = historyBox.getAt(i);
+      if (json != null && json.contains('"supabaseId"')) {
+        final match = RegExp(r'"supabaseId":"([^"]+)"').firstMatch(json);
+        if (match != null) {
+          supabaseIds.add(match.group(1)!);
+        }
+      }
+    }
+
+    if (supabaseIds.isEmpty) return;
+
+    await _client
+        .from('metrics')
+        .update({'user_id': _currentUser!.id})
+        .inFilter('id', supabaseIds)
+        .isFilter('user_id', null);
+
+    debugPrint('[Auth] linked ${supabaseIds.length} existing metrics to user');
   }
 
   /// Logout
