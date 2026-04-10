@@ -52,4 +52,15 @@ class SupabaseService {
     return List<Map<String, dynamic>>.from(response);
   }
 
+  /// Delete a metrics record by UUID
+  Future<void> deleteMetrics(String uuid) async {
+    await _client.from('metrics').delete().eq('id', uuid);
+    debugPrint('[Supabase] deleted metrics id=$uuid');
+  }
+
+  /// Update alias for a metrics record
+  Future<void> updateAlias(String uuid, String alias) async {
+    await _client.from('metrics').update({'alias': alias}).eq('id', uuid);
+    debugPrint('[Supabase] updated alias id=$uuid alias=$alias');
+  }
 }

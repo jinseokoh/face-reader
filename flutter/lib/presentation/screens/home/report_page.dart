@@ -13,6 +13,7 @@ import 'package:face_reader/domain/services/report_assembler.dart';
 import 'package:face_reader/presentation/providers/auth_provider.dart';
 import 'package:face_reader/presentation/providers/di_providers.dart';
 import 'package:face_reader/presentation/widgets/login_bottom_sheet.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -351,16 +352,46 @@ class _ReportPageState extends ConsumerState<ReportPage> {
               ],
             ),
           ),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.network(
-              'https://jicaenyzunjdlcxcdbfb.supabase.co/storage/v1/object/public/images/archetypes/${report.gender.name}.${arch.primary.name}.png',
-              width: 100,
-              height: 100,
-              fit: BoxFit.cover,
-              errorBuilder: (_, e, st) => const SizedBox.shrink(),
-            ),
-          ),
+          Builder(builder: (_) {
+            final imageUrl = 'https://jicaenyzunjdlcxcdbfb.supabase.co/storage/v1/object/public/images/archetypes/${report.gender.name}.${arch.primary.name}.png';
+            debugPrint('[Archetype] loading image: $imageUrl');
+            return ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: CachedNetworkImage(
+                imageUrl: imageUrl,
+                width: 120,
+                height: 150,
+                fit: BoxFit.cover,
+                placeholder: (_, url) => Container(
+                  width: 120,
+                  height: 150,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Center(
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white),
+                  ),
+                ),
+                errorWidget: (_, url, e) {
+                  debugPrint('[Archetype] image error: $e url=$url');
+                  return Container(
+                    width: 120,
+                    height: 150,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Center(
+                      child: Icon(Icons.image_not_supported,
+                          color: Colors.white54, size: 32),
+                    ),
+                  );
+                },
+              ),
+            );
+          }),
         ],
       ),
     );

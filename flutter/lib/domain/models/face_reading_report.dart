@@ -48,6 +48,8 @@ class FaceReadingReport {
   final DateTime timestamp;
   final AnalysisSource source;
   String? supabaseId;
+  String? alias;
+  bool isMyFace;
   final DateTime expiresAt;
 
   /// 17 metric results
@@ -69,6 +71,8 @@ class FaceReadingReport {
     required this.timestamp,
     required this.source,
     this.supabaseId,
+    this.alias,
+    this.isMyFace = false,
     DateTime? expiresAt,
     required this.metrics,
     required this.attributeScores,
@@ -83,6 +87,8 @@ class FaceReadingReport {
         'timestamp': timestamp.toIso8601String(),
         'source': source.name,
         'supabaseId': supabaseId,
+        'alias': alias,
+        'isMyFace': isMyFace,
         'expiresAt': expiresAt.toIso8601String(),
         'metrics': {
           for (final e in metrics.entries) e.key: e.value.toJson(),
@@ -116,6 +122,8 @@ class FaceReadingReport {
       timestamp: DateTime.parse(j['timestamp'] as String),
       source: AnalysisSource.values.byName(j['source'] as String),
       supabaseId: j['supabaseId'] as String?,
+      alias: j['alias'] as String?,
+      isMyFace: j['isMyFace'] as bool? ?? false,
       expiresAt: j['expiresAt'] != null ? DateTime.parse(j['expiresAt'] as String) : null,
       metrics: (j['metrics'] as Map<String, dynamic>).map(
         (k, v) => MapEntry(k, MetricResult.fromJson(v as Map<String, dynamic>)),
