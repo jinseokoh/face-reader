@@ -70,21 +70,35 @@ class _HistoryItem extends ConsumerWidget {
         endActionPane: ActionPane(
           motion: const DrawerMotion(),
           children: [
-            SlidableAction(
+            CustomSlidableAction(
               onPressed: (_) => _setMyFace(context, ref),
               backgroundColor: Colors.green.shade600,
               foregroundColor: Colors.white,
-              icon: Icons.face,
-              label: '내 얼굴',
               borderRadius: BorderRadius.circular(14),
+              padding: EdgeInsets.zero,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.face),
+                  const SizedBox(height: 4),
+                  const Text('내 얼굴', style: TextStyle(fontSize: 12)),
+                ],
+              ),
             ),
-            SlidableAction(
+            CustomSlidableAction(
               onPressed: (_) => _delete(context, ref),
               backgroundColor: Colors.red.shade600,
               foregroundColor: Colors.white,
-              icon: Icons.delete,
-              label: '삭제',
               borderRadius: BorderRadius.circular(14),
+              padding: EdgeInsets.zero,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.delete),
+                  const SizedBox(height: 4),
+                  const Text('삭제', style: TextStyle(fontSize: 12)),
+                ],
+              ),
             ),
           ],
         ),

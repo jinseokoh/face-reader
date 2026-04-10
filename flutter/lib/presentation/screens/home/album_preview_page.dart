@@ -1,10 +1,6 @@
 import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mediapipe_face_mesh/mediapipe_face_mesh.dart';
-
 import 'package:face_reader/data/services/supabase_service.dart';
 import 'package:face_reader/domain/models/face_analysis.dart';
 import 'package:face_reader/domain/models/face_reading_report.dart';
@@ -13,6 +9,10 @@ import 'package:face_reader/presentation/providers/ethnicity_provider.dart';
 import 'package:face_reader/presentation/providers/gender_provider.dart';
 import 'package:face_reader/presentation/providers/history_provider.dart';
 import 'package:face_reader/presentation/providers/tab_provider.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mediapipe_face_mesh/mediapipe_face_mesh.dart';
+
 import 'face_mesh_painter.dart';
 
 class AlbumPreviewPage extends ConsumerWidget {
@@ -41,7 +41,7 @@ class AlbumPreviewPage extends ConsumerWidget {
             automaticallyImplyLeading: false,
             centerTitle: true,
             title: const Text(
-              '앨범 사진',
+              '얼굴 랜드마크 감지',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 18,
@@ -109,7 +109,7 @@ class AlbumPreviewPage extends ConsumerWidget {
                 bottom: MediaQuery.of(context).padding.bottom + 24,
                 child: Center(
                   child: SizedBox(
-                    width: 140,
+                    width: 200,
                     height: 52,
                     child: ElevatedButton.icon(
                       onPressed: () => _analyze(context, ref),
@@ -121,9 +121,9 @@ class AlbumPreviewPage extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(14),
                         ),
                       ),
-                      icon: const Icon(Icons.check, size: 20),
+                      icon: const Icon(Icons.smart_toy, size: 20),
                       label: const Text(
-                        '분석',
+                        '얼굴 Metrics 분석',
                         style: TextStyle(
                             fontSize: 15, fontWeight: FontWeight.w600),
                       ),

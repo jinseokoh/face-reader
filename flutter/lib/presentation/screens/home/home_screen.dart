@@ -56,7 +56,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             const SizedBox(height: 8),
             Text(
               '인상에 담긴 그 운명을 냉정히 풀어 드립니다.',
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 16),
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 16, fontFamily: 'SongMyung'),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
@@ -106,58 +106,59 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Camera button
-            SizedBox(
-              width: 200,
-              height: 56,
-              child: ElevatedButton.icon(
-                onPressed: _openCamera,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.textPrimary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                icon: const Icon(Icons.camera_alt),
-                label: const Text(
-                  '카메라 열기',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Album button
-            SizedBox(
-              width: 200,
-              height: 56,
-              child: ElevatedButton.icon(
-                onPressed: _isProcessing ? null : _openAlbum,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: AppTheme.textPrimary,
-                  disabledBackgroundColor: AppTheme.surface,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    side: BorderSide(color: AppTheme.border),
-                  ),
-                ),
-                icon: _isProcessing
-                    ? SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppTheme.textHint,
+            // Camera & Album buttons
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _openCamera,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.textPrimary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                      )
-                    : const Icon(Icons.photo_library),
-                label: Text(
-                  _isProcessing ? '분석 중...' : '앨범 열기',
-                  style: const TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.w600),
-                ),
+                      ),
+                      child: const Text(
+                        '카메라 열기',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _isProcessing ? null : _openAlbum,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: AppTheme.textPrimary,
+                        disabledBackgroundColor: AppTheme.surface,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(color: AppTheme.border),
+                        ),
+                      ),
+                      child: _isProcessing
+                          ? SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppTheme.textHint,
+                              ),
+                            )
+                          : const Text(
+                              '앨범 열기',
+                              style: TextStyle(
+                                  fontSize: 15, fontWeight: FontWeight.w600),
+                            ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

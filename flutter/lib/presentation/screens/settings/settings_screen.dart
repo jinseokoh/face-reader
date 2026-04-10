@@ -23,54 +23,6 @@ class SettingsScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Coin card
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppTheme.surface,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppTheme.border),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.monetization_on,
-                    color: AppTheme.textSecondary, size: 32),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('남은 코인',
-                          style: TextStyle(
-                              color: AppTheme.textSecondary, fontSize: 13)),
-                      const SizedBox(height: 2),
-                      Text(
-                        isLoggedIn ? '${user.coins}개' : '--',
-                        style: TextStyle(
-                            color: AppTheme.textPrimary,
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                ),
-                if (isLoggedIn)
-                  ElevatedButton(
-                    onPressed: () => _showPurchaseSheet(context, ref),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.textPrimary,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                    ),
-                    child: const Text('충전하기'),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Login info / Login button
           if (isLoggedIn)
             Container(
               padding: const EdgeInsets.all(16),
@@ -79,53 +31,133 @@ class SettingsScreen extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: AppTheme.border),
               ),
-              child: Row(
+              child: Column(
                 children: [
-                  CircleAvatar(
-                    radius: 22,
-                    backgroundColor: Colors.white,
-                    backgroundImage: user.profileImageUrl != null
-                        ? NetworkImage(user.profileImageUrl!)
-                        : null,
-                    child: user.profileImageUrl == null
-                        ? Icon(Icons.person, color: AppTheme.textHint)
-                        : null,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(user.nickname ?? '사용자',
-                            style: TextStyle(
-                                color: AppTheme.textPrimary,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 2),
-                        Text('카카오 계정으로 로그인됨',
+                  // User row
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 22,
+                        backgroundColor: Colors.white,
+                        backgroundImage: user.profileImageUrl != null
+                            ? NetworkImage(user.profileImageUrl!)
+                            : null,
+                        child: user.profileImageUrl == null
+                            ? Icon(Icons.person, color: AppTheme.textHint)
+                            : null,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(user.nickname ?? '사용자',
+                                style: TextStyle(
+                                    color: AppTheme.textPrimary,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 2),
+                            Text('카카오 계정으로 로그인됨',
+                                style: TextStyle(
+                                    color: AppTheme.textHint, fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () async {
+                          await ref.read(authProvider.notifier).logout();
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('로그아웃되었습니다')),
+                            );
+                          }
+                        },
+                        child: Text('로그아웃',
                             style: TextStyle(
                                 color: AppTheme.textHint, fontSize: 13)),
-                      ],
-                    ),
+                      ),
+                    ],
+                  ),
+                  Divider(color: AppTheme.border, height: 24),
+                  // Coin row
+                  Row(
+                    children: [
+                      Icon(Icons.monetization_on,
+                          color: AppTheme.textSecondary, size: 28),
+                      const SizedBox(width: 12),
+                      Text('남은 코인',
+                          style: TextStyle(
+                              color: AppTheme.textSecondary, fontSize: 14)),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${user.coins}개',
+                        style: TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold),
+                      ),
+                      const Spacer(),
+                      ElevatedButton(
+                        onPressed: () => _showPurchaseSheet(context, ref),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.textPrimary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: const Text('충전하기'),
+                      ),
+                    ],
                   ),
                 ],
               ),
             )
           else
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton(
-                onPressed: () => showLoginBottomSheet(context, ref),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFEE500),
-                  foregroundColor: const Color(0xFF3C1E1E),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-                child: const Text('카카오로 로그인',
-                    style:
-                        TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppTheme.border),
+              ),
+              child: Column(
+                children: [
+                  // Coin row (not logged in)
+                  Row(
+                    children: [
+                      Icon(Icons.monetization_on,
+                          color: AppTheme.textSecondary, size: 28),
+                      const SizedBox(width: 12),
+                      Text('남은 코인',
+                          style: TextStyle(
+                              color: AppTheme.textSecondary, fontSize: 14)),
+                      const SizedBox(width: 8),
+                      Text('--',
+                          style: TextStyle(
+                              color: AppTheme.textPrimary,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  Divider(color: AppTheme.border, height: 24),
+                  // Login button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: () => showLoginBottomSheet(context, ref),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFEE500),
+                        foregroundColor: const Color(0xFF3C1E1E),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('카카오로 로그인',
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                ],
               ),
             ),
           const SizedBox(height: 24),
@@ -141,18 +173,6 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () {},
           ),
           if (isLoggedIn) ...[
-            _menuItem(
-              icon: Icons.logout,
-              title: '로그아웃',
-              onTap: () async {
-                await ref.read(authProvider.notifier).logout();
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('로그아웃되었습니다')),
-                  );
-                }
-              },
-            ),
             _menuItem(
               icon: Icons.person_remove_outlined,
               title: '회원 탈퇴',

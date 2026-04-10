@@ -58,7 +58,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
             automaticallyImplyLeading: false,
             centerTitle: true,
             title: const Text(
-              '카메라',
+              '얼굴 랜드마크 감지',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 18,
@@ -171,7 +171,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
             bottom: MediaQuery.of(context).padding.bottom + 24,
             child: Center(
               child: SizedBox(
-                  width: 140,
+                  width: 200,
                   height: 52,
                   child: ElevatedButton.icon(
                     onPressed: _isCapturing || _meshResult == null
@@ -198,11 +198,11 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
                               color: Colors.white,
                             ),
                           )
-                        : const Icon(Icons.check, size: 20),
+                        : const Icon(Icons.smart_toy, size: 20),
                     label: Text(
                       _isCapturing
                           ? '${_capturedFrames.length}/5'
-                          : '분석',
+                          : '얼굴 Metrics 분석',
                       style: const TextStyle(
                           fontSize: 15, fontWeight: FontWeight.w600),
                     ),
