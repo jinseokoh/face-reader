@@ -7,12 +7,14 @@ import 'package:face_reader/data/enums/age_group.dart';
 import 'package:face_reader/data/enums/attribute.dart';
 import 'package:face_reader/data/enums/ethnicity.dart';
 import 'package:face_reader/data/enums/gender.dart';
+import 'package:face_reader/data/services/supabase_service.dart';
 import 'package:face_reader/domain/models/face_reading_report.dart';
 import 'package:face_reader/domain/services/report_assembler.dart';
 import 'package:face_reader/presentation/providers/di_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'metaphor_page.dart';
@@ -241,6 +243,11 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             icon: const Icon(Icons.save_alt),
             tooltip: '저장',
             onPressed: () => _showSaveOptions(context),
+          ),
+          IconButton(
+            icon: const Icon(Icons.share),
+            tooltip: '카카오 공유',
+            onPressed: () => _shareViaKakao(context),
           ),
         ],
       ),
@@ -699,6 +706,53 @@ class _ReportPageState extends ConsumerState<ReportPage> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('저장 실패: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _shareViaKakao(BuildContext context) async {
+    try {
+      // Ensure report is saved to Supabase first
+      String? uuid = widget.report.supabaseId;
+      if (uuid == null) {
+        uuid = await SupabaseService().saveMetrics(widget.report);
+        widget.report.supabaseId = uuid;
+      }
+
+      final link = 'https://face.whatsupkorea.com/report/$uuid';
+
+      final template = FeedTemplate(
+        content: Content(
+          title: '관상 분석 결과',
+          description: '나의 관상을 분석해 보세요!',
+          imageUrl: Uri.parse('https://jicaenyzunjdlcxcdbfb.supabase.co/storage/v1/object/public/assets/share-thumbnail.png'),
+          link: Link(
+            webUrl: Uri.parse(link),
+            mobileWebUrl: Uri.parse(link),
+          ),
+        ),
+        buttons: [
+          Button(
+            title: '결과 보기',
+            link: Link(
+              webUrl: Uri.parse(link),
+              mobileWebUrl: Uri.parse(link),
+            ),
+          ),
+        ],
+      );
+
+      await ShareClient.instance.shareDefault(template: template);
+    } catch (e, st) {
+      debugPrint('[KakaoShare] error: $e');
+      debugPrint('[KakaoShare] stackTrace: $st');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('공유 실패: $e'),
+            backgroundColor: Colors.red.shade700,
+          ),
         );
       }
     }

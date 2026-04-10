@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 import 'package:face_reader/core/theme.dart';
 import 'package:face_reader/data/enums/ethnicity.dart';
 import 'package:face_reader/data/enums/gender.dart';
+import 'package:face_reader/data/enums/age_group.dart';
 import 'package:face_reader/domain/models/face_reading_report.dart';
 import 'package:face_reader/presentation/providers/history_provider.dart';
 import 'package:face_reader/presentation/screens/home/report_page.dart';
@@ -62,11 +64,6 @@ class _HistoryItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final time = report.timestamp;
-    final timeStr =
-        '${time.year}.${time.month.toString().padLeft(2, '0')}.${time.day.toString().padLeft(2, '0')} '
-        '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
-
     final faceAspect = report.metrics['faceAspectRatio']!;
     String faceShape;
     if (faceAspect.zScore > 1.0) {
@@ -101,15 +98,32 @@ class _HistoryItem extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(faceShape,
-                          style: TextStyle(
-                              color: AppTheme.textPrimary,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600)),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(faceShape,
+                              style: TextStyle(
+                                  fontFamily: '',
+                                  color: AppTheme.textPrimary,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600)),
+                          Padding(
+                            padding: const EdgeInsets.only(right: 10),
+                            child: Text(
+                                timeago.format(report.timestamp, locale: 'ko'),
+                                style: TextStyle(
+                                    fontFamily: '',
+                                    color: AppTheme.textHint,
+                                    fontSize: 13)),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 4),
-                      Text('$timeStr  ·  ${report.ethnicity.labelKo}  ·  ${report.gender.labelKo}',
+                      Text('${report.ethnicity.labelKo} / ${report.ageGroup.labelKo} / ${report.gender.labelKo}',
                           style: TextStyle(
-                              color: AppTheme.textHint, fontSize: 13)),
+                              fontFamily: '',
+                              color: AppTheme.textHint,
+                              fontSize: 13)),
                     ],
                   ),
                 ),
