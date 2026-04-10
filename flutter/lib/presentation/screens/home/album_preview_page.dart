@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mediapipe_face_mesh/mediapipe_face_mesh.dart';
 
+import 'package:face_reader/data/services/supabase_service.dart';
 import 'package:face_reader/domain/models/face_analysis.dart';
 import 'package:face_reader/domain/models/face_reading_report.dart';
 import 'package:face_reader/presentation/providers/age_group_provider.dart';
@@ -155,5 +156,9 @@ class AlbumPreviewPage extends ConsumerWidget {
     ref.read(historyProvider.notifier).add(report);
     ref.read(selectedTabProvider.notifier).selectTab(1);
     Navigator.of(context).pop();
+    // Save to Supabase in background (fire-and-forget)
+    SupabaseService().saveMetrics(report).then((_) {}).catchError((e) {
+      debugPrint('[Supabase] save error: $e');
+    });
   }
 }

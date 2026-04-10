@@ -34,9 +34,10 @@ dependencies:
   freezed_annotation: ^3.0.0
   json_annotation: ^4.8.1
 
-  # Local Storage
-  hive_ce: ^2.19.3
-  hive_ce_flutter: ^2.3.4
+  # Supabase
+  supabase_flutter: ^2.8.4
+  flutter_dotenv: ^5.2.1
+  uuid: ^4.5.1
   kakao_flutter_sdk: ^2.0.0+1
 
 dev_dependencies:
@@ -74,6 +75,7 @@ flutter_native_splash:
 flutter:
   uses-material-design: true
   assets:
+    - .env
     - assets/icons/
     - assets/images/
   fonts:
