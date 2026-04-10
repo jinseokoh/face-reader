@@ -43,6 +43,7 @@ dependencies:
   flutter_dotenv: ^5.2.1
   uuid: ^4.5.1
   timeago: ^3.7.0
+  pdf: ^3.11.2
   kakao_flutter_sdk: ^2.0.0+1
 
 dev_dependencies:

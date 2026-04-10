@@ -16,6 +16,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 import 'metaphor_page.dart';
 
@@ -686,30 +688,6 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     return buf.toString();
   }
 
-  Future<void> _saveToFile(BuildContext context) async {
-    try {
-      final dir = await getApplicationDocumentsDirectory();
-      final time = report.timestamp;
-      final filename = 'face_report_'
-          '${time.year}${time.month.toString().padLeft(2, '0')}${time.day.toString().padLeft(2, '0')}_'
-          '${time.hour.toString().padLeft(2, '0')}${time.minute.toString().padLeft(2, '0')}${time.second.toString().padLeft(2, '0')}'
-          '.txt';
-      final file = File('${dir.path}/$filename');
-      await file.writeAsString(_generateText());
-
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('저장 완료: $filename')),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('저장 실패: $e')),
-        );
-      }
-    }
-  }
 
   Future<void> _shareViaKakao(BuildContext context) async {
     try {
@@ -776,7 +754,8 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                   leading:
                       Icon(Icons.copy, color: AppTheme.textSecondary),
                   title: Text('클립보드에 복사',
-                      style: TextStyle(color: AppTheme.textPrimary)),
+                      style: TextStyle(
+                          fontFamily: '', color: AppTheme.textPrimary)),
                   onTap: () {
                     Clipboard.setData(
                         ClipboardData(text: _generateText()));
@@ -789,12 +768,13 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                 ),
                 ListTile(
                   leading:
-                      Icon(Icons.save, color: AppTheme.textSecondary),
-                  title: Text('파일로 저장',
-                      style: TextStyle(color: AppTheme.textPrimary)),
+                      Icon(Icons.picture_as_pdf, color: AppTheme.textSecondary),
+                  title: Text('PDF로 저장',
+                      style: TextStyle(
+                          fontFamily: '', color: AppTheme.textPrimary)),
                   onTap: () async {
                     Navigator.pop(ctx);
-                    await _saveToFile(context);
+                    await _saveToPdf(context);
                   },
                 ),
               ],
@@ -803,6 +783,135 @@ class _ReportPageState extends ConsumerState<ReportPage> {
         );
       },
     );
+  }
+
+  Future<void> _saveToPdf(BuildContext context) async {
+    try {
+      final pdfDoc = pw.Document();
+      final fontData = await rootBundle.load('assets/fonts/SongMyung-Regular.ttf');
+      final ttf = pw.Font.ttf(fontData);
+      final report = widget.report;
+      final metricNameMap = {
+        for (final info in metricInfoList) info.id: info.nameKo,
+      };
+      final time = report.timestamp;
+      final timeStr =
+          '${time.year}.${time.month.toString().padLeft(2, '0')}.${time.day.toString().padLeft(2, '0')} '
+          '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+
+      pdfDoc.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          build: (pw.Context ctx) {
+            return [
+              pw.Header(
+                level: 0,
+                child: pw.Text('관상 분석 리포트',
+                    style: pw.TextStyle(font: ttf, fontSize: 24)),
+              ),
+              pw.Text(timeStr, style: pw.TextStyle(font: ttf, fontSize: 11, color: PdfColors.grey600)),
+              pw.SizedBox(height: 4),
+              pw.Text(
+                '${report.ethnicity.labelKo} · ${report.gender.labelKo} · ${report.ageGroup.labelKo}',
+                style: pw.TextStyle(font: ttf, fontSize: 12),
+              ),
+              pw.SizedBox(height: 16),
+              // Archetype
+              pw.Header(
+                level: 1,
+                child: pw.Text('관상 유형', style: pw.TextStyle(font: ttf, fontSize: 18)),
+              ),
+              pw.Text(
+                '${report.archetype.primaryLabel} (${report.archetype.secondaryLabel})',
+                style: pw.TextStyle(font: ttf, fontSize: 14, fontWeight: pw.FontWeight.bold),
+              ),
+              if (report.archetype.specialArchetype != null)
+                pw.Text(
+                  '특수 관상: ${report.archetype.specialArchetype}',
+                  style: pw.TextStyle(font: ttf, fontSize: 12, color: PdfColors.red800),
+                ),
+              pw.SizedBox(height: 16),
+              // Attribute scores
+              pw.Header(
+                level: 1,
+                child: pw.Text('속성 점수', style: pw.TextStyle(font: ttf, fontSize: 18)),
+              ),
+              ...report.attributeScores.entries.map((e) => pw.Padding(
+                    padding: const pw.EdgeInsets.symmetric(vertical: 2),
+                    child: pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text(e.key.labelKo, style: pw.TextStyle(font: ttf, fontSize: 12)),
+                        pw.Text('${e.value.toStringAsFixed(1)} / 10', style: pw.TextStyle(font: ttf, fontSize: 12)),
+                      ],
+                    ),
+                  )),
+              pw.SizedBox(height: 16),
+              // Metrics
+              pw.Header(
+                level: 1,
+                child: pw.Text('측정값', style: pw.TextStyle(font: ttf, fontSize: 18)),
+              ),
+              ...report.metrics.entries.map((e) => pw.Padding(
+                    padding: const pw.EdgeInsets.symmetric(vertical: 2),
+                    child: pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text(metricNameMap[e.key] ?? e.key, style: pw.TextStyle(font: ttf, fontSize: 11)),
+                        pw.Text(
+                          '${e.value.rawValue.toStringAsFixed(3)} (z: ${e.value.zScore.toStringAsFixed(2)})',
+                          style: pw.TextStyle(font: ttf, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                  )),
+              // Triggered rules
+              if (report.triggeredRules.isNotEmpty) ...[
+                pw.SizedBox(height: 16),
+                pw.Header(
+                  level: 1,
+                  child: pw.Text('특수 규칙', style: pw.TextStyle(font: ttf, fontSize: 18)),
+                ),
+                ...report.triggeredRules.map((r) => pw.Padding(
+                      padding: const pw.EdgeInsets.symmetric(vertical: 2),
+                      child: pw.Text(r.id, style: pw.TextStyle(font: ttf, fontSize: 11)),
+                    )),
+              ],
+            ];
+          },
+        ),
+      );
+
+      // Save to Downloads folder (accessible to user)
+      Directory? dir;
+      if (Platform.isAndroid) {
+        dir = Directory('/storage/emulated/0/Download');
+        if (!await dir.exists()) {
+          dir = await getApplicationDocumentsDirectory();
+        }
+      } else {
+        dir = await getApplicationDocumentsDirectory();
+      }
+      final filename = 'face_report_${DateTime.now().millisecondsSinceEpoch}.pdf';
+      final file = File('${dir.path}/$filename');
+      await file.writeAsBytes(await pdfDoc.save());
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('PDF 저장 완료: $filename')),
+        );
+      }
+    } catch (e) {
+      debugPrint('[PDF] error: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('PDF 저장 실패: $e'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    }
   }
 }
 
