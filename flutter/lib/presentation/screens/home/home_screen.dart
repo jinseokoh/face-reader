@@ -16,6 +16,9 @@ import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mediapipe_face_mesh/mediapipe_face_mesh.dart';
 
+import 'package:face_reader/presentation/providers/auth_provider.dart';
+import 'package:face_reader/presentation/widgets/login_bottom_sheet.dart';
+
 import 'album_preview_page.dart';
 import 'face_mesh_page.dart';
 
@@ -89,47 +92,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             const SizedBox(height: 12),
 
             // Gender selector
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                decoration: BoxDecoration(
-                  color: AppTheme.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppTheme.border),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('성별',
-                        style: TextStyle(
-                            color: AppTheme.textSecondary, fontSize: 15)),
-                    CupertinoSlidingSegmentedControl<Gender>(
-                      groupValue: gender,
-                      thumbColor: Colors.white,
-                      backgroundColor: AppTheme.border,
-                      padding: const EdgeInsets.all(2),
-                      children: {
-                        for (final g in Gender.values)
-                          g: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 6),
-                            child: Text(g.labelKo,
-                                style: TextStyle(
-                                    color: AppTheme.textPrimary,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600)),
-                          ),
-                      },
-                      onValueChanged: (value) {
-                        if (value != null) {
-                          ref.read(genderProvider.notifier).select(value);
-                        }
-                      },
-                    ),
-                  ],
-                ),
+            _buildPickerRow(
+              label: '성별',
+              value: gender.labelKo,
+              onTap: () => _showCupertinoPicker(
+                title: '성별 선택',
+                values: Gender.values,
+                current: gender,
+                labelOf: (e) => e.labelKo,
+                onConfirm: (e) =>
+                    ref.read(genderProvider.notifier).select(e),
               ),
             ),
             const SizedBox(height: 24),
@@ -236,6 +208,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _openAlbum() async {
+    if (!ref.read(authProvider.notifier).isLoggedIn) {
+      final loggedIn = await showLoginBottomSheet(context, ref);
+      if (!loggedIn) return;
+    }
+
     final picker = ImagePicker();
     final picked = await picker.pickImage(
       source: ImageSource.gallery,

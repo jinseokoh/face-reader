@@ -10,7 +10,9 @@ import 'package:face_reader/data/enums/gender.dart';
 import 'package:face_reader/data/services/supabase_service.dart';
 import 'package:face_reader/domain/models/face_reading_report.dart';
 import 'package:face_reader/domain/services/report_assembler.dart';
+import 'package:face_reader/presentation/providers/auth_provider.dart';
 import 'package:face_reader/presentation/providers/di_providers.dart';
+import 'package:face_reader/presentation/widgets/login_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -736,7 +738,11 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     }
   }
 
-  void _showSaveOptions(BuildContext context) {
+  Future<void> _showSaveOptions(BuildContext context) async {
+    if (!ref.read(authProvider.notifier).isLoggedIn) {
+      final loggedIn = await showLoginBottomSheet(context, ref);
+      if (!loggedIn || !context.mounted) return;
+    }
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,

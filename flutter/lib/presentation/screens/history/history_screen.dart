@@ -119,7 +119,7 @@ class _HistoryItem extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Text('${report.ethnicity.labelKo} / ${report.ageGroup.labelKo} / ${report.gender.labelKo}',
+                      Text('${report.ethnicity.labelKo} · ${report.ageGroup.labelKo} · ${report.gender.labelKo}',
                           style: TextStyle(
                               
                               color: AppTheme.textHint,

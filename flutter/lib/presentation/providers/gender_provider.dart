@@ -6,7 +6,7 @@ final genderProvider =
 
 class GenderNotifier extends Notifier<Gender> {
   @override
-  Gender build() => Gender.male;
+  Gender build() => Gender.female;
 
   void select(Gender value) => state = value;
 }

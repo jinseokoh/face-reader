@@ -1,5 +1,6 @@
 import 'package:face_reader/app.dart';
 import 'package:face_reader/core/hive/hive_setup.dart';
+import 'package:face_reader/data/services/auth_service.dart';
 import 'package:face_reader/core/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -18,6 +19,7 @@ void main() async {
     anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
   await initHive();
+  await AuthService().restoreSession();
   runApp(const ProviderScope(child: MyApp()));
 }
 
