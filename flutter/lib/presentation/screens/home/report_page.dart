@@ -790,94 +790,36 @@ class _ReportPageState extends ConsumerState<ReportPage> {
       final pdfDoc = pw.Document();
       final fontData = await rootBundle.load('assets/fonts/SongMyung-Regular.ttf');
       final ttf = pw.Font.ttf(fontData);
-      final report = widget.report;
-      final metricNameMap = {
-        for (final info in metricInfoList) info.id: info.nameKo,
-      };
-      final time = report.timestamp;
-      final timeStr =
-          '${time.year}.${time.month.toString().padLeft(2, '0')}.${time.day.toString().padLeft(2, '0')} '
-          '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+
+      final text = _generateText();
+      final lines = text.split('\n');
 
       pdfDoc.addPage(
         pw.MultiPage(
           pageFormat: PdfPageFormat.a4,
           build: (pw.Context ctx) {
-            return [
-              pw.Header(
-                level: 0,
-                child: pw.Text('관상 분석 리포트',
-                    style: pw.TextStyle(font: ttf, fontSize: 24)),
-              ),
-              pw.Text(timeStr, style: pw.TextStyle(font: ttf, fontSize: 11, color: PdfColors.grey600)),
-              pw.SizedBox(height: 4),
-              pw.Text(
-                '${report.ethnicity.labelKo} · ${report.gender.labelKo} · ${report.ageGroup.labelKo}',
-                style: pw.TextStyle(font: ttf, fontSize: 12),
-              ),
-              pw.SizedBox(height: 16),
-              // Archetype
-              pw.Header(
-                level: 1,
-                child: pw.Text('관상 유형', style: pw.TextStyle(font: ttf, fontSize: 18)),
-              ),
-              pw.Text(
-                '${report.archetype.primaryLabel} (${report.archetype.secondaryLabel})',
-                style: pw.TextStyle(font: ttf, fontSize: 14, fontWeight: pw.FontWeight.bold),
-              ),
-              if (report.archetype.specialArchetype != null)
-                pw.Text(
-                  '특수 관상: ${report.archetype.specialArchetype}',
-                  style: pw.TextStyle(font: ttf, fontSize: 12, color: PdfColors.red800),
-                ),
-              pw.SizedBox(height: 16),
-              // Attribute scores
-              pw.Header(
-                level: 1,
-                child: pw.Text('속성 점수', style: pw.TextStyle(font: ttf, fontSize: 18)),
-              ),
-              ...report.attributeScores.entries.map((e) => pw.Padding(
-                    padding: const pw.EdgeInsets.symmetric(vertical: 2),
-                    child: pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                      children: [
-                        pw.Text(e.key.labelKo, style: pw.TextStyle(font: ttf, fontSize: 12)),
-                        pw.Text('${e.value.toStringAsFixed(1)} / 10', style: pw.TextStyle(font: ttf, fontSize: 12)),
-                      ],
-                    ),
-                  )),
-              pw.SizedBox(height: 16),
-              // Metrics
-              pw.Header(
-                level: 1,
-                child: pw.Text('측정값', style: pw.TextStyle(font: ttf, fontSize: 18)),
-              ),
-              ...report.metrics.entries.map((e) => pw.Padding(
-                    padding: const pw.EdgeInsets.symmetric(vertical: 2),
-                    child: pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                      children: [
-                        pw.Text(metricNameMap[e.key] ?? e.key, style: pw.TextStyle(font: ttf, fontSize: 11)),
-                        pw.Text(
-                          '${e.value.rawValue.toStringAsFixed(3)} (z: ${e.value.zScore.toStringAsFixed(2)})',
-                          style: pw.TextStyle(font: ttf, fontSize: 11),
-                        ),
-                      ],
-                    ),
-                  )),
-              // Triggered rules
-              if (report.triggeredRules.isNotEmpty) ...[
-                pw.SizedBox(height: 16),
-                pw.Header(
-                  level: 1,
-                  child: pw.Text('특수 규칙', style: pw.TextStyle(font: ttf, fontSize: 18)),
-                ),
-                ...report.triggeredRules.map((r) => pw.Padding(
-                      padding: const pw.EdgeInsets.symmetric(vertical: 2),
-                      child: pw.Text(r.id, style: pw.TextStyle(font: ttf, fontSize: 11)),
-                    )),
-              ],
-            ];
+            return lines.map((line) {
+              if (line.startsWith('===')) {
+                return pw.Padding(
+                  padding: const pw.EdgeInsets.only(bottom: 8),
+                  child: pw.Text(line.replaceAll('=', '').trim(),
+                      style: pw.TextStyle(font: ttf, fontSize: 22, fontWeight: pw.FontWeight.bold)),
+                );
+              } else if (line.startsWith('---')) {
+                return pw.Padding(
+                  padding: const pw.EdgeInsets.only(top: 12, bottom: 4),
+                  child: pw.Text(line.replaceAll('-', '').trim(),
+                      style: pw.TextStyle(font: ttf, fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                );
+              } else if (line.trim().isEmpty) {
+                return pw.SizedBox(height: 6);
+              } else {
+                return pw.Padding(
+                  padding: const pw.EdgeInsets.symmetric(vertical: 1),
+                  child: pw.Text(line, style: pw.TextStyle(font: ttf, fontSize: 11)),
+                );
+              }
+            }).toList();
           },
         ),
       );
