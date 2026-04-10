@@ -34,14 +34,14 @@ LLM 총평 래핑 (deterministic 데이터 + 성별/나이 컨텍스트 + 자연
 
 ### 2.1 FACE (얼굴 윤곽) — 6개
 
-| #   | ID              | 한글명        | 수식                               | 랜드마크                                    |
-| --- | --------------- | ------------- | ---------------------------------- | ------------------------------------------- |
-| 1   | faceAspectRatio | 얼굴 종횡비   | faceHeight / faceWidth             | dist(10,152) / dist(234,454)                |
-| 2   | upperFaceRatio  | 상안면 비율   | dist(foreheadTop, nasion) / faceHeight | dist(10,168) / dist(10,152)             |
-| 3   | midFaceRatio    | 중안면 비율   | dist(nasion, subnasale) / faceHeight   | dist(168,94) / dist(10,152)             |
-| 4   | lowerFaceRatio  | 하안면 비율   | dist(subnasale, chin) / faceHeight     | dist(94,152) / dist(10,152)             |
-| 5   | faceTaperRatio  | 얼굴 테이퍼   | jawWidth / faceWidth               | dist(172,397) / dist(234,454)               |
-| 6   | gonialAngle     | 하악각        | angle(ear, gonion, chin) 양측 평균 | angle(132,172,152) + angle(361,397,152) / 2 |
+| #   | ID              | 한글명      | 수식                                   | 랜드마크                                    |
+| --- | --------------- | ----------- | -------------------------------------- | ------------------------------------------- |
+| 1   | faceAspectRatio | 얼굴 종횡비 | faceHeight / faceWidth                 | dist(10,152) / dist(234,454)                |
+| 2   | upperFaceRatio  | 상안면 비율 | dist(foreheadTop, nasion) / faceHeight | dist(10,168) / dist(10,152)                 |
+| 3   | midFaceRatio    | 중안면 비율 | dist(nasion, subnasale) / faceHeight   | dist(168,94) / dist(10,152)                 |
+| 4   | lowerFaceRatio  | 하안면 비율 | dist(subnasale, chin) / faceHeight     | dist(94,152) / dist(10,152)                 |
+| 5   | faceTaperRatio  | 얼굴 테이퍼 | jawWidth / faceWidth                   | dist(172,397) / dist(234,454)               |
+| 6   | gonialAngle     | 하악각      | angle(ear, gonion, chin) 양측 평균     | angle(132,172,152) + angle(361,397,152) / 2 |
 
 ### 2.2 EYES (눈) — 4개
 
@@ -60,10 +60,10 @@ LLM 총평 래핑 (deterministic 데이터 + 성별/나이 컨텍스트 + 자연
 
 ### 2.4 NOSE (코) — 2개
 
-| #   | ID                      | 한글명      | 수식                                                        | 랜드마크                                           |
-| --- | ----------------------- | ----------- | ----------------------------------------------------------- | -------------------------------------------------- |
-| 12  | nasalWidthRatio         | 코 너비     | dist(alaR, alaL) / dist(endoR, endoL)                       | dist(98,327) / dist(133,362)                       |
-| 13  | nasalHeightRatio        | 코 길이     | dist(nasion, subnasale) / faceHeight                        | dist(168,94) / dist(10,152)                        |
+| #   | ID               | 한글명  | 수식                                  | 랜드마크                     |
+| --- | ---------------- | ------- | ------------------------------------- | ---------------------------- |
+| 12  | nasalWidthRatio  | 코 너비 | dist(alaR, alaL) / dist(endoR, endoL) | dist(98,327) / dist(133,362) |
+| 13  | nasalHeightRatio | 코 길이 | dist(nasion, subnasale) / faceHeight  | dist(168,94) / dist(10,152)  |
 
 ### 2.5 MOUTH (입) — 4개
 
@@ -95,21 +95,21 @@ enum AgeGroup { under50, over50 }
 468 랜드마크 기반 메트릭 중 **골격 구조** 메트릭은 나이에 영향을 받지 않지만,
 **연조직(soft tissue)** 메트릭은 50대 이상에서 체계적 변화가 발생한다.
 
-| Metric                  | 나이 영향 | 50대 이상 변화 방향 | 원인                                      |
-| ----------------------- | --------- | ------------------- | ----------------------------------------- |
-| lipFullnessRatio        | **있음**  | 감소 ↓              | 입술 볼륨 감소, 콜라겐 손실               |
-| mouthCornerAngle        | **있음**  | 감소 ↓              | 구각(mouth corner) 하수, 중력             |
-| browEyeDistance         | **있음**  | 감소 ↓              | 눈썹 처짐 (brow ptosis)                   |
-| philtrumLength          | **있음**  | 증가 ↑              | 인중 연장 (상순 하수)                     |
-| eyebrowThickness        | **있음**  | 변화 ↕              | 남성: 증가(숱 많아짐), 여성: 감소(얇아짐) |
-| faceAspectRatio         | 없음      | —                   | 골격                                      |
-| faceTaperRatio          | 없음      | —                   | 골격                                      |
-| gonialAngle             | 없음      | —                   | 골격                                      |
-| intercanthalRatio       | 없음      | —                   | 골격                                      |
-| eyeFissureRatio         | 없음      | —                   | 골격                                      |
-| eyeCanthalTilt          | 없음      | —                   | 골격 (외안각/내안각 위치)                 |
-| nasalWidthRatio         | 없음      | —                   | 연골이나 변화 극소                        |
-| mouthWidthRatio         | 없음      | —                   | 골격 기반 구각 위치                       |
+| Metric            | 나이 영향 | 50대 이상 변화 방향 | 원인                                      |
+| ----------------- | --------- | ------------------- | ----------------------------------------- |
+| lipFullnessRatio  | **있음**  | 감소 ↓              | 입술 볼륨 감소, 콜라겐 손실               |
+| mouthCornerAngle  | **있음**  | 감소 ↓              | 구각(mouth corner) 하수, 중력             |
+| browEyeDistance   | **있음**  | 감소 ↓              | 눈썹 처짐 (brow ptosis)                   |
+| philtrumLength    | **있음**  | 증가 ↑              | 인중 연장 (상순 하수)                     |
+| eyebrowThickness  | **있음**  | 변화 ↕              | 남성: 증가(숱 많아짐), 여성: 감소(얇아짐) |
+| faceAspectRatio   | 없음      | —                   | 골격                                      |
+| faceTaperRatio    | 없음      | —                   | 골격                                      |
+| gonialAngle       | 없음      | —                   | 골격                                      |
+| intercanthalRatio | 없음      | —                   | 골격                                      |
+| eyeFissureRatio   | 없음      | —                   | 골격                                      |
+| eyeCanthalTilt    | 없음      | —                   | 골격 (외안각/내안각 위치)                 |
+| nasalWidthRatio   | 없음      | —                   | 연골이나 변화 극소                        |
+| mouthWidthRatio   | 없음      | —                   | 골격 기반 구각 위치                       |
 
 ### 3.3 노화 보정 공식
 
@@ -156,24 +156,24 @@ double adjustForAge(String metricId, double zRaw, Gender gender, AgeGroup age) {
 
 #### 동아시아인 남녀 차이 (예시)
 
-| Metric                  | Male Mean | Male SD | Female Mean | Female SD | 차이 근거                  |
-| ----------------------- | --------- | ------- | ----------- | --------- | -------------------------- |
-| faceAspectRatio         | 1.40      | 0.08    | 1.36        | 0.07      | 남성 얼굴 세로 비율 더 큼  |
-| upperFaceRatio          | 0.33      | 0.03    | 0.33        | 0.03      | 성별 차이 없음             |
-| midFaceRatio            | 0.33      | 0.02    | 0.33        | 0.02      | 성별 차이 없음             |
-| lowerFaceRatio          | 0.34      | 0.03    | 0.34        | 0.03      | 성별 차이 없음             |
-| faceTaperRatio          | 0.85      | 0.05    | 0.79        | 0.05      | 여성 턱이 더 좁음 (V라인)  |
-| gonialAngle             | 118.0     | 7.0     | 122.0       | 8.0       | 남성 턱 더 각짐            |
-| intercanthalRatio       | 0.27      | 0.02    | 0.27        | 0.02      | 차이 없음                  |
-| eyeFissureRatio         | 0.23      | 0.02    | 0.25        | 0.02      | 여성 눈이 약간 더 큼       |
-| eyeCanthalTilt          | 3.5       | 3.0     | 4.5         | 3.0       | 여성 눈꼬리 약간 더 올라감 |
-| eyebrowThickness        | 0.017     | 0.004   | 0.013       | 0.003     | 남성 눈썹 더 두꺼움        |
-| browEyeDistance         | 0.058     | 0.014   | 0.062       | 0.015     | 여성 전택 약간 더 넓음     |
-| nasalWidthRatio         | 1.08      | 0.10    | 1.02        | 0.09      | 남성 코 더 넓음            |
-| mouthWidthRatio         | 0.39      | 0.03    | 0.37        | 0.03      | 남성 입 약간 더 넓음       |
-| mouthCornerAngle        | -0.5      | 3.0     | 0.5         | 3.0       | 여성 입꼬리 약간 더 올라감 |
-| lipFullnessRatio        | 0.09      | 0.02    | 0.11        | 0.02      | 여성 입술 더 두꺼움        |
-| philtrumLength          | 0.085     | 0.015   | 0.075       | 0.013     | 남성 인중 더 긴 경향       |
+| Metric            | Male Mean | Male SD | Female Mean | Female SD | 차이 근거                  |
+| ----------------- | --------- | ------- | ----------- | --------- | -------------------------- |
+| faceAspectRatio   | 1.40      | 0.08    | 1.36        | 0.07      | 남성 얼굴 세로 비율 더 큼  |
+| upperFaceRatio    | 0.33      | 0.03    | 0.33        | 0.03      | 성별 차이 없음             |
+| midFaceRatio      | 0.33      | 0.02    | 0.33        | 0.02      | 성별 차이 없음             |
+| lowerFaceRatio    | 0.34      | 0.03    | 0.34        | 0.03      | 성별 차이 없음             |
+| faceTaperRatio    | 0.85      | 0.05    | 0.79        | 0.05      | 여성 턱이 더 좁음 (V라인)  |
+| gonialAngle       | 118.0     | 7.0     | 122.0       | 8.0       | 남성 턱 더 각짐            |
+| intercanthalRatio | 0.27      | 0.02    | 0.27        | 0.02      | 차이 없음                  |
+| eyeFissureRatio   | 0.23      | 0.02    | 0.25        | 0.02      | 여성 눈이 약간 더 큼       |
+| eyeCanthalTilt    | 3.5       | 3.0     | 4.5         | 3.0       | 여성 눈꼬리 약간 더 올라감 |
+| eyebrowThickness  | 0.017     | 0.004   | 0.013       | 0.003     | 남성 눈썹 더 두꺼움        |
+| browEyeDistance   | 0.058     | 0.014   | 0.062       | 0.015     | 여성 전택 약간 더 넓음     |
+| nasalWidthRatio   | 1.08      | 0.10    | 1.02        | 0.09      | 남성 코 더 넓음            |
+| mouthWidthRatio   | 0.39      | 0.03    | 0.37        | 0.03      | 남성 입 약간 더 넓음       |
+| mouthCornerAngle  | -0.5      | 3.0     | 0.5         | 3.0       | 여성 입꼬리 약간 더 올라감 |
+| lipFullnessRatio  | 0.09      | 0.02    | 0.11        | 0.02      | 여성 입술 더 두꺼움        |
+| philtrumLength    | 0.085     | 0.015   | 0.075       | 0.013     | 남성 인중 더 긴 경향       |
 
 > **핵심:** z-score 계산 시 `referenceData[ethnicity][gender]`로 조회.
 > 같은 측정값이라도 남성 기준과 여성 기준에서 z-score가 달라진다.
@@ -452,18 +452,18 @@ z ≤ -1.5  → S = -2  (강한 negative)
 
 ## 5. 10 Attributes 정의
 
-| #   | ID              | 한글명      | 영문            | 성격                         |
-| --- | --------------- | ----------- | --------------- | ---------------------------- |
-| A1  | wealth          | 재물운      | Wealth Fortune  | 코 중심, 재물 축적/소비 성향 |
-| A2  | leadership      | 리더십      | Leadership      | 턱/눈 중심, 결단력/권위      |
-| A3  | intelligence    | 지능/통찰   | Intelligence    | 눈 중심, 분석력/직관         |
-| A4  | sociability     | 사회성      | Sociability     | 입 중심, 대인관계/언변       |
-| A5  | emotionality    | 감정성      | Emotionality    | 입술/눈썹 중심, 감정 표현    |
-| A6  | stability       | 안정성      | Stability       | 전체 균형, 성격 안정         |
-| A7  | sensuality      | 바람기      | Sensuality      | 입술/눈/인중, 관능적 매력    |
-| A8  | trustworthiness | 신뢰성      | Trustworthiness | 눈썹-눈/입꼬리/눈썹, 정직함  |
-| A9  | attractiveness  | 매력        | Attractiveness  | 전체 조합, 종합적 인상       |
-| A10 | libido          | 성적 에너지 | Sexual Energy   | 인중/입술/코, 생식 에너지    |
+| #   | ID              | 한글명 | 영문            | 성격                         |
+| --- | --------------- | ------ | --------------- | ---------------------------- |
+| A1  | wealth          | 재물운 | Wealth Fortune  | 코 중심, 재물 축적/소비 성향 |
+| A2  | leadership      | 리더십 | Leadership      | 턱/눈 중심, 결단력/권위      |
+| A3  | intelligence    | 통찰력 | Intelligence    | 눈 중심, 분석력/직관         |
+| A4  | sociability     | 사회성 | Sociability     | 입 중심, 대인관계/언변       |
+| A5  | emotionality    | 감정성 | Emotionality    | 입술/눈썹 중심, 감정 표현    |
+| A6  | stability       | 안정성 | Stability       | 전체 균형, 성격 안정         |
+| A7  | sensuality      | 바람기 | Sensuality      | 입술/눈/인중, 관능적 매력    |
+| A8  | trustworthiness | 신뢰성 | Trustworthiness | 눈썹-눈/입꼬리/눈썹, 정직함  |
+| A9  | attractiveness  | 매력도 | Attractiveness  | 전체 조합, 종합적 인상       |
+| A10 | libido          | 관능도 | Sexual Energy   | 인중/입술/코, 생식 에너지    |
 
 ---
 
@@ -1257,49 +1257,49 @@ Archetype: {primary} ({secondary} 기질)
 
 #### 동아시아인 남성 (East Asian Male) — 기본값
 
-| #   | Metric                  | Mean  | SD    | 출처/근거                                 |
-| --- | ----------------------- | ----- | ----- | ----------------------------------------- |
-| 1   | faceAspectRatio         | 1.40  | 0.08  | Farkas 동아시아 데이터                    |
-| 2   | upperFaceRatio          | 0.33  | 0.03  | Neoclassical 3등분 기준                   |
-| 3   | midFaceRatio            | 0.33  | 0.02  | Neoclassical 3등분 기준                   |
-| 4   | lowerFaceRatio          | 0.34  | 0.03  | Neoclassical 3등분 기준                   |
-| 5   | faceTaperRatio          | 0.85  | 0.05  | 추정: 턱폭/광대폭                         |
-| 6   | gonialAngle             | 118.0 | 7.0   | 추정: 동아시아 하악각 평균 (degrees)      |
-| 7   | intercanthalRatio       | 0.27  | 0.02  | PMC9029890 ICD 메타분석                   |
-| 8   | eyeFissureRatio         | 0.23  | 0.02  | Farkas EFL 데이터                         |
-| 9   | eyeCanthalTilt          | 3.5   | 3.0   | 추정: 동아시아 평균 약간 upturn (degrees) |
-| 10  | eyebrowThickness        | 0.017 | 0.004 | 추정: 눈썹 두께/얼굴높이                  |
-| 11  | browEyeDistance         | 0.058 | 0.014 | 추정: 전택/얼굴높이                       |
-| 12  | nasalWidthRatio         | 1.08  | 0.10  | Farkas 콧볼/ICD 비율                      |
-| 13  | nasalHeightRatio        | 0.30  | 0.02  | Farkas: 코 길이/얼굴 높이                 |
-| 14  | mouthWidthRatio         | 0.39  | 0.03  | Farkas 입폭/얼굴폭                        |
-| 15  | mouthCornerAngle        | -0.5  | 3.0   | 중립 기준 (degrees)                       |
-| 16  | lipFullnessRatio        | 0.09  | 0.02  | Farkas 입술높이/얼굴높이                  |
-| 17  | philtrumLength          | 0.085 | 0.015 | 추정: 인중/얼굴높이                       |
+| #   | Metric            | Mean  | SD    | 출처/근거                                 |
+| --- | ----------------- | ----- | ----- | ----------------------------------------- |
+| 1   | faceAspectRatio   | 1.40  | 0.08  | Farkas 동아시아 데이터                    |
+| 2   | upperFaceRatio    | 0.33  | 0.03  | Neoclassical 3등분 기준                   |
+| 3   | midFaceRatio      | 0.33  | 0.02  | Neoclassical 3등분 기준                   |
+| 4   | lowerFaceRatio    | 0.34  | 0.03  | Neoclassical 3등분 기준                   |
+| 5   | faceTaperRatio    | 0.85  | 0.05  | 추정: 턱폭/광대폭                         |
+| 6   | gonialAngle       | 118.0 | 7.0   | 추정: 동아시아 하악각 평균 (degrees)      |
+| 7   | intercanthalRatio | 0.27  | 0.02  | PMC9029890 ICD 메타분석                   |
+| 8   | eyeFissureRatio   | 0.23  | 0.02  | Farkas EFL 데이터                         |
+| 9   | eyeCanthalTilt    | 3.5   | 3.0   | 추정: 동아시아 평균 약간 upturn (degrees) |
+| 10  | eyebrowThickness  | 0.017 | 0.004 | 추정: 눈썹 두께/얼굴높이                  |
+| 11  | browEyeDistance   | 0.058 | 0.014 | 추정: 전택/얼굴높이                       |
+| 12  | nasalWidthRatio   | 1.08  | 0.10  | Farkas 콧볼/ICD 비율                      |
+| 13  | nasalHeightRatio  | 0.30  | 0.02  | Farkas: 코 길이/얼굴 높이                 |
+| 14  | mouthWidthRatio   | 0.39  | 0.03  | Farkas 입폭/얼굴폭                        |
+| 15  | mouthCornerAngle  | -0.5  | 3.0   | 중립 기준 (degrees)                       |
+| 16  | lipFullnessRatio  | 0.09  | 0.02  | Farkas 입술높이/얼굴높이                  |
+| 17  | philtrumLength    | 0.085 | 0.015 | 추정: 인중/얼굴높이                       |
 
 > **"추정" 표기된 항목은 문헌 데이터 부재로 기존 메트릭에서 파생 추정한 값.**
 > 실제 서비스 전 N=100+ 수집 데이터로 calibration 필요.
 
 ### 11.2 6개 인종별 차이 요약
 
-| Metric                  | East Asian | Caucasian | African | SE Asian | Hispanic | Middle Eastern |
-| ----------------------- | ---------- | --------- | ------- | -------- | -------- | -------------- |
-| faceAspectRatio         | 1.38       | 1.35      | 1.32    | 1.36     | 1.35     | 1.36           |
-| upperFaceRatio          | 0.33       | 0.33      | 0.32    | 0.33     | 0.33     | 0.33           |
-| midFaceRatio            | 0.33       | 0.34      | 0.32    | 0.33     | 0.33     | 0.34           |
-| lowerFaceRatio          | 0.34       | 0.33      | 0.36    | 0.34     | 0.34     | 0.33           |
-| faceTaperRatio          | 0.82       | 0.80      | 0.85    | 0.83     | 0.81     | 0.80           |
-| gonialAngle             | 120        | 125       | 118     | 121      | 123      | 124            |
-| intercanthalRatio       | 0.27       | 0.23      | 0.29    | 0.25     | 0.24     | 0.23           |
-| eyeFissureRatio         | 0.24       | 0.23      | 0.24    | 0.24     | 0.23     | 0.24           |
-| eyeCanthalTilt          | 4.0        | 2.0       | 2.0     | 3.5      | 2.5      | 2.5            |
-| eyebrowThickness        | 0.015      | 0.016     | 0.017   | 0.015    | 0.016    | 0.017          |
-| browEyeDistance         | 0.060      | 0.065     | 0.058   | 0.062    | 0.063    | 0.064          |
-| nasalWidthRatio         | 1.05       | 0.95      | 1.20    | 1.10     | 1.00     | 1.00           |
-| mouthWidthRatio         | 0.38       | 0.37      | 0.40    | 0.39     | 0.38     | 0.37           |
-| mouthCornerAngle        | 0.0        | 0.0       | 0.0     | 0.0      | 0.0      | 0.0            |
-| lipFullnessRatio        | 0.10       | 0.09      | 0.12    | 0.11     | 0.10     | 0.09           |
-| philtrumLength          | 0.080      | 0.085     | 0.075   | 0.078    | 0.082    | 0.083          |
+| Metric            | East Asian | Caucasian | African | SE Asian | Hispanic | Middle Eastern |
+| ----------------- | ---------- | --------- | ------- | -------- | -------- | -------------- |
+| faceAspectRatio   | 1.38       | 1.35      | 1.32    | 1.36     | 1.35     | 1.36           |
+| upperFaceRatio    | 0.33       | 0.33      | 0.32    | 0.33     | 0.33     | 0.33           |
+| midFaceRatio      | 0.33       | 0.34      | 0.32    | 0.33     | 0.33     | 0.34           |
+| lowerFaceRatio    | 0.34       | 0.33      | 0.36    | 0.34     | 0.34     | 0.33           |
+| faceTaperRatio    | 0.82       | 0.80      | 0.85    | 0.83     | 0.81     | 0.80           |
+| gonialAngle       | 120        | 125       | 118     | 121      | 123      | 124            |
+| intercanthalRatio | 0.27       | 0.23      | 0.29    | 0.25     | 0.24     | 0.23           |
+| eyeFissureRatio   | 0.24       | 0.23      | 0.24    | 0.24     | 0.23     | 0.24           |
+| eyeCanthalTilt    | 4.0        | 2.0       | 2.0     | 3.5      | 2.5      | 2.5            |
+| eyebrowThickness  | 0.015      | 0.016     | 0.017   | 0.015    | 0.016    | 0.017          |
+| browEyeDistance   | 0.060      | 0.065     | 0.058   | 0.062    | 0.063    | 0.064          |
+| nasalWidthRatio   | 1.05       | 0.95      | 1.20    | 1.10     | 1.00     | 1.00           |
+| mouthWidthRatio   | 0.38       | 0.37      | 0.40    | 0.39     | 0.38     | 0.37           |
+| mouthCornerAngle  | 0.0        | 0.0       | 0.0     | 0.0      | 0.0      | 0.0            |
+| lipFullnessRatio  | 0.10       | 0.09      | 0.12    | 0.11     | 0.10     | 0.09           |
+| philtrumLength    | 0.080      | 0.085     | 0.075   | 0.078    | 0.082    | 0.083          |
 
 ### 11.3 Calibration 필요 데이터
 

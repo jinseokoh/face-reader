@@ -28,13 +28,13 @@ extension AttributeLabel on Attribute {
   String get labelKo => switch (this) {
         Attribute.wealth => '재물운',
         Attribute.leadership => '리더십',
-        Attribute.intelligence => '지능/통찰',
+        Attribute.intelligence => '통찰력',
         Attribute.sociability => '사회성',
         Attribute.emotionality => '감정성',
         Attribute.stability => '안정성',
         Attribute.sensuality => '바람기',
         Attribute.trustworthiness => '신뢰성',
-        Attribute.attractiveness => '매력',
-        Attribute.libido => '관능 에너지',
+        Attribute.attractiveness => '매력도',
+        Attribute.libido => '관능도',
       };
 }

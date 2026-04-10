@@ -59,7 +59,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
             // Ethnicity selector
             _buildPickerRow(
-              label: '인종 그룹',
+              label: '인종',
               value: ethnicity.labelKo,
               onTap: () => _showCupertinoPicker(
                 title: '인종 선택',
