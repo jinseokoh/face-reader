@@ -177,6 +177,28 @@ class AuthService {
     return true;
   }
 
+  /// Add coins (after purchase)
+  Future<void> addCoins(int amount) async {
+    if (_currentUser == null) return;
+    final currentCoins = await refreshCoins();
+    final newCoins = currentCoins + amount;
+
+    await _client
+        .from('users')
+        .update({'coins': newCoins})
+        .eq('id', _currentUser!.id);
+
+    _currentUser = AuthUser(
+      id: _currentUser!.id,
+      kakaoUserId: _currentUser!.kakaoUserId,
+      nickname: _currentUser!.nickname,
+      profileImageUrl: _currentUser!.profileImageUrl,
+      coins: newCoins,
+    );
+    _box.put('coins', newCoins.toString());
+    debugPrint('[Auth] coins added: +$amount → $newCoins');
+  }
+
   AuthUser _mapUser(Map<String, dynamic> data) => AuthUser(
         id: data['id'] as String,
         kakaoUserId: data['kakao_user_id'] as String,

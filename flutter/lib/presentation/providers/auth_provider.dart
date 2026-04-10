@@ -40,6 +40,11 @@ class AuthNotifier extends Notifier<AuthUser?> {
     return success;
   }
 
+  Future<void> addCoins(int amount) async {
+    await AuthService().addCoins(amount);
+    state = AuthService().currentUser;
+  }
+
   bool get isLoggedIn => state != null;
   int get coins => state?.coins ?? 0;
 }
