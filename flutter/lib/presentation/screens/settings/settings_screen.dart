@@ -1,11 +1,10 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-
 import 'package:face_reader/core/theme.dart';
 import 'package:face_reader/data/services/coin_service.dart';
 import 'package:face_reader/presentation/providers/auth_provider.dart';
 import 'package:face_reader/presentation/widgets/login_bottom_sheet.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -82,30 +81,26 @@ class SettingsScreen extends ConsumerWidget {
                   // Coin row
                   Row(
                     children: [
-                      Icon(Icons.monetization_on,
+                      Icon(Icons.paid_outlined,
                           color: AppTheme.textSecondary, size: 28),
                       const SizedBox(width: 12),
                       Text('남은 코인',
                           style: TextStyle(
-                              color: AppTheme.textSecondary, fontSize: 14)),
+                              color: AppTheme.textPrimary, fontSize: 15)),
                       const SizedBox(width: 8),
                       Text(
                         '${user.coins}개',
                         style: TextStyle(
                             color: AppTheme.textPrimary,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600),
                       ),
                       const Spacer(),
-                      ElevatedButton(
-                        onPressed: () => _showPurchaseSheet(context, ref),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.textPrimary,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10)),
-                        ),
-                        child: const Text('충전하기'),
+                      GestureDetector(
+                        onTap: () => _showPurchaseSheet(context, ref),
+                        child: Text('충전하기',
+                            style: TextStyle(
+                                color: AppTheme.textHint, fontSize: 13)),
                       ),
                     ],
                   ),
@@ -122,24 +117,6 @@ class SettingsScreen extends ConsumerWidget {
               ),
               child: Column(
                 children: [
-                  // Coin row (not logged in)
-                  Row(
-                    children: [
-                      Icon(Icons.monetization_on,
-                          color: AppTheme.textSecondary, size: 28),
-                      const SizedBox(width: 12),
-                      Text('남은 코인',
-                          style: TextStyle(
-                              color: AppTheme.textSecondary, fontSize: 14)),
-                      const SizedBox(width: 8),
-                      Text('--',
-                          style: TextStyle(
-                              color: AppTheme.textPrimary,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                  Divider(color: AppTheme.border, height: 24),
                   // Login button
                   SizedBox(
                     width: double.infinity,
@@ -156,6 +133,24 @@ class SettingsScreen extends ConsumerWidget {
                           style: TextStyle(
                               fontSize: 16, fontWeight: FontWeight.w600)),
                     ),
+                  ),
+                  Divider(color: AppTheme.border, height: 24),
+                  // Coin row (not logged in)
+                  Row(
+                    children: [
+                      Icon(Icons.paid_outlined,
+                          color: AppTheme.textSecondary, size: 28),
+                      const SizedBox(width: 12),
+                      Text('남은 코인',
+                          style: TextStyle(
+                              color: AppTheme.textPrimary, fontSize: 15)),
+                      const SizedBox(width: 8),
+                      Text('--',
+                          style: TextStyle(
+                              color: AppTheme.textPrimary,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600)),
+                    ],
                   ),
                 ],
               ),
@@ -215,19 +210,6 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  void _showPurchaseSheet(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => _PurchaseSheet(
-        onPurchased: () => ref.read(authProvider.notifier).refreshCoins(),
-      ),
-    );
-  }
-
   Widget _menuItem({
     required IconData icon,
     required String title,
@@ -272,6 +254,19 @@ class SettingsScreen extends ConsumerWidget {
       ),
     );
   }
+
+  void _showPurchaseSheet(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => _PurchaseSheet(
+        onPurchased: () => ref.read(authProvider.notifier).refreshCoins(),
+      ),
+    );
+  }
 }
 
 class _PurchaseSheet extends StatefulWidget {
@@ -286,43 +281,6 @@ class _PurchaseSheetState extends State<_PurchaseSheet> {
   List<CoinProduct> _products = [];
   bool _isLoading = true;
   String? _purchasing;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadProducts();
-  }
-
-  Future<void> _loadProducts() async {
-    final products = await CoinService().getProducts();
-    if (mounted) {
-      setState(() {
-        _products = products;
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _purchase(CoinProduct product) async {
-    setState(() => _purchasing = product.id);
-    final coins = await CoinService().purchase(product);
-    if (coins > 0) {
-      widget.onPurchased();
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$coins 코인이 충전되었습니다!')),
-        );
-      }
-    } else {
-      if (mounted) {
-        setState(() => _purchasing = null);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('구매에 실패했습니다')),
-        );
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -394,5 +352,42 @@ class _PurchaseSheetState extends State<_PurchaseSheet> {
         ),
       ),
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProducts();
+  }
+
+  Future<void> _loadProducts() async {
+    final products = await CoinService().getProducts();
+    if (mounted) {
+      setState(() {
+        _products = products;
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _purchase(CoinProduct product) async {
+    setState(() => _purchasing = product.id);
+    final coins = await CoinService().purchase(product);
+    if (coins > 0) {
+      widget.onPurchased();
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$coins 코인이 충전되었습니다!')),
+        );
+      }
+    } else {
+      if (mounted) {
+        setState(() => _purchasing = null);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('구매에 실패했습니다')),
+        );
+      }
+    }
   }
 }

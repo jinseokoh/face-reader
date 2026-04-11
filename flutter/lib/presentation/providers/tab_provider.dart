@@ -9,3 +9,13 @@ class SelectedTabNotifier extends Notifier<int> {
   int build() => 0;
   void selectTab(int index) => state = index;
 }
+
+final historyTabProvider = NotifierProvider<HistoryTabNotifier, int>(
+  HistoryTabNotifier.new,
+);
+
+class HistoryTabNotifier extends Notifier<int> {
+  @override
+  int build() => 0;
+  void selectTab(int index) => state = index;
+}

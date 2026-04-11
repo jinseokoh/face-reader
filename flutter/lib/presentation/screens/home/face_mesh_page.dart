@@ -202,7 +202,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
                     label: Text(
                       _isCapturing
                           ? '${_capturedFrames.length}/5'
-                          : '얼굴 Metrics 분석',
+                          : '관상학 데이터 분석',
                       style: const TextStyle(
                           fontSize: 15, fontWeight: FontWeight.w600),
                     ),

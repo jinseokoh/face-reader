@@ -1,7 +1,14 @@
 PODS:
+  - app_links (7.0.0):
+    - Flutter
   - camera_avfoundation (0.0.1):
     - Flutter
   - Flutter (1.0.0)
+  - flutter_image_compress_common (1.0.0):
+    - Flutter
+    - Mantle
+    - SDWebImage
+    - SDWebImageWebPCoder
   - flutter_native_splash (2.4.3):
     - Flutter
   - google_mlkit_commons (0.9.0):
@@ -36,6 +43,25 @@ PODS:
   - GTMSessionFetcher/Core (3.5.0)
   - image_picker_ios (0.0.1):
     - Flutter
+  - "kakao_flutter_sdk_auth (2.0.0+1)":
+    - Flutter
+  - "kakao_flutter_sdk_common (2.0.0+1)":
+    - Flutter
+  - libwebp (1.5.0):
+    - libwebp/demux (= 1.5.0)
+    - libwebp/mux (= 1.5.0)
+    - libwebp/sharpyuv (= 1.5.0)
+    - libwebp/webp (= 1.5.0)
+  - libwebp/demux (1.5.0):
+    - libwebp/webp
+  - libwebp/mux (1.5.0):
+    - libwebp/demux
+  - libwebp/sharpyuv (1.5.0)
+  - libwebp/webp (1.5.0):
+    - libwebp/sharpyuv
+  - Mantle (2.2.0):
+    - Mantle/extobjc (= 2.2.0)
+  - Mantle/extobjc (2.2.0)
   - mediapipe_face_mesh (0.0.1):
     - Flutter
   - MLImage (1.0.0-beta6)
@@ -60,16 +86,51 @@ PODS:
     - nanopb/encode (= 3.30910.0)
   - nanopb/decode (3.30910.0)
   - nanopb/encode (3.30910.0)
+  - package_info_plus (0.4.5):
+    - Flutter
   - PromisesObjC (2.4.0)
+  - purchases_flutter (9.16.1):
+    - Flutter
+    - PurchasesHybridCommon (= 17.55.1)
+  - PurchasesHybridCommon (17.55.1):
+    - RevenueCat (= 5.67.1)
+  - RevenueCat (5.67.1)
+  - SDWebImage (5.21.7):
+    - SDWebImage/Core (= 5.21.7)
+  - SDWebImage/Core (5.21.7)
+  - SDWebImageWebPCoder (0.15.0):
+    - libwebp (~> 1.0)
+    - SDWebImage/Core (~> 5.17)
+  - shared_preferences_foundation (0.0.1):
+    - Flutter
+    - FlutterMacOS
+  - sqflite_darwin (0.0.4):
+    - Flutter
+    - FlutterMacOS
+  - url_launcher_ios (0.0.1):
+    - Flutter
+  - webview_flutter_wkwebview (0.0.1):
+    - Flutter
+    - FlutterMacOS
 
 DEPENDENCIES:
+  - app_links (from `.symlinks/plugins/app_links/ios`)
   - camera_avfoundation (from `.symlinks/plugins/camera_avfoundation/ios`)
   - Flutter (from `Flutter`)
+  - flutter_image_compress_common (from `.symlinks/plugins/flutter_image_compress_common/ios`)
   - flutter_native_splash (from `.symlinks/plugins/flutter_native_splash/ios`)
   - google_mlkit_commons (from `.symlinks/plugins/google_mlkit_commons/ios`)
   - google_mlkit_face_detection (from `.symlinks/plugins/google_mlkit_face_detection/ios`)
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
+  - kakao_flutter_sdk_auth (from `.symlinks/plugins/kakao_flutter_sdk_auth/ios`)
+  - kakao_flutter_sdk_common (from `.symlinks/plugins/kakao_flutter_sdk_common/ios`)
   - mediapipe_face_mesh (from `.symlinks/plugins/mediapipe_face_mesh/ios`)
+  - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
+  - purchases_flutter (from `.symlinks/plugins/purchases_flutter/ios`)
+  - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
+  - sqflite_darwin (from `.symlinks/plugins/sqflite_darwin/darwin`)
+  - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
+  - webview_flutter_wkwebview (from `.symlinks/plugins/webview_flutter_wkwebview/darwin`)
 
 SPEC REPOS:
   trunk:
@@ -78,18 +139,28 @@ SPEC REPOS:
     - GoogleToolboxForMac
     - GoogleUtilities
     - GTMSessionFetcher
+    - libwebp
+    - Mantle
     - MLImage
     - MLKitCommon
     - MLKitFaceDetection
     - MLKitVision
     - nanopb
     - PromisesObjC
+    - PurchasesHybridCommon
+    - RevenueCat
+    - SDWebImage
+    - SDWebImageWebPCoder
 
 EXTERNAL SOURCES:
+  app_links:
+    :path: ".symlinks/plugins/app_links/ios"
   camera_avfoundation:
     :path: ".symlinks/plugins/camera_avfoundation/ios"
   Flutter:
     :path: Flutter
+  flutter_image_compress_common:
+    :path: ".symlinks/plugins/flutter_image_compress_common/ios"
   flutter_native_splash:
     :path: ".symlinks/plugins/flutter_native_splash/ios"
   google_mlkit_commons:
@@ -98,12 +169,30 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/google_mlkit_face_detection/ios"
   image_picker_ios:
     :path: ".symlinks/plugins/image_picker_ios/ios"
+  kakao_flutter_sdk_auth:
+    :path: ".symlinks/plugins/kakao_flutter_sdk_auth/ios"
+  kakao_flutter_sdk_common:
+    :path: ".symlinks/plugins/kakao_flutter_sdk_common/ios"
   mediapipe_face_mesh:
     :path: ".symlinks/plugins/mediapipe_face_mesh/ios"
+  package_info_plus:
+    :path: ".symlinks/plugins/package_info_plus/ios"
+  purchases_flutter:
+    :path: ".symlinks/plugins/purchases_flutter/ios"
+  shared_preferences_foundation:
+    :path: ".symlinks/plugins/shared_preferences_foundation/darwin"
+  sqflite_darwin:
+    :path: ".symlinks/plugins/sqflite_darwin/darwin"
+  url_launcher_ios:
+    :path: ".symlinks/plugins/url_launcher_ios/ios"
+  webview_flutter_wkwebview:
+    :path: ".symlinks/plugins/webview_flutter_wkwebview/darwin"
 
 SPEC CHECKSUMS:
+  app_links: a754cbec3c255bd4bbb4d236ecc06f28cd9a7ce8
   camera_avfoundation: 5675ca25298b6f81fa0a325188e7df62cc217741
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  flutter_image_compress_common: 1697a328fd72bfb335507c6bca1a65fa5ad87df1
   flutter_native_splash: c32d145d68aeda5502d5f543ee38c192065986cf
   google_mlkit_commons: 92c769cc2e0a2bfdeb3c38091a36e8a9cc8c63d4
   google_mlkit_face_detection: 76f493a9ffcb1aeb0ad4abd13ea58403e092ab84
@@ -113,13 +202,27 @@ SPEC CHECKSUMS:
   GoogleUtilities: 00c88b9a86066ef77f0da2fab05f65d7768ed8e1
   GTMSessionFetcher: 5aea5ba6bd522a239e236100971f10cb71b96ab6
   image_picker_ios: e0ece4aa2a75771a7de3fa735d26d90817041326
+  kakao_flutter_sdk_auth: da21a83cca6faeb8d173d1ae04c76fb37fe0f920
+  kakao_flutter_sdk_common: 6049de6b16e18cc7cbe826470d70781205dee17b
+  libwebp: 02b23773aedb6ff1fd38cec7a77b81414c6842a8
+  Mantle: c5aa8794a29a022dfbbfc9799af95f477a69b62d
   mediapipe_face_mesh: 953fb4caa9326e0e6d47d194ea837dd2694f426c
   MLImage: 0ad1c5f50edd027672d8b26b0fee78a8b4a0fc56
   MLKitCommon: 07c2c33ae5640e5380beaaa6e4b9c249a205542d
   MLKitFaceDetection: 2a593db4837db503ad3426b565e7aab045cefea5
   MLKitVision: 45e79d68845a2de77e2dd4d7f07947f0ed157b0e
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
+  package_info_plus: af8e2ca6888548050f16fa2f1938db7b5a5df499
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
+  purchases_flutter: b44fcb4ff5e68a4dfe53fd0c339683803b04dd2c
+  PurchasesHybridCommon: ecd9d7c586287625f1225b8de5e24c1021502270
+  RevenueCat: 9357239a9f0978285e68983637b8a602e65c94f0
+  SDWebImage: e9fc87c1aab89a8ab1bbd74eba378c6f53be8abf
+  SDWebImageWebPCoder: 0e06e365080397465cc73a7a9b472d8a3bd0f377
+  shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
+  sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0
+  url_launcher_ios: 7a95fa5b60cc718a708b8f2966718e93db0cef1b
+  webview_flutter_wkwebview: 8ebf4fded22593026f7dbff1fbff31ea98573c8d
 
 PODFILE CHECKSUM: 9580a49fa2c095d51100c20f258df867100b916b
 

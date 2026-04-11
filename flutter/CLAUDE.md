@@ -154,6 +154,15 @@ faceHeight가 체계적으로 과소측정되어 모든 얼굴이 "가로로 넓
 4. Z-score에 따른 판정 텍스트 생성
 5. 리포트 페이지에서 카테고리별 (얼굴, 눈, 코, 입) 결과 표시
 
+### Gender-Specific Analysis
+분석 파이프라인 4곳에서 성별이 반영됨:
+
+1. **Gender Weight Deltas** (`attribute_engine.dart`): attribute별 metric 가중치가 남/여 다르게 적용
+   - 예: `nasalWidthRatio` 남성 +0.05, 여성 -0.05 / `lipFullnessRatio` 남성 -0.05, 여성 +0.05
+2. **Gender Rules** (`attribute_engine.dart`): 남성 전용 5개(GM-R1~R5), 여성 전용 5개(GF-R1~R5) 규칙이 해당 성별일 때만 발동
+3. **Archetype Intro** (`report_assembler.dart`): archetype 소개 텍스트가 `report.gender`에 따라 다른 문구 반환
+4. **Age Adjustment** (`age_adjustment.dart`): 50세 이상 보정값이 남/여 다르게 적용
+
 ### Landmark Indices (most used)
 | Point | Index |
 |-------|-------|
@@ -168,6 +177,21 @@ faceHeight가 체계적으로 과소측정되어 모든 얼굴이 "가로로 넓
 | Lip top/bottom | 0 / 17 |
 | Chin | 152 |
 | Face edges | 234 / 454 |
+
+### Album Analysis Flow (`AlbumPreviewPage._analyze`)
+```
+1. analyzeFaceReading() — 15 metrics, Z-score, attribute scores, archetype
+2. Thumbnail 생성 — flutter_image_compress로 128px WebP 변환
+   → getApplicationDocumentsDirectory()/{uuid}.webp 저장
+   → report.thumbnailPath에 경로 세팅
+3. historyProvider.add(report) — state prepend + Hive 저장 (thumbnailPath 포함)
+4. selectedTabProvider.selectTab(1) — 히스토리 탭 전환
+5. Navigator.pop() — preview 모달 닫기
+6. SupabaseService().saveMetrics(report) — 비동기 Supabase 저장
+   → 성공 시 report.supabaseId = uuid, Hive 재저장
+```
+
+- 히스토리 리스트에서 thumbnailPath가 있으면 40x40 둥근 썸네일, 없으면 카메라/앨범 아이콘 fallback
 
 ## Platform Setup
 - **Android**: `CAMERA` permission in AndroidManifest.xml

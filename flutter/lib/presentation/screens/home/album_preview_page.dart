@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
@@ -10,8 +11,11 @@ import 'package:face_reader/presentation/providers/gender_provider.dart';
 import 'package:face_reader/presentation/providers/history_provider.dart';
 import 'package:face_reader/presentation/providers/tab_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mediapipe_face_mesh/mediapipe_face_mesh.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:uuid/uuid.dart';
 
 import 'face_mesh_painter.dart';
 
@@ -123,7 +127,7 @@ class AlbumPreviewPage extends ConsumerWidget {
                       ),
                       icon: const Icon(Icons.smart_toy, size: 20),
                       label: const Text(
-                        '얼굴 Metrics 분석',
+                        '관상학 데이터 분석',
                         style: TextStyle(
                             fontSize: 15, fontWeight: FontWeight.w600),
                       ),
@@ -138,7 +142,7 @@ class AlbumPreviewPage extends ConsumerWidget {
     );
   }
 
-  void _analyze(BuildContext context, WidgetRef ref) {
+  Future<void> _analyze(BuildContext context, WidgetRef ref) async {
     final ethnicity = ref.read(ethnicityProvider);
     final gender = ref.read(genderProvider);
     final ageGroup = ref.read(ageGroupProvider);
@@ -153,9 +157,28 @@ class AlbumPreviewPage extends ConsumerWidget {
       imageHeight: imageHeight,
     );
 
+    // Compress to 128px WebP thumbnail and save
+    try {
+      final compressed = await FlutterImageCompress.compressWithList(
+        imageBytes,
+        minWidth: 128,
+        minHeight: 128,
+        quality: 80,
+        format: CompressFormat.webp,
+      );
+      final dir = await getApplicationDocumentsDirectory();
+      final id = const Uuid().v4();
+      final file = File('${dir.path}/$id.webp');
+      await file.writeAsBytes(compressed);
+      report.thumbnailPath = file.path;
+    } catch (e) {
+      debugPrint('[Thumbnail] save error: $e');
+    }
+
     ref.read(historyProvider.notifier).add(report);
+    ref.read(historyTabProvider.notifier).selectTab(1);
     ref.read(selectedTabProvider.notifier).selectTab(1);
-    Navigator.of(context).pop();
+    if (context.mounted) Navigator.of(context).pop();
     // Save to Supabase in background, store UUID back
     SupabaseService().saveMetrics(report).then((uuid) {
       report.supabaseId = uuid;

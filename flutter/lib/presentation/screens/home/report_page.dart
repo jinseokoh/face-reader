@@ -242,7 +242,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('관상 분석 리포트'),
+        title: const Text('관상 분석'),
         actions: [
           IconButton(
             icon: const Icon(Icons.save_alt),
@@ -711,7 +711,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     final assembled = assembleReport(report);
 
     final buf = StringBuffer();
-    buf.writeln('=== 관상 분석 리포트 ===');
+    buf.writeln('=== 관상 분석 ===');
     buf.writeln('날짜: $timeStr');
     buf.writeln(
         '${report.gender.labelKo} · ${report.ageGroup.labelKo} · ${report.ethnicity.labelKo}');

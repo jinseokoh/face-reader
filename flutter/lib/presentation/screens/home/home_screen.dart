@@ -115,11 +115,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     child: ElevatedButton(
                       onPressed: _openCamera,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.textPrimary,
-                        foregroundColor: Colors.white,
+                        backgroundColor: Colors.white,
+                        foregroundColor: AppTheme.textPrimary,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(color: AppTheme.border),
                         ),
                       ),
                       child: const Text(

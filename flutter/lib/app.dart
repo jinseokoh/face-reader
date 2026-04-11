@@ -4,7 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:face_reader/core/theme.dart';
 import 'package:face_reader/presentation/providers/tab_provider.dart';
 import 'package:face_reader/presentation/screens/home/home_screen.dart';
-import 'package:face_reader/presentation/screens/history/history_screen.dart';
+import 'package:face_reader/presentation/screens/compatibility/compatibility_screen.dart';
+import 'package:face_reader/presentation/screens/physiognomy/physiognomy_screen.dart';
 import 'package:face_reader/presentation/screens/settings/settings_screen.dart';
 
 class MainApp extends ConsumerWidget {
@@ -19,7 +20,8 @@ class MainApp extends ConsumerWidget {
         index: selectedIndex,
         children: const [
           HomeScreen(),
-          HistoryScreen(),
+          PhysiognomyScreen(),
+          CompatibilityScreen(),
           SettingsScreen(),
         ],
       ),
@@ -37,8 +39,12 @@ class MainApp extends ConsumerWidget {
             label: '홈',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.history),
-            label: '히스토리',
+            icon: Icon(Icons.face_retouching_natural),
+            label: '관상',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.favorite),
+            label: '궁합',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings),
