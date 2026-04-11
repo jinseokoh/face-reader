@@ -3,11 +3,15 @@ import 'dart:io';
 import 'package:face_reader/core/theme.dart';
 import 'package:face_reader/data/enums/gender.dart';
 import 'package:face_reader/domain/models/face_reading_report.dart';
-import 'package:face_reader/presentation/providers/compatibility_provider.dart';
+import 'package:face_reader/domain/services/compatibility_engine.dart';
 import 'package:face_reader/presentation/providers/history_provider.dart';
+import 'package:face_reader/presentation/screens/compatibility/compatibility_report_page.dart';
+import 'package:face_reader/presentation/widgets/compact_snack_bar.dart';
 import 'package:face_reader/presentation/widgets/compatibility_info_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
 class CompatibilityScreen extends ConsumerWidget {
   const CompatibilityScreen({super.key});
@@ -15,7 +19,6 @@ class CompatibilityScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final history = ref.watch(historyProvider);
-    final compatMap = ref.watch(compatibilityProvider);
 
     final myFace = history
         .where((r) => r.source == AnalysisSource.camera && r.isMyFace)
@@ -34,7 +37,7 @@ class CompatibilityScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: _buildBody(context, ref, myFace, albumReports, compatMap),
+      body: _buildBody(context, ref, myFace, albumReports),
     );
   }
 
@@ -71,9 +74,7 @@ class CompatibilityScreen extends ConsumerWidget {
     WidgetRef ref,
     List<FaceReadingReport> myFace,
     List<FaceReadingReport> albumReports,
-    Map<String, dynamic> compatMap,
   ) {
-    // Case 1: 내 얼굴 미선택
     if (myFace.isEmpty) {
       return Center(
         child: Padding(
@@ -85,7 +86,8 @@ class CompatibilityScreen extends ConsumerWidget {
               const SizedBox(height: 16),
               Text(
                 '관상 탭에서 내 얼굴을 먼저 선택해야만 궁합을 볼 수 있습니다.',
-                style: TextStyle(color: AppTheme.textHint, fontSize: 15, height: 1.5),
+                style: TextStyle(
+                    color: AppTheme.textHint, fontSize: 15, height: 1.5),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -94,7 +96,6 @@ class CompatibilityScreen extends ConsumerWidget {
       );
     }
 
-    // Case 2: 앨범 평가 없음
     if (albumReports.isEmpty) {
       return Center(
         child: Padding(
@@ -106,7 +107,8 @@ class CompatibilityScreen extends ConsumerWidget {
               const SizedBox(height: 16),
               Text(
                 '앨범 열기로 사진의 관상 평가를 한 사람이 있는 경우에만, 그 사람과 나와의 궁합 평가를 볼 수 있습니다.',
-                style: TextStyle(color: AppTheme.textHint, fontSize: 15, height: 1.5),
+                style: TextStyle(
+                    color: AppTheme.textHint, fontSize: 15, height: 1.5),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -115,24 +117,26 @@ class CompatibilityScreen extends ConsumerWidget {
       );
     }
 
-    // Case 3: 리스트 표시
     final me = myFace.first;
-    final myTs = me.timestamp.toIso8601String();
+    final history = ref.watch(historyProvider);
+
+    // Find original indices for album reports
+    final albumWithIndex = <(int, FaceReadingReport)>[];
+    for (var i = 0; i < history.length; i++) {
+      if (history[i].source == AnalysisSource.album) {
+        albumWithIndex.add((i, history[i]));
+      }
+    }
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: albumReports.length,
+      itemCount: albumWithIndex.length,
       itemBuilder: (context, index) {
-        final album = albumReports[index];
-        final albumTs = album.timestamp.toIso8601String();
-        final key = '${myTs}_$albumTs';
-        final result = compatMap[key];
-        final evaluated = result != null;
-
+        final (originalIndex, album) = albumWithIndex[index];
         return _CompatibilityItem(
           myReport: me,
           albumReport: album,
-          evaluated: evaluated,
+          historyIndex: originalIndex,
         );
       },
     );
@@ -142,83 +146,77 @@ class CompatibilityScreen extends ConsumerWidget {
 class _CompatibilityItem extends ConsumerWidget {
   final FaceReadingReport myReport;
   final FaceReadingReport albumReport;
-  final bool evaluated;
+  final int historyIndex;
 
   const _CompatibilityItem({
     required this.myReport,
     required this.albumReport,
-    required this.evaluated,
+    required this.historyIndex,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final albumName = albumReport.alias ?? '앨범 인물';
+    final albumName = albumReport.alias ?? '상대방';
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Material(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          onTap: () => _onTap(context, ref),
+      child: Slidable(
+        key: ValueKey(albumReport.timestamp.toIso8601String()),
+        endActionPane: ActionPane(
+          motion: const DrawerMotion(),
+          children: [
+            CustomSlidableAction(
+              onPressed: (_) => _delete(context, ref),
+              backgroundColor: Colors.red.shade600,
+              foregroundColor: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              padding: EdgeInsets.zero,
+              child: const Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.delete),
+                  SizedBox(height: 4),
+                  Text('삭제', style: TextStyle(fontSize: 12)),
+                ],
+              ),
+            ),
+          ],
+        ),
+        child: Material(
+          color: AppTheme.surface,
           borderRadius: BorderRadius.circular(14),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                // 내 얼굴 아이콘
-                Icon(
-                  myReport.gender == Gender.female
-                      ? Icons.face_3
-                      : Icons.face_6,
-                  color: AppTheme.textSecondary,
-                  size: 32,
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Icon(Icons.favorite,
-                      color: evaluated ? Colors.red.shade400 : AppTheme.border,
-                      size: 18),
-                ),
-                // 앨범 인물 썸네일
-                _buildAlbumAvatar(),
-                const SizedBox(width: 12),
-                // 이름 + 태그
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(albumName,
-                          style: TextStyle(
-                              color: AppTheme.textPrimary,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: evaluated
-                              ? Colors.green.shade50
-                              : Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          evaluated ? '평가 완료' : '미평가',
-                          style: TextStyle(
-                            color: evaluated
-                                ? Colors.green.shade700
-                                : AppTheme.textHint,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
+          child: InkWell(
+            onTap: () => _viewCompatibility(context),
+            onLongPress: () => _showBottomMenu(context, ref),
+            borderRadius: BorderRadius.circular(14),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Icon(
+                    myReport.gender == Gender.female
+                        ? Icons.face_3
+                        : Icons.face_6,
+                    color: AppTheme.textSecondary,
+                    size: 32,
                   ),
-                ),
-                Icon(Icons.chevron_right, color: AppTheme.textHint),
-              ],
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Icon(Icons.favorite,
+                        color: Colors.red.shade300, size: 18),
+                  ),
+                  _buildAlbumAvatar(),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(albumName,
+                        style: TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600)),
+                  ),
+                  Icon(Icons.chevron_right, color: AppTheme.textHint),
+                ],
+              ),
             ),
           ),
         ),
@@ -239,73 +237,45 @@ class _CompatibilityItem extends ConsumerWidget {
     return Icon(Icons.photo_library, color: AppTheme.textSecondary, size: 32);
   }
 
-  void _evaluateCompatibility(BuildContext context, WidgetRef ref) {
-    // TODO: 궁합 평가 알고리즘 구현
+  void _viewCompatibility(BuildContext context) {
+    final result = evaluateCompatibility(myReport, albumReport);
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CompatibilityReportPage(
+          result: result,
+          albumName: albumReport.alias ?? '상대방',
+        ),
+      ),
+    );
   }
 
-  void _onTap(BuildContext context, WidgetRef ref) {
-    if (evaluated) {
-      // TODO: 궁합 평가 결과 페이지로 이동
-    } else {
-      _showConfirmSheet(context, ref);
-    }
+  void _delete(BuildContext context, WidgetRef ref) {
+    ref.read(historyProvider.notifier).remove(historyIndex);
+    showTopSnackBar(
+      Overlay.of(context),
+      CompactSnackBar.success(message: '삭제되었습니다'),
+    );
   }
 
-  void _showConfirmSheet(BuildContext context, WidgetRef ref) {
-    final albumName = albumReport.alias ?? '앨범 인물';
+  void _showBottomMenu(BuildContext context, WidgetRef ref) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('$albumName과(와)의 궁합을 보겠습니까?',
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppTheme.textHint,
-                        side: BorderSide(color: AppTheme.border),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text('취소'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        _evaluateCompatibility(context, ref);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.textPrimary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text('궁합 보기'),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.delete, color: Colors.red.shade600),
+              title: const Text('삭제'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _delete(context, ref);
+              },
+            ),
+          ],
         ),
       ),
     );
