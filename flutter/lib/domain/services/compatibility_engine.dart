@@ -568,9 +568,28 @@ _SpecialEffect _applySpecialEffect(
   // Variant seed based on attribute scores (deterministic but varied)
   final seedSource = isMySpecial ? ownerReport : partnerReport;
   final seed = _scoreSignature(seedSource);
-  final note = variants[seed % variants.length];
+  final rawNote = variants[seed % variants.length];
+  // Substitute generic 당사자/상대 placeholders with concrete 나/상대방 based
+  // on which side actually owns the special archetype.
+  final note = _resolveSpecialPlaceholders(rawNote, isMySpecial);
 
   return _SpecialEffect(delta, note);
+}
+
+/// Resolves the generic 당사자/상대 wording in specialPhrasesV4 entries into
+/// concrete "나"/"상대방" labels. Uses private-use placeholders so 상대방 in
+/// source data isn't accidentally double-substituted by the 상대 → X step.
+String _resolveSpecialPlaceholders(String note, bool isMySpecial) {
+  const meTok = '\uE001';
+  const partnerTok = '\uE002';
+  // Replace longer tokens first (상대방 before 상대) to avoid partial matches.
+  final tmp = note
+      .replaceAll('당사자', meTok)
+      .replaceAll('상대방', partnerTok)
+      .replaceAll('상대', partnerTok);
+  final meWord = isMySpecial ? '나' : '상대방';
+  final partnerWord = isMySpecial ? '상대방' : '나';
+  return tmp.replaceAll(meTok, meWord).replaceAll(partnerTok, partnerWord);
 }
 
 /// Maps a primary attribute to a partner type key in specialPhrasesV4
@@ -993,11 +1012,15 @@ void _composeSexualHarmonyV5(
   FaceReadingReport albumReport,
   int pairSeed,
 ) {
-  // Gate: both partners must be 30~50대
+  // Gate 1: both partners must be 30~50대
   if (!_isSexualEligibleAge(myReport.ageGroup) ||
       !_isSexualEligibleAge(albumReport.ageGroup)) {
     return;
   }
+  // Gate 2: opposite-sex only — same-sex pairs are typically friend selfie
+  // comparisons in this market, where the romantic 침실 tone is misaligned;
+  // also sidesteps app-store review risk for the wider rollout.
+  if (myReport.gender == albumReport.gender) return;
 
   final myScores = myReport.attributeScores;
   final albumScores = albumReport.attributeScores;

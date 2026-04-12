@@ -35,49 +35,49 @@ class _PhysiognomyItem extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final displayName = report.alias ?? _faceShape();
 
+    // 내 얼굴이 history 어딘가에 설정되어 있어야만 궁합 보기 옵션을 노출.
+    // 그리고 내 얼굴 항목 자체에는 궁합 보기 노출 안 함 (자기 자신과 페어링 불가).
+    final hasMyFace = ref.watch(historyProvider).any(
+        (r) => r.source == AnalysisSource.camera && r.isMyFace);
+    final canShowCompat = hasMyFace && !report.isMyFace;
+
+    // Slidable actions:
+    //  - Camera tab + 내 얼굴 자체: 내 얼굴(재설정), 삭제
+    //  - Camera tab + 다른 selfie + 내 얼굴 설정됨: 내 얼굴, 궁합 보기, 삭제
+    //  - Camera tab + 다른 selfie + 내 얼굴 미설정: 내 얼굴, 삭제
+    //  - Album tab + 내 얼굴 설정됨: 궁합 보기, 삭제
+    //  - Album tab + 내 얼굴 미설정: 삭제만
+    final actions = <Widget>[];
+    if (source == AnalysisSource.camera) {
+      actions.add(_slidableAction(
+        icon: Icons.face,
+        label: '내 얼굴',
+        bg: Colors.green.shade600,
+        onPressed: () => _setMyFace(context, ref),
+      ));
+    }
+    if (canShowCompat) {
+      actions.add(_slidableAction(
+        icon: Icons.favorite,
+        label: '궁합 보기',
+        bg: Colors.indigo.shade600,
+        onPressed: () => _openCompatibility(context, ref),
+      ));
+    }
+    actions.add(_slidableAction(
+      icon: Icons.delete,
+      label: '삭제',
+      bg: Colors.red.shade600,
+      onPressed: () => _delete(context, ref),
+    ));
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Slidable(
         key: ValueKey(report.supabaseId ?? index),
         endActionPane: ActionPane(
           motion: const DrawerMotion(),
-          children: [
-            CustomSlidableAction(
-              onPressed: (_) => source == AnalysisSource.camera
-                  ? _setMyFace(context, ref)
-                  : _openCompatibility(context, ref),
-              backgroundColor: source == AnalysisSource.camera
-                  ? Colors.green.shade600
-                  : Colors.indigo.shade600,
-              foregroundColor: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              padding: EdgeInsets.zero,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(source == AnalysisSource.camera ? Icons.face : Icons.favorite),
-                  const SizedBox(height: 4),
-                  Text(source == AnalysisSource.camera ? '내 얼굴' : '궁합 보기',
-                      style: const TextStyle(fontSize: 12)),
-                ],
-              ),
-            ),
-            CustomSlidableAction(
-              onPressed: (_) => _delete(context, ref),
-              backgroundColor: Colors.red.shade600,
-              foregroundColor: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              padding: EdgeInsets.zero,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.delete),
-                  const SizedBox(height: 4),
-                  const Text('삭제', style: TextStyle(fontSize: 12)),
-                ],
-              ),
-            ),
-          ],
+          children: actions,
         ),
         child: Stack(
           children: [
@@ -106,17 +106,24 @@ class _PhysiognomyItem extends ConsumerWidget {
                               mainAxisAlignment:
                                   MainAxisAlignment.spaceBetween,
                               children: [
-                                GestureDetector(
-                                  onTap: () =>
-                                      _showAliasDialog(context, ref, displayName),
-                                  child: Text(displayName,
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () => _showAliasDialog(
+                                        context, ref, displayName),
+                                    child: Text(
+                                      displayName,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
                                           color: AppTheme.textPrimary,
                                           fontSize: 15,
-                                          fontWeight: FontWeight.w600)),
+                                          fontWeight: FontWeight.w600),
+                                    ),
+                                  ),
                                 ),
                                 Padding(
-                                  padding: const EdgeInsets.only(right: 10),
+                                  padding: const EdgeInsets.only(
+                                      left: 8, right: 10),
                                   child: Text(
                                       timeago.format(report.timestamp,
                                           locale: 'ko'),
@@ -193,14 +200,12 @@ class _PhysiognomyItem extends ConsumerWidget {
   }
 
   void _delete(BuildContext context, WidgetRef ref) {
-    // For album items already opted into compat: warn that the compat row
-    // will also disappear.
-    if (report.source == AnalysisSource.album) {
-      final uuid = report.supabaseId;
-      if (uuid != null && ref.read(compatAlbumsProvider).contains(uuid)) {
-        _confirmDeleteWithCompatWarning(context, ref);
-        return;
-      }
+    // For any item (camera or album) already opted into compat: warn that the
+    // compat row will also disappear.
+    final uuid = report.supabaseId;
+    if (uuid != null && ref.read(compatAlbumsProvider).contains(uuid)) {
+      _confirmDeleteWithCompatWarning(context, ref);
+      return;
     }
     _doDelete(context, ref);
   }
@@ -230,12 +235,11 @@ class _PhysiognomyItem extends ConsumerWidget {
   }
 
   void _doDelete(BuildContext context, WidgetRef ref) {
-    // Purge any compat opt-in entry tied to this album uuid (orphan prevention)
-    if (report.source == AnalysisSource.album) {
-      final uuid = report.supabaseId;
-      if (uuid != null) {
-        ref.read(compatAlbumsProvider.notifier).remove(uuid);
-      }
+    // Purge any compat opt-in entry tied to this report's uuid (orphan
+    // prevention) — applies to both camera and album sources.
+    final uuid = report.supabaseId;
+    if (uuid != null) {
+      ref.read(compatAlbumsProvider.notifier).remove(uuid);
     }
     ref.read(historyProvider.notifier).remove(index);
     showTopSnackBar(
@@ -326,7 +330,34 @@ class _PhysiognomyItem extends ConsumerWidget {
     );
   }
 
+  Widget _slidableAction({
+    required IconData icon,
+    required String label,
+    required Color bg,
+    required VoidCallback onPressed,
+  }) {
+    return CustomSlidableAction(
+      onPressed: (_) => onPressed(),
+      backgroundColor: bg,
+      foregroundColor: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      padding: EdgeInsets.zero,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon),
+          const SizedBox(height: 4),
+          Text(label, style: const TextStyle(fontSize: 12)),
+        ],
+      ),
+    );
+  }
+
   void _showBottomMenu(BuildContext context, WidgetRef ref) {
+    final hasMyFace = ref.read(historyProvider).any(
+        (r) => r.source == AnalysisSource.camera && r.isMyFace);
+    final canShowCompat = hasMyFace && !report.isMyFace;
+
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -344,8 +375,8 @@ class _PhysiognomyItem extends ConsumerWidget {
                   Navigator.pop(ctx);
                   _setMyFace(context, ref);
                 },
-              )
-            else
+              ),
+            if (canShowCompat)
               ListTile(
                 leading: Icon(Icons.favorite, color: Colors.indigo.shade600),
                 title: const Text('궁합 보기'),

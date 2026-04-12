@@ -138,7 +138,11 @@ class CompatibilityReportPage extends StatelessWidget {
     // Album thumbnail at top-left, same 40×40 size as physiognomy list items.
     final thumbWidget = _buildThumbnail();
     if (thumbWidget == null) return container;
+    // StackFit.passthrough — pass the parent's (ListView) tight cross-axis
+    // width constraint through to the inner Container so it stays full-width.
+    // Default StackFit.loose collapses Container to its child's intrinsic width.
     return Stack(
+      fit: StackFit.passthrough,
       children: [
         container,
         Positioned(

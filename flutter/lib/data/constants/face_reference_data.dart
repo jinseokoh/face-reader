@@ -178,7 +178,9 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
     // SDs widened conservatively so typical real-face variation produces z in
     // [-2, +2], preserving distinguishing information across faces.
     Gender.male: {
-      'faceAspectRatio': MetricReference(0.96, 0.08),
+      // PHYSICAL pixel space ratio. Calibrated from Flutter measurements,
+      // male slightly more elongated than female (Korean adult).
+      'faceAspectRatio': MetricReference(1.32, 0.07),
       'upperFaceRatio': MetricReference(0.32, 0.04),
       'midFaceRatio': MetricReference(0.31, 0.03),
       'lowerFaceRatio': MetricReference(0.38, 0.05),
@@ -197,7 +199,11 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
       'philtrumLength': MetricReference(0.094, 0.020),
     },
     Gender.female: {
-      'faceAspectRatio': MetricReference(0.92, 0.08),
+      // PHYSICAL pixel space ratio (post imageHeight/imageWidth correction).
+      // Calibrated from 4 real Flutter measurements:
+      //   Suji=1.211 (가로) Rose=1.228 (표준) IU=1.311 (표준) Doyeon=1.374 (세로)
+      // mean=1.29, sd=0.07 puts Suji at z=-1.13, Doyeon at z=+1.20.
+      'faceAspectRatio': MetricReference(1.29, 0.07),
       'upperFaceRatio': MetricReference(0.31, 0.04),
       'midFaceRatio': MetricReference(0.30, 0.03),
       'lowerFaceRatio': MetricReference(0.39, 0.05),

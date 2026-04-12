@@ -174,6 +174,50 @@ void main() {
         '(${(majorLongerCount / sampled * 100).toStringAsFixed(1)}%)');
   });
 
+  test('침실 궁합: same-sex pairs must NOT have the section', () {
+    final rng = Random(7777);
+    int sameSexLeaks = 0;
+    int sameSexTotal = 0;
+
+    // 남남 + 여여 페어 30~50대 안에서 다수 생성, 침실 궁합 섹션 누출 검사
+    for (final age in [
+      AgeGroup.thirties,
+      AgeGroup.forties,
+      AgeGroup.fifties,
+    ]) {
+      for (final g in [Gender.male, Gender.female]) {
+        for (var i = 0; i < 10; i++) {
+          final my = _synthetic(rng, g, age);
+          final partner = _synthetic(rng, g, age);
+          final result = evaluateCompatibility(my, partner);
+          sameSexTotal++;
+          if (result.summary.contains('## 침실 궁합')) sameSexLeaks++;
+        }
+      }
+    }
+
+    // ignore: avoid_print
+    print('\n========== Same-Sex Sexual Harmony Gate ==========');
+    // ignore: avoid_print
+    print('동성 페어 (30~50대) 표본: $sameSexTotal, 섹션 누출: $sameSexLeaks');
+
+    expect(sameSexLeaks, equals(0),
+        reason: '동성 페어 $sameSexTotal중 $sameSexLeaks개에 침실 궁합 섹션이 잘못 포함됨');
+
+    // 한편 이성 페어 30~50대는 여전히 섹션이 있어야 한다 (sanity)
+    int oppositeHits = 0;
+    int oppositeTotal = 0;
+    for (var i = 0; i < 30; i++) {
+      final my = _synthetic(rng, Gender.male, AgeGroup.thirties);
+      final partner = _synthetic(rng, Gender.female, AgeGroup.thirties);
+      final result = evaluateCompatibility(my, partner);
+      oppositeTotal++;
+      if (result.summary.contains('## 침실 궁합')) oppositeHits++;
+    }
+    expect(oppositeHits, equals(oppositeTotal),
+        reason: '이성 페어 30대 $oppositeTotal중 $oppositeHits개만 섹션 포함');
+  });
+
   test('침실 궁합 V6: high variety across many pairs', () {
     final rng = Random(2026);
     final summaries = <String>{};

@@ -3,13 +3,16 @@ import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 
 import 'package:face_reader/core/hive/hive_setup.dart';
 
-/// Set of album report UUIDs that the user has explicitly added to the
-/// compatibility list. Compat is purely opt-in: a new album report does
-/// NOT auto-appear in 궁합 tab. The user must long-press the album row
-/// and tap "궁합 보기" to bring it in.
+/// Set of report UUIDs (album OR camera selfie) that the user has explicitly
+/// added to the compatibility list. Compat is purely opt-in: a new report
+/// does NOT auto-appear in 궁합 tab. The user must long-press the row in
+/// 관상 탭 (카메라 또는 앨범) and tap "궁합 보기" to bring it in.
 ///
-/// When an album is deleted from history, its uuid is also removed here
-/// (orphan prevention).
+/// When a report is deleted from history, its uuid is also removed here
+/// (orphan prevention) — regardless of source.
+///
+/// Note: 내 얼굴 자체는 페어링 불가이므로 이 set에 들어가지 않는다.
+/// (관상 화면의 옵션 게이팅에서 막힘.)
 final compatAlbumsProvider =
     NotifierProvider<CompatAlbumsNotifier, Set<String>>(
   CompatAlbumsNotifier.new,
