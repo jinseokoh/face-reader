@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mediapipe_face_mesh/mediapipe_face_mesh.dart';
+import 'package:uuid/uuid.dart';
 
 import 'face_mesh_painter.dart';
 
@@ -331,17 +332,20 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
     );
     _capturedFrames.clear();
 
+    // Generate UUID upfront — used by both Hive and Supabase
+    report.supabaseId = const Uuid().v4();
+
     if (mounted) {
       setState(() => _isCapturing = false);
       ref.read(historyProvider.notifier).add(report);
+      // 카메라로 분석한 직후엔 관상 탭 → 카메라 sub-tab을 기본으로 보여준다.
+      ref.read(historyTabProvider.notifier).selectTab(0);
       ref.read(selectedTabProvider.notifier).selectTab(1);
       Navigator.of(context).pop();
-      // Save to Supabase in background, store UUID back
-      SupabaseService().saveMetrics(report).then((uuid) {
-        report.supabaseId = uuid;
-        ref.read(historyProvider.notifier).updateHive();
-      }).catchError((e) {
+      // Save to Supabase in background using the pre-assigned UUID
+      SupabaseService().saveMetrics(report).catchError((e) {
         debugPrint('[Supabase] save error: $e');
+        return '';
       });
     }
   }

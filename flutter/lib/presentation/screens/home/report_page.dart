@@ -840,9 +840,19 @@ class _ReportPageState extends ConsumerState<ReportPage> {
 
   Future<void> _saveToPdf(BuildContext context) async {
     try {
-      final pdfDoc = pw.Document();
-      final fontData = await rootBundle.load('assets/fonts/SongMyung-Regular.ttf');
-      final ttf = pw.Font.ttf(fontData);
+      final regularData =
+          await rootBundle.load('assets/fonts/NotoSerifKR-Regular.ttf');
+      final boldData =
+          await rootBundle.load('assets/fonts/NotoSerifKR-Bold.ttf');
+      final regularTtf = pw.Font.ttf(regularData);
+      final boldTtf = pw.Font.ttf(boldData);
+      // NotoSerifKR covers Korean + Latin punctuation (·).
+      // Register both Regular AND Bold slots — bold-styled titles need a real
+      // bold variant; otherwise pw.FontWeight.bold falls back to Helvetica
+      // which lacks Korean glyphs and renders titles as tofu boxes.
+      final pdfDoc = pw.Document(
+        theme: pw.ThemeData.withFont(base: regularTtf, bold: boldTtf),
+      );
 
       final text = _generateText();
       final lines = text.split('\n');
@@ -856,20 +866,20 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                 return pw.Padding(
                   padding: const pw.EdgeInsets.only(bottom: 8),
                   child: pw.Text(line.replaceAll('=', '').trim(),
-                      style: pw.TextStyle(font: ttf, fontSize: 22, fontWeight: pw.FontWeight.bold)),
+                      style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold)),
                 );
               } else if (line.startsWith('---')) {
                 return pw.Padding(
                   padding: const pw.EdgeInsets.only(top: 12, bottom: 4),
                   child: pw.Text(line.replaceAll('-', '').trim(),
-                      style: pw.TextStyle(font: ttf, fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                      style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
                 );
               } else if (line.trim().isEmpty) {
                 return pw.SizedBox(height: 6);
               } else {
                 return pw.Padding(
                   padding: const pw.EdgeInsets.symmetric(vertical: 1),
-                  child: pw.Text(line, style: pw.TextStyle(font: ttf, fontSize: 11)),
+                  child: pw.Text(line, style: const pw.TextStyle(fontSize: 11)),
                 );
               }
             }).toList();
@@ -887,7 +897,10 @@ class _ReportPageState extends ConsumerState<ReportPage> {
       } else {
         dir = await getApplicationDocumentsDirectory();
       }
-      final filename = 'face_report_${DateTime.now().millisecondsSinceEpoch}.pdf';
+      // Same report → same filename → overwrite previous file
+      final reportUuid = report.supabaseId ??
+          report.timestamp.millisecondsSinceEpoch.toString();
+      final filename = 'face-$reportUuid.pdf';
       final file = File('${dir.path}/$filename');
       await file.writeAsBytes(await pdfDoc.save());
 

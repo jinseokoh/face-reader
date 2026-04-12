@@ -157,6 +157,10 @@ class AlbumPreviewPage extends ConsumerWidget {
       imageHeight: imageHeight,
     );
 
+    // Generate UUID upfront — same id used for thumbnail filename and Supabase
+    final id = const Uuid().v4();
+    report.supabaseId = id;
+
     // Compress to 128px WebP thumbnail and save
     try {
       final compressed = await FlutterImageCompress.compressWithList(
@@ -167,7 +171,6 @@ class AlbumPreviewPage extends ConsumerWidget {
         format: CompressFormat.webp,
       );
       final dir = await getApplicationDocumentsDirectory();
-      final id = const Uuid().v4();
       final file = File('${dir.path}/$id.webp');
       await file.writeAsBytes(compressed);
       report.thumbnailPath = file.path;
@@ -179,12 +182,10 @@ class AlbumPreviewPage extends ConsumerWidget {
     ref.read(historyTabProvider.notifier).selectTab(1);
     ref.read(selectedTabProvider.notifier).selectTab(1);
     if (context.mounted) Navigator.of(context).pop();
-    // Save to Supabase in background, store UUID back
-    SupabaseService().saveMetrics(report).then((uuid) {
-      report.supabaseId = uuid;
-      ref.read(historyProvider.notifier).updateHive();
-    }).catchError((e) {
+    // Save to Supabase in background using the pre-assigned UUID
+    SupabaseService().saveMetrics(report).catchError((e) {
       debugPrint('[Supabase] save error: $e');
+      return '';
     });
   }
 }

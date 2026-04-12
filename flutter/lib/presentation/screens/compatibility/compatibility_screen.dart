@@ -1,9 +1,11 @@
 import 'dart:io';
 
 import 'package:face_reader/core/theme.dart';
+import 'package:face_reader/data/enums/age_group.dart';
 import 'package:face_reader/data/enums/gender.dart';
 import 'package:face_reader/domain/models/face_reading_report.dart';
 import 'package:face_reader/domain/services/compatibility_engine.dart';
+import 'package:face_reader/presentation/providers/compat_albums_provider.dart';
 import 'package:face_reader/presentation/providers/history_provider.dart';
 import 'package:face_reader/presentation/screens/compatibility/compatibility_report_page.dart';
 import 'package:face_reader/presentation/widgets/compact_snack_bar.dart';
@@ -119,24 +121,46 @@ class CompatibilityScreen extends ConsumerWidget {
 
     final me = myFace.first;
     final history = ref.watch(historyProvider);
+    final compatAlbums = ref.watch(compatAlbumsProvider);
 
-    // Find original indices for album reports
-    final albumWithIndex = <(int, FaceReadingReport)>[];
-    for (var i = 0; i < history.length; i++) {
-      if (history[i].source == AnalysisSource.album) {
-        albumWithIndex.add((i, history[i]));
-      }
+    // Only album reports that the user has explicitly opted into compat for.
+    final albumItems = <FaceReadingReport>[];
+    for (final r in history) {
+      if (r.source != AnalysisSource.album) continue;
+      final uuid = r.supabaseId ?? '';
+      if (uuid.isEmpty || !compatAlbums.contains(uuid)) continue;
+      albumItems.add(r);
+    }
+
+    if (albumItems.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.favorite_border, color: AppTheme.border, size: 64),
+              const SizedBox(height: 16),
+              Text(
+                '관상 > 앨범 탭에서 인물을 길게 눌러 "궁합 보기"를 선택하면 이곳에 나타납니다.',
+                style: TextStyle(
+                    color: AppTheme.textHint, fontSize: 15, height: 1.5),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: albumWithIndex.length,
+      itemCount: albumItems.length,
       itemBuilder: (context, index) {
-        final (originalIndex, album) = albumWithIndex[index];
+        final album = albumItems[index];
         return _CompatibilityItem(
           myReport: me,
           albumReport: album,
-          historyIndex: originalIndex,
         );
       },
     );
@@ -146,17 +170,16 @@ class CompatibilityScreen extends ConsumerWidget {
 class _CompatibilityItem extends ConsumerWidget {
   final FaceReadingReport myReport;
   final FaceReadingReport albumReport;
-  final int historyIndex;
 
   const _CompatibilityItem({
     required this.myReport,
     required this.albumReport,
-    required this.historyIndex,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final albumName = albumReport.alias ?? '상대방';
+    final albumName = albumReport.alias ??
+        '${albumReport.ageGroup.labelKo} ${albumReport.gender.labelKo} · ${albumReport.archetype.primaryLabel}';
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -239,21 +262,32 @@ class _CompatibilityItem extends ConsumerWidget {
 
   void _viewCompatibility(BuildContext context) {
     final result = evaluateCompatibility(myReport, albumReport);
+    // Album UUID — always set for new reports (UUID-first architecture).
+    // Fallback to timestamp digits for legacy Hive entries without supabaseId.
+    final albumUuid = albumReport.supabaseId ??
+        albumReport.timestamp.millisecondsSinceEpoch.toString();
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => CompatibilityReportPage(
           result: result,
-          albumName: albumReport.alias ?? '상대방',
+          albumName: albumReport.alias ??
+              '${albumReport.ageGroup.labelKo} ${albumReport.gender.labelKo} · ${albumReport.archetype.primaryLabel}',
+          albumUuid: albumUuid,
+          thumbnailPath: albumReport.thumbnailPath,
         ),
       ),
     );
   }
 
   void _delete(BuildContext context, WidgetRef ref) {
-    ref.read(historyProvider.notifier).remove(historyIndex);
+    // Remove the album uuid from the compat opt-in set.
+    // Album physiognomy itself stays intact in 관상 tab.
+    final albumUuid = albumReport.supabaseId;
+    if (albumUuid == null) return;
+    ref.read(compatAlbumsProvider.notifier).remove(albumUuid);
     showTopSnackBar(
       Overlay.of(context),
-      CompactSnackBar.success(message: '삭제되었습니다'),
+      CompactSnackBar.success(message: '궁합 항목이 삭제되었습니다'),
     );
   }
 

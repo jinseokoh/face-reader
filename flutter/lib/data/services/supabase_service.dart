@@ -13,9 +13,10 @@ class SupabaseService {
   static const _uuid = Uuid();
 
   /// Insert a face reading report into the metrics table.
-  /// Returns the generated UUID for sharing.
+  /// Uses the report's existing supabaseId if set (UUID-first architecture),
+  /// otherwise generates a new one. Returns the UUID either way.
   Future<String> saveMetrics(FaceReadingReport report) async {
-    final id = _uuid.v4();
+    final id = report.supabaseId ?? _uuid.v4();
 
     final data = {
       'id': id,

@@ -1,6 +1,6 @@
 import 'package:face_reader/data/enums/metric_type.dart';
 
-/// z-score → Metric Score (S) 변환
+/// z-score → Metric Score (S) 변환 (정수, rule trigger 용도)
 /// ratio: 7단계 (-3 ~ +3), angle: 5단계 (-2 ~ +2), shape: 3단계 (-2 ~ +2)
 int convertToScore(double z, MetricType type) {
   return switch (type) {
@@ -8,6 +8,13 @@ int convertToScore(double z, MetricType type) {
     MetricType.angle => _angleScore(z),
     MetricType.shape => _shapeScore(z),
   };
+}
+
+/// z-score → Continuous Metric Score (attribute 가중합 용도)
+/// 양자화 없이 연속값을 보존하여 미세한 차이가 결과에 반영되도록 함.
+/// 극단값은 ±3.5로 hard clip (랜드마크 노이즈로 인한 outlier 방어)
+double convertToContinuousScore(double z, MetricType type) {
+  return z.clamp(-3.5, 3.5);
 }
 
 /// Ratio 계열 — 7단계

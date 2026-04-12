@@ -1,6 +1,13 @@
+import 'dart:io';
+
 import 'package:face_reader/core/theme.dart';
 import 'package:face_reader/domain/models/compatibility_result.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 // ─── Tortoise palette (관상 report_page와 동일) ───
 class _Palette {
@@ -22,18 +29,36 @@ class _Palette {
 class CompatibilityReportPage extends StatelessWidget {
   final CompatibilityResult result;
   final String albumName;
+  final String albumUuid;
+  final String? thumbnailPath;
 
   const CompatibilityReportPage({
     super.key,
     required this.result,
     required this.albumName,
+    required this.albumUuid,
+    this.thumbnailPath,
   });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(title: const Text('궁합 분석')),
+      appBar: AppBar(
+        title: const Text('궁합 분석'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.save_alt),
+            tooltip: '저장',
+            onPressed: () => _showSaveOptions(context),
+          ),
+          IconButton(
+            icon: const Icon(Icons.share),
+            tooltip: '카카오 공유',
+            onPressed: () => _shareViaKakao(context),
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
@@ -56,15 +81,9 @@ class CompatibilityReportPage extends StatelessWidget {
   // ─── Score Header ───
   Widget _buildScoreHeader() {
     final score = result.score.round();
-    final label = score >= 80
-        ? '천생연분'
-        : score >= 60
-            ? '좋은 궁합'
-            : score >= 40
-                ? '보통'
-                : '어려운 궁합';
+    final label = _resolveLabel(score);
 
-    return Container(
+    final container = Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -113,6 +132,36 @@ class CompatibilityReportPage extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+
+    // Album thumbnail at top-left, same 40×40 size as physiognomy list items.
+    final thumbWidget = _buildThumbnail();
+    if (thumbWidget == null) return container;
+    return Stack(
+      children: [
+        container,
+        Positioned(
+          top: 12,
+          left: 12,
+          child: thumbWidget,
+        ),
+      ],
+    );
+  }
+
+  Widget? _buildThumbnail() {
+    final path = thumbnailPath;
+    if (path == null) return null;
+    final file = File(path);
+    if (!file.existsSync()) return null;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Image.file(
+        file,
+        width: 40,
+        height: 40,
+        fit: BoxFit.cover,
       ),
     );
   }
@@ -396,6 +445,29 @@ class CompatibilityReportPage extends StatelessWidget {
     return sections;
   }
 
+  /// Percentile-based label thresholds calibrated via Monte Carlo on 20,000
+  /// CORRELATED-METRIC pairs (test/compat_calibration_test.dart). Real Korean
+  /// adult faces have strong metric correlations (e.g. thick brow ↔ strong jaw),
+  /// so independent random sampling underestimates how often two real users
+  /// will simultaneously hit high compat. The Monte Carlo now uses template-
+  /// based correlated face generation to better mirror real users.
+  ///
+  /// Empirically-verified distribution:
+  ///   ≥ 94 → 천생연분  (top 10%)
+  ///   ≥ 81 → 좋은 궁합 (30%)
+  ///   ≥ 71 → 보통       (30%)
+  ///   else → 어려운 궁합 (bottom 30%)
+  ///
+  /// If you change the spread function in compatibility_engine.dart, the
+  /// calibration templates, or any scoring weights, re-run the calibration
+  /// test and update these constants.
+  String _resolveLabel(int score) {
+    if (score >= 94) return '천생연분';
+    if (score >= 81) return '좋은 궁합';
+    if (score >= 71) return '보통';
+    return '어려운 궁합';
+  }
+
   String _attrLabel(String name) {
     const labels = {
       'wealth': '재물운',
@@ -410,6 +482,204 @@ class CompatibilityReportPage extends StatelessWidget {
       'libido': '관능도',
     };
     return labels[name] ?? name;
+  }
+
+  // ─── Save / Share ───────────────────────────────────────────
+
+  String _generateText() {
+    final ts = result.evaluatedAt;
+    final tsStr =
+        '${ts.year}.${ts.month.toString().padLeft(2, '0')}.${ts.day.toString().padLeft(2, '0')} '
+        '${ts.hour.toString().padLeft(2, '0')}:${ts.minute.toString().padLeft(2, '0')}';
+
+    final buf = StringBuffer();
+    buf.writeln('=== 궁합 분석 ===');
+    buf.writeln('날짜: $tsStr');
+    buf.writeln('나(${result.myArchetype}) ↔ 상대방(${result.albumArchetype})');
+    buf.writeln('종합 점수: ${result.score.round()}점');
+    buf.writeln();
+
+    buf.writeln('--- 분야별 궁합 ---');
+    final sorted = result.categoryScores.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    for (final e in sorted) {
+      buf.writeln('${_attrLabel(e.key)}: ${e.value.round()}');
+    }
+    buf.writeln();
+
+    if (result.specialNote != null) {
+      buf.writeln('--- 특별 관상 궁합 ---');
+      buf.writeln(result.specialNote);
+      buf.writeln();
+    }
+
+    buf.writeln('--- 궁합 해석 ---');
+    buf.writeln(result.summary);
+
+    return buf.toString();
+  }
+
+  Future<void> _shareViaKakao(BuildContext context) async {
+    try {
+      final score = result.score.round();
+      final template = FeedTemplate(
+        content: Content(
+          title: '궁합 분석 결과 — $score점',
+          description:
+              '나(${result.myArchetype})와 상대방(${result.albumArchetype})의 궁합 점수는 $score점입니다.',
+          imageUrl: Uri.parse(
+              'https://jicaenyzunjdlcxcdbfb.supabase.co/storage/v1/object/public/assets/share-thumbnail.png'),
+          link: Link(
+            webUrl: Uri.parse('https://face.whatsupkorea.com'),
+            mobileWebUrl: Uri.parse('https://face.whatsupkorea.com'),
+          ),
+        ),
+      );
+      await ShareClient.instance.shareDefault(template: template);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('공유 실패: $e'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showSaveOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: Icon(Icons.copy, color: AppTheme.textSecondary),
+                  title: Text('클립보드에 복사',
+                      style: TextStyle(color: AppTheme.textPrimary)),
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: _generateText()));
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('클립보드에 복사되었습니다')),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading:
+                      Icon(Icons.picture_as_pdf, color: AppTheme.textSecondary),
+                  title: Text('PDF로 저장',
+                      style: TextStyle(color: AppTheme.textPrimary)),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    await _saveToPdf(context);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _saveToPdf(BuildContext context) async {
+    try {
+      final regularData =
+          await rootBundle.load('assets/fonts/NotoSerifKR-Regular.ttf');
+      final boldData =
+          await rootBundle.load('assets/fonts/NotoSerifKR-Bold.ttf');
+      final regularTtf = pw.Font.ttf(regularData);
+      final boldTtf = pw.Font.ttf(boldData);
+      // NotoSerifKR covers Korean + Latin punctuation (·).
+      // Register both Regular AND Bold slots — bold-styled titles need a real
+      // bold variant; otherwise pw.FontWeight.bold falls back to Helvetica
+      // which lacks Korean glyphs and renders titles as tofu boxes.
+      final pdfDoc = pw.Document(
+        theme: pw.ThemeData.withFont(base: regularTtf, bold: boldTtf),
+      );
+
+      final text = _generateText();
+      final lines = text.split('\n');
+
+      pdfDoc.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          build: (pw.Context ctx) {
+            return lines.map((line) {
+              if (line.startsWith('===')) {
+                return pw.Padding(
+                  padding: const pw.EdgeInsets.only(bottom: 8),
+                  child: pw.Text(line.replaceAll('=', '').trim(),
+                      style: pw.TextStyle(
+                          fontSize: 22, fontWeight: pw.FontWeight.bold)),
+                );
+              } else if (line.startsWith('---')) {
+                return pw.Padding(
+                  padding: const pw.EdgeInsets.only(top: 12, bottom: 4),
+                  child: pw.Text(line.replaceAll('-', '').trim(),
+                      style: pw.TextStyle(
+                          fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                );
+              } else if (line.startsWith('## ')) {
+                return pw.Padding(
+                  padding: const pw.EdgeInsets.only(top: 10, bottom: 4),
+                  child: pw.Text(line.substring(3).trim(),
+                      style: pw.TextStyle(
+                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
+                );
+              } else if (line.trim().isEmpty) {
+                return pw.SizedBox(height: 6);
+              } else {
+                return pw.Padding(
+                  padding: const pw.EdgeInsets.symmetric(vertical: 1),
+                  child: pw.Text(line,
+                      style: const pw.TextStyle(fontSize: 11)),
+                );
+              }
+            }).toList();
+          },
+        ),
+      );
+
+      Directory? dir;
+      if (Platform.isAndroid) {
+        dir = Directory('/storage/emulated/0/Download');
+        if (!await dir.exists()) {
+          dir = await getApplicationDocumentsDirectory();
+        }
+      } else {
+        dir = await getApplicationDocumentsDirectory();
+      }
+      // Same album person → same filename → overwrite previous file
+      final filename = 'compatibility-$albumUuid.pdf';
+      final file = File('${dir.path}/$filename');
+      await file.writeAsBytes(await pdfDoc.save());
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('PDF 저장 완료: $filename')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('PDF 저장 실패: $e'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    }
   }
 }
 

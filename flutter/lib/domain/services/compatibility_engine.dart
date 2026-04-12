@@ -1,7 +1,7 @@
 import 'dart:math';
 
+import 'package:face_reader/data/enums/age_group.dart';
 import 'package:face_reader/data/enums/attribute.dart';
-import 'package:face_reader/data/enums/gender.dart';
 import 'package:face_reader/domain/models/compatibility_result.dart';
 import 'package:face_reader/domain/models/face_reading_report.dart';
 import 'package:face_reader/domain/services/archetype.dart';
@@ -9,6 +9,43 @@ import 'package:face_reader/domain/services/attribute_engine.dart';
 
 import 'package:face_reader/data/constants/compatibility_text_blocks.dart'
     as text_blocks;
+
+// ═══════════════════════════════════════════════════════════════
+//  V5 Importance ranking — drives variable verbosity per attribute
+// ═══════════════════════════════════════════════════════════════
+
+enum _AttrImportance { major, moderate, minor }
+
+/// Computes per-attribute "noteworthiness" for a pair: extreme scores and big
+/// gaps both raise importance, while balanced mid scores get demoted.
+/// Returns a map ranking the top 2 as major, next 3 as moderate, rest as minor.
+Map<Attribute, _AttrImportance> _rankByImportance(
+  Map<Attribute, double> myScores,
+  Map<Attribute, double> albumScores,
+) {
+  final notes = <Attribute, double>{};
+  for (final attr in Attribute.values) {
+    final my = myScores[attr] ?? 5.0;
+    final album = albumScores[attr] ?? 5.0;
+    // extremity: distance of EACH score from neutral 5.0
+    // gap: absolute difference
+    final extremity = (my - 5.0).abs() + (album - 5.0).abs();
+    final gap = (my - album).abs();
+    // both high or both low produce strong noteworthiness;
+    // big gaps also produce strong noteworthiness;
+    // balanced mid produces near zero
+    notes[attr] = extremity + gap * 1.2;
+  }
+  final sorted = notes.entries.toList()
+    ..sort((a, b) => b.value.compareTo(a.value));
+  final result = <Attribute, _AttrImportance>{};
+  for (var i = 0; i < sorted.length; i++) {
+    result[sorted[i].key] = i < 2
+        ? _AttrImportance.major
+        : (i < 5 ? _AttrImportance.moderate : _AttrImportance.minor);
+  }
+  return result;
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  Synergy scores when both ≥ 7.0
@@ -148,26 +185,6 @@ const _rulePairs = <(String, String), _RulePairDef>{
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  Personality / Emotion / Practical attribute groupings
-// ═══════════════════════════════════════════════════════════════
-
-const _personalityPairKeys = {
-  'leadership_stability', 'leadership_intelligence', 'leadership_emotionality',
-  'sociability_trustworthiness', 'sociability_emotionality',
-};
-
-const _emotionPairKeys = {
-  'emotionality_trustworthiness', 'intelligence_emotionality',
-  'libido_emotionality', 'sensuality_trustworthiness',
-  'attractiveness_emotionality', 'sensuality_stability',
-};
-
-const _practicalPairKeys = {
-  'wealth_stability', 'wealth_leadership', 'intelligence_stability',
-  'stability_emotionality',
-};
-
-// ═══════════════════════════════════════════════════════════════
 //  Internal helper types
 // ═══════════════════════════════════════════════════════════════
 
@@ -240,10 +257,7 @@ CompatibilityResult evaluateCompatibility(
   );
 
   // Step 4: Special Archetype (15%)
-  final specialResult = _evaluateSpecialArchetypes(
-    myReport.archetype,
-    albumReport.archetype,
-  );
+  final specialResult = _evaluateSpecialArchetypes(myReport, albumReport);
   final specialScore = specialResult.score;
   final specialNote = specialResult.note;
 
@@ -262,10 +276,13 @@ CompatibilityResult evaluateCompatibility(
       specialScore * 0.15 +
       ruleScore * 0.15;
 
-  // Spread function: push scores away from center (50)
-  // This counters the averaging compression that collapses all scores to 55-65
+  // Spread function: push scores away from center (50) but softly to avoid
+  // pile-up at the upper clamp ceiling. Multiplier reduced from 2.2 → 1.6
+  // and clamp widened to [5, 99] so the top tier is reachable but not
+  // saturated. Re-calibrate via test/compat_calibration_test.dart whenever
+  // this changes.
   final deviation = rawTotal - 50;
-  final total = (50 + deviation * 2.2).clamp(8.0, 97.0);
+  final total = (50 + deviation * 1.6).clamp(5.0, 99.0);
 
   // Step 7: Summary
   final summary = _buildSummaryV2(
@@ -370,10 +387,19 @@ double _evaluateCrossPairs(
     } else if (aScore <= 3.5 && bScore <= 3.5) {
       pattern = 'lowLow';
     } else {
-      // Mid-range: interpolate with wider spread
-      final midScore = 50.0 + (aScore + bScore - 10) * 3.5;
+      // Mid-range: split into 3 sub-patterns based on score sum
+      final sum = aScore + bScore;
+      final String midPattern;
+      if (sum >= 13) {
+        midPattern = 'midHigh';
+      } else if (sum >= 7) {
+        midPattern = 'midMid';
+      } else {
+        midPattern = 'midLow';
+      }
+      final midScore = 50.0 + (sum - 10) * 3.5;
       final score = midScore.clamp(15.0, 90.0);
-      results.add(_CrossPairResult(pair.key, 'mid', score, pair.weight));
+      results.add(_CrossPairResult(pair.key, midPattern, score, pair.weight));
       totalWeighted += score * pair.weight;
       totalWeight += pair.weight;
       continue;
@@ -430,9 +456,11 @@ double _archetypeCompatScoreV2(
 // ═══════════════════════════════════════════════════════════════
 
 _SpecialResult _evaluateSpecialArchetypes(
-  ArchetypeResult myArchetype,
-  ArchetypeResult albumArchetype,
+  FaceReadingReport myReport,
+  FaceReadingReport albumReport,
 ) {
+  final myArchetype = myReport.archetype;
+  final albumArchetype = albumReport.archetype;
   final mySpecial = myArchetype.specialArchetype;
   final albumSpecial = albumArchetype.specialArchetype;
 
@@ -447,8 +475,6 @@ _SpecialResult _evaluateSpecialArchetypes(
   if (mySpecial != null && albumSpecial != null) {
     final myBase = _extractSpecialBase(mySpecial);
     final albumBase = _extractSpecialBase(albumSpecial);
-
-    // SP×SP pair text lookup
     final spText = _spPairFallbackText(myBase, albumBase);
     if (spText != null) {
       notes.add(spText);
@@ -461,6 +487,8 @@ _SpecialResult _evaluateSpecialArchetypes(
       albumArchetype,
       myArchetype,
       isMySpecial: true,
+      ownerReport: myReport,
+      partnerReport: albumReport,
     );
     score += result.delta;
     if (result.note != null) notes.add(result.note!);
@@ -472,6 +500,8 @@ _SpecialResult _evaluateSpecialArchetypes(
       myArchetype,
       albumArchetype,
       isMySpecial: false,
+      ownerReport: albumReport,
+      partnerReport: myReport,
     );
     score += result.delta;
     if (result.note != null) notes.add(result.note!);
@@ -479,84 +509,100 @@ _SpecialResult _evaluateSpecialArchetypes(
 
   return _SpecialResult(
     score.clamp(0, 100),
-    notes.isEmpty ? null : notes.join('\n'),
+    notes.isEmpty ? null : notes.join('\n\n'),
   );
 }
+
+// Score deltas per special archetype (text comes from phrase library now).
+const _specialDeltas = <String, double>{
+  '제왕상': 25,
+  '복덕상': 30,
+  '도화상': -8,
+  '군사상': 12,
+  '연예인상': 18,
+  '대인상': 25,
+  '풍류상': 8,
+  '천재상': 10,
+  '광인상': -30,
+  '사기상': -40,
+};
 
 _SpecialEffect _applySpecialEffect(
   String special,
   ArchetypeResult partnerArchetype,
   ArchetypeResult ownerArchetype, {
   required bool isMySpecial,
+  required FaceReadingReport ownerReport,
+  required FaceReadingReport partnerReport,
 }) {
-  final partnerSpecial = partnerArchetype.specialArchetype;
-  final partnerPrimary = partnerArchetype.primary;
-  final ownerLabel = ownerArchetype.primaryLabel;
-  final partnerLabel = partnerArchetype.primaryLabel;
-  final who = isMySpecial ? ownerLabel : partnerLabel;
-
   final baseName = _extractSpecialBase(special);
+  double delta = _specialDeltas[baseName] ?? 0;
 
-  switch (baseName) {
-    case '제왕상':
-      if (partnerSpecial != null) {
-        final partnerBase = _extractSpecialBase(partnerSpecial);
-        if (partnerBase == '제왕상' || partnerBase == '광인상') {
-          return _SpecialEffect(
-            -30,
-            '$who의 제왕상과 상대의 $partnerBase이 정면으로 충돌합니다. 두 사람 모두 꺾이지 않는 기질이라, 주도권을 양보하지 못하면 관계는 전쟁터가 될 수 있습니다.',
-          );
-        }
-      }
-      return _SpecialEffect(25, '$who에게서 제왕상이 보입니다. 타고난 통솔력이 관계의 방향타 역할을 하며, 상대는 이 사람 곁에서 자연스럽게 안정감을 느낍니다. 다만 일방적인 주도가 되지 않도록 경계해야 합니다.');
-
-    case '복덕상':
-      return _SpecialEffect(30, '$who에게서 복덕상이 보입니다. 관계에 들어오는 순간 주변에 온기가 퍼지는 기질로, 함께하는 사람에게 물질적으로나 정서적으로 복을 나눠주는 드문 상입니다.');
-
-    case '도화상':
-      return _SpecialEffect(-8, '$who에게서 도화상이 보입니다. 사람을 끌어당기는 매력이 비범하지만, 그 매력이 관계 밖으로도 향할 수 있다는 점을 직시해야 합니다. 상대에게 충분한 관심을 돌리지 않으면 의심의 씨앗이 자랍니다.');
-
-    case '군사상':
-      if (partnerPrimary == Attribute.leadership ||
-          partnerPrimary == Attribute.wealth) {
-        return _SpecialEffect(
-          28,
-          '$who의 군사상과 $partnerLabel이 만나면 최고의 참모-리더 구도가 완성됩니다. 전략과 실행이 톱니바퀴처럼 맞물려, 사업이든 삶이든 함께하면 시너지가 폭발합니다.',
-        );
-      }
-      return _SpecialEffect(12, '$who에게서 군사상이 보입니다. 냉철한 판단력과 전략적 사고가 관계의 위기 순간에 빛을 발합니다.');
-
-    case '연예인상':
-      return _SpecialEffect(18, '$who에게서 연예인상이 보입니다. 주변의 시선을 자연스럽게 끄는 화려함이 있어 관계에 활력을 불어넣지만, 관심을 독점하려는 성향이 상대를 그늘에 세울 수 있습니다.');
-
-    case '대인상':
-      return _SpecialEffect(25, '$who에게서 대인상이 보입니다. 넓은 도량과 포용력으로 상대의 부족함까지 감싸안는 기질이라, 이 사람 곁에서는 누구든 자신의 본모습을 드러낼 수 있습니다.');
-
-    case '풍류상':
-      if (partnerPrimary == Attribute.stability ||
-          partnerPrimary == Attribute.trustworthiness) {
-        return _SpecialEffect(
-          -22,
-          '$who의 풍류상과 안정을 추구하는 $partnerLabel 사이에 근본적인 가치관 충돌이 예상됩니다. 자유를 갈망하는 기질과 안정을 원하는 기질은 서로를 답답하게 만들 수 있습니다.',
-        );
-      }
-      return _SpecialEffect(8, '$who에게서 풍류상이 보입니다. 삶을 즐길 줄 아는 여유로움이 관계에 낭만을 더하지만, 때로는 현실적인 책임감이 부족해 보일 수 있습니다.');
-
-    case '천재상':
-      if (partnerPrimary == Attribute.intelligence) {
-        return _SpecialEffect(22, '$who의 천재상과 지적인 $partnerLabel이 만나면 끝없는 사유의 세계가 열립니다. 서로의 생각을 자극하며 보통 사람들이 도달하지 못하는 깊이의 대화를 나눌 수 있습니다.');
-      }
-      return _SpecialEffect(10, '$who에게서 천재상이 보입니다. 독창적이고 비범한 시각이 관계에 새로운 차원을 열어주지만, 상대가 따라가지 못하면 외로운 천재가 될 수 있습니다.');
-
-    case '광인상':
-      return _SpecialEffect(-30, '$who에게서 광인상이 보입니다. 극단적인 감정의 진폭이 관계를 롤러코스터로 만듭니다. 영감과 파괴를 동시에 가져오는 기질이라, 상대에게 대단한 인내를 요구합니다.');
-
-    case '사기상':
-      return _SpecialEffect(-40, '$who에게서 사기상이 감지됩니다. 신뢰의 기반이 근본적으로 흔들릴 수 있는 심각한 경고 신호입니다. 이 관계에서 상대는 항상 진실을 의심하게 될 가능성이 높으며, 장기적 유대를 기대하기 어렵습니다.');
-
-    default:
-      return const _SpecialEffect(0, null);
+  // Adjust delta for special × special collisions
+  final partnerSpecial = partnerArchetype.specialArchetype;
+  if (partnerSpecial != null) {
+    final partnerBase = _extractSpecialBase(partnerSpecial);
+    if (baseName == '제왕상' && (partnerBase == '제왕상' || partnerBase == '광인상')) {
+      delta = -30;
+    } else if (baseName == '풍류상' &&
+        (partnerArchetype.primary == Attribute.stability ||
+            partnerArchetype.primary == Attribute.trustworthiness)) {
+      delta = -22;
+    } else if (baseName == '군사상' &&
+        (partnerArchetype.primary == Attribute.leadership ||
+            partnerArchetype.primary == Attribute.wealth)) {
+      delta = 28;
+    } else if (baseName == '천재상' && partnerArchetype.primary == Attribute.intelligence) {
+      delta = 22;
+    }
   }
+
+  // Generate text from phrase library using score-based variant seed
+  final partnerType = _resolvePartnerType(partnerArchetype.primary);
+  final phrases = text_blocks.specialPhrasesV4[baseName];
+  if (phrases == null) return _SpecialEffect(delta, null);
+
+  final variants = phrases[partnerType] ?? phrases['default'] ?? const [];
+  if (variants.isEmpty) return _SpecialEffect(delta, null);
+
+  // Variant seed based on attribute scores (deterministic but varied)
+  final seedSource = isMySpecial ? ownerReport : partnerReport;
+  final seed = _scoreSignature(seedSource);
+  final note = variants[seed % variants.length];
+
+  return _SpecialEffect(delta, note);
+}
+
+/// Maps a primary attribute to a partner type key in specialPhrasesV4
+String _resolvePartnerType(Attribute primary) {
+  switch (primary) {
+    case Attribute.leadership:
+      return 'withLeader';
+    case Attribute.intelligence:
+      return 'withScholar';
+    case Attribute.stability:
+      return 'withSage';
+    case Attribute.emotionality:
+      return 'withArtist';
+    default:
+      return 'default';
+  }
+}
+
+/// Deterministic seed based on a report's full attribute score signature.
+/// Tiny score differences produce different seeds → different variant selection.
+int _scoreSignature(FaceReadingReport report) {
+  int sig = 0;
+  for (final attr in Attribute.values) {
+    final s = report.attributeScores[attr] ?? 5.0;
+    sig = (sig * 31 + (s * 100).round()) & 0x7fffffff;
+  }
+  return sig;
+}
+
+/// Variant seed combining two reports (for shared per-pair selection)
+int _pairSignature(FaceReadingReport a, FaceReadingReport b) {
+  return (_scoreSignature(a) * 73 + _scoreSignature(b) * 137) & 0x7fffffff;
 }
 
 String _extractSpecialBase(String special) {
@@ -630,243 +676,623 @@ String _buildSummaryV2(
   double totalScore,
 ) {
   final buf = StringBuffer();
-  final myLabel = myReport.archetype.primaryLabel;
-  final albumLabel = albumReport.archetype.primaryLabel;
-  final mySub = myReport.archetype.secondaryLabel;
-  final albumSub = albumReport.archetype.secondaryLabel;
-  final me = '나($myLabel)';
-  final you = '상대방($albumLabel)';
+  final pairSeed = _pairSignature(myReport, albumReport);
+  final ruleSimilarity = _ruleJaccardSimilarity(
+      myReport.triggeredRules, albumReport.triggeredRules);
+  final importance = _rankByImportance(
+      myReport.attributeScores, albumReport.attributeScores);
 
   // ── Section 1: 총평 ──
   buf.writeln('## 총평');
-  final archetypeText = _lookupText(
-    text_blocks.archetypeCompatTexts,
-    '${myLabel}_$albumLabel',
-    '${albumLabel}_$myLabel',
-  );
-  if (archetypeText != null) {
-    buf.writeln(archetypeText);
-  }
-  if (totalScore >= 80) {
-    buf.writeln('$me의 기질과 $you의 성향이 깊이 공명하여, 함께할수록 서로의 빛을 끌어올리는 보기 드문 조합입니다. 나의 $mySub 기질이 상대방의 $albumSub 기질과 자연스럽게 어우러져 관계의 깊이가 더해집니다.');
-  } else if (totalScore >= 65) {
-    buf.writeln('$me와 $you는 서로의 부족한 면을 채워주는 보완적 관계입니다. 나의 $mySub 기질과 상대방의 $albumSub 기질이 균형을 이루어, 의식적으로 가꾸면 오래도록 안정적인 유대를 유지할 수 있습니다.');
-  } else if (totalScore >= 45) {
-    buf.writeln('$me와 $you 사이에는 조율이 필요한 지점이 있습니다. 하지만 나의 $mySub 기질과 상대방의 $albumSub 기질이 접점을 만들어, 서로를 이해하려는 노력이 관계를 한 단계 성장시킬 수 있습니다.');
-  } else {
-    buf.writeln('$me와 $you는 기질의 온도 차이가 큰 조합입니다. 나의 $mySub 기질과 상대방의 $albumSub 기질 사이의 괴리를 인정하고, 서로의 세계를 존중하는 것이 이 관계를 유지하는 핵심입니다.');
-  }
+  _composeOverallV4(buf, myReport, albumReport, totalScore, pairSeed);
   buf.writeln();
 
   // ── Section 2: 성격·기질 궁합 ──
   buf.writeln('## 성격·기질 궁합');
-  _writeSection(buf, crossPairKeys, _personalityPairKeys, categoryScores,
-      {'leadership', 'intelligence', 'sociability', 'stability'});
+  _composeAttrSection(
+      buf,
+      myReport,
+      albumReport,
+      const [
+        Attribute.leadership,
+        Attribute.intelligence,
+        Attribute.sociability,
+        Attribute.stability,
+      ],
+      importance);
   buf.writeln();
 
   // ── Section 3: 감정·애정 궁합 ──
   buf.writeln('## 감정·애정 궁합');
-  // Always include libido and sensuality for this section — these make it entertaining
-  _writeSection(buf, crossPairKeys, _emotionPairKeys, categoryScores,
-      {'libido', 'sensuality', 'emotionality', 'attractiveness'});
+  _composeAttrSection(
+      buf,
+      myReport,
+      albumReport,
+      const [
+        Attribute.libido,
+        Attribute.sensuality,
+        Attribute.emotionality,
+        Attribute.attractiveness,
+      ],
+      importance);
   buf.writeln();
+
+  // ── Section 3.5 (conditional): 침실 궁합 — 30~50대 한정 ──
+  _composeSexualHarmonyV5(buf, myReport, albumReport, pairSeed);
 
   // ── Section 4: 생활·현실 궁합 ──
   buf.writeln('## 생활·현실 궁합');
-  _writeSection(buf, crossPairKeys, _practicalPairKeys, categoryScores,
-      {'wealth', 'stability', 'trustworthiness', 'leadership'});
+  _composeAttrSection(
+      buf,
+      myReport,
+      albumReport,
+      const [
+        Attribute.wealth,
+        Attribute.stability,
+        Attribute.trustworthiness,
+        Attribute.leadership,
+      ],
+      importance);
   buf.writeln();
 
   // ── Section 5: 갈등 가능성과 조정 ──
   buf.writeln('## 갈등 가능성과 조정');
-  _writeConflictSection(buf, crossPairKeys, rulePairs, categoryScores);
+  _composeConflictV4(buf, myReport, albumReport, rulePairs, pairSeed);
   buf.writeln();
 
   // ── Section 6: 장기 전망과 조언 ──
   buf.writeln('## 장기 전망과 조언');
-  _writeLongTermSection(buf, categoryScores, specialNote, totalScore,
-      myReport.gender, albumReport.gender, myLabel, albumLabel);
+  _composeLongTermV4(buf, myReport, albumReport, totalScore,
+      ruleSimilarity, specialNote, pairSeed);
 
   return buf.toString().trim();
 }
 
-// ─── Text Lookup Helpers ─────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+//  V4 Generative Composers
+// ═══════════════════════════════════════════════════════════════
 
-/// Look up crossPairTexts body by full key (e.g. "leadership_stability_highHigh")
-String? _lookupCrossPairBody(String fullKey) {
-  try {
-    final entry = text_blocks.crossPairTexts[fullKey];
-    return entry?['body'];
-  } catch (_) {
-    return null;
+/// Picks a phrase from a list using a seed for deterministic variation.
+String _pickVariant(List<String> variants, int seed) {
+  if (variants.isEmpty) return '';
+  return variants[seed.abs() % variants.length];
+}
+
+/// Classifies attribute pair into one of 12 sub-patterns
+String _classifyAttrPattern(double a, double b) {
+  final gap = (a - b).abs();
+  final hi = a > b ? a : b;
+  final lo = a > b ? b : a;
+
+  // Both extreme high
+  if (a >= 9.0 && b >= 9.0) return 'bothExtremeHigh';
+  // Both high
+  if (a >= 7.0 && b >= 7.0) return 'bothHigh';
+  // Gap extreme
+  if (gap >= 6.0 && hi >= 8.0 && lo <= 2.0) return 'gapExtremeHighLow';
+  // Gap high (one very high, other very low)
+  if (gap >= 4.0 && hi >= 7.0 && lo <= 4.0) return 'gapHighLow';
+  // One high, one mid
+  if (hi >= 7.0 && lo >= 5.0 && lo <= 6.0) return 'oneHighOneMid';
+  // Both mid-high
+  if (a >= 5.5 && b >= 5.5 && a < 7.0 && b < 7.0) return 'bothMidHigh';
+  // Both low
+  if (a <= 3.5 && b <= 3.5) return 'bothLow';
+  // One low, one mid
+  if (lo <= 3.5 && hi >= 4.0 && hi <= 6.0) return 'oneLowOneMid';
+  // Both mid-low
+  if (a >= 3.5 && b >= 3.5 && a <= 5.5 && b <= 5.5) return 'bothMidLow';
+  // Equal mid (close together in middle)
+  if (gap <= 1.0 && a >= 4.0 && b >= 4.0 && a <= 6.0 && b <= 6.0) {
+    return 'equalMid';
   }
+  // Gap mid
+  if (gap >= 3.0 && gap < 5.0) return 'gapMid';
+  // Gap small
+  return 'gapSmall';
 }
 
-/// Look up attributeCompatTexts body by attribute name and score
-String? _lookupAttributeBody(String attrName, double score) {
-  final pattern = score >= 70 ? 'synergy'
-      : score >= 55 ? 'complement'
-      : score >= 35 ? 'neutral'
-      : 'clash';
-  try {
-    final attrTexts = text_blocks.attributeCompatTexts[attrName];
-    if (attrTexts == null) return null;
-    return attrTexts['${attrName}_$pattern']?['body'];
-  } catch (_) {
-    return null;
-  }
-}
-
-/// Symmetric key lookup in a map
-String? _lookupText(Map<String, String> map, String key1, String key2) {
-  return map[key1] ?? map[key2];
-}
-
-// ─── Section Writers ─────────────────────────────────────────
-
-void _writeSection(
+/// Compose overall section (Section 1)
+void _composeOverallV4(
   StringBuffer buf,
-  List<String> crossPairKeys,
-  Set<String> targetPairKeys,
-  Map<String, double> categoryScores,
-  Set<String> relatedAttrs,
+  FaceReadingReport myReport,
+  FaceReadingReport albumReport,
+  double totalScore,
+  int pairSeed,
 ) {
-  var written = 0;
+  final myLabel = myReport.archetype.primaryLabel;
+  final albumLabel = albumReport.archetype.primaryLabel;
+  final me = '나($myLabel)';
+  final you = '상대방($albumLabel)';
 
-  // First: use crossPairTexts (highest quality)
-  for (final fullKey in crossPairKeys) {
-    if (written >= 3) break;
-    final pairKey = fullKey.substring(0, fullKey.lastIndexOf('_'));
-    if (!targetPairKeys.contains(pairKey)) continue;
+  // 1. Score-tier opener
+  final overallKey = totalScore >= 80 ? 'overallVeryHigh'
+      : totalScore >= 65 ? 'overallHigh'
+      : totalScore >= 45 ? 'overallMid'
+      : 'overallLow';
+  final overallVariants = text_blocks.metaPhrasesV4[overallKey] ?? const [];
+  if (overallVariants.isNotEmpty) {
+    buf.writeln(_pickVariant(overallVariants, pairSeed));
+  }
 
-    final body = _lookupCrossPairBody(fullKey);
-    if (body != null) {
-      buf.writeln(body);
-      written++;
+  // 2. Sub-modifier fingerprint sentence (variation between same-archetype people)
+  final mySubModifier = _resolveSubModifier(myReport);
+  final albumSubModifier = _resolveSubModifier(albumReport);
+  final mySubPhrase =
+      _subArchetypePhrase(myReport.archetype.primary, mySubModifier);
+  final albumSubPhrase =
+      _subArchetypePhrase(albumReport.archetype.primary, albumSubModifier);
+  if (mySubPhrase != null && albumSubPhrase != null) {
+    buf.writeln('$me는 $mySubPhrase 결을 띠고, $you는 $albumSubPhrase 색채가 짙습니다.');
+  }
+
+  // 3. Top resonance axis (둘 다 점수 높은 attribute)
+  final myScores = myReport.attributeScores;
+  final albumScores = albumReport.attributeScores;
+  Attribute? topResonance;
+  double topResonanceScore = 0;
+  for (final attr in Attribute.values) {
+    final my = myScores[attr] ?? 5.0;
+    final al = albumScores[attr] ?? 5.0;
+    final combined = (my + al) / 2;
+    if (my >= 6.0 && al >= 6.0 && combined > topResonanceScore) {
+      topResonance = attr;
+      topResonanceScore = combined;
+    }
+  }
+  if (topResonance != null) {
+    final variants = text_blocks.metaPhrasesV4['topResonance'] ?? const [];
+    if (variants.isNotEmpty) {
+      final phrase = _pickVariant(variants, pairSeed + 1);
+      buf.writeln(phrase.replaceFirst('%s', topResonance.labelKo));
     }
   }
 
-  // Second: always add attributeCompatTexts — these are the most vivid descriptions
-  // Prioritize order: relatedAttrs is a LinkedHashSet, first items matter most
-  final relevant = categoryScores.entries
-      .where((e) => relatedAttrs.contains(e.key))
-      .toList();
-  // Sort by relatedAttrs insertion order (priority), then by score extremity
-  final attrOrder = relatedAttrs.toList();
-  relevant.sort((a, b) {
-    final aIdx = attrOrder.indexOf(a.key);
-    final bIdx = attrOrder.indexOf(b.key);
-    if (aIdx != bIdx) return aIdx.compareTo(bIdx);
-    return (b.value - 50).abs().compareTo((a.value - 50).abs());
-  });
-
-  for (final entry in relevant) {
-    if (written >= 4) break;
-    final body = _lookupAttributeBody(entry.key, entry.value);
-    if (body != null) {
-      buf.writeln(body);
-      written++;
+  // 4. Top gap axis
+  Attribute? topGap;
+  double topGapValue = 0;
+  for (final attr in Attribute.values) {
+    final my = myScores[attr] ?? 5.0;
+    final al = albumScores[attr] ?? 5.0;
+    final gap = (my - al).abs();
+    if (gap > topGapValue && gap >= 2.0) {
+      topGap = attr;
+      topGapValue = gap;
+    }
+  }
+  if (topGap != null) {
+    final variants = text_blocks.metaPhrasesV4['topGap'] ?? const [];
+    if (variants.isNotEmpty) {
+      final phrase = _pickVariant(variants, pairSeed + 2);
+      buf.writeln(phrase.replaceFirst('%s', topGap.labelKo));
     }
   }
 
-  if (written == 0) {
-    buf.writeln('이 영역에서 두 사람은 평균적인 조화를 이루고 있어 큰 기복 없이 자연스러운 흐름을 유지할 수 있습니다.');
+  // 5. Dominant metric trait (one extra fingerprint hint)
+  final myDom = _dominantMetricPhrase(myReport);
+  final albumDom = _dominantMetricPhrase(albumReport);
+  if (myDom != null && albumDom != null) {
+    buf.writeln('나에게서는 $myDom이 두드러지고, 상대방에게서는 $albumDom이 인상적으로 드러납니다.');
   }
 }
 
-void _writeConflictSection(
+/// Compose an attribute section using per-attribute generative sentences.
+/// Length is controlled by the `importance` map: major gets 3 sentences,
+/// moderate gets 2 (or whatever the V4 phrase has), minor is shortened to 1.
+void _composeAttrSection(
   StringBuffer buf,
-  List<String> crossPairKeys,
+  FaceReadingReport myReport,
+  FaceReadingReport albumReport,
+  List<Attribute> attrs,
+  Map<Attribute, _AttrImportance> importance,
+) {
+  for (final attr in attrs) {
+    final my = myReport.attributeScores[attr] ?? 5.0;
+    final album = albumReport.attributeScores[attr] ?? 5.0;
+    final pattern = _classifyAttrPattern(my, album);
+    final variants =
+        text_blocks.attrPhrasesV4[attr.name]?[pattern] ?? const [];
+    if (variants.isEmpty) continue;
+
+    // Variant seed uses both raw scores → tiny diff yields a different variant
+    final seed = (my * 73).round() + (album * 137).round();
+    final base = _pickVariant(variants, seed);
+    final level = importance[attr] ?? _AttrImportance.moderate;
+
+    String phrase;
+    switch (level) {
+      case _AttrImportance.major:
+        // Append a 비범한 관상가 implication. Fallback chain:
+        //   1. attr × pattern specific
+        //   2. attr × _default
+        //   3. _default × _default
+        final attrMap = text_blocks.attrPhrasesV5Implications[attr.name];
+        List<String> imps = attrMap?[pattern] ?? const [];
+        if (imps.isEmpty) imps = attrMap?['_default'] ?? const [];
+        if (imps.isEmpty) {
+          imps = text_blocks.attrPhrasesV5Implications['_default']
+                  ?['_default'] ??
+              const [];
+        }
+        final implication =
+            imps.isNotEmpty ? _pickVariant(imps, seed + 11) : '';
+        phrase = implication.isEmpty ? base : '$base $implication';
+        break;
+      case _AttrImportance.moderate:
+        phrase = base;
+        break;
+      case _AttrImportance.minor:
+        phrase = _firstSentenceOf(base);
+        break;
+    }
+
+    final marker = switch (level) {
+      _AttrImportance.major => '◆',
+      _AttrImportance.moderate => '◇',
+      _AttrImportance.minor => '·',
+    };
+    buf.writeln(
+        '$marker ${attr.labelKo} ${my.toStringAsFixed(1)} vs ${album.toStringAsFixed(1)} — $phrase');
+  }
+}
+
+/// Returns the first sentence of a Korean phrase (split by '. ' or '다.').
+String _firstSentenceOf(String phrase) {
+  // Split on '다.' followed by space, keeping the first chunk + '다.'
+  final idx = phrase.indexOf('다. ');
+  if (idx > 0) return phrase.substring(0, idx + 2);
+  // Fallback: split on '. '
+  final idx2 = phrase.indexOf('. ');
+  if (idx2 > 0) return phrase.substring(0, idx2 + 1);
+  return phrase;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  V5 Sexual Harmony Section (30~50대 한정)
+// ═══════════════════════════════════════════════════════════════
+
+bool _isSexualEligibleAge(AgeGroup g) =>
+    g == AgeGroup.thirties || g == AgeGroup.forties || g == AgeGroup.fifties;
+
+// ─── V6 axis classifiers — three orthogonal dimensions ───
+
+/// Intensity tier from libido + sensuality average.
+String _classifyIntensity(double libAvg, double senAvg) {
+  final avg = (libAvg + senAvg) / 2;
+  if (avg >= 8.0) return 'blazing';
+  if (avg >= 6.5) return 'hot';
+  if (avg >= 4.5) return 'warm';
+  return 'cold';
+}
+
+/// Emotion tier from emotionality average.
+String _classifyEmotion(double myEmo, double albumEmo) {
+  final avg = (myEmo + albumEmo) / 2;
+  if (avg >= 7.0) return 'deep';
+  if (avg >= 5.0) return 'balanced';
+  return 'shallow';
+}
+
+/// Power dynamic tier from libido + sensuality combined gap (who leads).
+String _classifyDynamic({
+  required double myLib,
+  required double albumLib,
+  required double mySen,
+  required double albumSen,
+}) {
+  final myTotal = myLib + mySen;
+  final albumTotal = albumLib + albumSen;
+  final gap = myTotal - albumTotal;
+  if (gap.abs() < 1.5) return 'balanced';
+  return gap > 0 ? 'meLeads' : 'albumLeads';
+}
+
+void _composeSexualHarmonyV5(
+  StringBuffer buf,
+  FaceReadingReport myReport,
+  FaceReadingReport albumReport,
+  int pairSeed,
+) {
+  // Gate: both partners must be 30~50대
+  if (!_isSexualEligibleAge(myReport.ageGroup) ||
+      !_isSexualEligibleAge(albumReport.ageGroup)) {
+    return;
+  }
+
+  final myScores = myReport.attributeScores;
+  final albumScores = albumReport.attributeScores;
+  final myLib = myScores[Attribute.libido] ?? 5.0;
+  final albumLib = albumScores[Attribute.libido] ?? 5.0;
+  final mySen = myScores[Attribute.sensuality] ?? 5.0;
+  final albumSen = albumScores[Attribute.sensuality] ?? 5.0;
+  final myEmo = myScores[Attribute.emotionality] ?? 5.0;
+  final albumEmo = albumScores[Attribute.emotionality] ?? 5.0;
+
+  final intensity = _classifyIntensity(
+      (myLib + albumLib) / 2, (mySen + albumSen) / 2);
+  final emotion = _classifyEmotion(myEmo, albumEmo);
+  final dynamic_ = _classifyDynamic(
+      myLib: myLib, albumLib: albumLib, mySen: mySen, albumSen: albumSen);
+
+  // Per-axis seeds derived from pair signature + raw decimal scores so that
+  // tiny score perturbations (0.1) shift each slot independently.
+  // Multiplications use distinct primes to keep slots uncorrelated.
+  final scoreHash = ((myLib * 13.0).round() ^
+          (albumLib * 17.0).round() ^
+          (mySen * 23.0).round() ^
+          (albumSen * 29.0).round() ^
+          (myEmo * 31.0).round() ^
+          (albumEmo * 37.0).round()) &
+      0x7fffffff;
+  final seedOpener = (pairSeed * 31 ^ scoreHash * 41) & 0x7fffffff;
+  final seedBody = (pairSeed * 67 ^ scoreHash * 71) & 0x7fffffff;
+  final seedClosing = (pairSeed * 113 ^ scoreHash * 131) & 0x7fffffff;
+
+  final openerPool =
+      text_blocks.sexualOpenerV6[intensity] ?? const <String>[];
+  final bodyPool = text_blocks.sexualBodyV6[emotion] ?? const <String>[];
+  final closingPool =
+      text_blocks.sexualClosingV6[dynamic_] ?? const <String>[];
+
+  if (openerPool.isEmpty || bodyPool.isEmpty || closingPool.isEmpty) return;
+
+  final opener = _pickVariant(openerPool, seedOpener);
+  final body = _pickVariant(bodyPool, seedBody);
+  final closing = _pickVariant(closingPool, seedClosing);
+
+  buf.writeln('## 침실 궁합');
+  buf.writeln('$opener $body $closing');
+  buf.writeln();
+}
+
+/// Compose conflict section
+void _composeConflictV4(
+  StringBuffer buf,
+  FaceReadingReport myReport,
+  FaceReadingReport albumReport,
   List<_RulePairResult> rulePairs,
-  Map<String, double> categoryScores,
+  int pairSeed,
 ) {
-  var written = 0;
+  final myScores = myReport.attributeScores;
+  final albumScores = albumReport.attributeScores;
 
-  // Cross-pair conflicts: lowLow and lowHigh patterns
-  final conflictKeys = crossPairKeys.where((k) =>
-      k.endsWith('_lowLow') || k.endsWith('_highLow')).toList();
-
-  for (final fullKey in conflictKeys.take(2)) {
-    final body = _lookupCrossPairBody(fullKey);
-    if (body != null) {
-      buf.writeln(body);
-      written++;
-    }
-  }
-
-  // Rule pair conflicts
-  final conflictRules = rulePairs
-      .where((r) => r.effect == 'clash' || r.effect == 'volatile')
-      .toList()
-    ..sort((a, b) => a.delta.compareTo(b.delta));
-
-  for (final rp in conflictRules.take(2)) {
-    buf.writeln(rp.comment);
-    written++;
-  }
-
-  // Low category scores as additional conflict indicators
-  if (written < 2) {
-    final lowScores = categoryScores.entries
-        .where((e) => e.value < 40)
-        .toList()
-      ..sort((a, b) => a.value.compareTo(b.value));
-
-    for (final entry in lowScores.take(2 - written)) {
-      final body = _lookupAttributeBody(entry.key, entry.value);
-      if (body != null) {
-        buf.writeln(body);
-        written++;
+  // Find top conflict attribute (largest negative impact)
+  Attribute? topConflict;
+  double topConflictScore = 100;
+  for (final attr in Attribute.values) {
+    final my = myScores[attr] ?? 5.0;
+    final al = albumScores[attr] ?? 5.0;
+    final pattern = _classifyAttrPattern(my, al);
+    // Negative patterns
+    if (pattern == 'bothLow' || pattern == 'gapExtremeHighLow' ||
+        pattern == 'gapHighLow' || pattern == 'bothMidLow') {
+      final combined = (my + al) / 2 - (my - al).abs();
+      if (combined < topConflictScore) {
+        topConflict = attr;
+        topConflictScore = combined;
       }
     }
   }
 
-  if (written == 0) {
-    buf.writeln('두 사람 사이에 뚜렷한 갈등 요소는 보이지 않습니다. 다만 어떤 관계든 소통을 게을리하면 작은 오해가 쌓이는 법이니, 꾸준한 대화를 통해 서로의 마음을 확인하는 습관을 들이길 권합니다.');
-  } else {
-    buf.writeln('갈등이 예상되는 부분을 미리 알고 있다는 것 자체가 큰 강점입니다. 서로의 입장을 먼저 들어보려는 자세가 작은 마찰을 오히려 관계를 깊게 하는 계기로 바꿔줄 것입니다.');
+  if (topConflict != null) {
+    final my = myScores[topConflict] ?? 5.0;
+    final album = albumScores[topConflict] ?? 5.0;
+    final pattern = _classifyAttrPattern(my, album);
+    final variants =
+        text_blocks.attrPhrasesV4[topConflict.name]?[pattern] ?? const [];
+    if (variants.isNotEmpty) {
+      final seed = (my * 73).round() + (album * 137).round() + 1;
+      buf.writeln('${topConflict.labelKo} 영역의 균열 — ${_pickVariant(variants, seed)}');
+    }
+  }
+
+  // Top asymmetric axis (largest gap)
+  Attribute? topAsym;
+  double topAsymGap = 0;
+  for (final attr in Attribute.values) {
+    if (attr == topConflict) continue;
+    final my = myScores[attr] ?? 5.0;
+    final al = albumScores[attr] ?? 5.0;
+    final gap = (my - al).abs();
+    if (gap > topAsymGap && gap >= 3.0) {
+      topAsym = attr;
+      topAsymGap = gap;
+    }
+  }
+  if (topAsym != null) {
+    final my = myScores[topAsym] ?? 5.0;
+    final album = albumScores[topAsym] ?? 5.0;
+    final pattern = _classifyAttrPattern(my, album);
+    final variants =
+        text_blocks.attrPhrasesV4[topAsym.name]?[pattern] ?? const [];
+    if (variants.isNotEmpty) {
+      final seed = (my * 73).round() + (album * 137).round() + 2;
+      buf.writeln('${topAsym.labelKo} 비대칭 — ${_pickVariant(variants, seed)}');
+    }
+  }
+
+  // Triggered rule conflict (use comment from rule pair)
+  final negativeRules = rulePairs
+      .where((r) => r.effect == 'clash' || r.effect == 'volatile')
+      .toList()
+    ..sort((a, b) => a.delta.compareTo(b.delta));
+  if (negativeRules.isNotEmpty) {
+    buf.writeln(negativeRules.first.comment);
+  }
+
+  // Mitigation advice (variant)
+  final hasStrongConflict = topConflict != null || negativeRules.isNotEmpty;
+  final mitigationKey = hasStrongConflict ? 'mitigationStrong' : 'mitigationMild';
+  final mitVariants = text_blocks.metaPhrasesV4[mitigationKey] ?? const [];
+  if (mitVariants.isNotEmpty) {
+    buf.writeln(_pickVariant(mitVariants, pairSeed));
   }
 }
 
-void _writeLongTermSection(
+/// Compose long-term section
+void _composeLongTermV4(
   StringBuffer buf,
-  Map<String, double> categoryScores,
-  String? specialNote,
+  FaceReadingReport myReport,
+  FaceReadingReport albumReport,
   double totalScore,
-  Gender myGender,
-  Gender albumGender,
-  String myLabel,
-  String albumLabel,
+  double ruleSimilarity,
+  String? specialNote,
+  int pairSeed,
 ) {
-  final stability = categoryScores['stability'] ?? 50;
-  final trust = categoryScores['trustworthiness'] ?? 50;
-  final longTermBase = (stability + trust) / 2;
-
-  if (longTermBase >= 70) {
-    buf.writeln('두 사람 사이의 안정성과 신뢰는 시간이 지날수록 단단해질 기반을 갖추고 있습니다. 이 관계는 급격한 변화보다 꾸준한 깊이로 빛을 발하는 유형입니다.');
-  } else if (longTermBase >= 50) {
-    buf.writeln('관계의 안정성은 보통 수준이지만, 의식적으로 서로를 향한 신뢰를 쌓아간다면 세월과 함께 더 견고해질 수 있는 잠재력을 지닙니다.');
-  } else {
-    buf.writeln('안정성과 신뢰의 기반이 아직 약한 편이므로, 작은 약속부터 지켜가며 신뢰를 한 겹씩 쌓아가는 것이 이 관계의 장기적인 열쇠입니다.');
+  // Stability narrative — uses raw stability scores
+  final myStab = myReport.attributeScores[Attribute.stability] ?? 5.0;
+  final albumStab = albumReport.attributeScores[Attribute.stability] ?? 5.0;
+  final stabAvg = (myStab + albumStab) / 2;
+  final longTermKey = stabAvg >= 6.5 ? 'longTermSolid' : 'longTermFragile';
+  final longTermVariants = text_blocks.metaPhrasesV4[longTermKey] ?? const [];
+  if (longTermVariants.isNotEmpty) {
+    buf.writeln(_pickVariant(longTermVariants, pairSeed));
   }
 
+  // Stability composer line — direct
+  final stabPattern = _classifyAttrPattern(myStab, albumStab);
+  final stabVariants =
+      text_blocks.attrPhrasesV4['stability']?[stabPattern] ?? const [];
+  if (stabVariants.isNotEmpty) {
+    final seed = (myStab * 73).round() + (albumStab * 137).round();
+    buf.writeln('안정성 ${myStab.toStringAsFixed(1)} vs ${albumStab.toStringAsFixed(1)} — ${_pickVariant(stabVariants, seed)}');
+  }
+
+  // Trust composer line
+  final myTrust = myReport.attributeScores[Attribute.trustworthiness] ?? 5.0;
+  final albumTrust = albumReport.attributeScores[Attribute.trustworthiness] ?? 5.0;
+  final trustPattern = _classifyAttrPattern(myTrust, albumTrust);
+  final trustVariants =
+      text_blocks.attrPhrasesV4['trustworthiness']?[trustPattern] ?? const [];
+  if (trustVariants.isNotEmpty) {
+    final seed = (myTrust * 73).round() + (albumTrust * 137).round() + 3;
+    buf.writeln('신뢰성 ${myTrust.toStringAsFixed(1)} vs ${albumTrust.toStringAsFixed(1)} — ${_pickVariant(trustVariants, seed)}');
+  }
+
+  // Jaccard observation
+  if (ruleSimilarity >= 0.65) {
+    buf.writeln('두 사람의 기질 지문이 서로 닮아 있습니다. 같은 관점으로 세상을 바라보는 안정감이 있지만, 같은 함정에 빠지지 않도록 의식적으로 시야를 넓히는 노력이 필요합니다.');
+  } else if (ruleSimilarity >= 0.3) {
+    buf.writeln('두 사람의 기질 지문이 적절히 다릅니다. 한쪽이 놓치는 부분을 다른 쪽이 자연스럽게 채워주는 이상적인 차이입니다.');
+  } else {
+    buf.writeln('두 사람의 기질 지문이 거의 정반대입니다. 매일이 새로운 발견이 될 수 있는 자극적인 관계지만, 가치관 차이를 즐길 수 있는 여유가 필수입니다.');
+  }
+
+  // Special archetype note (already generated dynamically)
   if (specialNote != null) {
     buf.writeln(specialNote);
   }
 
-  // Gender-aware closing
-  if (myGender != albumGender) {
-    buf.writeln('서로 다른 에너지가 만나는 관계인 만큼, 상대의 표현 방식이 나와 다르다는 것을 자연스럽게 받아들일 때 관계의 깊이가 한 차원 달라집니다.');
-  } else {
-    buf.writeln('같은 결의 에너지가 공명하는 관계이기에, 서로의 고유한 영역을 침범하지 않으면서 함께 성장하는 방향을 찾는 것이 중요합니다.');
-  }
-
-  // Final advice tied to archetype
-  final me = '나($myLabel)';
-  final you = '상대방($albumLabel)';
-  if (totalScore >= 65) {
-    buf.writeln('$me와 $you의 만남은 좋은 궁합 위에 세워진 관계입니다. 서로의 장점을 적극적으로 인정하고 표현하는 것만으로도 이 관계는 한층 풍요로워질 것입니다.');
-  } else {
-    buf.writeln('$me와 $you 사이의 차이는 극복할 수 없는 장벽이 아니라, 서로를 더 깊이 이해하게 만드는 계기입니다. 차이를 조율하는 과정 자체가 두 사람을 더 단단하게 만들어줄 것입니다.');
+  // Final advice (variant)
+  final adviceKey = totalScore >= 65 ? 'finalAdviceHigh' : 'finalAdviceLow';
+  final adviceVariants = text_blocks.metaPhrasesV4[adviceKey] ?? const [];
+  if (adviceVariants.isNotEmpty) {
+    buf.writeln(_pickVariant(adviceVariants, pairSeed + 5));
   }
 }
+
+// ─── Metric Fingerprint System ──────────────────────────────
+//
+// Same archetype + same partner can produce identical reports.
+// Fingerprint adds variation by reading the underlying metric Z-scores.
+
+/// Resolves a sub-modifier within an archetype based on metric Z-scores.
+/// Returns the sub-modifier key (e.g. 'authority', 'executor', 'balanced').
+String _resolveSubModifier(FaceReadingReport report) {
+  final arch = report.archetype.primary;
+  double z(String name) => report.metrics[name]?.zScore ?? 0;
+
+  switch (arch) {
+    case Attribute.wealth:
+      if (z('nasalWidthRatio') > 1.0 && z('nasalHeightRatio') > 0.5) return 'tycoon';
+      if (z('mouthWidthRatio') > 0.5) return 'merchant';
+      return 'collector';
+    case Attribute.leadership:
+      final gonial = z('gonialAngle');
+      final brow = z('eyebrowThickness');
+      if (gonial > 1.2 && brow > 0.8) return 'authority';
+      if (gonial > 0.5) return 'executor';
+      return 'balanced';
+    case Attribute.intelligence:
+      final eyeFissure = z('eyeFissureRatio');
+      final browDist = z('browEyeDistance');
+      if (eyeFissure > 1.0 && browDist > 0.5) return 'analyst';
+      if (eyeFissure > 0.5) return 'visionary';
+      return 'philosopher';
+    case Attribute.sociability:
+      final mouth = z('mouthWidthRatio');
+      final corner = z('mouthCornerAngle');
+      if (mouth > 0.8 && corner > 0.5) return 'charmer';
+      if (mouth > 0.5) return 'connector';
+      return 'mediator';
+    case Attribute.emotionality:
+      final lip = z('lipFullnessRatio');
+      final eyebrow = z('eyebrowThickness');
+      if (lip > 1.0 && eyebrow < -0.3) return 'romantic';
+      if (lip > 0.5) return 'intense';
+      return 'sensitive';
+    case Attribute.stability:
+      final brow = z('browEyeDistance');
+      final eyebrow = z('eyebrowThickness');
+      if (brow > 1.0 && eyebrow > 0.5) return 'mountain';
+      if (brow > 0.5) return 'pillar';
+      return 'shelter';
+    case Attribute.sensuality:
+      final tilt = z('eyeCanthalTilt');
+      final lip = z('lipFullnessRatio');
+      if (tilt > 0.8 && lip > 0.5) return 'magnetic';
+      if (tilt > 0.3) return 'seductive';
+      return 'mystical';
+    case Attribute.trustworthiness:
+      final brow = z('browEyeDistance');
+      final corner = z('mouthCornerAngle');
+      if (brow > 1.0 && corner > 0.3) return 'oath';
+      if (brow > 0.5) return 'guardian';
+      return 'foundation';
+    case Attribute.attractiveness:
+      final faceAspect = z('faceAspectRatio');
+      final taper = z('faceTaperRatio');
+      if (faceAspect.abs() < 0.5 && taper < -0.3) return 'classic';
+      if (taper < 0) return 'modern';
+      return 'distinctive';
+    case Attribute.libido:
+      final philtrum = z('philtrumLength');
+      final lip = z('lipFullnessRatio');
+      if (philtrum < -0.8 && lip > 0.5) return 'firework';
+      if (philtrum < -0.3) return 'sustained';
+      return 'magnetic';
+  }
+}
+
+/// Returns a phrase describing the dominant Z-score metric (most extreme).
+String? _dominantMetricPhrase(FaceReadingReport report) {
+  String? maxName;
+  double maxAbs = 0.8; // threshold to be "notable"
+  for (final entry in report.metrics.entries) {
+    final abs = entry.value.zScore.abs();
+    if (abs > maxAbs) {
+      maxAbs = abs;
+      maxName = entry.key;
+    }
+  }
+  if (maxName == null) return null;
+  final z = report.metrics[maxName]!.zScore;
+  final dir = z > 0 ? 'high' : 'low';
+  return text_blocks.metricTraitPhrases[maxName]?[dir];
+}
+
+/// Sub-archetype phrase lookup
+String? _subArchetypePhrase(Attribute archetype, String subKey) {
+  return text_blocks.subArchetypePhrases[archetype.name]?[subKey];
+}
+
+/// Jaccard similarity of two triggered rule sets (0~1)
+double _ruleJaccardSimilarity(List<TriggeredRule> a, List<TriggeredRule> b) {
+  final setA = a.map((r) => r.id).toSet();
+  final setB = b.map((r) => r.id).toSet();
+  if (setA.isEmpty && setB.isEmpty) return 1.0;
+  final intersect = setA.intersection(setB).length;
+  final union = setA.union(setB).length;
+  return union == 0 ? 0 : intersect / union;
+}
+

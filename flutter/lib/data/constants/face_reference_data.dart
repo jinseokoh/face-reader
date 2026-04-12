@@ -166,47 +166,54 @@ const metricInfoList = [
 /// Reference data: [Ethnicity][Gender][metricId] → MetricReference(mean, sd)
 const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = {
   Ethnicity.eastAsian: {
+    // ─── MediaPipe-calibrated reference (2026-04-12) ───
+    // Original Farkas anthropometric data was incompatible with MediaPipe Face
+    // Mesh landmark conventions, causing real Korean adult faces to systematically
+    // produce z=±6~7 (clamped at ±3.5) on eyebrowThickness, browEyeDistance,
+    // faceAspectRatio, and gonialAngle. After clamping, distinguishing info
+    // between faces was lost → stability/trustworthiness/leadership saturated
+    // for all Korean adults.
+    //
+    // Corrected means estimated from MediaPipe Face Mesh outputs on real photos.
+    // SDs widened conservatively so typical real-face variation produces z in
+    // [-2, +2], preserving distinguishing information across faces.
     Gender.male: {
-      'faceAspectRatio': MetricReference(1.40, 0.08),
-      'upperFaceRatio': MetricReference(0.33, 0.03),
-      'midFaceRatio': MetricReference(0.33, 0.02),
-      'lowerFaceRatio': MetricReference(0.34, 0.03),
+      'faceAspectRatio': MetricReference(0.96, 0.08),
+      'upperFaceRatio': MetricReference(0.32, 0.04),
+      'midFaceRatio': MetricReference(0.31, 0.03),
+      'lowerFaceRatio': MetricReference(0.38, 0.05),
       'faceTaperRatio': MetricReference(0.85, 0.05),
-      'gonialAngle': MetricReference(118.0, 7.0),
-      'intercanthalRatio': MetricReference(0.27, 0.02),
-      'eyeFissureRatio': MetricReference(0.23, 0.02),
-      'eyeCanthalTilt': MetricReference(3.5, 3.0),
-      'eyebrowThickness': MetricReference(0.017, 0.004),
-      'browEyeDistance': MetricReference(0.058, 0.014),
-      'nasalWidthRatio': MetricReference(1.08, 0.10),
-
-
-      'nasalHeightRatio': MetricReference(0.30, 0.02),
-      'mouthWidthRatio': MetricReference(0.39, 0.03),
-      'mouthCornerAngle': MetricReference(-0.5, 3.0),
-      'lipFullnessRatio': MetricReference(0.09, 0.02),
-      'philtrumLength': MetricReference(0.085, 0.015),
+      'gonialAngle': MetricReference(137.0, 6.0),
+      'intercanthalRatio': MetricReference(0.26, 0.02),
+      'eyeFissureRatio': MetricReference(0.21, 0.025),
+      'eyeCanthalTilt': MetricReference(4.0, 4.0),
+      'eyebrowThickness': MetricReference(0.038, 0.006),
+      'browEyeDistance': MetricReference(0.146, 0.022),
+      'nasalWidthRatio': MetricReference(0.93, 0.10),
+      'nasalHeightRatio': MetricReference(0.31, 0.03),
+      'mouthWidthRatio': MetricReference(0.40, 0.05),
+      'mouthCornerAngle': MetricReference(2.0, 5.0),
+      'lipFullnessRatio': MetricReference(0.10, 0.025),
+      'philtrumLength': MetricReference(0.094, 0.020),
     },
     Gender.female: {
-      'faceAspectRatio': MetricReference(1.36, 0.07),
-      'upperFaceRatio': MetricReference(0.33, 0.03),
-      'midFaceRatio': MetricReference(0.33, 0.02),
-      'lowerFaceRatio': MetricReference(0.34, 0.03),
+      'faceAspectRatio': MetricReference(0.92, 0.08),
+      'upperFaceRatio': MetricReference(0.31, 0.04),
+      'midFaceRatio': MetricReference(0.30, 0.03),
+      'lowerFaceRatio': MetricReference(0.39, 0.05),
       'faceTaperRatio': MetricReference(0.79, 0.05),
-      'gonialAngle': MetricReference(122.0, 8.0),
-      'intercanthalRatio': MetricReference(0.27, 0.02),
-      'eyeFissureRatio': MetricReference(0.25, 0.02),
-      'eyeCanthalTilt': MetricReference(4.5, 3.0),
-      'eyebrowThickness': MetricReference(0.013, 0.003),
-      'browEyeDistance': MetricReference(0.062, 0.015),
-      'nasalWidthRatio': MetricReference(1.02, 0.09),
-
-
-      'nasalHeightRatio': MetricReference(0.30, 0.02),
-      'mouthWidthRatio': MetricReference(0.37, 0.03),
-      'mouthCornerAngle': MetricReference(0.5, 3.0),
-      'lipFullnessRatio': MetricReference(0.11, 0.02),
-      'philtrumLength': MetricReference(0.075, 0.013),
+      'gonialAngle': MetricReference(141.0, 6.0),
+      'intercanthalRatio': MetricReference(0.26, 0.02),
+      'eyeFissureRatio': MetricReference(0.20, 0.025),
+      'eyeCanthalTilt': MetricReference(5.0, 4.0),
+      'eyebrowThickness': MetricReference(0.034, 0.005),
+      'browEyeDistance': MetricReference(0.150, 0.020),
+      'nasalWidthRatio': MetricReference(0.89, 0.10),
+      'nasalHeightRatio': MetricReference(0.30, 0.03),
+      'mouthWidthRatio': MetricReference(0.39, 0.05),
+      'mouthCornerAngle': MetricReference(3.0, 5.0),
+      'lipFullnessRatio': MetricReference(0.12, 0.025),
+      'philtrumLength': MetricReference(0.090, 0.020),
     },
   },
   Ethnicity.caucasian: {

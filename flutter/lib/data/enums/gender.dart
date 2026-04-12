@@ -5,7 +5,7 @@ enum Gender {
 
 extension GenderLabel on Gender {
   String get labelKo => switch (this) {
-        Gender.male => '남자',
-        Gender.female => '여자',
+        Gender.male => '남성',
+        Gender.female => '여성',
       };
 }

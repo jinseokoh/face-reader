@@ -5,6 +5,7 @@ import 'package:face_reader/data/enums/age_group.dart';
 import 'package:face_reader/data/enums/ethnicity.dart';
 import 'package:face_reader/data/enums/gender.dart';
 import 'package:face_reader/domain/models/face_reading_report.dart';
+import 'package:face_reader/presentation/providers/compat_albums_provider.dart';
 import 'package:face_reader/presentation/providers/history_provider.dart';
 import 'package:face_reader/presentation/providers/tab_provider.dart';
 import 'package:face_reader/presentation/screens/home/report_page.dart';
@@ -44,7 +45,7 @@ class _PhysiognomyItem extends ConsumerWidget {
             CustomSlidableAction(
               onPressed: (_) => source == AnalysisSource.camera
                   ? _setMyFace(context, ref)
-                  : _openCompatibility(context),
+                  : _openCompatibility(context, ref),
               backgroundColor: source == AnalysisSource.camera
                   ? Colors.green.shade600
                   : Colors.indigo.shade600,
@@ -56,7 +57,7 @@ class _PhysiognomyItem extends ConsumerWidget {
                 children: [
                   Icon(source == AnalysisSource.camera ? Icons.face : Icons.favorite),
                   const SizedBox(height: 4),
-                  Text(source == AnalysisSource.camera ? '내 얼굴' : '궁합',
+                  Text(source == AnalysisSource.camera ? '내 얼굴' : '궁합 보기',
                       style: const TextStyle(fontSize: 12)),
                 ],
               ),
@@ -127,7 +128,7 @@ class _PhysiognomyItem extends ConsumerWidget {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                                '${report.ethnicity.labelKo} · ${report.ageGroup.labelKo} · ${report.gender.labelKo}',
+                                '${report.ethnicity.labelKo} · ${report.ageGroup.labelKo} ${report.gender.labelKo}',
                                 style: TextStyle(
                                     color: AppTheme.textHint,
                                     fontSize: 13)),
@@ -192,6 +193,50 @@ class _PhysiognomyItem extends ConsumerWidget {
   }
 
   void _delete(BuildContext context, WidgetRef ref) {
+    // For album items already opted into compat: warn that the compat row
+    // will also disappear.
+    if (report.source == AnalysisSource.album) {
+      final uuid = report.supabaseId;
+      if (uuid != null && ref.read(compatAlbumsProvider).contains(uuid)) {
+        _confirmDeleteWithCompatWarning(context, ref);
+        return;
+      }
+    }
+    _doDelete(context, ref);
+  }
+
+  void _confirmDeleteWithCompatWarning(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('삭제 확인'),
+        content: const Text(
+            '이 인물과의 궁합 분석 항목도 함께 사라집니다. 정말 삭제하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('취소', style: TextStyle(color: AppTheme.textHint)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _doDelete(context, ref);
+            },
+            child: Text('삭제', style: TextStyle(color: Colors.red.shade600)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _doDelete(BuildContext context, WidgetRef ref) {
+    // Purge any compat opt-in entry tied to this album uuid (orphan prevention)
+    if (report.source == AnalysisSource.album) {
+      final uuid = report.supabaseId;
+      if (uuid != null) {
+        ref.read(compatAlbumsProvider.notifier).remove(uuid);
+      }
+    }
     ref.read(historyProvider.notifier).remove(index);
     showTopSnackBar(
       Overlay.of(context),
@@ -206,8 +251,35 @@ class _PhysiognomyItem extends ConsumerWidget {
     return '표준 얼굴형';
   }
 
-  void _openCompatibility(BuildContext context) {
-    // TODO: 궁합 기능 구현
+  void _openCompatibility(BuildContext context, WidgetRef ref) {
+    final albumUuid = report.supabaseId;
+    if (albumUuid == null) return;
+    // Prerequisite: 카메라 탭에서 "내 얼굴"이 설정되어 있어야 궁합 화면이 렌더링됨.
+    // 없으면 compatAlbums에 추가해도 궁합 탭은 "내 얼굴 먼저..." gate 메시지로
+    // 막혀서 사용자에겐 "아무 일도 안 일어난" 것처럼 보임 → prerequisite 안내.
+    final hasMyFace = ref.read(historyProvider).any(
+        (r) => r.source == AnalysisSource.camera && r.isMyFace);
+    if (!hasMyFace) {
+      showTopSnackBar(
+        Overlay.of(context),
+        CompactSnackBar.info(
+            message: '먼저 카메라 탭에서 내 얼굴을 분석하고 "내 얼굴"로 설정해주세요'),
+      );
+      return;
+    }
+    final already = ref.read(compatAlbumsProvider).contains(albumUuid);
+    if (already) {
+      showTopSnackBar(
+        Overlay.of(context),
+        CompactSnackBar.info(message: '이미 궁합 항목에 있습니다'),
+      );
+      return;
+    }
+    ref.read(compatAlbumsProvider.notifier).add(albumUuid);
+    showTopSnackBar(
+      Overlay.of(context),
+      CompactSnackBar.success(message: '궁합 항목에 추가되었습니다'),
+    );
   }
 
   void _setMyFace(BuildContext context, WidgetRef ref) {
@@ -276,10 +348,10 @@ class _PhysiognomyItem extends ConsumerWidget {
             else
               ListTile(
                 leading: Icon(Icons.favorite, color: Colors.indigo.shade600),
-                title: const Text('궁합'),
+                title: const Text('궁합 보기'),
                 onTap: () {
                   Navigator.pop(ctx);
-                  _openCompatibility(context);
+                  _openCompatibility(context, ref);
                 },
               ),
             ListTile(
@@ -303,10 +375,13 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
 
   @override
   Widget build(BuildContext context) {
-    final historyTab = ref.watch(historyTabProvider);
-    if (_tabController.index != historyTab) {
-      _tabController.index = historyTab;
-    }
+    // Only react to actual provider changes (e.g. external selectTab calls
+    // from album_preview after analysis). Avoid forcing on every rebuild.
+    ref.listen<int>(historyTabProvider, (prev, next) {
+      if (_tabController.index != next) {
+        _tabController.animateTo(next);
+      }
+    });
     final history = ref.watch(historyProvider);
 
     return Scaffold(
@@ -349,7 +424,21 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(
+      length: 2,
+      vsync: this,
+      initialIndex: ref.read(historyTabProvider),
+    );
+    // Sync user swipes back into the provider so external updates
+    // (e.g. alias rename rebuild) don't reset the tab.
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging &&
+          ref.read(historyTabProvider) != _tabController.index) {
+        ref
+            .read(historyTabProvider.notifier)
+            .selectTab(_tabController.index);
+      }
+    });
   }
 
   Widget _buildList(List<FaceReadingReport> history, AnalysisSource source) {

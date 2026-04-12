@@ -90,6 +90,8 @@ flutter:
     - .env
     - assets/icons/
     - assets/images/
+    - assets/fonts/NotoSerifKR-Regular.ttf
+    - assets/fonts/NotoSerifKR-Bold.ttf
   fonts:
     - family: SongMyung
       fonts:

@@ -82,7 +82,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               value: ageGroup.labelKo,
               onTap: () => _showCupertinoPicker(
                 title: '나이 선택',
-                values: AgeGroup.values,
+                // 10대~70대 선택 가능 (eighties/nineties는 enum에 남기되 UI에서 제외)
+                values: AgeGroup.values
+                    .where((e) => e.index <= AgeGroup.seventies.index)
+                    .toList(),
                 current: ageGroup,
                 labelOf: (e) => e.labelKo,
                 onConfirm: (e) =>

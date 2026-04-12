@@ -62,17 +62,22 @@ FaceReadingReport analyzeFaceReading({
         adjustForAge(entry.key, entry.value, gender, isOver50);
   }
 
-  // Step 4: Z-adjusted → Metric Score (S)
+  // Step 4: Z-adjusted → Metric Score
+  // - Integer scores for rule triggering (rules use thresholds like ≥ 1)
+  // - Continuous scores for attribute computation (preserves variation)
   final metricScores = <String, int>{};
   final adjustedMetricScores = <String, int>{};
+  final continuousScores = <String, double>{};
   for (final info in metricInfoList) {
     metricScores[info.id] = convertToScore(zScores[info.id]!, info.type);
     adjustedMetricScores[info.id] =
         convertToScore(zAdjusted[info.id]!, info.type);
+    continuousScores[info.id] =
+        convertToContinuousScore(zAdjusted[info.id]!, info.type);
   }
 
-  // Step 5: Attribute base scores (gender-weighted)
-  final baseScores = computeBaseScores(adjustedMetricScores, gender);
+  // Step 5: Attribute base scores (continuous, gender-weighted)
+  final baseScores = computeBaseScoresContinuous(continuousScores, gender);
 
   // Step 6: Interaction rules
   final triggered = evaluateRules(
@@ -90,11 +95,8 @@ FaceReadingReport analyzeFaceReading({
     }
   }
 
-  // Step 7: Normalize (0~10)
-  final normalizedScores = <Attribute, double>{};
-  for (final entry in rawScores.entries) {
-    normalizedScores[entry.key] = normalizeScore(entry.value);
-  }
+  // Step 7: Rank-aware normalization → 5~10 with within-face spread
+  final normalizedScores = normalizeAllScores(rawScores, gender);
 
   // Step 8: Archetype classification
   final archetype = classifyArchetype(normalizedScores);
