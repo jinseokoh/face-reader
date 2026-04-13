@@ -134,24 +134,7 @@ class SettingsScreen extends ConsumerWidget {
                               fontSize: 16, fontWeight: FontWeight.w600)),
                     ),
                   ),
-                  Divider(color: AppTheme.border, height: 24),
-                  // Coin row (not logged in)
-                  Row(
-                    children: [
-                      Icon(Icons.paid_outlined,
-                          color: AppTheme.textSecondary, size: 28),
-                      const SizedBox(width: 12),
-                      Text('남은 코인',
-                          style: TextStyle(
-                              color: AppTheme.textPrimary, fontSize: 15)),
-                      const SizedBox(width: 8),
-                      Text('--',
-                          style: TextStyle(
-                              color: AppTheme.textPrimary,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600)),
-                    ],
-                  ),
+                  // 로그인 전엔 "남은 코인 --" 표시 안 함 (로그인 후에만 의미 있음)
                 ],
               ),
             ),
