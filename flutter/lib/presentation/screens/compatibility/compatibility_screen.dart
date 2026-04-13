@@ -27,8 +27,7 @@ class CompatibilityScreen extends ConsumerWidget {
         .toList();
     // Compat candidates: any non-myFace report (camera selfie or album photo).
     // Album-only assumption removed.
-    final compatCandidates =
-        history.where((r) => !r.isMyFace).toList();
+    final compatCandidates = history.where((r) => !r.isMyFace).toList();
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -42,6 +41,52 @@ class CompatibilityScreen extends ConsumerWidget {
         ],
       ),
       body: _buildBody(context, ref, myFace, compatCandidates),
+    );
+  }
+
+  Widget _buildBody(
+    BuildContext context,
+    WidgetRef ref,
+    List<FaceReadingReport> myFace,
+    List<FaceReadingReport> compatCandidates,
+  ) {
+    final history = ref.watch(historyProvider);
+    final cameraCount =
+        history.where((r) => r.source == AnalysisSource.camera).length;
+    final albumCount =
+        history.where((r) => r.source == AnalysisSource.album).length;
+    final hasMyFace = myFace.isNotEmpty;
+
+    // Only compute compat items once myFace is set — otherwise list is moot.
+    List<FaceReadingReport> compatItems = const [];
+    if (hasMyFace) {
+      final compatAlbums = ref.watch(compatAlbumsProvider);
+      compatItems = [
+        for (final r in history)
+          if (!r.isMyFace &&
+              (r.supabaseId?.isNotEmpty ?? false) &&
+              compatAlbums.contains(r.supabaseId))
+            r,
+      ];
+    }
+
+    if (!hasMyFace || compatItems.isEmpty) {
+      return _PrerequisiteStepper(
+        cameraCount: cameraCount,
+        albumCount: albumCount,
+        hasMyFace: hasMyFace,
+        hasCompatItems: compatItems.isNotEmpty,
+      );
+    }
+
+    final me = myFace.first;
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: compatItems.length,
+      itemBuilder: (context, index) {
+        final partner = compatItems[index];
+        return _CompatibilityItem(myReport: me, partnerReport: partner);
+      },
     );
   }
 
@@ -72,104 +117,6 @@ class CompatibilityScreen extends ConsumerWidget {
       },
     );
   }
-
-  Widget _buildBody(
-    BuildContext context,
-    WidgetRef ref,
-    List<FaceReadingReport> myFace,
-    List<FaceReadingReport> compatCandidates,
-  ) {
-    if (myFace.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.face, color: AppTheme.border, size: 64),
-              const SizedBox(height: 16),
-              Text(
-                '관상 탭에서 내 얼굴을 먼저 선택해야만 궁합을 볼 수 있습니다.',
-                style: TextStyle(
-                    color: AppTheme.textHint, fontSize: 15, height: 1.5),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // 페어링 후보가 history에 하나도 없으면 (내 얼굴만 있거나 history가 비어있음) 안내.
-    if (compatCandidates.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.photo_library, color: AppTheme.border, size: 64),
-              const SizedBox(height: 16),
-              Text(
-                '카메라로 다른 사람의 얼굴을 분석하거나 앨범에서 사진을 분석한 뒤, '
-                '관상 탭에서 그 항목을 길게 눌러 "궁합 보기"를 선택해야 궁합 평가를 볼 수 있습니다.',
-                style: TextStyle(
-                    color: AppTheme.textHint, fontSize: 15, height: 1.5),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    final me = myFace.first;
-    final history = ref.watch(historyProvider);
-    final compatAlbums = ref.watch(compatAlbumsProvider);
-
-    // Reports the user has explicitly opted into compat for.
-    // Includes both album items AND non-myFace camera selfies.
-    final compatItems = <FaceReadingReport>[];
-    for (final r in history) {
-      if (r.isMyFace) continue; // 자기 자신과는 페어링 불가
-      final uuid = r.supabaseId ?? '';
-      if (uuid.isEmpty || !compatAlbums.contains(uuid)) continue;
-      compatItems.add(r);
-    }
-
-    if (compatItems.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.favorite_border, color: AppTheme.border, size: 64),
-              const SizedBox(height: 16),
-              Text(
-                '관상 탭에서 인물을 길게 눌러 "궁합 보기"를 선택하면 이곳에 나타납니다.',
-                style: TextStyle(
-                    color: AppTheme.textHint, fontSize: 15, height: 1.5),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: compatItems.length,
-      itemBuilder: (context, index) {
-        final partner = compatItems[index];
-        return _CompatibilityItem(
-          myReport: me,
-          partnerReport: partner,
-        );
-      },
-    );
-  }
 }
 
 class _CompatibilityItem extends ConsumerWidget {
@@ -183,7 +130,8 @@ class _CompatibilityItem extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final partnerName = partnerReport.alias ??
+    final partnerName =
+        partnerReport.alias ??
         '${partnerReport.ageGroup.labelKo} ${partnerReport.gender.labelKo} · ${partnerReport.archetype.primaryLabel}';
 
     return Padding(
@@ -230,17 +178,23 @@ class _CompatibilityItem extends ConsumerWidget {
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Icon(Icons.favorite,
-                        color: Colors.red.shade300, size: 18),
+                    child: Icon(
+                      Icons.favorite,
+                      color: Colors.red.shade300,
+                      size: 18,
+                    ),
                   ),
                   _buildPartnerAvatar(),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(partnerName,
-                        style: TextStyle(
-                            color: AppTheme.textPrimary,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600)),
+                    child: Text(
+                      partnerName,
+                      style: TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                   Icon(Icons.chevron_right, color: AppTheme.textHint),
                 ],
@@ -267,25 +221,6 @@ class _CompatibilityItem extends ConsumerWidget {
         ? (partnerReport.gender == Gender.female ? Icons.face_3 : Icons.face_6)
         : Icons.photo_library;
     return Icon(fallbackIcon, color: AppTheme.textSecondary, size: 32);
-  }
-
-  void _viewCompatibility(BuildContext context) {
-    final result = evaluateCompatibility(myReport, partnerReport);
-    // UUID — always set for new reports (UUID-first architecture).
-    // Fallback to timestamp digits for legacy Hive entries without supabaseId.
-    final partnerUuid = partnerReport.supabaseId ??
-        partnerReport.timestamp.millisecondsSinceEpoch.toString();
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => CompatibilityReportPage(
-          result: result,
-          albumName: partnerReport.alias ??
-              '${partnerReport.ageGroup.labelKo} ${partnerReport.gender.labelKo} · ${partnerReport.archetype.primaryLabel}',
-          albumUuid: partnerUuid,
-          thumbnailPath: partnerReport.thumbnailPath,
-        ),
-      ),
-    );
   }
 
   void _delete(BuildContext context, WidgetRef ref) {
@@ -320,6 +255,258 @@ class _CompatibilityItem extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _viewCompatibility(BuildContext context) {
+    final result = evaluateCompatibility(myReport, partnerReport);
+    // UUID — always set for new reports (UUID-first architecture).
+    // Fallback to timestamp digits for legacy Hive entries without supabaseId.
+    final partnerUuid =
+        partnerReport.supabaseId ??
+        partnerReport.timestamp.millisecondsSinceEpoch.toString();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CompatibilityReportPage(
+          result: result,
+          albumName:
+              partnerReport.alias ??
+              '${partnerReport.ageGroup.labelKo} ${partnerReport.gender.labelKo} · ${partnerReport.archetype.primaryLabel}',
+          albumUuid: partnerUuid,
+          thumbnailPath: partnerReport.thumbnailPath,
+        ),
+      ),
+    );
+  }
+}
+
+class _PrerequisiteStepper extends StatelessWidget {
+  final int cameraCount;
+  final int albumCount;
+  final bool hasMyFace;
+  final bool hasCompatItems;
+
+  const _PrerequisiteStepper({
+    required this.cameraCount,
+    required this.albumCount,
+    required this.hasMyFace,
+    required this.hasCompatItems,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final step1Done = cameraCount >= 1;
+    final step2Done = albumCount >= 1;
+    final step3Done = hasMyFace;
+    final step4Done = hasCompatItems;
+
+    int currentStep = 1;
+    if (step1Done) currentStep = 2;
+    if (step1Done && step2Done) currentStep = 3;
+    if (step1Done && step2Done && step3Done) currentStep = 4;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '궁합을 보려면',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            '아래 네 단계를 순서대로 진행해 주세요.',
+            style: TextStyle(
+              fontSize: 14,
+              color: AppTheme.textSecondary,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 28),
+          _StepRow(
+            number: 1,
+            title: '카메라로 관상 분석',
+            hint: '홈 탭에서, 카메라 열기를 선택해 나의 관상을 분석해 봅니다.',
+            doneLabel: '$cameraCount개 완료',
+            done: step1Done,
+            isCurrent: currentStep == 1,
+            isLast: false,
+          ),
+          _StepRow(
+            number: 2,
+            title: '앨범 사진으로 관상 분석',
+            hint: '홈 탭에서, 앨범 열기를 선택해 상대방의 관상을 분석해 봅니다.',
+            doneLabel: '$albumCount개 완료',
+            done: step2Done,
+            isCurrent: currentStep == 2,
+            isLast: false,
+          ),
+          _StepRow(
+            number: 3,
+            title: '내 관상 지정',
+            hint: '관상 탭에서, 카메라 리스트 아이템을 길게 누르거나 스와이프하여 "내 관상"을 지정합니다.',
+            doneLabel: '지정 완료',
+            done: step3Done,
+            isCurrent: currentStep == 3,
+            isLast: false,
+          ),
+          _StepRow(
+            number: 4,
+            title: '궁합 보기 추가',
+            hint: '관상 탭의 상대방 항목을 길게 누르거나 스와이프하여 "궁합 보기"를 선택합니다.',
+            doneLabel: '목록에 추가됨',
+            done: step4Done,
+            isCurrent: currentStep == 4,
+            isLast: true,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StepRow extends StatelessWidget {
+  static const _doneColor = Color(0xFF4CAF50);
+
+  final int number;
+  final String title;
+  final String hint;
+  final String doneLabel;
+  final bool done;
+  final bool isCurrent;
+  final bool isLast;
+
+  const _StepRow({
+    required this.number,
+    required this.title,
+    required this.hint,
+    required this.doneLabel,
+    required this.done,
+    required this.isCurrent,
+    required this.isLast,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final indicatorColor = done
+        ? _doneColor
+        : (isCurrent ? AppTheme.textPrimary : AppTheme.border);
+    final titleColor = done || isCurrent
+        ? AppTheme.textPrimary
+        : AppTheme.textHint;
+    final hintColor = isCurrent && !done
+        ? AppTheme.textSecondary
+        : AppTheme.textHint;
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: done ? _doneColor : Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: indicatorColor, width: 2),
+                ),
+                alignment: Alignment.center,
+                child: done
+                    ? const Icon(Icons.check, color: Colors.white, size: 18)
+                    : Text(
+                        '$number',
+                        style: TextStyle(
+                          color: indicatorColor,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
+              ),
+              if (!isLast)
+                Expanded(
+                  child: Container(
+                    width: 2,
+                    color: done
+                        ? _doneColor.withValues(alpha: 0.35)
+                        : AppTheme.border,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: isLast ? 0 : 20),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: isCurrent && !done
+                      ? AppTheme.surface
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: titleColor,
+                            ),
+                          ),
+                        ),
+                        if (done)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _doneColor.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              doneLabel,
+                              style: const TextStyle(
+                                color: _doneColor,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      hint,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: hintColor,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

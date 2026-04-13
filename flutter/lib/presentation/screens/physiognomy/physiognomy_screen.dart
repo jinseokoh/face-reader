@@ -51,7 +51,7 @@ class _PhysiognomyItem extends ConsumerWidget {
     if (source == AnalysisSource.camera) {
       actions.add(_slidableAction(
         icon: Icons.face,
-        label: '내 얼굴',
+        label: '내 관상',
         bg: Colors.green.shade600,
         onPressed: () => _setMyFace(context, ref),
       ));
@@ -162,7 +162,7 @@ class _PhysiognomyItem extends ConsumerWidget {
                       bottomRight: Radius.circular(10),
                     ),
                   ),
-                  child: const Text('내 얼굴',
+                  child: const Text('내 관상',
                       style: TextStyle(
                           color: Colors.white,
                           fontSize: 11,
@@ -199,17 +199,6 @@ class _PhysiognomyItem extends ConsumerWidget {
     );
   }
 
-  void _delete(BuildContext context, WidgetRef ref) {
-    // For any item (camera or album) already opted into compat: warn that the
-    // compat row will also disappear.
-    final uuid = report.supabaseId;
-    if (uuid != null && ref.read(compatAlbumsProvider).contains(uuid)) {
-      _confirmDeleteWithCompatWarning(context, ref);
-      return;
-    }
-    _doDelete(context, ref);
-  }
-
   void _confirmDeleteWithCompatWarning(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
@@ -232,6 +221,17 @@ class _PhysiognomyItem extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  void _delete(BuildContext context, WidgetRef ref) {
+    // For any item (camera or album) already opted into compat: warn that the
+    // compat row will also disappear.
+    final uuid = report.supabaseId;
+    if (uuid != null && ref.read(compatAlbumsProvider).contains(uuid)) {
+      _confirmDeleteWithCompatWarning(context, ref);
+      return;
+    }
+    _doDelete(context, ref);
   }
 
   void _doDelete(BuildContext context, WidgetRef ref) {
@@ -290,7 +290,7 @@ class _PhysiognomyItem extends ConsumerWidget {
     ref.read(historyProvider.notifier).setMyFace(index);
     showTopSnackBar(
       Overlay.of(context),
-      CompactSnackBar.success(message: '내 얼굴로 설정되었습니다'),
+      CompactSnackBar.success(message: '내 관상을 지정했습니다'),
     );
   }
 
@@ -330,29 +330,6 @@ class _PhysiognomyItem extends ConsumerWidget {
     );
   }
 
-  Widget _slidableAction({
-    required IconData icon,
-    required String label,
-    required Color bg,
-    required VoidCallback onPressed,
-  }) {
-    return CustomSlidableAction(
-      onPressed: (_) => onPressed(),
-      backgroundColor: bg,
-      foregroundColor: Colors.white,
-      borderRadius: BorderRadius.circular(14),
-      padding: EdgeInsets.zero,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon),
-          const SizedBox(height: 4),
-          Text(label, style: const TextStyle(fontSize: 12)),
-        ],
-      ),
-    );
-  }
-
   void _showBottomMenu(BuildContext context, WidgetRef ref) {
     final hasMyFace = ref.read(historyProvider).any(
         (r) => r.source == AnalysisSource.camera && r.isMyFace);
@@ -370,7 +347,7 @@ class _PhysiognomyItem extends ConsumerWidget {
             if (source == AnalysisSource.camera)
               ListTile(
                 leading: Icon(Icons.face, color: Colors.green.shade600),
-                title: const Text('내 얼굴'),
+                title: const Text('내 관상'),
                 onTap: () {
                   Navigator.pop(ctx);
                   _setMyFace(context, ref);
@@ -395,6 +372,29 @@ class _PhysiognomyItem extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _slidableAction({
+    required IconData icon,
+    required String label,
+    required Color bg,
+    required VoidCallback onPressed,
+  }) {
+    return CustomSlidableAction(
+      onPressed: (_) => onPressed(),
+      backgroundColor: bg,
+      foregroundColor: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      padding: EdgeInsets.zero,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon),
+          const SizedBox(height: 4),
+          Text(label, style: const TextStyle(fontSize: 12)),
+        ],
       ),
     );
   }

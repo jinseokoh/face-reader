@@ -13,8 +13,10 @@ import 'package:face_reader/presentation/providers/history_provider.dart';
 import 'package:face_reader/presentation/providers/tab_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mediapipe_face_mesh/mediapipe_face_mesh.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
 import 'face_mesh_painter.dart';
@@ -39,6 +41,10 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
 
   bool _isCapturing = false;
   final List<List<FaceMeshLandmark>> _capturedFrames = [];
+  // Still image captured via takePicture() at the moment the user taps the
+  // analyze button. Used to produce a 128px WebP thumbnail attached to the
+  // FaceReadingReport — same pipeline as the album flow.
+  Uint8List? _captureStillBytes;
 
   // Actual camera frame dimensions (may differ from previewSize on iOS)
   Size? _frameSize;
@@ -310,7 +316,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
     return null;
   }
 
-  void _finishCapture() {
+  Future<void> _finishCapture() async {
     _isCapturing = false;
     if (_capturedFrames.isEmpty) return;
 
@@ -332,22 +338,45 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
     );
     _capturedFrames.clear();
 
-    // Generate UUID upfront — used by both Hive and Supabase
-    report.supabaseId = const Uuid().v4();
+    // Generate UUID upfront — used by both Hive and Supabase and also as the
+    // thumbnail filename so they stay in lockstep.
+    final id = const Uuid().v4();
+    report.supabaseId = id;
 
-    if (mounted) {
-      setState(() => _isCapturing = false);
-      ref.read(historyProvider.notifier).add(report);
-      // 카메라로 분석한 직후엔 관상 탭 → 카메라 sub-tab을 기본으로 보여준다.
-      ref.read(historyTabProvider.notifier).selectTab(0);
-      ref.read(selectedTabProvider.notifier).selectTab(1);
-      Navigator.of(context).pop();
-      // Save to Supabase in background using the pre-assigned UUID
-      SupabaseService().saveMetrics(report).catchError((e) {
-        debugPrint('[Supabase] save error: $e');
-        return '';
-      });
+    // Compress the still image captured in _startCapture() to a 128px WebP
+    // thumbnail, same pipeline used by the album flow.
+    final stillBytes = _captureStillBytes;
+    _captureStillBytes = null;
+    if (stillBytes != null) {
+      try {
+        final compressed = await FlutterImageCompress.compressWithList(
+          stillBytes,
+          minWidth: 128,
+          minHeight: 128,
+          quality: 80,
+          format: CompressFormat.webp,
+        );
+        final dir = await getApplicationDocumentsDirectory();
+        final file = File('${dir.path}/$id.webp');
+        await file.writeAsBytes(compressed);
+        report.thumbnailPath = file.path;
+      } catch (e) {
+        debugPrint('[Thumbnail] save error: $e');
+      }
     }
+
+    if (!mounted) return;
+    setState(() => _isCapturing = false);
+    ref.read(historyProvider.notifier).add(report);
+    // 카메라로 분석한 직후엔 관상 탭 → 카메라 sub-tab을 기본으로 보여준다.
+    ref.read(historyTabProvider.notifier).selectTab(0);
+    ref.read(selectedTabProvider.notifier).selectTab(1);
+    Navigator.of(context).pop();
+    // Save to Supabase in background using the pre-assigned UUID
+    SupabaseService().saveMetrics(report).catchError((e) {
+      debugPrint('[Supabase] save error: $e');
+      return '';
+    });
   }
 
   Future<void> _initialize() async {
@@ -529,8 +558,35 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
     });
   }
 
-  void _startCapture() {
+  Future<void> _startCapture() async {
     if (_meshResult == null) return;
+    final controller = _cameraController;
+    if (controller == null || !controller.value.isInitialized) return;
+
+    // Take a still picture BEFORE starting frame capture. Android's camera
+    // plugin disallows takePicture() while an image stream is active, so we
+    // stop the stream, capture, then restart it. The resulting bytes feed the
+    // thumbnail pipeline in _finishCapture().
+    _captureStillBytes = null;
+    try {
+      if (controller.value.isStreamingImages) {
+        await controller.stopImageStream();
+      }
+      final XFile shot = await controller.takePicture();
+      _captureStillBytes = await shot.readAsBytes();
+    } catch (e) {
+      debugPrint('[Camera] takePicture failed: $e');
+    } finally {
+      try {
+        if (!controller.value.isStreamingImages) {
+          await controller.startImageStream(_onCameraFrame);
+        }
+      } catch (e) {
+        debugPrint('[Camera] restart stream failed: $e');
+      }
+    }
+
+    if (!mounted) return;
     setState(() {
       _isCapturing = true;
       _capturedFrames.clear();
