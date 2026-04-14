@@ -59,6 +59,11 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
   YawClass _currentYawClass = YawClass.frontal;
   double _currentYaw = 0;
 
+  // Transient phase-title overlay ("정면 사진" / "측면 사진") — flips in and
+  // fades out as a context cue when the capture phase changes.
+  String? _phaseTitle;
+  int _phaseTitleToken = 0;
+
   // Actual camera frame dimensions (may differ from previewSize on iOS)
   Size? _frameSize;
 
@@ -124,6 +129,22 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initialize();
+    // Show the "정면 사진" title as a context cue once the page settles.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _showPhaseTitle('정면 사진');
+    });
+  }
+
+  /// Flash a full-screen phase-title overlay (e.g. "정면 사진" / "측면 사진")
+  /// that flips in, holds briefly, then fades out. Non-blocking — multiple
+  /// calls supersede each other via a token.
+  void _showPhaseTitle(String title) {
+    final token = ++_phaseTitleToken;
+    setState(() => _phaseTitle = title);
+    Future.delayed(const Duration(milliseconds: 1800), () {
+      if (!mounted || _phaseTitleToken != token) return;
+      setState(() => _phaseTitle = null);
+    });
   }
 
   Widget _buildBody() {
@@ -194,16 +215,63 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             color: Colors.black.withValues(alpha: 0.6),
             child: Text(
-              switch (_phase) {
-                _CapturePhase.frontal =>
-                  '폰을 벽면에 대고 얼굴 중심이 녹색 좌표계로 변할때까지 움직이세요. 왜곡을 줄여야 정확해집니다.',
-                _CapturePhase.frontalDone =>
-                  '✓ 정면 촬영 완료! 측면(3/4) 사진을 더 찍으면 매부리코·턱 윤곽·입술 돌출 등 프로파일 메트릭이 추가됩니다.',
-                _CapturePhase.lateral =>
-                  '${_lateralBannerText()}\n[yaw=${_currentYaw.toStringAsFixed(2)} ${_currentYawClass.name}]',
-              },
+              _phase == _CapturePhase.frontal
+                  ? '폰을 벽면에 대고 얼굴 중심이 녹색 좌표계로 변할때까지 움직이세요. 왜곡을 줄여야 정확해집니다.'
+                  : '${_lateralBannerText()}\n[yaw=${_currentYaw.toStringAsFixed(2)} ${_currentYawClass.name}]',
               style: const TextStyle(color: Colors.white, fontSize: 16, height: 1.4),
               textAlign: TextAlign.left,
+            ),
+          ),
+        ),
+        // Transient phase-title overlay (fires at page open and at
+        // frontal→lateral transition) — card-flip animation.
+        Positioned.fill(
+          child: IgnorePointer(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 500),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, anim) {
+                final rotate = Tween<double>(begin: 1.2, end: 0.0)
+                    .chain(CurveTween(curve: Curves.easeOutCubic))
+                    .animate(anim);
+                return FadeTransition(
+                  opacity: anim,
+                  child: AnimatedBuilder(
+                    animation: rotate,
+                    builder: (context, c) => Transform(
+                      alignment: Alignment.center,
+                      transform: Matrix4.identity()
+                        ..setEntry(3, 2, 0.001)
+                        ..rotateY(rotate.value),
+                      child: c,
+                    ),
+                    child: child,
+                  ),
+                );
+              },
+              child: _phaseTitle == null
+                  ? const SizedBox.shrink(key: ValueKey('none'))
+                  : Center(
+                      key: ValueKey(_phaseTitle),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 32, vertical: 18),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.75),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          _phaseTitle!,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 32,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 4,
+                          ),
+                        ),
+                      ),
+                    ),
             ),
           ),
         ),
@@ -213,56 +281,6 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
 
   Widget _buildCaptureControls() {
     final bottom = MediaQuery.of(context).padding.bottom + 24;
-
-    // Stage 1.5 — frontal done, pause for explicit user decision.
-    if (_phase == _CapturePhase.frontalDone) {
-      return Positioned(
-        left: 20,
-        right: 20,
-        bottom: bottom,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton.icon(
-                onPressed: _proceedToLateral,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white.withValues(alpha: 0.95),
-                  foregroundColor: const Color(0xFF333333),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                icon: const Icon(Icons.rotate_right, size: 20),
-                label: const Text('측면 촬영 시작하기',
-                    style: TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.w600)),
-              ),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              height: 44,
-              child: TextButton(
-                onPressed: _skipLateral,
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  backgroundColor: Colors.black.withValues(alpha: 0.5),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text('정면만으로 분석하기',
-                    style: TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w600)),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
 
     if (_phase == _CapturePhase.frontal) {
       // Stage 1 — original single-button frontal capture.
@@ -479,18 +497,18 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
     final averaged = averageLandmarks(_capturedFrames);
     final lastResult = _meshResult;
 
-    // Phase 1: Frontal capture done — transition to a pause/confirmation
-    // step so the user gets explicit feedback that the frontal shot succeeded
-    // before being asked to rotate their head for the lateral shot.
+    // Phase 1: Frontal capture done — transition directly to lateral with an
+    // animated "측면 사진" title overlay giving the user a clear context cue.
     if (_phase == _CapturePhase.frontal) {
       if (!mounted) return;
       setState(() {
         _frontalLandmarks = averaged;
         _frontalImageWidth = lastResult?.imageWidth;
         _frontalImageHeight = lastResult?.imageHeight;
-        _phase = _CapturePhase.frontalDone;
+        _phase = _CapturePhase.lateral;
         _capturedFrames.clear();
       });
+      _showPhaseTitle('측면 사진');
       return;
     }
 
@@ -505,13 +523,6 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
     await _runAnalysis(lateralLandmarks: null);
   }
 
-  /// Transition from frontalDone → lateral phase (user explicitly elects to
-  /// continue with the second capture).
-  void _proceedToLateral() {
-    setState(() {
-      _phase = _CapturePhase.lateral;
-    });
-  }
 
   /// Final analysis + persistence step. Uses [_frontalLandmarks] as the primary
   /// input and optionally adds [lateralLandmarks] when available.
@@ -823,4 +834,4 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
   }
 }
 
-enum _CapturePhase { frontal, frontalDone, lateral }
+enum _CapturePhase { frontal, lateral }
