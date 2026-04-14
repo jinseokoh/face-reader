@@ -6,19 +6,26 @@ import 'package:face_reader/core/theme.dart';
 import 'package:face_reader/data/enums/age_group.dart';
 import 'package:face_reader/data/enums/ethnicity.dart';
 import 'package:face_reader/data/enums/gender.dart';
+import 'package:face_reader/data/services/supabase_service.dart';
+import 'package:face_reader/domain/models/face_analysis.dart';
+import 'package:face_reader/domain/models/face_reading_report.dart';
+import 'package:face_reader/domain/services/face_metrics_lateral.dart';
 import 'package:face_reader/presentation/providers/age_group_provider.dart';
+import 'package:face_reader/presentation/providers/auth_provider.dart';
 import 'package:face_reader/presentation/providers/ethnicity_provider.dart';
 import 'package:face_reader/presentation/providers/gender_provider.dart';
+import 'package:face_reader/presentation/providers/history_provider.dart';
+import 'package:face_reader/presentation/providers/tab_provider.dart';
+import 'package:face_reader/presentation/widgets/login_bottom_sheet.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mediapipe_face_mesh/mediapipe_face_mesh.dart';
-
-import 'package:face_reader/domain/services/face_metrics_lateral.dart';
-import 'package:face_reader/presentation/providers/auth_provider.dart';
-import 'package:face_reader/presentation/widgets/login_bottom_sheet.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:uuid/uuid.dart';
 
 import 'album_preview_page.dart';
 import 'face_mesh_page.dart';
@@ -30,8 +37,26 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
+/// One processed album image — bundle of bytes + landmarks + yaw classification.
+class _AlbumPhoto {
+  final Uint8List pngBytes;
+  final FaceMeshResult meshResult;
+  final int width;
+  final int height;
+  final double yaw;
+
+  _AlbumPhoto({
+    required this.pngBytes,
+    required this.meshResult,
+    required this.width,
+    required this.height,
+    required this.yaw,
+  });
+}
+
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _isProcessing = false;
+  OverlayEntry? _topMessageEntry;
 
   @override
   Widget build(BuildContext context) {
@@ -65,7 +90,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             // Ethnicity selector
             _buildPickerRow(
               label: '인종',
-              value: ethnicity.labelKo,
+              value: ethnicity?.labelKo ?? '선택하세요',
+              isPlaceholder: ethnicity == null,
               onTap: () => _showCupertinoPicker(
                 title: '인종 선택',
                 values: Ethnicity.values,
@@ -80,7 +106,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             // Age group selector
             _buildPickerRow(
               label: '나이',
-              value: ageGroup.labelKo,
+              value: ageGroup?.labelKo ?? '선택하세요',
+              isPlaceholder: ageGroup == null,
               onTap: () => _showCupertinoPicker(
                 title: '나이 선택',
                 // 10대~70대 선택 가능 (eighties/nineties는 enum에 남기되 UI에서 제외)
@@ -98,7 +125,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             // Gender selector
             _buildPickerRow(
               label: '성별',
-              value: gender.labelKo,
+              value: gender?.labelKo ?? '선택하세요',
+              isPlaceholder: gender == null,
               onTap: () => _showCupertinoPicker(
                 title: '성별 선택',
                 values: Gender.values,
@@ -113,11 +141,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             // Camera & Album buttons
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Row(
+              child: Builder(builder: (context) {
+                final ready = ethnicity != null &&
+                    ageGroup != null &&
+                    gender != null;
+                return Row(
                 children: [
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: _openCamera,
+                      onPressed: ready ? _openCamera : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
                         foregroundColor: AppTheme.textPrimary,
@@ -136,7 +168,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: _isProcessing ? null : _openAlbum,
+                      onPressed: (_isProcessing || !ready) ? null : _openAlbum,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
                         foregroundColor: AppTheme.textPrimary,
@@ -164,7 +196,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                   ),
                 ],
-              ),
+              );
+              }),
             ),
           ],
         ),
@@ -172,10 +205,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  @override
+  void dispose() {
+    _dismissTopMessage();
+    super.dispose();
+  }
+
   Widget _buildPickerRow({
     required String label,
     required String value,
     required VoidCallback onTap,
+    bool isPlaceholder = false,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -198,7 +238,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 children: [
                   Text(value,
                       style: TextStyle(
-                          color: AppTheme.textPrimary,
+                          color: isPlaceholder
+                              ? AppTheme.textHint
+                              : AppTheme.textPrimary,
                           fontSize: 15,
                           fontWeight: FontWeight.w600)),
                   const SizedBox(width: 6),
@@ -213,6 +255,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  void _dismissTopMessage() {
+    _topMessageEntry?.remove();
+    _topMessageEntry = null;
+  }
+
   Future<void> _openAlbum() async {
     if (!ref.read(authProvider.notifier).isLoggedIn) {
       final loggedIn = await showLoginBottomSheet(context, ref);
@@ -220,62 +267,82 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
 
     final picker = ImagePicker();
-    // Up to 2 photos: ideally one frontal + one 3/4-yaw lateral. Either order
-    // is OK — we classify by yaw after processing. A single photo also works
-    // (frontal-only mode, lateral metrics will be null).
-    final picked = await picker.pickMultiImage(
+
+    // Step 1: frontal photo
+    _showTopMessage('정면 사진을 선택하세요.');
+    final frontalPick = await picker.pickImage(
+      source: ImageSource.gallery,
       maxWidth: 1024,
       maxHeight: 1024,
-      limit: 2,
     );
-    if (picked.isEmpty) return;
+    if (frontalPick == null) return;
 
     setState(() => _isProcessing = true);
-
+    _AlbumPhoto frontal;
     try {
-      final processed = <_AlbumPhoto>[];
-      for (final p in picked.take(2)) {
-        final photo = await _processAlbumPhoto(p.path);
-        processed.add(photo);
-      }
-
-      // Classify by yaw: lower |yaw| → frontal, higher → lateral.
-      _AlbumPhoto frontal;
-      _AlbumPhoto? lateral;
-      if (processed.length == 1) {
-        frontal = processed.first;
-        lateral = null;
-      } else {
-        processed.sort((a, b) => a.yaw.abs().compareTo(b.yaw.abs()));
-        frontal = processed[0];
-        lateral = processed[1];
-      }
-
-      if (!mounted) return;
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        useSafeArea: true,
-        backgroundColor: Colors.transparent,
-        builder: (_) => AlbumPreviewPage(
-          imageBytes: frontal.pngBytes,
-          meshResult: frontal.meshResult,
-          imageWidth: frontal.width,
-          imageHeight: frontal.height,
-          lateralLandmarks: lateral?.meshResult.landmarks,
-        ),
-      );
+      frontal = await _processAlbumPhoto(frontalPick.path);
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString()),
-          backgroundColor: Colors.red.shade700,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _isProcessing = false);
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        _showError(e.toString());
+      }
+      return;
     }
+    if (!mounted) return;
+    setState(() => _isProcessing = false);
+
+    // Preview must not show the top snackbar.
+    _dismissTopMessage();
+    // Show frontal preview; user taps "정면 분석" to continue to lateral step.
+    final frontalConfirmed = await _showPreview(
+      phase: AlbumPreviewPhase.frontal,
+      photo: frontal,
+    );
+    if (!mounted || frontalConfirmed != true) return;
+
+    // Step 2: lateral photo
+    _showTopMessage('두눈은 보이지만, 한쪽 귀가 살짝 안보이는 측면(3/4)사진을 올려주세요.');
+    final lateralPick = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024,
+      maxHeight: 1024,
+    );
+    if (lateralPick == null) return;
+
+    setState(() => _isProcessing = true);
+    _AlbumPhoto lateral;
+    try {
+      lateral = await _processAlbumPhoto(lateralPick.path);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        _showError(e.toString());
+      }
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _isProcessing = false);
+
+    // Preview must not show the top snackbar.
+    _dismissTopMessage();
+    final lateralConfirmed = await _showPreview(
+      phase: AlbumPreviewPhase.lateral,
+      photo: lateral,
+    );
+    if (!mounted || lateralConfirmed != true) return;
+
+    _dismissTopMessage();
+    await _runAnalysis(frontal: frontal, lateral: lateral);
+  }
+
+  void _openCamera() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const FaceMeshPage(),
+    );
   }
 
   /// Run the full ML-Kit-bbox + MediaPipe pipeline on a single image file and
@@ -365,24 +432,61 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  void _openCamera() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => const FaceMeshPage(),
+  Future<void> _runAnalysis({
+    required _AlbumPhoto frontal,
+    required _AlbumPhoto lateral,
+  }) async {
+    final ethnicity = ref.read(ethnicityProvider)!;
+    final gender = ref.read(genderProvider)!;
+    final ageGroup = ref.read(ageGroupProvider)!;
+
+    final report = analyzeFaceReading(
+      landmarks: frontal.meshResult.landmarks,
+      ethnicity: ethnicity,
+      gender: gender,
+      ageGroup: ageGroup,
+      source: AnalysisSource.album,
+      imageWidth: frontal.width,
+      imageHeight: frontal.height,
+      lateralLandmarks: lateral.meshResult.landmarks,
     );
+
+    final id = const Uuid().v4();
+    report.supabaseId = id;
+
+    try {
+      final compressed = await FlutterImageCompress.compressWithList(
+        frontal.pngBytes,
+        minWidth: 128,
+        minHeight: 128,
+        quality: 80,
+        format: CompressFormat.webp,
+      );
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/$id.webp');
+      await file.writeAsBytes(compressed);
+      report.thumbnailPath = file.path;
+    } catch (e) {
+      debugPrint('[Thumbnail] save error: $e');
+    }
+
+    ref.read(historyProvider.notifier).add(report);
+    ref.read(historyTabProvider.notifier).selectTab(1);
+    ref.read(selectedTabProvider.notifier).selectTab(1);
+    SupabaseService().saveMetrics(report).catchError((e) {
+      debugPrint('[Supabase] save error: $e');
+      return '';
+    });
   }
 
   void _showCupertinoPicker<T>({
     required String title,
     required List<T> values,
-    required T current,
+    required T? current,
     required String Function(T) labelOf,
     required void Function(T) onConfirm,
   }) {
-    var tempIndex = values.indexOf(current);
+    var tempIndex = current == null ? 0 : values.indexOf(current);
 
     showCupertinoModalPopup(
       context: context,
@@ -428,7 +532,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             Expanded(
               child: CupertinoPicker(
                 scrollController: FixedExtentScrollController(
-                    initialItem: values.indexOf(current)),
+                    initialItem: current == null ? 0 : values.indexOf(current)),
                 itemExtent: 40,
                 onSelectedItemChanged: (index) => tempIndex = index,
                 children: values
@@ -445,21 +549,58 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
   }
-}
 
-/// One processed album image — bundle of bytes + landmarks + yaw classification.
-class _AlbumPhoto {
-  final Uint8List pngBytes;
-  final FaceMeshResult meshResult;
-  final int width;
-  final int height;
-  final double yaw;
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: Colors.red.shade700),
+    );
+  }
 
-  _AlbumPhoto({
-    required this.pngBytes,
-    required this.meshResult,
-    required this.width,
-    required this.height,
-    required this.yaw,
-  });
+  Future<bool?> _showPreview({
+    required AlbumPreviewPhase phase,
+    required _AlbumPhoto photo,
+  }) {
+    return showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => AlbumPreviewPage(
+        imageBytes: photo.pngBytes,
+        meshResult: photo.meshResult,
+        imageWidth: photo.width,
+        imageHeight: photo.height,
+        phase: phase,
+        onConfirm: () => Navigator.of(ctx).pop(true),
+      ),
+    );
+  }
+
+  void _showTopMessage(String msg) {
+    _dismissTopMessage();
+    final mq = MediaQuery.of(context);
+    final entry = OverlayEntry(
+      builder: (ctx) => Positioned(
+        top: mq.padding.top + 12,
+        left: 16,
+        right: 16,
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: AppTheme.textPrimary,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              msg,
+              style: const TextStyle(color: Colors.white, fontSize: 15),
+            ),
+          ),
+        ),
+      ),
+    );
+    Overlay.of(context).insert(entry);
+    _topMessageEntry = entry;
+  }
 }

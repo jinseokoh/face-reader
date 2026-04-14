@@ -249,9 +249,11 @@ class _PhysiognomyItem extends ConsumerWidget {
   }
 
   String _faceShape() {
-    final faceAspect = report.metrics['faceAspectRatio']!;
-    if (faceAspect.zScore > 1.0) return '세로로 긴 얼굴형';
-    if (faceAspect.zScore < -1.0) return '가로로 넓은 얼굴형';
+    final z = report.metrics['faceAspectRatio']!.zScore;
+    if (z > 1.0) return '세로로 긴 얼굴형';
+    if (z > 0.5) return '약간 세로로 긴 얼굴형';
+    if (z < -1.0) return '가로로 넓은 얼굴형';
+    if (z < -0.5) return '약간 가로로 넓은 얼굴형';
     return '표준 얼굴형';
   }
 

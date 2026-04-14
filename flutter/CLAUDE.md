@@ -14,13 +14,33 @@ Flutter app that streams camera frames through MediaPipe Face Mesh (468 landmark
 ### File Structure
 ```
 lib/
-├── main.dart                 # App entry point
-├── face_mesh_page.dart       # Camera view + mesh overlay + controls
-├── face_mesh_painter.dart    # CustomPainter for 468 landmarks + triangles
-├── face_metrics.dart         # Landmark index constants + 12 ratio computations
-├── face_reference_data.dart  # Population averages by ethnicity (6 groups)
-├── face_analysis.dart        # Z-score analysis + multi-frame averaging
-└── report_page.dart          # Analysis report UI with save/copy
+├── main.dart
+├── core/                                   # Theme, Hive setup, shared utils
+├── data/
+│   ├── constants/face_reference_data.dart  # MetricInfo + population means/SDs (6 ethnicities × 2 genders)
+│   ├── enums/                              # Gender, AgeGroup, Ethnicity, MetricType
+│   └── services/supabase_service.dart
+├── domain/
+│   ├── models/
+│   │   ├── face_analysis.dart              # analyzeFaceReading() — Z-score pipeline
+│   │   └── face_reading_report.dart
+│   └── services/
+│       ├── face_metrics.dart               # 17 frontal ratio/angle/shape getters
+│       ├── face_metrics_lateral.dart       # 8 lateral 3/4-view metrics + yaw classify
+│       ├── attribute_engine.dart           # 10 attribute scores + gender rules
+│       ├── report_assembler.dart           # Deterministic reading block composer
+│       ├── age_adjustment.dart             # 50+ adjustments
+│       └── compatibility_engine.dart
+└── presentation/
+    ├── providers/                          # Riverpod: gender, ageGroup, ethnicity (Hive-persisted), history, auth, tab
+    ├── screens/
+    │   └── home/
+    │       ├── home_screen.dart            # Demographic pickers + camera/album entry
+    │       ├── face_mesh_page.dart         # Camera view + mesh overlay + 2-phase capture
+    │       ├── face_mesh_painter.dart
+    │       ├── album_preview_page.dart     # Frontal/lateral preview with confirm callback
+    │       └── report_page.dart            # Analysis report UI + PDF export
+    └── widgets/
 ```
 
 ### Frame Processing Pipeline
@@ -44,29 +64,53 @@ CameraController.startImageStream()
 
 ### Overlay Color System
 - **Red** (default): Normal tracking
-- **Green**: Accurate tracking — all 3 criteria met:
+- **Green**: Accurate tracking — all 4 criteria met:
   1. Confidence score >= 0.85
   2. Frame-to-frame stability (avg landmark movement < 0.005)
   3. Face width > 25% of frame
+  4. Yaw class matches current capture phase (frontal phase → `YawClass.frontal`; lateral phase → `YawClass.threeQuarter`)
 
 ### Facial Analysis
 
-#### 12 Metrics
+#### Frontal Metrics (17)
 
-| # | Metric | Formula | Description |
-|---|--------|---------|-------------|
-| 1 | 얼굴 종횡비 | face_height / face_width | 세로/가로 비율 |
-| 2 | 상안면 비율 | dist(10,168) / face_height | 이마 비율 (forehead~nasion) |
-| 3 | 중안면 비율 | dist(168,94) / face_height | 코 영역 (nasion~subnasale) |
-| 4 | 하안면 비율 | dist(94,152) / face_height | 턱 영역 (subnasale~chin) |
-| 5 | 눈 사이 거리 | dist(133,362) / face_width | 내안각 거리 / 얼굴 폭 |
-| 6 | 눈 길이 | avg(EFL) / face_width | 눈 가로 길이 / 얼굴 폭 |
-| 7 | 눈 크기 | avg(eye_h) / avg(eye_w) | 눈 세로/가로 비율 |
-| 8 | 코 너비 | dist(98,327) / dist(133,362) | 콧볼 폭 / 내안각 거리 |
-| 9 | 코 길이 | dist(168,94) / face_height | 코 길이 / 얼굴 높이 |
-| 10 | 입 너비 | dist(61,291) / face_width | 입 폭 / 얼굴 폭 |
-| 11 | 입술 두께 | dist(0,17) / face_height | 입술 높이 / 얼굴 높이 |
-| 12 | 입꼬리 각도 | atan2(corner_y - center_y, dx) | 양수=올라감, 음수=내려감 (degrees) |
+| # | id | 한글 | Formula | Category |
+|---|----|------|---------|----------|
+| 1 | faceAspectRatio | 얼굴 종횡비 | face_height / face_width | face |
+| 2 | faceTaperRatio | 얼굴 테이퍼 (황금비) | jaw_width / cheekbone_width | face |
+| 3 | upperFaceRatio | 상안면 비율 | dist(10,168) / face_height | face |
+| 4 | midFaceRatio | 중안면 비율 | dist(168,94) / face_height | face |
+| 5 | lowerFaceRatio | 하안면 비율 | dist(94,152) / face_height | face |
+| 6 | gonialAngle | 하악각 | jaw angle at gonion (degrees) | face |
+| 7 | intercanthalRatio | 눈 사이 거리 | dist(133,362) / face_width | eyes |
+| 8 | eyeFissureRatio | 눈 길이 | avg(EFL) / face_width | eyes |
+| 9 | eyeCanthalTilt | 눈꼬리 각도 | atan2 per eye, averaged (degrees) | eyes |
+| 10 | eyebrowThickness | 눈썹 두께 | eyebrow arc thickness / face_height | eyes |
+| 11 | browEyeDistance | 눈썹-눈 거리 | dist(brow,eye_top) / face_height | eyes |
+| 12 | nasalWidthRatio | 코 너비 | dist(98,327) / dist(133,362) | nose |
+| 13 | nasalHeightRatio | 코 길이 | dist(168,94) / face_height | nose |
+| 14 | mouthWidthRatio | 입 너비 | dist(61,291) / face_width | mouth |
+| 15 | mouthCornerAngle | 입꼬리 각도 | atan2(corner_y - center_y, dx) (degrees) | mouth |
+| 16 | lipFullnessRatio | 입술 두께 | dist(0,17) / face_height | mouth |
+| 17 | philtrumLength | 인중 길이 | dist(subnasale,lip_top) / face_height | mouth |
+
+#### Lateral (3/4-view) Metrics (8)
+Computed only when a second ~30-60° yaw photo is captured. Reference values
+are East Asian (Korean/Han Chinese); other ethnicities currently reuse the
+same baselines (`_eastAsianLateral`).
+
+| id | 한글 | Description |
+|----|------|-------------|
+| nasofrontalAngle | 비전두각 | 이마-코 경계 각도 |
+| nasolabialAngle | 비순각 | 코끝-인중 각도 |
+| facialConvexity | 안면 돌출각 | G-Sn-Pog 각도 |
+| upperLipEline | 상순 E-line 거리 | 상순 돌출 (faceHeight 정규화) |
+| lowerLipEline | 하순 E-line 거리 | 하순 돌출 (faceHeight 정규화) |
+| mentolabialAngle | 순이각 | 아래입술-턱 각도 |
+| noseTipProjection | 코끝 돌출 | Goode-style ratio |
+| dorsalConvexity | 코 등선 돌출도 | 매부리 감지용 곡률 |
+
+Plus binary flags: `aquilineNose`, `snubNose`.
 
 #### Reference Data Sources
 
@@ -110,36 +154,46 @@ CameraController.startImageStream()
 - 개별 인덱스 매핑은 커뮤니티 참고 (GitHub Issue #1615)
 - URL: https://github.com/google-ai-edge/mediapipe/blob/master/mediapipe/python/solutions/face_mesh_connections.py
 
-#### faceAspectRatio 보정 (MediaPipe Landmark 10 한계)
+#### MediaPipe Calibration (2026-04-12)
 
-MediaPipe Face Mesh의 landmark 10(foreheadTop)은 실제 헤어라인/이마 상단까지 도달하지 않고 이마 중상부에 위치한다.
-따라서 Farkas 인체계측학 기준(헤어라인~턱)으로 산출된 faceAspectRatio 레퍼런스 값을 그대로 사용하면,
-faceHeight가 체계적으로 과소측정되어 모든 얼굴이 "가로로 넓은 얼굴형"으로 오판된다.
+Farkas/NIOSH 등 고전 인체계측학 데이터는 **caliper 실측값 기반**이라 MediaPipe Face Mesh
+랜드마크 분포와 체계적으로 차이가 난다. 원본 Farkas 값을 그대로 쓰면 실제 한국 성인 얼굴에서
+z=±6~7(클램프 ±3.5)이 나와 속성 점수가 포화되었음.
 
-**보정 내용 (2026-04-10)**:
-- 보정 계수: **0.85** (landmark 10이 실제 이마 상단 대비 약 15% 낮은 위치에 있음을 반영)
-- 적용 대상: 전체 6개 인종 × 2개 성별 = 12개 faceAspectRatio 레퍼런스 (mean × 0.85, SD × 0.85)
-- 예시: 동아시아 남성 1.40±0.08 → **1.19±0.07**
-- 보정 계수 0.85는 추정치이며, 실측 데이터에 기반한 정밀 보정이 필요할 수 있음
+**2026-04-12 재보정**: 동아시아(기본) reference mean/SD를 **MediaPipe 실제 측정 분포**에 맞춰
+경험적으로 재산출. SD는 일반 얼굴이 z ∈ [-2, +2] 구간에 들어오도록 보수적으로 넓힘.
 
-#### East Asian Reference Values (Default)
+대표 조정 예:
+- `faceAspectRatio` Farkas 1.40 → 측정값 기준 남 **1.32**, 여 **1.29** (SD 0.07)
+- `nasalWidthRatio` Farkas ~1.05 → 측정값 기준 남 **0.93**, 여 **0.89** (SD 0.10)
+  - MediaPipe 98/327이 실제 alar 최외곽이 아닌 콧구멍 옆 피부점이라 분자가 작게 잡히고,
+    133/362는 epicanthal fold 영향으로 내안각이 안쪽으로 당겨져 분모는 더 작게 잡힘 → 실측 비율이 Farkas 기준보다 낮아짐.
 
-비율 기준값은 위 문헌의 mm 측정값을 얼굴 폭/높이 대비 비율로 변환하여 산출 (faceAspectRatio는 MediaPipe 보정 적용):
+상세 값은 `lib/data/constants/face_reference_data.dart` 참조 (진본).
 
-| Metric | Mean | SD | Derivation |
-|--------|------|----|------------|
-| faceAspectRatio | 1.19 | 0.07 | Farkas 기준 1.40 × 0.85 보정 (MediaPipe landmark 10 한계) |
-| upperFaceRatio | 0.33 | 0.03 | Neoclassical 3등분 기준 |
-| midFaceRatio | 0.33 | 0.02 | Neoclassical 3등분 기준 |
-| lowerFaceRatio | 0.34 | 0.03 | Neoclassical 3등분 기준 |
-| intercanthalRatio | 0.27 | 0.02 | PMC9029890: ICD 36.4mm / bizygomatic ~135mm |
-| eyeFissureRatio | 0.24 | 0.02 | Farkas: EFL ~32mm / bizygomatic ~135mm |
-| eyeOpenness | 0.35 | 0.05 | Farkas: 동아시아 눈높이/눈길이 비 |
-| nasalWidthRatio | 1.05 | 0.10 | Farkas: 콧볼 폭 ~38mm / ICD ~36mm |
-| nasalHeightRatio | 0.30 | 0.02 | Farkas: 코 길이 / 얼굴 높이 |
-| mouthWidthRatio | 0.38 | 0.03 | Farkas: 입 폭 / 얼굴 폭 |
-| lipFullnessRatio | 0.10 | 0.02 | Farkas: 입술 높이 / 얼굴 높이 |
-| mouthCornerAngle | 0.0° | 3.0° | 중립 기준, 각도 편차 |
+#### East Asian Reference Values (Default, Female)
+
+코드와 100% 동기화된 값. 다른 인종·성별은 같은 파일에서 확인.
+
+| Metric | Mean | SD |
+|--------|------|----|
+| faceAspectRatio | 1.29 | 0.07 |
+| faceTaperRatio | 0.79 | 0.05 |
+| upperFaceRatio | 0.31 | 0.04 |
+| midFaceRatio | 0.30 | 0.03 |
+| lowerFaceRatio | 0.39 | 0.05 |
+| gonialAngle | 141.0° | 6.0° |
+| intercanthalRatio | 0.26 | 0.02 |
+| eyeFissureRatio | 0.20 | 0.025 |
+| eyeCanthalTilt | 5.0° | 4.0° |
+| eyebrowThickness | 0.034 | 0.005 |
+| browEyeDistance | 0.150 | 0.020 |
+| nasalWidthRatio | 0.89 | 0.10 |
+| nasalHeightRatio | 0.30 | 0.03 |
+| mouthWidthRatio | 0.39 | 0.05 |
+| mouthCornerAngle | 3.0° | 5.0° |
+| lipFullnessRatio | 0.12 | 0.025 |
+| philtrumLength | 0.090 | 0.020 |
 
 #### Z-Score Interpretation
 - |z| < 0.5 → "평균"
@@ -148,11 +202,12 @@ faceHeight가 체계적으로 과소측정되어 모든 얼굴이 "가로로 넓
 - |z| ≥ 2.0 → "매우 큼/작음"
 
 #### Analysis Process
-1. 5프레임 연속 캡처 후 랜드마크 좌표 평균화 (노이즈 감소)
-2. 평균 랜드마크에서 12개 비율 계산
-3. 선택된 인종의 reference data (mean, SD)와 비교하여 Z-score 산출
-4. Z-score에 따른 판정 텍스트 생성
-5. 리포트 페이지에서 카테고리별 (얼굴, 눈, 코, 입) 결과 표시
+1. 카메라 모드: 2단계 캡처 (정면 → 3/4 측면). 각 단계에서 5프레임 평균화.
+   앨범 모드: 정면 사진 1장 업로드 → 3/4 측면 사진 1장 업로드 (2단계 필수).
+2. 평균 랜드마크에서 17개 frontal + (있으면) 8개 lateral metric 계산
+3. 선택된 인종·성별의 reference data (mean, SD)와 비교하여 Z-score 산출
+4. Z-score에 따른 판정 텍스트 생성 + 10개 속성 점수 + archetype 결정
+5. 리포트 페이지에서 카테고리별 (얼굴, 눈, 코, 입, 측면) 결과 표시
 
 ### Gender-Specific Analysis
 분석 파이프라인 4곳에서 성별이 반영됨:
@@ -178,18 +233,23 @@ faceHeight가 체계적으로 과소측정되어 모든 얼굴이 "가로로 넓
 | Chin | 152 |
 | Face edges | 234 / 454 |
 
-### Album Analysis Flow (`AlbumPreviewPage._analyze`)
+### Album Analysis Flow (`home_screen.dart::_openAlbum`)
 ```
-1. analyzeFaceReading() — 15 metrics, Z-score, attribute scores, archetype
-2. Thumbnail 생성 — flutter_image_compress로 128px WebP 변환
-   → getApplicationDocumentsDirectory()/{uuid}.webp 저장
-   → report.thumbnailPath에 경로 세팅
-3. historyProvider.add(report) — state prepend + Hive 저장 (thumbnailPath 포함)
-4. selectedTabProvider.selectTab(1) — 히스토리 탭 전환
-5. Navigator.pop() — preview 모달 닫기
-6. SupabaseService().saveMetrics(report) — 비동기 Supabase 저장
-   → 성공 시 report.supabaseId = uuid, Hive 재저장
+1. top snackbar "정면 사진을 올려주세요" → pickImage (single)
+2. MediaPipe 추론 → AlbumPreviewPage(phase=frontal) 모달
+   - 사용자가 "정면 분석" 버튼 누르면 pop(true)
+3. top snackbar "...측면(3/4)사진을 올려주세요." → pickImage (single)
+4. MediaPipe 추론 → AlbumPreviewPage(phase=lateral) 모달
+   - 사용자가 "측면 분석" 버튼 누르면 pop(true) → _runAnalysis() 실행
+5. analyzeFaceReading() — 17 frontal + 8 lateral metrics, Z-score, attribute scores, archetype
+6. Thumbnail 생성 — flutter_image_compress로 128px WebP 변환 → Documents/{uuid}.webp
+7. historyProvider.add(report) → Hive 저장 (thumbnailPath 포함)
+8. 히스토리 탭 전환 → SupabaseService().saveMetrics(report) 비동기 저장
 ```
+
+* Top snackbar는 preview 화면이 열릴 때 dismiss되어 보이지 않음.
+* Demographics(gender/ageGroup/ethnicity)는 Hive `prefs` 박스에 persist, 앱 재실행 시 복원.
+* 셋 중 하나라도 미선택이면 홈 화면의 카메라/앨범 버튼이 비활성화.
 
 - 히스토리 리스트에서 thumbnailPath가 있으면 40x40 둥근 썸네일, 없으면 카메라/앨범 아이콘 fallback
 

@@ -1,4 +1,3 @@
-import 'dart:developer' as dev;
 import 'dart:io';
 
 import 'package:face_reader/core/theme.dart';
@@ -11,7 +10,6 @@ import 'package:face_reader/data/services/supabase_service.dart';
 import 'package:face_reader/domain/models/face_reading_report.dart';
 import 'package:face_reader/domain/services/report_assembler.dart';
 import 'package:face_reader/presentation/providers/auth_provider.dart';
-import 'package:face_reader/presentation/providers/di_providers.dart';
 import 'package:face_reader/presentation/widgets/login_bottom_sheet.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -22,7 +20,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
-import 'metaphor_page.dart';
 
 class ReportPage extends ConsumerStatefulWidget {
   final FaceReadingReport report;
@@ -232,7 +229,6 @@ class _Palette {
 }
 
 class _ReportPageState extends ConsumerState<ReportPage> {
-  bool _isLoadingMetaphor = false;
   bool _showMetrics = false;
 
   FaceReadingReport get report => widget.report;
@@ -266,8 +262,6 @@ class _ReportPageState extends ConsumerState<ReportPage> {
           _buildAttributeSection(),
           const SizedBox(height: 20),
           _buildReadingSection(),
-          const SizedBox(height: 16),
-          _buildMetaphorButton(),
           const SizedBox(height: 20),
           _buildMetricsToggle(),
           if (_showMetrics) ...[
@@ -441,37 +435,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     );
   }
 
-  // ─── Metaphor Button ───
-  Widget _buildMetaphorButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 52,
-      child: ElevatedButton.icon(
-        onPressed: _isLoadingMetaphor ? null : _fetchMetaphor,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: _Palette.darkBrown,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-        ),
-        icon: _isLoadingMetaphor
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                    strokeWidth: 2, color: Colors.white),
-              )
-            : const Icon(Icons.auto_stories),
-        label: Text(
-          _isLoadingMetaphor ? '총평 생성 중...' : 'AI 총평 보기',
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLateralCategory() {
+Widget _buildLateralCategory() {
     final lm = report.lateralMetrics;
     if (lm == null) return const SizedBox.shrink();
     return Column(
@@ -713,30 +677,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     );
   }
 
-  Future<void> _fetchMetaphor() async {
-    setState(() => _isLoadingMetaphor = true);
-    try {
-      final repository = ref.read(metaphorRepositoryProvider);
-      final text = await repository.getMetaphor(report);
-      if (!mounted) return;
-      MetaphorPage.show(context, text);
-    } catch (e, stack) {
-      dev.log(
-        '[MetaphorError] $e\nStack: $stack',
-        name: 'ReportPage',
-        error: e,
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoadingMetaphor = false);
-    }
-  }
-
-  // ─── Save ───
+// ─── Save ───
   String _generateText() {
     final time = report.timestamp;
     final timeStr =
@@ -768,6 +709,59 @@ class _ReportPageState extends ConsumerState<ReportPage> {
 
     buf.writeln('--- 분석 ---');
     buf.writeln(assembled.assembledText);
+    buf.writeln();
+
+    final totalMetrics =
+        report.metrics.length + (report.lateralMetrics?.length ?? 0);
+    buf.writeln('--- AI 관상 측정값 ($totalMetrics Metrics) ---');
+
+    final categories = [
+      ('얼굴', 'face'),
+      ('눈', 'eyes'),
+      ('코', 'nose'),
+      ('입', 'mouth'),
+    ];
+    for (final (title, cat) in categories) {
+      final infos = metricInfoList.where((m) => m.category == cat).toList();
+      if (infos.isEmpty) continue;
+      buf.writeln('[$title]');
+      for (final info in infos) {
+        final metric = report.metrics[info.id];
+        if (metric == null) continue;
+        buf.writeln(
+            '  ${info.nameKo} (${info.nameEn}): score=${metric.metricScore}, z=${metric.zScore.toStringAsFixed(2)}');
+      }
+      buf.writeln();
+    }
+
+    final lm = report.lateralMetrics;
+    if (lm != null && lm.isNotEmpty) {
+      buf.writeln('[측면(3/4)]');
+      for (final info in lateralMetricInfoList) {
+        final metric = lm[info.id];
+        if (metric == null) continue;
+        buf.writeln(
+            '  ${info.nameKo} (${info.nameEn}): score=${metric.metricScore}, z=${metric.zScore.toStringAsFixed(2)}');
+      }
+      buf.writeln();
+    }
+
+    buf.writeln('--- 참고 자료 ---');
+    const references = [
+      '파카스 두개안면 계측학 (Farkas, 1994) — 2,500명 대상 166개 비율 인덱스',
+      '눈 사이 거리 메타분석 (PMC9029890) — 67개 연구, 22,638명 분석',
+      '신고전 비율 검증 연구 (PMC4369102) — 얼굴 3등분 비율 유효성 검증',
+      '미국 국립산업안전보건원 안면 계측 데이터 (NIOSH) — 3,997명 18개 측정값',
+      '구글 미디어파이프 얼굴 메시 — 468개 랜드마크 기반 측정',
+      '동아시아 얼굴 인체측정 연구 — 얼굴 비율 통계 데이터',
+      '컴퓨터 비전 안면 랜드마크 연구 — 얼굴 특징점 기반 정량 분석',
+      '동양 관상학 고전 (마의상법, 신상전편) — 오관·삼정·십이궁 해석 체계',
+      '안면 노화 인류학 (Mendelson & Wong, 2012) — 연조직 노화 변화 보정 근거',
+      '얼굴 매력도 연구 (Rhodes, 2006) — 평균성·대칭성과 매력의 상관관계',
+    ];
+    for (var i = 0; i < references.length; i++) {
+      buf.writeln('${i + 1}. ${references[i]}');
+    }
 
     return buf.toString();
   }

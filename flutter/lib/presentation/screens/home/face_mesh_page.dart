@@ -29,6 +29,8 @@ class FaceMeshPage extends ConsumerStatefulWidget {
   ConsumerState<FaceMeshPage> createState() => _FaceMeshPageState();
 }
 
+enum _CapturePhase { frontal, lateral }
+
 class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBindingObserver {
   CameraController? _cameraController;
   List<CameraDescription> _cameras = [];
@@ -82,9 +84,9 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
             backgroundColor: Colors.black,
             automaticallyImplyLeading: false,
             centerTitle: true,
-            title: const Text(
-              '얼굴 랜드마크 감지',
-              style: TextStyle(
+            title: Text(
+              _phase == _CapturePhase.frontal ? '얼굴 정면' : '얼굴 측면 (3/4뷰)',
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -131,19 +133,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
     _initialize();
     // Show the "정면 사진" title as a context cue once the page settles.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _showPhaseTitle('정면 사진');
-    });
-  }
-
-  /// Flash a full-screen phase-title overlay (e.g. "정면 사진" / "측면 사진")
-  /// that flips in, holds briefly, then fades out. Non-blocking — multiple
-  /// calls supersede each other via a token.
-  void _showPhaseTitle(String title) {
-    final token = ++_phaseTitleToken;
-    setState(() => _phaseTitle = title);
-    Future.delayed(const Duration(milliseconds: 1800), () {
-      if (!mounted || _phaseTitleToken != token) return;
-      setState(() => _phaseTitle = null);
+      if (mounted) _showPhaseTitle('얼굴 정면');
     });
   }
 
@@ -216,7 +206,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
             color: Colors.black.withValues(alpha: 0.6),
             child: Text(
               _phase == _CapturePhase.frontal
-                  ? '폰을 벽면에 대고 얼굴 중심이 녹색 좌표계로 변할때까지 움직이세요. 왜곡을 줄여야 정확해집니다.'
+                  ? '폰을 수직으로 세우고 얼굴 좌표계가 녹색으로 변할때 까지 움직이세요.'
                   : '${_lateralBannerText()}\n[yaw=${_currentYaw.toStringAsFixed(2)} ${_currentYawClass.name}]',
               style: const TextStyle(color: Colors.white, fontSize: 16, height: 1.4),
               textAlign: TextAlign.left,
@@ -284,6 +274,9 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
 
     if (_phase == _CapturePhase.frontal) {
       // Stage 1 — original single-button frontal capture.
+      final green = _meshResult != null &&
+          _computeOverlayColor(_meshResult!) == Colors.greenAccent;
+      final ready = green && !_isCapturing;
       return Positioned(
         left: 20,
         right: 20,
@@ -293,12 +286,13 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
             width: 200,
             height: 52,
             child: ElevatedButton.icon(
-              onPressed:
-                  _isCapturing || _meshResult == null ? null : _startCapture,
+              onPressed: ready ? _startCapture : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: _isCapturing
                     ? const Color(0xFFFF9800)
-                    : Colors.white.withValues(alpha: 0.85),
+                    : (ready
+                        ? Colors.white.withValues(alpha: 0.95)
+                        : Colors.white.withValues(alpha: 0.5)),
                 foregroundColor:
                     _isCapturing ? Colors.white : const Color(0xFF333333),
                 disabledBackgroundColor: Colors.white.withValues(alpha: 0.3),
@@ -315,9 +309,9 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
                         color: Colors.white,
                       ),
                     )
-                  : const Icon(Icons.smart_toy, size: 20),
+                  : const Icon(Icons.camera_alt, size: 20),
               label: Text(
-                _isCapturing ? '${_capturedFrames.length}/5' : '관상학 데이터 분석',
+                _isCapturing ? '${_capturedFrames.length}/5' : '정면 캡쳐',
                 style: const TextStyle(
                     fontSize: 15, fontWeight: FontWeight.w600),
               ),
@@ -397,19 +391,6 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
     );
   }
 
-  String _lateralBannerText() {
-    switch (_currentYawClass) {
-      case YawClass.frontal:
-        return '측면(3/4) 사진. 한쪽 귀가 거의 안 보일 때까지 50~60도 돌려주세요.';
-      case YawClass.threeQuarter:
-        return '좋아요! 그대로 「측면 캡처」를 눌러주세요.';
-      case YawClass.profile:
-        return '거의 옆얼굴이에요. 조금만 정면으로 돌아오세요.';
-      case YawClass.unusable:
-        return '얼굴이 거의 안 보여요. 조금만 정면 쪽으로 돌려주세요.';
-    }
-  }
-
   void _close() {
     _closeCamera();
     Navigator.of(context).pop();
@@ -451,7 +432,11 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
       final faceWidth = (landmarks[454].x - landmarks[234].x).abs();
       final largEnough = faceWidth > 0.25;
 
-      if (highConfidence && stable && largEnough) {
+      final yawOk = _phase == _CapturePhase.frontal
+          ? _currentYawClass == YawClass.frontal
+          : _currentYawClass == YawClass.threeQuarter;
+
+      if (highConfidence && stable && largEnough && yawOk) {
         return Colors.greenAccent;
       }
     }
@@ -508,82 +493,13 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
         _phase = _CapturePhase.lateral;
         _capturedFrames.clear();
       });
-      _showPhaseTitle('측면 사진');
+      _showPhaseTitle('얼굴 측면 (3/4뷰)');
       return;
     }
 
     // Phase 2: Lateral capture done — run full analysis with both.
     await _runAnalysis(lateralLandmarks: averaged);
     _capturedFrames.clear();
-  }
-
-  /// Skip the lateral capture and analyze frontal-only.
-  Future<void> _skipLateral() async {
-    if (_frontalLandmarks == null) return;
-    await _runAnalysis(lateralLandmarks: null);
-  }
-
-
-  /// Final analysis + persistence step. Uses [_frontalLandmarks] as the primary
-  /// input and optionally adds [lateralLandmarks] when available.
-  Future<void> _runAnalysis({List<FaceMeshLandmark>? lateralLandmarks}) async {
-    final frontal = _frontalLandmarks;
-    if (frontal == null) return;
-    final ethnicity = ref.read(ethnicityProvider);
-    final gender = ref.read(genderProvider);
-    final ageGroup = ref.read(ageGroupProvider);
-    debugPrint('[Camera] analysis frontalW=$_frontalImageWidth '
-        'H=$_frontalImageHeight lateral=${lateralLandmarks != null}');
-    final report = analyzeFaceReading(
-      landmarks: frontal,
-      ethnicity: ethnicity,
-      gender: gender,
-      ageGroup: ageGroup,
-      source: AnalysisSource.camera,
-      imageWidth: _frontalImageWidth ?? 1,
-      imageHeight: _frontalImageHeight ?? 1,
-      lateralLandmarks: lateralLandmarks,
-    );
-
-    // Generate UUID upfront — used by both Hive and Supabase and also as the
-    // thumbnail filename so they stay in lockstep.
-    final id = const Uuid().v4();
-    report.supabaseId = id;
-
-    // Compress the still image captured in _startCapture() to a 128px WebP
-    // thumbnail, same pipeline used by the album flow.
-    final stillBytes = _captureStillBytes;
-    _captureStillBytes = null;
-    if (stillBytes != null) {
-      try {
-        final compressed = await FlutterImageCompress.compressWithList(
-          stillBytes,
-          minWidth: 128,
-          minHeight: 128,
-          quality: 80,
-          format: CompressFormat.webp,
-        );
-        final dir = await getApplicationDocumentsDirectory();
-        final file = File('${dir.path}/$id.webp');
-        await file.writeAsBytes(compressed);
-        report.thumbnailPath = file.path;
-      } catch (e) {
-        debugPrint('[Thumbnail] save error: $e');
-      }
-    }
-
-    if (!mounted) return;
-    setState(() => _isCapturing = false);
-    ref.read(historyProvider.notifier).add(report);
-    // 카메라로 분석한 직후엔 관상 탭 → 카메라 sub-tab을 기본으로 보여준다.
-    ref.read(historyTabProvider.notifier).selectTab(0);
-    ref.read(selectedTabProvider.notifier).selectTab(1);
-    Navigator.of(context).pop();
-    // Save to Supabase in background using the pre-assigned UUID
-    SupabaseService().saveMetrics(report).catchError((e) {
-      debugPrint('[Supabase] save error: $e');
-      return '';
-    });
   }
 
   Future<void> _initialize() async {
@@ -610,6 +526,19 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
       await _startCamera();
     } catch (e) {
       setState(() => _error = e.toString());
+    }
+  }
+
+  String _lateralBannerText() {
+    switch (_currentYawClass) {
+      case YawClass.frontal:
+        return '한쪽 귀가 거의 안보일때까지 얼굴을 돌려주세요.';
+      case YawClass.threeQuarter:
+        return '좋아요! 그대로 「측면 캡처」를 눌러주세요.';
+      case YawClass.profile:
+        return '거의 옆얼굴이에요. 조금만 정면으로 돌아오세요.';
+      case YawClass.unusable:
+        return '얼굴이 거의 안 보여요. 조금만 정면 쪽으로 돌려주세요.';
     }
   }
 
@@ -682,6 +611,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
     });
   }
 
+
   Future<FaceMeshResult?> _processFrame(CameraImage image) async {
     final rotComp = _computeRotationCompensation();
     if (rotComp == null) return null;
@@ -748,6 +678,86 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
       debugPrint('Face mesh error: $e');
       return null;
     }
+  }
+
+  /// Final analysis + persistence step. Uses [_frontalLandmarks] as the primary
+  /// input and optionally adds [lateralLandmarks] when available.
+  Future<void> _runAnalysis({List<FaceMeshLandmark>? lateralLandmarks}) async {
+    final frontal = _frontalLandmarks;
+    if (frontal == null) return;
+    final ethnicity = ref.read(ethnicityProvider)!;
+    final gender = ref.read(genderProvider)!;
+    final ageGroup = ref.read(ageGroupProvider)!;
+    debugPrint('[Camera] analysis frontalW=$_frontalImageWidth '
+        'H=$_frontalImageHeight lateral=${lateralLandmarks != null}');
+    final report = analyzeFaceReading(
+      landmarks: frontal,
+      ethnicity: ethnicity,
+      gender: gender,
+      ageGroup: ageGroup,
+      source: AnalysisSource.camera,
+      imageWidth: _frontalImageWidth ?? 1,
+      imageHeight: _frontalImageHeight ?? 1,
+      lateralLandmarks: lateralLandmarks,
+    );
+
+    // Generate UUID upfront — used by both Hive and Supabase and also as the
+    // thumbnail filename so they stay in lockstep.
+    final id = const Uuid().v4();
+    report.supabaseId = id;
+
+    // Compress the still image captured in _startCapture() to a 128px WebP
+    // thumbnail, same pipeline used by the album flow.
+    final stillBytes = _captureStillBytes;
+    _captureStillBytes = null;
+    if (stillBytes != null) {
+      try {
+        final compressed = await FlutterImageCompress.compressWithList(
+          stillBytes,
+          minWidth: 128,
+          minHeight: 128,
+          quality: 80,
+          format: CompressFormat.webp,
+        );
+        final dir = await getApplicationDocumentsDirectory();
+        final file = File('${dir.path}/$id.webp');
+        await file.writeAsBytes(compressed);
+        report.thumbnailPath = file.path;
+      } catch (e) {
+        debugPrint('[Thumbnail] save error: $e');
+      }
+    }
+
+    if (!mounted) return;
+    setState(() => _isCapturing = false);
+    ref.read(historyProvider.notifier).add(report);
+    // 카메라로 분석한 직후엔 관상 탭 → 카메라 sub-tab을 기본으로 보여준다.
+    ref.read(historyTabProvider.notifier).selectTab(0);
+    ref.read(selectedTabProvider.notifier).selectTab(1);
+    Navigator.of(context).pop();
+    // Save to Supabase in background using the pre-assigned UUID
+    SupabaseService().saveMetrics(report).catchError((e) {
+      debugPrint('[Supabase] save error: $e');
+      return '';
+    });
+  }
+
+  /// Flash a full-screen phase-title overlay (e.g. "정면 사진" / "측면 사진")
+  /// that flips in, holds briefly, then fades out. Non-blocking — multiple
+  /// calls supersede each other via a token.
+  void _showPhaseTitle(String title) {
+    final token = ++_phaseTitleToken;
+    setState(() => _phaseTitle = title);
+    Future.delayed(const Duration(milliseconds: 1800), () {
+      if (!mounted || _phaseTitleToken != token) return;
+      setState(() => _phaseTitle = null);
+    });
+  }
+
+  /// Skip the lateral capture and analyze frontal-only.
+  Future<void> _skipLateral() async {
+    if (_frontalLandmarks == null) return;
+    await _runAnalysis(lateralLandmarks: null);
   }
 
   Future<void> _startCamera() async {
@@ -833,5 +843,3 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
     });
   }
 }
-
-enum _CapturePhase { frontal, lateral }
