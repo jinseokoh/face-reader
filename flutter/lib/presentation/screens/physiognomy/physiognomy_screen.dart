@@ -249,12 +249,27 @@ class _PhysiognomyItem extends ConsumerWidget {
   }
 
   String _faceShape() {
-    final z = report.metrics['faceAspectRatio']!.zScore;
-    if (z > 1.0) return '세로로 긴 얼굴형';
-    if (z > 0.5) return '약간 세로로 긴 얼굴형';
-    if (z < -1.0) return '가로로 넓은 얼굴형';
-    if (z < -0.5) return '약간 가로로 넓은 얼굴형';
-    return '표준 얼굴형';
+    final faceAspect = report.metrics['faceAspectRatio']!;
+    final z = faceAspect.zScore;
+    final raw = faceAspect.rawValue;
+    final String label;
+    final String reason;
+    if (z > 1.0) {
+      label = '세로로 긴 얼굴형';
+      reason = 'z > 1.0 (상위 ~16%)';
+    } else if (z < -1.0) {
+      label = '가로로 넓은 얼굴형';
+      reason = 'z < -1.0 (하위 ~16%)';
+    } else {
+      label = '표준 얼굴형';
+      reason = '|z| ≤ 1.0 (중앙 ~68%)';
+    }
+    debugPrint('══════════ [FACE SHAPE] ══════════');
+    debugPrint('  gender=${report.gender.name} ethnicity=${report.ethnicity.name}');
+    debugPrint('  faceAspectRatio: raw=${raw.toStringAsFixed(4)} z=${z.toStringAsFixed(4)}');
+    debugPrint('  decision: $reason → "$label"');
+    debugPrint('═══════════════════════════════════');
+    return label;
   }
 
   void _openCompatibility(BuildContext context, WidgetRef ref) {
