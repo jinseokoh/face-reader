@@ -471,6 +471,35 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     );
   }
 
+  Widget _buildLateralCategory() {
+    final lm = report.lateralMetrics;
+    if (lm == null) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('측면(3/4)',
+            style: TextStyle(
+                color: _Palette.warmBrown,
+                fontSize: 16,
+                fontWeight: FontWeight.bold)),
+        const SizedBox(height: 6),
+        ...lateralMetricInfoList.map((info) {
+          final metric = lm[info.id];
+          if (metric == null) return const SizedBox.shrink();
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: _MetricRow(
+              nameKo: info.nameKo,
+              nameEn: info.nameEn,
+              zScore: metric.zScore,
+              metricScore: metric.metricScore,
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
   Widget _buildMetricCategory(String title, String category) {
     final infos =
         metricInfoList.where((m) => m.category == category).toList();
@@ -508,11 +537,16 @@ class _ReportPageState extends ConsumerState<ReportPage> {
       ('코', 'nose'),
       ('입', 'mouth'),
     ];
+    final hasLateral = report.lateralMetrics != null;
 
     return Column(
       children: [
         for (final (title, cat) in categories) ...[
           _buildMetricCategory(title, cat),
+          const SizedBox(height: 12),
+        ],
+        if (hasLateral) ...[
+          _buildLateralCategory(),
           const SizedBox(height: 12),
         ],
         const SizedBox(height: 8),
@@ -537,7 +571,8 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             Icon(Icons.straighten,
                 color: _Palette.warmBrown, size: 20),
             const SizedBox(width: 10),
-            Text('AI 관상 측정값 (17 Metrics)',
+            Text(
+                'AI 관상 측정값 (${17 + (report.lateralMetrics?.length ?? 0)} Metrics)',
                 style: TextStyle(
                     color: _Palette.darkBrown,
                     fontSize: 16,
@@ -561,7 +596,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     if (isFirst) {
       return Text(section.trim(),
           style: TextStyle(
-              color: _Palette.warmBrown,
+              color: AppTheme.textPrimary,
               fontSize: 16,
               height: 1.7));
     }

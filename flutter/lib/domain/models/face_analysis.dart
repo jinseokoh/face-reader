@@ -11,9 +11,15 @@ import 'package:face_reader/domain/services/age_adjustment.dart';
 import 'package:face_reader/domain/services/archetype.dart';
 import 'package:face_reader/domain/services/attribute_engine.dart';
 import 'package:face_reader/domain/services/face_metrics.dart';
+import 'package:face_reader/domain/services/face_metrics_lateral.dart';
 import 'package:face_reader/domain/services/metric_score.dart';
 
 /// Full face-reading pipeline (FORMULA.md §3.8)
+///
+/// [lateralLandmarks] is OPTIONAL. When provided (a separate 3/4-view capture),
+/// lateral metrics are computed and z-scored against lateral reference data,
+/// and lateral binary flags (e.g. aquilineNose) are populated. Lateral rules
+/// in the rule engine then become eligible to fire.
 FaceReadingReport analyzeFaceReading({
   required List<FaceMeshLandmark> landmarks,
   required Ethnicity ethnicity,
@@ -22,6 +28,7 @@ FaceReadingReport analyzeFaceReading({
   required AnalysisSource source,
   required int imageWidth,
   required int imageHeight,
+  List<FaceMeshLandmark>? lateralLandmarks,
 }) {
   final isOver50 = ageGroup.isOver50;
 
@@ -79,12 +86,108 @@ FaceReadingReport analyzeFaceReading({
   // Step 5: Attribute base scores (continuous, gender-weighted)
   final baseScores = computeBaseScoresContinuous(continuousScores, gender);
 
+  // Step 6a: Lateral metrics (optional — only when 3/4-view capture provided)
+  Map<String, MetricResult>? lateralMetricResults;
+  Map<String, int>? lateralScores;
+  Map<String, bool>? lateralFlags;
+  if (lateralLandmarks != null) {
+    final lateral = LateralFaceMetrics(lateralLandmarks);
+    final lateralMeasured = lateral.computeAll();
+    final lateralRefs = lateralReferenceData[ethnicity]![gender]!;
+    final lateralZ = <String, double>{};
+    final scores = <String, int>{};
+    final results = <String, MetricResult>{};
+    for (final info in lateralMetricInfoList) {
+      final raw = lateralMeasured[info.id]!;
+      final ref = lateralRefs[info.id]!;
+      final z = (raw - ref.mean) / ref.sd;
+      final s = convertToScore(z, info.type);
+      lateralZ[info.id] = z;
+      scores[info.id] = s;
+      results[info.id] = MetricResult(
+        id: info.id,
+        rawValue: raw,
+        zScore: z,
+        zAdjusted: z,
+        metricScore: s,
+      );
+    }
+    lateralMetricResults = results;
+    lateralScores = scores;
+
+    // Population-relative flag derivation — see comment block below for every
+    // nose-type flag, its condition, raw value, z-score (integer metricScore),
+    // and pass/fail. Logged separately so calibration is transparent.
+    final dorsalRaw = lateralMeasured['dorsalConvexity'] ?? 0;
+    final dorsalScore = scores['dorsalConvexity'] ?? 0;
+    final nasoLabRaw = lateralMeasured['nasolabialAngle'] ?? 0;
+    final nasoLabScore = scores['nasolabialAngle'] ?? 0;
+    final nasoFrontRaw = lateralMeasured['nasofrontalAngle'] ?? 0;
+    final tipProjScore = scores['noseTipProjection'] ?? 0;
+
+    final aquiline = dorsalScore >= 3;
+    final snub = nasoLabScore >= 2 && nasoLabRaw >= 115.0;
+    final droopingTip = nasoLabScore <= -2 && nasoLabRaw <= 112.0;
+    final saddleNose = dorsalScore <= -3;
+    final flatNose = tipProjScore <= -3;
+    // Frontal-only nose types. Thresholds moderated to catch genuinely
+    // noticeable (not just extreme) features: individual dimension flag
+    // at score>=2 (z>=1.0, top ~16%), composite bigNose/smallNose when
+    // both width and height agree at score>=1 (z>=0.5).
+    final nasalWScore = metricScores['nasalWidthRatio'] ?? 0;
+    final nasalHScore = metricScores['nasalHeightRatio'] ?? 0;
+    final wideNose = nasalWScore >= 2;
+    final narrowNose = nasalWScore <= -2;
+    final longNose = nasalHScore >= 2;
+    final shortNose = nasalHScore <= -2;
+    final bigNose = nasalWScore >= 1 && nasalHScore >= 1;
+    final smallNose = nasalWScore <= -1 && nasalHScore <= -1;
+
+    lateralFlags = {
+      'aquilineNose': aquiline,
+      'snubNose': snub,
+      'droopingTip': droopingTip,
+      'saddleNose': saddleNose,
+      'flatNose': flatNose,
+    };
+
+    debugPrint('══════════ [NOSE CLASSIFICATION] ══════════');
+    debugPrint('  frontal.nasalWidth  score=$nasalWScore  '
+        'wideNose=$wideNose  narrowNose=$narrowNose');
+    debugPrint('  frontal.nasalHeight score=$nasalHScore  '
+        'longNose=$longNose  shortNose=$shortNose');
+    debugPrint('  lateral.dorsalConvexity  raw=${dorsalRaw.toStringAsFixed(4)}  '
+        'score=$dorsalScore  aquiline=$aquiline  saddle=$saddleNose');
+    debugPrint('  lateral.nasolabialAngle  raw=${nasoLabRaw.toStringAsFixed(1)}°  '
+        'score=$nasoLabScore  snub=$snub  drooping=$droopingTip');
+    debugPrint('  lateral.nasofrontalAngle raw=${nasoFrontRaw.toStringAsFixed(1)}°');
+    debugPrint('  lateral.noseTipProjection score=$tipProjScore  '
+        'flatNose=$flatNose');
+    final active = [
+      if (aquiline) '매부리코',
+      if (snub) '들창코',
+      if (droopingTip) '처진 코끝',
+      if (saddleNose) '안장코',
+      if (flatNose) '납작코',
+      if (longNose) '긴 코',
+      if (shortNose) '짧은 코',
+      if (wideNose) '넓은 코',
+      if (narrowNose) '좁은 코',
+      if (bigNose) '큰 코',
+      if (smallNose) '작은 코',
+    ];
+    debugPrint('  → detected: ${active.isEmpty ? "평범형" : active.join(", ")}');
+    debugPrint('═══════════════════════════════════════════');
+  }
+
   // Step 6: Interaction rules
   final triggered = evaluateRules(
     scores: metricScores,
     adjustedScores: adjustedMetricScores,
     gender: gender,
     isOver50: isOver50,
+    lateralScores: lateralScores,
+    lateralFlags: lateralFlags,
   );
 
   // Apply bonuses to base scores
@@ -123,6 +226,8 @@ FaceReadingReport analyzeFaceReading({
     attributeScores: normalizedScores,
     archetype: archetype,
     triggeredRules: triggered,
+    lateralMetrics: lateralMetricResults,
+    lateralFlags: lateralFlags,
   );
 }
 

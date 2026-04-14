@@ -65,6 +65,13 @@ class FaceReadingReport {
   /// Rules that were triggered
   final List<TriggeredRule> triggeredRules;
 
+  /// Lateral (3/4-view) metric results. Null when no lateral capture exists.
+  final Map<String, MetricResult>? lateralMetrics;
+
+  /// Lateral binary flags (e.g. {'aquilineNose': true}). Null when no lateral
+  /// capture exists.
+  final Map<String, bool>? lateralFlags;
+
   FaceReadingReport({
     required this.ethnicity,
     required this.gender,
@@ -80,6 +87,8 @@ class FaceReadingReport {
     required this.attributeScores,
     required this.archetype,
     required this.triggeredRules,
+    this.lateralMetrics,
+    this.lateralFlags,
   }) : expiresAt = expiresAt ?? DateTime.now().add(const Duration(days: 90));
 
   String toJsonString() => jsonEncode({
@@ -114,6 +123,11 @@ class FaceReadingReport {
                   },
                 })
             .toList(),
+        if (lateralMetrics != null)
+          'lateralMetrics': {
+            for (final e in lateralMetrics!.entries) e.key: e.value.toJson(),
+          },
+        if (lateralFlags != null) 'lateralFlags': lateralFlags,
       });
 
   factory FaceReadingReport.fromJsonString(String jsonStr) {
@@ -151,6 +165,15 @@ class FaceReadingReport {
           ),
         );
       }).toList(),
+      lateralMetrics: j['lateralMetrics'] == null
+          ? null
+          : (j['lateralMetrics'] as Map<String, dynamic>).map(
+              (k, v) => MapEntry(k, MetricResult.fromJson(v as Map<String, dynamic>)),
+            ),
+      lateralFlags: j['lateralFlags'] == null
+          ? null
+          : (j['lateralFlags'] as Map<String, dynamic>)
+              .map((k, v) => MapEntry(k, v as bool)),
     );
   }
 }

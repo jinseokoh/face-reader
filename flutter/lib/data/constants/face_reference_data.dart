@@ -470,3 +470,146 @@ class MetricReference {
 
   const MetricReference(this.mean, this.sd);
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// LATERAL METRICS (3/4-view capture)
+//
+// Computed from a separately-captured ~30-45 deg yaw photo. Reference values
+// from East Asian cephalometric literature (Korean/Han Chinese adults).
+// Other ethnicities currently fall back to East Asian baselines until
+// per-ethnicity literature is integrated.
+// ─────────────────────────────────────────────────────────────────────────
+
+const lateralMetricInfoList = [
+  MetricInfo(
+    id: 'nasofrontalAngle',
+    nameKo: '비전두각',
+    nameEn: 'Nasofrontal Angle',
+    category: 'lateral',
+    higherLabel: '이마-코 경사가 완만함',
+    lowerLabel: '이마-코 경사가 급함',
+    type: MetricType.angle,
+  ),
+  MetricInfo(
+    id: 'nasolabialAngle',
+    nameKo: '비순각',
+    nameEn: 'Nasolabial Angle',
+    category: 'lateral',
+    higherLabel: '코끝이 들림',
+    lowerLabel: '코끝이 처짐',
+    type: MetricType.angle,
+  ),
+  MetricInfo(
+    id: 'facialConvexity',
+    nameKo: '안면 돌출각',
+    nameEn: 'Facial Convexity (G-Sn-Pog)',
+    category: 'lateral',
+    higherLabel: '얼굴이 볼록함',
+    lowerLabel: '얼굴이 평평함',
+    type: MetricType.angle,
+  ),
+  MetricInfo(
+    id: 'upperLipEline',
+    nameKo: '상순 E-line 거리',
+    nameEn: 'Upper Lip to E-line',
+    category: 'lateral',
+    higherLabel: '상순이 앞으로 나옴',
+    lowerLabel: '상순이 뒤로 들어감',
+    type: MetricType.ratio,
+  ),
+  MetricInfo(
+    id: 'lowerLipEline',
+    nameKo: '하순 E-line 거리',
+    nameEn: 'Lower Lip to E-line',
+    category: 'lateral',
+    higherLabel: '하순이 앞으로 나옴',
+    lowerLabel: '하순이 뒤로 들어감',
+    type: MetricType.ratio,
+  ),
+  MetricInfo(
+    id: 'mentolabialAngle',
+    nameKo: '순이각',
+    nameEn: 'Mentolabial Angle',
+    category: 'lateral',
+    higherLabel: '입술-턱 경계가 평평함',
+    lowerLabel: '입술-턱 경계가 깊음',
+    type: MetricType.angle,
+  ),
+  MetricInfo(
+    id: 'noseTipProjection',
+    nameKo: '코끝 돌출',
+    nameEn: 'Nose Tip Projection',
+    category: 'lateral',
+    higherLabel: '코끝이 길게 나옴',
+    lowerLabel: '코끝이 짧게 들어감',
+    type: MetricType.ratio,
+  ),
+  MetricInfo(
+    id: 'dorsalConvexity',
+    nameKo: '코 등선 돌출도',
+    nameEn: 'Nasal Dorsum Convexity',
+    category: 'lateral',
+    higherLabel: '매부리 돌출이 뚜렷함',
+    lowerLabel: '코 등선이 평평/오목함',
+    type: MetricType.ratio,
+  ),
+];
+
+/// Lateral binary-flag IDs (no z-score, just yes/no).
+const lateralFlagIds = [
+  'aquilineNose', // 매부리코
+  'snubNose',     // 들창코
+];
+
+/// Lateral reference data: [Ethnicity][Gender][metricId] → MetricReference.
+/// Currently only East Asian has empirical values; other ethnicities reuse
+/// the same baselines.
+const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>>
+    lateralReferenceData = {
+  Ethnicity.eastAsian: _eastAsianLateral,
+  Ethnicity.caucasian: _eastAsianLateral,
+  Ethnicity.african: _eastAsianLateral,
+  Ethnicity.southeastAsian: _eastAsianLateral,
+  Ethnicity.hispanic: _eastAsianLateral,
+  Ethnicity.middleEastern: _eastAsianLateral,
+};
+
+const Map<Gender, Map<String, MetricReference>> _eastAsianLateral = {
+  Gender.male: {
+    // Moon et al. 2013 (PMC3785598), n=50 Korean M, CT scan.
+    'nasofrontalAngle': MetricReference(131.0, 9.0),
+    // Calibrated to our 2D-proxy measurement (NOT clinical NLA). See
+    // nasolabialAngle doc comment for details. Mean ~135° with normal noses
+    // reading 125-145°, drooping 100-120°, genuine snub 155-175°.
+    'nasolabialAngle': MetricReference(135.0, 12.0),
+    // Kim & Kim 2001 Korean J Orthod (combined sex, used here for both).
+    'facialConvexity': MetricReference(7.7, 3.9),
+    // Triangulated Korean/Chinese norms — normalized by faceHeight.
+    // Raw mm value ~ -1mm; on a faceHeight ≈ 0.5 (normalized) it scales to
+    // approximately -0.0033. SD scaled equivalently.
+    'upperLipEline': MetricReference(-0.003, 0.007),
+    'lowerLipEline': MetricReference(0.002, 0.007),
+    // Naini et al. 2017 PMC5292106, Asian Far Eastern subsample, n=185 M.
+    'mentolabialAngle': MetricReference(134.8, 3.8),
+    // No published ratio mean; estimated from Goode-style normalization on
+    // Korean face proportions.
+    'noseTipProjection': MetricReference(0.30, 0.04),
+    // No published continuous norm (PubMed 20591758 reports types, not a
+    // continuous distribution). Empirical re-calibration 2026-04-14: at
+    // 50-60 deg yaw capture, typical (non-aquiline) faces produce
+    // dorsalConvexity in 0.005-0.018 range due to natural bridge curvature +
+    // mesh noise + projection geometry. Pronounced 매부리 reaches 0.030+.
+    // Tune further as real-device data accumulates.
+    'dorsalConvexity': MetricReference(0.010, 0.008),
+  },
+  Gender.female: {
+    'nasofrontalAngle': MetricReference(141.0, 10.0),
+    'nasolabialAngle': MetricReference(135.0, 12.0),
+    'facialConvexity': MetricReference(7.7, 3.9),
+    'upperLipEline': MetricReference(-0.003, 0.007),
+    'lowerLipEline': MetricReference(0.002, 0.007),
+    'mentolabialAngle': MetricReference(133.4, 3.3),
+    'noseTipProjection': MetricReference(0.30, 0.04),
+    'dorsalConvexity': MetricReference(0.010, 0.008),
+  },
+};

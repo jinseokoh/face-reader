@@ -24,6 +24,9 @@ class AlbumPreviewPage extends ConsumerWidget {
   final FaceMeshResult meshResult;
   final int imageWidth;
   final int imageHeight;
+  /// Optional 3/4-view landmarks. When the user picked a second photo, these
+  /// drive lateral-metric computation (nasofrontal angle, lip protrusion, etc.).
+  final List<FaceMeshLandmark>? lateralLandmarks;
 
   const AlbumPreviewPage({
     super.key,
@@ -31,6 +34,7 @@ class AlbumPreviewPage extends ConsumerWidget {
     required this.meshResult,
     required this.imageWidth,
     required this.imageHeight,
+    this.lateralLandmarks,
   });
 
   @override
@@ -91,7 +95,7 @@ class AlbumPreviewPage extends ConsumerWidget {
                   ),
                 ),
               ),
-              // Instruction banner
+              // Instruction banner — extends if a lateral photo is paired.
               Positioned(
                 top: 0,
                 left: 0,
@@ -99,9 +103,12 @@ class AlbumPreviewPage extends ConsumerWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   color: Colors.black.withValues(alpha: 0.6),
-                  child: const Text(
-                    '정면을 바라보는 사진을 사용해야만 왜곡을 줄일 수 있습니다.',
-                    style: TextStyle(color: Colors.white, fontSize: 16, height: 1.4),
+                  child: Text(
+                    lateralLandmarks == null
+                        ? '정면 사진만 사용 — 측면(3/4) 사진을 함께 선택하면 더 정확해집니다.'
+                        : '정면 + 측면(3/4) 사진 모두 사용 — 매부리코·턱·입 윤곽 메트릭이 활성화됩니다.',
+                    style: const TextStyle(
+                        color: Colors.white, fontSize: 16, height: 1.4),
                     textAlign: TextAlign.left,
                   ),
                 ),
@@ -155,6 +162,7 @@ class AlbumPreviewPage extends ConsumerWidget {
       source: AnalysisSource.album,
       imageWidth: imageWidth,
       imageHeight: imageHeight,
+      lateralLandmarks: lateralLandmarks,
     );
 
     // Generate UUID upfront — same id used for thumbnail filename and Supabase

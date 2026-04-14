@@ -220,8 +220,23 @@ Map<Attribute, double> computeBaseScoresContinuous(
 
 final _commonRules = <_InteractionRule>[
   // Wealth (5)
+  _InteractionRule('W-R1',
+      (s) => s['nasalWidthRatio']! >= 2 && s['nasalHeightRatio']! >= 1,
+      {Attribute.wealth: 2.5}),
+  _InteractionRule('W-R2',
+      (s) => s['nasalWidthRatio']! >= 1 && s['nasalHeightRatio']! <= -1,
+      {Attribute.wealth: 0.5}),
+  _InteractionRule('W-R3',
+      (s) => s['nasalHeightRatio']! >= 1 && s['nasalWidthRatio']!.abs() <= 1,
+      {Attribute.wealth: 1.5}),
+  _InteractionRule('W-R4',
+      (s) => s['nasalWidthRatio']! <= -1 && s['nasalHeightRatio']! <= -1,
+      {Attribute.wealth: -2.0}),
   _InteractionRule('W-R5', (s) => s['mouthWidthRatio']! >= 1 && s['nasalWidthRatio']! >= 1,
       {Attribute.wealth: 1.0}),
+  _InteractionRule('W-R6',
+      (s) => s['mouthWidthRatio']! >= 1 && s['nasalWidthRatio']!.abs() <= 1,
+      {Attribute.wealth: 0.5}),
 
   // Leadership (5)
   _InteractionRule('L-R1', (s) => s['gonialAngle']! >= 1 && s['eyeCanthalTilt']! >= 1,
@@ -234,15 +249,27 @@ final _commonRules = <_InteractionRule>[
       {Attribute.leadership: -2.0}),
   _InteractionRule('L-R5', (s) => s['faceTaperRatio']! <= -1 && s['eyeCanthalTilt']! >= 1,
       {Attribute.leadership: 1.5}),
+  _InteractionRule('L-R6',
+      (s) => s['gonialAngle']!.abs() <= 1 && s['eyeCanthalTilt']!.abs() <= 1,
+      {Attribute.leadership: 1.0}),
+  _InteractionRule('L-R7',
+      (s) => s['gonialAngle']! >= 1 && s['eyeCanthalTilt']! <= -1,
+      {Attribute.leadership: 1.5, Attribute.stability: 0.5}),
 
   // Intelligence (5)
   _InteractionRule('I-R1', (s) => s['eyeFissureRatio']! >= 1 && s['browEyeDistance']! >= 1,
       {Attribute.intelligence: 3.0}),
   _InteractionRule('I-R2', (s) => s['intercanthalRatio']! <= -1 && s['eyeFissureRatio']! >= 1,
       {Attribute.intelligence: 2.0}),
+  _InteractionRule('I-R3',
+      (s) => s['browEyeDistance']! >= 1 && s['nasalHeightRatio']! >= 1,
+      {Attribute.intelligence: 1.5}),
   _InteractionRule('I-R4', (s) => s['eyeFissureRatio']! <= -1 && s['browEyeDistance']! <= -1,
       {Attribute.intelligence: -1.5}),
   _InteractionRule('I-R5', (s) => s['faceAspectRatio']! >= 1 && s['browEyeDistance']! >= 1,
+      {Attribute.intelligence: 1.0}),
+  _InteractionRule('I-R6',
+      (s) => s['eyeFissureRatio']! >= 1 && s['browEyeDistance']!.abs() <= 1,
       {Attribute.intelligence: 1.0}),
 
   // Sociability (5)
@@ -256,6 +283,9 @@ final _commonRules = <_InteractionRule>[
       {Attribute.sociability: -2.0}),
   _InteractionRule('S-R5', (s) => s['mouthCornerAngle']! >= 1 && s['eyeFissureRatio']! >= 1,
       {Attribute.sociability: 1.0}),
+  _InteractionRule('S-R6',
+      (s) => s['mouthWidthRatio']! >= 1 && s['mouthCornerAngle']!.abs() <= 1,
+      {Attribute.sociability: 1.0}),
 
   // Emotionality (5)
   _InteractionRule('E-R1', (s) => s['lipFullnessRatio']! >= 1 && s['eyebrowThickness']! <= -1,
@@ -268,14 +298,29 @@ final _commonRules = <_InteractionRule>[
       {Attribute.emotionality: -2.0}),
   _InteractionRule('E-R5', (s) => s['philtrumLength']! >= 1 && s['lipFullnessRatio']! >= 0,
       {Attribute.emotionality: 1.0}),
+  _InteractionRule('E-R6',
+      (s) => s['lipFullnessRatio']!.abs() <= 1 && s['eyebrowThickness']!.abs() <= 1,
+      {Attribute.emotionality: 0.5}),
+  _InteractionRule('E-R7',
+      (s) => s['lipFullnessRatio']! >= 1 && s['mouthCornerAngle']! <= -1,
+      {Attribute.emotionality: 1.0}),
 
   // Stability (5) — magnitudes reduced to balance with other attributes
+  _InteractionRule('ST-R1',
+      (s) => s['nasalHeightRatio']! >= 1 && s['browEyeDistance']! >= 1,
+      {Attribute.stability: 2.0}),
   _InteractionRule('ST-R2', (s) => s['eyebrowThickness']! >= 1 && s['gonialAngle']! >= 1,
       {Attribute.stability: 1.0}),
   _InteractionRule('ST-R3', (s) => s['faceAspectRatio']!.abs() <= 1 && s['faceTaperRatio']!.abs() <= 1,
       {Attribute.stability: 0.5}),
   _InteractionRule('ST-R4', (s) => s['eyeCanthalTilt']! <= -1 && s['mouthCornerAngle']! <= -1,
       {Attribute.stability: -2.0}),
+  _InteractionRule('ST-R5',
+      (s) => s['nasalHeightRatio']! <= -1 && s['browEyeDistance']! <= -1,
+      {Attribute.stability: -1.5}),
+  _InteractionRule('ST-R6',
+      (s) => s['faceAspectRatio']!.abs() <= 1 && s['gonialAngle']!.abs() <= 1,
+      {Attribute.stability: 0.5}),
 
   // Sensuality (5)
   _InteractionRule('SN-R1', (s) => s['eyeCanthalTilt']! >= 1 && s['lipFullnessRatio']! >= 1,
@@ -288,12 +333,32 @@ final _commonRules = <_InteractionRule>[
       {Attribute.sensuality: 2.0}),
   _InteractionRule('SN-R5', (s) => s['eyeCanthalTilt']! <= -1 && s['lipFullnessRatio']! <= -1,
       {Attribute.sensuality: -2.0}),
+  _InteractionRule('SN-R6',
+      (s) => s['eyeCanthalTilt']! >= 1 && s['lipFullnessRatio']!.abs() <= 1,
+      {Attribute.sensuality: 1.0}),
+  _InteractionRule('SN-R7', (s) => s['lipFullnessRatio']! >= 2,
+      {Attribute.sensuality: 1.5}),
 
   // Trustworthiness (5)
+  _InteractionRule('T-R1',
+      (s) => s['nasalHeightRatio']! >= 1 && s['mouthCornerAngle']! >= 1,
+      {Attribute.trustworthiness: 2.5}),
   _InteractionRule('T-R2', (s) => s['browEyeDistance']! >= 1 && s['eyebrowThickness']! >= 1,
       {Attribute.trustworthiness: 2.0}),
+  _InteractionRule('T-R3',
+      (s) => s['nasalHeightRatio']! <= -1 && s['mouthCornerAngle']! <= -1,
+      {Attribute.trustworthiness: -1.5}),
   _InteractionRule('T-R4', (s) => s['intercanthalRatio']! >= 2 && s['browEyeDistance']! <= -1,
       {Attribute.trustworthiness: -2.0}),
+  _InteractionRule('T-R5',
+      (s) => s['eyebrowThickness']! >= 1 && s['nasalHeightRatio']! >= 1,
+      {Attribute.trustworthiness: 1.5}),
+  _InteractionRule('T-R6',
+      (s) => s['mouthCornerAngle']!.abs() <= 1 && s['browEyeDistance']!.abs() <= 1,
+      {Attribute.trustworthiness: 1.0}),
+  _InteractionRule('T-R7',
+      (s) => s['browEyeDistance']! <= -1 && s['mouthCornerAngle']! >= 1,
+      {Attribute.trustworthiness: 0.5}),
 
   // Attractiveness (5)
   _InteractionRule('AT-R1',
@@ -305,16 +370,30 @@ final _commonRules = <_InteractionRule>[
       {Attribute.attractiveness: 1.5}),
   _InteractionRule('AT-R4', (s) => s['mouthCornerAngle']! <= -1 && s['eyeCanthalTilt']! <= -1,
       {Attribute.attractiveness: -2.0}),
+  _InteractionRule('AT-R5',
+      (s) => s['nasalHeightRatio']! >= 1 && s['nasalWidthRatio']! <= -1,
+      {Attribute.attractiveness: 1.0}),
+  _InteractionRule('AT-R6',
+      (s) => s['mouthCornerAngle']!.abs() <= 1 && s['eyeCanthalTilt']!.abs() <= 1,
+      {Attribute.attractiveness: 1.0}),
+  _InteractionRule('AT-R7',
+      (s) => s['eyeFissureRatio']! >= 1 && s['mouthCornerAngle']! <= -1,
+      {Attribute.attractiveness: 1.0}),
 
   // Libido (5)
   _InteractionRule('LB-R1', (s) => s['philtrumLength']! <= -1 && s['lipFullnessRatio']! >= 1,
       {Attribute.libido: 3.0}),
+  _InteractionRule('LB-R2',
+      (s) => s['nasalWidthRatio']! >= 1 && s['nasalHeightRatio']! >= 1,
+      {Attribute.libido: 2.0}),
   _InteractionRule('LB-R3', (s) => s['philtrumLength']! <= -1 && s['nasalWidthRatio']! >= 1,
       {Attribute.libido: 2.0}),
   _InteractionRule('LB-R4', (s) => s['philtrumLength']! >= 2 && s['lipFullnessRatio']! <= -1,
       {Attribute.libido: -2.0}),
   _InteractionRule('LB-R5', (s) => s['eyeCanthalTilt']! >= 1 && s['lipFullnessRatio']! >= 1,
       {Attribute.libido: 1.5}),
+  _InteractionRule('LB-R6', (s) => s['eyeCanthalTilt']! >= 2,
+      {Attribute.libido: 1.0}),
 ];
 
 // ─── Gender Rules (10) ───
@@ -370,6 +449,105 @@ final _ageRules = <_AgeRule>[
       {Attribute.stability: -1.5}),
 ];
 
+// ─── Lateral Rules ───
+//
+// Conditions take a non-null lateral score map (callers pass a defaulted
+// all-zero map when no lateral capture exists, so lateral rules requiring
+// |s| >= 1 simply don't fire). A separate flag-based predicate handles
+// binary features like aquilineNose.
+
+typedef _LateralCondition = bool Function(
+    Map<String, int> frontalScores,
+    Map<String, int> lateralScores,
+    Map<String, bool> lateralFlags);
+
+class _LateralRule {
+  final String id;
+  final _LateralCondition condition;
+  final Map<Attribute, double> effects;
+  const _LateralRule(this.id, this.condition, this.effects);
+}
+
+/// Lateral rules — require a 3/4-view capture. Phase 1 populates this with
+/// 18 rules spanning aquiline / snub / nasolabial / lip-protrusion /
+/// mentolabial / facial-convexity / nasofrontal / nose-tip-projection axes.
+final _lateralRules = <_LateralRule>[
+  // Convention: condition(frontalScores, lateralScores, lateralFlags).
+  // Each rule pulls each metric from the correct map — frontal metrics like
+  // gonialAngle / mouthCornerAngle MUST come from frontalScores, lateral
+  // metrics like nasolabialAngle MUST come from lateralScores.
+
+  // ─── Aquiline (매부리코) ───
+  _LateralRule('LAT-AQ1',
+      (fr, lat, f) => (f['aquilineNose'] ?? false) && fr['gonialAngle']! >= 0,
+      {Attribute.leadership: 2.0, Attribute.wealth: 0.5}),
+  _LateralRule('LAT-AQ2',
+      (fr, lat, f) => (f['aquilineNose'] ?? false) && fr['eyeFissureRatio']! >= 0,
+      {Attribute.intelligence: 1.5}),
+  _LateralRule('LAT-AQ3',
+      (fr, lat, f) => (f['aquilineNose'] ?? false) && fr['eyebrowThickness']! >= 0,
+      {Attribute.attractiveness: 1.0}),
+  _LateralRule('LAT-AQ4',
+      (fr, lat, f) => f['aquilineNose'] ?? false,
+      {Attribute.leadership: 1.0, Attribute.stability: -0.5}),
+
+  // ─── Snub (들창코) ───
+  _LateralRule('LAT-SN1',
+      (fr, lat, f) => (f['snubNose'] ?? false) && fr['mouthCornerAngle']! >= 1,
+      {Attribute.attractiveness: 1.5, Attribute.sociability: 1.0}),
+  _LateralRule('LAT-SN2',
+      (fr, lat, f) => (f['snubNose'] ?? false) && fr['lipFullnessRatio']! >= 0,
+      {Attribute.emotionality: 1.0}),
+
+  // ─── Nasolabial angle (lateral) ───
+  _LateralRule('LAT-NL1',
+      (fr, lat, f) => lat['nasolabialAngle']! >= 1 && fr['lipFullnessRatio']! >= 0,
+      {Attribute.attractiveness: 1.5}),
+  _LateralRule('LAT-NL2',
+      (fr, lat, f) => lat['nasolabialAngle']! <= -1 && fr['gonialAngle']! >= 1,
+      {Attribute.leadership: 1.5}),
+  _LateralRule('LAT-NL3',
+      (fr, lat, f) => lat['nasolabialAngle']! <= -1 && fr['mouthCornerAngle']! >= 1,
+      {Attribute.trustworthiness: 1.0}),
+
+  // ─── E-line / lip protrusion (lateral only) ───
+  _LateralRule('LAT-LP1',
+      (fr, lat, f) => lat['upperLipEline']! >= 1 && lat['lowerLipEline']! >= 1,
+      {Attribute.sensuality: 2.0, Attribute.libido: 1.0}),
+  _LateralRule('LAT-LP2',
+      (fr, lat, f) => lat['upperLipEline']! <= -1 && lat['lowerLipEline']! <= -1,
+      {Attribute.trustworthiness: 1.0, Attribute.stability: 1.0}),
+  _LateralRule('LAT-LP3',
+      (fr, lat, f) => lat['upperLipEline']! >= 1 && lat['lowerLipEline']!.abs() <= 1,
+      {Attribute.sociability: 1.0}),
+
+  // ─── Mentolabial angle (lateral) ───
+  _LateralRule('LAT-ML1',
+      (fr, lat, f) => lat['mentolabialAngle']! <= -1 && fr['gonialAngle']! >= 0,
+      {Attribute.attractiveness: 1.5}),
+  _LateralRule('LAT-ML2',
+      (fr, lat, f) => lat['mentolabialAngle']! >= 1 && fr['mouthCornerAngle']! <= 0,
+      {Attribute.leadership: 1.0, Attribute.stability: 1.0}),
+
+  // ─── Facial convexity (lateral) ───
+  _LateralRule('LAT-FC1',
+      (fr, lat, f) => lat['facialConvexity']! >= 1 && fr['lipFullnessRatio']! >= 1,
+      {Attribute.emotionality: 1.5, Attribute.libido: 1.0}),
+  _LateralRule('LAT-FC2',
+      (fr, lat, f) => lat['facialConvexity']! <= -1 && fr['eyeFissureRatio']! >= 1,
+      {Attribute.trustworthiness: 1.0, Attribute.intelligence: 0.5}),
+
+  // ─── Nasofrontal (lateral) ───
+  _LateralRule('LAT-NF1',
+      (fr, lat, f) => lat['nasofrontalAngle']! <= -1 && fr['browEyeDistance']! >= 0,
+      {Attribute.intelligence: 1.0, Attribute.stability: 0.5}),
+
+  // ─── Nose tip projection (lateral) ───
+  _LateralRule('LAT-NP1',
+      (fr, lat, f) => lat['noseTipProjection']! >= 1 && fr['mouthCornerAngle']! >= 0,
+      {Attribute.attractiveness: 1.0, Attribute.leadership: 0.5}),
+];
+
 // ─── Rule Evaluation ───
 
 List<TriggeredRule> evaluateRules({
@@ -377,6 +555,8 @@ List<TriggeredRule> evaluateRules({
   required Map<String, int> adjustedScores,
   required Gender gender,
   required bool isOver50,
+  Map<String, int>? lateralScores,
+  Map<String, bool>? lateralFlags,
 }) {
   final triggered = <TriggeredRule>[];
 
@@ -398,6 +578,18 @@ List<TriggeredRule> evaluateRules({
   if (isOver50) {
     for (final rule in _ageRules) {
       if (rule.condition(scores, adjustedScores)) {
+        triggered.add(TriggeredRule(rule.id, rule.effects));
+      }
+    }
+  }
+
+  // Lateral rules — eligible only when lateral capture exists. When absent we
+  // skip the entire lateral block so that lateral-only rules cannot fire on
+  // missing data.
+  if (lateralScores != null) {
+    final flags = lateralFlags ?? const <String, bool>{};
+    for (final rule in _lateralRules) {
+      if (rule.condition(scores, lateralScores, flags)) {
         triggered.add(TriggeredRule(rule.id, rule.effects));
       }
     }

@@ -16,6 +16,7 @@ import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mediapipe_face_mesh/mediapipe_face_mesh.dart';
 
+import 'package:face_reader/domain/services/face_metrics_lateral.dart';
 import 'package:face_reader/presentation/providers/auth_provider.dart';
 import 'package:face_reader/presentation/widgets/login_bottom_sheet.dart';
 
@@ -219,102 +220,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
 
     final picker = ImagePicker();
-    final picked = await picker.pickImage(
-      source: ImageSource.gallery,
+    // Up to 2 photos: ideally one frontal + one 3/4-yaw lateral. Either order
+    // is OK — we classify by yaw after processing. A single photo also works
+    // (frontal-only mode, lateral metrics will be null).
+    final picked = await picker.pickMultiImage(
       maxWidth: 1024,
       maxHeight: 1024,
+      limit: 2,
     );
-    if (picked == null) return;
+    if (picked.isEmpty) return;
 
     setState(() => _isProcessing = true);
 
     try {
-      // Step 1: Detect face bounding box with ML Kit
-      final inputImage = InputImage.fromFilePath(picked.path);
-      final faceDetector = FaceDetector(
-        options: FaceDetectorOptions(
-          performanceMode: FaceDetectorMode.accurate,
-        ),
-      );
-      final faces = await faceDetector.processImage(inputImage);
-      await faceDetector.close();
-
-      if (faces.isEmpty) {
-        throw Exception('얼굴을 찾을 수 없습니다.\n다른 사진을 선택해 주세요.');
+      final processed = <_AlbumPhoto>[];
+      for (final p in picked.take(2)) {
+        final photo = await _processAlbumPhoto(p.path);
+        processed.add(photo);
       }
 
-      // Step 2: Decode image to raw RGBA pixels
-      final bytes = await File(picked.path).readAsBytes();
-      final codec = await ui.instantiateImageCodec(bytes);
-      final frame = await codec.getNextFrame();
-      final image = frame.image;
-      final byteData =
-          await image.toByteData(format: ui.ImageByteFormat.rawRgba);
-      if (byteData == null) throw Exception('이미지를 디코딩할 수 없습니다');
-
-      // dart:ui rawRgba is already RGBA – pass directly (no BGRA conversion needed)
-      final rgba = Uint8List.sublistView(byteData.buffer.asUint8List());
-
-      // Step 3: Build face bounding box for mediapipe
-      final bbox = faces.first.boundingBox;
-      final imgW = image.width.toDouble();
-      final imgH = image.height.toDouble();
-      final clamped = Rect.fromLTRB(
-        bbox.left.clamp(0.0, imgW),
-        bbox.top.clamp(0.0, imgH),
-        bbox.right.clamp(0.0, imgW),
-        bbox.bottom.clamp(0.0, imgH),
-      );
-      final box = FaceMeshBox.fromLTWH(
-        left: clamped.left,
-        top: clamped.top,
-        width: clamped.width,
-        height: clamped.height,
-      );
-
-      // Step 4: Single-frame inference with mediapipe + bounding box
-      final processor = await FaceMeshProcessor.create(
-        delegate: FaceMeshDelegate.xnnpack,
-        enableRoiTracking: false,
-        minDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.5,
-      );
-
-      debugPrint('[Album] image=${image.width}x${image.height} '
-          'rgba.length=${rgba.length} '
-          'expected=${image.width * image.height * 4} '
-          'bbox=$bbox clamped=$clamped '
-          'platform=${Platform.operatingSystem}');
-
-      // Both platforms: use RGBA + process() for static images
-      // (matches plugin author's static image example)
-      final meshImage = FaceMeshImage(
-        pixels: rgba,
-        width: image.width,
-        height: image.height,
-      );
-      debugPrint('[Album] calling process...');
-      final result = processor.process(
-        meshImage,
-        box: box,
-        boxScale: 1.2,
-        boxMakeSquare: true,
-        rotationDegrees: 0,
-      );
-      debugPrint('[Album] landmarks=${result.landmarks.length} '
-          'score=${result.score.toStringAsFixed(4)}');
-      processor.close();
-
-      if (result.landmarks.isEmpty) {
-        throw Exception('얼굴 랜드마크를 추출할 수 없습니다.\n다른 사진을 선택해 주세요.');
+      // Classify by yaw: lower |yaw| → frontal, higher → lateral.
+      _AlbumPhoto frontal;
+      _AlbumPhoto? lateral;
+      if (processed.length == 1) {
+        frontal = processed.first;
+        lateral = null;
+      } else {
+        processed.sort((a, b) => a.yaw.abs().compareTo(b.yaw.abs()));
+        frontal = processed[0];
+        lateral = processed[1];
       }
-
-      // Step 5: Encode decoded image to PNG for display
-      // (avoids EXIF rotation mismatch between dart:ui and Image.file)
-      final pngData =
-          await image.toByteData(format: ui.ImageByteFormat.png);
-      if (pngData == null) throw Exception('이미지 인코딩 실패');
-      final pngBytes = Uint8List.sublistView(pngData.buffer.asUint8List());
 
       if (!mounted) return;
       showModalBottomSheet(
@@ -323,10 +258,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         useSafeArea: true,
         backgroundColor: Colors.transparent,
         builder: (_) => AlbumPreviewPage(
-          imageBytes: pngBytes,
-          meshResult: result,
-          imageWidth: image.width,
-          imageHeight: image.height,
+          imageBytes: frontal.pngBytes,
+          meshResult: frontal.meshResult,
+          imageWidth: frontal.width,
+          imageHeight: frontal.height,
+          lateralLandmarks: lateral?.meshResult.landmarks,
         ),
       );
     } catch (e) {
@@ -340,6 +276,93 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     } finally {
       if (mounted) setState(() => _isProcessing = false);
     }
+  }
+
+  /// Run the full ML-Kit-bbox + MediaPipe pipeline on a single image file and
+  /// return everything needed to either display it or analyze it.
+  Future<_AlbumPhoto> _processAlbumPhoto(String path) async {
+    // ML Kit: face bbox
+    final inputImage = InputImage.fromFilePath(path);
+    final faceDetector = FaceDetector(
+      options: FaceDetectorOptions(
+        performanceMode: FaceDetectorMode.accurate,
+      ),
+    );
+    final faces = await faceDetector.processImage(inputImage);
+    await faceDetector.close();
+
+    if (faces.isEmpty) {
+      throw Exception('얼굴을 찾을 수 없습니다.\n다른 사진을 선택해 주세요.');
+    }
+
+    // Decode → raw RGBA
+    final bytes = await File(path).readAsBytes();
+    final codec = await ui.instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    final image = frame.image;
+    final byteData =
+        await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+    if (byteData == null) throw Exception('이미지를 디코딩할 수 없습니다');
+    final rgba = Uint8List.sublistView(byteData.buffer.asUint8List());
+
+    // BBox clamped + scaled
+    final bbox = faces.first.boundingBox;
+    final imgW = image.width.toDouble();
+    final imgH = image.height.toDouble();
+    final clamped = Rect.fromLTRB(
+      bbox.left.clamp(0.0, imgW),
+      bbox.top.clamp(0.0, imgH),
+      bbox.right.clamp(0.0, imgW),
+      bbox.bottom.clamp(0.0, imgH),
+    );
+    final box = FaceMeshBox.fromLTWH(
+      left: clamped.left,
+      top: clamped.top,
+      width: clamped.width,
+      height: clamped.height,
+    );
+
+    // MediaPipe single-frame inference
+    final processor = await FaceMeshProcessor.create(
+      delegate: FaceMeshDelegate.xnnpack,
+      enableRoiTracking: false,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5,
+    );
+    final meshImage = FaceMeshImage(
+      pixels: rgba,
+      width: image.width,
+      height: image.height,
+    );
+    final result = processor.process(
+      meshImage,
+      box: box,
+      boxScale: 1.2,
+      boxMakeSquare: true,
+      rotationDegrees: 0,
+    );
+    processor.close();
+
+    if (result.landmarks.isEmpty) {
+      throw Exception('얼굴 랜드마크를 추출할 수 없습니다.\n다른 사진을 선택해 주세요.');
+    }
+
+    // Re-encode for display
+    final pngData = await image.toByteData(format: ui.ImageByteFormat.png);
+    if (pngData == null) throw Exception('이미지 인코딩 실패');
+    final pngBytes = Uint8List.sublistView(pngData.buffer.asUint8List());
+
+    final yaw = estimateYaw(result.landmarks);
+    debugPrint('[Album] processed image=${image.width}x${image.height} '
+        'yaw=${yaw.toStringAsFixed(3)} class=${classifyYaw(yaw)}');
+
+    return _AlbumPhoto(
+      pngBytes: pngBytes,
+      meshResult: result,
+      width: image.width,
+      height: image.height,
+      yaw: yaw,
+    );
   }
 
   void _openCamera() {
@@ -422,4 +445,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
   }
+}
+
+/// One processed album image — bundle of bytes + landmarks + yaw classification.
+class _AlbumPhoto {
+  final Uint8List pngBytes;
+  final FaceMeshResult meshResult;
+  final int width;
+  final int height;
+  final double yaw;
+
+  _AlbumPhoto({
+    required this.pngBytes,
+    required this.meshResult,
+    required this.width,
+    required this.height,
+    required this.yaw,
+  });
 }
