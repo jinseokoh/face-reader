@@ -42,8 +42,9 @@ FaceReadingReport analyzeFaceReading({
   //    → Adjust this single value to fine-tune face shape classification
   const kLandmark10Correction = 1.05; // > 1.0 = 더 길게 보정
   final aspectCorrection = imageHeight / imageWidth;
+  final faceAspectRaw = measured['faceAspectRatio']!; // pre-correction
   measured['faceAspectRatio'] =
-      measured['faceAspectRatio']! * aspectCorrection * kLandmark10Correction;
+      faceAspectRaw * aspectCorrection * kLandmark10Correction;
 
   debugPrint('[Analysis] faceAspectRatio raw=${measured['faceAspectRatio']?.toStringAsFixed(4)} '
       'faceH=${faceMetrics.faceHeight.toStringAsFixed(4)} '
@@ -61,6 +62,37 @@ FaceReadingReport analyzeFaceReading({
 
   debugPrint('[Analysis] faceAspectRatio z=${zScores['faceAspectRatio']?.toStringAsFixed(4)} '
       'ref mean=${refs['faceAspectRatio']!.mean} sd=${refs['faceAspectRatio']!.sd}');
+
+  // ─── [CALIB] Calibration dump ────────────────────────────────────────────
+  // Grep-friendly, one metric per line. Use `grep '\[CALIB\]' logs.txt` to
+  // extract and feed to spreadsheet/pandas. sid groups lines belonging to
+  // the same sample. See FACEBUG.md for recalibration procedure.
+  final sid = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
+  final faceShapeZ = zScores['faceAspectRatio']!;
+  final faceShapeLabel = faceShapeZ > 1.0
+      ? 'vertical'
+      : (faceShapeZ < -1.0 ? 'horizontal' : 'standard');
+  debugPrint('[CALIB] BEGIN sid=$sid t=${DateTime.now().toIso8601String()} '
+      'source=${source.name} gender=${gender.name} ethnicity=${ethnicity.name} '
+      'age=${ageGroup.name} imgW=$imageWidth imgH=$imageHeight '
+      'aspectCorr=${aspectCorrection.toStringAsFixed(4)} '
+      'lm10Corr=$kLandmark10Correction');
+  debugPrint('[CALIB] sid=$sid base faceH=${faceMetrics.faceHeight.toStringAsFixed(5)} '
+      'faceW=${faceMetrics.faceWidth.toStringAsFixed(5)} '
+      'faceAspectRaw=${faceAspectRaw.toStringAsFixed(5)} '
+      'faceAspectCorrected=${measured['faceAspectRatio']!.toStringAsFixed(5)}');
+  for (final info in metricInfoList) {
+    final ref = refs[info.id]!;
+    final raw = measured[info.id]!;
+    final z = zScores[info.id]!;
+    debugPrint('[CALIB] sid=$sid metric id=${info.id} '
+        'raw=${raw.toStringAsFixed(5)} '
+        'refMean=${ref.mean} refSd=${ref.sd} '
+        'z=${z.toStringAsFixed(4)}');
+  }
+  debugPrint('[CALIB] sid=$sid shape z=${faceShapeZ.toStringAsFixed(4)} '
+      'label=$faceShapeLabel');
+  // ─────────────────────────────────────────────────────────────────────────
 
   // Step 3: Age adjustment (over50 only)
   final zAdjusted = <String, double>{};
@@ -114,6 +146,24 @@ FaceReadingReport analyzeFaceReading({
     }
     lateralMetricResults = results;
     lateralScores = scores;
+
+    // [CALIB] lateral metrics — same sid grouping is not possible here
+    // (sid is scoped to the block above); emit a fresh lateral block so
+    // post-hoc scripts can pair it by timestamp proximity.
+    final lsid = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
+    debugPrint('[CALIB] LATERAL_BEGIN lsid=$lsid '
+        't=${DateTime.now().toIso8601String()} '
+        'gender=${gender.name} ethnicity=${ethnicity.name}');
+    for (final info in lateralMetricInfoList) {
+      final ref = lateralRefs[info.id]!;
+      final raw = lateralMeasured[info.id]!;
+      final z = lateralZ[info.id]!;
+      debugPrint('[CALIB] lsid=$lsid lateral id=${info.id} '
+          'raw=${raw.toStringAsFixed(5)} '
+          'refMean=${ref.mean} refSd=${ref.sd} '
+          'z=${z.toStringAsFixed(4)}');
+    }
+    debugPrint('[CALIB] LATERAL_END lsid=$lsid');
 
     // Population-relative flag derivation — see comment block below for every
     // nose-type flag, its condition, raw value, z-score (integer metricScore),

@@ -248,25 +248,75 @@ class _PhysiognomyItem extends ConsumerWidget {
     );
   }
 
+  /// 얼굴형 분류 — 4축 composite score 기반
+  ///
+  /// 초기엔 `faceAspectRatio` 단독 → 측정 노이즈 하나로 분류가 뒤집혔음.
+  /// 이후 `taper`, `gonial` 추가 → 그래도 bone 기반이라 이수지처럼
+  /// "볼살/턱살로 퍼진 둥근 얼굴"이 표준형으로 오분류됨.
+  ///
+  /// 결정적 개선: **`lowerFaceFullness`** 추가 (피부 외곽선에서 측정).
+  /// 골격이 아니라 실제 얼굴 contour의 하단부 폭을 평균내므로 볼살·턱살·jowl
+  /// 이 있으면 즉시 반영됨 → 이수지/IU 구분의 가장 강한 신호가 됨.
+  ///
+  ///   widthScore =
+  ///      1.0·(-aspectZ)     (세로-가로 bounding-box 비율)
+  ///    + 1.0·taperZ         (bone gonion 기반 테이퍼)
+  ///    + 2.0·lowerFullnessZ (피부 외곽선 기반 하단 풍만도 — 가장 강한 신호)
+  ///    + 0.5·gonialZ        (하악각 — 약한 보조신호)
+  ///
+  /// Threshold ±2.5 는 "다축 합치" 요건.
   String _faceShape() {
-    final faceAspect = report.metrics['faceAspectRatio']!;
-    final z = faceAspect.zScore;
-    final raw = faceAspect.rawValue;
+    // 구버전 Report(히스토리)는 새 메트릭이 없으므로 모두 null-safe 하게 읽음.
+    final aspect = report.metrics['faceAspectRatio'];
+    final taper = report.metrics['faceTaperRatio'];
+    final fullness = report.metrics['lowerFaceFullness'];
+    final gonial = report.metrics['gonialAngle'];
+
+    final aspectZ = aspect?.zScore ?? 0.0;
+    final taperZ = taper?.zScore ?? 0.0;
+    final fullnessZ = fullness?.zScore ?? 0.0;
+    final gonialZ = gonial?.zScore ?? 0.0;
+
+    // widthScore: 높을수록 가로로 넓은 (round), 낮을수록 세로로 긴 (long)
+    final contribAspect = -aspectZ * 1.0;
+    final contribTaper = taperZ * 1.0;
+    final contribFullness = fullnessZ * 2.0; // 결정적 축 — 피부 외곽선 기반
+    final contribGonial = gonialZ * 0.5;
+    final widthScore =
+        contribAspect + contribTaper + contribFullness + contribGonial;
+
+    const double threshold = 2.5;
     final String label;
     final String reason;
-    if (z > 1.0) {
-      label = '세로로 긴 얼굴형';
-      reason = 'z > 1.0 (상위 ~16%)';
-    } else if (z < -1.0) {
+    if (widthScore > threshold) {
       label = '가로로 넓은 얼굴형';
-      reason = 'z < -1.0 (하위 ~16%)';
+      reason =
+          'widthScore=${widthScore.toStringAsFixed(2)} > +$threshold (다축 합치)';
+    } else if (widthScore < -threshold) {
+      label = '세로로 긴 얼굴형';
+      reason =
+          'widthScore=${widthScore.toStringAsFixed(2)} < -$threshold (다축 합치)';
     } else {
       label = '표준 얼굴형';
-      reason = '|z| ≤ 1.0 (중앙 ~68%)';
+      reason = '|widthScore|=${widthScore.abs().toStringAsFixed(2)} ≤ $threshold';
     }
+
+    String rawStr(dynamic m, {int digits = 4}) =>
+        m == null ? '(missing)' : (m.rawValue as double).toStringAsFixed(digits);
+
     debugPrint('══════════ [FACE SHAPE] ══════════');
-    debugPrint('  gender=${report.gender.name} ethnicity=${report.ethnicity.name}');
-    debugPrint('  faceAspectRatio: raw=${raw.toStringAsFixed(4)} z=${z.toStringAsFixed(4)}');
+    debugPrint(
+        '  gender=${report.gender.name} ethnicity=${report.ethnicity.name}');
+    debugPrint(
+        '  faceAspectRatio:   raw=${rawStr(aspect)} z=${aspectZ.toStringAsFixed(4)}  contrib=${contribAspect.toStringAsFixed(3)}');
+    debugPrint(
+        '  faceTaperRatio:    raw=${rawStr(taper)} z=${taperZ.toStringAsFixed(4)}  contrib=${contribTaper.toStringAsFixed(3)}');
+    debugPrint(
+        '  lowerFaceFullness: raw=${rawStr(fullness)} z=${fullnessZ.toStringAsFixed(4)}  contrib=${contribFullness.toStringAsFixed(3)}  ★');
+    debugPrint(
+        '  gonialAngle:       raw=${rawStr(gonial, digits: 2)}  z=${gonialZ.toStringAsFixed(4)}  contrib=${contribGonial.toStringAsFixed(3)}');
+    debugPrint(
+        '  widthScore = ${widthScore.toStringAsFixed(3)}  (+=가로 -=세로)');
     debugPrint('  decision: $reason → "$label"');
     debugPrint('═══════════════════════════════════');
     return label;

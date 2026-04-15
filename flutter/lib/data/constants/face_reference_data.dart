@@ -23,6 +23,15 @@ const metricInfoList = [
     type: MetricType.ratio,
   ),
   MetricInfo(
+    id: 'lowerFaceFullness',
+    nameKo: '하단얼굴 풍만도',
+    nameEn: 'Lower Face Fullness',
+    category: 'face',
+    higherLabel: '볼살/턱살 풍만 (둥근 얼굴)',
+    lowerLabel: '갸름한 하단 (V-line)',
+    type: MetricType.ratio,
+  ),
+  MetricInfo(
     id: 'upperFaceRatio',
     nameKo: '상안면 비율',
     nameEn: 'Upper Face Ratio',
@@ -185,6 +194,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
       'midFaceRatio': MetricReference(0.31, 0.03),
       'lowerFaceRatio': MetricReference(0.38, 0.05),
       'faceTaperRatio': MetricReference(0.85, 0.05),
+      'lowerFaceFullness': MetricReference(0.72, 0.05),
       'gonialAngle': MetricReference(137.0, 6.0),
       'intercanthalRatio': MetricReference(0.26, 0.02),
       'eyeFissureRatio': MetricReference(0.21, 0.025),
@@ -200,14 +210,20 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
     },
     Gender.female: {
       // PHYSICAL pixel space ratio (post imageHeight/imageWidth correction).
-      // Calibrated from 4 real Flutter measurements:
-      //   Suji=1.211 (가로) Rose=1.228 (표준) IU=1.311 (표준) Doyeon=1.374 (세로)
-      // mean=1.29, sd=0.07 puts Suji at z=-1.13, Doyeon at z=+1.20.
-      'faceAspectRatio': MetricReference(1.29, 0.07),
+      // Re-calibrated 2026-04 on expanded sample set:
+      //   이수지=1.264 (가로로 넓은)
+      //   표준 band=1.321 / 1.336 / 1.363 / 1.396 (모두 표준)
+      // mean=1.35, sd=0.07 →
+      //   이수지 z=-1.23 (가로로 넓은)
+      //   표준 band z ∈ [-0.41, +0.65] (|z|≤1, 표준)
+      //   raw ≥ ~1.42 부터 z>1 → 세로로 긴
+      // (이전 mean=1.29 는 raw 1.36~1.40 평범 얼굴을 "세로로 긴"으로 오분류했음)
+      'faceAspectRatio': MetricReference(1.35, 0.07),
       'upperFaceRatio': MetricReference(0.31, 0.04),
       'midFaceRatio': MetricReference(0.30, 0.03),
       'lowerFaceRatio': MetricReference(0.39, 0.05),
       'faceTaperRatio': MetricReference(0.79, 0.05),
+      'lowerFaceFullness': MetricReference(0.66, 0.05),
       'gonialAngle': MetricReference(141.0, 6.0),
       'intercanthalRatio': MetricReference(0.26, 0.02),
       'eyeFissureRatio': MetricReference(0.20, 0.025),
@@ -229,6 +245,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
       'midFaceRatio': MetricReference(0.34, 0.02),
       'lowerFaceRatio': MetricReference(0.33, 0.03),
       'faceTaperRatio': MetricReference(0.83, 0.05),
+      'lowerFaceFullness': MetricReference(0.7, 0.05),
       'gonialAngle': MetricReference(120.0, 7.0),
       'intercanthalRatio': MetricReference(0.23, 0.02),
       'eyeFissureRatio': MetricReference(0.22, 0.02),
@@ -250,6 +267,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
       'midFaceRatio': MetricReference(0.34, 0.02),
       'lowerFaceRatio': MetricReference(0.33, 0.03),
       'faceTaperRatio': MetricReference(0.77, 0.05),
+      'lowerFaceFullness': MetricReference(0.64, 0.05),
       'gonialAngle': MetricReference(124.0, 8.0),
       'intercanthalRatio': MetricReference(0.23, 0.02),
       'eyeFissureRatio': MetricReference(0.24, 0.02),
@@ -273,6 +291,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
       'midFaceRatio': MetricReference(0.32, 0.02),
       'lowerFaceRatio': MetricReference(0.36, 0.03),
       'faceTaperRatio': MetricReference(0.86, 0.05),
+      'lowerFaceFullness': MetricReference(0.73, 0.05),
       'gonialAngle': MetricReference(116.0, 7.0),
       'intercanthalRatio': MetricReference(0.29, 0.02),
       'eyeFissureRatio': MetricReference(0.23, 0.02),
@@ -293,7 +312,8 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
       'upperFaceRatio': MetricReference(0.32, 0.03),
       'midFaceRatio': MetricReference(0.32, 0.02),
       'lowerFaceRatio': MetricReference(0.36, 0.03),
-      'faceTaperRatio': MetricReference(0.80, 0.05),
+      'faceTaperRatio': MetricReference(0.8, 0.05),
+      'lowerFaceFullness': MetricReference(0.67, 0.05),
       'gonialAngle': MetricReference(120.0, 8.0),
       'intercanthalRatio': MetricReference(0.29, 0.02),
       'eyeFissureRatio': MetricReference(0.25, 0.02),
@@ -317,6 +337,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
       'midFaceRatio': MetricReference(0.33, 0.02),
       'lowerFaceRatio': MetricReference(0.34, 0.03),
       'faceTaperRatio': MetricReference(0.84, 0.05),
+      'lowerFaceFullness': MetricReference(0.71, 0.05),
       'gonialAngle': MetricReference(119.0, 7.0),
       'intercanthalRatio': MetricReference(0.25, 0.02),
       'eyeFissureRatio': MetricReference(0.23, 0.02),
@@ -338,6 +359,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
       'midFaceRatio': MetricReference(0.33, 0.02),
       'lowerFaceRatio': MetricReference(0.34, 0.03),
       'faceTaperRatio': MetricReference(0.78, 0.05),
+      'lowerFaceFullness': MetricReference(0.65, 0.05),
       'gonialAngle': MetricReference(123.0, 8.0),
       'intercanthalRatio': MetricReference(0.25, 0.02),
       'eyeFissureRatio': MetricReference(0.25, 0.02),
@@ -361,6 +383,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
       'midFaceRatio': MetricReference(0.33, 0.02),
       'lowerFaceRatio': MetricReference(0.34, 0.03),
       'faceTaperRatio': MetricReference(0.84, 0.05),
+      'lowerFaceFullness': MetricReference(0.71, 0.05),
       'gonialAngle': MetricReference(119.0, 7.0),
       'intercanthalRatio': MetricReference(0.24, 0.02),
       'eyeFissureRatio': MetricReference(0.22, 0.02),
@@ -382,6 +405,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
       'midFaceRatio': MetricReference(0.33, 0.02),
       'lowerFaceRatio': MetricReference(0.34, 0.03),
       'faceTaperRatio': MetricReference(0.78, 0.05),
+      'lowerFaceFullness': MetricReference(0.65, 0.05),
       'gonialAngle': MetricReference(123.0, 8.0),
       'intercanthalRatio': MetricReference(0.24, 0.02),
       'eyeFissureRatio': MetricReference(0.24, 0.02),
@@ -405,6 +429,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
       'midFaceRatio': MetricReference(0.34, 0.02),
       'lowerFaceRatio': MetricReference(0.33, 0.03),
       'faceTaperRatio': MetricReference(0.84, 0.05),
+      'lowerFaceFullness': MetricReference(0.71, 0.05),
       'gonialAngle': MetricReference(117.0, 7.0),
       'intercanthalRatio': MetricReference(0.23, 0.02),
       'eyeFissureRatio': MetricReference(0.23, 0.02),
@@ -426,6 +451,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
       'midFaceRatio': MetricReference(0.34, 0.02),
       'lowerFaceRatio': MetricReference(0.33, 0.03),
       'faceTaperRatio': MetricReference(0.78, 0.05),
+      'lowerFaceFullness': MetricReference(0.65, 0.05),
       'gonialAngle': MetricReference(121.0, 8.0),
       'intercanthalRatio': MetricReference(0.23, 0.02),
       'eyeFissureRatio': MetricReference(0.25, 0.02),

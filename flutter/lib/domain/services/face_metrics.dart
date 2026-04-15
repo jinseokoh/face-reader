@@ -14,6 +14,14 @@ abstract class LandmarkIndex {
   static const rightEar = 132;
   static const leftEar = 361;
 
+  // 하악선 중간~턱 바로 위의 외곽선 랜드마크
+  // (골격이 아닌 피부 외곽선 — 볼살·턱살이 있으면 넓게 측정됨)
+  // MediaPipe face-oval 순서: ...172(rightGonion)→136→150→149→176→148→152(chin)
+  static const rightJawLower = 150; // rightGonion 과 chin 사이 하단 1/3 지점
+  static const leftJawLower = 379; // leftGonion 과 chin 사이 하단 1/3 지점
+  static const rightChinSide = 148; // chin 바로 오른쪽 (턱 측면)
+  static const leftChinSide = 377; // chin 바로 왼쪽 (턱 측면)
+
   // Nose
   static const nasion = 168;
   static const noseTip = 1;
@@ -107,6 +115,25 @@ class FaceMetrics {
   /// #2 얼굴 테이퍼 (jawWidth / faceWidth)
   double get faceTaperRatio =>
       _dist(LandmarkIndex.rightGonion, LandmarkIndex.leftGonion) / faceWidth;
+
+  /// #2b 하단얼굴 풍만도 (lowerFaceFullness)
+  /// 얼굴 하단 3개 레벨(gonion·jawLower·chinSide)의 평균 폭 / 최대 얼굴폭.
+  ///
+  /// 골격이 아닌 피부 외곽선 기준이므로 볼살·턱살·jowl이 있으면 높아진다.
+  /// - 둥근 얼굴/사각 얼굴(예: 이수지): 하단까지 넓게 채워져 0.72~0.82
+  /// - V-line / 갸름한 얼굴(예: IU): 턱으로 갈수록 급격히 좁아져 0.55~0.65
+  ///
+  /// 핵심 signal: faceTaperRatio (gonion 1레벨) 단독으론 못 잡는
+  /// 중간·하단 볼륨을 포착.
+  double get lowerFaceFullness {
+    final jaw =
+        _dist(LandmarkIndex.rightGonion, LandmarkIndex.leftGonion);
+    final jawLower =
+        _dist(LandmarkIndex.rightJawLower, LandmarkIndex.leftJawLower);
+    final chinSide =
+        _dist(LandmarkIndex.rightChinSide, LandmarkIndex.leftChinSide);
+    return (jaw + jawLower + chinSide) / (3.0 * faceWidth);
+  }
 
   /// #3 하악각 (양측 평균)
   double get gonialAngle {
@@ -231,6 +258,7 @@ class FaceMetrics {
       'midFaceRatio': midFaceRatio,
       'lowerFaceRatio': lowerFaceRatio,
       'faceTaperRatio': faceTaperRatio,
+      'lowerFaceFullness': lowerFaceFullness,
       'gonialAngle': gonialAngle,
       'intercanthalRatio': intercanthalRatio,
       'eyeFissureRatio': eyeFissureRatio,
