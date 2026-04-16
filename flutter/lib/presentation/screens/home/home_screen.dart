@@ -16,6 +16,7 @@ import 'package:face_reader/presentation/providers/ethnicity_provider.dart';
 import 'package:face_reader/presentation/providers/gender_provider.dart';
 import 'package:face_reader/presentation/providers/history_provider.dart';
 import 'package:face_reader/presentation/providers/tab_provider.dart';
+import 'package:face_reader/presentation/widgets/face_shape_label_dialog.dart';
 import 'package:face_reader/presentation/widgets/login_bottom_sheet.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -495,6 +496,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     } catch (e) {
       debugPrint('[Thumbnail] save error: $e');
     }
+
+    // 얼굴형 분류기 재보정용 라벨링. 분석 끝난 직후가 사용자 기억에 가장 생생해
+    // 라벨 정확도가 높다. 건너뛰기(null)면 기존 자동분류로 fallback.
+    // frontal.pngBytes는 원본 PNG full-res라 다이얼로그가 알아서 scale down 표시.
+    if (!mounted) return;
+    final label = await showFaceShapeLabelDialog(
+      context,
+      thumbnailBytes: frontal.pngBytes,
+    );
+    report.calibrationLabel = label;
 
     ref.read(historyProvider.notifier).add(report);
     ref.read(historyTabProvider.notifier).selectTab(1);
