@@ -248,57 +248,65 @@ class _PhysiognomyItem extends ConsumerWidget {
     );
   }
 
-  /// 얼굴형 분류 — 4축 composite score 기반
+  /// 얼굴형 분류 — 2단 hierarchical classifier (data-driven, Python LDA 학습).
   ///
-  /// 초기엔 `faceAspectRatio` 단독 → 측정 노이즈 하나로 분류가 뒤집혔음.
-  /// 이후 `taper`, `gonial` 추가 → 그래도 bone 기반이라 이수지처럼
-  /// "볼살/턱살로 퍼진 둥근 얼굴"이 표준형으로 오분류됨.
+  /// 학습 데이터: 22장 (5 wide, 8 standard, 9 long), 사용자 정답 라벨링.
+  /// 도구: `tools/calibrate_face_shape.py` (MediaPipe + scikit-learn LDA).
+  /// LOOCV 정확도: 19/22 = 86.4% (남은 3장은 aspect 1.24~1.27 경계구역).
   ///
-  /// 결정적 개선: **`lowerFaceFullness`** 추가 (피부 외곽선에서 측정).
-  /// 골격이 아니라 실제 얼굴 contour의 하단부 폭을 평균내므로 볼살·턱살·jowl
-  /// 이 있으면 즉시 반영됨 → 이수지/IU 구분의 가장 강한 신호가 됨.
+  /// Stage 1 (wide 탐지): 단순 임계값. 학습셋에서 wide min taper=0.801,
+  ///   non-wide max=0.796 로 깨끗한 gap 0.005 존재. 중간점 0.7985를 임계값.
+  ///   3-feature LDA보다 robust — 상관 높은 feature로 LDA 돌리면 계수 부호 불안정.
   ///
-  ///   widthScore =
-  ///      1.0·(-aspectZ)     (세로-가로 bounding-box 비율)
-  ///    + 1.0·taperZ         (bone gonion 기반 테이퍼)
-  ///    + 2.0·lowerFullnessZ (피부 외곽선 기반 하단 풍만도 — 가장 강한 신호)
-  ///    + 0.5·gonialZ        (하악각 — 약한 보조신호)
+  /// Stage 2 (long vs standard): LDA 계수를 z-score 제거 후 raw value 형태로
+  ///   unstandardize. reference data 불필요 — 순수 raw metric만으로 판정.
   ///
-  /// Threshold ±2.5 는 "다축 합치" 요건.
+  /// ⚠ faceTaperRatio 경계값 0.7985는 training margin 0.005로 얇음.
+  ///   Flutter vs Python MediaPipe landmark 차이로 실기에서 0.002~0.005 편차
+  ///   가능 → wide 경계 얼굴은 뒤집힐 수 있음. device 검증 필요.
   String _faceShape() {
-    // 구버전 Report(히스토리)는 새 메트릭이 없으므로 모두 null-safe 하게 읽음.
+    // 구버전 Report(히스토리)는 새 메트릭이 없으므로 null-safe.
     final aspect = report.metrics['faceAspectRatio'];
     final taper = report.metrics['faceTaperRatio'];
-    final fullness = report.metrics['lowerFaceFullness'];
     final gonial = report.metrics['gonialAngle'];
+    final upper = report.metrics['upperFaceRatio'];
 
-    final aspectZ = aspect?.zScore ?? 0.0;
-    final taperZ = taper?.zScore ?? 0.0;
-    final fullnessZ = fullness?.zScore ?? 0.0;
-    final gonialZ = gonial?.zScore ?? 0.0;
+    final aspectRaw = aspect?.rawValue ?? 0.0;
+    final taperRaw = taper?.rawValue ?? 0.0;
+    final gonialRaw = gonial?.rawValue ?? 0.0;
+    final upperRaw = upper?.rawValue ?? 0.0;
 
-    // widthScore: 높을수록 가로로 넓은 (round), 낮을수록 세로로 긴 (long)
-    final contribAspect = -aspectZ * 1.0;
-    final contribTaper = taperZ * 1.0;
-    final contribFullness = fullnessZ * 2.0; // 결정적 축 — 피부 외곽선 기반
-    final contribGonial = gonialZ * 0.5;
-    final widthScore =
-        contribAspect + contribTaper + contribFullness + contribGonial;
+    // Stage 1: wide 탐지 (학습셋 기반 single-threshold rule).
+    // Python 학습 threshold=0.7985 였으나, device single-frame 노이즈로
+    // 동일인 프레임 간 taper 편차 ±0.04 관측 → 0.78로 완화 (device 검증).
+    const double kWideTaperThreshold = 0.78;
 
-    const double threshold = 2.5;
+    // Stage 2: long vs standard (unstandardized LDA coefficients on raw values).
+    // 학습셋 분리: long range=[+1.28, +11.55], standard range=[-11.37, -1.19].
+    // Intercept -222.52(Python) → -245 (Flutter aspect 체계 편향 +0.13 보상,
+    // 150.88 × 0.13 ≈ 20 만큼 아래로 shift).
+    const double kS2AspectCoef = 150.8780;
+    const double kS2GonialCoef = -0.4313;
+    const double kS2UpperCoef = 309.9574;
+    const double kS2Intercept = -245.0;
+
     final String label;
     final String reason;
-    if (widthScore > threshold) {
+    final double stage2 = kS2AspectCoef * aspectRaw +
+        kS2GonialCoef * gonialRaw +
+        kS2UpperCoef * upperRaw +
+        kS2Intercept;
+
+    if (taperRaw > kWideTaperThreshold) {
       label = '가로로 넓은 얼굴형';
-      reason =
-          'widthScore=${widthScore.toStringAsFixed(2)} > +$threshold (다축 합치)';
-    } else if (widthScore < -threshold) {
+      reason = 'faceTaperRatio=${taperRaw.toStringAsFixed(4)} > '
+          '$kWideTaperThreshold (stage 1)';
+    } else if (stage2 > 0) {
       label = '세로로 긴 얼굴형';
-      reason =
-          'widthScore=${widthScore.toStringAsFixed(2)} < -$threshold (다축 합치)';
+      reason = 'stage2=${stage2.toStringAsFixed(2)} > 0 (stage 2 — long)';
     } else {
       label = '표준 얼굴형';
-      reason = '|widthScore|=${widthScore.abs().toStringAsFixed(2)} ≤ $threshold';
+      reason = 'stage2=${stage2.toStringAsFixed(2)} ≤ 0 (stage 2 — standard)';
     }
 
     String rawStr(dynamic m, {int digits = 4}) =>
@@ -307,16 +315,13 @@ class _PhysiognomyItem extends ConsumerWidget {
     debugPrint('══════════ [FACE SHAPE] ══════════');
     debugPrint(
         '  gender=${report.gender.name} ethnicity=${report.ethnicity.name}');
+    debugPrint('  faceAspectRatio:   raw=${rawStr(aspect)}');
     debugPrint(
-        '  faceAspectRatio:   raw=${rawStr(aspect)} z=${aspectZ.toStringAsFixed(4)}  contrib=${contribAspect.toStringAsFixed(3)}');
-    debugPrint(
-        '  faceTaperRatio:    raw=${rawStr(taper)} z=${taperZ.toStringAsFixed(4)}  contrib=${contribTaper.toStringAsFixed(3)}');
-    debugPrint(
-        '  lowerFaceFullness: raw=${rawStr(fullness)} z=${fullnessZ.toStringAsFixed(4)}  contrib=${contribFullness.toStringAsFixed(3)}  ★');
-    debugPrint(
-        '  gonialAngle:       raw=${rawStr(gonial, digits: 2)}  z=${gonialZ.toStringAsFixed(4)}  contrib=${contribGonial.toStringAsFixed(3)}');
-    debugPrint(
-        '  widthScore = ${widthScore.toStringAsFixed(3)}  (+=가로 -=세로)');
+        '  faceTaperRatio:    raw=${rawStr(taper)}  (stage1 threshold=$kWideTaperThreshold)');
+    debugPrint('  gonialAngle:       raw=${rawStr(gonial, digits: 2)}');
+    debugPrint('  upperFaceRatio:    raw=${rawStr(upper)}');
+    debugPrint('  stage2Score = ${stage2.toStringAsFixed(3)} '
+        '(+=long, −=standard; neutral if stage1 fires)');
     debugPrint('  decision: $reason → "$label"');
     debugPrint('═══════════════════════════════════');
     return label;

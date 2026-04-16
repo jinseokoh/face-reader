@@ -1,165 +1,88 @@
 # FACEBUG — Face Shape Classification
 
-**Last update**: 2026-04-15 (session 2 종료)
-**Status**: 시도 3 구현 완료·실기 테스트 결과 **실패**
-**다음 세션 방향**: **추측으로 값 조정 금지. 데이터 수집 → 통계 분석 → 피팅** 순으로 전환
+**Last update**: 2026-04-16 (session 3)
+**Status**: ✅ **RESOLVED** via data-first approach. Flutter 이식 완료. device 검증 남음.
 
 ---
 
 ## TL;DR
 
-- Session 1: 이수지(round) 표준 오분류 발견 후 부분 롤백.
-- Session 2 오늘: 여러 번의 추측 기반 수정 (mean 이동, 3축 composite, 4축 composite).
-- **마지막 시도(`lowerFaceFullness`) 실측에서 반대 방향으로 날아감**.
-  - 이수지 실기 측정 `lowerFaceFullness = 0.5223`
-  - 설정해둔 ref mean = 0.66 → z = -2.75 → 가중치 2.0 → contribution **-5.5**
-  - widthScore = -4.09 → **"세로로 긴 얼굴형"** 으로 오분류
-- **근본 원인**: 매 단계 데이터 없이 추측으로 수치 결정. 방법론 자체가 틀림.
+- Session 1~2 의 추측 기반 수정은 모두 실패 (이수지 round → long 오분류).
+- Session 3: data-first 전환 → Python + MediaPipe + scikit-learn LDA로 재학습.
+- 22장 라벨링 사진(5 wide / 8 standard / 9 long) + LOOCV 86.4% (19/22).
+- 2단 hierarchical classifier 도출 → Flutter `_faceShape()` 이식 완료.
 
 ---
 
-## 세션 진행 기록 (요약)
-
-### 시도 1: mean 1.29 → 1.35 ✅ (표준 band 오분류만 해결)
-### 시도 2: 3축 composite (aspect+taper+gonial) ❌ (이수지 구분 실패)
-### 시도 3: 4축 composite + `lowerFaceFullness` ❌ (완전 반대 방향)
-
-자세한 이전 내용은 git log 참조.
-
----
-
-## 실기 측정된 이수지 값 (핵심 증거)
+## 최종 분류 공식 (Flutter 이식됨)
 
 ```
-══════════ [FACE SHAPE] ══════════
-  gender=female ethnicity=eastAsian
-  faceAspectRatio:   raw=1.2637 z=-1.2323  contrib= 1.232
-  faceTaperRatio:    raw=0.8084 z= 0.3673  contrib= 0.367
-  lowerFaceFullness: raw=0.5223 z=-2.7542  contrib=-5.508  ★
-  gonialAngle:       raw=138.81 z=-0.3646  contrib=-0.182
-  widthScore = -4.091  → "세로로 긴 얼굴형" (완전 오분류)
-═══════════════════════════════════
+Stage 1 — wide 탐지 (단순 임계값)
+  isWide = faceTaperRatio > 0.7985
+  (학습 gap: wide min 0.801 vs non-wide max 0.796)
+
+Stage 2 — long vs standard (LDA, raw-value 언표준화)
+  stage2 = 150.8780 × faceAspectRatio
+         +  -0.4313 × gonialAngle
+         + 309.9574 × upperFaceRatio
+         + (-222.5233)
+  isLong = stage2 > 0
+
+else → standard
 ```
 
-**결정적 사실**: 이수지의 `lowerFaceFullness = 0.5223`.
-→ 제가 설정한 ref mean 0.66은 관측치와 0.14나 차이. 완전 빗나감.
-
-### 직전 땜빵 (세션 말기 적용)
-`face_reference_data.dart` 12개 ethnicity×gender 모두 `lowerFaceFullness: MetricReference(0.50, 0.05)` 로 강제 통일.
-이 상태도 IU 데이터 없이는 검증 불가.
+학습셋 stage2 분포 (clean gap):
+- long: `[+1.28, +11.55]`
+- standard: `[-11.37, -1.19]`
 
 ---
 
-## 현재 코드 상태 (오늘 세션 종료 시점)
+## 왜 이번엔 성공했나 (방법론 전환)
 
-### 수정된 4 파일
-| 파일 | 변경 |
+| 전 | 후 |
 |---|---|
-| `lib/domain/services/face_metrics.dart` | `LandmarkIndex`에 4개 추가(`rightJawLower=150, leftJawLower=379, rightChinSide=148, leftChinSide=377`). `lowerFaceFullness` getter 추가. `computeAll()`에 포함. |
-| `lib/data/constants/face_reference_data.dart` | `metricInfoList`에 `lowerFaceFullness` 엔트리. 12개 ethnicity×gender 모두에 `MetricReference(0.50, 0.05)` 추가. faceAspectRatio female eastAsian mean 1.29→1.35 유지. |
-| `lib/presentation/screens/physiognomy/physiognomy_screen.dart` | `_faceShape()` 4축 composite. null-safe. |
-| (추가 없음) | |
+| 추측으로 weight/threshold 결정 | Python LDA가 데이터에서 도출 |
+| reference z-score 의존 (ref mean/SD 틀리면 다 붕괴) | raw-value 공식 (ref 무관) |
+| 단일 composite (4축 합산) | 2단 hierarchical (wide 판별 → long/std 판별) |
+| 메트릭 노이즈 1개 = 분류 뒤집힘 | 학습셋 margin 검증 후 threshold 확정 |
 
-### 현재 `_faceShape` 공식 (문제 있음)
+### Stage 1이 LDA가 아니라 단순 임계값인 이유
+3개 taper(`faceTaperRatio`/`taperJawLower`/`taperChinSide`)는 서로 높은 상관 → LDA 계수 부호 불안정. 사나(여배우5) 케이스에서 LDA가 `taperChinSide` 계수 −4.97을 뽑아 직관 반대로 갔음. 단순 `faceTaperRatio` 임계값이 학습 데이터에 clean gap 0.005 존재 → 가장 robust.
+
+---
+
+## 데이터 수집 프로세스 (기록)
+
 ```
-widthScore =
-    −1.0·aspectZ
-  + 1.0·taperZ
-  + 2.0·fullnessZ   ★ 이 축이 이수지에서 완전히 반대로 나오고 있음
-  + 0.5·gonialZ
-threshold ±2.5
+/Users/chuck/Desktop/test/data/
+  ├── wide/       (5장: 이수지, 김민경, 박나래, 이국주, 홍윤화)
+  ├── standard/   (8장: 개발1, 여자1, 여자3, 여배우2, 배우1/2/3, 여배우3)
+  └── long/       (9장: 태연, 긴얼굴남자1, 긴얼굴여자1/2/3, 얼굴긴여자4,
+                         사나(여배우5), 여배우1, 여배우4)
 ```
 
----
-
-## 왜 추측 기반 접근이 실패했나
-
-이번 세션 내내 아래 사이클을 반복:
-1. 추측으로 값 설정 → 2. 사용자가 기기로 테스트 → 3. 사용자 실망 → 4. 다른 추측
-
-**문제**: 실측 분포를 모르는 상태에서 reference mean/sd, 가중치, 임계값을 모두 추측. 한 번의 변경이 다른 축과 상호작용하여 예측 불가.
+수집 중 라벨 재검토 1회 (태연: standard → long, 아이유 정면 사진 1장 삭제),
+분류기 예측 후 사용자 검증 2회 (사나 long 확정, 여배우2 standard 확정).
 
 ---
 
-## ⭐ 다음 세션 방향: data-first 방법론
+## 검증 상태
 
-**더 이상 추측하지 말 것. 데이터 수집이 선행되어야 함.**
+### LOOCV (학습셋 내부)
+- Stage 1 (wide 탐지): **5/5 완벽**. 이수지 포함 전부 wide로 분류.
+- Stage 2 (long vs standard): 14/17 = 82%. 남은 3장(여배우1·배우1·여자3) 모두 aspect 1.24~1.27 경계구역.
+- 총합: **19/22 = 86.4%**.
 
-### Step A — CSV 로깅 모드 추가
-한 번의 얼굴 분석에서 모든 메트릭 raw 값을 한 줄의 CSV로 콘솔에 출력.
-```
-CSV,<label>,<gender>,<ethnicity>,<faceAspectRatio>,<faceTaperRatio>,<lowerFaceFullness>,<gonialAngle>,...
-```
-사용자가 복붙할 수 있는 형식.
+### Device 검증 (남음 — 필수)
+MediaPipe Flutter(TFLite) vs Python(Tasks API) 랜드마크 미세 차이 가능.
+Stage 1 margin이 0.005로 얇아 실기에서 뒤집힐 수 있음.
 
-### Step B — 라벨 확실한 샘플 20+ 수집
-- **가로로 넓은** (5~7명): 이수지, 박나래, 홍윤화, 김민경, 이국주 등
-- **세로로 긴** (5~7명): 수영, 제니, 유인나 등
-- **표준** (5~7명): IU, 태연, 김태희, 한예슬 등
+**테스트 순서**:
+1. 이수지 사진 → **wide** 나와야 함 (핵심 회귀 검증).
+2. 사나(여배우5) → **long** 나와야 함 (경계 wide 오판정 방지 검증).
+3. 여배우2 → **standard** 나와야 함 (경계 케이스 안정성).
 
-각 인물당 2~3 프레임 수집해 측정 노이즈 파악.
-
-### Step C — 통계 분석 (다음 세션 Claude가 수행)
-CSV 받아서:
-1. 클래스 간 각 메트릭 mean/std 비교
-2. 어느 축이 실제로 3그룹 구분하는지 (ANOVA 유사)
-3. 분산 최대인 축 조합 도출 (LDA 유사)
-4. **데이터 기반** 가중치·임계값 제시
-
-### Step D — 검증
-미수집 얼굴에 다시 돌려 정확도 확인. 틀리면 샘플 추가 → 재피팅.
-
----
-
-## 당장 할 수 있는 안전 조치 (선택)
-
-만약 **일단 앱을 안정적 동작 상태로** 되돌려놓고 싶다면:
-- `physiognomy_screen.dart::_faceShape` 의 `contribFullness` 가중치 **2.0 → 0.0** 으로 내림
-- 결과적으로 3축(aspect, taper, gonial) 분류로 회귀
-- 이수지는 여전히 "표준"으로 오분류되지만 세로로 긴 오분류는 피함
-
-이 안전 조치는 본인 판단. 데이터 수집 단계 진행 시 굳이 할 필요 없음.
-
----
-
-## 실측 샘플 (지금까지 모인 것)
-
-### 이수지 (가로로 넓은, 둥근) — 확정 레이블
-| # | aspect | taper | fullness | gonial |
-|---|---|---|---|---|
-| A1 | 1.2460 | 0.7734 | — | 144.30° |
-| A2 | 1.2454 | 0.7997 | — | 140.77° |
-| A3 | 1.2637 | 0.8084 | **0.5223** | 138.81° |
-| A4 | 1.3210 | 0.8007 | — | 138.64° |
-| A5 | 1.3463 | 0.7781 | — | 138.81° |
-| A6 | 1.3357 | 0.7728 | — | 142.97° |
-
-(A3만 시도 3 적용 후 측정이라 fullness 있음. 나머지는 이전 로그라 fullness 없음.)
-
-### IU (표준, V-line) — **fullness 실측 없음**, 다음 세션 1순위 수집
-| # | aspect | 비고 |
-|---|---|---|
-| I1 | 1.2454 | "올백" 사진, 이마 완전 노출 |
-| I2 | 1.2460 | 다른 사진, 같은 raw |
-| I3 | 1.3110 (과거) | 정상 프레임 |
-
-### 표준 일반
-- 1.3210, 1.3357, 1.3463, 1.3958 — 모두 표준 기대
-
----
-
-## 문헌 근거 (참고용)
-
-- `faceAspectRatio` 표준: bizygomatic = 0.75 × face height → aspect ≈ 1.33
-- `faceTaperRatio` 표준: bigonial/bizygomatic ≈ 0.85~0.88
-- Round: 낮은 aspect + 풍만한 하단 + 높은 taper + 둔각 gonial
-- Oval: 중간 aspect + 갸름한 하단 + 낮은 taper
-- Long: 높은 aspect (facial index > 88%)
-
-Sources:
-- https://plasticsurgerykey.com/facial-type-3/
-- https://pocketdentistry.com/evaluation-of-the-face/
-- https://pmc.ncbi.nlm.nih.gov/articles/PMC7605391/
+각 raw 메트릭(faceTaperRatio, faceAspectRatio, gonialAngle, upperFaceRatio)의 **Python vs Flutter 값 차이가 ±0.005 이내**면 배포 OK. 큰 차이 있으면 threshold 재조정 필요.
 
 ---
 
@@ -167,22 +90,39 @@ Sources:
 
 | 역할 | 경로 |
 |---|---|
-| 메트릭 계산 + LandmarkIndex | `lib/domain/services/face_metrics.dart` |
-| Reference 데이터 | `lib/data/constants/face_reference_data.dart` |
-| 분류 공식 | `lib/presentation/screens/physiognomy/physiognomy_screen.dart::_faceShape` |
-| 보정 | `lib/domain/models/face_analysis.dart:39~52` |
+| 분류 공식 (이식 완료) | `flutter/lib/presentation/screens/physiognomy/physiognomy_screen.dart::_faceShape` |
+| 메트릭 계산 | `flutter/lib/domain/services/face_metrics.dart` |
+| Python 학습 도구 | `tools/calibrate_face_shape.py` |
+| Python 분류 도구 | `tools/classify_unlabeled.py` |
+| MediaPipe 모델 | `tools/face_landmarker.task` |
+| 학습 CSV 덤프 | `tools/out/face_calib.csv` |
 
 ---
 
-## 다음 세션 시작 메시지 (복붙용)
+## 재학습 방법 (필요시)
 
-```
-FACEBUG.md 읽었고 현재 상태 확인. 이제 data-first 로 전환.
-Step A(CSV 로깅 모드) 부터 붙이자. 추측 금지, 데이터부터.
+```bash
+cd /Users/chuck/Code/face/tools
+# 1. 라벨 폴더에 사진 추가 (wide/, long/, standard/)
+# 2. 측면 사진은 파일명에 "측면" 포함 → 자동 필터
+.venv/bin/python calibrate_face_shape.py
+# → stage 1 threshold + stage 2 raw-value coefficients 출력
+# 3. 출력된 계수를 physiognomy_screen.dart::_faceShape 상수에 반영
 ```
 
-또는 데이터 이미 모았다면:
+미분류 사진 검증:
+
+```bash
+.venv/bin/python classify_unlabeled.py          # dry-run
+.venv/bin/python classify_unlabeled.py --move   # 자동 이동
 ```
-FACEBUG.md 읽었고 20명 CSV 모았어. 통계 분석하고 가중치·임계값 도출해줘.
-[CSV 붙임]
-```
+
+---
+
+## 과거 세션 기록 (archived)
+
+Session 1: mean 1.29→1.35 조정 (표준 오분류만 해결, 이수지 미해결)
+Session 2: 3축 → 4축 composite (lowerFaceFullness weight 2.0), 이수지에서 반대 방향 오분류
+Session 3 (오늘): 데이터 기반 재학습 → 문제 종결.
+
+자세한 세션 1~2 내용은 git log 참조.

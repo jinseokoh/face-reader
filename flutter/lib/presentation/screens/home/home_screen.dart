@@ -300,39 +300,65 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
     if (!mounted || frontalConfirmed != true) return;
 
-    // Step 2: lateral photo
-    _showTopMessage('두눈은 보이지만, 한쪽 귀가 살짝 안보이는 측면(3/4)사진을 올려주세요.');
-    final lateralPick = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1024,
-      maxHeight: 1024,
-    );
-    if (lateralPick == null) return;
-
-    setState(() => _isProcessing = true);
-    _AlbumPhoto lateral;
-    try {
-      lateral = await _processAlbumPhoto(lateralPick.path);
-    } catch (e) {
-      if (mounted) {
+    // Step 2: lateral photo (OPTIONAL — 콧부리 분석 전용)
+    // 생략 시 코 모양은 "정상 범주"로 fallback.
+    final wantLateral = await _askAttachLateral();
+    _AlbumPhoto? lateral;
+    if (wantLateral == true) {
+      _showTopMessage('두눈은 보이지만, 한쪽 귀가 살짝 안보이는 측면(3/4)사진을 올려주세요.');
+      final lateralPick = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+      );
+      if (lateralPick != null) {
+        setState(() => _isProcessing = true);
+        try {
+          lateral = await _processAlbumPhoto(lateralPick.path);
+        } catch (e) {
+          if (mounted) {
+            setState(() => _isProcessing = false);
+            _showError(e.toString());
+          }
+          return;
+        }
+        if (!mounted) return;
         setState(() => _isProcessing = false);
-        _showError(e.toString());
-      }
-      return;
-    }
-    if (!mounted) return;
-    setState(() => _isProcessing = false);
 
-    // Preview must not show the top snackbar.
-    _dismissTopMessage();
-    final lateralConfirmed = await _showPreview(
-      phase: AlbumPreviewPhase.lateral,
-      photo: lateral,
-    );
-    if (!mounted || lateralConfirmed != true) return;
+        _dismissTopMessage();
+        final lateralConfirmed = await _showPreview(
+          phase: AlbumPreviewPhase.lateral,
+          photo: lateral,
+        );
+        if (!mounted || lateralConfirmed != true) return;
+      }
+    }
 
     _dismissTopMessage();
     await _runAnalysis(frontal: frontal, lateral: lateral);
+  }
+
+  /// 측면(3/4) 사진 첨부 여부 확인. cancel이면 null.
+  Future<bool?> _askAttachLateral() async {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('측면 사진 첨부'),
+        content: const Text(
+            '코 모양 분석을 위해 3/4 측면 사진을 추가하시겠습니까?\n'
+            '추가하지 않으면 코는 "정상 범주"로 처리됩니다.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('건너뛰기'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('측면 추가'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _openCamera() {
@@ -434,7 +460,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Future<void> _runAnalysis({
     required _AlbumPhoto frontal,
-    required _AlbumPhoto lateral,
+    _AlbumPhoto? lateral,
   }) async {
     final ethnicity = ref.read(ethnicityProvider)!;
     final gender = ref.read(genderProvider)!;
@@ -448,7 +474,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       source: AnalysisSource.album,
       imageWidth: frontal.width,
       imageHeight: frontal.height,
-      lateralLandmarks: lateral.meshResult.landmarks,
+      lateralLandmarks: lateral?.meshResult.landmarks,
     );
 
     final id = const Uuid().v4();
