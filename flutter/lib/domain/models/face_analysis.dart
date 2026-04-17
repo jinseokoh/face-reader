@@ -71,7 +71,7 @@ FaceReadingReport analyzeFaceReading({
   // ─── [CALIB] Calibration dump ────────────────────────────────────────────
   // Grep-friendly, one metric per line. Use `grep '\[CALIB\]' logs.txt` to
   // extract and feed to spreadsheet/pandas. sid groups lines belonging to
-  // the same sample. See FACEBUG.md for recalibration procedure.
+  // the same sample. Retained for metric-level debugging only.
   final sid = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
   debugPrint('[CALIB] BEGIN sid=$sid t=${DateTime.now().toIso8601String()} '
       'source=${source.name} gender=${gender.name} ethnicity=${ethnicity.name} '

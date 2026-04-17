@@ -108,22 +108,18 @@ class FaceMetrics {
   double get faceWidth =>
       _dist(LandmarkIndex.rightFaceEdge, LandmarkIndex.leftFaceEdge);
 
-  // ─── Raw distances exposed for calibration CSV ───
-  /// 양쪽 하악각(gonion) 사이 폭 — faceTaperRatio의 분자.
+  // ─── Lower-face width samples (inputs to lowerFaceFullness) ───
+  /// 양쪽 하악각(gonion) 사이 폭.
   double get jawWidth =>
       _dist(LandmarkIndex.rightGonion, LandmarkIndex.leftGonion);
 
-  /// 하악 중단(150–379) 폭 — 하단 얼굴형 1단계 신호.
+  /// 하악 중단(150–379) 폭.
   double get jawLowerWidth =>
       _dist(LandmarkIndex.rightJawLower, LandmarkIndex.leftJawLower);
 
-  /// 턱 측면(148–377) 폭 — 턱 끝 수렴도 신호.
+  /// 턱 측면(148–377) 폭.
   double get chinSideWidth =>
       _dist(LandmarkIndex.rightChinSide, LandmarkIndex.leftChinSide);
-
-  /// 눈 내각 사이 거리 — 스케일 sanity check용.
-  double get icdDistance =>
-      _dist(LandmarkIndex.rightEndocanthion, LandmarkIndex.leftEndocanthion);
 
   // ─── FACE (3) ───
 
@@ -158,31 +154,6 @@ class FaceMetrics {
   double get lowerFaceFullness =>
       (jawWidth + jawLowerWidth + chinSideWidth) / (3.0 * faceWidth);
 
-  // ─── Calibration-only composite candidates ───
-  // 하단 얼굴 3구간 중 **가장 좁은 지점의 좁음**. V-line 탐지.
-  // 평균(lowerFaceFullness)이 표준이어도 한 지점이 확 좁으면 long으로 보임.
-  double get fullnessMin {
-    final a = jawWidth;
-    final b = jawLowerWidth;
-    final c = chinSideWidth;
-    final mn = a < b ? (a < c ? a : c) : (b < c ? b : c);
-    return mn / faceWidth;
-  }
-
-  // 턱 수렴 속도 (gonion → chin-side 폭 감소). 클수록 급격한 V-line.
-  double get fullnessSlope => (jawWidth - chinSideWidth) / faceWidth;
-
-  // 2단 taper (하악 중단 / 광대).
-  double get taperJawLower => jawLowerWidth / faceWidth;
-
-  // 3단 taper (턱 끝 / 광대). round vs oval 분리용.
-  double get taperChinSide => chinSideWidth / faceWidth;
-
-  // 광대 우월성: 1에 가까울수록 광대가 하악보다 넓음 (oval/hourglass 신호).
-  double get widthSignature => faceWidth / (faceWidth + jawWidth);
-
-  // 상단-하단 얼굴 무게중심 (양수=상단 무거움, 음수=하단 무거움).
-  double get verticalBalance => upperFaceRatio - lowerFaceRatio;
 
   /// #3 하악각 (양측 평균)
   double get gonialAngle {

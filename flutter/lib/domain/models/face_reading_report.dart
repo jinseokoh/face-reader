@@ -53,12 +53,6 @@ class FaceReadingReport {
   String? thumbnailPath;
   final DateTime expiresAt;
 
-  /// 사용자가 분석 직후 수동 지정한 얼굴형 정답 라벨.
-  /// `'wide'` | `'standard'` | `'long'` | `null` (건너뛰기/기존 리포트).
-  /// `_faceShape()` 자동분류기 재보정용 CSV에 export 되며, 지정된 경우
-  /// 관상 리스트 표시 이름으로도 자동분류 대신 사용된다.
-  String? calibrationLabel;
-
   /// 17 metric results
   final Map<String, MetricResult> metrics;
 
@@ -98,7 +92,6 @@ class FaceReadingReport {
     this.alias,
     this.isMyFace = false,
     this.thumbnailPath,
-    this.calibrationLabel,
     DateTime? expiresAt,
     required this.metrics,
     required this.attributeScores,
@@ -120,7 +113,6 @@ class FaceReadingReport {
         'alias': alias,
         'isMyFace': isMyFace,
         'thumbnailPath': thumbnailPath,
-        'calibrationLabel': calibrationLabel,
         'expiresAt': expiresAt.toIso8601String(),
         'metrics': {
           for (final e in metrics.entries) e.key: e.value.toJson(),
@@ -165,7 +157,6 @@ class FaceReadingReport {
       alias: j['alias'] as String?,
       isMyFace: j['isMyFace'] as bool? ?? false,
       thumbnailPath: j['thumbnailPath'] as String?,
-      calibrationLabel: j['calibrationLabel'] as String?,
       expiresAt: j['expiresAt'] != null ? DateTime.parse(j['expiresAt'] as String) : null,
       metrics: (j['metrics'] as Map<String, dynamic>).map(
         (k, v) => MapEntry(k, MetricResult.fromJson(v as Map<String, dynamic>)),
