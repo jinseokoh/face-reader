@@ -128,6 +128,12 @@ terraform.rc
 terraform/**/*.zip
 *.bak
 
+# ===== ML datasets & training artifacts =====
+# Kaggle dataset cache (download via tools/datasets/download_kaggle.sh)
+tools/datasets/kaggle_cache/
+# Face-shape ML training outputs (regenerate via tools/face_shape_ml/*.py)
+tools/face_shape_ml/out/
+
 # Claude
 .claude/
 .omc/
