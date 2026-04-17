@@ -2,6 +2,7 @@ import 'package:face_reader/app.dart';
 import 'package:face_reader/core/hive/hive_setup.dart';
 import 'package:face_reader/data/services/auth_service.dart';
 import 'package:face_reader/data/services/coin_service.dart';
+import 'package:face_reader/data/services/face_shape_classifier.dart';
 import 'package:face_reader/core/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -22,6 +23,13 @@ void main() async {
   await initHive();
   await CoinService().initialize();
   await AuthService().restoreSession();
+  // Warm up face-shape TFLite classifier; failure is non-fatal (falls back
+  // to legacy LDA rule at call site).
+  try {
+    await FaceShapeClassifier.instance.load();
+  } catch (_) {
+    // intentionally swallowed — see classifier load() for logging
+  }
   runApp(const ProviderScope(child: MyApp()));
 }
 

@@ -6,6 +6,7 @@ import 'package:face_reader/data/enums/attribute.dart';
 import 'package:face_reader/data/enums/ethnicity.dart';
 import 'package:face_reader/data/enums/gender.dart';
 import 'package:face_reader/data/constants/face_reference_data.dart';
+import 'package:face_reader/data/services/face_shape_classifier.dart';
 import 'package:face_reader/domain/models/face_reading_report.dart';
 import 'package:face_reader/domain/services/age_adjustment.dart';
 import 'package:face_reader/domain/services/archetype.dart';
@@ -53,11 +54,15 @@ FaceReadingReport analyzeFaceReading({
       'landmark10Correction=$kLandmark10Correction');
 
   // Step 2: Z-score with gender-specific reference
+  // Iterate metricInfoList (not measured.entries) — computeAll() now returns
+  // 28 metrics but referenceData only covers the 18 with population stats.
+  // New Phase 1 metrics (eyebrowLength, chinAngle, etc.) are consumed only
+  // by the ML face-shape classifier, which does its own standardization.
   final refs = referenceData[ethnicity]![gender]!;
   final zScores = <String, double>{};
-  for (final entry in measured.entries) {
-    final ref = refs[entry.key]!;
-    zScores[entry.key] = (entry.value - ref.mean) / ref.sd;
+  for (final info in metricInfoList) {
+    final ref = refs[info.id]!;
+    zScores[info.id] = (measured[info.id]! - ref.mean) / ref.sd;
   }
 
   debugPrint('[Analysis] faceAspectRatio z=${zScores['faceAspectRatio']?.toStringAsFixed(4)} '
@@ -68,10 +73,6 @@ FaceReadingReport analyzeFaceReading({
   // extract and feed to spreadsheet/pandas. sid groups lines belonging to
   // the same sample. See FACEBUG.md for recalibration procedure.
   final sid = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
-  final faceShapeZ = zScores['faceAspectRatio']!;
-  final faceShapeLabel = faceShapeZ > 1.0
-      ? 'vertical'
-      : (faceShapeZ < -1.0 ? 'horizontal' : 'standard');
   debugPrint('[CALIB] BEGIN sid=$sid t=${DateTime.now().toIso8601String()} '
       'source=${source.name} gender=${gender.name} ethnicity=${ethnicity.name} '
       'age=${ageGroup.name} imgW=$imageWidth imgH=$imageHeight '
@@ -90,8 +91,8 @@ FaceReadingReport analyzeFaceReading({
         'refMean=${ref.mean} refSd=${ref.sd} '
         'z=${z.toStringAsFixed(4)}');
   }
-  debugPrint('[CALIB] sid=$sid shape z=${faceShapeZ.toStringAsFixed(4)} '
-      'label=$faceShapeLabel');
+  // Face-shape is now produced by the TFLite classifier
+  // (FaceShapeClassifier) — no longer derived from faceAspectRatio z-score.
   // ─────────────────────────────────────────────────────────────────────────
 
   // Step 3: Age adjustment (over50 only)
@@ -254,6 +255,20 @@ FaceReadingReport analyzeFaceReading({
   // Step 8: Archetype classification
   final archetype = classifyArchetype(normalizedScores);
 
+  // Step 8.5: ML face-shape classifier (28-feature TFLite MLP, 76.9% test acc).
+  // Feeds raw measured metrics (not z-scored) — the classifier does its own
+  // standardization with scaler.json. Null-safe: if the classifier is not
+  // loaded or a metric is missing, faceShapeLabel stays null and UI falls
+  // back to the legacy rule-based classifier.
+  final pred = FaceShapeClassifier.instance.predict(measured);
+  if (pred != null) {
+    debugPrint('[FACE SHAPE CNN] label=${pred.label.english} '
+        'conf=${pred.confidence.toStringAsFixed(3)} '
+        'probs=${pred.probabilities.map((p) => p.toStringAsFixed(2)).join(",")}');
+  } else {
+    debugPrint('[FACE SHAPE CNN] classifier unavailable → UI uses LDA fallback');
+  }
+
   // Build metric results
   final metricResults = <String, MetricResult>{};
   for (final info in metricInfoList) {
@@ -276,6 +291,8 @@ FaceReadingReport analyzeFaceReading({
     attributeScores: normalizedScores,
     archetype: archetype,
     triggeredRules: triggered,
+    faceShapeLabel: pred?.label.english,
+    faceShapeConfidence: pred?.confidence,
     lateralMetrics: lateralMetricResults,
     lateralFlags: lateralFlags,
   );

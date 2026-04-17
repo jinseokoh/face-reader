@@ -71,6 +71,16 @@ class FaceReadingReport {
   /// Rules that were triggered
   final List<TriggeredRule> triggeredRules;
 
+  /// ML face-shape classifier output (TFLite, 28-feature MLP, 76.9% test acc).
+  /// One of `'Heart' | 'Oblong' | 'Oval' | 'Round' | 'Square'`, or null when
+  /// the classifier was not available at analysis time (legacy reports,
+  /// load failure, missing metric).
+  final String? faceShapeLabel;
+
+  /// Softmax confidence (0~1) of [faceShapeLabel]. Null when [faceShapeLabel]
+  /// is null.
+  final double? faceShapeConfidence;
+
   /// Lateral (3/4-view) metric results. Null when no lateral capture exists.
   final Map<String, MetricResult>? lateralMetrics;
 
@@ -94,6 +104,8 @@ class FaceReadingReport {
     required this.attributeScores,
     required this.archetype,
     required this.triggeredRules,
+    this.faceShapeLabel,
+    this.faceShapeConfidence,
     this.lateralMetrics,
     this.lateralFlags,
   }) : expiresAt = expiresAt ?? DateTime.now().add(const Duration(days: 90));
@@ -131,6 +143,9 @@ class FaceReadingReport {
                   },
                 })
             .toList(),
+        if (faceShapeLabel != null) 'faceShapeLabel': faceShapeLabel,
+        if (faceShapeConfidence != null)
+          'faceShapeConfidence': faceShapeConfidence,
         if (lateralMetrics != null)
           'lateralMetrics': {
             for (final e in lateralMetrics!.entries) e.key: e.value.toJson(),
@@ -174,6 +189,8 @@ class FaceReadingReport {
           ),
         );
       }).toList(),
+      faceShapeLabel: j['faceShapeLabel'] as String?,
+      faceShapeConfidence: (j['faceShapeConfidence'] as num?)?.toDouble(),
       lateralMetrics: j['lateralMetrics'] == null
           ? null
           : (j['lateralMetrics'] as Map<String, dynamic>).map(

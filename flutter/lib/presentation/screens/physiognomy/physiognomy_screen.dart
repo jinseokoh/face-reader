@@ -248,23 +248,40 @@ class _PhysiognomyItem extends ConsumerWidget {
     );
   }
 
-  /// 얼굴형 분류 — 2단 hierarchical classifier (data-driven, Python LDA 학습).
+  /// 얼굴형 분류 — 우선순위:
+  ///   1) TFLite 28-feature MLP (76.9% test acc, Kaggle niten19 N=5000)
+  ///      → report.faceShapeLabel ∈ {Heart, Oblong, Oval, Round, Square}
+  ///   2) 실패 시 legacy 2-stage LDA fallback (22장 학습, 3-class)
   ///
-  /// 학습 데이터: 22장 (5 wide, 8 standard, 9 long), 사용자 정답 라벨링.
-  /// 도구: `tools/calibrate_face_shape.py` (MediaPipe + scikit-learn LDA).
-  /// LOOCV 정확도: 19/22 = 86.4% (남은 3장은 aspect 1.24~1.27 경계구역).
-  ///
-  /// Stage 1 (wide 탐지): 단순 임계값. 학습셋에서 wide min taper=0.801,
-  ///   non-wide max=0.796 로 깨끗한 gap 0.005 존재. 중간점 0.7985를 임계값.
-  ///   3-feature LDA보다 robust — 상관 높은 feature로 LDA 돌리면 계수 부호 불안정.
-  ///
-  /// Stage 2 (long vs standard): LDA 계수를 z-score 제거 후 raw value 형태로
-  ///   unstandardize. reference data 불필요 — 순수 raw metric만으로 판정.
-  ///
-  /// ⚠ faceTaperRatio 경계값 0.7985는 training margin 0.005로 얇음.
-  ///   Flutter vs Python MediaPipe landmark 차이로 실기에서 0.002~0.005 편차
-  ///   가능 → wide 경계 얼굴은 뒤집힐 수 있음. device 검증 필요.
+  /// Legacy LDA 주석 (fallback 경로):
+  ///   Stage 1: faceTaperRatio > 0.78 → 가로로 넓은 얼굴형
+  ///   Stage 2: LDA linear combination of aspect/gonial/upper → long vs standard
   String _faceShape() {
+    // Preferred path: ML classifier output stamped at analysis time.
+    final mlLabel = report.faceShapeLabel;
+    if (mlLabel != null) {
+      const labelMap = {
+        'Heart': '하트형',
+        'Oblong': '세로로 긴 얼굴형',
+        'Oval': '계란형',
+        'Round': '둥근 얼굴형',
+        'Square': '각진 얼굴형',
+      };
+      final korean = labelMap[mlLabel] ?? mlLabel;
+      final conf = report.faceShapeConfidence;
+      debugPrint('══════════ [FACE SHAPE — ML] ══════════');
+      debugPrint('  label=$mlLabel ($korean) '
+          'confidence=${conf?.toStringAsFixed(3) ?? "n/a"}');
+      debugPrint('═══════════════════════════════════════');
+      return korean;
+    }
+    return _faceShapeLegacyLda();
+  }
+
+  /// Legacy 3-class LDA fallback. Used only when the ML classifier did not run
+  /// (old Hive reports, asset load failure, missing metric). Preserved as a
+  /// safety net during ML rollout.
+  String _faceShapeLegacyLda() {
     // 구버전 Report(히스토리)는 새 메트릭이 없으므로 null-safe.
     final aspect = report.metrics['faceAspectRatio'];
     final taper = report.metrics['faceTaperRatio'];

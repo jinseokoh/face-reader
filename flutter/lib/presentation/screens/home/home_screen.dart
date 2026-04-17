@@ -6,6 +6,7 @@ import 'package:face_reader/core/theme.dart';
 import 'package:face_reader/data/enums/age_group.dart';
 import 'package:face_reader/data/enums/ethnicity.dart';
 import 'package:face_reader/data/enums/gender.dart';
+import 'package:face_reader/data/services/face_calib_export.dart';
 import 'package:face_reader/data/services/supabase_service.dart';
 import 'package:face_reader/domain/models/face_analysis.dart';
 import 'package:face_reader/domain/models/face_reading_report.dart';
@@ -200,10 +201,45 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               );
               }),
             ),
+            // CSV export — 라벨링 데이터가 있을 때만 표시
+            Builder(builder: (_) {
+              final count = FaceCalibExport.countLabeled(
+                  ref.watch(historyProvider));
+              if (count == 0) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: TextButton.icon(
+                  onPressed: _exportCalibCsv,
+                  icon: Icon(Icons.file_download,
+                      size: 18, color: AppTheme.textHint),
+                  label: Text(
+                    'CSV 내보내기 ($count건)',
+                    style: TextStyle(
+                        color: AppTheme.textHint, fontSize: 13),
+                  ),
+                ),
+              );
+            }),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _exportCalibCsv() async {
+    try {
+      final count = await FaceCalibExport.copyToClipboard(
+          ref.read(historyProvider));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('CSV $count건 클립보드에 복사됨')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$e')),
+      );
+    }
   }
 
   @override

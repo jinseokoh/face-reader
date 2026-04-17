@@ -22,6 +22,14 @@ abstract class LandmarkIndex {
   static const rightChinSide = 148; // chin 바로 오른쪽 (턱 측면)
   static const leftChinSide = 377; // chin 바로 왼쪽 (턱 측면)
 
+  // Temples (upper forehead sides, for 天庭/foreheadWidth)
+  static const rightTemple = 54;
+  static const leftTemple = 284;
+
+  // Cheekbones (for 顴骨/cheekboneWidth)
+  static const rightCheekbone = 116;
+  static const leftCheekbone = 345;
+
   // Nose
   static const nasion = 168;
   static const noseTip = 1;
@@ -35,22 +43,27 @@ abstract class LandmarkIndex {
   static const leftExocanthion = 263;
   static const rightEyeTop = 159;
   static const leftEyeTop = 386;
+  // Lower eyelid midpoints (for eyeAspect: 세로/가로)
+  static const rightEyeBottom = 145;
+  static const leftEyeBottom = 374;
 
-  // Eyebrow (right)
-  static const rightBrowUpper1 = 46;
+  // Eyebrow (right) — upper arc, lateral(tail) → medial(head)
+  static const rightBrowUpper1 = 46; // outer tail
   static const rightBrowLower1 = 70;
   static const rightBrowUpper2 = 53;
   static const rightBrowLower2 = 63;
   static const rightBrowUpper3 = 52;
   static const rightBrowLower3 = 105;
+  static const rightBrowInner = 55; // inner head (toward nose, 眉頭)
 
   // Eyebrow (left)
-  static const leftBrowUpper1 = 276;
+  static const leftBrowUpper1 = 276; // outer tail
   static const leftBrowLower1 = 300;
   static const leftBrowUpper2 = 283;
   static const leftBrowLower2 = 293;
   static const leftBrowUpper3 = 282;
   static const leftBrowLower3 = 334;
+  static const leftBrowInner = 285; // inner head
 
   // Mouth
   static const rightCheilion = 61;
@@ -251,9 +264,14 @@ class FaceMetrics {
     return ratio;
   }
 
-  /// #13 코 길이 (얼굴 높이 대비)
+  /// #13 코 길이 (얼굴 높이 대비) — 콧대 길이 (nasion→noseTip)
+  ///
+  /// 2026-04-17 버그 수정: 이전에는 `dist(nasion, subnasale) / faceHeight` 였으나
+  /// `midFaceRatio` 와 수식이 완전히 동일해 Pearson r=1.000 중복이었음
+  /// (feature_audit 5000 샘플 기준). 이제 콧대 끝(noseTip=1)까지의 거리로 측정하여
+  /// 실제 "코 길이"를 반영한다.
   double get nasalHeightRatio =>
-      _dist(LandmarkIndex.nasion, LandmarkIndex.subnasale) / faceHeight;
+      _dist(LandmarkIndex.nasion, LandmarkIndex.noseTip) / faceHeight;
 
   // ─── MOUTH (4) ───
 
@@ -262,8 +280,14 @@ class FaceMetrics {
       _dist(LandmarkIndex.rightCheilion, LandmarkIndex.leftCheilion) /
       faceWidth;
 
-  /// #13 입꼬리 각도
+  /// #13 입꼬리 각도 (부호 보존: + 仰月口, - 俯月口)
+  ///
+  /// 2026-04-17 버그 수정: 이전 구현은 `midLipY`를 x-좌표 기준으로 잘못 사용하여
+  /// 각도 크기가 왜곡되었다. 정상화된 midLipX 기준으로 계산.
   double get mouthCornerAngle {
+    final midLipX = (_lm(LandmarkIndex.upperLipInner).x +
+            _lm(LandmarkIndex.lowerLipInner).x) /
+        2.0;
     final midLipY = (_lm(LandmarkIndex.upperLipInner).y +
             _lm(LandmarkIndex.lowerLipInner).y) /
         2.0;
@@ -271,9 +295,9 @@ class FaceMetrics {
     final leftCorner = _lm(LandmarkIndex.leftCheilion);
 
     final rightAngle =
-        atan2(-(rightCorner.y - midLipY), (rightCorner.x - midLipY).abs());
+        atan2(-(rightCorner.y - midLipY), (rightCorner.x - midLipX).abs());
     final leftAngle =
-        atan2(-(leftCorner.y - midLipY), (leftCorner.x - midLipY).abs());
+        atan2(-(leftCorner.y - midLipY), (leftCorner.x - midLipX).abs());
 
     return ((rightAngle + leftAngle) / 2.0) * (180.0 / pi);
   }
@@ -286,6 +310,111 @@ class FaceMetrics {
   /// #15 인중 길이
   double get philtrumLength =>
       _dist(LandmarkIndex.subnasale, LandmarkIndex.upperLipTop) / faceHeight;
+
+  // ─── PHASE 1 — 관상학 추가 attribute (2026-04-17) ───
+
+  /// #P1 눈썹 길이 (눈 길이 대비) — 兄弟宮 (眉長過目 = 형제 多)
+  double get eyebrowLength {
+    final rightBrow = _dist(
+        LandmarkIndex.rightBrowUpper1, LandmarkIndex.rightBrowInner);
+    final leftBrow = _dist(
+        LandmarkIndex.leftBrowUpper1, LandmarkIndex.leftBrowInner);
+    final rightEye = _dist(
+        LandmarkIndex.rightExocanthion, LandmarkIndex.rightEndocanthion);
+    final leftEye = _dist(
+        LandmarkIndex.leftExocanthion, LandmarkIndex.leftEndocanthion);
+    final eyeAvg = (rightEye + leftEye) / 2.0;
+    if (eyeAvg == 0) return 0.0;
+    return ((rightBrow + leftBrow) / 2.0) / eyeAvg;
+  }
+
+  /// #P2 눈썹 기울기 (부호 보존) — 劍眉(+, 위로 치켜) / 八字眉(-, 내려감)
+  ///
+  /// outer.y < inner.y (outer가 위) → 양수. faceHeight로 정규화.
+  /// 이미지 좌표계(y 아래 증가) 기준: `inner.y - outer.y` 가 양수면 outer 위.
+  double get eyebrowTiltDirection {
+    final rInner = _lm(LandmarkIndex.rightBrowInner);
+    final rOuter = _lm(LandmarkIndex.rightBrowUpper1);
+    final lInner = _lm(LandmarkIndex.leftBrowInner);
+    final lOuter = _lm(LandmarkIndex.leftBrowUpper1);
+    final rTilt = (rInner.y - rOuter.y); // + if outer higher
+    final lTilt = (lInner.y - lOuter.y);
+    if (faceHeight == 0) return 0.0;
+    return ((rTilt + lTilt) / 2.0) / faceHeight;
+  }
+
+  /// #P3 눈썹 곡률 (아치 정도) — 直眉(~0) / 彎眉(+) / 八字(-, 중앙 쳐짐)
+  ///
+  /// 중간점의 아래로 향한 처짐을 측정: middle의 y가 inner/outer의 선형보간값보다
+  /// 작으면(이미지 y기준 위) 양수 → 아치. 큰 값이면 처짐(음수).
+  double get eyebrowCurvature {
+    double curve(int inner, int middle, int outer) {
+      final pi_ = _lm(inner);
+      final pm = _lm(middle);
+      final po = _lm(outer);
+      // middle에 대응하는 inner-outer 직선상의 y
+      final yLine = (pi_.y + po.y) / 2.0; // 단순 중점 근사
+      return yLine - pm.y; // + if middle is above the chord (arched)
+    }
+    final rCurve = curve(LandmarkIndex.rightBrowInner,
+        LandmarkIndex.rightBrowUpper3, LandmarkIndex.rightBrowUpper1);
+    final lCurve = curve(LandmarkIndex.leftBrowInner,
+        LandmarkIndex.leftBrowUpper3, LandmarkIndex.leftBrowUpper1);
+    if (faceHeight == 0) return 0.0;
+    return ((rCurve + lCurve) / 2.0) / faceHeight;
+  }
+
+  /// #P4 미간 거리 (印堂) — 넓으면 관대, 좁으면 속좁음
+  double get browSpacing =>
+      _dist(LandmarkIndex.rightBrowInner, LandmarkIndex.leftBrowInner) /
+      faceWidth;
+
+  /// #P5 눈 세로/가로 비율 — 鳳眼(작음, 가로긴) / 圓眼(큼, 세로긴)
+  double get eyeAspect {
+    final rH = _dist(LandmarkIndex.rightEyeTop, LandmarkIndex.rightEyeBottom);
+    final lH = _dist(LandmarkIndex.leftEyeTop, LandmarkIndex.leftEyeBottom);
+    final rW = _dist(
+        LandmarkIndex.rightExocanthion, LandmarkIndex.rightEndocanthion);
+    final lW = _dist(
+        LandmarkIndex.leftExocanthion, LandmarkIndex.leftEndocanthion);
+    final rAsp = rW > 0 ? rH / rW : 0.0;
+    final lAsp = lW > 0 ? lH / lW : 0.0;
+    return (rAsp + lAsp) / 2.0;
+  }
+
+  /// #P6 윗입술/아랫입술 두께 비율 — >1: 윗입술 두껍(情 多) / <1: 아랫입술 두껍
+  double get upperVsLowerLipRatio {
+    final upper = _dist(LandmarkIndex.upperLipTop, LandmarkIndex.upperLipInner);
+    final lower = _dist(LandmarkIndex.lowerLipInner, LandmarkIndex.lowerLipBottom);
+    if (lower == 0) return 0.0;
+    return upper / lower;
+  }
+
+  /// #P7 턱 각도 (chinAngle) — 方頤(~180°, 둥글) / 尖頤(작음, 뾰족)
+  ///
+  /// 양 턱측면(148, 377)과 턱끝(152)이 만드는 각.
+  double get chinAngle => _angle(LandmarkIndex.rightChinSide,
+      LandmarkIndex.chin, LandmarkIndex.leftChinSide);
+
+  /// #P8 이마 폭 (天庭) — 관상학적 사회운/관록 지표
+  double get foreheadWidth =>
+      _dist(LandmarkIndex.rightTemple, LandmarkIndex.leftTemple) / faceWidth;
+
+  /// #P9 광대 폭 (顴骨) — 권력/자아 지표
+  double get cheekboneWidth =>
+      _dist(LandmarkIndex.rightCheekbone, LandmarkIndex.leftCheekbone) /
+      faceWidth;
+
+  /// #P10 콧대-코끝 수직 거리 / nasion-subnasale (콧대 돌출 간접 지표)
+  ///
+  /// 새 `nasalHeightRatio` 가 콧대 bridge(168→1) 거리이므로, subnasale까지의
+  /// 거리와의 비율을 보면 콧대 돌출(앞→아래) 경사 정보를 포착할 수 있다.
+  double get noseBridgeRatio {
+    final bridge = _dist(LandmarkIndex.nasion, LandmarkIndex.noseTip);
+    final full = _dist(LandmarkIndex.nasion, LandmarkIndex.subnasale);
+    if (full == 0) return 0.0;
+    return bridge / full;
+  }
 
   Map<String, double> computeAll() {
     return {
@@ -307,6 +436,17 @@ class FaceMetrics {
       'mouthCornerAngle': mouthCornerAngle,
       'lipFullnessRatio': lipFullnessRatio,
       'philtrumLength': philtrumLength,
+      // Phase 1 additions (2026-04-17)
+      'eyebrowLength': eyebrowLength,
+      'eyebrowTiltDirection': eyebrowTiltDirection,
+      'eyebrowCurvature': eyebrowCurvature,
+      'browSpacing': browSpacing,
+      'eyeAspect': eyeAspect,
+      'upperVsLowerLipRatio': upperVsLowerLipRatio,
+      'chinAngle': chinAngle,
+      'foreheadWidth': foreheadWidth,
+      'cheekboneWidth': cheekboneWidth,
+      'noseBridgeRatio': noseBridgeRatio,
     };
   }
 }
