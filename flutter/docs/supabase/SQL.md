@@ -146,6 +146,6 @@ SELECT * FROM metrics LIMIT 5;
 
 ## 연관 문서
 
-- [SUPABASE_PLAN.md](SUPABASE_PLAN.md) — Supabase 연동 계획 (Phase 1~3)
-- [ANALYSIS.md](ANALYSIS.md) — 분석 파이프라인 출력 및 저장 형태
-- [ARCHITECTURE.md](ARCHITECTURE.md) — 전체 아키텍처
+- [PLAN.md](PLAN.md) — Supabase 연동 계획 (Phase 1~3)
+- [OUTPUT_SAMPLES.md](../runtime/OUTPUT_SAMPLES.md) — 분석 파이프라인 출력 및 저장 형태
+- [OVERVIEW.md](../architecture/OVERVIEW.md) — 전체 아키텍처

@@ -71,7 +71,7 @@
 | attractiveness | 매력도 | 눈(0.35), root(0.25P), 코(0.15) | “얼굴이 천 냥이면 눈이 구백 냥” |
 | libido | 관능도 | 인중(0.40), 눈(0.25), 턱(0.20) | 인중=정력 제1 지표 |
 
-가중치 상세: `docs/ATTRIBUTE_NODE_MAPPING.md` §2.2
+가중치 상세: `docs/engine/ATTRIBUTES.md` §2.2
 
 ### 5-Stage Pipeline
 
@@ -144,7 +144,7 @@ Stage 5: Gender/Age/Lateral — 성별 weight delta + 50+ 규칙 + 측면 flag
 
 ## 연관 문서
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) — 상위 아키텍처 (3 Track 구조)
-- [ATTRIBUTE_NODE_MAPPING.md](ATTRIBUTE_NODE_MAPPING.md) — weight matrix + rule 명세
+- [OVERVIEW.md](../architecture/OVERVIEW.md) — 상위 아키텍처 (3 Track 구조)
+- [ATTRIBUTES.md](ATTRIBUTES.md) — weight matrix + rule 명세
 - [NORMALIZATION.md](NORMALIZATION.md) — raw -> 5~10 정규화
 - [COMPATIBILITY.md](COMPATIBILITY.md) — 궁합 엔진

@@ -294,6 +294,6 @@ Sanity: `test/physiognomy_tree_sanity_test.dart`.
 
 ## 연관 문서
 
-- [ATTRIBUTE_NODE_MAPPING.md](ATTRIBUTE_NODE_MAPPING.md) — weight matrix + 5-stage rule 명세
+- [ATTRIBUTES.md](ATTRIBUTES.md) — weight matrix + 5-stage rule 명세
 - [NORMALIZATION.md](NORMALIZATION.md) — 정규화 파이프라인
-- [ARCHITECTURE.md](ARCHITECTURE.md) — 상위 아키텍처 (§2 Track 2)
+- [OVERVIEW.md](../architecture/OVERVIEW.md) — 상위 아키텍처 (§2 Track 2)

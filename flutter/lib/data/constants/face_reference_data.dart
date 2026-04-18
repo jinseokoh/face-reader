@@ -171,7 +171,7 @@ const metricInfoList = [
     type: MetricType.ratio,
   ),
   // ─── Phase 1B additions (2026-04-18) ───
-  // See docs/PHYSIOGNOMY_TAXONOMY.md v1.0 — orphan 7개 정규화.
+  // See docs/engine/TAXONOMY.md v1.0 — orphan 7개 정규화.
   // 보류된 3개(eyebrowLength·browSpacing·noseBridgeRatio)는 tree 밖 classifier 전용.
   MetricInfo(
     id: 'foreheadWidth',

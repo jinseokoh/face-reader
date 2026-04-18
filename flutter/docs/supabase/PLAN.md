@@ -130,6 +130,6 @@ Hive 초기화 제거.
 
 ## 연관 문서
 
-- [SUPABASE_SQL.md](SUPABASE_SQL.md) — SQL 스키마 및 실행 스크립트
-- [ANALYSIS.md](ANALYSIS.md) — 분석 파이프라인 출력 형태 (Supabase 저장 포맷 포함)
-- [ARCHITECTURE.md](ARCHITECTURE.md) — 전체 아키텍처
+- [SQL.md](SQL.md) — SQL 스키마 및 실행 스크립트
+- [OUTPUT_SAMPLES.md](../runtime/OUTPUT_SAMPLES.md) — 분석 파이프라인 출력 형태 (Supabase 저장 포맷 포함)
+- [OVERVIEW.md](../architecture/OVERVIEW.md) — 전체 아키텍처

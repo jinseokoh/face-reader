@@ -11,7 +11,7 @@
 ///   4. palace rules (십이궁 overlay)
 ///   5. gender delta + age(50+) + lateral flags
 ///
-/// 설계 근거: `docs/ATTRIBUTE_NODE_MAPPING.md` v0.2
+/// 설계 근거: `docs/engine/ATTRIBUTES.md` v0.2
 library;
 
 import 'package:face_reader/data/enums/attribute.dart';
@@ -132,7 +132,7 @@ extension AttributeBreakdownContributors on AttributeBreakdown {
 
 // ──────────────────── §2.2 Weight Matrix ────────────────────
 //
-// 각 row 합 = 1.00. 숫자 근거는 `docs/ATTRIBUTE_NODE_MAPPING.md` §2.2 · §12.
+// 각 row 합 = 1.00. 숫자 근거는 `docs/engine/ATTRIBUTES.md` §2.2 · §12.
 
 const _weightMatrix = <Attribute, List<_NodeWeight>>{
   Attribute.wealth: [

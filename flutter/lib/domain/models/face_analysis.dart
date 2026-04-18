@@ -16,7 +16,7 @@ import 'package:face_reader/domain/services/face_metrics_lateral.dart';
 import 'package:face_reader/domain/services/metric_score.dart';
 import 'package:face_reader/domain/services/physiognomy_scoring.dart';
 
-/// Full face-reading pipeline (see docs/ARCHITECTURE.md §4)
+/// Full face-reading pipeline (see docs/architecture/OVERVIEW.md §4)
 ///
 /// [lateralLandmarks] is OPTIONAL. When provided (a separate 3/4-view capture),
 /// lateral metrics are computed and z-scored against lateral reference data,

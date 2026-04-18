@@ -22,7 +22,7 @@
 
 ### 깊이 있는 레퍼런스
 
-모든 상세 문서는 `docs/` 하위. 진입점은 `docs/README.md` (인덱스). 이 파일(CLAUDE.md)은 현재 상태의 스냅샷과 프로젝트 규칙만 유지 — 수치 표나 연구 인용은 docs/ANALYSIS.md 로 위임.
+모든 상세 문서는 `docs/` 하위. 진입점은 `docs/README.md` (인덱스). 이 파일(CLAUDE.md)은 현재 상태의 스냅샷과 프로젝트 규칙만 유지 — 수치 표나 연구 인용은 docs/runtime/OUTPUT_SAMPLES.md 로 위임.
 
 ---
 
@@ -53,7 +53,7 @@ lib/
 │       └── supabase_service.dart
 ├── domain/
 │   ├── models/
-│   │   ├── physiognomy_tree.dart              # 14 node 구조 SSOT (docs/PHYSIOGNOMY_TAXONOMY.md)
+│   │   ├── physiognomy_tree.dart              # 14 node 구조 SSOT (docs/engine/TAXONOMY.md)
 │   │   ├── face_analysis.dart                 # analyzeFaceReading() — 엔드투엔드 파이프라인
 │   │   ├── face_reading_report.dart           # rich evidence schema (아래 참조)
 │   │   └── compatibility_result.dart

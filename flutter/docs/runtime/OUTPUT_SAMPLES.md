@@ -29,7 +29,7 @@ classifyArchetype()               → primary/secondary archetype + special
 FaceReadingReport
 ```
 
-구현: `lib/domain/models/face_analysis.dart` (see `ARCHITECTURE.md` §4)
+구현: `lib/domain/models/face_analysis.dart` (see `docs/architecture/OVERVIEW.md` §4)
 
 ---
 
@@ -144,6 +144,6 @@ class FaceReadingReport {
 
 ## 연관 문서
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) — 전체 파이프라인 설계 (§4 Runtime Pipeline)
-- [NORMALIZATION.md](NORMALIZATION.md) — raw → 5~10 정규화 상세
-- [SUPABASE_PLAN.md](SUPABASE_PLAN.md) — Supabase 연동 계획
+- [OVERVIEW.md](../architecture/OVERVIEW.md) — 전체 파이프라인 설계 (§4 Runtime Pipeline)
+- [NORMALIZATION.md](../engine/NORMALIZATION.md) — raw → 5~10 정규화 상세
+- [PLAN.md](../supabase/PLAN.md) — Supabase 연동 계획

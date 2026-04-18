@@ -1,6 +1,6 @@
 /// 관상 분류 체계 (Physiognomy Taxonomy) — 코드 구현.
 ///
-/// SSOT 문서: `docs/PHYSIOGNOMY_TAXONOMY.md` v1.0 (2026-04-18).
+/// SSOT 문서: `docs/engine/TAXONOMY.md` v1.0 (2026-04-18).
 /// α 옵션: 삼정(三停) 우선 tree + 오관/오악/사독/십이궁 메타데이터 오버레이.
 ///
 /// 14 노드 = 루트 1 + 삼정 3 + leaf 10.

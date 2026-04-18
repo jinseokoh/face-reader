@@ -420,6 +420,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
 ## 연관 문서
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) — 관상 엔진 아키텍처 (Track 1/2/3)
-- [BUSINESS.md](BUSINESS.md) — 비즈니스 로직 (metric, attribute, archetype)
-- [SUPABASE_PLAN.md](SUPABASE_PLAN.md) — Supabase 연동 계획
+- [OVERVIEW.md](OVERVIEW.md) — 관상 엔진 아키텍처 (Track 1/2/3)
+- [RATIONALE.md](../engine/RATIONALE.md) — 비즈니스 로직 (metric, attribute, archetype)
+- [PLAN.md](../supabase/PLAN.md) — Supabase 연동 계획

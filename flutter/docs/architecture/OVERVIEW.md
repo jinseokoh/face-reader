@@ -93,7 +93,7 @@ face (root)
 - **사독(四瀆)** — eye(he) · nose(huai) · mouth(ji) · ear(jiang)
 - **십이궁(十二宮)** — 각 leaf 가 해당 궁 매핑 (예: 코 → 재백궁·질액궁)
 
-SSOT: `docs/PHYSIOGNOMY_TAXONOMY.md`, 코드 `flutter/lib/domain/models/physiognomy_tree.dart`.
+SSOT: `docs/engine/TAXONOMY.md`, 코드 `flutter/lib/domain/models/physiognomy_tree.dart`.
 
 ### 2.2 Node Scoring
 
@@ -119,7 +119,7 @@ SSOT: `docs/PHYSIOGNOMY_TAXONOMY.md`, 코드 `flutter/lib/domain/models/physiogn
 
 각 stage 는 `TriggeredRule` 리스트로 기록되어 **Breakdown** 에 남는다 — UI 에서 "왜 이 점수?" top-3 근거 표시에 사용.
 
-가중치·극성·규칙 숫자 근거: `docs/ATTRIBUTE_NODE_MAPPING.md` v0.2. 출처는 마의상법·유장상법·신상전편 + Pallett et al. 2010 PNAS + BiSeNet parsing 영역.
+가중치·극성·규칙 숫자 근거: `docs/engine/ATTRIBUTES.md` v0.2. 출처는 마의상법·유장상법·신상전편 + Pallett et al. 2010 PNAS + BiSeNet parsing 영역.
 
 ### 2.4 공개 API
 
@@ -148,8 +148,8 @@ flutter/lib/domain/services/attribute_derivation.dart  # 5-stage pipeline + weig
 flutter/test/physiognomy_scoring_test.dart             # tree roll-up 단위 테스트
 flutter/test/attribute_derivation_test.dart            # 5-stage + breakdown 단위 테스트
 
-docs/PHYSIOGNOMY_TAXONOMY.md                           # Tree SSOT + 노드별 metric/rule 매칭 (v2.0)
-docs/ATTRIBUTE_NODE_MAPPING.md                         # weight matrix + rule 명세 (v0.2)
+docs/engine/TAXONOMY.md                           # Tree SSOT + 노드별 metric/rule 매칭 (v2.0)
+docs/engine/ATTRIBUTES.md                         # weight matrix + rule 명세 (v0.2)
 ```
 
 ---
@@ -234,14 +234,14 @@ FaceReadingReport
 
 - 구조 변경 시 본 문서부터 갱신 → 그 다음 코드.
 - Track 경계를 넘는 feature 는 해당 섹션 모두에 동기화.
-- Track 2 weight/rule 숫자 변경 시 `docs/ATTRIBUTE_NODE_MAPPING.md` 버전 올리고 본 문서 §2 링크만 유지.
+- Track 2 weight/rule 숫자 변경 시 `docs/engine/ATTRIBUTES.md` 버전 올리고 본 문서 §2 링크만 유지.
 - Track 1 재학습 시 §1 "테스트 정확도" 갱신.
 
 ---
 
 ## 연관 문서
 
-- [ATTRIBUTE_NODE_MAPPING.md](ATTRIBUTE_NODE_MAPPING.md) — weight matrix + 5-stage rule 명세
-- [NORMALIZATION.md](NORMALIZATION.md) — raw → 5~10 정규화 파이프라인
-- [PHYSIOGNOMY_TAXONOMY.md](PHYSIOGNOMY_TAXONOMY.md) — 14-node tree SSOT
-- [COMPATIBILITY.md](COMPATIBILITY.md) — 궁합 엔진 구조
+- [ATTRIBUTES.md](../engine/ATTRIBUTES.md) — weight matrix + 5-stage rule 명세
+- [NORMALIZATION.md](../engine/NORMALIZATION.md) — raw → 5~10 정규화 파이프라인
+- [TAXONOMY.md](../engine/TAXONOMY.md) — 14-node tree SSOT
+- [COMPATIBILITY.md](../engine/COMPATIBILITY.md) — 궁합 엔진 구조

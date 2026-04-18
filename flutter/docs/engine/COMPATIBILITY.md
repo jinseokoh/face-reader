@@ -509,7 +509,7 @@ attribute 35% / archetype 25% / special 20% / rule 20%
 
 ## 연관 문서
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) — 상위 아키텍처 (§2 Track 2 관상 엔진)
-- [BUSINESS.md](BUSINESS.md) — 비즈니스 로직 (10 attribute, archetype)
-- [ATTRIBUTE_NODE_MAPPING.md](ATTRIBUTE_NODE_MAPPING.md) — weight matrix + rule 명세
+- [OVERVIEW.md](../architecture/OVERVIEW.md) — 상위 아키텍처 (§2 Track 2 관상 엔진)
+- [RATIONALE.md](RATIONALE.md) — 비즈니스 로직 (10 attribute, archetype)
+- [ATTRIBUTES.md](ATTRIBUTES.md) — weight matrix + rule 명세
 - [NORMALIZATION.md](NORMALIZATION.md) — 정규화 파이프라인
