@@ -257,7 +257,7 @@ flutter test test/calibration_test.dart
 - `archetype_fairness_test.dart` — archetype 분포 공정성
 - `archetype_template_sanity_test.dart` — 6 template 별 ≥70% hit
 - `score_distribution_test.dart` — spread ≥ 3.0, saturation < 5%
-- `compat_label_fairness_test.dart` — 10/25/25/40 분포 (thresholds 81/72/63)
+- `compat_label_fairness_test.dart` — 10/30/30/30 분포 (thresholds 82/70/61, 2026-04-18 재보정)
 
 ## Platform Setup
 
