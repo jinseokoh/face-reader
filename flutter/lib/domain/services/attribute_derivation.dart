@@ -614,7 +614,19 @@ final _palaceRules = <_TreeRule>[
     Attribute.intelligence: 0.5,
   }),
 
-  // P-09 명궁 — glabella metric 공백으로 현재 항상 미발동. Phase 4 에서 활성.
+  // P-09 명궁 넓음 — browSpacing z ≥ 1.0 (印堂 광활). 대범·재물 포용, 스트레스 내성.
+  _TreeRule('P-09', (t) => _leafZ(t, 'glabella') >= 1.0, const {
+    Attribute.wealth: 0.5,
+    Attribute.stability: 0.5,
+    Attribute.leadership: 0.3,
+  }),
+
+  // P-09B 명궁 좁음 — browSpacing z ≤ -1.0. 예민·섬세·고민 많음.
+  _TreeRule('P-09B', (t) => _leafZ(t, 'glabella') <= -1.0, const {
+    Attribute.emotionality: 0.5,
+    Attribute.intelligence: 0.3,
+    Attribute.stability: -0.3,
+  }),
 ];
 
 // ──────────────────── Stage 5 — Age (50+) Rules (§5.2, 4) ────────────────────

@@ -150,8 +150,8 @@ class PhysiognomyNode {
 // ───────────────────────── 14 노드 const tree ─────────────────────────
 //
 // metricIds 는 이 노드 스코프에서 집계되는 metric 만 명시.
-// - 고아 3개(eyebrowLength, browSpacing, noseBridgeRatio) 는 1B 단계에서 제거.
-//   여기서는 정규화 예정 7개만 포함.
+// - 고아 2개(eyebrowLength, noseBridgeRatio) 는 tree 밖 classifier 전용.
+// - browSpacing 은 glabella·명궁 노드로 편입 (Phase 2, 2026-04-18).
 // - 귀 노드는 metric 0 + unsupported=true.
 // - 복덕궁·상모궁은 cross-node overlay 이므로 leaf 태그에 포함하지 않음.
 
@@ -169,7 +169,7 @@ const PhysiognomyNode _glabella = PhysiognomyNode(
   nameKo: '미간',
   zone: Zone.upper,
   palaces: [Palace.myeong],
-  metricIds: [],
+  metricIds: ['browSpacing'],
 );
 
 const PhysiognomyNode _eyebrow = PhysiognomyNode(

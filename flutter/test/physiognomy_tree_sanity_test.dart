@@ -32,17 +32,19 @@ void main() {
     expect(nodeById['ear']!.metricIds, isEmpty);
   });
 
-  test('glabella currently has no metrics (v1.0 gap, documented)', () {
-    expect(nodeById['glabella']!.metricIds, isEmpty);
+  test('glabella 는 browSpacing 하나로 명궁 감지', () {
+    expect(nodeById['glabella']!.metricIds, ['browSpacing']);
   });
 
   test('metric → node mapping covers expected frontal + lateral metrics', () {
-    // Expected set = 현재 computeAll 산출물 - 고아 3개 (Phase 1B 에서 제거 대상)
+    // Expected set = 현재 computeAll 산출물 - 고아 2개 (classifier 전용).
     const expected = {
       // root
       'faceAspectRatio', 'faceTaperRatio', 'midFaceRatio',
       // forehead
       'upperFaceRatio', 'foreheadWidth',
+      // glabella
+      'browSpacing',
       // eyebrow
       'eyebrowThickness', 'browEyeDistance',
       'eyebrowTiltDirection', 'eyebrowCurvature',
@@ -68,7 +70,7 @@ void main() {
   });
 
   test('retired orphans are NOT in tree', () {
-    for (final m in ['eyebrowLength', 'browSpacing', 'noseBridgeRatio']) {
+    for (final m in ['eyebrowLength', 'noseBridgeRatio']) {
       expect(nodeByMetricId[m], isNull, reason: '$m should be retired');
     }
   });

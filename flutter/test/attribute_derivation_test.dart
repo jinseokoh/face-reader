@@ -272,14 +272,21 @@ void main() {
       expect(b.palaceRules.map((r) => r.id), contains('P-06'));
     });
 
-    test('P-09 명궁 never triggers (glabella metric gap)', () {
-      final b = _run({
-        'upperFaceRatio': 2.0,
-        'foreheadWidth': 2.0,
-        'eyebrowThickness': 2.0,
-        'nasalHeightRatio': 2.0,
-      });
-      expect(b.palaceRules.map((r) => r.id), isNot(contains('P-09')));
+    test('P-09 명궁 넓음 — browSpacing z ≥ 1 → wealth·stability 가산', () {
+      final b = _run({'browSpacing': 1.5});
+      expect(b.palaceRules.map((r) => r.id), contains('P-09'));
+    });
+
+    test('P-09B 명궁 좁음 — browSpacing z ≤ -1 → emotionality 가산', () {
+      final b = _run({'browSpacing': -1.5});
+      expect(b.palaceRules.map((r) => r.id), contains('P-09B'));
+    });
+
+    test('P-09 중립 구간 |z|<1 은 미발동', () {
+      final b = _run({'browSpacing': 0.5});
+      final ids = b.palaceRules.map((r) => r.id);
+      expect(ids, isNot(contains('P-09')));
+      expect(ids, isNot(contains('P-09B')));
     });
   });
 
@@ -465,7 +472,7 @@ void main() {
       }
     });
 
-    test('no rule targets glabella directly (P-09 skipped)', () {
+    test('empty metrics → glabella rule (P-09/P-09B) 미발동', () {
       final b = _run({});
       final allRuleIds = [
         ...b.zoneRules,
@@ -475,6 +482,7 @@ void main() {
         ...b.lateralRules,
       ].map((r) => r.id);
       expect(allRuleIds, isNot(contains('P-09')));
+      expect(allRuleIds, isNot(contains('P-09B')));
     });
 
     test('proximity saturates: extreme z diminishes vs moderate', () {

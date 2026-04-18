@@ -172,7 +172,8 @@ const metricInfoList = [
   ),
   // ─── Phase 1B additions (2026-04-18) ───
   // See docs/engine/TAXONOMY.md v1.0 — orphan 7개 정규화.
-  // 보류된 3개(eyebrowLength·browSpacing·noseBridgeRatio)는 tree 밖 classifier 전용.
+  // 보류된 2개(eyebrowLength·noseBridgeRatio)는 tree 밖 classifier 전용.
+  // browSpacing 은 Phase 2 (2026-04-18) 에서 glabella·명궁으로 편입.
   MetricInfo(
     id: 'foreheadWidth',
     nameKo: '이마 너비',
@@ -236,6 +237,15 @@ const metricInfoList = [
     lowerLabel: '아랫입술이 두꺼움',
     type: MetricType.ratio,
   ),
+  MetricInfo(
+    id: 'browSpacing',
+    nameKo: '미간 너비 (印堂)',
+    nameEn: 'Brow Spacing',
+    category: 'eyes',
+    higherLabel: '미간이 넓음',
+    lowerLabel: '미간이 좁음',
+    type: MetricType.ratio,
+  ),
 ];
 
 /// Reference data: [Ethnicity][Gender][metricId] → MetricReference(mean, sd)
@@ -282,6 +292,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
       'eyebrowCurvature': MetricReference(0.003, 0.004),
       'eyebrowTiltDirection': MetricReference(0.008, 0.008),
       'upperVsLowerLipRatio': MetricReference(0.85, 0.15),
+      'browSpacing': MetricReference(0.19, 0.03),
     },
     Gender.female: {
       // PHYSICAL pixel space ratio (post imageHeight/imageWidth correction).
@@ -318,6 +329,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
       'eyebrowCurvature': MetricReference(0.003, 0.004),
       'eyebrowTiltDirection': MetricReference(0.008, 0.008),
       'upperVsLowerLipRatio': MetricReference(0.90, 0.15),
+      'browSpacing': MetricReference(0.20, 0.03),
     },
   },
   Ethnicity.caucasian: {
@@ -349,6 +361,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
       'eyebrowCurvature': MetricReference(0.003, 0.004),
       'eyebrowTiltDirection': MetricReference(0.008, 0.008),
       'upperVsLowerLipRatio': MetricReference(0.85, 0.15),
+      'browSpacing': MetricReference(0.19, 0.03),
     },
     Gender.female: {
       'faceAspectRatio': MetricReference(1.33, 0.07),
@@ -378,6 +391,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
       'eyebrowCurvature': MetricReference(0.003, 0.004),
       'eyebrowTiltDirection': MetricReference(0.008, 0.008),
       'upperVsLowerLipRatio': MetricReference(0.90, 0.15),
+      'browSpacing': MetricReference(0.20, 0.03),
     },
   },
   Ethnicity.african: {
@@ -409,6 +423,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
       'eyebrowCurvature': MetricReference(0.003, 0.004),
       'eyebrowTiltDirection': MetricReference(0.008, 0.008),
       'upperVsLowerLipRatio': MetricReference(0.85, 0.15),
+      'browSpacing': MetricReference(0.19, 0.03),
     },
     Gender.female: {
       'faceAspectRatio': MetricReference(1.30, 0.07),
@@ -438,6 +453,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
       'eyebrowCurvature': MetricReference(0.003, 0.004),
       'eyebrowTiltDirection': MetricReference(0.008, 0.008),
       'upperVsLowerLipRatio': MetricReference(0.90, 0.15),
+      'browSpacing': MetricReference(0.20, 0.03),
     },
   },
   Ethnicity.southeastAsian: {
@@ -469,6 +485,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
       'eyebrowCurvature': MetricReference(0.003, 0.004),
       'eyebrowTiltDirection': MetricReference(0.008, 0.008),
       'upperVsLowerLipRatio': MetricReference(0.85, 0.15),
+      'browSpacing': MetricReference(0.19, 0.03),
     },
     Gender.female: {
       'faceAspectRatio': MetricReference(1.34, 0.07),
@@ -498,6 +515,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
       'eyebrowCurvature': MetricReference(0.003, 0.004),
       'eyebrowTiltDirection': MetricReference(0.008, 0.008),
       'upperVsLowerLipRatio': MetricReference(0.90, 0.15),
+      'browSpacing': MetricReference(0.20, 0.03),
     },
   },
   Ethnicity.hispanic: {
@@ -529,6 +547,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
       'eyebrowCurvature': MetricReference(0.003, 0.004),
       'eyebrowTiltDirection': MetricReference(0.008, 0.008),
       'upperVsLowerLipRatio': MetricReference(0.85, 0.15),
+      'browSpacing': MetricReference(0.19, 0.03),
     },
     Gender.female: {
       'faceAspectRatio': MetricReference(1.33, 0.07),
@@ -558,6 +577,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
       'eyebrowCurvature': MetricReference(0.003, 0.004),
       'eyebrowTiltDirection': MetricReference(0.008, 0.008),
       'upperVsLowerLipRatio': MetricReference(0.90, 0.15),
+      'browSpacing': MetricReference(0.20, 0.03),
     },
   },
   Ethnicity.middleEastern: {
@@ -589,6 +609,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
       'eyebrowCurvature': MetricReference(0.003, 0.004),
       'eyebrowTiltDirection': MetricReference(0.008, 0.008),
       'upperVsLowerLipRatio': MetricReference(0.85, 0.15),
+      'browSpacing': MetricReference(0.19, 0.03),
     },
     Gender.female: {
       'faceAspectRatio': MetricReference(1.34, 0.07),
@@ -618,6 +639,7 @@ const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = 
       'eyebrowCurvature': MetricReference(0.003, 0.004),
       'eyebrowTiltDirection': MetricReference(0.008, 0.008),
       'upperVsLowerLipRatio': MetricReference(0.90, 0.15),
+      'browSpacing': MetricReference(0.20, 0.03),
     },
   },
 };
