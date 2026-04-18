@@ -3,8 +3,7 @@
 **버전**: 0.2 (research-confirmed)
 **마지막 업데이트**: 2026-04-18
 **기반 문서**:
-- `docs/PHYSIOGNOMY_TAXONOMY.md` v1.0 (14-node tree SSOT)
-- `docs/TAXONOMY_METRIC_MAPPING.md` v1.0 (metric ↔ node 현황)
+- `docs/PHYSIOGNOMY_TAXONOMY.md` v2.0 (14-node tree SSOT + 노드별 metric/rule 매칭)
 - `lib/domain/services/physiognomy_scoring.dart` (NodeScore tree)
 - **관상 전통 research** (v0.2 반영) — §12 참조
 **역할**: 트리 엔진의 14-node × 10-attribute weight matrix 설계 및 5-stage derivation pipeline 규칙 명세.
@@ -349,8 +348,8 @@ AttributeBreakdown deriveAttributeScoresDetailed({...});
 2. **Stage 기여 균형**: AttributeBreakdown 으로 base/zone/organ/palace/distinctiveness 각 stage 가 **dead 하지 않음** 확인 (한 stage 가 무시할 만하면 규칙 재설계)
 3. **Edge case**: empty metric, lateral 없음, age over50, unsupported ear 노드 등 정상 flow 확인
 4. **관상 정합성 sanity**: 10 개 "프로토타입 얼굴" (예: "이상적 재물운 상" = 코 z=2 / 광대 z=1.5 / 턱 z=1) 입력 시 해당 속성이 실제 상위에 오는지 내부 일관성 점검
-5. `docs/TAXONOMY_METRIC_MAPPING.md` §6 에 "Phase 3 완료" 업데이트
-6. CLAUDE.md attribute engine 섹션 신규 엔진 기준으로 재작성
+5. `docs/PHYSIOGNOMY_TAXONOMY.md` §3 노드별 metric/rule snapshot 갱신
+6. CLAUDE.md attribute engine 섹션 현행화
 
 ---
 
@@ -431,6 +430,5 @@ AttributeBreakdown deriveAttributeScoresDetailed({...});
 ## 연관 문서
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — 상위 트리 엔진 설계 (§2)
-- [PHYSIOGNOMY_TAXONOMY.md](PHYSIOGNOMY_TAXONOMY.md) — 14-node tree SSOT
-- [TAXONOMY_METRIC_MAPPING.md](TAXONOMY_METRIC_MAPPING.md) — metric ↔ node 매핑 현황
+- [PHYSIOGNOMY_TAXONOMY.md](PHYSIOGNOMY_TAXONOMY.md) — 14-node tree SSOT + 노드별 metric/rule 매칭
 - [NORMALIZATION.md](NORMALIZATION.md) — raw → 5~10 정규화 파이프라인

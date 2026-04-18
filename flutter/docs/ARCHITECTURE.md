@@ -148,8 +148,7 @@ flutter/lib/domain/services/attribute_derivation.dart  # 5-stage pipeline + weig
 flutter/test/physiognomy_scoring_test.dart             # tree roll-up 단위 테스트
 flutter/test/attribute_derivation_test.dart            # 5-stage + breakdown 단위 테스트
 
-docs/PHYSIOGNOMY_TAXONOMY.md                           # Tree SSOT (v1.0)
-docs/TAXONOMY_METRIC_MAPPING.md                        # metric ↔ node 매핑
+docs/PHYSIOGNOMY_TAXONOMY.md                           # Tree SSOT + 노드별 metric/rule 매칭 (v2.0)
 docs/ATTRIBUTE_NODE_MAPPING.md                         # weight matrix + rule 명세 (v0.2)
 ```
 

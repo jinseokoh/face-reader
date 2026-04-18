@@ -158,4 +158,4 @@ flutter test test/calibration_test.dart
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — 상위 아키텍처 (§2 Track 2, §4 Runtime Pipeline)
 - [ATTRIBUTE_NODE_MAPPING.md](ATTRIBUTE_NODE_MAPPING.md) — weight matrix + rule 명세
-- [TAXONOMY_METRIC_MAPPING.md](TAXONOMY_METRIC_MAPPING.md) — metric ↔ node 매핑
+- [PHYSIOGNOMY_TAXONOMY.md](PHYSIOGNOMY_TAXONOMY.md) — 14-node tree SSOT + 노드별 metric 매핑

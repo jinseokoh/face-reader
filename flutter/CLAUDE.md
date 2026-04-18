@@ -132,6 +132,53 @@ ArchetypeResult
 본문 텍스트
 ```
 
+## 3/4 측면 측정·스코어링
+
+측면 캡처는 정면과 **완전히 분리된 두 번째 이미지**. yaw ∈ [0.70, 0.88] (약 45~60° 회전) 구간에서만 수락 — dorsal convexity 같은 sagittal-plane signal 이 2D 에 신뢰성 있게 투영되는 구간. `classifyYaw()` 가 `YawClass.threeQuarter` 반환해야 녹색 overlay + 캡처 버튼 활성.
+
+### 8 연속 lateral metric (`face_metrics_lateral.dart::computeAll()`)
+
+| id | 한국어 | 의미 | 참고 mean |
+|---|---|---|---|
+| `nasofrontalAngle` | 비전두각 | 168(nasion) 각도, 이마-코 꺾임 | M 131° / F 141° |
+| `nasolabialAngle` | 비순각(프록시) | 94(subnasale) 각도, 94→0 ref — tip rotation | 130~140° (클리니컬 NLA 아님) |
+| `facialConvexity` | 안면 돌출각 | 180° − ∠10-94-152. 양수=볼록 프로파일 | ~7.7° |
+| `upperLipEline` | 상순 E-line | 0 → (1-152) E-line 수직거리 / faceHeight | ~−1mm 근방 |
+| `lowerLipEline` | 하순 E-line | 17 → (1-152) E-line 수직거리 | 동일 규약 |
+| `mentolabialAngle` | 순이각 | 17(lowerLipBottom) 각도, 14·152 ray | 동아시아 ~134° |
+| `noseTipProjection` | 코끝 돌출 | dist(168, 1) / faceHeight — Goode 유사 |  |
+| `dorsalConvexity` | 코 등선 | 195 의 168→1 line 수직거리 abs / faceHeight |  |
+
+reference mean/sd: `face_reference_data.dart::lateralMetricInfoList`. 6 ethnicity × 2 gender fallback 동일.
+
+### 5 lateral flag (정면+측면 z 기반, `face_analysis.dart`)
+
+z-score (정수 `metricScore`) 임계로 산출 — 절대 mm 임계는 mesh noise·projection geometry 로 불안정해 사용하지 않음.
+
+| flag | 조건 | 의미 |
+|---|---|---|
+| `aquilineNose` | `dorsalConvexity` z ≥ 3 | 매부리코 |
+| `snubNose` | `nasolabialAngle` z ≥ 2 **and** raw ≥ 115° | 들창코 |
+| `droopingTip` | `nasolabialAngle` z ≤ −2 **and** raw ≤ 112° | 처진 코끝 |
+| `saddleNose` | `dorsalConvexity` z ≤ −3 | 안장코 |
+| `flatNose` | `noseTipProjection` z ≤ −3 | 납작코 |
+
+### Lateral rule (Stage 5, `attribute_derivation.dart::_lateralFlagRules`)
+
+| rule | 트리거 | attribute delta |
+|---|---|---|
+| `L-AQ` | `aquilineNose == true` | leadership +1.5, wealth +0.5, stability −0.3 |
+| `L-SN` | `snubNose == true` | sociability +1.0, attractiveness +0.5 |
+| `L-EL` | mouth.ownZ 의 `upperLipEline` ≥ 1 **and** `lowerLipEline` ≥ 1 | sensuality +0.5, libido +0.5 |
+
+L-AQ/L-SN 은 binary flag 만 소비, L-EL 은 mouth 노드의 직계 lateral z 를 직접 탐색. 측면 없으면 `hasLateral == false` 로 전 stage skip (delta 0, 정면 파이프라인만 돈다).
+
+### dark metric 경보
+
+`dorsalConvexity` 의 z ∈ [1, 3) "살짝 매부리" 는 현재 연속 rule 없음 — aquiline flag 임계(z≥3) 이상에서만 해석 발동. `nasofrontalAngle` 도 직접 rule 희소 → 산근(질액궁) 해석 여지 남음. 추후 연속 대역 rule 도입 시 이 둘이 1순위.
+
+---
+
 ## Frame Processing (카메라 모드)
 
 ```
