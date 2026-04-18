@@ -1,6 +1,24 @@
 # Face Reading Formula Engine (관상학 공식 엔진)
 
-## 1. 시스템 파이프라인
+> **⚠️ LEGACY DOCUMENT — frozen 2026-04-18**
+>
+> 이 문서는 **phase 3 이전의 flat rule engine** (`attribute_engine.dart`, 삭제됨)
+> 설계 스냅샷이다. 본 문서에 나열된 rule ID (W-R\*, GM-R\*, GF-R\*, AG-R\*, ST-R\*,
+> AT-R\*, L-R\*, LD-R\* 등) 와 metric→attribute 직접 가중합 공식은 **현재 엔진에서
+> 발동하지 않는다**.
+>
+> **현재 엔진**: hierarchical tree (삼정/오관 14 node) + 5-stage pipeline
+> (base linear · distinctiveness · zone · organ · palace · age/lateral).
+> 자세한 내용은 다음을 SSOT 로 참조:
+> - `/ARCHITECTURE.md` §2 — 전체 트리 엔진 설계
+> - `lib/domain/services/attribute_derivation.dart` — 실제 구현 (weight matrix + rule 조건)
+> - `lib/domain/services/physiognomy_scoring.dart` — 노드 트리 + roll-up 통계
+>
+> 본 문서는 legacy metric→attribute 매핑이 왜 그렇게 설계됐는지
+> (관상학적 근거, formula rationale) 의 **역사적 참고**로만 의미가 있다.
+> 규칙 추가/수정은 반드시 신규 트리 엔진 쪽에서 진행할 것.
+
+## 1. 시스템 파이프라인 (LEGACY)
 
 ```
 카메라 캡처 (5프레임 평균화)

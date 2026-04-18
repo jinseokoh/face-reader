@@ -27,10 +27,16 @@ lib/
 │   └── services/
 │       ├── face_metrics.dart               # 17 frontal ratio/angle/shape getters
 │       ├── face_metrics_lateral.dart       # 8 lateral 3/4-view metrics + yaw classify
-│       ├── attribute_engine.dart           # 10 attribute scores + gender rules
+│       ├── metric_score.dart               # Z → 0-100 metric score conversion
+│       ├── physiognomy_scoring.dart        # 삼정/오관 node tree + scoreTree()
+│       ├── attribute_derivation.dart       # 5-stage tree → 10 raw attribute scores
+│       ├── attribute_normalize.dart        # Monte Carlo quantile → normalized 5-10
+│       ├── archetype.dart                  # Attribute profile → archetype classifier
+│       ├── score_calibration.dart          # Offline quantile table generator
+│       ├── compat_calibration.dart         # Compat label threshold Monte Carlo
+│       ├── compatibility_engine.dart       # Pairwise report comparison
 │       ├── report_assembler.dart           # Deterministic reading block composer
-│       ├── age_adjustment.dart             # 50+ adjustments
-│       └── compatibility_engine.dart
+│       └── age_adjustment.dart             # 50+ adjustments
 └── presentation/
     ├── providers/                          # Riverpod: gender, ageGroup, ethnicity (Hive-persisted), history, auth, tab
     ├── screens/
@@ -212,11 +218,17 @@ z=±6~7(클램프 ±3.5)이 나와 속성 점수가 포화되었음.
 ### Gender-Specific Analysis
 분석 파이프라인 4곳에서 성별이 반영됨:
 
-1. **Gender Weight Deltas** (`attribute_engine.dart`): attribute별 metric 가중치가 남/여 다르게 적용
-   - 예: `nasalWidthRatio` 남성 +0.05, 여성 -0.05 / `lipFullnessRatio` 남성 -0.05, 여성 +0.05
-2. **Gender Rules** (`attribute_engine.dart`): 남성 전용 5개(GM-R1~R5), 여성 전용 5개(GF-R1~R5) 규칙이 해당 성별일 때만 발동
-3. **Archetype Intro** (`report_assembler.dart`): archetype 소개 텍스트가 `report.gender`에 따라 다른 문구 반환
-4. **Age Adjustment** (`age_adjustment.dart`): 50세 이상 보정값이 남/여 다르게 적용
+1. **Gender Weight Deltas** (`attribute_derivation.dart`, §5.1 `_genderDelta`):
+   attribute별 base 노드 가중치가 남/여 다르게 적용 (예: attractiveness 에서
+   `nose` 남성 +0.05·여성 -0.05, `mouth` 남성 -0.05·여성 +0.05). 신규 트리 엔진에선
+   규칙 분기가 아닌 weight matrix 레벨에서 성별 차이를 반영 — 구 엔진의 GM-R/GF-R
+   규칙군은 폐기됨.
+2. **Quantile Normalization** (`attribute_normalize.dart`): 성별별 10-attribute
+   quantile 테이블로 raw score → 5.0~10.0 정규화. 남녀 분포가 다른 attribute
+   (sensuality/libido 등)에서 self-referential 랭킹 유지.
+3. **Archetype Intro** (`report_assembler.dart`): archetype 소개 텍스트가
+   `report.gender`에 따라 다른 문구 반환.
+4. **Age Adjustment** (`age_adjustment.dart`): 50세 이상 보정값이 남/여 다르게 적용.
 
 ### Landmark Indices (most used)
 | Point | Index |
