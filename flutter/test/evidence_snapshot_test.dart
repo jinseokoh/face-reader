@@ -98,12 +98,12 @@ void main() {
 O:O-CH, O:O-CK, O:O-CKC, O:O-EB1, O:O-EM, O:O-PH1, P:P-03, P:P-05, P:P-09, Z:Z-11, Z:Z-12
 
 == normalized scores ==
-wealth           8.3
+wealth           8.1
 leadership       8.6
-intelligence     7.8
+intelligence     7.9
 sociability      9.5
 emotionality     9.3
-stability        8.1
+stability        8.3
 sensuality       9.0
 trustworthiness  8.8
 attractiveness   9.7

@@ -273,71 +273,26 @@ double _effectiveWeight(_NodeWeight w, Attribute attr, Gender gender) {
   return w.weight + (gender == Gender.male ? delta.male : delta.female);
 }
 
-// ──────────────────── Shape Overlay (applied LAST, baseline-gated) ────────────────────
+// ──────────────────── Shape Overlay — RETIRED FROM SCORE PIPELINE ────────────────────
 //
-// v2.1 (2026-04-18): 얼굴형 지배력 완화. 두 개 조치:
-//   (1) magnitude 절반 — 최대 ±0.30 → ±0.15.
-//   (2) baseline gate — base+dist+rules 로 이미 쌓인 signal 에 비례해 preset 적용.
-//       평균 얼굴(|signal|≈0): gate = 0.5 → preset × 0.5 × 0.5 = 25% 만 적용.
-//       뚜렷 얼굴(|signal|≥0.4): gate = 1.0 → preset 그대로.
-//   → "얼굴형이 top-2 archetype 을 단독 결정" 문제 해소. 기존 신호 증폭 역할로 한정.
-
-const _shapePresetDelta = <FaceShape, Map<Attribute, double>>{
-  FaceShape.oval: {
-    Attribute.attractiveness: 0.15,
-    Attribute.sociability: 0.10,
-    Attribute.stability: 0.08,
-    Attribute.trustworthiness: 0.05,
-  },
-  FaceShape.oblong: {
-    Attribute.intelligence: 0.15,
-    Attribute.emotionality: 0.10,
-    Attribute.trustworthiness: 0.05,
-    Attribute.sociability: -0.08,
-    Attribute.sensuality: -0.05,
-  },
-  FaceShape.round: {
-    Attribute.wealth: 0.13,
-    Attribute.sociability: 0.13,
-    Attribute.emotionality: 0.08,
-    Attribute.leadership: -0.08,
-    Attribute.stability: -0.05,
-  },
-  FaceShape.square: {
-    Attribute.leadership: 0.15,
-    Attribute.stability: 0.13,
-    Attribute.trustworthiness: 0.08,
-    Attribute.attractiveness: -0.08,
-    Attribute.sensuality: -0.05,
-  },
-  FaceShape.heart: {
-    Attribute.intelligence: 0.13,
-    Attribute.sensuality: 0.10,
-    Attribute.attractiveness: 0.08,
-    Attribute.stability: -0.10,
-    Attribute.wealth: -0.05,
-  },
-  FaceShape.unknown: {},
-};
-
-/// |signal| 에 비례해 0.5~1.0 gate. 평균 얼굴에 preset 영향 최소화.
-double _shapeGate(double signalAbs) =>
-    (0.5 + 1.5 * signalAbs).clamp(0.5, 1.0);
+// v2.2 (2026-04-18): 얼굴형 preset 이 raw score 에 주는 영향을 완전 제거.
+// "계란형 → 학자형" 같은 얼굴형별 archetype 수렴 패턴의 근원이 preset 이
+// calibration p50 와 production raw 사이 attribute-specific 편향을 만든 데
+// 있음이 확인됨. v2.1 의 halve + gate 로도 편향 잔존.
+//
+// FaceShape 는 raw score 에서 완전히 빠지고, 다음 두 곳에만 남는다:
+//   (A) archetype shape-gated overlay (classifyArchetype) — 라벨 변주만.
+//   (B) narrative Layer B (life_question_narrative) — 서술 variation.
+//
+// preset 파라미터는 시그너처 호환 위해 남기되 no-op. _stage0ShapePreset 은
+// 항상 모든 속성에 0.0 을 반환. AttributeBreakdown.shapePreset 도 전부 0.
 
 Map<Attribute, double> _stage0ShapePreset(
     FaceShape shape, double confidence, Map<Attribute, double> baseline) {
   assert(confidence >= 0.0 && confidence <= 1.0,
       'shapeConfidence must be in [0, 1], got $confidence');
-  final out = <Attribute, double>{for (final a in Attribute.values) a: 0.0};
-  final delta = _shapePresetDelta[shape];
-  if (delta == null) return out;
-  final scale = confidence.clamp(0.0, 1.0);
-  delta.forEach((a, v) {
-    final baseAbs = (baseline[a] ?? 0.0).abs();
-    final gate = _shapeGate(baseAbs);
-    out[a] = v * scale * gate;
-  });
-  return out;
+  // v2.2: preset 철수. 모든 속성 0 기여.
+  return <Attribute, double>{for (final a in Attribute.values) a: 0.0};
 }
 
 // ──────────────────── Helpers: Node 접근 ────────────────────
@@ -387,19 +342,18 @@ Map<Attribute, Map<String, double>> _stage1BasePerNode(
 Map<Attribute, double> _stage1bDistinctiveness(NodeScore tree) {
   final out = <Attribute, double>{for (final a in Attribute.values) a: 0.0};
 
-  // attractiveness: metric 없으면 판단 보류(0). 있으면 평균 근접(faceAbs≈0.7)
-  // 에서 +0.20 피크, 극단에서 −0.25 감점. clamp(-0.25, +0.20).
-  final faceAbs = tree.rollUpMeanAbsZ;
-  if (faceAbs != null) {
-    final diff = (faceAbs - 0.7).abs();
-    out[Attribute.attractiveness] = (0.20 - 0.5 * diff).clamp(-0.25, 0.20);
-  }
+  // v2.2 (2026-04-18): attractiveness distinctiveness 완전 철수.
+  //   — monotonic penalty(v1) → symmetric bell(v2) → 철수(v2.2).
+  //   calibration p50 을 0.6+ 로 부풀려 production 실제 raw 와 mismatch 를
+  //   만든 주범이었음. "oval → 학자형" 패턴의 뿌리. attr 는 node weight + rule
+  //   로만 결정.
 
-  // intelligence: 상정 distinctiveness → 지적 인상
+  // intelligence: 상정 distinctiveness → 지적 인상. positive-only, 작음.
+  //   upper_abs > 0.5 에서만 발동. 평균 얼굴엔 0.
   final upperAbs = _zoneAbsZ(tree, 'upper');
   out[Attribute.intelligence] = 0.2 * (upperAbs - 0.5).clamp(0.0, 1.5);
 
-  // emotionality: 하정 distinctiveness → 감정 풍부
+  // emotionality: 하정 distinctiveness → 감정 풍부. positive-only.
   final lowerAbs = _zoneAbsZ(tree, 'lower');
   out[Attribute.emotionality] = 0.3 * (lowerAbs - 0.5).clamp(0.0, 1.5);
 

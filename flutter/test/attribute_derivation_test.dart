@@ -26,31 +26,21 @@ AttributeBreakdown _run(
 }
 
 void main() {
-  group('Stage 0 — face-shape preset', () {
-    test('unknown shape or zero confidence → no shapePreset contribution', () {
-      final b = _run({}, shape: FaceShape.unknown, conf: 0.0);
-      for (final v in b.shapePreset.values) {
-        expect(v, 0.0);
+  group('Stage 0 — face-shape preset (v2.2: retired)', () {
+    // v2.2 (2026-04-18): 얼굴형 preset 이 raw score 에 주는 영향을 완전 제거.
+    // FaceShape 는 archetype overlay + narrative 에만 반영. shapePreset 은
+    // 모든 조합에서 항상 0 을 반환해야 한다.
+    test('모든 shape × confidence 조합에서 shapePreset = 0', () {
+      for (final shape in FaceShape.values) {
+        for (final conf in [0.0, 0.5, 0.8, 1.0]) {
+          final b = _run({}, shape: shape, conf: conf);
+          for (final attr in Attribute.values) {
+            expect(b.shapePreset[attr], 0.0,
+                reason: 'shape=$shape conf=$conf attr=${attr.name} '
+                    'must be 0 (preset retired)');
+          }
+        }
       }
-    });
-
-    test('oval shape at high confidence boosts attractiveness', () {
-      final b = _run({}, shape: FaceShape.oval, conf: 1.0);
-      expect(b.shapePreset[Attribute.attractiveness]!, greaterThan(0.0));
-      expect(b.shapePreset[Attribute.sociability]!, greaterThan(0.0));
-    });
-
-    test('square shape at high confidence boosts leadership, penalizes 매력', () {
-      final b = _run({}, shape: FaceShape.square, conf: 1.0);
-      expect(b.shapePreset[Attribute.leadership]!, greaterThan(0.0));
-      expect(b.shapePreset[Attribute.attractiveness]!, lessThan(0.0));
-    });
-
-    test('shapePreset scales linearly with confidence', () {
-      final half = _run({}, shape: FaceShape.oval, conf: 0.5);
-      final full = _run({}, shape: FaceShape.oval, conf: 1.0);
-      expect(full.shapePreset[Attribute.attractiveness]!,
-          closeTo(2 * half.shapePreset[Attribute.attractiveness]!, 1e-9));
     });
   });
 
@@ -103,35 +93,18 @@ void main() {
   });
 
   group('Stage 1b — distinctiveness', () {
-    test('attractiveness distinctiveness is a symmetric bell around faceAbs=0.7',
-        () {
-      // faceAbs = 0 (no metrics, root rollUp empty → 0) → edge of bell.
-      // 측정가능한 값은 "faceAbs 가 0.7 근처면 +, 양극단이면 -".
-      final moderate = _run({'faceAspectRatio': 0.7}); // faceAbs ≈ 0.7
+    test('attractiveness distinctiveness 철수 (v2.2) — 항상 0', () {
+      // v2.2: monotonic/bell 모두 제거. attr 는 node + rule 로만 결정.
+      final neutral = _run({'faceAspectRatio': 0.0});
+      final moderate = _run({'faceAspectRatio': 0.7});
       final extreme = _run({
         'faceAspectRatio': 3.0,
         'eyeFissureRatio': 3.0,
         'mouthWidthRatio': 3.0,
       });
-      expect(moderate.distinctiveness[Attribute.attractiveness]!,
-          greaterThan(extreme.distinctiveness[Attribute.attractiveness]!),
-          reason: '평균 근접 faceAbs > 극단 faceAbs');
-      expect(extreme.distinctiveness[Attribute.attractiveness]!,
-          lessThan(0.0));
-    });
-
-    test('attractiveness distinctiveness clamp — 최대 +0.20, 최소 -0.25', () {
-      final b = _run({'faceAspectRatio': 0.7});
-      expect(b.distinctiveness[Attribute.attractiveness]!,
-          lessThanOrEqualTo(0.20 + 1e-9));
-      final ext = _run({
-        'faceAspectRatio': 3.0,
-        'eyeFissureRatio': 3.0,
-        'mouthWidthRatio': 3.0,
-        'foreheadWidth': 3.0,
-      });
-      expect(ext.distinctiveness[Attribute.attractiveness]!,
-          greaterThanOrEqualTo(-0.25 - 1e-9));
+      expect(neutral.distinctiveness[Attribute.attractiveness], 0.0);
+      expect(moderate.distinctiveness[Attribute.attractiveness], 0.0);
+      expect(extreme.distinctiveness[Attribute.attractiveness], 0.0);
     });
 
     test('intelligence bonus requires upper abs > 0.5', () {
