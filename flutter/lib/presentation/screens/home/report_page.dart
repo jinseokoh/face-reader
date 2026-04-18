@@ -157,27 +157,88 @@ class _ExpandableAttributeBarState extends State<_ExpandableAttributeBar> {
 
   String _contributorLabel(String id) {
     if (id.startsWith('node:')) {
-      const nodeLabels = {
-        'face': '얼굴 전체',
-        'forehead': '이마',
-        'glabella': '미간',
-        'eyebrow': '눈썹',
-        'eye': '눈',
-        'nose': '코',
-        'cheekbone': '광대',
-        'ear': '귀',
-        'philtrum': '인중',
-        'mouth': '입',
-        'chin': '턱',
-      };
       final nodeId = id.substring(5);
-      return nodeLabels[nodeId] ?? nodeId;
+      return _nodeLabels[nodeId] ?? nodeId;
     }
     if (id == 'distinctiveness') return '특이성 보정';
-    // Rule IDs: Z-01, O-NM1, P-CH, etc.
-    return id;
+    return _ruleLabels[id] ?? id;
   }
 }
+
+const _nodeLabels = <String, String>{
+  'face': '얼굴 전체',
+  'forehead': '이마',
+  'glabella': '미간 (印堂)',
+  'eyebrow': '눈썹',
+  'eye': '눈',
+  'nose': '코',
+  'cheekbone': '광대 (태산·화산)',
+  'ear': '귀',
+  'philtrum': '인중',
+  'mouth': '입',
+  'chin': '턱',
+};
+
+// Stage rule IDs mapped to their classical 관상 meaning.
+// Keep this in sync with `attribute_derivation.dart` rule comments.
+const _ruleLabels = <String, String>{
+  // Stage 2 — Zone (삼정)
+  'Z-01': '삼정 균형',
+  'Z-02': '상정 우세',
+  'Z-03': '중정 우세',
+  'Z-04': '하정 우세',
+  'Z-05': '상-하 대립',
+  'Z-06': '하-상 대립',
+  'Z-07': '전면 강세',
+  'Z-08': '전면 약세',
+  'Z-09': '상정 강조',
+  'Z-10': '하정 강조',
+  'Z-11': '중정 폭 넓음',
+  'Z-12': '하정 길이 긺',
+  'Z-13': '하정 길이 짧음',
+  // Stage 3 — Organ (오관)
+  'O-EB1': '눈·눈썹 동조 강',
+  'O-EB2': '눈 강 / 눈썹 약',
+  'O-EB3': '눈썹 강 / 눈 약',
+  'O-NM1': '코·입 동조 강',
+  'O-NM2': '코 강 / 입 약',
+  'O-NM3': '입 강 / 코 약',
+  'O-NC': '코·턱 결합 (숭산+항산)',
+  'O-EM': '눈·입 결합',
+  'O-FB': '이마·눈썹 결합',
+  'O-CK': '광대 강 (태산 융기)',
+  'O-CB': '광대 약',
+  'O-CKN': '광대+코 (중정 전면)',
+  'O-CKC': '광대+턱 (말년 위엄)',
+  'O-CKF': '광대+이마 (관록)',
+  'O-PH1': '인중 짧음',
+  'O-PH2': '인중 긺',
+  'O-CH': '턱 강',
+  'O-DC1': '코 등선 볼록',
+  'O-DC2': '코 등선 오목',
+  'O-NF1': '비전두각 완만',
+  'O-NF2': '비전두각 꺾임',
+  // Stage 4 — Palace (십이궁)
+  'P-01': '재백궁+전택궁',
+  'P-02': '관록궁+천이궁',
+  'P-03': '복덕궁 조화',
+  'P-04': '형제궁 (눈썹)',
+  'P-05': '남녀궁',
+  'P-06': '처첩궁 (눈꼬리)',
+  'P-07': '질액궁 (산근)',
+  'P-08': '천이궁 (이마)',
+  'P-09': '명궁 (印堂 넓음)',
+  'P-09B': '명궁 (印堂 좁음)',
+  // Stage 5 — Age
+  'A-01': '하정 이완 (50+)',
+  'A-02': '상정 보존 (50+)',
+  'A-03': '입꼬리 유지 (50+)',
+  'A-04': '전반 이완 (50+)',
+  // Stage 5 — Lateral
+  'L-AQ': '매부리코',
+  'L-SN': '들창코',
+  'L-EL': 'E-line 전돌',
+};
 
 // ─── Metric Row (compact) ───
 class _MetricRow extends StatelessWidget {
