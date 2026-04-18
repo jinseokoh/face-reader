@@ -490,7 +490,9 @@ class _ExpandableNodeBar extends StatefulWidget {
 }
 
 class _ExpandableNodeBarState extends State<_ExpandableNodeBar> {
-  bool _expanded = false;
+  // zone(상/중/하정) 노드는 기본 펼쳐진 상태로 렌더 — 사용자가 탭 affordance 를
+  // 한눈에 알아볼 수 있도록 첫 샘플 해석을 바로 노출.
+  late bool _expanded = widget.isZone;
 
   @override
   Widget build(BuildContext context) {
@@ -531,12 +533,22 @@ class _ExpandableNodeBarState extends State<_ExpandableNodeBar> {
                     ),
                   ),
                 ),
-                Icon(
-                  _expanded
-                      ? Icons.keyboard_arrow_up
-                      : Icons.keyboard_arrow_down,
-                  color: _Palette.amber,
-                  size: 16,
+                const SizedBox(width: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: _expanded
+                        ? _Palette.amber.withValues(alpha: 0.25)
+                        : _Palette.shell,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Icon(
+                    _expanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    color: _Palette.darkBrown,
+                    size: 18,
+                  ),
                 ),
               ],
             ),
@@ -1026,11 +1038,18 @@ class _ReportPageState extends ConsumerState<ReportPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('부위별 균형 (14-node tree)',
+          Text('부위별 상세 해석',
               style: TextStyle(
                   color: _Palette.darkBrown,
                   fontSize: 16,
                   fontWeight: FontWeight.bold)),
+          const SizedBox(height: 2),
+          Text('각 부위를 탭하면 관상학 해석과 세부 측정값이 펼쳐집니다.',
+              style: TextStyle(
+                  color: _Palette.warmBrown,
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic)),
+          const SizedBox(height: 6),
           if (report.nodeScores.containsKey('upper') &&
               report.nodeScores.containsKey('middle') &&
               report.nodeScores.containsKey('lower')) ...[
