@@ -1,8 +1,8 @@
-# 관상 앱 아키텍처 — 3-Track 시스템
+# 관상 앱 아키텍처
 
-**최종 업데이트**: 2026-04-17
-**상태**: Track 1 완료 · Track 2 미착수 · Track 3 운영중
-**이 문서의 역할**: 세션 간·PC 간 context 인수인계의 단일 진실 원본 (single source of truth).
+**최종 업데이트**: 2026-04-18
+**상태**: Track 1 운영 · Track 2 hierarchical engine 구현중 · Track 3 운영
+**역할**: 세션 간·머신 간 context 인수인계의 단일 진실 원본.
 
 ---
 
@@ -10,235 +10,230 @@
 
 ```
 MediaPipe Face Mesh (468 landmarks)
-          │
-          ▼
-┌──────────────────────────────────────────────────────────────┐
-│  FaceMetrics.computeAll()  ← 28개 raw metric (얼굴형 공통 입력) │
-└──────────────────────────────────────────────────────────────┘
-          │
-   ┌──────┼────────────┬────────────────┐
-   ▼      ▼            ▼                ▼
- Track 1  Track 2     Track 3       (공통) Z-score, age adjust,
- 얼굴형   관상 속성    측면 관상      archetype
- 5-class  10 점수      매부리/들창코
+             │
+             ▼
+┌──────────────────────────────────────────────┐
+│ FaceMetrics.computeAll() — frontal 17+ raw   │
+│ LateralFaceMetrics.computeAll() — lateral 8  │
+└──────────────────────────────────────────────┘
+             │
+             ▼
+       Z-score vs 인종·성별 reference
+             │
+   ┌─────────┼──────────────────────┐
+   ▼         ▼                      ▼
+ Track 1    Track 2                Track 3
+ 얼굴형    관상 속성 엔진           측면 관상
+ 5-class   Tree → 10 attribute     매부리/들창코
+ MLP       5-stage pipeline        lateral flags
 ```
+
+세 track 은 동일 z-score 입력을 공유한다. archetype 분류는 Track 2 산출(10 attribute) 위에서 동작.
 
 ---
 
 ## 1. Track 1 — 얼굴형 분류 (Face Shape Classifier)
 
-**목적**: "내 얼굴은 둥글다/각지다/길다…" 를 사용자에게 보여주는 1단 레이블.
+**산출**: "하트형/계란형/둥근/각진/세로로 긴 얼굴" 5-class 레이블 + confidence.
 
 | 항목 | 내용 |
 |---|---|
 | 분류기 | 28-feature MLP, TFLite FP16 (≈12 KB) |
 | 학습 데이터 | Kaggle niten19 FaceShape Dataset, N=5000 |
-| 출력 클래스 | Heart · Oblong · Oval · Round · Square |
-| 테스트 정확도 | **76.9%** (vs 20% random, vs 70.4% 기존 18-feature baseline) |
-| 한국어 매핑 | 하트형 · 세로로 긴 얼굴형 · 계란형 · 둥근 얼굴형 · 각진 얼굴형 |
-| Parity | Python↔TFLite 100% |
+| 테스트 정확도 | 76.9% (vs 20% random) |
+| Parity | Python ↔ TFLite 100% |
+| 입력 | `face_metrics.dart::computeAll()` 의 28개 ratio/angle/shape |
 
-### 1.1 28 feature 구성
-모두 `flutter/lib/domain/services/face_metrics.dart::computeAll()` 에서 계산.
-순서는 `flutter/lib/data/services/face_shape_classifier.dart::featureNames` 와 정확히 일치해야 한다 (학습-추론 정렬).
+feature 순서는 `face_shape_classifier.dart::featureNames` 와 `train_face_shape.py` 가 정확히 일치해야 한다 (학습-추론 정렬).
 
-**기존 18개 (2026-04-17 이전)**
-1. faceAspectRatio · 2. faceTaperRatio · 3. lowerFaceFullness · 4. upperFaceRatio
-5. midFaceRatio · 6. lowerFaceRatio · 7. gonialAngle · 8. intercanthalRatio
-9. eyeFissureRatio · 10. eyeCanthalTilt · 11. eyebrowThickness · 12. browEyeDistance
-13. nasalWidthRatio · 14. nasalHeightRatio · 15. mouthWidthRatio · 16. mouthCornerAngle
-17. lipFullnessRatio · 18. philtrumLength
+### 1.1 파일
 
-**이번 세션 추가 10개 (2026-04-17)**
-19. eyebrowLength · 20. eyebrowTiltDirection · 21. eyebrowCurvature · 22. browSpacing
-23. eyeAspect · 24. upperVsLowerLipRatio · 25. chinAngle
-26. foreheadWidth · 27. cheekboneWidth · 28. noseBridgeRatio
-
-### 1.2 이번 세션에서 고친 버그 2건
-- `nasalHeightRatio` ≡ `midFaceRatio` (동일 공식 중복) → `dist(nasion,noseTip)/faceHeight` 로 수정
-- `mouthCornerAngle` 에서 `midLipY` 를 x-기준으로 사용한 좌표 오류 → `midLipX` 사용으로 수정
-
-### 1.3 관련 파일
 ```
-# Flutter (배포)
-flutter/assets/ml/face_shape_ratios.tflite    # 모델 (12 KB)
-flutter/assets/ml/scaler.json                 # mu/sd ×28 + 클래스 리스트
-flutter/lib/data/services/face_shape_classifier.dart  # 싱글톤 서비스
-flutter/lib/main.dart                         # 앱 시작 시 preload
-flutter/lib/domain/models/face_analysis.dart  # 분석 파이프라인 내 호출·stamp
-flutter/lib/domain/models/face_reading_report.dart   # faceShapeLabel/Confidence 필드
-flutter/lib/presentation/screens/physiognomy/physiognomy_screen.dart  # UI 소비
-
-# 학습 (재학습 필요 시)
-tools/face_shape_ml/extract_landmarks.py       # 5000장 → landmarks.npz + ratios
-tools/face_shape_ml/train_face_shape.py        # MLP 학습 + TFLite FP16 export
-tools/face_shape_ml/audit_features.py          # 28 feature 중요도 audit (ANOVA/MI/perm/LOO)
-tools/face_shape_ml/out/landmarks.npz          # 재사용 가능한 중간 산출 (5000×468×3)
-tools/face_shape_ml/out/feature_audit.md       # 사람이 읽는 audit 결과
+flutter/assets/ml/face_shape_ratios.tflite       # 모델 (12 KB)
+flutter/assets/ml/scaler.json                    # mu/sd ×28 + class list
+flutter/lib/data/services/face_shape_classifier.dart
+flutter/lib/domain/services/face_metrics.dart    # 28 feature 공식
+tools/face_shape_ml/                             # 학습 스크립트
 ```
 
-### 1.4 재학습 방법
+### 1.2 재학습
+
 ```bash
-cd /Users/chuck/Code/face/tools
-.venv/bin/python face_shape_ml/extract_landmarks.py   # 5000장 추출 (캐시되어 있으면 스킵)
-.venv/bin/python face_shape_ml/train_face_shape.py    # MLP 학습
-# 산출: out/face_shape_ratios.tflite, out/scaler.json
-cp out/face_shape_ratios.tflite out/scaler.json ../flutter/assets/ml/
+cd tools
+.venv/bin/python face_shape_ml/extract_landmarks.py
+.venv/bin/python face_shape_ml/train_face_shape.py
+cp face_shape_ml/out/{face_shape_ratios.tflite,scaler.json} ../flutter/assets/ml/
 ```
 
-### 1.5 Fallback
-ML asset 로드 실패 시 `physiognomy_screen.dart::_faceShapeLegacyLda()` 가
-기존 3-class LDA (22장 학습) 로 안전망. 평상시 호출되지 않는다.
+---
+
+## 2. Track 2 — Hierarchical Attribute Engine
+
+**산출**: 10개 속성 점수 (wealth · leadership · intelligence · sociability · emotionality · stability · sensuality · trustworthiness · attractiveness · libido) 를 raw → normalize(v9) 로 0–100 스케일화.
+
+핵심 설계: 관상 전통 taxonomy 를 tree 자료구조로 1:1 매핑한 뒤, 각 node 의 z-score 를 5-stage pipeline 에 흘려 속성별 기여를 누적한다.
+
+### 2.1 Tree 구조 (14 노드)
+
+```
+face (root)
+├── 상정 (upper)  ├─ 이마 · 미간 · 눈썹
+├── 중정 (middle) ├─ 눈 · 코 · 광대 · 귀
+└── 하정 (lower)  └─ 인중 · 입 · 턱
+```
+
+- **루트 metric**: faceAspectRatio, faceTaperRatio, midFaceRatio (전체 프로포션)
+- **Leaf metric**: 각 부위 소속 frontal+lateral 측정치 (예: 코 → nasalWidth/Height/Angle/Projection/Dorsal…)
+- **Zone**: own metric 없음. roll-up 으로만 집계 (삼정 조화 판정용)
+- **귀 노드**: MediaPipe 정면 mesh 커버리지 부족으로 v1.0 미지원 (`unsupported=true`)
+
+모든 node 는 전통 관상 메타데이터를 태그로 보유:
+- **오관(五官)** — eyebrow/eye/nose/mouth/ear
+- **오악(五嶽)** — forehead(남) · cheekbone(동·서) · nose(중) · chin(북)
+- **사독(四瀆)** — eye(he) · nose(huai) · mouth(ji) · ear(jiang)
+- **십이궁(十二宮)** — 각 leaf 가 해당 궁 매핑 (예: 코 → 재백궁·질액궁)
+
+SSOT: `docs/PHYSIOGNOMY_TAXONOMY.md`, 코드 `flutter/lib/domain/models/physiognomy_tree.dart`.
+
+### 2.2 Node Scoring
+
+`physiognomy_scoring.dart::scoreTree(z)` 가 입력 z-map 을 tree mirror (`NodeScore`) 로 변환:
+
+- **own stats**: 이 node 자신의 metric 만. `ownMeanZ` (부호, 방향) + `ownMeanAbsZ` (강도)
+- **roll-up stats**: 자신 + 모든 descendant metric 합산. zone/root 는 이것만 의미 있음.
+
+이 분리 덕에 한 node 에서 **방향(signed)** 과 **distinctiveness(abs)** 를 독립 규칙으로 쓸 수 있다 — 하정이 "긍정 방향으로 강함" 과 "단순히 극단적임" 을 구분.
+
+### 2.3 5-Stage Derivation Pipeline
+
+`attribute_derivation.dart` 에서 순차 적용. 각 stage 는 기여량을 단순 합산(re-normalization 없음).
+
+| Stage | 이름 | 역할 |
+|---|---|---|
+| 1 | **base linear** | Node-weight matrix ×10 속성. node 별 signed-z × weight × polarity. face 노드는 proximity `(2−|z|)×z` 로 평균 근접을 가산 |
+| 1b | **distinctiveness** | attractiveness(-) · intelligence(+ upper) · emotionality(+ lower) 에 roll-up abs-z 비선형 가산 |
+| 2 | **zone rules** (10) | 삼정 조화/대립 패턴 (Z-01 균형·Z-04 하정 우세·Z-05 상-하 대립 등) |
+| 3 | **organ rules** (14) | 오관 쌍 조합 (O-EB1 눈+눈썹 동조·O-NM1 코+입 동조·O-PH1 짧은 인중 등) |
+| 4 | **palace rules** (8) | 십이궁 cross-node overlay (P-01 재백+전택·P-06 처첩궁 canthal tilt 등) |
+| 5 | gender/age/lateral | 성별 weight delta 5속성 · 50+ 규칙 4개 · 측면 flag 규칙 3개 (L-AQ 매부리 등) |
+
+각 stage 는 `TriggeredRule` 리스트로 기록되어 **Breakdown** 에 남는다 — UI 에서 "왜 이 점수?" top-3 근거 표시에 사용.
+
+가중치·극성·규칙 숫자 근거: `docs/ATTRIBUTE_NODE_MAPPING.md` v0.2. 출처는 마의상법·유장상법·신상전편 + Pallett et al. 2010 PNAS + BiSeNet parsing 영역.
+
+### 2.4 공개 API
+
+```dart
+// 평상시 진입점
+Map<Attribute, double> scores = deriveAttributeScores(
+  tree: scoreTree(zMap),
+  gender: Gender.male,
+  isOver50: false,
+  hasLateral: hasLateral,
+  lateralFlags: {'aquilineNose': true, ...},
+);
+
+// 디버그·UI top-3 근거용 — stage 분해 동반
+AttributeBreakdown breakdown = deriveAttributeScoresDetailed(...);
+List<MapEntry<String, double>> top = breakdown.topContributors(Attribute.wealth, n: 3);
+// → [('node:nose', +1.10), ('O-NM1', +2.00), ('P-01', +1.00)]
+```
+
+### 2.5 파일
+
+```
+flutter/lib/domain/models/physiognomy_tree.dart        # 14-node const tree + 메타데이터
+flutter/lib/domain/services/physiognomy_scoring.dart   # NodeScore + scoreTree
+flutter/lib/domain/services/attribute_derivation.dart  # 5-stage pipeline + weight matrix + rules
+flutter/test/physiognomy_scoring_test.dart             # tree roll-up 단위 테스트
+flutter/test/attribute_derivation_test.dart            # 5-stage + breakdown 단위 테스트
+
+docs/PHYSIOGNOMY_TAXONOMY.md                           # Tree SSOT (v1.0)
+docs/TAXONOMY_METRIC_MAPPING.md                        # metric ↔ node 매핑
+docs/ATTRIBUTE_NODE_MAPPING.md                         # weight matrix + rule 명세 (v0.2)
+```
 
 ---
 
-## 2. Track 2 — 관상 속성 규칙 (Attribute Engine)  ⚠️ 미착수
+## 3. Track 3 — Lateral Physiognomy
 
-**목적**: 10개 "속성 점수" (지성, 담대함, 인자함 …) 를 0~10 으로 매겨 archetype 분류의 입력으로 쓴다.
-
-| 항목 | 현 상태 |
-|---|---|
-| 엔진 | `flutter/lib/domain/services/attribute_engine.dart` |
-| 속성 | 10개: wealth, leadership, intelligence, sociability, emotionality, stability, sensuality, trustworthiness, ambition, creativity |
-| 규칙 | attribute별 R1~R5 세트 + 성별 전용 규칙 (GM-R1~R5, GF-R1~R5) |
-| 입력 metric | **기존 17~18개만 사용 중**. 이번 세션 추가된 10 metric 미반영 |
-| Z-score | `face_reference_data.dart` 에 18개 metric만 ethnicity×gender 평균/SD 있음. 10 신규 metric은 평균/SD 없음 (face_analysis.dart 에서 metricInfoList 로만 loop → 새 metric skip) |
-
-### 2.1 착수할 때 해야 할 일
-1. `face_reference_data.dart` 에 10 신규 metric 의 6 ethnicity × 2 gender 평균·SD 추가 (MediaPipe 실측 기반)
-2. `metricInfoList` 에 10 신규 metric MetricInfo 엔트리 추가 (id, label, type)
-3. `attribute_engine.dart` 에 신규 규칙 추가 후보:
-   - chinAngle → 담대함/리더십 (날카로운 턱 = 결단력)
-   - foreheadWidth → 지성 (넓은 이마 = 사색)
-   - cheekboneWidth → 리더십/사회성 (도드라진 광대 = 통솔)
-   - eyebrowCurvature → 감성 (곡선 = 부드러움, 직선 = 이성)
-   - upperVsLowerLipRatio → 관능성
-   - chinAngle + gonialAngle 조합 → 안정성
-4. 표본 검증: test/real_photos_test.dart 류에 dataset 추가 후 regression 방지
-
-### 2.2 방향 선택 (대부님 결정 필요)
-- **(a) 전통 관상학 규칙 기반**: 문헌·도감에서 규칙 수집 → 수동 계수 튜닝
-- **(b) 데이터 주도**: 대부님이 신뢰하는 100~200 샘플에 정답 라벨 → 회귀 학습
-
----
-
-## 3. Track 3 — 측면 관상 (Lateral Physiognomy)  ✅ 기존 운영
-
-**목적**: 3/4-view 측면 사진에서 얻는 8개 측정값 + 코 유형 분류.
+**산출**: 3/4-view 측면 프레임의 8개 각도/비율 + 코 유형 플래그.
 
 | 항목 | 내용 |
 |---|---|
 | 엔진 | `flutter/lib/domain/services/face_metrics_lateral.dart` |
-| 입력 | 사용자가 2번째로 찍는 3/4 측면 프레임 (옵션) |
-| 메트릭 | nasofrontalAngle, nasolabialAngle, facialConvexity, upperLipEline, lowerLipEline, mentolabialAngle, noseTipProjection, dorsalConvexity |
-| 코 유형 플래그 | aquilineNose (매부리), snubNose (들창), droopingTip, saddleNose, flatNose + 정면 조합(wide/narrow/long/short/big/small) |
-| 활용처 | attribute_engine의 lateral 규칙 + report UI "측면" 섹션 |
+| 입력 | 2단계 캡처 중 두 번째 3/4 yaw 프레임 (옵션) |
+| 메트릭 | nasofrontalAngle · nasolabialAngle · facialConvexity · upperLipEline · lowerLipEline · mentolabialAngle · noseTipProjection · dorsalConvexity |
+| 플래그 | aquilineNose (매부리), snubNose (들창), droopingTip, saddleNose, flatNose |
+| 소비자 | Track 2 stage 5 lateral 규칙 + report UI "측면" 섹션 |
 
-현재 상태: 이미 동작중, 변경 불필요.
+Reference 는 East Asian (Korean/Han Chinese) baseline 을 타 인종에도 공용 (`_eastAsianLateral`) — 측면 인종별 데이터 부족.
 
 ---
 
-## 4. Pipeline Flow (런타임)
+## 4. Runtime Pipeline
 
 ```
 [home_screen]
-  → 앨범/카메라 캡처 (정면 + 3/4 측면)
-     │
-     ▼
-[analyzeFaceReading()] in face_analysis.dart
-  1. FaceMetrics.computeAll()        → 28 raw metric
-  2. Z-score (metricInfoList 18개만)  ← Track 2/3 용
-  3. FaceShapeClassifier.predict()    ← Track 1: 5-class 라벨 stamp
-  4. LateralFaceMetrics.computeAll()  ← Track 3 (측면 있을 때만)
-  5. attributeEngine.evaluateRules()  ← Track 2
-  6. archetype 분류
-     │
-     ▼
-FaceReadingReport (faceShapeLabel + 10 attributeScores + lateralFlags)
-     │
-     ▼
-[physiognomy_screen]
-  _faceShape()  ← report.faceShapeLabel 우선, 없으면 LDA fallback
-  archetype  ← attribute 점수 기반
+   앨범/카메라 → 정면 + 3/4 측면 캡처 (각 5프레임 평균)
+          │
+          ▼
+[analyzeFaceReading()]  in domain/models/face_analysis.dart
+   1. FaceMetrics.computeAll()          → frontal raw
+   2. LateralFaceMetrics.computeAll()   → lateral raw (옵션)
+   3. Z-score vs (ethnicity × gender) reference
+   4. FaceShapeClassifier.predict()     → Track 1 label + confidence
+   5. scoreTree(zMap)                   → Track 2 NodeScore
+   6. deriveAttributeScores(...)        → Track 2 10 attribute raw
+   7. normalize(v9) — 60% within-face rank + 40% global quantile
+   8. archetype 분류
+          │
+          ▼
+FaceReadingReport
+   · faceShapeLabel + confidence        (Track 1)
+   · attributeScores(10) + breakdown    (Track 2)
+   · lateralMetrics + flags             (Track 3)
+          │
+          ▼
+[report_page / physiognomy_screen]  — 속성 점수 차트 + top-3 근거 + archetype 스토리
 ```
 
 ---
 
-## 5. 삭제된 레거시 (2026-04-17)
+## 5. Reference Data
 
-Track 재편 과정에서 제거된 실패/중복 시스템. 복원 금지.
-
-**레거시 3-class LDA 파이프라인 (22장 학습, Session 3 기록)**
-- `tools/calibrate_face_shape.py`, `tools/classify_unlabeled.py`, `tools/calibrate_device.py`
-- `tools/out/face_calib.csv`, `tools/device_data/`
-- `FACEBUG.md` (루트) — 실패 세션 1~2 + LDA 이식 스토리
-
-**앱 내 LDA 재보정용 UI**
-- `flutter/lib/presentation/widgets/face_shape_label_dialog.dart` — 앨범 업로드 후 wide/standard/long 자가 라벨링
-- `flutter/lib/data/services/face_calib_export.dart` — 히스토리 CSV export
-- `FaceReadingReport.calibrationLabel` 필드 + JSON 직렬화
-- `home_screen.dart` 의 CSV 내보내기 버튼 및 `_exportCalibCsv()`
-
-**face_metrics.dart 의 칼리브 전용 getter**
-- `icdDistance`, `fullnessMin`, `fullnessSlope`, `taperJawLower`, `taperChinSide`, `widthSignature`, `verticalBalance`
-- (`jawWidth`, `jawLowerWidth`, `chinSideWidth` 는 `lowerFaceFullness` 가 계속 쓰므로 유지)
-
-**CNN 실험 (파킹)**
-- `tools/face_shape_ml/train_cnn.py` (EfficientNetV2B0) — 63.3% 로 MLP(76.9%) 보다 낮아 배포 안 함
-- `out/face_shape_cnn.tflite` (12 MB) — 보관만. 향후 dataset 확대 시 재시도 여지.
+- **Frontal**: Farkas anthropometry + ICD meta-analysis (PMC9029890) + NIOSH dataset.
+  MediaPipe 랜드마크 분포 차이를 반영해 **2026-04-12 경험적 재보정**. 진본: `face_reference_data.dart`.
+- **Lateral**: East Asian (Korean/Han Chinese) 문헌 baseline.
+- **Quantile (normalize v9)**: Monte Carlo 시뮬레이션 기반 21-point CDF per gender. 재생성은 `test/calibration_test.dart`.
 
 ---
 
-## 6. 현재 남은 미완료 작업
+## 6. 환경 & 재현
 
-| # | 작업 | 블로커 | 우선순위 |
-|---|---|---|---|
-| A | 실기기 검증 (iOS/Android) — TFLite FP16 분류기 + MediaPipe parity | 대부님 기기 테스트 | 🔥 최우선 |
-| B | Track 2 착수 — `attribute_engine.dart` 에 신규 10 metric 규칙 추가 | 대부님이 방향 (a/b) 결정 | 중 |
-| C | `face_reference_data.dart` 10 신규 metric 의 ethnicity×gender 평균/SD 보정 | Track 2 의존 | 중 |
-| D | `CLAUDE.md` (flutter/) 내 "17 metric" 표 → "28 metric" 갱신 | 단순 문서 | 낮 |
-| E | CNN 재도전 — 데이터셋 확대 or 더 큰 크롭 (112→192) | 학습 자원 | 보류 |
+### 6.1 필수 환경
 
----
-
-## 7. 사전 정보 (다른 PC에서 이어받을 때)
-
-### 7.1 환경
 - Flutter SDK `^3.11.0` (`flutter/pubspec.yaml`)
-- Python tools: `/Users/chuck/Code/face/tools/.venv/bin/python` (tensorflow, mediapipe, sklearn, scipy, pandas)
+- Python tools: `tools/.venv/bin/python` (tensorflow, mediapipe, sklearn)
 - MediaPipe face_landmarker: `tools/face_landmarker.task`
 
-### 7.2 주요 의존성 (tflite_flutter 확인)
-```yaml
-# flutter/pubspec.yaml
-dependencies:
-  tflite_flutter: ^0.11.0
-flutter:
-  assets:
-    - assets/ml/
-```
+### 6.2 주요 상수 (학습-추론 정렬 필수)
 
-### 7.3 Classifier 로드 검증
-앱 실행 후 로그에서 아래 둘이 보이면 정상:
+- `face_analysis.dart::kLandmark10Correction = 1.05` — 이마 끝점(10) 보정
+- `extract_landmarks.py` 의 aspect correction `imgH/imgW` — Flutter 동일 적용
+
+### 6.3 Classifier 로드 검증
+
+앱 기동 후 로그 예:
 ```
 [FaceShapeClassifier] loaded — 28 features × 5 classes
-[FACE SHAPE CNN] label=Oval conf=0.92 probs=0.01,0.05,0.92,0.01,0.01
 ```
-
-### 7.4 학습 재현 시 경로 전제
-- `DATASET = tools/datasets/kaggle_cache/datasets/niten19/face-shape-dataset/versions/2/FaceShape Dataset`
-- `OUT = tools/face_shape_ml/out`
-- 재학습 결과물 3개는 반드시 `flutter/assets/ml/` 로 복사 (tflite + scaler.json)
-
-### 7.5 중요 상수 (절대 바꾸지 말 것)
-- `face_analysis.dart::kLandmark10Correction = 1.05` — 이마 끝점(10) 보정; 학습·추론 모두 이 값 기준
-- `extract_landmarks.py` 의 aspect correction `imgH/imgW` — Flutter 와 동일
 
 ---
 
-## 8. 이 문서를 업데이트하는 규칙
+## 7. 문서 업데이트 규칙
 
-- 새 세션에서 구조 변경 시 반드시 본 문서 먼저 갱신 → 그 다음 코드
-- 완료된 작업은 §6 표에서 제거 (체크박스 대신 삭제)
-- Track 간 경계를 넘는 feature 추가 시 §1.1·§2·§3 해당 섹션에 동시 반영
-- 재학습 때마다 §1 "테스트 정확도" 값 갱신
+- 구조 변경 시 본 문서부터 갱신 → 그 다음 코드.
+- Track 경계를 넘는 feature 는 해당 섹션 모두에 동기화.
+- Track 2 weight/rule 숫자 변경 시 `docs/ATTRIBUTE_NODE_MAPPING.md` 버전 올리고 본 문서 §2 링크만 유지.
+- Track 1 재학습 시 §1 "테스트 정확도" 갱신.
