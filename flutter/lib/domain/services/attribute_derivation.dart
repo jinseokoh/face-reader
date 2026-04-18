@@ -472,6 +472,41 @@ final _organRules = <_TreeRule>[
   // O-CH 턱 강
   _TreeRule('O-CH', (t) => _leafZ(t, 'chin') >= 1.0,
       const {Attribute.leadership: 1.0, Attribute.stability: 1.0}),
+
+  // O-DC1 코 등선 살짝/중간 볼록 — L-AQ 강매부리(z≥3) 이하 구간.
+  // dorsalConvexity 의 z ∈ [1.5, 3.0) 는 L-AQ 가 잡지 못하는 "살짝 매부리".
+  // 강도는 L-AQ 의 절반 수준으로 leadership·wealth 기여.
+  _TreeRule('O-DC1', (t) {
+    final nose = t.descendantById('nose');
+    if (nose == null) return false;
+    final dc = nose.ownZ['dorsalConvexity'] ?? 0.0;
+    return dc >= 1.5 && dc < 3.0;
+  }, const {Attribute.leadership: 0.7, Attribute.wealth: 0.3}),
+
+  // O-DC2 코 등선 살짝 오목 — saddleNose flag(z≤-3) 이하 구간.
+  // dorsalConvexity z ∈ (-3.0, -1.5] 약한 오목 → 부드러운 인상.
+  _TreeRule('O-DC2', (t) {
+    final nose = t.descendantById('nose');
+    if (nose == null) return false;
+    final dc = nose.ownZ['dorsalConvexity'] ?? 0.0;
+    return dc <= -1.5 && dc > -3.0;
+  }, const {Attribute.sensuality: 0.5, Attribute.emotionality: 0.3}),
+
+  // O-NF1 비전두각 크다 — 이마-코 라인 완만(각도 큼) → 지적·신뢰감.
+  _TreeRule('O-NF1', (t) {
+    final nose = t.descendantById('nose');
+    if (nose == null) return false;
+    final nf = nose.ownZ['nasofrontalAngle'] ?? 0.0;
+    return nf >= 1.5;
+  }, const {Attribute.intelligence: 0.5, Attribute.trustworthiness: 0.5}),
+
+  // O-NF2 비전두각 작다 — 꺾임 강조(nasion 들어감·코 급히 솟음) → 인상 강렬.
+  _TreeRule('O-NF2', (t) {
+    final nose = t.descendantById('nose');
+    if (nose == null) return false;
+    final nf = nose.ownZ['nasofrontalAngle'] ?? 0.0;
+    return nf <= -1.5;
+  }, const {Attribute.leadership: 0.5, Attribute.stability: -0.3}),
 ];
 
 // ──────────────────── Stage 4 — Palace Overlay (§4.3, 8) ────────────────────

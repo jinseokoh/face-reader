@@ -169,6 +169,34 @@ void main() {
       });
       expect(b.organRules.map((r) => r.id), contains('O-EB1'));
     });
+
+    test('O-DC1 살짝 매부리 구간 [1.5, 3.0)', () {
+      final mild = _run({'dorsalConvexity': 2.0});
+      expect(mild.organRules.map((r) => r.id), contains('O-DC1'));
+      // strong aquiline is L-AQ territory → O-DC1 stops at z=3.0
+      final strong = _run({'dorsalConvexity': 3.2});
+      expect(strong.organRules.map((r) => r.id), isNot(contains('O-DC1')));
+      // below threshold → not fired
+      final flat = _run({'dorsalConvexity': 1.0});
+      expect(flat.organRules.map((r) => r.id), isNot(contains('O-DC1')));
+    });
+
+    test('O-DC2 살짝 오목 구간 (-3.0, -1.5]', () {
+      final mild = _run({'dorsalConvexity': -2.0});
+      expect(mild.organRules.map((r) => r.id), contains('O-DC2'));
+      final strong = _run({'dorsalConvexity': -3.5});
+      expect(strong.organRules.map((r) => r.id), isNot(contains('O-DC2')));
+    });
+
+    test('O-NF1 비전두각 큼 z ≥ 1.5', () {
+      final b = _run({'nasofrontalAngle': 1.6});
+      expect(b.organRules.map((r) => r.id), contains('O-NF1'));
+    });
+
+    test('O-NF2 비전두각 작음 z ≤ -1.5', () {
+      final b = _run({'nasofrontalAngle': -1.6});
+      expect(b.organRules.map((r) => r.id), contains('O-NF2'));
+    });
   });
 
   group('Stage 4 — palace rules', () {
