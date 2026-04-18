@@ -390,6 +390,23 @@ final _zoneRules = <_TreeRule>[
   // Z-10 하정 distinctive
   _TreeRule('Z-10', (t) => _zoneAbsZ(t, 'lower') >= 1.5,
       const {Attribute.sensuality: 1.0, Attribute.emotionality: 0.5}),
+
+  // Z-11 중정 비율 큼 — root own `midFaceRatio` 가 전체 대비 넓음.
+  // 중정 = 활동·재물 영역 (재백·질액궁 소속) → wealth, sociability 가산.
+  _TreeRule('Z-11', (t) => (t.ownZ['midFaceRatio'] ?? 0.0) >= 1.0,
+      const {Attribute.wealth: 0.5, Attribute.sociability: 0.3}),
+
+  // Z-12 하정 비율 큼 — chin 노드의 `lowerFaceRatio` z ≥ 1.0. 긴 턱선 → 말년·책임.
+  _TreeRule(
+      'Z-12',
+      (t) => (t.descendantById('chin')?.ownZ['lowerFaceRatio'] ?? 0.0) >= 1.0,
+      const {Attribute.stability: 0.5, Attribute.trustworthiness: 0.3}),
+
+  // Z-13 하정 비율 작음 — 짧은 턱선 → 인상 부드럽, 말년 약화.
+  _TreeRule(
+      'Z-13',
+      (t) => (t.descendantById('chin')?.ownZ['lowerFaceRatio'] ?? 0.0) <= -1.0,
+      const {Attribute.emotionality: 0.3, Attribute.stability: -0.3}),
 ];
 
 // ──────────────────── Stage 3 — Organ Rules (§4.2, 14) ────────────────────

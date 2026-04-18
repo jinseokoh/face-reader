@@ -145,6 +145,21 @@ void main() {
       });
       expect(b.zoneRules.map((r) => r.id), contains('Z-07'));
     });
+
+    test('Z-11 중정 비율 큼 (midFaceRatio ≥ 1)', () {
+      final b = _run({'midFaceRatio': 1.2});
+      expect(b.zoneRules.map((r) => r.id), contains('Z-11'));
+    });
+
+    test('Z-12 하정 비율 큼 (lowerFaceRatio ≥ 1)', () {
+      final b = _run({'lowerFaceRatio': 1.2});
+      expect(b.zoneRules.map((r) => r.id), contains('Z-12'));
+    });
+
+    test('Z-13 하정 비율 작음 (lowerFaceRatio ≤ -1)', () {
+      final b = _run({'lowerFaceRatio': -1.2});
+      expect(b.zoneRules.map((r) => r.id), contains('Z-13'));
+    });
   });
 
   group('Stage 3 — organ rules', () {
