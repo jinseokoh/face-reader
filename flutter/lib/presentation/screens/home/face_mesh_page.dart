@@ -204,12 +204,26 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             color: Colors.black.withValues(alpha: 0.6),
-            child: Text(
-              _phase == _CapturePhase.frontal
-                  ? '폰을 수직으로 세우고 얼굴 좌표계가 녹색으로 변할때 까지 움직이세요.'
-                  : '${_lateralBannerText()}\n[yaw=${_currentYaw.toStringAsFixed(2)} ${_currentYawClass.name}]',
-              style: const TextStyle(color: Colors.white, fontSize: 16, height: 1.4),
-              textAlign: TextAlign.left,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _phase == _CapturePhase.frontal
+                      ? '폰을 수직으로 세우고 얼굴 좌표계가 녹색으로 변할때 까지 움직이세요.'
+                      : _lateralBannerText(),
+                  style: const TextStyle(
+                      color: Colors.white, fontSize: 16, height: 1.4),
+                  textAlign: TextAlign.left,
+                ),
+                if (_phase == _CapturePhase.lateral) ...[
+                  const SizedBox(height: 8),
+                  _YawProgressIndicator(
+                    yaw: _currentYaw,
+                    yawClass: _currentYawClass,
+                  ),
+                ],
+              ],
             ),
           ),
         ),
@@ -841,5 +855,151 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
         );
       }
     });
+  }
+}
+
+/// Lateral(3/4) 캡처 중 실시간 yaw 상태 게이지.
+/// - 가로축: |yaw| 0.0 ~ 1.0 (classifyYaw 임계와 같은 스케일)
+/// - 4구간 색: 회색(frontal) · 녹색(threeQuarter, 캡처 가능) · 주황(profile) · 빨강(unusable)
+/// - 현재 위치 마커(▼)와 한 줄 힌트("조금 더 돌리세요" 등)를 함께 노출.
+class _YawProgressIndicator extends StatelessWidget {
+  final double yaw;
+  final YawClass yawClass;
+
+  const _YawProgressIndicator({required this.yaw, required this.yawClass});
+
+  static const _frontalEnd = 0.70;
+  static const _threeQuarterEnd = 0.88;
+  static const _profileEnd = 0.95;
+
+  Color get _zoneColor {
+    switch (yawClass) {
+      case YawClass.frontal:
+        return const Color(0xFF9E9E9E);
+      case YawClass.threeQuarter:
+        return const Color(0xFF4CAF50);
+      case YawClass.profile:
+        return const Color(0xFFFF9800);
+      case YawClass.unusable:
+        return const Color(0xFFF44336);
+    }
+  }
+
+  String get _hint {
+    switch (yawClass) {
+      case YawClass.frontal:
+        return '→ 얼굴을 더 옆으로 돌려주세요';
+      case YawClass.threeQuarter:
+        return '● 지금이에요! 버튼을 누르세요';
+      case YawClass.profile:
+        return '← 조금만 정면으로 되돌리세요';
+      case YawClass.unusable:
+        return '← 더 많이 정면으로 되돌리세요';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pos = yaw.abs().clamp(0.0, 1.0);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          height: 22,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final w = constraints.maxWidth;
+              final markerX = pos * w;
+              return Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  // 4색 구간 스트립
+                  Positioned(
+                    top: 10,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      height: 8,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(4),
+                        gradient: const LinearGradient(
+                          colors: [
+                            Color(0xFF9E9E9E),
+                            Color(0xFF9E9E9E),
+                            Color(0xFF4CAF50),
+                            Color(0xFF4CAF50),
+                            Color(0xFFFF9800),
+                            Color(0xFFFF9800),
+                            Color(0xFFF44336),
+                          ],
+                          stops: [
+                            0.0,
+                            _frontalEnd,
+                            _frontalEnd,
+                            _threeQuarterEnd,
+                            _threeQuarterEnd,
+                            _profileEnd,
+                            1.0,
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  // threeQuarter(녹색) 구간 강조 테두리
+                  Positioned(
+                    top: 8,
+                    left: _frontalEnd * w,
+                    width: (_threeQuarterEnd - _frontalEnd) * w,
+                    child: Container(
+                      height: 12,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(5),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                  ),
+                  // 현재 위치 마커 (▼)
+                  Positioned(
+                    top: 0,
+                    left: (markerX - 7).clamp(0.0, w - 14),
+                    child: Icon(
+                      Icons.arrow_drop_down,
+                      color: _zoneColor,
+                      size: 24,
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 2),
+        Row(
+          children: [
+            Text(
+              _hint,
+              style: TextStyle(
+                color: _zoneColor,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              'yaw ${yaw.abs().toStringAsFixed(2)}',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.6),
+                fontSize: 11,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 }
