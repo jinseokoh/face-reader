@@ -3,12 +3,14 @@ import 'dart:math' as math;
 
 import 'package:face_reader/core/theme.dart';
 import 'package:face_reader/data/constants/face_reference_data.dart';
+import 'package:face_reader/data/constants/node_text_blocks.dart';
 import 'package:face_reader/data/enums/age_group.dart';
 import 'package:face_reader/data/enums/attribute.dart';
 import 'package:face_reader/data/enums/ethnicity.dart';
 import 'package:face_reader/data/enums/gender.dart';
 import 'package:face_reader/data/services/supabase_service.dart';
 import 'package:face_reader/domain/models/face_reading_report.dart';
+import 'package:face_reader/domain/models/physiognomy_tree.dart';
 import 'package:face_reader/domain/services/report_assembler.dart';
 import 'package:face_reader/presentation/providers/auth_provider.dart';
 import 'package:face_reader/presentation/widgets/login_bottom_sheet.dart';
@@ -16,7 +18,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart';
+import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart' hide Gender;
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -453,6 +455,179 @@ class _NodeZBar extends StatelessWidget {
   }
 }
 
+// ─── Expandable Node Bar (tappable → shows 관상학 해석 + metric z 리스트) ───
+//
+// 14-node tree 의 각 노드(root·zone·leaf) 를 탭해서 펼치면 해당 node 의
+// z-band(high/mid/low) 에 맞는 전통 관상 해석 본문과 귀속된 metric 의
+// z-score 가 노출된다. 본문 SSOT: `lib/data/constants/node_text_blocks.dart`.
+class _ExpandableNodeBar extends StatefulWidget {
+  final String nodeId;
+  final String label;
+  final double z;
+  final Gender gender;
+  final Map<String, MetricResult> metrics;
+  final Map<String, MetricResult>? lateralMetrics;
+  final List<String> metricIds;
+  final bool isZone;
+  final bool isRoot;
+  final bool supported;
+
+  const _ExpandableNodeBar({
+    required this.nodeId,
+    required this.label,
+    required this.z,
+    required this.gender,
+    required this.metrics,
+    this.lateralMetrics,
+    required this.metricIds,
+    this.isZone = false,
+    this.isRoot = false,
+    this.supported = true,
+  });
+
+  @override
+  State<_ExpandableNodeBar> createState() => _ExpandableNodeBarState();
+}
+
+class _ExpandableNodeBarState extends State<_ExpandableNodeBar> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final fontWeight = widget.isZone || widget.isRoot
+        ? FontWeight.w600
+        : FontWeight.w400;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: () => setState(() => _expanded = !_expanded),
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 80,
+                  child: Text(
+                    widget.label,
+                    style: TextStyle(
+                      color: _Palette.darkBrown,
+                      fontSize: 14,
+                      fontWeight: fontWeight,
+                    ),
+                  ),
+                ),
+                Expanded(child: _NodeZBar(z: widget.z)),
+                const SizedBox(width: 6),
+                SizedBox(
+                  width: 44,
+                  child: Text(
+                    widget.z.toStringAsFixed(2),
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      color: _Palette.darkBrown,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                Icon(
+                  _expanded
+                      ? Icons.keyboard_arrow_up
+                      : Icons.keyboard_arrow_down,
+                  color: _Palette.amber,
+                  size: 16,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_expanded) _buildExpandedBody(),
+      ],
+    );
+  }
+
+  Widget _buildExpandedBody() {
+    final block = nodeBlockForZ(widget.nodeId, widget.z);
+    final body = block != null ? resolveNodeBody(block, widget.gender) : '';
+
+    final metricRows = <Widget>[];
+    if (widget.supported) {
+      for (final mid in widget.metricIds) {
+        final m = widget.metrics[mid] ?? widget.lateralMetrics?[mid];
+        if (m == null) continue;
+        final z = m.zScore;
+        metricRows.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 2),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 120,
+                  child: Text(
+                    metricDisplayLabels[mid] ?? mid,
+                    style: TextStyle(
+                      color: _Palette.warmBrown,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                Text(
+                  '${z >= 0 ? '+' : ''}${z.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    color: z >= 0 ? _Palette.darkBrown : _Palette.olive,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 16, right: 8, top: 4, bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (body.isNotEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: _Palette.shell.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                body,
+                style: TextStyle(
+                  color: _Palette.warmBrown,
+                  fontSize: 12.5,
+                  height: 1.55,
+                ),
+              ),
+            ),
+          if (metricRows.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              '세부 측정값',
+              style: TextStyle(
+                color: _Palette.darkBrown,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 4),
+            ...metricRows,
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 // ─── 삼정 Radar (3-axis: 상정·중정·하정 rollUpMeanZ) ───
 class _SamjeongRadar extends StatelessWidget {
   final double upper;
@@ -870,47 +1045,19 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             const SizedBox(height: 10),
           for (final nodeId in nodeOrder)
             if (report.nodeScores.containsKey(nodeId))
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 80,
-                      child: Text(
-                        nodeLabels[nodeId] ?? nodeId,
-                        style: TextStyle(
-                          color: _Palette.darkBrown,
-                          fontSize: 14,
-                          fontWeight: nodeId == 'face' ||
-                                  nodeId == 'upper' ||
-                                  nodeId == 'middle' ||
-                                  nodeId == 'lower'
-                              ? FontWeight.w600
-                              : FontWeight.w400,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: _NodeZBar(
-                        z: report.nodeScores[nodeId]!.rollUpMeanZ,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    SizedBox(
-                      width: 44,
-                      child: Text(
-                        report.nodeScores[nodeId]!.rollUpMeanZ
-                            .toStringAsFixed(2),
-                        textAlign: TextAlign.right,
-                        style: TextStyle(
-                          color: _Palette.darkBrown,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              _ExpandableNodeBar(
+                nodeId: nodeId,
+                label: nodeLabels[nodeId] ?? nodeId,
+                z: report.nodeScores[nodeId]!.rollUpMeanZ,
+                gender: report.gender,
+                metrics: report.metrics,
+                lateralMetrics: report.lateralMetrics,
+                metricIds: nodeById[nodeId]?.metricIds ?? const [],
+                isZone: nodeId == 'upper' ||
+                    nodeId == 'middle' ||
+                    nodeId == 'lower',
+                isRoot: nodeId == 'face',
+                supported: nodeId != 'ear',
               ),
         ],
       ),

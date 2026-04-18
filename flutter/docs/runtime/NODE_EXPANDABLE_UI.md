@@ -1,7 +1,7 @@
 # 14-node 부위별 expandable UI (Work Plan)
 
 **작성**: 2026-04-18
-**상태**: 📋 **계획 수립 완료, 구현 대기중**
+**상태**: ✅ **완료** (2026-04-18). `node_text_blocks.dart` 신규 SSOT + `_ExpandableNodeBar` 위젯 + 성별 분기 4 node(eye·nose·mouth·cheekbone).
 **대상 파일**:
 - `lib/presentation/screens/home/report_page.dart` (UI wrapper 추가)
 - `lib/data/constants/node_text_blocks.dart` (신규 — 서술 텍스트 SSOT)

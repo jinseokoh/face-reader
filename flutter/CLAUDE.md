@@ -10,11 +10,11 @@
 
 세션이 새로 시작되면 먼저 이 섹션 확인. 완료된 항목은 줄 삭제, 진행 상태는 체크리스트에서 갱신.
 
-| 우선 | 작업 | 문서 | 재개 지시 |
-|---|---|---|---|
-| P1 | 14-node 부위별 expandable UI (정적 서술 SSOT + `_ExpandableNodeBar` 위젯 + band/gender 분기) | [docs/runtime/NODE_EXPANDABLE_UI.md](docs/runtime/NODE_EXPANDABLE_UI.md) | `"NODE_EXPANDABLE_UI.md 의 Phase 1 부터 시작하라."` |
+현재 P0 / P1 모두 ✅ 완료 (2026-04-18).
 
-**완료**: 서술 엔진 성별 분기 전면 재설계 (2026-04-18). 연애·바람기·관능도 3 섹션 남/여 별도 pool, 섹션당 400~600자, `'색기' → '관능도'` 명칭 통일.
+**완료**:
+- 서술 엔진 성별 분기 전면 재설계 — 연애·바람기·관능도 남/여 별도 pool, 섹션 400~600자, `'색기' → '관능도'` 명칭 통일.
+- 14-node 부위별 expandable UI — `node_text_blocks.dart` SSOT (14×3 band + eye/nose/mouth/cheekbone 성별 분기) + `_ExpandableNodeBar` 위젯.
 
 ---
 
