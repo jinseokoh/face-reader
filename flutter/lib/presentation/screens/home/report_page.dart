@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:face_reader/core/theme.dart';
 import 'package:face_reader/data/constants/face_reference_data.dart';
@@ -383,15 +384,28 @@ class _Palette {
   );
 }
 
-// ─── Compact z-score bar for node tree ───
+// ─── Compact z-score bar for node tree (heat-colored by sign/magnitude) ───
 class _NodeZBar extends StatelessWidget {
   final double z;
   const _NodeZBar({required this.z});
+
+  static Color heatColor(double z) {
+    // z ∈ [-2, +2] → color. Positive = warm brown spectrum; negative = olive.
+    final mag = z.abs().clamp(0.0, 2.0) / 2.0;
+    if (z >= 0) {
+      // shell → amber → darkBrown
+      return Color.lerp(_Palette.sand, _Palette.darkBrown, mag)!;
+    } else {
+      // shell → lightOlive → olive
+      return Color.lerp(_Palette.sand, _Palette.olive, mag)!;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final clamped = z.clamp(-2.0, 2.0);
     final position = (clamped + 2.0) / 4.0;
+    final markerColor = heatColor(z);
     return SizedBox(
       height: 8,
       child: LayoutBuilder(
@@ -426,7 +440,7 @@ class _NodeZBar extends StatelessWidget {
                   width: 6,
                   height: 6,
                   decoration: BoxDecoration(
-                    color: _Palette.darkBrown,
+                    color: markerColor,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -437,6 +451,177 @@ class _NodeZBar extends StatelessWidget {
       ),
     );
   }
+}
+
+// ─── 삼정 Radar (3-axis: 상정·중정·하정 rollUpMeanZ) ───
+class _SamjeongRadar extends StatelessWidget {
+  final double upper;
+  final double middle;
+  final double lower;
+
+  const _SamjeongRadar({
+    required this.upper,
+    required this.middle,
+    required this.lower,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AspectRatio(
+      aspectRatio: 1.3,
+      child: CustomPaint(
+        painter: _SamjeongRadarPainter(
+          upper: upper,
+          middle: middle,
+          lower: lower,
+        ),
+      ),
+    );
+  }
+}
+
+class _SamjeongRadarPainter extends CustomPainter {
+  final double upper;
+  final double middle;
+  final double lower;
+
+  _SamjeongRadarPainter({
+    required this.upper,
+    required this.middle,
+    required this.lower,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2 + 6);
+    final maxR = math.min(size.width, size.height) * 0.38;
+
+    // z ∈ [-2, +2] → radius [0, maxR]. Center = z=-2, outer = z=+2.
+    double zToR(double z) {
+      final clamped = z.clamp(-2.0, 2.0);
+      return ((clamped + 2.0) / 4.0) * maxR;
+    }
+
+    // Axis angles: 상정 top (-π/2), 중정 bottom-right (+π/6), 하정 bottom-left (5π/6).
+    const upperAngle = -math.pi / 2;
+    const middleAngle = math.pi / 6;
+    const lowerAngle = 5 * math.pi / 6;
+
+    Offset pt(double angle, double r) =>
+        center + Offset(math.cos(angle) * r, math.sin(angle) * r);
+
+    // Grid rings at z = -2, -1, 0, 1, 2.
+    final gridPaint = Paint()
+      ..color = _Palette.sand.withValues(alpha: 0.35)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    for (final z in const [-2.0, -1.0, 0.0, 1.0, 2.0]) {
+      final r = zToR(z);
+      final path = Path()
+        ..moveTo(pt(upperAngle, r).dx, pt(upperAngle, r).dy)
+        ..lineTo(pt(middleAngle, r).dx, pt(middleAngle, r).dy)
+        ..lineTo(pt(lowerAngle, r).dx, pt(lowerAngle, r).dy)
+        ..close();
+      canvas.drawPath(path, gridPaint);
+    }
+
+    // Axes.
+    final axisPaint = Paint()
+      ..color = _Palette.warmBrown.withValues(alpha: 0.5)
+      ..strokeWidth = 1;
+    for (final a in const [upperAngle, middleAngle, lowerAngle]) {
+      canvas.drawLine(center, pt(a, maxR), axisPaint);
+    }
+
+    // Neutral (z=0) ring highlight.
+    final neutralPaint = Paint()
+      ..color = _Palette.amber.withValues(alpha: 0.5)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+    final neutralR = zToR(0.0);
+    final neutralPath = Path()
+      ..moveTo(pt(upperAngle, neutralR).dx, pt(upperAngle, neutralR).dy)
+      ..lineTo(pt(middleAngle, neutralR).dx, pt(middleAngle, neutralR).dy)
+      ..lineTo(pt(lowerAngle, neutralR).dx, pt(lowerAngle, neutralR).dy)
+      ..close();
+    canvas.drawPath(neutralPath, neutralPaint);
+
+    // Data polygon.
+    final dataU = pt(upperAngle, zToR(upper));
+    final dataM = pt(middleAngle, zToR(middle));
+    final dataL = pt(lowerAngle, zToR(lower));
+    final dataPath = Path()
+      ..moveTo(dataU.dx, dataU.dy)
+      ..lineTo(dataM.dx, dataM.dy)
+      ..lineTo(dataL.dx, dataL.dy)
+      ..close();
+
+    final fillPaint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Color(0xCC5C4033),
+          Color(0x667B5B3A),
+        ],
+      ).createShader(Rect.fromCircle(center: center, radius: maxR));
+    canvas.drawPath(dataPath, fillPaint);
+
+    final strokePaint = Paint()
+      ..color = _Palette.darkBrown
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..strokeJoin = StrokeJoin.round;
+    canvas.drawPath(dataPath, strokePaint);
+
+    // Data dots.
+    final dotPaint = Paint()..color = _Palette.darkBrown;
+    for (final p in [dataU, dataM, dataL]) {
+      canvas.drawCircle(p, 3.5, Paint()..color = Colors.white);
+      canvas.drawCircle(p, 3, dotPaint);
+    }
+
+    // Axis labels (relative position outside ring).
+    void drawLabel(double angle, String zone, double z) {
+      final labelCenter = pt(angle, maxR + 22);
+      final tp = TextPainter(
+        text: TextSpan(
+          children: [
+            TextSpan(
+              text: '$zone\n',
+              style: const TextStyle(
+                color: _Palette.darkBrown,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            TextSpan(
+              text: '${z >= 0 ? '+' : ''}${z.toStringAsFixed(2)}',
+              style: TextStyle(
+                color: _NodeZBar.heatColor(z),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        textAlign: TextAlign.center,
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(
+        canvas,
+        Offset(labelCenter.dx - tp.width / 2, labelCenter.dy - tp.height / 2),
+      );
+    }
+
+    drawLabel(upperAngle, '상정', upper);
+    drawLabel(middleAngle, '중정', middle);
+    drawLabel(lowerAngle, '하정', lower);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SamjeongRadarPainter old) =>
+      old.upper != upper || old.middle != middle || old.lower != lower;
 }
 
 class _ReportPageState extends ConsumerState<ReportPage> {
@@ -671,7 +856,18 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                   color: _Palette.darkBrown,
                   fontSize: 16,
                   fontWeight: FontWeight.bold)),
-          const SizedBox(height: 10),
+          if (report.nodeScores.containsKey('upper') &&
+              report.nodeScores.containsKey('middle') &&
+              report.nodeScores.containsKey('lower')) ...[
+            const SizedBox(height: 4),
+            _SamjeongRadar(
+              upper: report.nodeScores['upper']!.rollUpMeanZ,
+              middle: report.nodeScores['middle']!.rollUpMeanZ,
+              lower: report.nodeScores['lower']!.rollUpMeanZ,
+            ),
+            const SizedBox(height: 6),
+          ] else
+            const SizedBox(height: 10),
           for (final nodeId in nodeOrder)
             if (report.nodeScores.containsKey(nodeId))
               Padding(
