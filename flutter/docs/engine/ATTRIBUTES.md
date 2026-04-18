@@ -1,13 +1,23 @@
 # 10 속성 → Tree Node 재도출 설계서
 
-**버전**: 0.2 (research-confirmed)
+**버전**: 0.3 (engine v2, face/ear 제외 + Stage 0 shape preset)
 **마지막 업데이트**: 2026-04-18
 **기반 문서**:
 - `docs/engine/TAXONOMY.md` v2.0 (14-node tree SSOT + 노드별 metric/rule 매칭)
 - `lib/domain/services/physiognomy_scoring.dart` (NodeScore tree)
+- `lib/domain/services/attribute_derivation.dart` (6-stage pipeline)
 - **관상 전통 research** (v0.2 반영) — §12 참조
-**역할**: 트리 엔진의 14-node × 10-attribute weight matrix 설계 및 5-stage derivation pipeline 규칙 명세.
-**v0.2 변경점**: §2.2 가중치 매트릭스·§4.3 Palace overlay 를 관상 전통 research 결과(麻衣相法·柳莊相法·十二宮·五官·五嶽·四瀆 교차검증)로 전면 확정.
+
+**역할**: 9-node × 10-attribute weight matrix (face/ear 제외) 설계 + 6-stage derivation pipeline 규칙 명세.
+
+**v0.3 변경점 (engine v2, 2026-04-18)**:
+- face(root)·ear 제외한 9-노드 매트릭스 재설계. row 합 1.00 유지.
+- Stage 0 face-shape preset (FaceShape enum × ML 확신도) 신설.
+- Stage 1b 매력도 distinctiveness: 기존 monotonic `-0.3×faceAbs` → symmetric bell `(0.20-0.5×|faceAbs-0.7|).clamp(-0.25, +0.20)`.
+- Rule 튜닝: O-EM 임계 1.0→0.5, P-03 root 임계 0.8→0.3, O-CK 매력도 감점 삭제.
+- Gender delta: 매력도 face→eye/chin 재배치.
+- 상관 MC (bone/mid latent + shape 분포 prior) 로 quantile 재생성.
+- 매력도 쏠림 해소 — raw p50 0.29 → 0.68, 속성간 최대편차 4.9× → 2.0×.
 
 ---
 
@@ -49,58 +59,70 @@
 ```
 base[attr] = Σ_node ( W[attr][node] × signedScore(node) )
 signedScore(node) = node.ownMeanZ          (leaf 노드)
-                  = node.rollUpMeanZ       (zone 노드)
-                  = node.ownMeanZ          (root — own metrics)
+                  = node.rollUpMeanZ       (zone 노드, rule 에서만 사용)
 missing  → 0 기여
 ```
 
 - 각 attribute 행의 **가중치 합 = 1.00** 으로 정규화.
 - polarity (-1) 은 해당 셀에 음수 표기.
-- `(P)` 는 proximity 함수 적용 (평균에 가까울수록 +, 극단일수록 -). stability·trustworthiness 의 balance 평가 등에 사용.
+- face(root)/ear(unsupported) 노드는 weight matrix 에서 제외. face 는 Stage 0 shape preset + Stage 1b distinctiveness + Z-11 zone rule 을 통해 간접 소비.
 
-### 2.2 매트릭스
+### 2.2 매트릭스 (engine v2, 9-노드)
 
-11 개 노드 = root(`face`) + 상정/중정/하정 3 zone + 7 지원 leaf (이마·눈썹·눈·코·광대·인중·입·턱; 미간 제외 — metric 공백, ear 제외 — unsupported)
+9 개 노드 = 이마·미간·눈썹·눈·코·광대·인중·입·턱 (face·ear 제외).
 
-> 미간은 **palace overlay(명궁)** 에서 cross-node 로만 참여 (아래 §4.3).
+모든 가중치는 §12 research + 2026-04-18 엔진 재조정에서 도출. **합 = 1.00** (각 행). libido 의 philtrum 만 polarity `-1`.
 
-모든 가중치는 §12 research 에서 도출. **합 = 1.00** (각 행). polarity 음수는 `-` 표기.
-
-| Attribute \\ Node | root | 이마 | 눈썹 | 눈 | 코 | 광대 | 인중 | 입 | 턱 | 관상 근거 요지 |
-|---|---|---|---|---|---|---|---|---|---|---|
-| **wealth** 재물운 | 0.15 (P) | — | — | — | **0.50** | 0.20 | — | 0.05 | 0.10 | 재백궁(코)=핵심. 관골(광대)이 보좌. 삼정 균형(root). 지각(턱)·출납관(입) 보조. |
-| **leadership** 리더십 | 0.05 (P taper) | **0.40** | — | — | 0.10 | 0.25 | — | — | 0.20 | 관록궁(이마)=출세. 관골=사회적 추진력. 노복궁(턱)=하방 장악력. |
-| **intelligence** 통찰력 | 0.10 | 0.20 | 0.25 | **0.40** | 0.05 | — | — | — | — | 감찰관(눈) 한국 관상학 5할. 명궁 경계부(눈썹/미간). 상정(이마) 지성 토대. |
-| **sociability** 사회성 | 0.05 | — | — | — | — | **0.40** | 0.10 | 0.25 | 0.20 | 관골="사회성을 보는 대표 부위". 출납관(입)=소통 통로. 노복궁(턱). |
-| **emotionality** 감정성 | 0.05 | — | 0.20 | **0.45** | — | — | — | 0.20 | 0.10 | 감찰관(눈) 한국 5할. 눈썹-눈 간격=감정 억제. 출납관(입)=감정 정화. |
-| **stability** 안정성 | 0.12 (P) | 0.20 | — | — | 0.20 | 0.08 | — | — | **0.40** | 항산(턱)=한국 관상 최우선. 상정(이마)=선천 침착. 토성(코)=중년 중심축. |
-| **sensuality** 바람기 | — | — | 0.15 | **0.40** | — | 0.20 | — | 0.25 | — | 눈(감정의 창) + 처첩궁(눈꼬리). 마의상법: 입술 두꺼우면 애정욕 풍부. |
-| **trustworthiness** 신뢰성 | — | 0.25 | 0.20 | — | **0.35** | — | — | 0.20 | — | 마의상법: "코가 바르고 가지런해야 사람". 관록궁(이마), 형제궁(눈썹). |
-| **attractiveness** 매력도 | 0.25 (P) | — | 0.10 | **0.35** | 0.15 | — | — | 0.15 | — | "얼굴이 천 냥이면 눈이 구백 냥". 삼정 균형(root, Pallett 2010 PNAS 수렴). |
-| **libido** 정력 | — | — | — | 0.25 | — | — | **0.40** | 0.15 | 0.20 | 인중=정력 제1 지표. 남녀궁(눈 아래). 지각(턱)=기력 토대. 마의상법(입술). |
+| Attribute \\ Node | 이마 | 미간 | 눈썹 | 눈 | 코 | 광대 | 인중 | 입 | 턱 |
+|---|---|---|---|---|---|---|---|---|---|
+| **wealth** 재물운 | 0.05 | 0.05 | — | 0.05 | **0.35** | 0.15 | — | 0.15 | 0.20 |
+| **leadership** 리더십 | **0.25** | 0.05 | 0.15 | 0.05 | 0.15 | 0.15 | — | 0.05 | 0.15 |
+| **intelligence** 통찰력 | 0.25 | 0.10 | 0.25 | **0.30** | 0.05 | — | — | — | 0.05 |
+| **sociability** 사회성 | — | — | 0.05 | 0.20 | 0.05 | 0.15 | 0.05 | **0.30** | 0.20 |
+| **emotionality** 감정성 | — | 0.10 | 0.20 | **0.35** | — | — | 0.05 | 0.20 | 0.10 |
+| **stability** 안정성 | 0.20 | 0.10 | 0.05 | 0.05 | 0.15 | 0.05 | 0.05 | — | **0.35** |
+| **sensuality** 바람기 | — | — | 0.10 | 0.25 | 0.05 | 0.10 | 0.10 | 0.25 | 0.15 |
+| **trustworthiness** 신뢰성 | 0.20 | 0.05 | 0.15 | 0.20 | 0.20 | 0.05 | 0.05 | 0.05 | 0.05 |
+| **attractiveness** 매력도 | 0.05 | — | 0.10 | **0.30** | 0.10 | 0.05 | 0.05 | 0.20 | 0.15 |
+| **libido** 관능도 | — | — | 0.05 | 0.25 | 0.10 | 0.05 | **0.20(−)** | 0.15 | 0.20 |
 
 각 행 합 = 1.00. zone 노드(상/중/하) 자체는 base 에 투입하지 않고 **zone 규칙**(§4.1) 에서 사용.
 
-**변경 요약 (v0.1 → v0.2)**:
-- `sociability` 최상위가 mouth(0.40) → cheekbone(0.40). "관골=사회성을 보는 대표 부위" 명시적 근거.
-- `attractiveness` 최상위가 root(faceTaper) → eye(0.35) + root(0.25). 한국 관상학 전통 + Pallett 2010 PNAS golden ratio 양쪽 수렴.
-- `sensuality` 최상위가 mouth → eye(0.40). 감찰관+처첩궁이 mouth 보다 전통 권위 우위.
-- `libido` philtrum 가중치 0.25 → 0.40 로 증가. 남녀궁·지각도 재배치.
-- `stability` chin 0.35 → 0.40 로 증가 (한국 관상에서 항산 최우선 재확인).
-- `emotionality` 눈썹 polarity 제거 (전통에선 눈썹 엷음=감정 노출이지만 현대 해석은 엇갈림 → 단순 양의 상관으로 통일).
-- `wealth` cheekbone(광대) 가중치 0.10 → 0.20 로 상향. "관골이 코를 보좌" 전통 명시.
+**v0.3 재조정 핵심 (2026-04-18)**:
+- cheekbone 의 총 영향력 1.13 → 0.75 로 완화 (단일 metric 과적재 해소).
+- glabella(미간·browSpacing) base 기여 0 → 0.45 (고아 해제, 6 속성에 0.05~0.10 분산).
+- 의미론 구멍 메움: eye→sociability/trustworthiness, chin→attractiveness, 하정 3노드→sensuality.
+- nose 최고 weight 0.50→0.35 (lateral 의존성 완화), trust nose 0.35→0.20.
+- philtrum libido 0.40(−)→0.20(−) (단일 metric 과적재 완화).
 
-### 2.3 Distinctiveness 가산 (magnitude 축)
+### 2.3 Stage 0 — Face Shape Preset
 
-일부 속성은 편차 강도에도 반응한다 (`ownMeanAbsZ` 또는 `rollUpMeanAbsZ`). `base` 계산 후 소량 가감:
+6-stage 의 첫 관문. `FaceShape enum × ML 확신도` 로 attribute delta 주입.
 
-| Attribute | 소스 | 공식 | 이유 |
+```
+oval:              attractiveness +0.30, sociability +0.20, stability +0.15, trust +0.10
+oblong:            intelligence  +0.30, emotionality +0.20, trust +0.10, sociab -0.15, sens -0.10
+round:             wealth +0.25, sociability +0.25, emotionality +0.15, lead -0.15, stab -0.10
+square:            leadership +0.30, stability +0.25, trust +0.15, attr -0.15, sens -0.10
+heart:             intelligence +0.25, sensuality +0.20, attr +0.15, stab -0.20, wealth -0.10
+unknown:           (모든 속성 0)
+```
+
+최종 기여 = delta × confidence. ML ≥ 0.5 면 ML 원값, 그 이하면 3-metric fallback 매치 시 0.6 / 미매치 시 0.0.
+
+Stage 0 는 "얼굴형이 부위 해석보다 먼저 오는 첫 관문" 이라는 관상학 전통(圓 달걀형=복덕, 田 각진=의지, 甲 역삼각=총명 등)의 현대적 수렴.
+
+### 2.4 Stage 1b — Distinctiveness 가산 (magnitude 축)
+
+일부 속성은 편차 강도에도 반응한다 (`rollUpMeanAbsZ` 또는 `zoneAbsZ`):
+
+| Attribute | 소스 | 공식 (v2) | 이유 |
 |---|---|---|---|
-| attractiveness | face.rollUpMeanAbsZ | `-0.3 × min(abs, 1.5)` | 매우 평균적(abs≈0) → 무난 | 그러나 너무 극단(abs>2) → 이질감. negative quadratic. |
-| intelligence | upper.rollUpMeanAbsZ | `+0.2 × clamp(abs-0.5, 0, 1.5)` | 상정 차별화 시 지적 인상 강화 |
-| emotionality | lower.rollUpMeanAbsZ | `+0.3 × clamp(abs-0.5, 0, 1.5)` | 하정 강한 표정 → 감정 풍부 |
+| attractiveness | face.rollUpMeanAbsZ | `(0.20 − 0.5 × \|faceAbs−0.7\|).clamp(−0.25, +0.20)` | 평균 근접(faceAbs≈0.7) 피크 +0.20, 양극단 −0.25. **v2 에서 monotonic penalty 를 symmetric bell 로 교체** → 매력도 쏠림 해소 |
+| intelligence | upper.rollUpMeanAbsZ | `+0.2 × clamp(abs−0.5, 0, 1.5)` | 상정 차별화 시 지적 인상 강화 |
+| emotionality | lower.rollUpMeanAbsZ | `+0.3 × clamp(abs−0.5, 0, 1.5)` | 하정 강한 표정 → 감정 풍부 |
 
-수치는 초안. 3D 검증에서 샘플 분포 보며 튜닝.
+v2 에서 매력도 distinctiveness 가 항상 음수였던 구조를 symmetric bell 로 바꾸면서 매력도 raw p50 이 0.29 → 0.68 로 상승. null guard: `rollUpMeanAbsZ == null` (empty tree) 이면 0 반환.
 
 ---
 

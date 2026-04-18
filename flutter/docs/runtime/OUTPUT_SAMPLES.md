@@ -72,12 +72,16 @@ FaceReadingReport
 
 ```dart
 class FaceReadingReport {
+  static const int kReportSchemaVersion = 2;    // engine v2 (9-node + shape preset)
+  final int schemaVersion;                       // 스키마 불일치 시 history_provider 자동 폐기
+
   // Track 1 — 얼굴형
-  String faceShapeLabel;           // "계란형", "하트형" 등 5-class
-  double faceShapeConfidence;
+  FaceShape faceShape;             // 도메인 enum (oval/oblong/round/square/heart/unknown)
+  String? faceShapeLabel;          // legacy: ML 분류기 English 원본
+  double? faceShapeConfidence;
 
   // Track 2 — 관상 속성
-  Map<Attribute, AttributeEvidence> attributes;  // 10개 속성 상세
+  Map<Attribute, AttributeEvidence> attributes;  // 10개 속성 상세 (shapePreset 포함 contributors)
   List<RuleEvidence> rules;                      // 발동된 rule 목록
   Map<String, NodeEvidence> nodeScores;          // 14-node tree scores
   Map<String, MetricResult> metrics;             // 17+8 metric 결과
@@ -103,7 +107,7 @@ class FaceReadingReport {
 
 ## 4. Attribute 점수 출력 예시
 
-정규화 후 5.0~10.0 범위 (60% within-face rank + 40% global quantile blend).
+정규화 후 5.0~10.0 범위 (engine v2, 40% within-face rank + 60% global quantile blend).
 
 | Attribute | Korean | 점수 |
 |---|---|---|
@@ -118,10 +122,10 @@ class FaceReadingReport {
 | attractiveness | 매력도 | 7.6 |
 | libido | 관능도 | 5.3 |
 
-**기대 통계** (Monte Carlo 20,000 샘플, seed=42, input z ~ N(0.2, 0.85)):
-- top-bottom spread >= 3.0
+**기대 통계** (상관 Monte Carlo 20,000 샘플, seed=42, bone/mid latent + 얼굴형 prior):
+- top-bottom spread >= 2.0 (rank-minimum 보장)
 - 평균 ~ 7.0, 표준편차 ~ 1.2
-- 상위 속성 >= 8.0, 하위 속성 <= 7.0
+- 상위 속성 >= 7.0, 상위 saturation(모두 >=9.5) < 5%
 
 ---
 

@@ -1,10 +1,8 @@
 # 인생 질문 서술 엔진 (Life Question Narrative)
 
 **마지막 업데이트**: 2026-04-18
-**상태**: v2 운영 — Beat-Fragment Grammar + Face Hash Seed
+**상태**: v3 운영 — 성별 분리 pool + 관능도 rename + 400~600자 tight
 **SSOT 코드**: `lib/domain/services/life_question_narrative.dart`
-
-> ⚠️ **성별 분기 전면 재설계 예정**. 현 v2 는 성별 분기가 2 슬롯 쌍(`noble`, `person`)에 그치고, 그나마 fragment 가 `@{noble_m}` 를 하드코딩하는 버그로 여성 리포트에 남성 어휘가 섞이는 상태. 재설계 계획 전문: [NARRATIVE_GENDER_REDESIGN.md](NARRATIVE_GENDER_REDESIGN.md)
 
 ---
 
@@ -15,11 +13,17 @@
 1. 타고난 재능
 2. 재물운
 3. 대인관계
-4. 연애운
-5. 바람기 *(20대 이상)*
-6. 색기 *(30대 이상)*
+4. 연애운 — **남/여 별도 pool** (`_romanceBeatsMale` / `_romanceBeatsFemale`)
+5. 바람기 *(20대 이상)* — **남/여 별도 pool**
+6. 관능도 *(30대 이상)* — **남/여 별도 pool**. 구 '색기' 섹션을 attribute.dart labelKo 와 일치시켜 rename.
 7. 건강과 수명
 8. 종합 조언
+
+v3 변경점 (2026-04-18):
+- 연애·바람기·관능도 3 섹션을 **치환이 아닌 별도 BeatPool** 로 분리. 총 6 개 pool.
+- 하드코딩된 `@{noble_m}` 제거 → `@{noble}` 로 통일 (`_genderedKey` 가 정상 분기).
+- 섹션당 평균 400~600자 타이트화 (v2 의 600 평균에서 축소).
+- 관능도 섹션: 오랜 관계의 농밀한 결, 음주·파티 기(氣) 누수, 만족 선까지 지속되는 욕구 — 성별별 상이한 프레임으로 전문가 톤.
 
 단일 얼굴 → 단일 본문이라는 결정론은 유지하면서, **서로 다른 얼굴끼리는 거의 겹치지 않는 prose** 를 뽑아내는 것이 설계 목표. 같은 템플릿을 문장 단위로 바꿔치기하는 수준이 아니라 어휘·관상 용어·인용 궁/악까지 face hash 로 섞이도록 구조화.
 

@@ -29,7 +29,7 @@
    - Common Rules 40개 (전체 적용)
    - Gender Rules 10개 (성별별 5개)
    - Age Rules 5개 (50세+ 전용)
-4. **Quantile 정규화**: raw score → 5.0~10.0 scale (60% rank + 40% global quantile blend)
+4. **Quantile 정규화**: raw score → 5.0~10.0 scale (40% rank + 60% global quantile blend, engine v2)
 5. **Archetype 분류**: 상위 2개 attribute → primary/secondary archetype + 10개 special archetype 조건 검사
 6. **Report Assembly**: triggered rule ID → 한국어 텍스트 블록 매핑 (55개 rule별 상세 해설)
    - Archetype별 성별 맞춤 소개문 (10 archetype × 2 gender = 20개)
