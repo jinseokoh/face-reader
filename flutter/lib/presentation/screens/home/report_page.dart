@@ -1006,9 +1006,10 @@ class _ReportPageState extends ConsumerState<ReportPage> {
   Widget _buildNodeScoreSection() {
     if (report.nodeScores.isEmpty) return const SizedBox.shrink();
 
+    // 귀(ear) 는 정면 메시에서 측정되지 않는 unsupported 노드 — UI 에서 완전 제외.
     const nodeOrder = [
       'face', 'upper', 'forehead', 'glabella', 'eyebrow',
-      'middle', 'eye', 'nose', 'cheekbone', 'ear',
+      'middle', 'eye', 'nose', 'cheekbone',
       'lower', 'philtrum', 'mouth', 'chin',
     ];
     const nodeLabels = {
@@ -1021,7 +1022,6 @@ class _ReportPageState extends ConsumerState<ReportPage> {
       'eye': '    눈',
       'nose': '    코',
       'cheekbone': '    광대',
-      'ear': '    귀',
       'lower': '  하정',
       'philtrum': '    인중',
       'mouth': '    입',

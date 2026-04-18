@@ -2,6 +2,7 @@ import 'package:face_reader/data/enums/age_group.dart';
 import 'package:face_reader/data/enums/attribute.dart';
 import 'package:face_reader/data/enums/gender.dart';
 import 'package:face_reader/domain/models/face_reading_report.dart';
+import 'package:face_reader/domain/services/yin_yang.dart';
 
 // ═══════════════════════════════════════════════════════════════════════
 // 인생 질문 서술 엔진 v3 — Beat-Fragment Grammar + 성별 분리 pool
@@ -67,6 +68,7 @@ class _Features {
   final String? specialArchetype;
   final String primaryArchetype;
   final String secondaryArchetype;
+  final YinYangBalance yinYang;
   final int seed;
 
   _Features({
@@ -87,6 +89,7 @@ class _Features {
     required this.specialArchetype,
     required this.primaryArchetype,
     required this.secondaryArchetype,
+    required this.yinYang,
     required this.seed,
   });
 
@@ -167,6 +170,17 @@ _Features _extractFeatures(FaceReadingReport r) {
   final second2nd =
       sortedLeaves.length > 1 ? sortedLeaves[1].key : strongest;
 
+  // 음양 쏠림 계산 — 전체 metric z-map 에서 양/음 축 가중합.
+  final zMap = <String, double>{
+    for (final m in r.metrics.values) m.id: m.zScore,
+  };
+  if (r.lateralMetrics != null) {
+    for (final m in r.lateralMetrics!.values) {
+      zMap[m.id] = m.zScore;
+    }
+  }
+  final yinYang = computeYinYang(zMap);
+
   return _Features(
     top: top,
     second: second,
@@ -185,6 +199,7 @@ _Features _extractFeatures(FaceReadingReport r) {
     specialArchetype: r.archetype.specialArchetype,
     primaryArchetype: r.archetype.primaryLabel,
     secondaryArchetype: r.archetype.secondaryLabel,
+    yinYang: yinYang,
     seed: _computeSeed(r),
   );
 }
@@ -407,9 +422,32 @@ bool Function(_Features) _lowOf(Attribute a) =>
 bool Function(_Features) _highPair(Attribute a, Attribute b) =>
     (f) => f.bandOf(a) == _Band.high && f.bandOf(b) == _Band.high;
 
+// 음양 쏠림 predicate
+bool _yangStrong(_Features f) => f.yinYang.tone == YinYangTone.strongYang;
+bool _yangLean(_Features f) =>
+    f.yinYang.tone == YinYangTone.strongYang ||
+    f.yinYang.tone == YinYangTone.leaningYang;
+bool _yinStrong(_Features f) => f.yinYang.tone == YinYangTone.strongYin;
+bool _yinLean(_Features f) =>
+    f.yinYang.tone == YinYangTone.strongYin ||
+    f.yinYang.tone == YinYangTone.leaningYin;
+bool _yyHarmony(_Features f) => f.yinYang.tone == YinYangTone.harmony;
+
 // ═══ 1. 타고난 재능 ═══
 
 final List<_Frag> _talentOpening = [
+  // 음양 쏠림 기반 opening — 얼굴형·부위 strength 보다 먼저 검사.
+  _Frag(_yangStrong, [
+    '당신의 얼굴에는 양기(陽氣)가 @{intense} 서려 있습니다. 이마·광대·턱의 선이 또렷이 살아 있고 눈썹과 코의 골격이 강건하게 받쳐주는 상으로, 관상학에서 "양의 기상(氣像)"이라 부르는 활동·진취·공격의 축이 @{talent_word}의 뿌리가 됩니다. 머뭇거리기보다 먼저 움직이는 기질이 시간이 쌓일수록 결실로 환원되는 유형입니다.',
+    '관상학이 \'양강상(陽剛相)\'으로 분류하는 강건형 얼굴입니다. 골격의 선이 뚜렷하고 오악(五嶽)의 돌출이 살아 있어, 외부의 공기를 당신 쪽으로 끌어오는 추진력이 @{deep} 박혀 있습니다. 좁은 공간에서 조용히 완성하는 일보다 여러 사람이 얽힌 무대에서 진가가 드러납니다.',
+  ]),
+  _Frag(_yinStrong, [
+    '당신의 얼굴에는 음기(陰氣)가 @{deep} 깃들어 있습니다. 입술의 도톰함·눈매의 수분감·하정의 부드러운 곡선이 어우러진 상으로, 관상학에서 "음의 수렴(收斂)"이라 부르는 포용·수용·내향의 축이 @{talent_word}의 근원이 됩니다. 겉으로 드러내기보다 안으로 쌓는 방식이 당신의 기질에 맞습니다.',
+    '관상학이 \'음유상(陰柔相)\'으로 분류하는 수렴형 얼굴입니다. 부드러운 곡선과 윤기 있는 결이 주조를 이뤄 상대가 당신 곁에서 긴장을 푸는 결을 가졌으며, 당신의 @{talent_word}은 시간을 두고 서서히 깊어지는 \'늦게 피는 꽃\' 의 기질입니다.',
+  ]),
+  _Frag(_yyHarmony, [
+    '당신의 얼굴은 음양(陰陽)이 @{rare} 고르게 맞춰진 중용의 상입니다. 강건함과 부드러움이 한 얼굴에 공존하는 결로, 관상학에서 "조화지상(調和之相)" — 덕(德) 의 얼굴 — 이라 부르는 유형이며, 강한 자리에선 강하게 서고 부드러운 자리에선 물처럼 흐르는 이중 기질이 @{talent_word}의 본체가 됩니다.',
+  ]),
   _Frag(_highPair(Attribute.intelligence, Attribute.leadership), [
     '당신의 얼굴에는 지략(智略)과 통솔이 한 몸에 깃든 기운이 @{intense} 흐릅니다. 관상학에서 @{palace_destiny}이 @{open_wide} 열리고 @{zone_up}이 @{strong_adj} 자리한 상으로, 머리로 @{observe} 힘과 앞장서 @{act} 힘이 한 얼굴에 공존하는 @{rare} @{structure}입니다.',
     '@{noble} 지략과 통솔이 겹쳐 흐르는 상입니다. 관상학에서 @{palace_destiny}이 @{clear_adj} 열리고 @{palace_career}이 @{strong_adj} 자리한 상으로, 문(文)과 무(武)의 경계를 넘나드는 @{rare} 기질이 얼굴의 중심축을 이룹니다.',
@@ -1171,6 +1209,15 @@ final List<_BeatPool> _healthBeats = [
 
 // archetype 레이블은 _resolveText Step 0 에서 runtime features 로 치환된다.
 final List<_Frag> _concludeOpening = [
+  _Frag(_yangStrong, [
+    "당신의 얼굴은 양기(陽氣)가 짙게 서린 상입니다. '@__PRIMARY_ARCHETYPE__' 의 골격 위에 '@__SECONDARY_ARCHETYPE__' 의 결이 얹혀 있지만, 그 모든 것을 관통하는 축은 강건·진취·돌파의 양기이며, 인생의 결정적 국면에서 머뭇거리지 않고 선을 넘어서는 기질이 당신의 궤적을 만듭니다.",
+  ]),
+  _Frag(_yinStrong, [
+    "당신의 얼굴은 음기(陰氣)가 @{deep} 깃든 상입니다. '@__PRIMARY_ARCHETYPE__' 위에 '@__SECONDARY_ARCHETYPE__' 의 결이 흐르지만, 전체를 감싸는 기운은 수렴·포용·유연의 음기이며, 서두르지 않고 시간을 동맹으로 삼는 결이 당신의 평생 자산입니다.",
+  ]),
+  _Frag(_yyHarmony, [
+    "당신의 얼굴은 음양(陰陽)이 @{rare} 고르게 맞물린 조화의 상입니다. '@__PRIMARY_ARCHETYPE__' 과 '@__SECONDARY_ARCHETYPE__' 이 겹친 위에, 강함과 부드러움을 자유롭게 교체할 수 있는 중용의 결이 자리하여, 어떤 환경에서도 자기 자리를 빨리 찾는 적응력이 최대 강점이 됩니다.",
+  ]),
   _Frag((f) => f.specialArchetype != null, [
     "지금까지 겹쳐본 여러 영역을 한 장으로 보면, 당신의 관상은 '@__PRIMARY_ARCHETYPE__' 위에 '@__SECONDARY_ARCHETYPE__'의 결이 겹쳐 흐르는 @{structure}입니다. 특히 얼굴에 '@__SPECIAL_ARCHETYPE__'이 함께 서려 있어, 평균적 해석의 범위를 넘어서는 결정적 국면을 인생 중·후반에 한 번 이상 통과하게 될 가능성이 높습니다.",
   ]),

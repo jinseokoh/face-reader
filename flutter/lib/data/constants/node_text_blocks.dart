@@ -221,21 +221,10 @@ const Map<String, NodeTextSet> nodeTextBlocks = {
     ),
   ),
 
-  // ─── ear (귀) · unsupported ────────────────────────────────────────
-  'ear': NodeTextSet(
-    high: NodeTextBlock(
-      shared:
-          '귀의 결은 관상학에서 "보수관(保壽官)" 과 "강(江)" 의 축으로 중요하지만, 본 앱의 정면 이미지 메시에서는 측정 커버리지가 제한적입니다. 전통적으로 귀가 두텁고 흰빛이 도는 상은 수명·지혜·타고난 인덕의 결로 해석되며, 측정이 필요한 경우 대면 관상 전문가의 진단을 권합니다.',
-    ),
-    mid: NodeTextBlock(
-      shared:
-          '귀는 본 앱에서 직접 측정되지 않는 부위입니다. 전통 관상에서는 귀의 크기·색·위치가 수명과 지혜를 읽는 보조 축으로 쓰이며, 여타 부위의 종합 해석과 함께 참고하면 도움이 됩니다.',
-    ),
-    low: NodeTextBlock(
-      shared:
-          '귀는 본 앱 v1 에서 측정 미지원 부위입니다. 실측이 필요한 경우 대면 진단을 권합니다.',
-    ),
-  ),
+  // 귀(ear) 는 MediaPipe 정면 메시 커버리지 부족으로 측정 미지원 노드. UI 및
+  // 본문에서 완전히 제외. physiognomy_tree 에는 구조 정합성 유지 위해 남아
+  // 있지만(`unsupported=true`), node_text_blocks 에서는 항목 자체를 둘 필요가
+  // 없다.
 
   // ─── lower zone (하정) ─────────────────────────────────────────────
   'lower': NodeTextSet(

@@ -15,21 +15,23 @@ import 'package:face_reader/domain/models/physiognomy_tree.dart';
 
 void main() {
   const genderSplitNodes = {'eye', 'nose', 'mouth', 'cheekbone'};
-  const unsupportedNodes = {'ear'};
 
-  test('14 노드 × 3 band 전부 존재', () {
-    expect(nodeTextBlocks.length, 14,
-        reason: 'all 14 tree nodes must have entries');
+  test('지원 노드 13개 (tree 14 중 ear 제외) 전부 엔트리 보유', () {
+    expect(nodeTextBlocks.length, 13,
+        reason: 'supported nodes (face + 3 zones + 9 leaves except ear)');
     for (final node in allNodes) {
+      if (node.unsupported) continue; // ear 는 UI/text 에서 제외
       final set = nodeTextBlocks[node.id];
       expect(set, isNotNull, reason: 'missing NodeTextSet for ${node.id}');
     }
+    // ear 는 명시적으로 없어야 함.
+    expect(nodeTextBlocks.containsKey('ear'), isFalse,
+        reason: 'ear is unsupported — must not appear in nodeTextBlocks');
   });
 
-  test('각 band 본문 최소 길이 기준 충족 (ear 제외)', () {
-    // high/low = 200자 이상 (핵심 해석), mid = 100자 이상 (간결한 균형형).
+  test('각 band 본문 최소 길이 기준 충족', () {
+    // high/low = 핵심 해석, mid = 간결한 균형형.
     for (final entry in nodeTextBlocks.entries) {
-      if (unsupportedNodes.contains(entry.key)) continue;
       for (final case_ in [
         ('high', entry.value.high, 120),
         ('mid', entry.value.mid, 100),
