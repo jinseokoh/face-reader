@@ -6,6 +6,9 @@ import 'package:face_reader/data/enums/ethnicity.dart';
 import 'package:face_reader/data/enums/face_shape.dart';
 import 'package:face_reader/data/enums/gender.dart';
 import 'package:face_reader/domain/services/archetype.dart';
+import 'package:face_reader/domain/services/attribute_derivation.dart';
+import 'package:face_reader/domain/services/attribute_normalize.dart';
+import 'package:face_reader/domain/services/physiognomy_scoring.dart';
 
 // ────────────────────────── Primitives ──────────────────────────
 
@@ -166,14 +169,17 @@ class AttributeEvidence {
 
 // ────────────────────────── Report ──────────────────────────
 
-/// 스키마 버전. 엔진(weight matrix / rule / calibration / shape preset) 이
-/// 실질적으로 바뀔 때마다 증가. history_provider 가 버전 불일치 리포트를
-/// 자동 폐기하여 구 엔진 점수와 신 엔진 점수가 섞이지 않게 한다.
+/// Hive capture 스키마 버전. metric 리스트·포맷이 바뀔 때만 증가.
 ///
-/// v1: legacy engine (proximity 기반, face/ear 포함 weight).
-/// v2: 2026-04-18. face/ear 제외 9-노드 + shape preset + distinctiveness bell
-///     + Opt-F rank 0.40/0.60 + 상관 MC 재보정.
-const int kReportSchemaVersion = 2;
+/// 엔진(weight matrix · rule · calibration) 변경은 이 버전을 건드리지 않는다 —
+/// 해석은 Hive 에 저장하지 않고 load 시 현재 엔진으로 재계산되므로 자동으로
+/// 최신 값이 반영된다.
+///
+/// v1: legacy (derived fields 를 Hive 에 함께 저장).
+/// v2: 2026-04-18. Stage 0 preset 도입 등 파이프라인 개편 초기.
+/// v3: 2026-04-18. Hive 에 capture(metric/lateral/flag/faceShape/meta) 만 저장.
+///     nodeScores·attributes·rules·archetype 은 load 시 현재 엔진으로 재계산.
+const int kReportSchemaVersion = 3;
 
 class FaceReadingReport {
   final Ethnicity ethnicity;
@@ -250,6 +256,9 @@ class FaceReadingReport {
         for (final e in attributes.entries) e.key: e.value.normalizedScore,
       };
 
+  /// v3 (2026-04-18): capture 전용. nodeScores·attributes·rules·archetype 은
+  /// 저장하지 않는다. load 시 현재 엔진으로 재계산되므로 엔진 변경이 저장물을
+  /// 침범하지 않고, 같은 얼굴이 항상 최신 해석을 받는다.
   String toJsonString() => jsonEncode({
         'schemaVersion': schemaVersion,
         'ethnicity': ethnicity.name,
@@ -270,26 +279,15 @@ class FaceReadingReport {
             for (final e in lateralMetrics!.entries) e.key: e.value.toJson(),
           },
         if (lateralFlags != null) 'lateralFlags': lateralFlags,
-        'nodeScores': {
-          for (final e in nodeScores.entries) e.key: e.value.toJson(),
-        },
-        'attributes': {
-          for (final e in attributes.entries) e.key.name: e.value.toJson(),
-        },
-        'rules': rules.map((r) => r.toJson()).toList(),
-        'archetype': {
-          'primary': archetype.primary.name,
-          'secondary': archetype.secondary.name,
-          'primaryLabel': archetype.primaryLabel,
-          'secondaryLabel': archetype.secondaryLabel,
-          'specialArchetype': archetype.specialArchetype,
-        },
         if (faceShapeLabel != null) 'faceShapeLabel': faceShapeLabel,
         if (faceShapeConfidence != null)
           'faceShapeConfidence': faceShapeConfidence,
         'faceShape': faceShape.name,
       });
 
+  /// v3: capture 만 역직렬화하고 derived (nodeScores·attributes·rules·
+  /// archetype) 는 현재 엔진으로 **load 시 재계산**한다. 구 버전(v1/v2) 은
+  /// 폐기.
   factory FaceReadingReport.fromJsonString(String jsonStr) {
     final j = jsonDecode(jsonStr) as Map<String, dynamic>;
     final version = (j['schemaVersion'] as num?)?.toInt() ?? 1;
@@ -297,10 +295,59 @@ class FaceReadingReport {
       throw FormatException(
           'FaceReadingReport schemaVersion mismatch: $version != $kReportSchemaVersion');
     }
+
+    // ─── capture 필드 파싱 ───
+    final gender = Gender.values.byName(j['gender'] as String);
+    final ageGroup = AgeGroup.values.byName(j['ageGroup'] as String);
+    final metrics = (j['metrics'] as Map<String, dynamic>).map(
+      (k, v) => MapEntry(k, MetricResult.fromJson(v as Map<String, dynamic>)),
+    );
+    final lateralMetrics = j['lateralMetrics'] == null
+        ? null
+        : (j['lateralMetrics'] as Map<String, dynamic>).map(
+            (k, v) =>
+                MapEntry(k, MetricResult.fromJson(v as Map<String, dynamic>)),
+          );
+    final lateralFlags = j['lateralFlags'] == null
+        ? null
+        : (j['lateralFlags'] as Map<String, dynamic>)
+            .map((k, v) => MapEntry(k, v as bool));
+    final faceShapeLabel = j['faceShapeLabel'] as String?;
+    final faceShapeConfidence = (j['faceShapeConfidence'] as num?)?.toDouble();
+    final faceShape = j['faceShape'] is String
+        ? FaceShape.values.byName(j['faceShape'] as String)
+        : FaceShapeLabel.fromEnglish(faceShapeLabel);
+
+    // ─── derived 재계산 (현재 엔진) ───
+    final zForTree = <String, double>{
+      for (final e in metrics.entries) e.key: e.value.zAdjusted,
+    };
+    if (lateralMetrics != null) {
+      for (final e in lateralMetrics.entries) {
+        zForTree[e.key] = e.value.zScore;
+      }
+    }
+    final tree = scoreTree(zForTree);
+    final breakdown = deriveAttributeScoresDetailed(
+      tree: tree,
+      gender: gender,
+      isOver50: ageGroup.isOver50,
+      hasLateral: lateralMetrics != null,
+      lateralFlags: lateralFlags ?? const {},
+      faceShape: faceShape,
+      shapeConfidence: faceShapeConfidence ?? 0.0,
+    );
+    final normalizedScores = normalizeAllScores(breakdown.total, gender);
+    final archetype = classifyArchetype(normalizedScores, shape: faceShape);
+
+    final nodeScores = _rehydrateNodeScores(tree);
+    final attributes = _rehydrateAttributeEvidence(breakdown, normalizedScores);
+    final rules = _rehydrateRuleEvidence(breakdown);
+
     return FaceReadingReport(
       ethnicity: Ethnicity.values.byName(j['ethnicity'] as String),
-      gender: Gender.values.byName(j['gender'] as String),
-      ageGroup: AgeGroup.values.byName(j['ageGroup'] as String),
+      gender: gender,
+      ageGroup: ageGroup,
       timestamp: DateTime.parse(j['timestamp'] as String),
       source: AnalysisSource.values.byName(j['source'] as String),
       supabaseId: j['supabaseId'] as String?,
@@ -310,47 +357,117 @@ class FaceReadingReport {
       expiresAt: j['expiresAt'] != null
           ? DateTime.parse(j['expiresAt'] as String)
           : null,
-      metrics: (j['metrics'] as Map<String, dynamic>).map(
-        (k, v) => MapEntry(k, MetricResult.fromJson(v as Map<String, dynamic>)),
-      ),
-      lateralMetrics: j['lateralMetrics'] == null
-          ? null
-          : (j['lateralMetrics'] as Map<String, dynamic>).map(
-              (k, v) =>
-                  MapEntry(k, MetricResult.fromJson(v as Map<String, dynamic>)),
-            ),
-      lateralFlags: j['lateralFlags'] == null
-          ? null
-          : (j['lateralFlags'] as Map<String, dynamic>)
-              .map((k, v) => MapEntry(k, v as bool)),
-      nodeScores: (j['nodeScores'] as Map<String, dynamic>).map(
-        (k, v) =>
-            MapEntry(k, NodeEvidence.fromJson(v as Map<String, dynamic>)),
-      ),
-      attributes: (j['attributes'] as Map<String, dynamic>).map(
-        (k, v) => MapEntry(
-          Attribute.values.byName(k),
-          AttributeEvidence.fromJson(v as Map<String, dynamic>),
-        ),
-      ),
-      rules: (j['rules'] as List)
-          .map((r) => RuleEvidence.fromJson(r as Map<String, dynamic>))
-          .toList(),
-      archetype: ArchetypeResult(
-        primary:
-            Attribute.values.byName(j['archetype']['primary'] as String),
-        secondary:
-            Attribute.values.byName(j['archetype']['secondary'] as String),
-        primaryLabel: j['archetype']['primaryLabel'] as String,
-        secondaryLabel: j['archetype']['secondaryLabel'] as String,
-        specialArchetype: j['archetype']['specialArchetype'] as String?,
-      ),
-      faceShapeLabel: j['faceShapeLabel'] as String?,
-      faceShapeConfidence: (j['faceShapeConfidence'] as num?)?.toDouble(),
-      faceShape: j['faceShape'] is String
-          ? FaceShape.values.byName(j['faceShape'] as String)
-          : FaceShapeLabel.fromEnglish(j['faceShapeLabel'] as String?),
+      metrics: metrics,
+      lateralMetrics: lateralMetrics,
+      lateralFlags: lateralFlags,
+      nodeScores: nodeScores,
+      attributes: attributes,
+      rules: rules,
+      archetype: archetype,
+      faceShapeLabel: faceShapeLabel,
+      faceShapeConfidence: faceShapeConfidence,
+      faceShape: faceShape,
       schemaVersion: version,
     );
   }
+}
+
+// ─── 재계산 헬퍼 (capture → derived) ──────────────────────────────────
+//
+// face_analysis.dart 의 _collectNodeScores / _buildAttributeEvidence /
+// _buildRuleEvidence 와 동일 로직. fresh capture 경로와 rehydrate 경로가
+// 동일한 derived 필드를 만들어야 하므로 두 곳이 일치해야 한다.
+
+Map<String, NodeEvidence> _rehydrateNodeScores(NodeScore root) {
+  final out = <String, NodeEvidence>{};
+  void walk(NodeScore node) {
+    out[node.nodeId] = NodeEvidence(
+      nodeId: node.nodeId,
+      ownMeanZ: node.ownMeanZ ?? 0.0,
+      ownMeanAbsZ: node.ownMeanAbsZ ?? 0.0,
+      rollUpMeanZ: node.rollUpMeanZ ?? 0.0,
+      rollUpMeanAbsZ: node.rollUpMeanAbsZ ?? 0.0,
+    );
+    for (final c in node.children) {
+      walk(c);
+    }
+  }
+  walk(root);
+  return out;
+}
+
+Map<Attribute, AttributeEvidence> _rehydrateAttributeEvidence(
+  AttributeBreakdown breakdown,
+  Map<Attribute, double> normalizedScores,
+) {
+  final out = <Attribute, AttributeEvidence>{};
+  for (final attr in Attribute.values) {
+    final base = breakdown.basePerNode[attr] ?? const <String, double>{};
+    final dist = breakdown.distinctiveness[attr] ?? 0.0;
+    final raw = breakdown.total[attr] ?? 0.0;
+    final normalized = normalizedScores[attr] ?? 5.0;
+
+    final bag = <String, double>{};
+    for (final e in base.entries) {
+      if (e.value.abs() > 0.05) bag['node:${e.key}'] = e.value;
+    }
+    final sh = breakdown.shapePreset[attr] ?? 0.0;
+    if (sh.abs() > 0.05) bag['shape'] = sh;
+    if (dist.abs() > 0.05) bag['distinctiveness'] = dist;
+    for (final r in breakdown.zoneRules) {
+      final v = r.effects[attr];
+      if (v != null && v.abs() > 0.05) bag[r.id] = v;
+    }
+    for (final r in breakdown.organRules) {
+      final v = r.effects[attr];
+      if (v != null && v.abs() > 0.05) bag[r.id] = v;
+    }
+    for (final r in breakdown.palaceRules) {
+      final v = r.effects[attr];
+      if (v != null && v.abs() > 0.05) bag[r.id] = v;
+    }
+    for (final r in breakdown.ageRules) {
+      final v = r.effects[attr];
+      if (v != null && v.abs() > 0.05) bag[r.id] = v;
+    }
+    for (final r in breakdown.lateralRules) {
+      final v = r.effects[attr];
+      if (v != null && v.abs() > 0.05) bag[r.id] = v;
+    }
+
+    final sorted = bag.entries.toList()
+      ..sort((a, b) => b.value.abs().compareTo(a.value.abs()));
+    final contributors = sorted
+        .map((e) => Contributor(id: e.key, value: e.value))
+        .toList();
+
+    out[attr] = AttributeEvidence(
+      rawTotal: raw,
+      normalizedScore: normalized,
+      basePerNode: Map<String, double>.from(base),
+      distinctiveness: dist,
+      contributors: contributors,
+    );
+  }
+  return out;
+}
+
+List<RuleEvidence> _rehydrateRuleEvidence(AttributeBreakdown breakdown) {
+  final out = <RuleEvidence>[];
+  for (final r in breakdown.zoneRules) {
+    out.add(RuleEvidence(id: r.id, stage: 'zone', effects: r.effects));
+  }
+  for (final r in breakdown.organRules) {
+    out.add(RuleEvidence(id: r.id, stage: 'organ', effects: r.effects));
+  }
+  for (final r in breakdown.palaceRules) {
+    out.add(RuleEvidence(id: r.id, stage: 'palace', effects: r.effects));
+  }
+  for (final r in breakdown.ageRules) {
+    out.add(RuleEvidence(id: r.id, stage: 'age', effects: r.effects));
+  }
+  for (final r in breakdown.lateralRules) {
+    out.add(RuleEvidence(id: r.id, stage: 'lateral', effects: r.effects));
+  }
+  return out;
 }
