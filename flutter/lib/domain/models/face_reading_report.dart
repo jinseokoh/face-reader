@@ -5,7 +5,7 @@ import 'package:face_reader/data/enums/attribute.dart';
 import 'package:face_reader/data/enums/ethnicity.dart';
 import 'package:face_reader/data/enums/gender.dart';
 import 'package:face_reader/domain/services/archetype.dart';
-import 'package:face_reader/domain/services/attribute_engine.dart';
+import 'package:face_reader/domain/services/attribute_derivation.dart';
 
 class MetricResult {
   final String id;

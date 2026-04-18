@@ -457,18 +457,18 @@ class CompatibilityReportPage extends StatelessWidget {
   /// based correlated face generation to better mirror real users.
   ///
   /// Empirically-verified distribution:
-  ///   ≥ 94 → 천생연분  (top 10%)
-  ///   ≥ 81 → 좋은 궁합 (30%)
-  ///   ≥ 71 → 보통       (30%)
+  ///   ≥ 81 → 천생연분  (top 10%)
+  ///   ≥ 72 → 좋은 궁합 (30%)
+  ///   ≥ 65 → 보통       (30%)
   ///   else → 어려운 궁합 (bottom 30%)
   ///
   /// If you change the spread function in compatibility_engine.dart, the
   /// calibration templates, or any scoring weights, re-run the calibration
   /// test and update these constants.
   String _resolveLabel(int score) {
-    if (score >= 94) return '천생연분';
-    if (score >= 81) return '좋은 궁합';
-    if (score >= 71) return '보통';
+    if (score >= 81) return '천생연분';
+    if (score >= 72) return '좋은 궁합';
+    if (score >= 65) return '보통';
     return '어려운 궁합';
   }
 

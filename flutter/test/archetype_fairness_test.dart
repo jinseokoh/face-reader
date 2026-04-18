@@ -14,8 +14,9 @@ import 'package:face_reader/data/constants/face_reference_data.dart';
 import 'package:face_reader/data/enums/attribute.dart';
 import 'package:face_reader/data/enums/gender.dart';
 import 'package:face_reader/domain/services/archetype.dart';
-import 'package:face_reader/domain/services/attribute_engine.dart';
-import 'package:face_reader/domain/services/metric_score.dart';
+import 'package:face_reader/domain/services/attribute_derivation.dart';
+import 'package:face_reader/domain/services/attribute_normalize.dart';
+import 'package:face_reader/domain/services/physiognomy_scoring.dart';
 
 double _normal(Random rng) {
   double u1, u2;
@@ -41,26 +42,16 @@ void main() {
 
     for (int i = 0; i < samples; i++) {
       final gender = i.isEven ? Gender.male : Gender.female;
-      final continuousScores = <String, double>{};
-      final intScores = <String, int>{};
+      final z = <String, double>{};
       for (final info in metricInfoList) {
-        final z = _realisticZ(rng);
-        continuousScores[info.id] = z;
-        intScores[info.id] = convertToScore(z, info.type);
+        z[info.id] = _realisticZ(rng);
       }
-      final base = computeBaseScoresContinuous(continuousScores, gender);
-      final triggered = evaluateRules(
-        scores: intScores,
-        adjustedScores: intScores,
+      final raws = deriveAttributeScores(
+        tree: scoreTree(z),
         gender: gender,
         isOver50: false,
+        hasLateral: false,
       );
-      final raws = Map<Attribute, double>.from(base);
-      for (final r in triggered) {
-        for (final e in r.effects.entries) {
-          raws[e.key] = (raws[e.key] ?? 0) + e.value;
-        }
-      }
       final normalized = normalizeAllScores(raws, gender);
       final archetype = classifyArchetype(normalized);
       counts[archetype.primary] = counts[archetype.primary]! + 1;

@@ -15,8 +15,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:face_reader/data/constants/face_reference_data.dart';
 import 'package:face_reader/data/enums/attribute.dart';
 import 'package:face_reader/data/enums/gender.dart';
-import 'package:face_reader/domain/services/attribute_engine.dart';
-import 'package:face_reader/domain/services/metric_score.dart';
+import 'package:face_reader/domain/services/attribute_derivation.dart';
+import 'package:face_reader/domain/services/attribute_normalize.dart';
+import 'package:face_reader/domain/services/physiognomy_scoring.dart';
 
 // z-scores extracted via /tmp/extract_face_metrics.py against the
 // MediaPipe-calibrated eastAsian female reference (face_reference_data.dart).
@@ -121,28 +122,18 @@ void main() {
       final name = entry.key;
       final rawZ = entry.value;
 
-      // Apply same clamp/conversion as production pipeline
-      final continuousScores = <String, double>{};
-      final intScores = <String, int>{};
+      // Apply same clamp as production pipeline
+      final z = <String, double>{};
       for (final info in metricInfoList) {
-        final z = (rawZ[info.id] ?? 0).clamp(-3.5, 3.5);
-        continuousScores[info.id] = z;
-        intScores[info.id] = convertToScore(z, info.type);
+        z[info.id] = (rawZ[info.id] ?? 0).clamp(-3.5, 3.5).toDouble();
       }
 
-      final base = computeBaseScoresContinuous(continuousScores, gender);
-      final triggered = evaluateRules(
-        scores: intScores,
-        adjustedScores: intScores,
+      final raws = deriveAttributeScores(
+        tree: scoreTree(z),
         gender: gender,
         isOver50: false,
+        hasLateral: false,
       );
-      final raws = Map<Attribute, double>.from(base);
-      for (final r in triggered) {
-        for (final e in r.effects.entries) {
-          raws[e.key] = (raws[e.key] ?? 0) + e.value;
-        }
-      }
       final normalized = normalizeAllScores(raws, gender);
       perPhoto[name] = normalized;
     }

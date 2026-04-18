@@ -18,9 +18,11 @@ import 'package:face_reader/data/enums/ethnicity.dart';
 import 'package:face_reader/data/enums/gender.dart';
 import 'package:face_reader/domain/models/face_reading_report.dart';
 import 'package:face_reader/domain/services/archetype.dart';
-import 'package:face_reader/domain/services/attribute_engine.dart';
+import 'package:face_reader/domain/services/attribute_derivation.dart';
+import 'package:face_reader/domain/services/attribute_normalize.dart';
 import 'package:face_reader/domain/services/compatibility_engine.dart';
 import 'package:face_reader/domain/services/metric_score.dart';
+import 'package:face_reader/domain/services/physiognomy_scoring.dart';
 
 double _normal(Random rng) {
   double u1, u2;
@@ -32,35 +34,36 @@ double _normal(Random rng) {
 }
 
 FaceReadingReport _synthetic(Random rng, Gender gender, AgeGroup age) {
-  final continuousScores = <String, double>{};
+  final zMap = <String, double>{};
   final intScores = <String, int>{};
   for (final info in metricInfoList) {
     final z = (_normal(rng) * 0.85 + 0.2).clamp(-3.5, 3.5);
-    continuousScores[info.id] = z;
+    zMap[info.id] = z;
     intScores[info.id] = convertToScore(z, info.type);
   }
-  final base = computeBaseScoresContinuous(continuousScores, gender);
-  final triggered = evaluateRules(
-    scores: intScores,
-    adjustedScores: intScores,
+  final tree = scoreTree(zMap);
+  final breakdown = deriveAttributeScoresDetailed(
+    tree: tree,
     gender: gender,
     isOver50: age.isOver50,
+    hasLateral: false,
   );
-  final raws = Map<Attribute, double>.from(base);
-  for (final r in triggered) {
-    for (final e in r.effects.entries) {
-      raws[e.key] = (raws[e.key] ?? 0) + e.value;
-    }
-  }
-  final normalized = normalizeAllScores(raws, gender);
+  final normalized = normalizeAllScores(breakdown.total, gender);
   final archetype = classifyArchetype(normalized);
+  final triggered = <TriggeredRule>[
+    ...breakdown.zoneRules,
+    ...breakdown.organRules,
+    ...breakdown.palaceRules,
+    ...breakdown.ageRules,
+    ...breakdown.lateralRules,
+  ];
   final metricResults = <String, MetricResult>{};
   for (final info in metricInfoList) {
     metricResults[info.id] = MetricResult(
       id: info.id,
       rawValue: 0,
-      zScore: continuousScores[info.id]!,
-      zAdjusted: continuousScores[info.id]!,
+      zScore: zMap[info.id]!,
+      zAdjusted: zMap[info.id]!,
       metricScore: intScores[info.id]!,
     );
   }

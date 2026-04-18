@@ -12,9 +12,9 @@ import 'package:face_reader/domain/services/compat_calibration.dart';
 
 // Must mirror _resolveLabel in compatibility_report_page.dart EXACTLY.
 String resolveLabel(int score) {
-  if (score >= 94) return '천생연분';
-  if (score >= 81) return '좋은 궁합';
-  if (score >= 71) return '보통';
+  if (score >= 81) return '천생연분';
+  if (score >= 72) return '좋은 궁합';
+  if (score >= 65) return '보통';
   return '어려운 궁합';
 }
 

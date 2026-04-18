@@ -10,8 +10,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:face_reader/data/constants/face_reference_data.dart';
 import 'package:face_reader/data/enums/attribute.dart';
 import 'package:face_reader/data/enums/gender.dart';
-import 'package:face_reader/domain/services/attribute_engine.dart';
-import 'package:face_reader/domain/services/metric_score.dart';
+import 'package:face_reader/domain/services/attribute_derivation.dart';
+import 'package:face_reader/domain/services/attribute_normalize.dart';
+import 'package:face_reader/domain/services/physiognomy_scoring.dart';
 
 double _normal(Random rng) {
   double u1, u2;
@@ -36,26 +37,16 @@ void main() {
 
     for (int i = 0; i < samples; i++) {
       final gender = i.isEven ? Gender.male : Gender.female;
-      final continuousScores = <String, double>{};
-      final intScores = <String, int>{};
+      final z = <String, double>{};
       for (final info in metricInfoList) {
-        final z = _realisticZ(rng);
-        continuousScores[info.id] = z;
-        intScores[info.id] = convertToScore(z, info.type);
+        z[info.id] = _realisticZ(rng);
       }
-      final base = computeBaseScoresContinuous(continuousScores, gender);
-      final triggered = evaluateRules(
-        scores: intScores,
-        adjustedScores: intScores,
+      final raws = deriveAttributeScores(
+        tree: scoreTree(z),
         gender: gender,
         isOver50: false,
+        hasLateral: false,
       );
-      final raws = Map<Attribute, double>.from(base);
-      for (final r in triggered) {
-        for (final e in r.effects.entries) {
-          raws[e.key] = (raws[e.key] ?? 0) + e.value;
-        }
-      }
       final normalized = normalizeAllScores(raws, gender);
       for (final attr in Attribute.values) {
         scores[attr]!.add(normalized[attr]!);
@@ -166,29 +157,19 @@ void main() {
       final template = templates[templateIdx];
       final gender = i.isEven ? Gender.male : Gender.female;
 
-      final continuousScores = <String, double>{};
-      final intScores = <String, int>{};
+      final z = <String, double>{};
       for (final info in metricInfoList) {
         // Template bias + small random noise (correlated structure)
         final bias = template[info.id] ?? 0.0;
         final noise = _normal(rng) * 0.4;
-        final z = (bias + noise).clamp(-3.5, 3.5);
-        continuousScores[info.id] = z;
-        intScores[info.id] = convertToScore(z, info.type);
+        z[info.id] = (bias + noise).clamp(-3.5, 3.5);
       }
-      final base = computeBaseScoresContinuous(continuousScores, gender);
-      final triggered = evaluateRules(
-        scores: intScores,
-        adjustedScores: intScores,
+      final raws = deriveAttributeScores(
+        tree: scoreTree(z),
         gender: gender,
         isOver50: false,
+        hasLateral: false,
       );
-      final raws = Map<Attribute, double>.from(base);
-      for (final r in triggered) {
-        for (final e in r.effects.entries) {
-          raws[e.key] = (raws[e.key] ?? 0) + e.value;
-        }
-      }
       final normalized = normalizeAllScores(raws, gender);
 
       // Capture one example per template for visual inspection

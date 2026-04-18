@@ -1,6 +1,6 @@
 // Run with: flutter test test/calibration_test.dart
 // One-shot tool: outputs 21-point quantile arrays per attribute that should be
-// copy-pasted into attribute_engine.dart's _attrQuantilesMale/Female maps.
+// copy-pasted into attribute_normalize.dart's _attrQuantilesMale/Female maps.
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:face_reader/data/enums/gender.dart';

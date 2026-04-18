@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:mediapipe_face_mesh/mediapipe_face_mesh.dart';
 
 import 'package:face_reader/data/enums/age_group.dart';
-import 'package:face_reader/data/enums/attribute.dart';
 import 'package:face_reader/data/enums/ethnicity.dart';
 import 'package:face_reader/data/enums/gender.dart';
 import 'package:face_reader/data/constants/face_reference_data.dart';
@@ -10,10 +9,12 @@ import 'package:face_reader/data/services/face_shape_classifier.dart';
 import 'package:face_reader/domain/models/face_reading_report.dart';
 import 'package:face_reader/domain/services/age_adjustment.dart';
 import 'package:face_reader/domain/services/archetype.dart';
-import 'package:face_reader/domain/services/attribute_engine.dart';
+import 'package:face_reader/domain/services/attribute_derivation.dart';
+import 'package:face_reader/domain/services/attribute_normalize.dart';
 import 'package:face_reader/domain/services/face_metrics.dart';
 import 'package:face_reader/domain/services/face_metrics_lateral.dart';
 import 'package:face_reader/domain/services/metric_score.dart';
+import 'package:face_reader/domain/services/physiognomy_scoring.dart';
 
 /// Full face-reading pipeline (FORMULA.md §3.8)
 ///
@@ -102,26 +103,21 @@ FaceReadingReport analyzeFaceReading({
         adjustForAge(entry.key, entry.value, gender, isOver50);
   }
 
-  // Step 4: Z-adjusted → Metric Score
-  // - Integer scores for rule triggering (rules use thresholds like ≥ 1)
-  // - Continuous scores for attribute computation (preserves variation)
+  // Step 4: Z-adjusted → integer Metric Score (rules + UI display).
+  // Integer scores drive the legacy nose-type flag thresholds below and the
+  // per-metric UI chart; the tree-based attribute engine consumes continuous
+  // z directly, so no continuous conversion is needed here.
   final metricScores = <String, int>{};
   final adjustedMetricScores = <String, int>{};
-  final continuousScores = <String, double>{};
   for (final info in metricInfoList) {
     metricScores[info.id] = convertToScore(zScores[info.id]!, info.type);
     adjustedMetricScores[info.id] =
         convertToScore(zAdjusted[info.id]!, info.type);
-    continuousScores[info.id] =
-        convertToContinuousScore(zAdjusted[info.id]!, info.type);
   }
 
-  // Step 5: Attribute base scores (continuous, gender-weighted)
-  final baseScores = computeBaseScoresContinuous(continuousScores, gender);
-
-  // Step 6a: Lateral metrics (optional — only when 3/4-view capture provided)
+  // Step 5: Lateral metrics (optional — only when 3/4-view capture provided)
   Map<String, MetricResult>? lateralMetricResults;
-  Map<String, int>? lateralScores;
+  Map<String, double>? lateralZMap;
   Map<String, bool>? lateralFlags;
   if (lateralLandmarks != null) {
     final lateral = LateralFaceMetrics(lateralLandmarks);
@@ -146,7 +142,7 @@ FaceReadingReport analyzeFaceReading({
       );
     }
     lateralMetricResults = results;
-    lateralScores = scores;
+    lateralZMap = lateralZ;
 
     // [CALIB] lateral metrics — same sid grouping is not possible here
     // (sid is scoped to the block above); emit a fresh lateral block so
@@ -231,23 +227,29 @@ FaceReadingReport analyzeFaceReading({
     debugPrint('═══════════════════════════════════════════');
   }
 
-  // Step 6: Interaction rules
-  final triggered = evaluateRules(
-    scores: metricScores,
-    adjustedScores: adjustedMetricScores,
+  // Step 6: Hierarchical attribute derivation.
+  // Build a unified z-map (frontal adjusted + lateral raw-z) and run it
+  // through the 14-node physiognomy tree, then the 5-stage pipeline
+  // (base / distinctiveness / zone / organ / palace / age+lateral).
+  final zForTree = <String, double>{...zAdjusted};
+  if (lateralZMap != null) zForTree.addAll(lateralZMap);
+
+  final tree = scoreTree(zForTree);
+  final breakdown = deriveAttributeScoresDetailed(
+    tree: tree,
     gender: gender,
     isOver50: isOver50,
-    lateralScores: lateralScores,
-    lateralFlags: lateralFlags,
+    hasLateral: lateralLandmarks != null,
+    lateralFlags: lateralFlags ?? const {},
   );
-
-  // Apply bonuses to base scores
-  final rawScores = Map<Attribute, double>.from(baseScores);
-  for (final rule in triggered) {
-    for (final effect in rule.effects.entries) {
-      rawScores[effect.key] = (rawScores[effect.key] ?? 0) + effect.value;
-    }
-  }
+  final rawScores = breakdown.total;
+  final triggered = <TriggeredRule>[
+    ...breakdown.zoneRules,
+    ...breakdown.organRules,
+    ...breakdown.palaceRules,
+    ...breakdown.ageRules,
+    ...breakdown.lateralRules,
+  ];
 
   // Step 7: Rank-aware normalization → 5~10 with within-face spread
   final normalizedScores = normalizeAllScores(rawScores, gender);

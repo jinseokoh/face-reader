@@ -5,7 +5,7 @@ import 'package:face_reader/data/enums/attribute.dart';
 import 'package:face_reader/domain/models/compatibility_result.dart';
 import 'package:face_reader/domain/models/face_reading_report.dart';
 import 'package:face_reader/domain/services/archetype.dart';
-import 'package:face_reader/domain/services/attribute_engine.dart';
+import 'package:face_reader/domain/services/attribute_derivation.dart';
 
 import 'package:face_reader/data/constants/compatibility_text_blocks.dart'
     as text_blocks;
