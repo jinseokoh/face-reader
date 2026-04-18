@@ -1,9 +1,12 @@
 import 'package:face_reader/data/constants/archetype_text_blocks.dart';
 import 'package:face_reader/data/constants/rule_text_blocks.dart';
 import 'package:face_reader/data/enums/age_group.dart';
-import 'package:face_reader/data/enums/attribute.dart';
 import 'package:face_reader/domain/models/face_reading_report.dart';
+import 'package:face_reader/domain/services/life_question_narrative.dart';
 
+/// 조립된 본문 + 원본 rule block 참조.
+/// `selectedBlocks` 는 UI 렌더링에서 직접 사용하지 않고,
+/// 외부 디버그·내보내기 경로에서 fired rule snapshot 이 필요할 때 사용.
 class AssembledReport {
   final String assembledText;
   final List<RuleTextBlock> selectedBlocks;
@@ -15,88 +18,48 @@ class AssembledReport {
 }
 
 AssembledReport assembleReport(FaceReadingReport report) {
-  // Step 1: Collect text blocks for triggered rules
-  final triggeredIds = report.rules.map((r) => r.id).toSet();
-  final matchedBlocks = ruleTextBlocks.values
-      .where((block) => triggeredIds.contains(block.ruleId))
-      .toList();
+  final buf = StringBuffer();
 
-  if (matchedBlocks.isEmpty) {
-    // No triggered rules — return minimal report with just archetype intro
-    final intro = _archetypeIntro(report);
-    final closing = ageClosings[report.ageGroup.isOver50] ?? '';
-    return AssembledReport(
-      assembledText: [intro, closing].where((s) => s.isNotEmpty).join('\n\n'),
-      selectedBlocks: const [],
-    );
-  }
-
-  // Step 2: Group blocks by attribute, sort groups by attribute score (descending)
-  final blocksByAttribute = <Attribute, List<RuleTextBlock>>{};
-  for (final block in matchedBlocks) {
-    final attr = _attributeFromString(block.attribute);
-    if (attr == null) continue;
-    blocksByAttribute.putIfAbsent(attr, () => []).add(block);
-  }
-
-  // Sort attributes by their score descending
-  final sortedAttributes = blocksByAttribute.keys.toList()
-    ..sort((a, b) {
-      final scoreA = report.attributeScores[a] ?? 0.0;
-      final scoreB = report.attributeScores[b] ?? 0.0;
-      return scoreB.compareTo(scoreA);
-    });
-
-  // Step 3: Select top 5 attributes only
-  final topAttributes = sortedAttributes.take(5).toList();
-
-  // Collect selected blocks in top-attribute order
-  final selectedBlocks = <RuleTextBlock>[];
-  for (final attr in topAttributes) {
-    selectedBlocks.addAll(blocksByAttribute[attr]!);
-  }
-
-  // Step 4: Assemble text
-  final buffer = StringBuffer();
-
-  // Archetype intro
+  // Archetype intro (성별 분기)
   final intro = _archetypeIntro(report);
   if (intro.isNotEmpty) {
-    buffer.write(intro);
+    buf.write(intro);
+    buf.write('\n\n');
   }
 
-  // Attribute sections
-  for (final attr in topAttributes) {
-    final blocks = blocksByAttribute[attr]!;
-    buffer.write('\n\n## ${attr.labelKo}');
-    for (final block in blocks) {
-      buffer.write('\n${block.bodyKo}');
-    }
-  }
+  // 8 인생 질문 본문 (장점 → 단점 → 조언 구조)
+  buf.write(assembleLifeQuestions(report));
 
-  // Special archetype text (if any)
+  // 특수 관상 문장
   final special = report.archetype.specialArchetype;
   if (special != null) {
     final specialText = specialArchetypeTexts[special];
     if (specialText != null && specialText.isNotEmpty) {
-      buffer.write('\n\n$specialText');
+      buf.write('\n\n');
+      buf.write(specialText);
     }
   }
 
-  // Age closing
+  // 나이대 마무리
   final closing = ageClosings[report.ageGroup.isOver50] ?? '';
   if (closing.isNotEmpty) {
-    buffer.write('\n\n$closing');
+    buf.write('\n\n');
+    buf.write(closing);
   }
 
-  // Step 5: Return
+  // Fired rule block snapshot (외부 경로용)
+  final triggeredIds = report.rules.map((r) => r.id).toSet();
+  final selected = ruleTextBlocks.values
+      .where((block) => triggeredIds.contains(block.ruleId))
+      .toList();
+
   return AssembledReport(
-    assembledText: buffer.toString(),
-    selectedBlocks: selectedBlocks,
+    assembledText: buf.toString(),
+    selectedBlocks: selected,
   );
 }
 
-// ─── Helpers ───
+// ─── Helpers ─────────────────────────────────────────────────────────────
 
 String _archetypeIntro(FaceReadingReport report) {
   final label = report.archetype.primaryLabel;
@@ -105,9 +68,3 @@ String _archetypeIntro(FaceReadingReport report) {
   return genderMap[report.gender] ?? '';
 }
 
-Attribute? _attributeFromString(String value) {
-  for (final attr in Attribute.values) {
-    if (attr.name == value) return attr;
-  }
-  return null;
-}

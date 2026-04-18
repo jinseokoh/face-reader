@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:mediapipe_face_mesh/mediapipe_face_mesh.dart';
 
 import 'package:face_reader/data/enums/age_group.dart';
+import 'package:face_reader/data/enums/attribute.dart';
 import 'package:face_reader/data/enums/ethnicity.dart';
 import 'package:face_reader/data/enums/gender.dart';
 import 'package:face_reader/data/constants/face_reference_data.dart';

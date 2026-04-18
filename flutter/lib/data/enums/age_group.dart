@@ -12,6 +12,8 @@ enum AgeGroup {
 
 extension AgeGroupCategory on AgeGroup {
   bool get isOver50 => index >= 4; // fifties(4) ~ nineties(8)
+  bool get isOver20 => index >= 1; // twenties(1) ~
+  bool get isOver30 => index >= 2; // thirties(2) ~
 }
 
 extension AgeGroupLabel on AgeGroup {
