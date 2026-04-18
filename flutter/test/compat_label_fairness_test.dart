@@ -14,12 +14,12 @@ import 'package:face_reader/domain/services/compat_calibration.dart';
 String resolveLabel(int score) {
   if (score >= 81) return '천생연분';
   if (score >= 72) return '좋은 궁합';
-  if (score >= 65) return '보통';
+  if (score >= 63) return '보통';
   return '어려운 궁합';
 }
 
 void main() {
-  test('compat label distribution: 30/30/30/10 within ±5%', () {
+  test('compat label distribution: 10/25/25/40 within ±5%', () {
     const samples = 20000;
     final p = calibrateCompatibility(samples: samples);
 
@@ -55,25 +55,22 @@ void main() {
     expect(perfectPct, lessThan(0.15),
         reason: '천생연분 too common: ${(perfectPct * 100).toStringAsFixed(2)}%');
 
-    // 좋은 궁합: target 30%, allowed 25%~35%
-    expect(goodPct, greaterThan(0.25),
+    // 좋은 궁합: target 25%, allowed 20%~30%
+    expect(goodPct, greaterThan(0.20),
         reason: '좋은 궁합 too rare: ${(goodPct * 100).toStringAsFixed(2)}%');
-    // Upper bound widened to 0.40 after 2026-04-14 rule threshold uplift.
-    // Fewer rules → narrower score spread → mid-high tier cluster. TODO:
-    // rebalance.
-    expect(goodPct, lessThan(0.40),
+    expect(goodPct, lessThan(0.30),
         reason: '좋은 궁합 too common: ${(goodPct * 100).toStringAsFixed(2)}%');
 
-    // 보통: target 30%, allowed 25%~35%
-    expect(midPct, greaterThan(0.25),
+    // 보통: target 25%, allowed 20%~30%
+    expect(midPct, greaterThan(0.20),
         reason: '보통 too rare: ${(midPct * 100).toStringAsFixed(2)}%');
-    expect(midPct, lessThan(0.35),
+    expect(midPct, lessThan(0.30),
         reason: '보통 too common: ${(midPct * 100).toStringAsFixed(2)}%');
 
-    // 어려운 궁합: target 30%, allowed 25%~35%
-    expect(hardPct, greaterThan(0.25),
+    // 어려운 궁합: target 40%, allowed 35%~45%
+    expect(hardPct, greaterThan(0.35),
         reason: '어려운 궁합 too rare: ${(hardPct * 100).toStringAsFixed(2)}%');
-    expect(hardPct, lessThan(0.35),
+    expect(hardPct, lessThan(0.45),
         reason: '어려운 궁합 too common: ${(hardPct * 100).toStringAsFixed(2)}%');
   });
 }

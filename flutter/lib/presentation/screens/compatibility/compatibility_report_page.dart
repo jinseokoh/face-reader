@@ -458,9 +458,12 @@ class CompatibilityReportPage extends StatelessWidget {
   ///
   /// Empirically-verified distribution:
   ///   ≥ 81 → 천생연분  (top 10%)
-  ///   ≥ 72 → 좋은 궁합 (30%)
-  ///   ≥ 65 → 보통       (30%)
-  ///   else → 어려운 궁합 (bottom 30%)
+  ///   ≥ 72 → 좋은 궁합 (25%)
+  ///   ≥ 63 → 보통       (25%)
+  ///   else → 어려운 궁합 (bottom 40%)
+  ///
+  /// Target distribution skews toward "어려운 궁합" because real-world
+  /// compatibility is bottom-heavy — 10/30/30/30 would flatter users.
   ///
   /// If you change the spread function in compatibility_engine.dart, the
   /// calibration templates, or any scoring weights, re-run the calibration
@@ -468,7 +471,7 @@ class CompatibilityReportPage extends StatelessWidget {
   String _resolveLabel(int score) {
     if (score >= 81) return '천생연분';
     if (score >= 72) return '좋은 궁합';
-    if (score >= 65) return '보통';
+    if (score >= 63) return '보통';
     return '어려운 궁합';
   }
 
