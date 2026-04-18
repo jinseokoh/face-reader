@@ -273,58 +273,70 @@ double _effectiveWeight(_NodeWeight w, Attribute attr, Gender gender) {
   return w.weight + (gender == Gender.male ? delta.male : delta.female);
 }
 
-// ──────────────────── Stage 0 — Face-Shape Preset (Layer A) ────────────────────
+// ──────────────────── Shape Overlay (applied LAST, baseline-gated) ────────────────────
 //
-// ML 분류기 결과(FaceShape enum) 를 공동 bias 로 주입. shapeConfidence 로
-// 스케일 → ML 확신도 낮으면 효과도 작음. calibration 시 shape 분포 반영.
+// v2.1 (2026-04-18): 얼굴형 지배력 완화. 두 개 조치:
+//   (1) magnitude 절반 — 최대 ±0.30 → ±0.15.
+//   (2) baseline gate — base+dist+rules 로 이미 쌓인 signal 에 비례해 preset 적용.
+//       평균 얼굴(|signal|≈0): gate = 0.5 → preset × 0.5 × 0.5 = 25% 만 적용.
+//       뚜렷 얼굴(|signal|≥0.4): gate = 1.0 → preset 그대로.
+//   → "얼굴형이 top-2 archetype 을 단독 결정" 문제 해소. 기존 신호 증폭 역할로 한정.
 
 const _shapePresetDelta = <FaceShape, Map<Attribute, double>>{
   FaceShape.oval: {
-    Attribute.attractiveness: 0.30,
-    Attribute.sociability: 0.20,
-    Attribute.stability: 0.15,
-    Attribute.trustworthiness: 0.10,
+    Attribute.attractiveness: 0.15,
+    Attribute.sociability: 0.10,
+    Attribute.stability: 0.08,
+    Attribute.trustworthiness: 0.05,
   },
   FaceShape.oblong: {
-    Attribute.intelligence: 0.30,
-    Attribute.emotionality: 0.20,
-    Attribute.trustworthiness: 0.10,
-    Attribute.sociability: -0.15,
-    Attribute.sensuality: -0.10,
+    Attribute.intelligence: 0.15,
+    Attribute.emotionality: 0.10,
+    Attribute.trustworthiness: 0.05,
+    Attribute.sociability: -0.08,
+    Attribute.sensuality: -0.05,
   },
   FaceShape.round: {
-    Attribute.wealth: 0.25,
-    Attribute.sociability: 0.25,
-    Attribute.emotionality: 0.15,
-    Attribute.leadership: -0.15,
-    Attribute.stability: -0.10,
+    Attribute.wealth: 0.13,
+    Attribute.sociability: 0.13,
+    Attribute.emotionality: 0.08,
+    Attribute.leadership: -0.08,
+    Attribute.stability: -0.05,
   },
   FaceShape.square: {
-    Attribute.leadership: 0.30,
-    Attribute.stability: 0.25,
-    Attribute.trustworthiness: 0.15,
-    Attribute.attractiveness: -0.15,
-    Attribute.sensuality: -0.10,
+    Attribute.leadership: 0.15,
+    Attribute.stability: 0.13,
+    Attribute.trustworthiness: 0.08,
+    Attribute.attractiveness: -0.08,
+    Attribute.sensuality: -0.05,
   },
   FaceShape.heart: {
-    Attribute.intelligence: 0.25,
-    Attribute.sensuality: 0.20,
-    Attribute.attractiveness: 0.15,
-    Attribute.stability: -0.20,
-    Attribute.wealth: -0.10,
+    Attribute.intelligence: 0.13,
+    Attribute.sensuality: 0.10,
+    Attribute.attractiveness: 0.08,
+    Attribute.stability: -0.10,
+    Attribute.wealth: -0.05,
   },
   FaceShape.unknown: {},
 };
 
+/// |signal| 에 비례해 0.5~1.0 gate. 평균 얼굴에 preset 영향 최소화.
+double _shapeGate(double signalAbs) =>
+    (0.5 + 1.5 * signalAbs).clamp(0.5, 1.0);
+
 Map<Attribute, double> _stage0ShapePreset(
-    FaceShape shape, double confidence) {
+    FaceShape shape, double confidence, Map<Attribute, double> baseline) {
   assert(confidence >= 0.0 && confidence <= 1.0,
       'shapeConfidence must be in [0, 1], got $confidence');
   final out = <Attribute, double>{for (final a in Attribute.values) a: 0.0};
   final delta = _shapePresetDelta[shape];
   if (delta == null) return out;
   final scale = confidence.clamp(0.0, 1.0);
-  delta.forEach((a, v) => out[a] = v * scale);
+  delta.forEach((a, v) {
+    final baseAbs = (baseline[a] ?? 0.0).abs();
+    final gate = _shapeGate(baseAbs);
+    out[a] = v * scale * gate;
+  });
   return out;
 }
 
@@ -780,7 +792,6 @@ AttributeBreakdown deriveAttributeScoresDetailed({
   FaceShape faceShape = FaceShape.unknown,
   double shapeConfidence = 0.0,
 }) {
-  final shapePreset = _stage0ShapePreset(faceShape, shapeConfidence);
   final basePerNode = _stage1BasePerNode(tree, gender);
   final distinct = _stage1bDistinctiveness(tree);
 
@@ -795,10 +806,7 @@ AttributeBreakdown deriveAttributeScoresDetailed({
 
   final total = <Attribute, double>{for (final a in Attribute.values) a: 0.0};
 
-  // stage 0 preset
-  shapePreset.forEach((a, v) => total[a] = (total[a] ?? 0.0) + v);
-
-  // base per-node
+  // Stage 1: base per-node
   for (final attr in Attribute.values) {
     final perNode = basePerNode[attr]!;
     double sum = 0.0;
@@ -808,21 +816,25 @@ AttributeBreakdown deriveAttributeScoresDetailed({
     total[attr] = (total[attr] ?? 0.0) + sum;
   }
 
-  // distinctiveness
+  // Stage 1b: distinctiveness
   distinct.forEach((a, v) => total[a] = (total[a] ?? 0.0) + v);
 
-  // rules
+  // Stage 2-5: rules
   void apply(List<TriggeredRule> rules) {
     for (final r in rules) {
       r.effects.forEach((a, v) => total[a] = (total[a] ?? 0.0) + v);
     }
   }
-
   apply(zoneTriggered);
   apply(organTriggered);
   apply(palaceTriggered);
   apply(ageTriggered);
   apply(lateralTriggered);
+
+  // Shape overlay (applied LAST) — baseline-gated. total 에 이미 쌓인 signal 을
+  // gate 입력으로 써서 평균 얼굴엔 약하게, 뚜렷 얼굴엔 전체로 증폭.
+  final shapePreset = _stage0ShapePreset(faceShape, shapeConfidence, total);
+  shapePreset.forEach((a, v) => total[a] = (total[a] ?? 0.0) + v);
 
   return AttributeBreakdown(
     basePerNode: basePerNode,

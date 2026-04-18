@@ -101,8 +101,8 @@ O:O-CH, O:O-CK, O:O-CKC, O:O-EB1, O:O-EM, O:O-PH1, P:P-03, P:P-05, P:P-09, Z:Z-1
 wealth           8.3
 leadership       8.6
 intelligence     7.8
-sociability      9.3
-emotionality     9.5
+sociability      9.5
+emotionality     9.3
 stability        8.1
 sensuality       9.0
 trustworthiness  8.8

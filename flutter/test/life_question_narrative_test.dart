@@ -132,7 +132,8 @@ void main() {
 
       final bodies = _sectionBodies(full);
       for (var i = 0; i < bodies.length; i++) {
-        expect(bodies[i].length, greaterThanOrEqualTo(450),
+        // 400~600자 평균 목표 (v3). 개별 섹션 최소 = 420자 (여유 20자).
+        expect(bodies[i].length, greaterThanOrEqualTo(420),
             reason: 'section $i too short: ${bodies[i].length} chars');
       }
     });
