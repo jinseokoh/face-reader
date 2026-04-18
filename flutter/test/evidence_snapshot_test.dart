@@ -90,25 +90,27 @@ $leadershipTop3
 
 void main() {
   test('evidence snapshot — 재물·권력 중정 강세 프로파일 (male, 정면-only)', () {
+    // 2026-04-18 재조정(face/ear 제외, 9-node) + Opt-A distinctiveness + Opt-B
+    // rule tuning + Opt-F rank/global 0.40/0.60 + 상관 MC quantile 반영 후 고정값.
     // ignore: prefer_const_declarations
     final goldenSnapshot = '''
 == rules (sorted) ==
 O:O-CH, O:O-CK, O:O-CKC, O:O-EB1, O:O-EM, O:O-PH1, P:P-03, P:P-05, P:P-09, Z:Z-11, Z:Z-12
 
 == normalized scores ==
-wealth           7.2
-leadership       9.7
-intelligence     6.9
-sociability      9.0
-emotionality     8.3
-stability        7.6
-sensuality       7.9
-trustworthiness  9.3
-attractiveness   10.0
-libido           8.6
+wealth           8.3
+leadership       8.6
+intelligence     7.8
+sociability      9.3
+emotionality     9.5
+stability        8.1
+sensuality       9.0
+trustworthiness  8.8
+attractiveness   9.7
+libido           10.0
 
 == wealth top-3 contributors ==
-Z-11=0.50, P-09=0.50, node:cheekbone=0.30
+Z-11=0.50, P-09=0.50, O-CK=0.30
 
 == leadership top-3 contributors ==
 O-EB1=1.50, O-CH=1.00, O-CK=0.80

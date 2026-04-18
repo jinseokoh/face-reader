@@ -209,11 +209,34 @@ void main() {
       }
     }
 
-    // 검증: 상관 얼굴에서도 spread는 항상 보장됨, top-3 saturation은 거의 없음
-    expect(spreadFailures, equals(0),
-        reason: 'every face should have ≥3.0 score spread by rank guarantee');
-    // top-3 all 9.5+ should be very rare even for the "stable" template
-    // (the user-reported bug had this happen for ~100% of faces)
+    // 상관 얼굴에서도 최소 rank 기여분 = 2.0 spread 는 항상 보장.
+    // (v9 rank 0.60 기준 3.0 → 2026-04-18 재조정 rank 0.40 으로 2.0 상한.
+    //  대신 global fidelity 비중이 0.60 으로 올라가 속성간 순위 정확성 ↑.)
+    final spreadBelow2 = <int>[];
+    for (int i = 0; i < samples; i++) {
+      final template = templates[i % templates.length];
+      final gender = i.isEven ? Gender.male : Gender.female;
+      final z = <String, double>{};
+      for (final info in metricInfoList) {
+        final bias = template[info.id] ?? 0.0;
+        z[info.id] = (bias + _normal(rng) * 0.4).clamp(-3.5, 3.5);
+      }
+      final normalized = normalizeAllScores(
+        deriveAttributeScores(
+            tree: scoreTree(z),
+            gender: gender,
+            isOver50: false,
+            hasLateral: false),
+        gender,
+      );
+      final vs = normalized.values.toList()..sort();
+      if (vs.last - vs.first < 2.0) spreadBelow2.add(i);
+    }
+    expect(spreadBelow2, isEmpty,
+        reason:
+            '${spreadBelow2.length} faces had spread < 2.0 (rank-minimum guarantee broken)');
+
+    // top-3 saturation — 5% 한도 유지 (design intent 변함 없음).
     expect(allTop3Saturated / samples, lessThan(0.05),
         reason:
             'top-3 saturation should be <5% of faces, was ${(allTop3Saturated / samples * 100).toStringAsFixed(1)}%');

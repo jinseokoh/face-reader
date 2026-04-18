@@ -100,6 +100,8 @@ const _photos = <String, Map<String, double>>{
   },
 };
 
+// Canonical label order: attribute.dart::labelKo 와 일치시킨다.
+// sensuality = 바람기, libido = 관능도.
 const _attrLabelKo = <Attribute, String>{
   Attribute.wealth: '재물운',
   Attribute.leadership: '리더십',
@@ -107,10 +109,10 @@ const _attrLabelKo = <Attribute, String>{
   Attribute.sociability: '사회성',
   Attribute.emotionality: '감정성',
   Attribute.stability: '안정성',
-  Attribute.sensuality: '관능도',
+  Attribute.sensuality: '바람기',
   Attribute.trustworthiness: '신뢰성',
   Attribute.attractiveness: '매력도',
-  Attribute.libido: '바람기',
+  Attribute.libido: '관능도',
 };
 
 void main() {

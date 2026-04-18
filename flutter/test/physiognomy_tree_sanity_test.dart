@@ -1,7 +1,9 @@
 import 'package:face_reader/data/constants/face_reference_data.dart';
+import 'package:face_reader/data/enums/attribute.dart';
 import 'package:face_reader/data/enums/ethnicity.dart';
 import 'package:face_reader/data/enums/gender.dart';
 import 'package:face_reader/domain/models/physiognomy_tree.dart';
+import 'package:face_reader/domain/services/attribute_derivation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -133,6 +135,62 @@ void main() {
               reason: 'lateralReferenceData[$eth][$g] missing $m');
         }
       }
+    }
+  });
+
+  // ─── Weight-matrix sanity (face/ear 제외 9-노드) ───
+
+  test('모든 attribute row sum = 1.00 (±0.01)', () {
+    final sums = attributeRowSums();
+    for (final attr in Attribute.values) {
+      final s = sums[attr]!;
+      expect(s, closeTo(1.0, 0.01),
+          reason: '${attr.name} row sum = $s (expected 1.00)');
+    }
+  });
+
+  test('weight matrix 는 face(root) / ear 를 참조하지 않는다', () {
+    for (final attr in Attribute.values) {
+      final ids = weightedNodeIds(attr);
+      expect(ids, isNot(contains('face')),
+          reason: '${attr.name} still references face root');
+      expect(ids, isNot(contains('ear')),
+          reason: '${attr.name} still references ear (unsupported)');
+    }
+  });
+
+  test('per-metric 영향력 ∈ [0.10, 0.80] — 과적재/고아 회귀 차단', () {
+    // face(root) metric 은 Stage 1b distinctiveness · Z-11 zone rule 로 소비되므로
+    // weight matrix 영향력 0 이 정상. 이 테스트는 leaf 노드 metric 만 검사한다.
+    const rootMetrics = {'faceAspectRatio', 'faceTaperRatio', 'midFaceRatio'};
+    final inf = perMetricInfluence();
+    final supportedLeafIds = nodeByMetricId.keys
+        .where((m) => !lateralSet.contains(m) && !rootMetrics.contains(m))
+        .toSet();
+    for (final m in supportedLeafIds) {
+      final v = inf[m];
+      expect(v, isNotNull, reason: 'supported leaf metric $m 에 weight 기여 0');
+      expect(v!, greaterThanOrEqualTo(0.10),
+          reason: 'metric $m influence too low ($v) — 고아 의심');
+      expect(v, lessThanOrEqualTo(0.80),
+          reason: 'metric $m influence too high ($v) — 과적재 의심');
+    }
+  });
+
+  test('face root metric 은 weight matrix 영향력 0 (design)', () {
+    final inf = perMetricInfluence();
+    for (final m in ['faceAspectRatio', 'faceTaperRatio', 'midFaceRatio']) {
+      expect(inf[m] ?? 0.0, 0.0,
+          reason: 'root metric $m should be Stage 1b/Z-11 only');
+    }
+  });
+
+  test('각 attribute 는 최소 2개 zone 에 non-zero weight', () {
+    final cov = attributeZoneCoverage();
+    for (final attr in Attribute.values) {
+      final zones = cov[attr]!;
+      expect(zones.length, greaterThanOrEqualTo(2),
+          reason: '${attr.name} zone coverage = $zones (<2)');
     }
   });
 }

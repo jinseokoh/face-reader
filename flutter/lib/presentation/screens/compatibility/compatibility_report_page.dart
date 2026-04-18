@@ -456,10 +456,10 @@ class CompatibilityReportPage extends StatelessWidget {
   /// will simultaneously hit high compat. The Monte Carlo now uses template-
   /// based correlated face generation to better mirror real users.
   ///
-  /// Empirically-verified distribution (2026-04-18 재보정 after A2/A4, 20,000 pairs):
-  ///   ≥ 82 → 천생연분  (12%)
-  ///   ≥ 70 → 좋은 궁합 (31%)
-  ///   ≥ 61 → 보통       (28%)
+  /// Empirically-verified distribution (2026-04-18 face/ear 제외 + shape preset 재보정, 20,000 pairs):
+  ///   ≥ 81 → 천생연분  (11%)
+  ///   ≥ 72 → 좋은 궁합 (30%)
+  ///   ≥ 64 → 보통       (29%)
   ///   else → 어려운 궁합 (30%)
   ///
   /// A2 (명궁 P-09/P-09B) + A4 (광대 조합 3종) 으로 compat 분포가
@@ -471,9 +471,9 @@ class CompatibilityReportPage extends StatelessWidget {
   /// _resolveLabel thresholds 를 그대로 아래에 붙여 넣고, compat_label_fairness
   /// 가 green 인지 확인.
   String _resolveLabel(int score) {
-    if (score >= 82) return '천생연분';
-    if (score >= 70) return '좋은 궁합';
-    if (score >= 61) return '보통';
+    if (score >= 81) return '천생연분';
+    if (score >= 72) return '좋은 궁합';
+    if (score >= 64) return '보통';
     return '어려운 궁합';
   }
 

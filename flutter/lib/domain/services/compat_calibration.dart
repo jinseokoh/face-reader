@@ -12,6 +12,7 @@ import 'package:face_reader/data/constants/face_reference_data.dart';
 import 'package:face_reader/data/enums/age_group.dart';
 import 'package:face_reader/data/enums/attribute.dart';
 import 'package:face_reader/data/enums/ethnicity.dart';
+import 'package:face_reader/data/enums/face_shape.dart';
 import 'package:face_reader/data/enums/gender.dart';
 import 'package:face_reader/domain/models/face_reading_report.dart';
 import 'package:face_reader/domain/services/archetype.dart';
@@ -147,15 +148,21 @@ FaceReadingReport _syntheticReport(Random rng, Gender gender) {
     intScores[info.id] = convertToScore(z, info.type);
   }
 
+  // Stage 0 preset 을 compat 분포에 반영 — 프로덕션과 동일한 shape-aware 산출.
+  final shape = drawShape(rng);
+  final confidence = shape == FaceShape.unknown ? 0.0 : 0.8;
+
   final tree = scoreTree(zMap);
   final breakdown = deriveAttributeScoresDetailed(
     tree: tree,
     gender: gender,
     isOver50: false,
     hasLateral: false,
+    faceShape: shape,
+    shapeConfidence: confidence,
   );
   final normalized = normalizeAllScores(breakdown.total, gender);
-  final archetype = classifyArchetype(normalized);
+  final archetype = classifyArchetype(normalized, shape: shape);
 
   final metricResults = <String, MetricResult>{};
   for (final info in metricInfoList) {
@@ -184,6 +191,7 @@ FaceReadingReport _syntheticReport(Random rng, Gender gender) {
     attributes: attributes,
     rules: rules,
     archetype: archetype,
+    faceShape: shape,
   );
 }
 
@@ -222,6 +230,8 @@ Map<Attribute, AttributeEvidence> _buildAttributeEvidence(
     for (final e in base.entries) {
       if (e.value.abs() > 0.05) bag['node:${e.key}'] = e.value;
     }
+    final sh = breakdown.shapePreset[attr] ?? 0.0;
+    if (sh.abs() > 0.05) bag['shape'] = sh;
     if (dist.abs() > 0.05) bag['distinctiveness'] = dist;
     for (final r in breakdown.zoneRules) {
       final v = r.effects[attr];

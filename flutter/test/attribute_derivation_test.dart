@@ -1,4 +1,5 @@
 import 'package:face_reader/data/enums/attribute.dart';
+import 'package:face_reader/data/enums/face_shape.dart';
 import 'package:face_reader/data/enums/gender.dart';
 import 'package:face_reader/domain/services/attribute_derivation.dart';
 import 'package:face_reader/domain/services/physiognomy_scoring.dart';
@@ -10,6 +11,8 @@ AttributeBreakdown _run(
   bool isOver50 = false,
   bool hasLateral = false,
   Map<String, bool> flags = const {},
+  FaceShape shape = FaceShape.unknown,
+  double conf = 0.0,
 }) {
   return deriveAttributeScoresDetailed(
     tree: scoreTree(z),
@@ -17,38 +20,68 @@ AttributeBreakdown _run(
     isOver50: isOver50,
     hasLateral: hasLateral,
     lateralFlags: flags,
+    faceShape: shape,
+    shapeConfidence: conf,
   );
 }
 
 void main() {
+  group('Stage 0 — face-shape preset', () {
+    test('unknown shape or zero confidence → no shapePreset contribution', () {
+      final b = _run({}, shape: FaceShape.unknown, conf: 0.0);
+      for (final v in b.shapePreset.values) {
+        expect(v, 0.0);
+      }
+    });
+
+    test('oval shape at high confidence boosts attractiveness', () {
+      final b = _run({}, shape: FaceShape.oval, conf: 1.0);
+      expect(b.shapePreset[Attribute.attractiveness]!, greaterThan(0.0));
+      expect(b.shapePreset[Attribute.sociability]!, greaterThan(0.0));
+    });
+
+    test('square shape at high confidence boosts leadership, penalizes 매력', () {
+      final b = _run({}, shape: FaceShape.square, conf: 1.0);
+      expect(b.shapePreset[Attribute.leadership]!, greaterThan(0.0));
+      expect(b.shapePreset[Attribute.attractiveness]!, lessThan(0.0));
+    });
+
+    test('shapePreset scales linearly with confidence', () {
+      final half = _run({}, shape: FaceShape.oval, conf: 0.5);
+      final full = _run({}, shape: FaceShape.oval, conf: 1.0);
+      expect(full.shapePreset[Attribute.attractiveness]!,
+          closeTo(2 * half.shapePreset[Attribute.attractiveness]!, 1e-9));
+    });
+  });
+
   group('Stage 1 — base linear per-node', () {
     test('single-node metric flows into basePerNode', () {
+      // nasalHeightRatio z=2.0 → nose ownMeanZ = 2.0 (2 frontal metric 중 1개만).
+      // Actually nose has 2 frontal metrics; with only one metric supplied,
+      // ownMeanZ = sum / count_of_PRESENT metrics = 2.0 / 1.
       final b = _run({'nasalHeightRatio': 2.0});
-      // nose gets nasalHeightRatio only → ownMeanZ = 2.0
       final wealth = b.basePerNode[Attribute.wealth]!;
-      // weight nose @ wealth = 0.50 (male no delta on nose wealth → +0.05 = 0.55)
-      expect(wealth['nose'], closeTo(2.0 * 0.55, 1e-9));
+      // wealth.nose weight = 0.35, male delta +0.05 → 0.40.
+      expect(wealth['nose'], closeTo(2.0 * 0.40, 1e-9));
     });
 
     test('gender delta changes effective weight', () {
       const z = {'nasalHeightRatio': 1.0};
       final male = _run(z, gender: Gender.male);
       final female = _run(z, gender: Gender.female);
-      // wealth.nose: male +0.05, female -0.05
+      // wealth.nose: 0.35 + male +0.05 / female -0.05.
       expect(male.basePerNode[Attribute.wealth]!['nose'],
-          closeTo(1.0 * 0.55, 1e-9));
+          closeTo(1.0 * 0.40, 1e-9));
       expect(female.basePerNode[Attribute.wealth]!['nose'],
-          closeTo(1.0 * 0.45, 1e-9));
+          closeTo(1.0 * 0.30, 1e-9));
     });
 
-    test('proximity path used for face node in wealth', () {
-      // faceAspectRatio alone → face.ownMeanZ = 1.0, proximity = (2-1)*1 = 1.0
+    test('face root node 는 weight matrix 에서 제외', () {
       final b = _run({'faceAspectRatio': 1.0});
-      expect(
-          b.basePerNode[Attribute.wealth]!['face'], closeTo(1.0 * 0.15, 1e-9));
-      // z=0 proximity = 0
-      final z0 = _run({'faceAspectRatio': 0.0});
-      expect(z0.basePerNode[Attribute.wealth]!['face'] ?? 0.0, 0.0);
+      for (final attr in Attribute.values) {
+        expect(b.basePerNode[attr]!.containsKey('face'), isFalse,
+            reason: '${attr.name} still has face entry');
+      }
     });
 
     test('missing node contributes zero (no entry)', () {
@@ -62,18 +95,43 @@ void main() {
     });
 
     test('libido philtrum has negative polarity', () {
-      // philtrumLength z=1.0 → philtrum mean 1.0, weight 0.40, polarity -1.
+      // philtrumLength z=1.0 → philtrum mean 1.0, weight 0.20, polarity -1.
       final b = _run({'philtrumLength': 1.0});
       expect(b.basePerNode[Attribute.libido]!['philtrum'],
-          closeTo(-1.0 * 0.40, 1e-9));
+          closeTo(-1.0 * 0.20, 1e-9));
     });
   });
 
   group('Stage 1b — distinctiveness', () {
-    test('attractiveness penalty grows with face roll-up abs-z', () {
-      // Pure extreme face → negative attractiveness distinctiveness
-      final b = _run({'faceAspectRatio': 2.0});
-      expect(b.distinctiveness[Attribute.attractiveness]!, lessThan(0.0));
+    test('attractiveness distinctiveness is a symmetric bell around faceAbs=0.7',
+        () {
+      // faceAbs = 0 (no metrics, root rollUp empty → 0) → edge of bell.
+      // 측정가능한 값은 "faceAbs 가 0.7 근처면 +, 양극단이면 -".
+      final moderate = _run({'faceAspectRatio': 0.7}); // faceAbs ≈ 0.7
+      final extreme = _run({
+        'faceAspectRatio': 3.0,
+        'eyeFissureRatio': 3.0,
+        'mouthWidthRatio': 3.0,
+      });
+      expect(moderate.distinctiveness[Attribute.attractiveness]!,
+          greaterThan(extreme.distinctiveness[Attribute.attractiveness]!),
+          reason: '평균 근접 faceAbs > 극단 faceAbs');
+      expect(extreme.distinctiveness[Attribute.attractiveness]!,
+          lessThan(0.0));
+    });
+
+    test('attractiveness distinctiveness clamp — 최대 +0.20, 최소 -0.25', () {
+      final b = _run({'faceAspectRatio': 0.7});
+      expect(b.distinctiveness[Attribute.attractiveness]!,
+          lessThanOrEqualTo(0.20 + 1e-9));
+      final ext = _run({
+        'faceAspectRatio': 3.0,
+        'eyeFissureRatio': 3.0,
+        'mouthWidthRatio': 3.0,
+        'foreheadWidth': 3.0,
+      });
+      expect(ext.distinctiveness[Attribute.attractiveness]!,
+          greaterThanOrEqualTo(-0.25 - 1e-9));
     });
 
     test('intelligence bonus requires upper abs > 0.5', () {
@@ -402,13 +460,15 @@ void main() {
       }
     });
 
-    test('breakdown sum consistency: total == base + distinct + rules', () {
+    test('breakdown sum consistency: total == shape + base + distinct + rules',
+        () {
       final b = _run({
         'nasalHeightRatio': 1.5,
         'mouthWidthRatio': 1.5,
         'lipFullnessRatio': 1.5,
-      });
+      }, shape: FaceShape.oval, conf: 1.0);
       for (final attr in Attribute.values) {
+        final shape = b.shapePreset[attr] ?? 0.0;
         final baseSum = b.basePerNode[attr]!
             .values
             .fold<double>(0.0, (a, v) => a + v);
@@ -420,7 +480,8 @@ void main() {
           ...b.ageRules,
           ...b.lateralRules,
         ].fold<double>(0.0, (a, r) => a + (r.effects[attr] ?? 0.0));
-        expect(b.total[attr], closeTo(baseSum + distinct + ruleSum, 1e-9));
+        expect(b.total[attr],
+            closeTo(shape + baseSum + distinct + ruleSum, 1e-9));
       }
     });
   });
@@ -485,30 +546,19 @@ void main() {
       expect(allRuleIds, isNot(contains('P-09B')));
     });
 
-    test('proximity saturates: extreme z diminishes vs moderate', () {
-      // face z=0.5 → proximity = (2-0.5)*0.5 = 0.75 (peak near ±1)
-      // face z=3.0 → proximity = (2-3)*3 = -3.0 (flips sign past |z|=2)
-      final mod = _run({'faceAspectRatio': 0.5});
-      final ext = _run({'faceAspectRatio': 3.0});
-      // wealth uses proximity for face: mod should be positive, ext negative
-      expect(mod.basePerNode[Attribute.wealth]!['face']!, greaterThan(0.0));
-      expect(ext.basePerNode[Attribute.wealth]!['face']!, lessThan(0.0));
-    });
   });
 
   group('Prototype face sanity', () {
     test('"ideal wealth face" lands wealth in top half of attributes', () {
-      // Strong nose, strong mouth, solid chin, balanced face.
+      // Strong nose, strong mouth, solid chin.
       final b = _run({
         'nasalHeightRatio': 1.5,
-        'nasalWidthRatio': -0.3, // slim nose = positive on width-polarity
+        'nasalWidthRatio': -0.3,
         'mouthWidthRatio': 1.2,
         'lipFullnessRatio': 1.0,
         'gonialAngle': 0.8,
         'chinAngle': 0.8,
         'lowerFaceRatio': 0.8,
-        'faceAspectRatio': 0.5,
-        'faceTaperRatio': 0.5,
       });
       final ranked = b.total.entries.toList()
         ..sort((a, b) => b.value.compareTo(a.value));

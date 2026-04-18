@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:face_reader/data/enums/age_group.dart';
 import 'package:face_reader/data/enums/attribute.dart';
 import 'package:face_reader/data/enums/ethnicity.dart';
+import 'package:face_reader/data/enums/face_shape.dart';
 import 'package:face_reader/data/enums/gender.dart';
 import 'package:face_reader/domain/services/archetype.dart';
 
@@ -165,6 +166,15 @@ class AttributeEvidence {
 
 // ────────────────────────── Report ──────────────────────────
 
+/// 스키마 버전. 엔진(weight matrix / rule / calibration / shape preset) 이
+/// 실질적으로 바뀔 때마다 증가. history_provider 가 버전 불일치 리포트를
+/// 자동 폐기하여 구 엔진 점수와 신 엔진 점수가 섞이지 않게 한다.
+///
+/// v1: legacy engine (proximity 기반, face/ear 포함 weight).
+/// v2: 2026-04-18. face/ear 제외 9-노드 + shape preset + distinctiveness bell
+///     + Opt-F rank 0.40/0.60 + 상관 MC 재보정.
+const int kReportSchemaVersion = 2;
+
 class FaceReadingReport {
   final Ethnicity ethnicity;
   final Gender gender;
@@ -204,6 +214,13 @@ class FaceReadingReport {
   final String? faceShapeLabel;
   final double? faceShapeConfidence;
 
+  /// 도메인 얼굴형 — Stage 0 preset / archetype overlay / 서술 엔진 key.
+  /// 분류기 실패 시 FaceShape.unknown.
+  final FaceShape faceShape;
+
+  /// 엔진 스키마 버전. [kReportSchemaVersion] 와 다르면 구 엔진 산출물 → 폐기.
+  final int schemaVersion;
+
   FaceReadingReport({
     required this.ethnicity,
     required this.gender,
@@ -224,6 +241,8 @@ class FaceReadingReport {
     required this.archetype,
     this.faceShapeLabel,
     this.faceShapeConfidence,
+    this.faceShape = FaceShape.unknown,
+    this.schemaVersion = kReportSchemaVersion,
   }) : expiresAt = expiresAt ?? DateTime.now().add(const Duration(days: 90));
 
   /// UI / assembler 공용 shortcut — 정규화 점수만 빠르게.
@@ -232,6 +251,7 @@ class FaceReadingReport {
       };
 
   String toJsonString() => jsonEncode({
+        'schemaVersion': schemaVersion,
         'ethnicity': ethnicity.name,
         'gender': gender.name,
         'ageGroup': ageGroup.name,
@@ -267,10 +287,16 @@ class FaceReadingReport {
         if (faceShapeLabel != null) 'faceShapeLabel': faceShapeLabel,
         if (faceShapeConfidence != null)
           'faceShapeConfidence': faceShapeConfidence,
+        'faceShape': faceShape.name,
       });
 
   factory FaceReadingReport.fromJsonString(String jsonStr) {
     final j = jsonDecode(jsonStr) as Map<String, dynamic>;
+    final version = (j['schemaVersion'] as num?)?.toInt() ?? 1;
+    if (version != kReportSchemaVersion) {
+      throw FormatException(
+          'FaceReadingReport schemaVersion mismatch: $version != $kReportSchemaVersion');
+    }
     return FaceReadingReport(
       ethnicity: Ethnicity.values.byName(j['ethnicity'] as String),
       gender: Gender.values.byName(j['gender'] as String),
@@ -321,6 +347,10 @@ class FaceReadingReport {
       ),
       faceShapeLabel: j['faceShapeLabel'] as String?,
       faceShapeConfidence: (j['faceShapeConfidence'] as num?)?.toDouble(),
+      faceShape: j['faceShape'] is String
+          ? FaceShape.values.byName(j['faceShape'] as String)
+          : FaceShapeLabel.fromEnglish(j['faceShapeLabel'] as String?),
+      schemaVersion: version,
     );
   }
 }

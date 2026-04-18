@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:tflite_flutter/tflite_flutter.dart';
 
+import 'package:face_reader/data/enums/face_shape.dart';
+
 /// 28-feature face-shape classifier (MLP, TFLite FP16, ~12 KB).
 ///
 /// Training: niten19 Kaggle FaceShape Dataset (5000 images, 5 classes).
@@ -36,6 +38,22 @@ extension FaceShapeClassLabel on FaceShapeClass {
       case FaceShapeClass.oval: return 'Oval';
       case FaceShapeClass.round: return 'Round';
       case FaceShapeClass.square: return 'Square';
+    }
+  }
+
+  /// 도메인 enum 으로 승격. Stage 0 preset / archetype / 서술 엔진에서 소비.
+  FaceShape get domain {
+    switch (this) {
+      case FaceShapeClass.heart:
+        return FaceShape.heart;
+      case FaceShapeClass.oblong:
+        return FaceShape.oblong;
+      case FaceShapeClass.oval:
+        return FaceShape.oval;
+      case FaceShapeClass.round:
+        return FaceShape.round;
+      case FaceShapeClass.square:
+        return FaceShape.square;
     }
   }
 }

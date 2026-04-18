@@ -4,6 +4,7 @@ import 'package:mediapipe_face_mesh/mediapipe_face_mesh.dart';
 import 'package:face_reader/data/enums/age_group.dart';
 import 'package:face_reader/data/enums/attribute.dart';
 import 'package:face_reader/data/enums/ethnicity.dart';
+import 'package:face_reader/data/enums/face_shape.dart';
 import 'package:face_reader/data/enums/gender.dart';
 import 'package:face_reader/data/constants/face_reference_data.dart';
 import 'package:face_reader/data/services/face_shape_classifier.dart';
@@ -228,10 +229,38 @@ FaceReadingReport analyzeFaceReading({
     debugPrint('═══════════════════════════════════════════');
   }
 
+  // Step 6 pre: ML face-shape classifier — Stage 0 preset 의 입력으로 먼저
+  // 결정. 분류기 실패 시 3-metric fallback 사용.
+  //
+  // Confidence 는 소스별 고정: ML ≥0.5 = ML 원값 / fallback 매치 = 0.6 /
+  // fallback 미매치(unknown) = 0.0. ML 저확신(0.2~0.5) 을 그대로 쓰지 않음 —
+  // 확신 없는 ML 신호가 preset 을 오염하면 "대다수 사용자가 oval preset 을
+  // 약하게 받음" 편향이 발생.
+  final pred = FaceShapeClassifier.instance.predict(measured);
+  final FaceShape faceShape;
+  final double shapeConfidence;
+  if (pred != null && pred.confidence >= 0.5) {
+    faceShape = pred.label.domain;
+    shapeConfidence = pred.confidence;
+    debugPrint('[FACE SHAPE CNN] label=${pred.label.english} '
+        'conf=${pred.confidence.toStringAsFixed(3)} → ${faceShape.name}');
+  } else {
+    // Fallback: frontal 3-metric rule. 매치 실패 = unknown (preset 중립).
+    faceShape = classifyShapeByMetrics(
+      aspectZ: zScores['faceAspectRatio'] ?? 0.0,
+      taperZ: zScores['faceTaperRatio'] ?? 0.0,
+      midFaceZ: zScores['midFaceRatio'] ?? 0.0,
+    );
+    shapeConfidence = faceShape == FaceShape.unknown ? 0.0 : 0.6;
+    debugPrint('[FACE SHAPE FALLBACK] rule=${faceShape.name} '
+        'conf=${shapeConfidence.toStringAsFixed(2)} '
+        '(ml=${pred?.confidence.toStringAsFixed(2) ?? "none"})');
+  }
+
   // Step 6: Hierarchical attribute derivation.
   // Build a unified z-map (frontal adjusted + lateral raw-z) and run it
-  // through the 14-node physiognomy tree, then the 5-stage pipeline
-  // (base / distinctiveness / zone / organ / palace / age+lateral).
+  // through the 14-node physiognomy tree, then the 6-stage pipeline
+  // (shape preset / base / distinctiveness / zone / organ / palace / age+lateral).
   final zForTree = <String, double>{...zAdjusted};
   if (lateralZMap != null) zForTree.addAll(lateralZMap);
 
@@ -242,28 +271,16 @@ FaceReadingReport analyzeFaceReading({
     isOver50: isOver50,
     hasLateral: lateralLandmarks != null,
     lateralFlags: lateralFlags ?? const {},
+    faceShape: faceShape,
+    shapeConfidence: shapeConfidence,
   );
   final rawScores = breakdown.total;
 
   // Step 7: Rank-aware normalization → 5~10 with within-face spread
   final normalizedScores = normalizeAllScores(rawScores, gender);
 
-  // Step 8: Archetype classification
-  final archetype = classifyArchetype(normalizedScores);
-
-  // Step 8.5: ML face-shape classifier (28-feature TFLite MLP, 76.9% test acc).
-  // Feeds raw measured metrics (not z-scored) — the classifier does its own
-  // standardization with scaler.json. Null-safe: if the classifier is not
-  // loaded or a metric is missing, faceShapeLabel stays null and UI falls
-  // back to the legacy rule-based classifier.
-  final pred = FaceShapeClassifier.instance.predict(measured);
-  if (pred != null) {
-    debugPrint('[FACE SHAPE CNN] label=${pred.label.english} '
-        'conf=${pred.confidence.toStringAsFixed(3)} '
-        'probs=${pred.probabilities.map((p) => p.toStringAsFixed(2)).join(",")}');
-  } else {
-    debugPrint('[FACE SHAPE CNN] classifier unavailable → UI uses LDA fallback');
-  }
+  // Step 8: Archetype classification (shape-gated overlay 포함)
+  final archetype = classifyArchetype(normalizedScores, shape: faceShape);
 
   // Build metric results
   final metricResults = <String, MetricResult>{};
@@ -295,6 +312,7 @@ FaceReadingReport analyzeFaceReading({
     archetype: archetype,
     faceShapeLabel: pred?.label.english,
     faceShapeConfidence: pred?.confidence,
+    faceShape: faceShape,
     lateralMetrics: lateralMetricResults,
     lateralFlags: lateralFlags,
   );
@@ -336,6 +354,8 @@ Map<Attribute, AttributeEvidence> _buildAttributeEvidence(
     for (final e in base.entries) {
       if (e.value.abs() > 0.05) bag['node:${e.key}'] = e.value;
     }
+    final sh = breakdown.shapePreset[attr] ?? 0.0;
+    if (sh.abs() > 0.05) bag['shape'] = sh;
     if (dist.abs() > 0.05) bag['distinctiveness'] = dist;
     for (final r in breakdown.zoneRules) {
       final v = r.effects[attr];
