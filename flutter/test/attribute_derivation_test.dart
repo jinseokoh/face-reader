@@ -212,6 +212,47 @@ void main() {
       final b = _run({'nasofrontalAngle': -1.6});
       expect(b.organRules.map((r) => r.id), contains('O-NF2'));
     });
+
+    test('O-CK 광대 강 — leadership·wealth 가산', () {
+      final b = _run({'cheekboneWidth': 1.5});
+      final ids = b.organRules.map((r) => r.id);
+      expect(ids, contains('O-CK'));
+      // O-CK 하나만 발동 (조합 rule 은 nose/chin/forehead 없음)
+      expect(ids, isNot(contains('O-CKN')));
+      expect(ids, isNot(contains('O-CKC')));
+      expect(ids, isNot(contains('O-CKF')));
+    });
+
+    test('O-CB 광대 약 — leadership 감점, sociability 가점', () {
+      final b = _run({'cheekboneWidth': -1.5});
+      expect(b.organRules.map((r) => r.id), contains('O-CB'));
+    });
+
+    test('O-CKN 광대+코 동반 강 — 중정 병립', () {
+      final b = _run({
+        'cheekboneWidth': 1.5,
+        'nasalHeightRatio': 1.5,
+      });
+      final ids = b.organRules.map((r) => r.id);
+      expect(ids, contains('O-CKN'));
+      expect(ids, contains('O-CK'));
+    });
+
+    test('O-CKC 광대+턱 동반 강 — 중·하정 결합', () {
+      final b = _run({
+        'cheekboneWidth': 1.5,
+        'chinAngle': 1.5,
+      });
+      expect(b.organRules.map((r) => r.id), contains('O-CKC'));
+    });
+
+    test('O-CKF 광대+이마 동반 강 — 관료·학자', () {
+      final b = _run({
+        'cheekboneWidth': 1.5,
+        'foreheadWidth': 1.5,
+      });
+      expect(b.organRules.map((r) => r.id), contains('O-CKF'));
+    });
   });
 
   group('Stage 4 — palace rules', () {

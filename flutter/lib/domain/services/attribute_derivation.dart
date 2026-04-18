@@ -470,13 +470,37 @@ final _organRules = <_TreeRule>[
       (t) => _leafZ(t, 'forehead') >= 1.0 && _leafZ(t, 'eyebrow') >= 1.0,
       const {Attribute.leadership: 1.0, Attribute.intelligence: 0.5}),
 
-  // O-CK 광대 강
-  _TreeRule('O-CK', (t) => _leafZ(t, 'cheekbone') >= 1.0,
-      const {Attribute.leadership: 0.5, Attribute.attractiveness: -0.2}),
+  // O-CK 광대 강 — 태산·화산 융기. 권력·자기주장·재물 축적의 축.
+  _TreeRule('O-CK', (t) => _leafZ(t, 'cheekbone') >= 1.0, const {
+    Attribute.leadership: 0.8,
+    Attribute.wealth: 0.3,
+    Attribute.attractiveness: -0.2,
+  }),
 
-  // O-CB 광대 약
-  _TreeRule('O-CB', (t) => _leafZ(t, 'cheekbone') <= -1.0,
-      const {Attribute.leadership: -0.5, Attribute.attractiveness: 0.3}),
+  // O-CB 광대 약 — 오악 중 양산 낮음. 부드러움·친화, 권세 약함.
+  _TreeRule('O-CB', (t) => _leafZ(t, 'cheekbone') <= -1.0, const {
+    Attribute.leadership: -0.5,
+    Attribute.sociability: 0.3,
+    Attribute.attractiveness: 0.3,
+  }),
+
+  // O-CKN 광대+코 동반 강 — 태산·숭산 병립. 중정 전면 강세 → 사장·경영자 상.
+  _TreeRule(
+      'O-CKN',
+      (t) => _leafZ(t, 'cheekbone') >= 1.0 && _leafZ(t, 'nose') >= 1.0,
+      const {Attribute.wealth: 0.8, Attribute.leadership: 0.5}),
+
+  // O-CKC 광대+턱 동반 강 — 태산+지각궁·노복궁 결합. 말년 안정·위엄.
+  _TreeRule(
+      'O-CKC',
+      (t) => _leafZ(t, 'cheekbone') >= 1.0 && _leafZ(t, 'chin') >= 1.0,
+      const {Attribute.leadership: 0.8, Attribute.stability: 0.5}),
+
+  // O-CKF 광대+이마 동반 강 — 상정·중정 결합. 관료·학자 상 (지략 + 권세).
+  _TreeRule(
+      'O-CKF',
+      (t) => _leafZ(t, 'cheekbone') >= 1.0 && _leafZ(t, 'forehead') >= 1.0,
+      const {Attribute.leadership: 0.5, Attribute.intelligence: 0.5}),
 
   // O-PH1 인중 짧음
   _TreeRule('O-PH1', (t) => _leafZ(t, 'philtrum') <= -1.0,
