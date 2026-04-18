@@ -12,10 +12,9 @@
 
 | 우선 | 작업 | 문서 | 재개 지시 |
 |---|---|---|---|
-| P0 | 서술 엔진 성별 분기 전면 재설계 (Phase 1 버그픽스 → 2 슬롯 확장 → 3 pool 분리) | [docs/runtime/NARRATIVE_GENDER_REDESIGN.md](docs/runtime/NARRATIVE_GENDER_REDESIGN.md) | `"NARRATIVE_GENDER_REDESIGN.md 의 Phase 1 부터 시작하라."` |
 | P1 | 14-node 부위별 expandable UI (정적 서술 SSOT + `_ExpandableNodeBar` 위젯 + band/gender 분기) | [docs/runtime/NODE_EXPANDABLE_UI.md](docs/runtime/NODE_EXPANDABLE_UI.md) | `"NODE_EXPANDABLE_UI.md 의 Phase 1 부터 시작하라."` |
 
-두 작업은 **병렬 진행 가능** (터치하는 파일 다름). 둘 중 하나를 끝내면 이 표의 해당 행을 삭제하고 해당 plan 문서 상단 상태를 `✅ 완료` 로 갱신.
+**완료**: 서술 엔진 성별 분기 전면 재설계 (2026-04-18). 연애·바람기·관능도 3 섹션 남/여 별도 pool, 섹션당 400~600자, `'색기' → '관능도'` 명칭 통일.
 
 ---
 

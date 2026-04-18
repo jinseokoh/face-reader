@@ -4,16 +4,17 @@ import 'package:face_reader/data/enums/gender.dart';
 import 'package:face_reader/domain/models/face_reading_report.dart';
 
 // ═══════════════════════════════════════════════════════════════════════
-// 인생 질문 서술 엔진 v2 — Beat-Fragment Grammar + Face Hash Seed
+// 인생 질문 서술 엔진 v3 — Beat-Fragment Grammar + 성별 분리 pool
+//
+// v2 대비 변경 (2026-04-18):
+// - 연애·바람기·관능도 3 섹션은 남/여 완전 분리된 pool 을 사용. 치환 기반이
+//   아닌 별도 2-세트.
+// - '색기' 섹션명 → '관능도' (attribute.dart::labelKo 와 일치).
+// - 섹션 목표 길이: 400~600자 (v2 의 600 평균에서 약간 tight 화).
 //
 // 섹션 = N beat 의 합. 각 beat 는 feature-activated fragment pool 에서
-// face-hash seed 로 변형을 결정적으로 선택. 각 fragment 안에는
-//   @{slotName}        — lexical pool 치환
-//   {a|b|c}            — 인라인 alternation
-// 이 embed 되어 있어 같은 조건·같은 variant 안에서도 slot 곱셈으로
-// 수만 가지 결과가 나온다. 같은 얼굴 → 같은 결과 (재현성 보장).
-//
-// 목표 평균 길이: 섹션당 600자 내외.
+// face-hash seed 로 변형을 결정적으로 선택. @{slot} + {a|b|c} 문법으로
+// 같은 조건 안에서도 슬롯 곱셈으로 수만 변종. 같은 얼굴 → 같은 결과.
 // ═══════════════════════════════════════════════════════════════════════
 
 String assembleLifeQuestions(FaceReadingReport r) {
@@ -22,13 +23,16 @@ String assembleLifeQuestions(FaceReadingReport r) {
     MapEntry('타고난 재능', _buildSection(f, _talentBeats, 10)),
     MapEntry('재물운', _buildSection(f, _wealthBeats, 20)),
     MapEntry('대인관계', _buildSection(f, _socialBeats, 30)),
-    MapEntry('연애운', _buildSection(f, _romanceBeats, 40)),
+    MapEntry('연애운', _buildSection(
+        f, f.isMale ? _romanceBeatsMale : _romanceBeatsFemale, 40)),
   ];
   if (f.age.isOver20) {
-    parts.add(MapEntry('바람기', _buildSection(f, _philanBeats, 50)));
+    parts.add(MapEntry('바람기', _buildSection(
+        f, f.isMale ? _philanBeatsMale : _philanBeatsFemale, 50)));
   }
   if (f.age.isOver30) {
-    parts.add(MapEntry('색기', _buildSection(f, _sensualBeats, 60)));
+    parts.add(MapEntry('관능도', _buildSection(
+        f, f.isMale ? _sensualBeatsMale : _sensualBeatsFemale, 60)));
   }
   parts.add(MapEntry('건강과 수명', _buildSection(f, _healthBeats, 70)));
   parts.add(MapEntry('종합 조언', _buildSection(f, _conclusionBeats, 80)));
@@ -289,7 +293,7 @@ bool Function(_Features) _highPair(Attribute a, Attribute b) =>
 final List<_Frag> _talentOpening = [
   _Frag(_highPair(Attribute.intelligence, Attribute.leadership), [
     '당신의 얼굴에는 지략(智略)과 통솔이 한 몸에 깃든 기운이 @{intense} 흐릅니다. 관상학에서 @{palace_destiny}이 @{open_wide} 열리고 @{zone_up}이 @{strong_adj} 자리한 상으로, 머리로 @{observe} 힘과 앞장서 @{act} 힘이 한 얼굴에 공존하는 @{rare} @{structure}입니다.',
-    '@{noble_m} 지략과 통솔이 겹쳐 흐르는 상입니다. 관상학에서 @{palace_destiny}이 @{clear_adj} 열리고 @{palace_career}이 @{strong_adj} 자리한 상으로, 문(文)과 무(武)의 경계를 넘나드는 @{rare} 기질이 얼굴의 중심축을 이룹니다.',
+    '@{noble} 지략과 통솔이 겹쳐 흐르는 상입니다. 관상학에서 @{palace_destiny}이 @{clear_adj} 열리고 @{palace_career}이 @{strong_adj} 자리한 상으로, 문(文)과 무(武)의 경계를 넘나드는 @{rare} 기질이 얼굴의 중심축을 이룹니다.',
     '지장(智將)의 결이 @{intense} 드러나는 얼굴입니다. @{palace_destiny}의 열림과 @{palace_career}의 위엄이 함께 살아 있어, 혼자 사유하는 시간에서 길을 얻고 사람 앞에 설 때 비로소 완성되는 이중 동력을 타고났습니다.',
   ]),
   _Frag(_highPair(Attribute.intelligence, Attribute.emotionality), [
@@ -303,7 +307,7 @@ final List<_Frag> _talentOpening = [
   ]),
   _Frag(_highOf(Attribute.leadership), [
     '당신의 @{talent_word}은 사람을 \'움직이게 하는 힘\'입니다. 관상학에서 @{palace_career}과 @{mount_e}·@{mount_w}이 @{strong_adj} 자리한 상으로, 말하지 않아도 주변이 당신의 결정을 기다리게 되는 무형의 장악력이 얼굴에 @{result_carry}.',
-    '@{noble_m} 통솔의 기운이 @{intense} 서린 얼굴입니다. @{palace_career}의 위엄과 턱의 무게가 함께 살아 있어, 회의실의 침묵을 깨는 결단이나 흔들리는 팀을 한 방향으로 정렬시키는 호령이 당신 @{talent_word}의 중심이 됩니다.',
+    '@{noble} 통솔의 기운이 @{intense} 서린 얼굴입니다. @{palace_career}의 위엄과 턱의 무게가 함께 살아 있어, 회의실의 침묵을 깨는 결단이나 흔들리는 팀을 한 방향으로 정렬시키는 호령이 당신 @{talent_word}의 중심이 됩니다.',
   ]),
   _Frag(_highOf(Attribute.emotionality), [
     '당신의 @{talent_word}은 감수성의 깊이에서 발화합니다. 눈매에 수기(水氣)가 흐르고 입매의 표현이 풍부한 상으로, 남이 무심코 흘리는 기색을 당신은 피부로 @{observe} 감각이 @{deep} 박혀 있습니다.',
@@ -322,12 +326,12 @@ final List<_Frag> _talentOpening = [
     '수(數)를 읽는 눈이 @{intense} 드러나는 얼굴입니다. @{mount_c}과 @{palace_wealth}의 결이 함께 살아 있어, 계산·판매·운영 어디에 두어도 \'굴리면 불어난다\'는 평이 따라붙는 기질입니다.',
   ]),
   _Frag(_highOf(Attribute.stability), [
-    '당신의 @{talent_word}은 지구력과 뚝심에 있습니다. @{mount_n}이 @{strong_adj} 받치고 @{zone_down}이 @{open_wide} 자리한 상으로, 한 우물을 끝까지 파서 결실로 만드는 @{noble_m} 기질이 골상에 박혀 있습니다.',
+    '당신의 @{talent_word}은 지구력과 뚝심에 있습니다. @{mount_n}이 @{strong_adj} 받치고 @{zone_down}이 @{open_wide} 자리한 상으로, 한 우물을 끝까지 파서 결실로 만드는 @{noble} 기질이 골상에 박혀 있습니다.',
     '@{strong_adj} 근성이 @{intense} 서린 얼굴입니다. 화려하진 않되 중도에 꺾이지 않는 결을 타고났기에, 시간을 편으로 돌려세우는 종목에서 평균을 뛰어넘는 결과를 만들어냅니다.',
   ]),
   _Frag(_highOf(Attribute.trustworthiness), [
     '당신의 @{talent_word}은 \'믿음을 주는 힘\'에 있습니다. @{palace_home}과 @{palace_servant}이 @{strong_adj} 자리한 상으로, 말과 행동이 일치하는 결이 얼굴에 먼저 새겨져 있습니다.',
-    '@{noble_m} 신의(信義)가 @{intense} 드러나는 얼굴입니다. 화려한 말재주가 아니라 한결같은 성품으로 사람을 움직이는 유형이며, 이는 관리직·중개·참모 역할에서 @{intense} 빛납니다.',
+    '@{noble} 신의(信義)가 @{intense} 드러나는 얼굴입니다. 화려한 말재주가 아니라 한결같은 성품으로 사람을 움직이는 유형이며, 이는 관리직·중개·참모 역할에서 @{intense} 빛납니다.',
   ]),
   _Frag((f) => true, [
     '당신의 @{talent_word}은 한 방향으로 편중되지 않고 여러 영역에 고루 잠재된 형태입니다. 삼정(三停)이 균형을 이루고 극단적으로 치우치지 않은 상으로, 어떤 자리에 들어가도 그 자리의 언어를 @{intense} 흡수해 맞춰가는 적응력이 @{talent_word}의 본체입니다.',
@@ -337,7 +341,7 @@ final List<_Frag> _talentOpening = [
 
 final List<_Frag> _talentStrength = [
   _Frag((f) => f.fired('O-EB1') || f.fired('O-EB2'), [
-    '눈썹이 @{intense} 자리잡은 당신은 @{organ_brow}이 @{strong_adj} 살아 있는 상이라, 새 지식을 익히는 초기 속도가 또래보다 한 발 빠르고 @{heart}이 중간에 꺾이지 않는 @{noble_m} 집요함까지 갖추었습니다.',
+    '눈썹이 @{intense} 자리잡은 당신은 @{organ_brow}이 @{strong_adj} 살아 있는 상이라, 새 지식을 익히는 초기 속도가 또래보다 한 발 빠르고 @{heart}이 중간에 꺾이지 않는 @{noble} 집요함까지 갖추었습니다.',
     '짙고 정돈된 눈썹은 \'의지의 결\'이 @{deep} 박힌 상입니다. 한 번 목표를 정하면 결실까지 밀어붙이는 @{inner_stamina} 기질이 강하게 작동합니다.',
   ]),
   _Frag((f) => f.fired('P-02') || f.nodeZ('forehead') >= 1.0, [
@@ -350,7 +354,7 @@ final List<_Frag> _talentStrength = [
   ]),
   _Frag((f) => f.fired('O-CK') || f.nodeZ('cheekbone') >= 0.8, [
     '@{mount_e}·@{mount_w}이 @{strong_adj} 받쳐주는 상은 사람을 부려 일을 만드는 기질을 의미하며, 혼자 잘하는 것보다 조직·팀을 통해 @{talent_word}이 확장되는 유형입니다.',
-    '광대가 힘차게 자리한 구조는 @{noble_m} 호령의 기운을 담고 있어, 순수 전문가보다 리더·관리자의 자리에서 진가가 @{intense} 드러납니다.',
+    '광대가 힘차게 자리한 구조는 @{noble} 호령의 기운을 담고 있어, 순수 전문가보다 리더·관리자의 자리에서 진가가 @{intense} 드러납니다.',
   ]),
   _Frag((f) => f.fired('O-FB'), [
     '이마와 턱이 함께 단정한 구조는 \'시작과 끝이 모두 정렬된 상\'으로, 한 프로젝트를 처음부터 끝까지 담당했을 때 가장 좋은 결과가 나오는 기질입니다.',
@@ -550,201 +554,360 @@ final List<_BeatPool> _socialBeats = [
   _socialAdvice,
 ];
 
-// ═══ 4. 연애운 ═══
+// ═══ 4. 연애운 — 남/여 분리 pool ═══
+//
+// 관상학에서 남녀 연애 해석이 가장 크게 갈리는 지점: 주도권 / 매력 출처 /
+// 타이밍 / 리스크 / 전통 용어. 각 성별 pool 은 opening·strength·shadow·
+// advice 4 beat 구조로 공통 인터페이스 유지.
 
-final List<_Frag> _romanceOpening = [
+// ─── 4-M. 연애운 (남) ─────────────────────────────────────────────────
+
+final List<_Frag> _romanceOpeningMale = [
   _Frag(_highPair(Attribute.attractiveness, Attribute.sociability), [
-    '당신의 연애는 \'불러오는 연애\'에 가깝습니다. @{palace_social}과 @{palace_mate}이 함께 열린 상으로, 먼저 고백하기보다 여러 방향에서 들어오는 호감 중에 고르는 자리가 자연스럽게 주어지는 구도입니다. 첫 데이트의 분위기를 당신이 설계하는 편이고, 상대가 다음 약속을 당신의 스케줄부터 묻게 되는 구조가 반복됩니다.',
-    '이성의 시선이 @{intense} 먼저 당신에게 기우는 @{structure}입니다. 후보의 폭이 넓다는 이점이 있는 대신, 비교의 습관이 오래 남아 정착 시점의 결정을 @{subtle} 늦추기 쉬운 구도이기도 합니다.',
+    '당신의 연애는 \'먼저 다가서는 쪽\'의 역학입니다. @{palace_mate}이 열리고 @{mount_c}의 기운이 받치는 상으로, 관심이 서면 머뭇거리지 않고 다음 장을 여는 장부의 기질이 또렷합니다. 상대의 속도보다 당신의 속도가 반 걸음 빠른 편이라, 추격의 리듬이 연애의 색을 결정합니다.',
   ]),
-  _Frag((f) => f.bandOf(Attribute.emotionality) == _Band.high && f.bandOf(Attribute.attractiveness) != _Band.high, [
-    '당신의 연애는 \'친구에서 연인으로\' 넘어가는 형태가 가장 자연스럽습니다. 눈매에 정(情)의 결이 @{deep} 자리한 상으로, 화려한 첫인상으로 한 번에 끌어당기기보다 여러 번 겹친 만남 속에서 상대가 어느 순간 \'이 사람\'을 발견하게 되는 경로가 반복됩니다.',
-    '호감이 우정의 언어에서 연애의 언어로 번역되는 전환점에 당신이 @{intense} 각인되며, 이 전환의 기억이 관계의 접착제가 됩니다. 단기보다 장기에서 @{intense} 빛나는 결입니다.',
-  ]),
-  _Frag(_highOf(Attribute.sociability), [
-    '당신의 연애는 \'넓은 풀에서 비교하며 고르는\' 형태입니다. 만남의 기회 자체가 풍부한 구조라 소개·모임·취미 공동체 어디든 반경이 자연스럽게 넓어지며, 여러 사람과의 대화에서 상대의 결을 가늠하는 감각이 @{intense} 발달한 편입니다.',
+  _Frag(_highOf(Attribute.leadership), [
+    '당신의 연애는 \'기상(氣象) 주도형\'입니다. 말투·자세·말문의 템포로 상대를 끌어당기는 결이어서, 정적인 미소보다 움직이는 장면에서 매력이 @{intense} 드러납니다. 한 자리에 조용히 앉은 상대보다 함께 움직이는 상대와 합이 @{deep} 맞습니다.',
   ]),
   _Frag(_highOf(Attribute.stability), [
-    '당신의 연애는 \'오래 지켜보고 한 번에 정하는\' 직선형입니다. @{palace_mate}이 단정하고 @{mount_n}이 @{strong_adj} 자리한 상으로, 썸을 길게 끌지 않고 상대에 대한 확신이 서는 순간 방향을 확정해버리는 기질입니다. 한 번 시작된 관계는 결혼이라는 종착점까지 직선으로 달려가는 경향이 강합니다.',
+    '당신의 연애는 \'확신 한 번에 방향을 정하는\' 직선형입니다. @{mount_n}이 단정한 상으로, 썸을 길게 끌지 않고 상대의 결이 자기 결과 맞다 판단되면 바로 관계의 이름을 정해버리는 장부의 기질입니다. 한 번 시작된 관계는 결혼이라는 종착점까지 직선으로 달려갑니다.',
   ]),
   _Frag(_highOf(Attribute.trustworthiness), [
-    '당신의 연애는 \'믿음의 신호가 누적된 뒤에야 문이 열리는\' 형태입니다. 분위기에 휩쓸려 시작하는 관계에는 좀처럼 마음이 기울지 않으며, 상대의 말과 행동이 일치하는지 @{deep} 관찰한 뒤 비로소 진지한 단계로 진입하는 결입니다.',
+    '당신의 연애는 \'믿음의 신호가 누적된 뒤에야 문이 열리는\' 결입니다. 분위기에 휩쓸려 시작하는 관계에는 좀처럼 마음이 기울지 않으며, 상대의 말과 행동이 일치하는지 지켜본 뒤 비로소 진지한 단계로 진입하는 사내의 신중함이 배어 있습니다.',
   ]),
   _Frag((f) => true, [
-    '당신의 연애는 \'시작은 느리되 시작한 뒤로는 @{deep} 들어가는\' 형태입니다. 첫 만남에서 즉시 불이 붙기보다 같은 자리에 두세 번 마주친 뒤 관심의 불씨가 번져가는 기질이며, 결혼으로 이어지는 관계에서 특히 진가가 드러납니다.',
+    '당신의 연애는 \'다가서는 자\'의 결이 기본입니다. 같은 공간에 끌리는 사람이 있으면 시선을 피하지 않고 먼저 말을 건네는 기질이어서, 관계의 출발점을 설계하는 쪽이 대개 당신이며 이 주도성이 연애의 색을 결정합니다.',
   ]),
 ];
 
-final List<_Frag> _romanceStrength = [
-  _Frag((f) => f.fired('P-08'), [
-    '@{palace_sex} 아래 누당의 윤기가 살아 있는 구조는 도화기(桃花期)가 규칙적으로 돌아오는 기질을 의미하며, 한 해에 한두 번 의미 있는 인연의 문이 열리는 주기성이 있습니다.',
-  ]),
+final List<_Frag> _romanceStrengthMale = [
   _Frag((f) => f.fired('O-EB1') || f.fired('O-EB2'), [
-    '눈썹이 또렷한 구조는 자기 의사를 명확히 전하는 결이라, 애매한 썸에 오래 머무르지 않고 관계의 성격을 빠르게 정리하려는 성향이 있어 \'끌려다니는 연애\'로 가지 않습니다.',
+    '눈썹이 또렷한 구조는 자기 의사를 흐리지 않는 결이라, 애매한 썸에 오래 머무르지 않고 관계의 성격을 일찍 정리합니다. 상대가 \'끌려다닌다\'는 느낌 없이 당신의 속도를 따라오게 만드는 장부의 결단이 강점입니다.',
+  ]),
+  _Frag((f) => f.fired('O-CK') || f.nodeZ('cheekbone') >= 0.8, [
+    '@{mount_e}·@{mount_w}이 받쳐주는 구조는 \'기백(氣魄)\'이 실린 결로, 당신이 들어서는 순간 공기의 중심이 옮겨 가는 결이 연애의 출발점에서 @{intense} 작동합니다.',
+  ]),
+  _Frag((f) => true, [
+    '당신의 연애는 순간의 분위기보다 누적된 기백에서 힘을 얻는 결이어서, 한 번에 타오르기보다 여러 장면을 겹쳐 당신의 결을 각인시키는 장기전에서 유리합니다.',
+  ]),
+];
+
+final List<_Frag> _romanceShadowMale = [
+  _Frag((f) => f.bandOf(Attribute.attractiveness) == _Band.high && f.bandOf(Attribute.stability) != _Band.high, [
+    '다만 \'설렘의 유통기한\' 문제가 되풀이됩니다. 시작의 화력이 강한 만큼 일상 단계로 넘어가는 6개월에서 1년 사이 권태가 먼저 찾아오며, 그 공백을 새 자극으로 메우려 할 때 좋은 사람을 놓치는 패턴이 쌓이기 쉽습니다.',
+  ]),
+  _Frag(_highOf(Attribute.leadership), [
+    '다만 주도성이 강한 만큼 \'내가 정한 속도\'를 상대에게 강요하기 쉽습니다. 상대의 결이 따라오지 못할 때 관심이 식는 속도도 빠른 편이라, 기다릴 수 있는 인내가 연애 수명의 핵심이 됩니다.',
+  ]),
+  _Frag((f) => f.bandOf(Attribute.stability) == _Band.high && f.bandOf(Attribute.sociability) != _Band.high, [
+    '다만 \'만날 자리 자체가 좁다\'는 한계에 부딪히기 쉽습니다. 검증의 기질이 강점이지만, 동시에 새 사람과의 접점에 잘 들어서지 않는 결로 이어져 좋은 인연이 지나가는 시기를 모르고 보낼 수 있습니다.',
+  ]),
+  _Frag((f) => true, [
+    '다만 \'한 사람에 집중되면 주변이 흐려지는\' 기질이 있어, 연애가 가장 뜨거운 시기일수록 생활의 축 — 일·친구·건강 — 을 의식적으로 유지하지 않으면 중요한 자리를 같이 놓치기 쉽습니다.',
+  ]),
+];
+
+final List<_Frag> _romanceAdviceMale = [
+  _Frag((f) => true, [
+    '연애운을 살리는 @{path_word}은 셋입니다. 첫째, \'끌리는 상대\'와 \'일상에 맞는 상대\'를 구분하는 훈련 — 매력 축과 적합도 축을 따로 평가하는 눈이 평생 연애의 질을 결정합니다. 둘째, 권태 구간을 피하지 말고 통과할 설계로 두십시오. 공동 프로젝트·여행·신체 리듬 변화를 분기에 하나씩 배치하는 것만으로 구간의 풍경이 달라집니다. 셋째, 이별의 품격이 다음 @{fate_word}의 결을 결정합니다. 마지막 장면이 가장 오래 기억되는 것이 남성 연애의 숨은 자산입니다.',
+  ]),
+];
+
+final List<_BeatPool> _romanceBeatsMale = [
+  _romanceOpeningMale,
+  _romanceStrengthMale,
+  _romanceShadowMale,
+  _romanceAdviceMale,
+];
+
+// ─── 4-F. 연애운 (여) ─────────────────────────────────────────────────
+
+final List<_Frag> _romanceOpeningFemale = [
+  _Frag(_highPair(Attribute.attractiveness, Attribute.sociability), [
+    '당신의 연애는 \'불러오는 자리\'의 역학입니다. @{palace_mate}이 열리고 누당(淚堂)에 은은한 윤기가 도는 상으로, 먼저 고백하기보다 여러 방향에서 들어오는 호감 중에 고르는 자리가 자연스럽게 주어지는 결입니다. 후보의 폭이 넓은 대신 비교의 습관이 정착 시점을 @{subtle} 늦추기 쉽습니다.',
+  ]),
+  _Frag((f) => f.bandOf(Attribute.emotionality) == _Band.high && f.bandOf(Attribute.attractiveness) != _Band.high, [
+    '당신의 연애는 \'우정에서 연인으로\' 넘어가는 전환에 강합니다. 첫인상의 스파크보다 여러 번 겹쳐진 대화 속에서 상대가 어느 순간 \'이 사람\'을 발견하게 되는 경로이며, 깊은 관계를 길게 이어가는 여중군자의 결이 자리합니다.',
+  ]),
+  _Frag(_highOf(Attribute.stability), [
+    '당신의 연애는 \'오래 지켜보고 한 번에 고르는\' 신중형입니다. @{palace_mate}이 단정하고 눈꼬리의 결이 차분해, 썸을 길게 끌지 않고 상대에 대한 확신이 서는 순간 방향을 확정해 버립니다.',
+  ]),
+  _Frag(_highOf(Attribute.trustworthiness), [
+    '당신의 연애는 \'믿음의 신호가 누적된 뒤에 문이 열리는\' 형태입니다. 분위기에 휩쓸려 시작하는 관계에는 좀처럼 마음이 기울지 않으며, 상대의 말과 행동이 일치하는지 지켜본 뒤에 비로소 진지한 단계로 들어섭니다.',
+  ]),
+  _Frag((f) => true, [
+    '당신의 연애는 \'시작은 느리되 시작한 뒤로는 깊이 들어가는\' 결입니다. 첫 만남에서 즉시 불이 붙기보다 같은 자리에 두세 번 마주친 뒤 관심의 불씨가 번져가는 유형이며, 결혼으로 이어지는 관계에서 특히 진가가 드러납니다.',
+  ]),
+];
+
+final List<_Frag> _romanceStrengthFemale = [
+  _Frag((f) => f.fired('P-08'), [
+    '@{palace_sex} 아래 누당의 윤기가 살아 있는 구조는 도화기(桃花期)가 규칙적으로 돌아오는 결로, 한 해에 한두 번 의미 있는 인연의 문이 열리는 주기성이 있습니다.',
   ]),
   _Frag((f) => f.fired('L-EL'), [
-    '측면에서 입술선이 앞으로 도톰하게 드러나는 상은 관상학에서 \'도화의 기색\'으로 읽히며, 상대의 시선이 당신의 입매에 오래 머무는 @{subtle} 매력을 만듭니다.',
+    '측면에서 입술선이 도톰하게 드러나는 상은 관상학에서 \'도화의 기색\'이며, 상대의 시선이 당신의 입매에 오래 머무는 @{subtle} 매력을 만듭니다.',
   ]),
   _Frag((f) => true, [
     '당신의 연애는 관계의 \'양\'보다 \'질\'이 우선이며, 맞는 사람 한 명을 만났을 때의 밀도가 평균을 크게 뛰어넘는 결을 가졌습니다.',
   ]),
 ];
 
-final List<_Frag> _romanceShadow = [
+final List<_Frag> _romanceShadowFemale = [
   _Frag((f) => f.bandOf(Attribute.attractiveness) == _Band.high && f.bandOf(Attribute.stability) != _Band.high, [
-    '다만 당신의 연애에는 \'설렘의 유통기한\' 문제가 되풀이됩니다. 시작점의 스파크가 강한 만큼 관계가 일상의 단계로 접어드는 6개월에서 1년 사이 권태가 먼저 찾아오며, 권태 해결 설계가 부족할 때 새로운 자극 쪽으로 시선이 흘러 좋은 사람을 놓치는 패턴이 쌓일 수 있습니다. 관상학에서 \'화력은 강하되 근력이 약한 상\'의 전형적 경고입니다.',
+    '다만 \'설렘의 유통기한\' 문제가 따릅니다. 시작의 화력이 강한 만큼 권태가 먼저 찾아오기 쉬우며, 그 공백을 덮으려 다음 상대를 미리 떠올리는 결이 들어서면 좋은 인연을 놓치는 패턴이 쌓일 수 있습니다.',
   ]),
   _Frag((f) => f.bandOf(Attribute.emotionality) == _Band.high && f.bandOf(Attribute.trustworthiness) != _Band.high, [
-    '다만 당신의 연애는 \'혼자 앞서 나가는\' 위험을 안고 있습니다. 상대의 신호를 깊게 해석하는 감수성이 때로는 신호가 아닌 것까지 신호로 읽어내어, 상대가 아직 정리하지 못한 감정을 당신이 먼저 미래로 번역해버리는 일이 생깁니다. 속도의 낙차가 상대에겐 부담으로 돌아오기 쉽습니다.',
-  ]),
-  _Frag((f) => f.bandOf(Attribute.stability) == _Band.high && f.bandOf(Attribute.sociability) != _Band.high, [
-    '다만 당신의 연애는 \'고르는 풀 자체가 좁다\'는 한계에 부딪히기 쉽습니다. 상대를 신중히 검증하는 기질이 강점인 동시에 새 사람을 만나는 자리에 잘 들어서지 않는 기질로 이어지며, 좋은 인연이 지나가는 시기에도 모르고 지나칠 수 있습니다.',
+    '다만 \'혼자 앞서 나가는\' 위험이 있습니다. 상대의 신호를 깊게 해석하는 감수성이 때로는 신호가 아닌 것까지 신호로 읽어, 상대가 아직 정리하지 못한 감정을 당신이 먼저 미래로 번역해 속도의 낙차를 만들기 쉽습니다.',
   ]),
   _Frag((f) => true, [
-    '다만 당신의 연애는 \'결정적 장면에서 머뭇거리는\' 약점이 따릅니다. 상대의 신호를 감지한 상태에서도 \'조금 더 확신이 들면\' 하며 움직이지 않다가 다른 적극적 경쟁자에게 자리를 넘기는 시나리오가 되풀이되기 쉽습니다.',
+    '다만 당신의 연애는 \'결정 지연\'의 그림자가 있습니다. 상대의 신호를 감지한 상태에서도 조금만 더 확인하려다 적극적 경쟁자에게 자리를 넘기는 시나리오가 되풀이되기 쉬우며, 완벽한 증거는 결혼 뒤에도 오지 않습니다.',
   ]),
 ];
 
-final List<_Frag> _romanceAdvice = [
+final List<_Frag> _romanceAdviceFemale = [
   _Frag((f) => true, [
-    '연애운을 살리는 @{path_word}은 셋입니다. 첫째, \'끌리는 상대\'와 \'일상에 맞는 상대\'가 다를 수 있음을 인정하십시오. 매력 축과 적합도 축을 따로 평가하는 훈련이 평생 연애의 질을 결정합니다. 둘째, 권태 구간을 피하려 하지 말고 통과할 설계를 준비하십시오. 공동 프로젝트·여행·신체 리듬 변화를 한 분기에 하나씩 배치하는 것만으로 구간의 풍경이 달라집니다. 셋째, 이별의 방식을 다듬으십시오. 관상학에서도 이별의 품격이 다음 @{fate_word}의 결을 결정합니다.',
+    '연애운을 살리는 @{path_word}은 셋입니다. 첫째, \'끌리는 사람\'과 \'일상에 맞는 사람\'이 다를 수 있음을 인정하십시오. 상대의 화려함과 꾸준함을 별개로 저울질하는 훈련이 평생 연애의 질을 결정합니다. 둘째, 비교의 습관이 결정 타이밍을 놓치게 하지 않도록 스스로 \'선택 기한\'을 두십시오. 셋째, 이별의 방식이 다음 @{fate_word}의 결을 결정합니다. 품위 있는 마무리가 여성 관상의 가장 큰 자산이며, 남는 사람은 그 마지막 장면으로 당신을 기억합니다.',
   ]),
 ];
 
-final List<_BeatPool> _romanceBeats = [
-  _romanceOpening,
-  _romanceStrength,
-  _romanceShadow,
-  _romanceAdvice,
+final List<_BeatPool> _romanceBeatsFemale = [
+  _romanceOpeningFemale,
+  _romanceStrengthFemale,
+  _romanceShadowFemale,
+  _romanceAdviceFemale,
 ];
 
-// ═══ 5. 바람기 ═══
+// ═══ 5. 바람기 — 남/여 분리 pool ═══
+//
+// 남성: 외부 자극·에너지 과잉·상황형. 발현 조건 = 거리와 반복.
+// 여성: 감정 결핍·공감 부족·정서형. 발현 조건 = 일상의 공백.
 
-final List<_Frag> _philanOpening = [
+// ─── 5-M. 바람기 (남) ─────────────────────────────────────────────────
+
+final List<_Frag> _philanOpeningMale = [
   _Frag((f) => f.bandOf(Attribute.sensuality) == _Band.high && f.bandOf(Attribute.stability) == _Band.low, [
-    '당신은 관상학이 가장 주의 깊게 지목하는 \'경계 넘기 쉬운\' 유형에 가깝습니다. 한 사람과의 관계가 안정기에 접어든 뒤에도 낯선 결의 이성이 시야에 들어올 때 관심의 축이 @{intense} 쉽게 옮겨 가는 구조입니다. 현재 파트너를 향한 @{heart}이 진심인 상태에서도 다른 가능성이 열린 자리에 서면 \'잠깐이라면 괜찮을 것\' 같은 합리화가 먼저 작동합니다.',
-    '@{palace_mate}의 문이 한 방향으로 닫혀 있지 않은 @{structure}입니다. 단순한 호기심이 아니라 기질 자체의 예민함이며, 직장 내 지속적 접촉·옛 인연의 재등장·장기 출장처럼 \'거리와 반복\' 조건이 갖추어지는 시기에 @{intense} 흔들립니다.',
+    '당신은 관상학이 \'외부 자극에 열린 상\'으로 지목하는 유형에 가깝습니다. 관계가 안정기에 접어든 뒤에도 낯선 결의 이성이 시야에 들어올 때 관심의 축이 옮겨 가는 결이며, 직장 내 지속적 접촉·옛 인연의 재등장·장기 출장처럼 \'거리와 반복\' 조건이 겹치는 시기에 @{intense} 흔들립니다.',
   ]),
   _Frag((f) => f.bandOf(Attribute.sensuality) == _Band.high && f.bandOf(Attribute.trustworthiness) == _Band.high, [
-    '당신은 \'유혹은 자주 들어오지만 외도까지는 가지 않는\' 유형입니다. @{peach}의 기운과 신의(信義)의 골격이 한 얼굴에 공존하는 @{rare} @{structure}로, 당신을 흔들려는 사람이 끊이지 않아도 @{heart} 속에 그어둔 선이 단단해 결국 상대를 돌아가게 만듭니다.',
-    '주변에서 \'저 사람이면 당연히 바람피울 것 같은데 의외로 안 피운다\'는 평이 따라붙는 @{structure}이며, 이 평가 자체가 직업·사회 자본의 신뢰도를 누적해 주는 의외의 자산이 됩니다.',
+    '당신은 \'유혹은 자주 들어오지만 외도까지는 가지 않는\' 유형입니다. @{peach}의 기운과 신의(信義)의 골격이 한 얼굴에 공존하는 @{rare} 결로, 흔들려는 사람이 끊이지 않아도 스스로 그어둔 선이 단단해 결국 상대를 돌아가게 만듭니다.',
   ]),
   _Frag((f) => f.bandOf(Attribute.libido) == _Band.high && f.bandOf(Attribute.stability) != _Band.high, [
-    '당신의 외도 위험은 감정이나 정서보다 \'에너지의 과잉\'에서 비롯됩니다. @{palace_sex}의 열기가 평소에도 누르기 힘든 상으로, 한 사람과의 관계에서 얻는 만족의 총량보다 몸 안에 남은 에너지의 총량이 더 많은 유형입니다. 이 과잉이 일·운동·창작으로 흘러갈 때는 아무 일도 일어나지 않지만, 출구가 막히는 시기에는 가장 가까운 위험한 선택지로 방향을 틀기 쉽습니다.',
+    '당신의 외도 위험은 감정보다 \'에너지의 과잉\'에서 옵니다. 한 관계에서 얻는 만족 총량보다 몸 안에 남은 에너지 총량이 많은 결이어서, 출구가 막히는 시기엔 가장 가까운 위험한 선택지로 방향을 틀기 쉬운 구조입니다.',
   ]),
   _Frag(_highPair(Attribute.stability, Attribute.trustworthiness), [
-    '당신의 얼굴에는 외도의 기색이 @{faint} 옅은 편입니다. @{mount_n}이 단정하고 @{palace_mate}이 고요한 상으로, 한 번 맺은 관계에 뿌리를 내리면 옆을 돌아보지 않는 정절의 기질이 @{deep} 박혀 있습니다. 복잡한 삼각관계가 벌어져도 당신이 먼저 자리를 정리하고 본래 관계로 돌아서는 사람이 됩니다.',
-  ]),
-  _Frag((f) => f.bandOf(Attribute.emotionality) == _Band.high && f.bandOf(Attribute.stability) != _Band.high, [
-    '당신의 외도 경로는 \'몸보다 먼저 감정이 새는\' 정서 주도형입니다. 눈매에 정(情)이 쉽게 어리는 상으로, 현재 파트너에게 이해받지 못한다고 느끼는 시기에 자기 이야기를 들어주는 다른 이성 앞에서 관계의 경계가 @{subtle} 녹아내리는 패턴이 반복되기 쉽습니다.',
+    '당신의 얼굴에는 외도의 기색이 @{faint} 옅습니다. @{mount_n}이 단정하고 @{palace_mate}이 고요한 상으로, 한 번 맺은 관계에 뿌리를 내리면 옆을 돌아보지 않는 정절의 기질이 @{deep} 박혀 있습니다.',
   ]),
   _Frag((f) => true, [
-    '당신의 바람기는 평소엔 잠들어 있다가 \'특정 조합이 겹칠 때\'만 깨어나는 상황 의존형입니다. @{peach}가 얼굴 전반에 퍼져 있지 않고 국소적으로만 서린 상으로, 평범한 일상에서는 모범적 파트너로 보이지만 피로·외로움·술자리·장기 출장이 겹치는 시기에 평소와 다른 판단을 내리기 쉽습니다.',
+    '당신의 바람기는 평소엔 잠들어 있다가 \'특정 조합이 겹칠 때\'만 깨어나는 상황 의존형입니다. 평범한 일상에선 모범적 파트너로 보이지만 피로·외로움·술자리·장기 출장이 겹치는 시기엔 평소와 다른 판단을 내리기 쉬운 결입니다.',
   ]),
 ];
 
-final List<_Frag> _philanStrength = [
+final List<_Frag> _philanStrengthMale = [
   _Frag((f) => f.fired('O-EM') && f.bandOf(Attribute.stability) != _Band.high, [
-    '표정 변화가 풍부한 @{structure}는 외도 상황에서 \'숨기는 연기\'가 약한 결로 읽히며, 실제 경계를 넘었을 때 파트너에게 일찍 들키는 발각 패턴으로 이어지기 쉽습니다.',
+    '표정 변화가 풍부한 구조는 외도 상황에서 \'숨기는 연기\'가 약한 결로 읽히며, 경계를 넘었을 때 파트너에게 일찍 들키는 발각 패턴으로 이어지기 쉽습니다.',
   ]),
   _Frag(_highOf(Attribute.stability), [
-    '관상학이 당신의 정절을 신뢰하는 이유는 외부의 유혹이 없어서가 아니라, 유혹을 인지한 뒤 스스로 걸음을 멈추는 @{heart}의 장치가 @{intense} 훈련되어 있기 때문입니다.',
+    '관상학이 당신의 정절을 신뢰하는 이유는 유혹이 없어서가 아니라, 유혹을 인지한 뒤 스스로 걸음을 멈추는 @{heart}의 장치가 @{intense} 훈련되어 있기 때문입니다.',
   ]),
   _Frag((f) => true, [
-    '당신의 외도 기질이 작동하려면 감정·상황·에너지 세 축이 동시에 어긋나야 하며, 그 조합이 언제 찾아오는지를 아는 것이 바람기를 관리하는 첫 출발점입니다.',
+    '당신의 외도 기질이 작동하려면 감정·상황·에너지 세 축이 동시에 어긋나야 하며, 그 조합이 언제 찾아오는지 아는 것이 관리의 첫 출발점입니다.',
   ]),
 ];
 
-final List<_Frag> _philanShadow = [
+final List<_Frag> _philanShadowMale = [
   _Frag((f) => f.bandOf(Attribute.sensuality) == _Band.high || f.bandOf(Attribute.libido) == _Band.high, [
-    '다만 이 기질이 방치될 때 치러야 할 대가는 관상학이 가장 엄중히 경고하는 지점입니다. 한 번의 경계 넘기가 남기는 죄책감은 배우자와의 일상 전체에 그늘을 드리우고, 그 그늘을 덮기 위한 또 다른 거짓이 쌓이는 이중생활의 피로가 본인의 건강과 일의 집중력을 먼저 갉아먹기 시작합니다. 외도의 비용은 관계의 붕괴로 끝나지 않으며, 자녀가 있으면 세대를 건너 감정의 상처가 전이된다는 것이 이 상을 보수적으로 해석하는 이유입니다.',
-    '다만 외도 경험이 반복되면 관상 자체에 \'탁기(濁氣)\'가 서서히 끼기 시작해 다른 영역의 운까지 함께 흐려지는 연쇄가 관찰됩니다. 관상학은 외도를 도덕이 아니라 \'기운의 누수\'로 설명합니다.',
+    '다만 경계를 한 번 넘으면 치러야 할 대가는 관상학이 가장 엄중히 경고합니다. 한 번의 실수가 남기는 죄책감은 배우자와의 일상 전체에 그늘을 드리우고, 그 그늘을 덮기 위한 또 다른 거짓이 이중생활의 피로로 누적되어 건강과 일의 집중력을 먼저 갉아먹습니다.',
+  ]),
+  _Frag((f) => true, [
+    '다만 \'상황형 바람기\'는 당사자가 가장 방심한 시점에 찾아옵니다. 이성의 경계가 아니라 상황의 경계를 설계해 두지 않으면 \'원래 이런 사람 아닌데\'로 시작된 한 번의 실수가 회복 불가능한 파장을 남기기 쉽습니다.',
+  ]),
+];
+
+final List<_Frag> _philanAdviceMale = [
+  _Frag((f) => true, [
+    '바람기를 다루는 @{path_word}은 셋입니다. 첫째, 자신의 기질을 정직하게 인정하십시오. \'나는 절대 안 그런다\'는 부정이 사고의 전조이며, 위험 지대를 아는 사람만이 그 지대를 비껴 지나갈 수 있습니다. 둘째, 유혹을 이기려 하지 말고 \'유혹이 들어올 자리\'를 구조적으로 줄이십시오 — 둘만 되기 쉬운 출장·술자리·늦은 동선을 셋 이상의 구조로 바꾸는 것만으로 사고의 대부분이 사라집니다. 셋째, 관계 안의 결을 유지하는 투자를 외도 방지의 비용으로 환산하십시오.',
+  ]),
+];
+
+final List<_BeatPool> _philanBeatsMale = [
+  _philanOpeningMale,
+  _philanStrengthMale,
+  _philanShadowMale,
+  _philanAdviceMale,
+];
+
+// ─── 5-F. 바람기 (여) ─────────────────────────────────────────────────
+
+final List<_Frag> _philanOpeningFemale = [
+  _Frag((f) => f.bandOf(Attribute.emotionality) == _Band.high && f.bandOf(Attribute.stability) != _Band.high, [
+    '당신의 외도 경로는 \'몸보다 감정이 먼저 새는\' 정서 주도형입니다. 눈매에 정(情)이 쉽게 어리는 상으로, 현재 파트너에게 이해받지 못한다고 느끼는 시기에 자기 이야기를 들어주는 다른 이성 앞에서 관계의 경계가 @{subtle} 녹아내리는 패턴이 반복되기 쉽습니다.',
+  ]),
+  _Frag((f) => f.bandOf(Attribute.sensuality) == _Band.high && f.bandOf(Attribute.trustworthiness) == _Band.high, [
+    '당신은 \'유혹은 있지만 선을 지키는\' 유형입니다. @{peach}의 기운과 신의(信義)가 한 얼굴에 공존하는 결로, 흔들리는 마음을 느끼면서도 이를 정리하여 본래 자리로 돌아오는 @{heart}의 중심이 단단합니다.',
+  ]),
+  _Frag((f) => f.bandOf(Attribute.sensuality) == _Band.high && f.bandOf(Attribute.stability) != _Band.high, [
+    '당신은 관상학이 주의 깊게 지목하는 \'감정 결핍에 열린 상\'에 가깝습니다. 일상의 권태와 공감 부족이 쌓이는 시기에 낯선 이성의 경청 앞에서 관계의 경계가 @{subtle} 녹아내리기 쉬운 결입니다.',
+  ]),
+  _Frag(_highPair(Attribute.stability, Attribute.trustworthiness), [
+    '당신의 얼굴에는 외도의 기색이 @{faint} 옅습니다. @{palace_mate}이 고요하고 눈매가 단정한 상으로, 한 번 맺은 관계에 정(情)을 깊이 두면 옆을 돌아보지 않는 숙덕(淑德)의 결이 박혀 있습니다.',
+  ]),
+  _Frag((f) => true, [
+    '당신의 바람기는 \'감정의 공백\'이 쌓일 때만 깨어나는 정서 이중형입니다. 파트너와의 대화가 줄고 일상이 반복되는 시기에 새 공감 제공자에게 이끌리는 흐름이 반복되기 쉬운 결입니다.',
+  ]),
+];
+
+final List<_Frag> _philanStrengthFemale = [
+  _Frag(_highOf(Attribute.emotionality), [
+    '감정의 결을 @{deep} 읽는 기질은 파트너와의 소통에서 가장 큰 자산이며, 관계 안에서 감정의 출구를 먼저 만들 때 외도 경로 자체가 닫힙니다.',
   ]),
   _Frag(_highOf(Attribute.stability), [
-    '다만 지나치게 강한 절제는 관계 안에서 \'결을 잃는\' 또 다른 위험을 낳습니다. 외부 유혹에 흔들리지 않는 만큼 현재 파트너와의 관계 안에서도 새로운 자극을 만드는 노력이 함께 약해지면, 지킴만 있고 결이 없는 관계가 오히려 상대 쪽에 외도의 빌미를 만들 수 있습니다.',
+    '당신의 정절은 기질이 아니라 \'정이 두터워서\' 지켜지는 결입니다. 한 번 준 마음을 거두지 않는 여중군자의 결이 외부 결박보다 @{deep} 단단합니다.',
   ]),
   _Frag((f) => true, [
-    '다만 \'상황형 바람기\'는 당사자가 가장 방심한 시점에 찾아옵니다. 이성의 경계가 아니라 상황의 경계를 설계해 두지 않으면, \'원래 이런 사람 아닌데\'로 시작된 한 번의 실수가 회복 불가능한 파장을 남기기 쉽습니다.',
+    '당신의 외도 경로는 몸이 아니라 마음에서 시작됩니다. 감정의 채움이 어디서 오는지를 아는 것이 관계의 경계를 지키는 첫 설계입니다.',
   ]),
 ];
 
-final List<_Frag> _philanAdvice = [
+final List<_Frag> _philanShadowFemale = [
+  _Frag((f) => f.bandOf(Attribute.sensuality) == _Band.high || f.bandOf(Attribute.libido) == _Band.high, [
+    '다만 감정이 한 번 옮겨 가면 \'관계의 이중화\'로 치닫는 속도가 빠릅니다. 남성의 상황형 바람기와 달리 여성의 정서형 바람기는 끊어내는 과정이 더 고통스럽고, 주변 관계 전반(자녀·가족·친구)의 결까지 함께 흔들기 쉽습니다.',
+  ]),
   _Frag((f) => true, [
-    '바람기를 다루는 @{path_word}은 셋입니다. 첫째, 자신의 기질을 정직하게 인정하십시오. \'나는 절대 안 그런다\'는 부정이 가장 큰 사고의 전조이며, 위험 지대를 아는 사람만이 그 지대를 비껴 지나갈 수 있습니다. 둘째, 유혹 자체를 이기려 하지 말고 \'유혹이 들어올 자리\'를 구조적으로 줄이십시오. 둘이 되기 쉬운 출장·술자리·늦은 동선을 셋 이상의 구조로 바꾸는 것만으로 사고의 대부분이 사라집니다. 셋째, 현재 관계의 \'살아 있는 결\'을 유지하는 투자를 외도 방지의 비용으로 환산하십시오. 관계 안에서 채워져 있는 사람은 바깥에서 채우려 하지 않습니다.',
+    '다만 \'감정의 배수로\'가 부족하면 외부 제공자에게 과하게 의존하게 되어, 작은 관심 하나에도 선을 넘어서는 판단이 들어서기 쉽습니다. 감정의 출구를 관계 안과 밖에 균형 있게 두는 설계가 관건입니다.',
   ]),
 ];
 
-final List<_BeatPool> _philanBeats = [
-  _philanOpening,
-  _philanStrength,
-  _philanShadow,
-  _philanAdvice,
+final List<_Frag> _philanAdviceFemale = [
+  _Frag((f) => true, [
+    '바람기를 다루는 @{path_word}은 셋입니다. 첫째, 관계 안의 감정 대화를 의식적으로 보충하십시오. 여성 관상에서 외도는 몸이 아니라 감정의 공백에서 시작되므로 \'말하지 않는 시간\'이 길어지면 위험 구간이 열립니다. 둘째, 둘만의 정서 공유가 쉽게 만들어지는 자리 — 반복되는 1:1 만남·늦은 통화·개인 메신저 — 를 구조적으로 줄이십시오. 셋째, 관계 밖에서 감정을 풀 수 있는 우정·취미·상담의 출구를 여러 갈래로 열어 두십시오.',
+  ]),
 ];
 
-// ═══ 6. 색기 ═══
+final List<_BeatPool> _philanBeatsFemale = [
+  _philanOpeningFemale,
+  _philanStrengthFemale,
+  _philanShadowFemale,
+  _philanAdviceFemale,
+];
 
-final List<_Frag> _sensualOpening = [
+// ═══ 6. 관능도 — 남/여 분리 pool ═══
+//
+// (구 '색기' 섹션명을 attribute.dart::labelKo 와 일치시켜 '관능도' 로 변경.)
+// 오랜 관계에서 몸에 새겨지는 농밀한 결, 음주·파티의 기(氣) 누수 경고,
+// 만족의 선이 그어질 때까지 지속되는 욕구 — 관상학 전통의 엄중한 진단 + 실질 조언.
+
+// ─── 6-M. 관능도 (남) ─────────────────────────────────────────────────
+
+final List<_Frag> _sensualOpeningMale = [
   _Frag(_highPair(Attribute.libido, Attribute.sensuality), [
-    '당신의 색기는 관상학이 \'양귀비상(楊貴妃相)\'으로 분류하는 농염한 유형입니다. 누당(淚堂)에 물기가 차고 입술에 붉은 기색이 도는 상으로, 화려한 대낮보다 한 단계 낮은 실내 조명 아래에서 색의 농도가 가장 @{intense} 드러납니다. 여러 사람에게 평등하게 퍼지지 않고 당신이 마음을 내준 특정 시선 안에서만 순식간에 짙어지는 선택적 발산 구조입니다.',
-    '@{peach}가 @{deep} 배어 있는 @{structure}입니다. 잔을 내려놓는 속도, 목걸이를 만지작거리는 손끝, 문장 사이의 침묵 같은 사소한 행동 하나에 색향이 실려 있어 당신을 오래 지켜본 사람일수록 오히려 더 @{intense} 매료되는 지속형 색기입니다.',
+    '당신의 관능은 관상학이 \'양기(陽氣) 농밀상\'으로 분류하는 지속형입니다. 오랜 세월 한 자리에서 쌓인 농밀한 기억이 몸에 새겨져, 해를 거듭할수록 욕구의 결이 오히려 @{intense} 짙어지는 유형입니다. 근육의 밀도·호흡의 리듬·체온의 언어로 발산되며, 한 상대에게 집중될수록 폭이 넓어지는 역설적 구조입니다.',
   ]),
-  _Frag((f) => f.bandOf(Attribute.sensuality) == _Band.high && f.bandOf(Attribute.attractiveness) == _Band.high, [
-    '당신의 색기는 관상학에서 \'여우상(狐相)\'의 결에 가까운 @{subtle} 유형입니다. 눈꼬리가 살짝 올라가고 입꼬리의 움직임이 풍부한 구조로, 직접적인 신호 대신 암시와 여백으로 상대를 흔드는 방식의 색기입니다.',
-    '시선을 정면으로 주지 않고 잠깐 비껴주는 각도, 말을 멈추고 웃음 끝을 흘리는 간격, 고개를 살짝 기울일 때 드러나는 목선의 선택된 노출에 색기의 본체가 숨어 있으며, 상대는 당신이 아무 말도 하지 않았는데도 혼자 상상 속에서 먼 길을 다녀오게 됩니다.',
+  _Frag((f) => f.bandOf(Attribute.libido) == _Band.high && f.bandOf(Attribute.attractiveness) == _Band.high, [
+    '당신의 관능은 \'풍채 주도형\'입니다. 어깨선·등의 결·준두의 기운이 받치는 상으로, 외형의 단정함이 아니라 존재 전체에서 뿜어져 나오는 밀도가 상대를 끌어당깁니다. 말수가 줄어드는 순간에 오히려 농도가 @{intense} 짙어지는 결입니다.',
   ]),
   _Frag((f) => f.bandOf(Attribute.libido) == _Band.high && f.bandOf(Attribute.attractiveness) != _Band.high, [
-    '당신의 색기는 \'해당화상(海棠花相)\'에 가까운 직선적이고 원색적인 유형입니다. @{palace_sex}의 기색이 감추어지지 않는 상으로, 우회와 암시 없이 당신의 존재 자체가 상대에게 @{intense} 즉각적인 온도로 전달되는 구조입니다. 기교 없는 직진성이 오히려 색기의 진정성을 만드는 결입니다.',
+    '당신의 관능은 직선적이고 원초적인 \'해당화상(海棠花相)\'의 결입니다. @{palace_sex}의 기색이 감추어지지 않는 상으로, 우회와 암시 없이 존재 자체가 상대에게 @{intense} 즉각적인 온도로 전달되는 유형이며, 기교 없는 직진성이 오히려 진정성을 만듭니다.',
   ]),
-  _Frag((f) => f.bandOf(Attribute.attractiveness) == _Band.high && f.bandOf(Attribute.sensuality) != _Band.high, [
-    '당신의 색기는 \'월궁상(月宮相)\'에 가까운 기품 중심의 결입니다. 골격의 비례와 오관의 조화가 먼저 눈에 들어오는 상으로, 색 자체가 강하기보다 정돈된 기품 안에 @{faint} 스며 있는 농도가 색기의 성격을 결정합니다. 가까이 다가갈수록 오히려 넘지 말아야 할 선이 먼저 느껴지며, 그 거리감이 색기의 본체로 작동합니다.',
+  _Frag((f) => f.bandOf(Attribute.attractiveness) == _Band.high && f.bandOf(Attribute.libido) != _Band.high, [
+    '당신의 관능은 \'절제된 기품상\'의 결입니다. 골격의 균형과 오관의 정돈이 먼저 드러나는 상으로, 농도 자체는 강하지 않되 정돈된 기품 안에 @{faint} 스며 있는 밀도가 성격을 결정합니다. 상대가 쉬이 다가오지 못하는 거리감이 오히려 관능의 축이 됩니다.',
+  ]),
+  _Frag((f) => true, [
+    '당신의 관능은 \'잠재 농밀상\'의 결입니다. 평소엔 드러나지 않다가 신뢰한 상대 앞에서만 깊이 열리는 유형으로, 그 한 장면의 밀도가 상대의 기억에 오래 새겨지는 집중형 구조를 가졌습니다.',
+  ]),
+];
+
+final List<_Frag> _sensualStrengthMale = [
+  _Frag((f) => f.fired('O-PH1'), [
+    '인중이 @{strong_adj} 자리잡은 구조는 관상학에서 \'수분기(水分氣)\'가 충만한 상으로, 오랜 관계에서 몸으로 쌓인 기억이 밤마다의 결을 @{intense} 진하게 되살리는 기질을 뒷받침합니다.',
+  ]),
+  _Frag((f) => f.nodeZ('nose') >= 0.8, [
+    '@{mount_c}의 기운이 살아 있는 구조는 원초적 집중력의 증거입니다. 만족의 선이 스스로 그어지기 전엔 멈추지 않는 지속형 욕구가 이 골상에 @{deep} 박혀 있습니다.',
+  ]),
+  _Frag((f) => true, [
+    '당신의 관능은 단발로 끝나지 않습니다. 스스로 만족의 선이 분명히 그어질 때까지 몇 차례 물결처럼 이어지는 결로, 속도가 아니라 밀도가 만족의 기준이 됩니다.',
+  ]),
+];
+
+final List<_Frag> _sensualShadowMale = [
+  _Frag((f) => f.bandOf(Attribute.sensuality) == _Band.high || f.bandOf(Attribute.libido) == _Band.high, [
+    '다만 당신의 관능에는 분명한 누수 통로가 있습니다. 잦은 음주와 파티 자리는 기(氣)를 빠르게 새게 하여, 정작 관계 안에서 필요한 집중력과 회복 속도가 먼저 흔들립니다. 관상학에서 이를 \'탁기(濁氣)가 새는 상\'이라 부르며, 40대 이후부터는 술자리 빈도가 관능의 상한을 가장 많이 결정합니다.',
+  ]),
+  _Frag((f) => true, [
+    '다만 당신의 관능은 \'과잉 방출\'에 취약합니다. 짧은 시기에 집중적으로 쏟으면 기가 빠져 낮의 집중력과 일의 판단력까지 흔들리는 연쇄로 이어지기 쉬우며, 속도보다 주기의 설계가 관능 수명을 결정합니다.',
+  ]),
+];
+
+final List<_Frag> _sensualAdviceMale = [
+  _Frag((f) => true, [
+    '관능을 오래 유지하는 @{path_word}은 셋입니다. 첫째, 음주와 파티 자리의 빈도를 의식적으로 줄여 기를 저장하십시오 — 관능의 상한은 수면의 질과 호흡의 안정에서 결정됩니다. 둘째, 상대의 만족까지 책임지는 방식이 오히려 자기 만족을 @{deep} 길게 만듭니다. 속도 조절이 장부의 덕목입니다. 셋째, 관능은 나이가 들수록 농도보다 깊이로 성격이 바뀝니다. 젊을 때의 강도가 아니라 연륜이 쌓인 밀도가 최대의 자산이 됩니다.',
+  ]),
+];
+
+final List<_BeatPool> _sensualBeatsMale = [
+  _sensualOpeningMale,
+  _sensualStrengthMale,
+  _sensualShadowMale,
+  _sensualAdviceMale,
+];
+
+// ─── 6-F. 관능도 (여) ─────────────────────────────────────────────────
+
+final List<_Frag> _sensualOpeningFemale = [
+  _Frag(_highPair(Attribute.libido, Attribute.sensuality), [
+    '당신의 관능은 관상학이 \'음기(陰氣) 농밀상\'으로 지목하는 지속형입니다. 오랜 시간 동안 함께 쌓인 침실의 기억이 온몸에 스며, 해를 거듭할수록 바라는 결이 @{intense} 짙어지는 유형입니다. 눈매의 결·목선의 곡선·손끝의 무게 같은 암묵적 언어로 발산되며, 감정과 몸이 겹쳐 반응하는 @{rare} 구조를 가졌습니다.',
+  ]),
+  _Frag((f) => f.bandOf(Attribute.sensuality) == _Band.high && f.bandOf(Attribute.attractiveness) == _Band.high, [
+    '당신의 관능은 암시와 여백으로 작동하는 \'여우상(狐相)\'의 결입니다. 정면 시선 대신 비껴주는 각도, 말 끝의 멈춤, 살짝 기울인 고개에 드러나는 목선에 관능의 본체가 숨어 있으며, 상대는 당신이 말하지 않은 부분에서 혼자 먼 길을 다녀오게 됩니다.',
+  ]),
+  _Frag((f) => f.bandOf(Attribute.libido) == _Band.high && f.bandOf(Attribute.attractiveness) != _Band.high, [
+    '당신의 관능은 직선적 원색의 \'해당화상(海棠花相)\'의 결입니다. @{palace_sex}의 기색이 감추어지지 않는 상으로, 우회와 암시 없이 존재 자체가 상대에게 @{intense} 즉각적인 온도로 전달되는 유형입니다.',
+  ]),
+  _Frag((f) => f.bandOf(Attribute.attractiveness) == _Band.high && f.bandOf(Attribute.libido) != _Band.high, [
+    '당신의 관능은 정돈된 기품 중심의 \'월궁상(月宮相)\'의 결입니다. 색의 강도가 아니라 골격과 오관의 균형 안에 @{faint} 스며 있는 농도가 성격을 결정하며, 가까워질수록 넘지 말아야 할 선이 먼저 느껴지는 거리감이 오히려 매력의 축으로 작동합니다.',
   ]),
   _Frag(_highOf(Attribute.emotionality), [
-    '당신의 색기는 \'정화상(情花相)\'에 가까운 감정 기반의 결입니다. 눈매에 정(情)이 어리는 상으로, 외형의 화려함이 아니라 감정의 깊이에서 피어오르는 색향이 상대의 마음을 붙잡는 유형입니다. 상대가 당신에게 끌리는 결정적 순간은 대개 당신이 울컥하거나 웃음을 참는 감정의 경계에서 발생합니다.',
+    '당신의 관능은 감정 기반의 \'정화상(情花相)\'의 결입니다. 눈매에 정(情)이 어리는 상으로, 외형의 화려함이 아니라 감정의 깊이에서 피어오르는 밀도가 상대의 마음을 붙잡으며, 울컥하거나 웃음을 참는 감정의 경계에서 결정적 농도가 발생합니다.',
   ]),
   _Frag((f) => true, [
-    '당신의 색기는 관상학이 \'암도화상(暗桃花相)\'이라 부르는 숨은 결의 유형입니다. 얼굴 전체에 색이 퍼져 있지 않고 특정 각도, 특정 빛, 특정 상대 앞에서만 순간적으로 피어나는 구조이며, 평소에는 색기의 기색이 거의 느껴지지 않다가 어느 저녁의 무방비한 한 장면에서 상대의 기억에 불로 새겨지는 종류입니다.',
+    '당신의 관능은 \'암도화상(暗桃花相)\'의 결입니다. 얼굴 전체에 색이 퍼져 있지 않고 특정 각도·특정 빛·특정 상대 앞에서만 순간적으로 피어나는 구조이며, 평소에는 거의 느껴지지 않다가 무방비한 한 장면에서 상대의 기억에 불로 새겨집니다.',
   ]),
 ];
 
-final List<_Frag> _sensualStrength = [
+final List<_Frag> _sensualStrengthFemale = [
   _Frag((f) => f.fired('O-EM') || f.fired('O-PH2'), [
-    '입의 윤곽과 인중의 결이 살아 있는 구조는 관상학에서 \'수분기(水分氣)\'가 풍부한 상으로, 목소리의 울림과 발음의 리듬이 색기의 또 다른 경로로 작동하는 유형임을 의미합니다.',
+    '입의 윤곽과 인중의 결이 살아 있는 구조는 \'수분기(水分氣)\'가 풍부한 상으로, 목소리의 낮은 울림·숨결의 간격·발음의 리듬이 관능의 또 다른 경로로 작동하는 유형임을 뒷받침합니다.',
   ]),
-  _Frag((f) => f.fired('L-EL'), [
-    '측면에서 입술선이 앞으로 도톰하게 드러나는 구조는 정면보다 프로필 각도에서 색의 농도가 @{intense} 진하게 기록되는 기질을 뜻합니다.',
-  ]),
-  _Frag((f) => f.nodeZ('eye') >= 0.8, [
-    '눈의 결이 또렷하게 살아 있는 상은 시선 하나로 상대에게 온도를 전달하는 힘이 강하며, 사진·영상 같은 기록 매체에서 특히 색기의 잔상이 강하게 남습니다.',
+  _Frag(_highOf(Attribute.emotionality), [
+    '감정의 공명이 몸의 반응으로 이어지는 결이어서, 감정적 결합이 깊을수록 관능의 농도가 오히려 @{intense} 올라가는 비약적 구조를 가졌습니다.',
   ]),
   _Frag((f) => true, [
-    '당신의 색기는 얼굴의 한 부위에 집중되지 않고 전체의 리듬으로 작동하는 @{structure}이며, 움직일 때 가장 @{intense} 드러납니다.',
+    '당신의 관능은 만족의 선이 서기 전엔 가라앉지 않는 결입니다. 서두르는 상대와 만나면 허기감이 누적되지만, 기다릴 줄 아는 상대 앞에선 물결처럼 반복되는 농도로 보답합니다.',
   ]),
 ];
 
-final List<_Frag> _sensualShadow = [
-  _Frag((f) => f.bandOf(Attribute.libido) == _Band.high || f.bandOf(Attribute.sensuality) == _Band.high, [
-    '다만 당신의 색기는 \'희소성의 원칙\'을 지키지 않으면 품격이 @{intense} 빠르게 깎입니다. 넓게 풀릴수록 한 사람 앞에서의 농도가 얇아지는 구조이며, 관상학에서 \'도화 과다\'는 매력의 총량이 늘어나는 것처럼 보이지만 실제로는 기의 누수로 읽힙니다.',
-    '다만 색기의 진폭이 큰 사람일수록 \'침착함의 훈련\'이 함께 따라오지 않으면 자기 매력에 스스로 취해버리는 함정에 빠지기 쉽습니다.',
+final List<_Frag> _sensualShadowFemale = [
+  _Frag((f) => f.bandOf(Attribute.sensuality) == _Band.high || f.bandOf(Attribute.libido) == _Band.high, [
+    '다만 당신의 관능에는 분명한 경계선이 필요합니다. 음주와 파티의 흥분은 잠깐의 들뜸을 주지만 다음 날 몸에 남는 허무함이 오히려 진짜 관능을 덮어버리며, 잦은 외부 자극은 관계 안에서 상대 앞에 섰을 때의 온도를 흐리게 만듭니다. 관상학에서는 이를 \'도화 과잉\'이라 부르며, 풀어낸 만큼 결이 엷어지는 구조로 읽힙니다.',
   ]),
-  _Frag(_highOf(Attribute.attractiveness), [
-    '다만 기품 중심의 색기는 \'다가올 수 없는 사람\'이라는 거리감이 관계의 진입 장벽을 @{intense} 높이기도 합니다. 당신에게 매력을 느낀 상대가 고백 직전에 \'내가 감당할 수 없을 것 같다\'며 물러서는 장면이 반복되기 쉬운 유형입니다.',
+  _Frag((f) => f.bandOf(Attribute.emotionality) == _Band.high && f.bandOf(Attribute.stability) != _Band.high, [
+    '다만 감정적 결핍이 쌓이는 시기엔 관능의 방향이 관계 밖으로 돌아서기 쉽습니다. 여성 관상에서 가장 위험한 구간은 \'침실에서의 권태\'가 아니라 \'감정 대화의 공백\'이며, 그 공백이 관능의 출구를 외부로 틀어버립니다.',
   ]),
   _Frag((f) => true, [
-    '다만 \'숨은 결\'의 색기는 당사자의 자각 부족이 가장 큰 약점이 됩니다. 상대가 이미 기울어져 있는 순간에도 \'내가 무슨\' 하며 한 발 물러서면, 결정적 장면에서 색기가 활용되지 못한 채 흘러가버립니다.',
+    '다만 관능의 기질이 자각 부족과 만나면 당신이 이미 기울어진 상대의 기대를 놓치기 쉽습니다. \'원하는 것을 말하는 언어\'의 훈련이 부족하면 만족의 선이 완성되기 전에 관계가 서둘러 끝나버립니다.',
   ]),
 ];
 
-final List<_Frag> _sensualAdvice = [
+final List<_Frag> _sensualAdviceFemale = [
   _Frag((f) => true, [
-    '색기를 품격 있게 쓰는 @{path_word}은 셋입니다. 첫째, 색이 가장 진해지는 환경의 구성 요소를 파악해 두십시오. 조명의 색온도, 음악의 템포, 옷감의 질감, 향의 계열까지 구체적으로 아는 사람만이 색기를 원하는 순간에 원하는 농도로 꺼낼 수 있습니다. 둘째, 색기는 절제와 방출의 대비에서 가장 @{intense} 작동합니다. 드러낼 자리와 덮을 자리를 구분하는 리듬을 당신이 먼저 설계하십시오. 셋째, 색기는 나이가 들수록 \'농도\'에서 \'깊이\'로 성격이 바뀝니다. 젊을 때의 색은 강도가 전부이지만, 연륜이 쌓인 색은 같은 농도라도 @{intense} 오래 남는 여운을 만들어냅니다.',
+    '관능을 오래 품격 있게 유지하는 @{path_word}은 셋입니다. 첫째, 음주와 군중 자리의 들뜸을 절제하십시오 — 외부의 흥분이 잦아질수록 관계 안의 농도가 얇아지는 구조이며, 다음 날의 허무함이 누적되면 진짜 관능이 묻힙니다. 둘째, \'원하는 것을 말하는 언어\'를 훈련하십시오. 만족의 선이 서기 전에는 욕구가 가라앉지 않는 결이므로, 침묵보다 섬세한 요청이 관능의 수명을 결정합니다. 셋째, 몸의 주기와 감정의 주기를 파트너와 함께 읽는 루틴을 만드십시오. 관능은 고립되었을 때가 아니라 공명하는 두 리듬이 맞물릴 때 가장 @{intense} 깊어집니다.',
   ]),
 ];
 
-final List<_BeatPool> _sensualBeats = [
-  _sensualOpening,
-  _sensualStrength,
-  _sensualShadow,
-  _sensualAdvice,
+final List<_BeatPool> _sensualBeatsFemale = [
+  _sensualOpeningFemale,
+  _sensualStrengthFemale,
+  _sensualShadowFemale,
+  _sensualAdviceFemale,
 ];
 
 // ═══ 7. 건강과 수명 ═══

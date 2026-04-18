@@ -128,7 +128,7 @@ void main() {
       final full = assembleLifeQuestions(report);
 
       expect(_countSections(full), 8,
-          reason: '30대 이상은 바람기·색기 포함 8개 섹션');
+          reason: '30대 이상은 바람기·관능도 포함 8개 섹션');
 
       final bodies = _sectionBodies(full);
       for (var i = 0; i < bodies.length; i++) {
@@ -137,23 +137,23 @@ void main() {
       }
     });
 
-    test('20대 여성: 색기 제외 7개 섹션', () {
+    test('20대 여성: 관능도 제외 7개 섹션', () {
       final report =
           _buildReport(gender: Gender.female, age: AgeGroup.twenties);
       final full = assembleLifeQuestions(report);
 
-      expect(_countSections(full), 7, reason: '20대는 바람기만 포함, 색기 제외');
+      expect(_countSections(full), 7, reason: '20대는 바람기만 포함, 관능도 제외');
       expect(full.contains('## 바람기'), isTrue);
-      expect(full.contains('## 색기'), isFalse);
+      expect(full.contains('## 관능도'), isFalse);
     });
 
-    test('10대: 바람기·색기 모두 제외 6개 섹션', () {
+    test('10대: 바람기·관능도 모두 제외 6개 섹션', () {
       final report = _buildReport(gender: Gender.male, age: AgeGroup.teens);
       final full = assembleLifeQuestions(report);
 
       expect(_countSections(full), 6);
       expect(full.contains('## 바람기'), isFalse);
-      expect(full.contains('## 색기'), isFalse);
+      expect(full.contains('## 관능도'), isFalse);
     });
 
     test('50대 이상: 8개 섹션 + 종합 조언에 덜어내기 맥락', () {

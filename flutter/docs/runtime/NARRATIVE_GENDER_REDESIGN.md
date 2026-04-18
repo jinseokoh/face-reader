@@ -1,9 +1,9 @@
 # 서술 엔진 성별 분기 전면 재설계 (Work Plan)
 
 **작성**: 2026-04-18
-**상태**: 📋 **계획 수립 완료, 구현 대기중**
+**상태**: ✅ **완료** (engine v3, 2026-04-18). 연애·바람기·관능도 남/여 분리 pool, 섹션 400~600자, '색기'→'관능도' 통일.
 **대상 파일**: `lib/domain/services/life_question_narrative.dart`
-**관련 문서**: [NARRATIVE.md](NARRATIVE.md) — 현 v2 엔진 설계
+**관련 문서**: [NARRATIVE.md](NARRATIVE.md) — v2 엔진 설계 (v3 에서 섹션 분리 추가)
 
 ---
 
