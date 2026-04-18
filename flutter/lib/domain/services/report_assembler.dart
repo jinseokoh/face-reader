@@ -16,7 +16,7 @@ class AssembledReport {
 
 AssembledReport assembleReport(FaceReadingReport report) {
   // Step 1: Collect text blocks for triggered rules
-  final triggeredIds = report.triggeredRules.map((r) => r.id).toSet();
+  final triggeredIds = report.rules.map((r) => r.id).toSet();
   final matchedBlocks = ruleTextBlocks.values
       .where((block) => triggeredIds.contains(block.ruleId))
       .toList();

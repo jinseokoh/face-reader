@@ -5,7 +5,6 @@ import 'package:face_reader/data/enums/attribute.dart';
 import 'package:face_reader/domain/models/compatibility_result.dart';
 import 'package:face_reader/domain/models/face_reading_report.dart';
 import 'package:face_reader/domain/services/archetype.dart';
-import 'package:face_reader/domain/services/attribute_derivation.dart';
 
 import 'package:face_reader/data/constants/compatibility_text_blocks.dart'
     as text_blocks;
@@ -264,8 +263,8 @@ CompatibilityResult evaluateCompatibility(
   // Step 5: Triggered Rules Cross-analysis (15%)
   final rulePairResults = <_RulePairResult>[];
   final ruleScore = _evaluateTriggeredRulesV2(
-    myReport.triggeredRules,
-    albumReport.triggeredRules,
+    myReport.rules,
+    albumReport.rules,
     rulePairResults,
   );
 
@@ -653,8 +652,8 @@ String? _spPairFallbackText(String myBase, String albumBase) {
 // ═══════════════════════════════════════════════════════════════
 
 double _evaluateTriggeredRulesV2(
-  List<TriggeredRule> myRules,
-  List<TriggeredRule> albumRules,
+  List<RuleEvidence> myRules,
+  List<RuleEvidence> albumRules,
   List<_RulePairResult> results,
 ) {
   double delta = 0;
@@ -697,7 +696,7 @@ String _buildSummaryV2(
   final buf = StringBuffer();
   final pairSeed = _pairSignature(myReport, albumReport);
   final ruleSimilarity = _ruleJaccardSimilarity(
-      myReport.triggeredRules, albumReport.triggeredRules);
+      myReport.rules, albumReport.rules);
   final importance = _rankByImportance(
       myReport.attributeScores, albumReport.attributeScores);
 
@@ -1310,7 +1309,7 @@ String? _subArchetypePhrase(Attribute archetype, String subKey) {
 }
 
 /// Jaccard similarity of two triggered rule sets (0~1)
-double _ruleJaccardSimilarity(List<TriggeredRule> a, List<TriggeredRule> b) {
+double _ruleJaccardSimilarity(List<RuleEvidence> a, List<RuleEvidence> b) {
   final setA = a.map((r) => r.id).toSet();
   final setB = b.map((r) => r.id).toSet();
   if (setA.isEmpty && setB.isEmpty) return 1.0;

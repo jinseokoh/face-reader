@@ -50,13 +50,6 @@ FaceReadingReport _synthetic(Random rng, Gender gender, AgeGroup age) {
   );
   final normalized = normalizeAllScores(breakdown.total, gender);
   final archetype = classifyArchetype(normalized);
-  final triggered = <TriggeredRule>[
-    ...breakdown.zoneRules,
-    ...breakdown.organRules,
-    ...breakdown.palaceRules,
-    ...breakdown.ageRules,
-    ...breakdown.lateralRules,
-  ];
   final metricResults = <String, MetricResult>{};
   for (final info in metricInfoList) {
     metricResults[info.id] = MetricResult(
@@ -74,10 +67,82 @@ FaceReadingReport _synthetic(Random rng, Gender gender, AgeGroup age) {
     timestamp: DateTime.now(),
     source: AnalysisSource.album,
     metrics: metricResults,
-    attributeScores: normalized,
+    nodeScores: _collectNodeScores(tree),
+    attributes: _buildAttributeEvidence(breakdown, normalized),
+    rules: _buildRuleEvidence(breakdown),
     archetype: archetype,
-    triggeredRules: triggered,
   );
+}
+
+Map<String, NodeEvidence> _collectNodeScores(NodeScore root) {
+  final out = <String, NodeEvidence>{};
+  void walk(NodeScore node) {
+    out[node.nodeId] = NodeEvidence(
+      nodeId: node.nodeId,
+      ownMeanZ: node.ownMeanZ ?? 0.0,
+      ownMeanAbsZ: node.ownMeanAbsZ ?? 0.0,
+      rollUpMeanZ: node.rollUpMeanZ ?? 0.0,
+      rollUpMeanAbsZ: node.rollUpMeanAbsZ ?? 0.0,
+    );
+    for (final child in node.children) {
+      walk(child);
+    }
+  }
+  walk(root);
+  return out;
+}
+
+Map<Attribute, AttributeEvidence> _buildAttributeEvidence(
+  AttributeBreakdown breakdown,
+  Map<Attribute, double> normalizedScores,
+) {
+  final out = <Attribute, AttributeEvidence>{};
+  for (final attr in Attribute.values) {
+    final base = breakdown.basePerNode[attr] ?? const <String, double>{};
+    final dist = breakdown.distinctiveness[attr] ?? 0.0;
+    final raw = breakdown.total[attr] ?? 0.0;
+    final norm = normalizedScores[attr] ?? 5.0;
+    final bag = <String, double>{};
+    for (final e in base.entries) {
+      if (e.value.abs() > 0.05) bag['node:${e.key}'] = e.value;
+    }
+    if (dist.abs() > 0.05) bag['distinctiveness'] = dist;
+    for (final r in [...breakdown.zoneRules, ...breakdown.organRules,
+        ...breakdown.palaceRules, ...breakdown.ageRules, ...breakdown.lateralRules]) {
+      final v = r.effects[attr];
+      if (v != null && v.abs() > 0.05) bag[r.id] = v;
+    }
+    final sorted = bag.entries.toList()
+      ..sort((a, b) => b.value.abs().compareTo(a.value.abs()));
+    out[attr] = AttributeEvidence(
+      rawTotal: raw,
+      normalizedScore: norm,
+      basePerNode: Map<String, double>.from(base),
+      distinctiveness: dist,
+      contributors: sorted.map((e) => Contributor(id: e.key, value: e.value)).toList(),
+    );
+  }
+  return out;
+}
+
+List<RuleEvidence> _buildRuleEvidence(AttributeBreakdown breakdown) {
+  final out = <RuleEvidence>[];
+  for (final r in breakdown.zoneRules) {
+    out.add(RuleEvidence(id: r.id, stage: 'zone', effects: r.effects));
+  }
+  for (final r in breakdown.organRules) {
+    out.add(RuleEvidence(id: r.id, stage: 'organ', effects: r.effects));
+  }
+  for (final r in breakdown.palaceRules) {
+    out.add(RuleEvidence(id: r.id, stage: 'palace', effects: r.effects));
+  }
+  for (final r in breakdown.ageRules) {
+    out.add(RuleEvidence(id: r.id, stage: 'age', effects: r.effects));
+  }
+  for (final r in breakdown.lateralRules) {
+    out.add(RuleEvidence(id: r.id, stage: 'lateral', effects: r.effects));
+  }
+  return out;
 }
 
 void main() {
@@ -264,6 +329,18 @@ void main() {
       // Mutate album by +0.2 on this attribute
       final mutated = Map<Attribute, double>.from(albumA.attributeScores);
       mutated[attr] = (base + 0.2).clamp(5.0, 10.0);
+      // Rebuild attributes with mutated normalized scores
+      final mutatedAttrs = <Attribute, AttributeEvidence>{};
+      for (final attr in Attribute.values) {
+        final orig = albumA.attributes[attr]!;
+        mutatedAttrs[attr] = AttributeEvidence(
+          rawTotal: orig.rawTotal,
+          normalizedScore: mutated[attr] ?? orig.normalizedScore,
+          basePerNode: orig.basePerNode,
+          distinctiveness: orig.distinctiveness,
+          contributors: orig.contributors,
+        );
+      }
       final albumB = FaceReadingReport(
         ethnicity: albumA.ethnicity,
         gender: albumA.gender,
@@ -271,9 +348,10 @@ void main() {
         timestamp: albumA.timestamp,
         source: albumA.source,
         metrics: albumA.metrics,
-        attributeScores: mutated,
+        nodeScores: albumA.nodeScores,
+        attributes: mutatedAttrs,
+        rules: albumA.rules,
         archetype: albumA.archetype,
-        triggeredRules: albumA.triggeredRules,
       );
       final resA = evaluateCompatibility(myA, albumA);
       final resB = evaluateCompatibility(myA, albumB);

@@ -30,58 +30,152 @@ class ReportPage extends ConsumerStatefulWidget {
   ConsumerState<ReportPage> createState() => _ReportPageState();
 }
 
-// ─── Attribute Bar ───
-class _AttributeBar extends StatelessWidget {
+// ─── Expandable Attribute Bar (tappable → shows contributors) ───
+class _ExpandableAttributeBar extends StatefulWidget {
   final Attribute attribute;
   final double score;
+  final AttributeEvidence? evidence;
 
-  const _AttributeBar({required this.attribute, required this.score});
+  const _ExpandableAttributeBar({
+    required this.attribute,
+    required this.score,
+    this.evidence,
+  });
+
+  @override
+  State<_ExpandableAttributeBar> createState() =>
+      _ExpandableAttributeBarState();
+}
+
+class _ExpandableAttributeBarState extends State<_ExpandableAttributeBar> {
+  bool _expanded = false;
 
   @override
   Widget build(BuildContext context) {
-    final fraction = (score / 10.0).clamp(0.0, 1.0);
+    final fraction = (widget.score / 10.0).clamp(0.0, 1.0);
 
-    return Row(
+    return Column(
       children: [
-        SizedBox(
-          width: 80,
-          child: Text(attribute.labelKo,
-              style: TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500)),
-        ),
-        Expanded(
-          child: Container(
-            height: 14,
-            decoration: BoxDecoration(
-              color: _Palette.shell,
-              borderRadius: BorderRadius.circular(7),
-            ),
-            child: FractionallySizedBox(
-              alignment: Alignment.centerLeft,
-              widthFactor: fraction,
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: _Palette.gradient,
-                  borderRadius: BorderRadius.circular(7),
+        GestureDetector(
+          onTap: () => setState(() => _expanded = !_expanded),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 80,
+                child: Text(widget.attribute.labelKo,
+                    style: TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500)),
+              ),
+              Expanded(
+                child: Container(
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: _Palette.shell,
+                    borderRadius: BorderRadius.circular(7),
+                  ),
+                  child: FractionallySizedBox(
+                    alignment: Alignment.centerLeft,
+                    widthFactor: fraction,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: _Palette.gradient,
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 36,
+                child: Text(widget.score.toStringAsFixed(1),
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                        color: _Palette.darkBrown,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold)),
+              ),
+              Icon(
+                _expanded
+                    ? Icons.keyboard_arrow_up
+                    : Icons.keyboard_arrow_down,
+                color: _Palette.amber,
+                size: 18,
+              ),
+            ],
           ),
         ),
-        const SizedBox(width: 8),
-        SizedBox(
-          width: 36,
-          child: Text(score.toStringAsFixed(1),
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                  color: _Palette.darkBrown,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold)),
-        ),
+        if (_expanded && widget.evidence != null)
+          _buildContributorList(widget.evidence!),
       ],
     );
+  }
+
+  Widget _buildContributorList(AttributeEvidence evidence) {
+    final top = evidence.contributors.take(5).toList();
+    if (top.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.only(left: 80, top: 4, bottom: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final c in top)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 120,
+                    child: Text(
+                      _contributorLabel(c.id),
+                      style: TextStyle(
+                          color: _Palette.warmBrown,
+                          fontSize: 13),
+                    ),
+                  ),
+                  Text(
+                    '${c.value >= 0 ? '+' : ''}${c.value.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      color: c.value >= 0
+                          ? _Palette.olive
+                          : _Palette.warmBrown,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _contributorLabel(String id) {
+    if (id.startsWith('node:')) {
+      const nodeLabels = {
+        'face': '얼굴 전체',
+        'forehead': '이마',
+        'glabella': '미간',
+        'eyebrow': '눈썹',
+        'eye': '눈',
+        'nose': '코',
+        'cheekbone': '광대',
+        'ear': '귀',
+        'philtrum': '인중',
+        'mouth': '입',
+        'chin': '턱',
+      };
+      final nodeId = id.substring(5);
+      return nodeLabels[nodeId] ?? nodeId;
+    }
+    if (id == 'distinctiveness') return '특이성 보정';
+    // Rule IDs: Z-01, O-NM1, P-CH, etc.
+    return id;
   }
 }
 
@@ -226,6 +320,62 @@ class _Palette {
     colors: [darkBrown, warmBrown, amber, sand, olive, lightOlive],
     stops: [0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
   );
+}
+
+// ─── Compact z-score bar for node tree ───
+class _NodeZBar extends StatelessWidget {
+  final double z;
+  const _NodeZBar({required this.z});
+
+  @override
+  Widget build(BuildContext context) {
+    final clamped = z.clamp(-2.0, 2.0);
+    final position = (clamped + 2.0) / 4.0;
+    return SizedBox(
+      height: 8,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final center = width / 2;
+          final markerX = position * width;
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned(
+                top: 1,
+                left: 0,
+                right: 0,
+                child: Container(
+                  height: 4,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(2),
+                    color: _Palette.shell,
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 0,
+                left: center - 0.5,
+                child: Container(width: 1, height: 6, color: _Palette.amber),
+              ),
+              Positioned(
+                top: 0,
+                left: (markerX - 3).clamp(0, width - 6),
+                child: Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: _Palette.darkBrown,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
 }
 
 class _ReportPageState extends ConsumerState<ReportPage> {
@@ -391,7 +541,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     );
   }
 
-  // ─── 10 Attribute Scores ───
+  // ─── 10 Attribute Scores (expandable with contributors) ───
   Widget _buildAttributeSection() {
     final sorted = report.attributeScores.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
@@ -407,10 +557,106 @@ class _ReportPageState extends ConsumerState<ReportPage> {
         const SizedBox(height: 12),
         ...sorted.map((e) => Padding(
               padding: const EdgeInsets.only(bottom: 10),
-              child: _AttributeBar(
-                  attribute: e.key, score: e.value),
+              child: _ExpandableAttributeBar(
+                attribute: e.key,
+                score: e.value,
+                evidence: report.attributes[e.key],
+              ),
             )),
+        const SizedBox(height: 16),
+        _buildNodeScoreSection(),
       ],
+    );
+  }
+
+  // ─── 14-node tree scores (transparency) ───
+  Widget _buildNodeScoreSection() {
+    if (report.nodeScores.isEmpty) return const SizedBox.shrink();
+
+    const nodeOrder = [
+      'face', 'upper', 'forehead', 'glabella', 'eyebrow',
+      'middle', 'eye', 'nose', 'cheekbone', 'ear',
+      'lower', 'philtrum', 'mouth', 'chin',
+    ];
+    const nodeLabels = {
+      'face': '얼굴',
+      'upper': '  상정',
+      'forehead': '    이마',
+      'glabella': '    미간',
+      'eyebrow': '    눈썹',
+      'middle': '  중정',
+      'eye': '    눈',
+      'nose': '    코',
+      'cheekbone': '    광대',
+      'ear': '    귀',
+      'lower': '  하정',
+      'philtrum': '    인중',
+      'mouth': '    입',
+      'chin': '    턱',
+    };
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _Palette.cream,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _Palette.shell),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('부위별 균형 (14-node tree)',
+              style: TextStyle(
+                  color: _Palette.darkBrown,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold)),
+          const SizedBox(height: 10),
+          for (final nodeId in nodeOrder)
+            if (report.nodeScores.containsKey(nodeId))
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 80,
+                      child: Text(
+                        nodeLabels[nodeId] ?? nodeId,
+                        style: TextStyle(
+                          color: _Palette.darkBrown,
+                          fontSize: 14,
+                          fontWeight: nodeId == 'face' ||
+                                  nodeId == 'upper' ||
+                                  nodeId == 'middle' ||
+                                  nodeId == 'lower'
+                              ? FontWeight.w600
+                              : FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: _NodeZBar(
+                        z: report.nodeScores[nodeId]!.rollUpMeanZ,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    SizedBox(
+                      width: 44,
+                      child: Text(
+                        report.nodeScores[nodeId]!.rollUpMeanZ
+                            .toStringAsFixed(2),
+                        textAlign: TextAlign.right,
+                        style: TextStyle(
+                          color: _Palette.darkBrown,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+        ],
+      ),
     );
   }
 

@@ -71,9 +71,10 @@ class MetaphorRepository {
           report.attributeScores.map((k, v) => MapEntry(k.name, v)),
 
       // ─── 발동된 Rules ───
-      'triggeredRules': report.triggeredRules
+      'triggeredRules': report.rules
           .map((r) => {
                 'id': r.id,
+                'stage': r.stage,
                 'effects':
                     r.effects.map((k, v) => MapEntry(k.name, v)),
               })

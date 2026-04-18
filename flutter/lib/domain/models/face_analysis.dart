@@ -243,13 +243,6 @@ FaceReadingReport analyzeFaceReading({
     lateralFlags: lateralFlags ?? const {},
   );
   final rawScores = breakdown.total;
-  final triggered = <TriggeredRule>[
-    ...breakdown.zoneRules,
-    ...breakdown.organRules,
-    ...breakdown.palaceRules,
-    ...breakdown.ageRules,
-    ...breakdown.lateralRules,
-  ];
 
   // Step 7: Rank-aware normalization → 5~10 with within-face spread
   final normalizedScores = normalizeAllScores(rawScores, gender);
@@ -283,6 +276,11 @@ FaceReadingReport analyzeFaceReading({
     );
   }
 
+  // Build rich evidence — nodeScores, attributes, rules
+  final nodeScores = _collectNodeScores(tree);
+  final attributes = _buildAttributeEvidence(breakdown, normalizedScores);
+  final rules = _buildRuleEvidence(breakdown);
+
   return FaceReadingReport(
     ethnicity: ethnicity,
     gender: gender,
@@ -290,14 +288,111 @@ FaceReadingReport analyzeFaceReading({
     timestamp: DateTime.now(),
     source: source,
     metrics: metricResults,
-    attributeScores: normalizedScores,
+    nodeScores: nodeScores,
+    attributes: attributes,
+    rules: rules,
     archetype: archetype,
-    triggeredRules: triggered,
     faceShapeLabel: pred?.label.english,
     faceShapeConfidence: pred?.confidence,
     lateralMetrics: lateralMetricResults,
     lateralFlags: lateralFlags,
   );
+}
+
+/// Walk the 14-node tree and collect NodeEvidence for every node.
+Map<String, NodeEvidence> _collectNodeScores(NodeScore root) {
+  final out = <String, NodeEvidence>{};
+  void walk(NodeScore node) {
+    out[node.nodeId] = NodeEvidence(
+      nodeId: node.nodeId,
+      ownMeanZ: node.ownMeanZ ?? 0.0,
+      ownMeanAbsZ: node.ownMeanAbsZ ?? 0.0,
+      rollUpMeanZ: node.rollUpMeanZ ?? 0.0,
+      rollUpMeanAbsZ: node.rollUpMeanAbsZ ?? 0.0,
+    );
+    for (final child in node.children) {
+      walk(child);
+    }
+  }
+  walk(root);
+  return out;
+}
+
+/// Build AttributeEvidence for each attribute from the breakdown.
+Map<Attribute, AttributeEvidence> _buildAttributeEvidence(
+  AttributeBreakdown breakdown,
+  Map<Attribute, double> normalizedScores,
+) {
+  final out = <Attribute, AttributeEvidence>{};
+  for (final attr in Attribute.values) {
+    final base = breakdown.basePerNode[attr] ?? const <String, double>{};
+    final dist = breakdown.distinctiveness[attr] ?? 0.0;
+    final raw = breakdown.total[attr] ?? 0.0;
+    final normalized = normalizedScores[attr] ?? 5.0;
+
+    // Collect ALL contributors with |value| > 0.05, sorted by |value| desc
+    final bag = <String, double>{};
+    for (final e in base.entries) {
+      if (e.value.abs() > 0.05) bag['node:${e.key}'] = e.value;
+    }
+    if (dist.abs() > 0.05) bag['distinctiveness'] = dist;
+    for (final r in breakdown.zoneRules) {
+      final v = r.effects[attr];
+      if (v != null && v.abs() > 0.05) bag[r.id] = v;
+    }
+    for (final r in breakdown.organRules) {
+      final v = r.effects[attr];
+      if (v != null && v.abs() > 0.05) bag[r.id] = v;
+    }
+    for (final r in breakdown.palaceRules) {
+      final v = r.effects[attr];
+      if (v != null && v.abs() > 0.05) bag[r.id] = v;
+    }
+    for (final r in breakdown.ageRules) {
+      final v = r.effects[attr];
+      if (v != null && v.abs() > 0.05) bag[r.id] = v;
+    }
+    for (final r in breakdown.lateralRules) {
+      final v = r.effects[attr];
+      if (v != null && v.abs() > 0.05) bag[r.id] = v;
+    }
+
+    final sorted = bag.entries.toList()
+      ..sort((a, b) => b.value.abs().compareTo(a.value.abs()));
+    final contributors = sorted
+        .map((e) => Contributor(id: e.key, value: e.value))
+        .toList();
+
+    out[attr] = AttributeEvidence(
+      rawTotal: raw,
+      normalizedScore: normalized,
+      basePerNode: Map<String, double>.from(base),
+      distinctiveness: dist,
+      contributors: contributors,
+    );
+  }
+  return out;
+}
+
+/// Flatten the 5 rule lists into List<RuleEvidence> with stage tags.
+List<RuleEvidence> _buildRuleEvidence(AttributeBreakdown breakdown) {
+  final out = <RuleEvidence>[];
+  for (final r in breakdown.zoneRules) {
+    out.add(RuleEvidence(id: r.id, stage: 'zone', effects: r.effects));
+  }
+  for (final r in breakdown.organRules) {
+    out.add(RuleEvidence(id: r.id, stage: 'organ', effects: r.effects));
+  }
+  for (final r in breakdown.palaceRules) {
+    out.add(RuleEvidence(id: r.id, stage: 'palace', effects: r.effects));
+  }
+  for (final r in breakdown.ageRules) {
+    out.add(RuleEvidence(id: r.id, stage: 'age', effects: r.effects));
+  }
+  for (final r in breakdown.lateralRules) {
+    out.add(RuleEvidence(id: r.id, stage: 'lateral', effects: r.effects));
+  }
+  return out;
 }
 
 /// Average multiple landmark frames to reduce noise
