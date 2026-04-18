@@ -150,4 +150,12 @@ flutter test test/calibration_test.dart
 - `lib/domain/services/attribute_normalize.dart` — 본체
 - `lib/domain/services/score_calibration.dart` — quantile table 생성 로직
 - `test/calibration_test.dart` — Monte Carlo 런너
-- `ARCHITECTURE.md §2` — 상위 트리 엔진 맥락
+- [ARCHITECTURE.md](ARCHITECTURE.md) §2 — 상위 트리 엔진 맥락
+
+---
+
+## 연관 문서
+
+- [ARCHITECTURE.md](ARCHITECTURE.md) — 상위 아키텍처 (§2 Track 2, §4 Runtime Pipeline)
+- [ATTRIBUTE_NODE_MAPPING.md](ATTRIBUTE_NODE_MAPPING.md) — weight matrix + rule 명세
+- [TAXONOMY_METRIC_MAPPING.md](TAXONOMY_METRIC_MAPPING.md) — metric ↔ node 매핑

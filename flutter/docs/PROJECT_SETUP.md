@@ -1,5 +1,9 @@
 # Flutter Project Setup Guide
 
+**마지막 업데이트**: 2026-04-18
+
+본 문서는 Face Reader 앱의 Flutter 프로젝트 구조 패턴을 설명한다. 현재 프로젝트의 실제 구조는 `flutter/CLAUDE.md`를 참조.
+
 ## 1. 폴더 구조
 
 ```
@@ -411,3 +415,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 6. `presentation/providers/` — NotifierProvider 또는 FutureProvider
 7. `presentation/screens/feature/` — Screen + `uis/` 위젯
 8. `config/router.dart` — GoRoute 추가
+
+---
+
+## 연관 문서
+
+- [ARCHITECTURE.md](ARCHITECTURE.md) — 관상 엔진 아키텍처 (Track 1/2/3)
+- [BUSINESS.md](BUSINESS.md) — 비즈니스 로직 (metric, attribute, archetype)
+- [SUPABASE_PLAN.md](SUPABASE_PLAN.md) — Supabase 연동 계획

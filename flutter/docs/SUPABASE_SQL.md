@@ -1,5 +1,7 @@
 # Supabase SQL Setup — Face Reader App
 
+**마지막 업데이트**: 2026-04-18
+
 ## Prerequisites
 
 Connect to your Supabase Postgres database using a Mac client:
@@ -139,3 +141,11 @@ RETURNING id;
 -- 테스트 select
 SELECT * FROM metrics LIMIT 5;
 ```
+
+---
+
+## 연관 문서
+
+- [SUPABASE_PLAN.md](SUPABASE_PLAN.md) — Supabase 연동 계획 (Phase 1~3)
+- [ANALYSIS.md](ANALYSIS.md) — 분석 파이프라인 출력 및 저장 형태
+- [ARCHITECTURE.md](ARCHITECTURE.md) — 전체 아키텍처

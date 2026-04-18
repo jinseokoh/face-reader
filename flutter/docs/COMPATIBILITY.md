@@ -1,7 +1,8 @@
-# 궁합 엔진 현황 및 개선 요청
+# 궁합 엔진 설계 및 개선 방향
 
-## 목적
-이 문서는 현재 궁합(Compatibility) 엔진의 구조와 로직을 설명하여, ChatGPT에게 질적 개선을 요청하기 위한 레퍼런스입니다.
+**마지막 업데이트**: 2026-04-18
+
+궁합(Compatibility) 엔진의 구조, 로직, 개선 방향을 정리한 문서.
 
 ---
 
@@ -28,7 +29,7 @@
    - Common Rules 40개 (전체 적용)
    - Gender Rules 10개 (성별별 5개)
    - Age Rules 5개 (50세+ 전용)
-4. **Sigmoid 정규화**: raw score → 0~10 scale
+4. **Quantile 정규화**: raw score → 5.0~10.0 scale (60% rank + 40% global quantile blend)
 5. **Archetype 분류**: 상위 2개 attribute → primary/secondary archetype + 10개 special archetype 조건 검사
 6. **Report Assembly**: triggered rule ID → 한국어 텍스트 블록 매핑 (55개 rule별 상세 해설)
    - Archetype별 성별 맞춤 소개문 (10 archetype × 2 gender = 20개)
@@ -503,3 +504,12 @@ attribute 35% / archetype 25% / special 20% / rule 20%
 - weight는 +1/+2/-1/-2 단순화
 - triggered rule 기반 보정
 - **이 정도만 해도 관상 엔진급 디테일이 나온다.**
+
+---
+
+## 연관 문서
+
+- [ARCHITECTURE.md](ARCHITECTURE.md) — 상위 아키텍처 (§2 Track 2 관상 엔진)
+- [BUSINESS.md](BUSINESS.md) — 비즈니스 로직 (10 attribute, archetype)
+- [ATTRIBUTE_NODE_MAPPING.md](ATTRIBUTE_NODE_MAPPING.md) — weight matrix + rule 명세
+- [NORMALIZATION.md](NORMALIZATION.md) — 정규화 파이프라인

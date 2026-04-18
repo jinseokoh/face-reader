@@ -1,5 +1,7 @@
 # Supabase Integration Plan — Face Reader App
 
+**마지막 업데이트**: 2026-04-18
+
 ## Context
 
 Face Reader(관상앱)는 엔터테인먼트 목적의 경량 앱으로, 카메라/앨범 기반 관상 분석 결과를 Supabase에 저장하고 카카오 공유하기 + 딥링크를 통해 공유하는 기능을 추가한다. 궁합 리포트 등 유료 기능도 계획 중.
@@ -123,3 +125,11 @@ Hive 초기화 제거.
 2. 카메라/앨범 분석 → metrics 테이블에 데이터 저장 확인 (Supabase Dashboard)
 3. UUID로 단건 조회 동작 확인
 4. .env가 git에 커밋되지 않는지 확인
+
+---
+
+## 연관 문서
+
+- [SUPABASE_SQL.md](SUPABASE_SQL.md) — SQL 스키마 및 실행 스크립트
+- [ANALYSIS.md](ANALYSIS.md) — 분석 파이프라인 출력 형태 (Supabase 저장 포맷 포함)
+- [ARCHITECTURE.md](ARCHITECTURE.md) — 전체 아키텍처

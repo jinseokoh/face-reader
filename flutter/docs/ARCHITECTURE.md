@@ -237,3 +237,12 @@ FaceReadingReport
 - Track 경계를 넘는 feature 는 해당 섹션 모두에 동기화.
 - Track 2 weight/rule 숫자 변경 시 `docs/ATTRIBUTE_NODE_MAPPING.md` 버전 올리고 본 문서 §2 링크만 유지.
 - Track 1 재학습 시 §1 "테스트 정확도" 갱신.
+
+---
+
+## 연관 문서
+
+- [ATTRIBUTE_NODE_MAPPING.md](ATTRIBUTE_NODE_MAPPING.md) — weight matrix + 5-stage rule 명세
+- [NORMALIZATION.md](NORMALIZATION.md) — raw → 5~10 정규화 파이프라인
+- [PHYSIOGNOMY_TAXONOMY.md](PHYSIOGNOMY_TAXONOMY.md) — 14-node tree SSOT
+- [COMPATIBILITY.md](COMPATIBILITY.md) — 궁합 엔진 구조

@@ -1,7 +1,7 @@
 # 관상학 분류 체계 (Physiognomy Taxonomy)
 
 **버전**: 1.0
-**확정일**: 2026-04-18
+**마지막 업데이트**: 2026-04-18
 **상태**: 설계 확정, 구현 대기
 **역할**: 관상 분석 엔진의 hierarchical tree 구조의 단일 진실 원본 (SSOT).
 
@@ -9,8 +9,7 @@
 
 ## 0. 개요
 
-face-reader 앱의 관상 분석 엔진을 기존 flat 구조(metric → 10 attribute → score)에서
-hierarchical 구조로 재설계하기 위한 분류 체계를 정의한다. 전통 동아시아 관상학 3대 고전
+face-reader 앱의 관상 분석 엔진에 사용되는 hierarchical tree 분류 체계를 정의한다. 전통 동아시아 관상학 3대 고전
 (마의상법·유장상법·신상전편)의 공통 뼈대와 현대 얼굴 과학(Farkas, Todorov, Zebrowitz,
 BiSeNet 등)의 영역 분할을 교차 검증해 확정했다.
 
@@ -250,6 +249,14 @@ class PhysiognomyNode {
 - 새 노드 추가 시 본 문서 먼저 업데이트 → 그 다음 코드.
 - 메타데이터(오관/오악/사독/십이궁) 태그 변경 시 근거 소스 명시.
 - 노드 metric 매핑은 `TAXONOMY_METRIC_MAPPING.md` 에서 관리 (본 문서는 체계 정의만).
+
+---
+
+## 연관 문서
+
+- [TAXONOMY_METRIC_MAPPING.md](TAXONOMY_METRIC_MAPPING.md) — metric ↔ node 매핑 현황
+- [ATTRIBUTE_NODE_MAPPING.md](ATTRIBUTE_NODE_MAPPING.md) — weight matrix + 5-stage rule 명세
+- [ARCHITECTURE.md](ARCHITECTURE.md) — 상위 아키텍처 (§2 Track 2)
 
 ---
 

@@ -1,39 +1,37 @@
 # 10 속성 → Tree Node 재도출 설계서
 
 **버전**: 0.2 (research-confirmed)
-**작성일**: 2026-04-18
+**마지막 업데이트**: 2026-04-18
 **기반 문서**:
 - `docs/PHYSIOGNOMY_TAXONOMY.md` v1.0 (14-node tree SSOT)
 - `docs/TAXONOMY_METRIC_MAPPING.md` v1.0 (metric ↔ node 현황)
-- `lib/domain/services/physiognomy_scoring.dart` (Phase 2 — NodeScore)
+- `lib/domain/services/physiognomy_scoring.dart` (NodeScore tree)
 - **관상 전통 research** (v0.2 반영) — §12 참조
-**역할**: Phase 3 리팩터 계획. `attribute_engine.dart` 720 LOC 를 tree node 기반으로 **전면 재설계**.
-**스코프**: 설계만 확정. 구현은 본 문서 승인 후 3B 에서 착수.
-**v0.2 변경점**: §2.2 가중치 매트릭스·§4.3 Palace overlay 를 관상 전통 research 결과(麻衣相法·柳莊相法·十二宮·五官·五嶽·四瀆 교차검증)로 전면 재확정.
+**역할**: 트리 엔진의 14-node × 10-attribute weight matrix 설계 및 5-stage derivation pipeline 규칙 명세.
+**v0.2 변경점**: §2.2 가중치 매트릭스·§4.3 Palace overlay 를 관상 전통 research 결과(麻衣相法·柳莊相法·十二宮·五官·五嶽·四瀆 교차검증)로 전면 확정.
 
 ---
 
 ## 0. 전제
 
-- 레거시 `attribute_engine.dart` 는 **testbed** 로만 쓰였으며 보존 가치 0. 규칙·가중치·임계값 모두 재설계 대상.
-- 입력은 Phase 2 `NodeScore` tree (자체 own-stats + roll-up stats 이중 축 제공).
-- 출력은 기존과 호환 — `Map<Attribute, double>` 10 속성 점수. 최종 UI 매핑(0~10점)은 v9 normalize 경로 재보정하여 유지.
-- 분량 기준: 원본 720 LOC 수준. 단순화는 지양, 조합 풍성화는 적극.
+- 입력은 `NodeScore` tree (`physiognomy_scoring.dart::scoreTree()` — own-stats + roll-up stats 이중 축 제공).
+- 출력은 `Map<Attribute, double>` 10 속성 raw score. 최종 UI 매핑(5.0~10.0)은 v9 normalize 경로로 변환.
+- 조합 풍성화를 적극 추구하되 stage 간 dead-weight 없이 모든 layer 가 의미 있게 기여하도록 설계.
 
 ---
 
 ## 1. 설계 목표
 
-### 1.1 새로 확보되는 자원 — 이것들을 쓰기 위해 재설계한다
+### 1.1 트리 엔진이 활용하는 구조적 자원
 
-| 자원 | 레거시에서 | 재설계에서 |
-|---|---|---|
-| **Zone 집계** (삼정 roll-up) | 없음 | 상/중/하 조화·불균형 규칙으로 사용 |
-| **Organ 태그** (오관) | 없음 | 눈-눈썹, 코-입 등 쌍 규칙으로 사용 |
-| **Palace overlay** (십이궁) | 없음 | 재백궁·관록궁 복합 시너지 |
-| **Signed vs AbsZ 이중 축** | 없음 (int 양자화) | 방향 점수 + 편차 강도(distinctiveness) 분리 |
-| **Root metrics** | 개별 metric 으로만 | root 노드 own-z 로 얼굴 전체 지표 명시 |
-| **ownZ vs rollUpZ 구분** | 없음 | leaf 자체 특성 vs zone 지배력 구분 |
+| 자원 | 역할 |
+|---|---|
+| **Zone 집계** (삼정 roll-up) | 상/중/하 조화·불균형 규칙 |
+| **Organ 태그** (오관) | 눈-눈썹, 코-입 등 쌍 규칙 |
+| **Palace overlay** (십이궁) | 재백궁·관록궁 복합 시너지 |
+| **Signed vs AbsZ 이중 축** | 방향 점수 + 편차 강도(distinctiveness) 분리 |
+| **Root metrics** | root 노드 own-z 로 얼굴 전체 프로포션 명시 |
+| **ownZ vs rollUpZ 구분** | leaf 자체 특성 vs zone 지배력 구분 |
 
 ### 1.2 설계 원칙
 
@@ -120,8 +118,7 @@ base (linear)
      → raw_attr_score
 ```
 
-목표 총 규칙 수: 40–50 개 (레거시 common 50 + gender 10 + age 5 + lateral 18 ≈ 83 과 **개수는 줄고 풍성도 ↑**).
-한 규칙 한 가지 "얼굴 조합" 을 대표하도록 설계 — 레거시처럼 metric-pair 임계값 중복 X.
+목표 총 규칙 수: 40–50 개. 한 규칙 한 가지 "얼굴 조합" 을 대표하도록 설계 — metric-pair 임계값 중복 없이 node 조합으로 풍성도 확보.
 
 ---
 
@@ -167,7 +164,7 @@ base (linear)
 
 ### 4.3 Palace Overlay Rules (십이궁 시너지)
 
-십이궁은 `PhysiognomyNode.palaces` 태그로 노드에 부여되어 있음. 여러 노드에 같은 궁이 걸리면 **복합 시너지**. 이는 레거시에 전혀 없던 축.
+십이궁은 `PhysiognomyNode.palaces` 태그로 노드에 부여되어 있음. 여러 노드에 같은 궁이 걸리면 **복합 시너지**.
 
 | ID | 궁 조합 | 조건 | 효과 |
 |---|---|---|---|
@@ -196,7 +193,7 @@ base (linear)
 
 ### 5.1 Gender Delta (node 레벨)
 
-레거시는 metric 단위 delta. 신규는 node 단위로 단순화:
+Node 단위 delta 적용:
 
 | Attribute | Node | Male Δ | Female Δ | 비고 |
 |---|---|---|---|---|
@@ -215,7 +212,7 @@ Delta 는 §2.2 base 가중치에 합산 후 row 재정규화.
 
 ### 5.2 Age Rules (50+)
 
-레거시 5 개 → 신규 4 개 (의미론 단순화):
+50+ 전용 규칙 4 개:
 
 | ID | 조건 (50+ 전용) | 효과 |
 |---|---|---|
@@ -234,7 +231,7 @@ Delta 는 §2.2 base 가중치에 합산 후 row 재정규화.
 | L-SN 들창 | snubNose flag | sociability +1.0, attractiveness +0.5 (youthful) |
 | L-EL E-line 전돌 | upperLipEline ≥ 1 & lowerLipEline ≥ 1 (이미 mouth.ownZ 에 반영되므로 추가 +0.5 만) | sensuality +0.5, libido +0.5 |
 
-※ L-EL 은 이중계상 위험 있어 **effect 크기를 레거시 대비 1/4 수준**으로 축소.
+※ L-EL 은 이중계상 위험 있어 **effect 크기를 최소화** (mouth.ownZ 에 이미 반영된 부분과 중복 방지).
 
 ---
 
@@ -267,9 +264,8 @@ v9 (rank-aware + global percentile blend 60/40) 의 핵심 자산:
 
 ```
 lib/domain/services/
-  attribute_derivation.dart     (신규 — 본 설계 구현. 720 LOC 목표)
-  physiognomy_scoring.dart      (Phase 2 — 변경 없음, 입력 제공)
-  attribute_engine.dart         (레거시 — 3C 에서 caller 전환 후 3D 에서 삭제)
+  attribute_derivation.dart     # 5-stage pipeline 구현 (weight matrix + rules)
+  physiognomy_scoring.dart      # NodeScore tree 입력 제공
 ```
 
 ### 7.2 공개 API 시그니처
@@ -299,7 +295,7 @@ class AttributeBreakdown {
 AttributeBreakdown deriveAttributeScoresDetailed({...});
 ```
 
-`TriggeredRule` 타입은 레거시 재활용 또는 enum 기반 재선언.
+`TriggeredRule` 타입은 `attribute_derivation.dart` 에 정의.
 
 ### 7.3 내부 구조 (섹션 분할)
 
@@ -311,43 +307,40 @@ AttributeBreakdown deriveAttributeScoresDetailed({...});
 6. Stage 함수 × 5 + `deriveAttributeScores` orchestrator
 7. (선택) AttributeBreakdown 생성 헬퍼
 
-예상 LOC: 650–750. 레거시 720 과 유사.
+예상 LOC: 650–750.
 
 ---
 
-## 8. Caller 호환 (3C)
+## 8. Caller 연결
 
-변경 영향받는 파일:
+`deriveAttributeScores()` 를 호출하는 파일:
 
-| 파일 | 현재 호출 | 교체 |
-|---|---|---|
-| `domain/models/face_analysis.dart` | `computeBaseScoresContinuous` + `evaluateRules` + `normalizeAllScores` | `deriveAttributeScores(tree, ...)` + `normalizeAllScores` 그대로 |
-| `domain/services/score_calibration.dart` (×2 호출) | 위와 동일 | 위와 동일 |
-| `domain/services/compat_calibration.dart` | `normalizeScore` (single-attr) | `normalizeScore` 그대로 유지 (v9 재보정 CDF 만 갱신) |
+| 파일 | 호출 방식 |
+|---|---|
+| `domain/models/face_analysis.dart` | `deriveAttributeScores(tree, ...)` → `normalizeAllScores` |
+| `domain/services/score_calibration.dart` (×2) | Monte Carlo quantile 생성 시 동일 경로 |
+| `domain/services/compat_calibration.dart` | `normalizeScore` (single-attr) — quantile 테이블만 갱신 |
 
-**호환성 보장**:
-- `normalizeAllScores` / `normalizeScore` 시그니처 **변경 없음** — quantile 테이블만 바뀜.
-- `deriveAttributeScores` 는 `Map<Attribute, double>` 출력 → 레거시 `computeBaseScoresContinuous` + `evaluateRules` 합성과 동형.
+`normalizeAllScores` / `normalizeScore` 시그니처는 고정. quantile 테이블 재생성만으로 분포 변경 흡수.
 
 ---
 
 ## 9. 실행 단계
 
-### 3B — 구현 (단일 PR 권장)
+### Phase A — 구현 (단일 PR 권장)
 1. `attribute_derivation.dart` 작성 (§2–§5 구현)
-2. `test/attribute_derivation_test.dart` 신규 — 각 stage 독립 테스트 + 통합 테스트
+2. `test/attribute_derivation_test.dart` — 각 stage 독립 테스트 + 통합 테스트
 3. Breakdown 디버그 경로 테스트
 
-### 3C — caller 전환 + quantile 재보정 + 레거시 제거
-1. `face_analysis.dart` 호출 교체
-2. `score_calibration.dart` ×2 호출 교체
-3. `calibration_test.dart` 를 신규 파이프라인으로 재실행 → `_attrQuantilesMale/Female` 테이블 **신규 분포 기준** 재생성 (레거시 값과 shift 추적 불필요)
-4. `attribute_engine.dart` 및 관련 legacy 테스트 **삭제**
-5. Report UI 에서 기존 `AttributeEngine` 직접 참조 제거
+### Phase B — caller 연결 + quantile 재보정
+1. `face_analysis.dart` 호출 연결
+2. `score_calibration.dart` ×2 호출 연결
+3. `calibration_test.dart` 실행 → `_attrQuantilesMale/Female` 테이블 재생성
+4. Report UI 연결 확인
 
-### 3D — 자체 품질 검증 & 문서 정리
+### Phase C — 자체 품질 검증 & 문서 정리
 
-검증 대상은 **신규 엔진 자체 품질**. 레거시 대비 diff·회귀 비교는 하지 않는다.
+검증 대상은 **엔진 자체 품질**. 자체 기준(§3D)으로만 평가.
 
 1. **분포 건전성**: Monte Carlo 10,000 sample 로 속성별 분포 확인
    - within-face spread ≥ 3.0 점 (강-약 최소 간격) 유지
@@ -368,9 +361,9 @@ AttributeBreakdown deriveAttributeScoresDetailed({...});
 | # | 질문 | 대부님 확정 (2026-04-18) |
 |---|---|---|
 | Q1 | `AttributeBreakdown` 디버그 API 를 UI 리포트에 노출? | **부분 노출**. 리포트 상세에 속성별 "상세보기" 토글 → top-3 기여 요인 표시. |
-| Q2 | 레거시 `_attrQuantilesMale/Female` 보존 vs 폐기? | **폐기**. 신규 분포로 재생성. |
+| Q2 | `_attrQuantilesMale/Female` 재생성 필요? | **예**. 트리 엔진 분포 기준으로 재생성. |
 | Q3 | 3B 구현을 단일 PR vs 분할 PR? | **단일 PR**. |
-| Q4 | ~~신규-레거시 회귀 허용 기준~~ | **삭제 — 검증 전략에서 레거시 비교 자체 제거**. 신규 엔진은 자체 품질 기준(§3D)으로만 평가. |
+| Q4 | 회귀 검증 기준? | 엔진 자체 품질 기준(§Phase C)으로만 평가. |
 
 ---
 
@@ -381,7 +374,7 @@ AttributeBreakdown deriveAttributeScoresDetailed({...});
 | 신규 분포의 within-face spread 부족 (≥ 3.0 점 미달) | Monte Carlo 결과 보고 blend ratio(60/40) 조정 또는 §2.3 distinctiveness 가산 강도 튜닝 |
 | 특정 stage 가 사실상 dead (기여 ≈ 0) | AttributeBreakdown 관측 → 규칙 임계값 낮추거나 해당 stage 규칙 재설계 |
 | glabella metric 부재로 palace overlay 명궁 규칙 불가 | v1 에서 skip, Phase 4 에서 `glabellaWidth` 신규 metric 도입 시 활성화 |
-| caller 교체 중 빌드 깨짐 | 3C 는 단일 커밋 범위 내에서 `deriveAttributeScores` 도입 → caller 전환 → 레거시 삭제 순으로 진행. 중간 상태 커밋 금지. |
+| caller 연결 중 빌드 깨짐 | Phase B 는 단일 커밋 범위 내에서 `deriveAttributeScores` 도입 → caller 전환 순으로 진행. 중간 상태 커밋 금지. |
 
 ---
 
@@ -432,3 +425,12 @@ AttributeBreakdown deriveAttributeScoresDetailed({...});
 - 수행: `document-specialist` 3 병렬 (10 attribute × 5 + 5 / 십이궁·오관·오악·사독)
 - 내부 방법론: "(전통 문헌 권위도) × (해당 속성 결정력)" 직관 산정 후 교차검증.
 - 출처 불명 해석(예: 귀와 정력 관련 단편 주장) 은 가중치에서 제외.
+
+---
+
+## 연관 문서
+
+- [ARCHITECTURE.md](ARCHITECTURE.md) — 상위 트리 엔진 설계 (§2)
+- [PHYSIOGNOMY_TAXONOMY.md](PHYSIOGNOMY_TAXONOMY.md) — 14-node tree SSOT
+- [TAXONOMY_METRIC_MAPPING.md](TAXONOMY_METRIC_MAPPING.md) — metric ↔ node 매핑 현황
+- [NORMALIZATION.md](NORMALIZATION.md) — raw → 5~10 정규화 파이프라인
