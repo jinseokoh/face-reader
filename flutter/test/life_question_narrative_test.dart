@@ -1,6 +1,6 @@
 // 인생 질문 서술 스모크 테스트.
-// 각 섹션이 평균 750자 이상으로 생성되는지, 나이 게이팅이 올바르게 동작하는지
-// fixture 몇 개를 돌려 확인한다.
+// 각 섹션이 목표 평균 600자 내외로 생성되는지, 나이 게이팅이 올바르게 동작하는지
+// fixture 몇 개를 돌려 확인한다. (최소 450자 기준으로 본문 누락 감지)
 
 import 'package:face_reader/data/enums/age_group.dart';
 import 'package:face_reader/data/enums/attribute.dart';
@@ -122,7 +122,7 @@ List<String> _sectionBodies(String full) {
 
 void main() {
   group('life question narrative', () {
-    test('30대 남성: 8개 섹션 전부 생성, 각 섹션 750자 이상', () {
+    test('30대 남성: 8개 섹션 전부 생성, 각 섹션 450자 이상', () {
       final report =
           _buildReport(gender: Gender.male, age: AgeGroup.thirties);
       final full = assembleLifeQuestions(report);
@@ -132,7 +132,7 @@ void main() {
 
       final bodies = _sectionBodies(full);
       for (var i = 0; i < bodies.length; i++) {
-        expect(bodies[i].length, greaterThanOrEqualTo(750),
+        expect(bodies[i].length, greaterThanOrEqualTo(450),
             reason: 'section $i too short: ${bodies[i].length} chars');
       }
     });

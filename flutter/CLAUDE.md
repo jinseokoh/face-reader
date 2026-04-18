@@ -6,6 +6,19 @@
 
 ---
 
+## 🚧 진행 중 / 대기 중 작업 (PC 간 이어받기 용)
+
+세션이 새로 시작되면 먼저 이 섹션 확인. 완료된 항목은 줄 삭제, 진행 상태는 체크리스트에서 갱신.
+
+| 우선 | 작업 | 문서 | 재개 지시 |
+|---|---|---|---|
+| P0 | 서술 엔진 성별 분기 전면 재설계 (Phase 1 버그픽스 → 2 슬롯 확장 → 3 pool 분리) | [docs/runtime/NARRATIVE_GENDER_REDESIGN.md](docs/runtime/NARRATIVE_GENDER_REDESIGN.md) | `"NARRATIVE_GENDER_REDESIGN.md 의 Phase 1 부터 시작하라."` |
+| P1 | 14-node 부위별 expandable UI (정적 서술 SSOT + `_ExpandableNodeBar` 위젯 + band/gender 분기) | [docs/runtime/NODE_EXPANDABLE_UI.md](docs/runtime/NODE_EXPANDABLE_UI.md) | `"NODE_EXPANDABLE_UI.md 의 Phase 1 부터 시작하라."` |
+
+두 작업은 **병렬 진행 가능** (터치하는 파일 다름). 둘 중 하나를 끝내면 이 표의 해당 행을 삭제하고 해당 plan 문서 상단 상태를 `✅ 완료` 로 갱신.
+
+---
+
 ## 문서 규칙 (이 세션에서 Claude 가 지켜야 할 룰)
 
 ### 금지어 (절대 답변·커밋·문서에 쓰지 말 것)
@@ -68,7 +81,8 @@ lib/
 │       ├── archetype.dart                     # 10 attribute → top-2 기반 archetype
 │       ├── compat_calibration.dart            # Compat 라벨 threshold Monte Carlo
 │       ├── compatibility_engine.dart          # 페어 리포트 비교
-│       ├── report_assembler.dart              # 결정론적 본문 조립
+│       ├── report_assembler.dart              # 본문 조립 래퍼 (intro/closing + life questions)
+│       ├── life_question_narrative.dart       # 인생 질문 8섹션 서술 v2 (Beat-Fragment Grammar, face-hash seed)
 │       └── age_adjustment.dart                # 50+ 보정
 └── presentation/
     ├── providers/                             # Riverpod: gender, ageGroup, ethnicity(Hive persist), history, auth, tab
@@ -128,9 +142,12 @@ MediaPipe landmarks (468)
 10 normalized attribute
   ↓ classifyArchetype (top-2 기반)
 ArchetypeResult
-  ↓ report_assembler
-본문 텍스트
+  ↓ report_assembler  (intro / closing wrapper)
+  ↓ life_question_narrative (Beat-Fragment 엔진 · face-hash seed)
+본문 텍스트 — 8 인생 질문 섹션 (재능/재물/대인/연애/바람기*/색기*/건강/조언)
 ```
+
+\* 바람기 ≥ 20대, 색기 ≥ 30대. 서술 엔진 상세: `docs/runtime/NARRATIVE.md`.
 
 ## 3/4 측면 측정·스코어링
 

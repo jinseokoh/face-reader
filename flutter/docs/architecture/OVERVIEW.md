@@ -194,8 +194,16 @@ FaceReadingReport
    · lateralMetrics + flags             (Track 3)
           │
           ▼
-[report_page / physiognomy_screen]  — 속성 점수 차트 + top-3 근거 + archetype 스토리
+[report_assembler.assembleReport()]
+   · archetype intro (정적 블록)
+   · assembleLifeQuestions()            → 8 섹션 본문 (Beat-Fragment Grammar)
+   · specialArchetype / age closing     (정적 블록)
+          │
+          ▼
+[report_page / physiognomy_screen]  — 속성 점수 차트 + top-3 근거 + archetype 스토리 + 본문
 ```
+
+본문 서술 엔진은 face hash seed 로 결정론적이면서 얼굴마다 거의 겹치지 않는 prose 를 생성. 상세: [../runtime/NARRATIVE.md](../runtime/NARRATIVE.md).
 
 ---
 

@@ -42,6 +42,9 @@ docs/
 | 문서 | 내용 |
 |---|---|
 | [runtime/OUTPUT_SAMPLES.md](runtime/OUTPUT_SAMPLES.md) | 분석 파이프라인 출력 예시: metric 샘플, FaceReadingReport 스키마, Supabase 저장 형태 |
+| [runtime/NARRATIVE.md](runtime/NARRATIVE.md) | 인생 질문 서술 엔진 v2 — Beat-Fragment Grammar + Face Hash Seed · 8 섹션 구조 · 연령 게이팅 · 슬롯 풀 |
+| [runtime/NARRATIVE_GENDER_REDESIGN.md](runtime/NARRATIVE_GENDER_REDESIGN.md) | **📋 작업 대기** — 서술 엔진 성별 분기 전면 재설계 계획 (Phase 1 버그픽스 · Phase 2 슬롯 확장 · Phase 3 연애/바람기/색기 pool 분리) |
+| [runtime/NODE_EXPANDABLE_UI.md](runtime/NODE_EXPANDABLE_UI.md) | **📋 작업 대기** — 14-node 부위별 expandable UI 계획 (정적 NodeTextBlock SSOT + `_ExpandableNodeBar` 위젯 + band/gender 분기) |
 
 ## ④ supabase — 외부 인프라
 
@@ -60,6 +63,7 @@ metric 원격 저장 + 향후 로그인/유료화.
 - **수치·보정 건드리면**: `engine/NORMALIZATION.md` → `../CLAUDE.md` 의 Monte Carlo 재보정 섹션
 - **궁합 로직 건드리면**: `engine/COMPATIBILITY.md`
 - **파이프라인 output 포맷 궁금**: `runtime/OUTPUT_SAMPLES.md`
+- **리포트 본문 서술 엔진 수정**: `runtime/NARRATIVE.md`
 - **전통 관상 근거·metric 선정 이유 궁금**: `engine/RATIONALE.md`
 
 ---
