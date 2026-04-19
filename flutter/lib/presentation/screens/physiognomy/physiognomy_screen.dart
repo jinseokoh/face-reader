@@ -139,6 +139,8 @@ class _PhysiognomyItem extends ConsumerWidget {
                                 style: TextStyle(
                                     color: AppTheme.textHint,
                                     fontSize: 13)),
+                            const SizedBox(height: 6),
+                            _buildArchetypeBadges(),
                           ],
                         ),
                       ),
@@ -172,6 +174,44 @@ class _PhysiognomyItem extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+
+  /// Archetype 시각 검증용 뱃지 — primary / secondary / specialArchetype.
+  /// 사용자가 "쏠림현상 있는지" 눈으로 바로 판단할 수 있도록 list item 에 직접 노출.
+  Widget _buildArchetypeBadges() {
+    final primary = report.archetype.primaryLabel;
+    final secondary = report.archetype.secondaryLabel;
+    final special = report.archetype.specialArchetype;
+
+    Widget chip(String text, {required Color bg, required Color fg}) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+              color: fg, fontSize: 11, fontWeight: FontWeight.w600),
+        ),
+      );
+    }
+
+    return Wrap(
+      spacing: 4,
+      runSpacing: 4,
+      children: [
+        chip(primary,
+            bg: AppTheme.textPrimary.withValues(alpha: 0.08),
+            fg: AppTheme.textPrimary),
+        chip('· $secondary',
+            bg: Colors.transparent, fg: AppTheme.textSecondary),
+        if (special != null)
+          chip(special,
+              bg: Colors.indigo.shade50, fg: Colors.indigo.shade700),
+      ],
     );
   }
 
@@ -567,31 +607,62 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
       if (history[i].source == source) filtered.add((i, history[i]));
     }
 
-    if (filtered.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.history, color: AppTheme.border, size: 64),
-            const SizedBox(height: 16),
-            Text('분석 기록이 없습니다',
-                style: TextStyle(color: AppTheme.textHint, fontSize: 16)),
-          ],
-        ),
-      );
-    }
+    final child = filtered.isEmpty
+        ? LayoutBuilder(
+            builder: (ctx, constraints) => SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.history, color: AppTheme.border, size: 64),
+                      const SizedBox(height: 16),
+                      Text('분석 기록이 없습니다',
+                          style: TextStyle(
+                              color: AppTheme.textHint, fontSize: 16)),
+                      const SizedBox(height: 8),
+                      Text('아래로 당겨 새 공식으로 재계산',
+                          style: TextStyle(
+                              color: AppTheme.textHint, fontSize: 12)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          )
+        : ListView.builder(
+            padding: const EdgeInsets.all(16),
+            physics: const AlwaysScrollableScrollPhysics(),
+            itemCount: filtered.length,
+            itemBuilder: (context, index) {
+              final (originalIndex, report) = filtered[index];
+              return _PhysiognomyItem(
+                report: report,
+                index: originalIndex,
+                source: source,
+              );
+            },
+          );
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: filtered.length,
-      itemBuilder: (context, index) {
-        final (originalIndex, report) = filtered[index];
-        return _PhysiognomyItem(
-          report: report,
-          index: originalIndex,
-          source: source,
-        );
-      },
+    return RefreshIndicator(
+      onRefresh: () => _handleRefresh(),
+      color: AppTheme.textPrimary,
+      child: child,
+    );
+  }
+
+  /// Pull-to-refresh: Hive capture 은 그대로, 해석만 현재 엔진(weight matrix ·
+  /// rule · quantile) 으로 재계산. 새 공식이 기존 리포트에 즉시 반영된다.
+  Future<void> _handleRefresh() async {
+    ref.read(historyProvider.notifier).reloadFromHive();
+    // 시각적 feedback 을 위해 최소 latency 유지.
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    if (!mounted) return;
+    showTopSnackBar(
+      Overlay.of(context),
+      CompactSnackBar.success(message: '새 공식으로 재계산 완료'),
     );
   }
 

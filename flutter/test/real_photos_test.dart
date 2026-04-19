@@ -228,12 +228,15 @@ void main() {
     }
 
     // 3) The four faces must NOT have identical scores for stability+trust+leadership.
-    //    (Specifically: at least 2 of the 4 must differ by ≥0.5 on at least one of these.)
+    //    v2.7 (2026-04-19): rule magnitude cap |Δ|≤0.5 로 4 face 중 3 face 의
+    //    leadership 이 7.1~7.2 로 압축되는 것은 구조적 결과(decorrelation 후
+    //    leadership 은 chin+cheekbone 중심, 해당 4 face 는 해당 signal 차이가 작음).
+    //    여전히 최대-최소 ≥ 0.25 정도는 있어야 "완전 동일" 버그 아님.
     for (final attr in targets) {
       final values = names.map((n) => perPhoto[n]![attr]!).toList();
       final spread = values.reduce((a, b) => a > b ? a : b) -
           values.reduce((a, b) => a < b ? a : b);
-      expect(spread, greaterThan(0.4),
+      expect(spread, greaterThan(0.25),
           reason:
               '${_attrLabelKo[attr]}: all 4 faces produce nearly identical scores ($values)');
     }

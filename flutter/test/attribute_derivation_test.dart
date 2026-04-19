@@ -51,19 +51,19 @@ void main() {
       // ownMeanZ = sum / count_of_PRESENT metrics = 2.0 / 1.
       final b = _run({'nasalHeightRatio': 2.0});
       final wealth = b.basePerNode[Attribute.wealth]!;
-      // wealth.nose weight = 0.35, male delta +0.05 → 0.40.
-      expect(wealth['nose'], closeTo(2.0 * 0.40, 1e-9));
+      // wealth.nose weight = 0.20, male delta +0.05 → 0.25 (v2.7 decorrelated).
+      expect(wealth['nose'], closeTo(2.0 * 0.25, 1e-9));
     });
 
     test('gender delta changes effective weight', () {
       const z = {'nasalHeightRatio': 1.0};
       final male = _run(z, gender: Gender.male);
       final female = _run(z, gender: Gender.female);
-      // wealth.nose: 0.35 + male +0.05 / female -0.05.
+      // wealth.nose: 0.20 + male +0.05 / female -0.05 (v2.7 decorrelated).
       expect(male.basePerNode[Attribute.wealth]!['nose'],
-          closeTo(1.0 * 0.40, 1e-9));
+          closeTo(1.0 * 0.25, 1e-9));
       expect(female.basePerNode[Attribute.wealth]!['nose'],
-          closeTo(1.0 * 0.30, 1e-9));
+          closeTo(1.0 * 0.15, 1e-9));
     });
 
     test('face root node 는 weight matrix 에서 제외', () {
@@ -85,10 +85,10 @@ void main() {
     });
 
     test('libido philtrum has negative polarity', () {
-      // philtrumLength z=1.0 → philtrum mean 1.0, weight 0.20, polarity -1.
+      // philtrumLength z=1.0 → philtrum mean 1.0, weight 0.15, polarity -1 (v2.6).
       final b = _run({'philtrumLength': 1.0});
       expect(b.basePerNode[Attribute.libido]!['philtrum'],
-          closeTo(-1.0 * 0.20, 1e-9));
+          closeTo(-1.0 * 0.15, 1e-9));
     });
   });
 
@@ -523,20 +523,24 @@ void main() {
 
   group('Prototype face sanity', () {
     test('"ideal wealth face" lands wealth in top half of attributes', () {
-      // Strong nose, strong mouth, solid chin.
+      // 관상 고전 재물 얼굴: 강한 코(재백궁)·이마(관록궁)·턱(노복궁) 삼위.
+      // v2.7: mouth 계 metric 은 charm cluster 로 몰려 빼고, 재물 특화 signal 만.
       final b = _run({
-        'nasalHeightRatio': 1.5,
-        'nasalWidthRatio': -0.3,
-        'mouthWidthRatio': 1.2,
-        'lipFullnessRatio': 1.0,
-        'gonialAngle': 0.8,
-        'chinAngle': 0.8,
+        'nasalHeightRatio': 1.8,
+        'nasalWidthRatio': -0.5,
+        'foreheadWidth': 1.2,
+        'upperFaceRatio': 1.0,
+        'cheekboneWidth': 1.0,
+        'gonialAngle': 1.0,
+        'chinAngle': 1.0,
         'lowerFaceRatio': 0.8,
+        'lowerFaceFullness': 0.8,
       });
       final ranked = b.total.entries.toList()
         ..sort((a, b) => b.value.compareTo(a.value));
       final topHalf = ranked.take(5).map((e) => e.key).toSet();
-      expect(topHalf, contains(Attribute.wealth));
+      expect(topHalf, contains(Attribute.wealth),
+          reason: 'ranked=${ranked.map((e) => '${e.key.name}:${e.value.toStringAsFixed(2)}').join(', ')}');
     });
 
     test('"ideal intelligence face" lands intelligence in top 3', () {

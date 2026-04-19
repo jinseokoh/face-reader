@@ -1,13 +1,16 @@
 import 'dart:convert';
 
+import 'package:face_reader/data/constants/face_reference_data.dart';
 import 'package:face_reader/data/enums/age_group.dart';
 import 'package:face_reader/data/enums/attribute.dart';
 import 'package:face_reader/data/enums/ethnicity.dart';
 import 'package:face_reader/data/enums/face_shape.dart';
 import 'package:face_reader/data/enums/gender.dart';
+import 'package:face_reader/domain/services/age_adjustment.dart';
 import 'package:face_reader/domain/services/archetype.dart';
 import 'package:face_reader/domain/services/attribute_derivation.dart';
 import 'package:face_reader/domain/services/attribute_normalize.dart';
+import 'package:face_reader/domain/services/metric_score.dart';
 import 'package:face_reader/domain/services/physiognomy_scoring.dart';
 
 // ────────────────────────── Primitives ──────────────────────────
@@ -256,9 +259,12 @@ class FaceReadingReport {
         for (final e in attributes.entries) e.key: e.value.normalizedScore,
       };
 
-  /// v3 (2026-04-18): capture 전용. nodeScores·attributes·rules·archetype 은
-  /// 저장하지 않는다. load 시 현재 엔진으로 재계산되므로 엔진 변경이 저장물을
-  /// 침범하지 않고, 같은 얼굴이 항상 최신 해석을 받는다.
+  /// v3 (2026-04-18): capture-only serialization. 저장하는 것은 **metric rawValue
+  /// 와 camera meta(ethnicity/gender/ageGroup/faceShape…) 뿐**이다. z-score,
+  /// zAdjusted, metricScore, lateralFlags, nodeScores, attributes, rules,
+  /// archetype — 전부 엔진에서 파생되는 값이므로 저장하지 않는다. load 시 현재
+  /// reference·age adjustment·rule·quantile 로 100% 재계산된다. 엔진·ref 가
+  /// 바뀌면 기존 리포트가 자동으로 새 공식의 결과를 받는다.
   String toJsonString() => jsonEncode({
         'schemaVersion': schemaVersion,
         'ethnicity': ethnicity.name,
@@ -271,14 +277,17 @@ class FaceReadingReport {
         'isMyFace': isMyFace,
         'thumbnailPath': thumbnailPath,
         'expiresAt': expiresAt.toIso8601String(),
+        // rawValue 만 저장 — id → double. 현재 ref 에 의존하는 z/zAdjusted/
+        // metricScore 는 절대 저장 금지 (저장하면 ref 변경이 기존 리포트에
+        // 반영되지 않는 stale-z 버그 발생).
         'metrics': {
-          for (final e in metrics.entries) e.key: e.value.toJson(),
+          for (final e in metrics.entries) e.key: e.value.rawValue,
         },
         if (lateralMetrics != null)
           'lateralMetrics': {
-            for (final e in lateralMetrics!.entries) e.key: e.value.toJson(),
+            for (final e in lateralMetrics!.entries) e.key: e.value.rawValue,
           },
-        if (lateralFlags != null) 'lateralFlags': lateralFlags,
+        // lateralFlags 는 lateral z + 현재 metricScore 임계로 load 시 재계산.
         if (faceShapeLabel != null) 'faceShapeLabel': faceShapeLabel,
         if (faceShapeConfidence != null)
           'faceShapeConfidence': faceShapeConfidence,
@@ -297,36 +306,82 @@ class FaceReadingReport {
     }
 
     // ─── capture 필드 파싱 ───
+    final ethnicity = Ethnicity.values.byName(j['ethnicity'] as String);
     final gender = Gender.values.byName(j['gender'] as String);
     final ageGroup = AgeGroup.values.byName(j['ageGroup'] as String);
-    final metrics = (j['metrics'] as Map<String, dynamic>).map(
-      (k, v) => MapEntry(k, MetricResult.fromJson(v as Map<String, dynamic>)),
-    );
-    final lateralMetrics = j['lateralMetrics'] == null
+    final isOver50 = ageGroup.isOver50;
+    final rawMetrics = _extractRawMap(j['metrics']);
+    final rawLateral = j['lateralMetrics'] == null
         ? null
-        : (j['lateralMetrics'] as Map<String, dynamic>).map(
-            (k, v) =>
-                MapEntry(k, MetricResult.fromJson(v as Map<String, dynamic>)),
-          );
-    final lateralFlags = j['lateralFlags'] == null
-        ? null
-        : (j['lateralFlags'] as Map<String, dynamic>)
-            .map((k, v) => MapEntry(k, v as bool));
+        : _extractRawMap(j['lateralMetrics']);
     final faceShapeLabel = j['faceShapeLabel'] as String?;
     final faceShapeConfidence = (j['faceShapeConfidence'] as num?)?.toDouble();
     final faceShape = j['faceShape'] is String
         ? FaceShape.values.byName(j['faceShape'] as String)
         : FaceShapeLabel.fromEnglish(faceShapeLabel);
 
-    // ─── derived 재계산 (현재 엔진) ───
-    final zForTree = <String, double>{
-      for (final e in metrics.entries) e.key: e.value.zAdjusted,
-    };
-    if (lateralMetrics != null) {
-      for (final e in lateralMetrics.entries) {
-        zForTree[e.key] = e.value.zScore;
-      }
+    // ─── rawValue → 현재 reference 로 재 z-score ───
+    // 저장은 rawValue 만. z/zAdjusted/metricScore 는 현재 ref·age adjustment 로
+    // 여기서 100% 재계산된다. reference 를 바꾸면 기존 리포트도 새 ref 기준의
+    // 해석을 받는다 — stale-z 고착 버그 차단.
+    final frontalRefs = referenceData[ethnicity]![gender]!;
+    final metrics = <String, MetricResult>{};
+    final zAdjustedMap = <String, double>{};
+    for (final info in metricInfoList) {
+      final raw = rawMetrics[info.id];
+      if (raw == null) continue; // 구 리포트 누락 metric 은 skip
+      final ref = frontalRefs[info.id]!;
+      final z = (raw - ref.mean) / ref.sd;
+      final zAdj = adjustForAge(info.id, z, gender, isOver50);
+      zAdjustedMap[info.id] = zAdj;
+      metrics[info.id] = MetricResult(
+        id: info.id,
+        rawValue: raw,
+        zScore: z,
+        zAdjusted: zAdj,
+        metricScore: convertToScore(zAdj, info.type),
+      );
     }
+
+    Map<String, MetricResult>? lateralMetrics;
+    Map<String, bool>? lateralFlags;
+    final lateralZMap = <String, double>{};
+    if (rawLateral != null) {
+      final lateralRefs = lateralReferenceData[ethnicity]![gender]!;
+      lateralMetrics = <String, MetricResult>{};
+      final lateralScores = <String, int>{};
+      for (final info in lateralMetricInfoList) {
+        final raw = rawLateral[info.id];
+        if (raw == null) continue;
+        final ref = lateralRefs[info.id]!;
+        final z = (raw - ref.mean) / ref.sd;
+        final score = convertToScore(z, info.type);
+        lateralZMap[info.id] = z;
+        lateralScores[info.id] = score;
+        lateralMetrics[info.id] = MetricResult(
+          id: info.id,
+          rawValue: raw,
+          zScore: z,
+          zAdjusted: z,
+          metricScore: score,
+        );
+      }
+      // Lateral flags — 현재 z 기준으로 재계산 (face_analysis.dart 의 동일 로직).
+      final dorsalScore = lateralScores['dorsalConvexity'] ?? 0;
+      final nasoLabScore = lateralScores['nasolabialAngle'] ?? 0;
+      final nasoLabRaw = rawLateral['nasolabialAngle'] ?? 0.0;
+      final tipProjScore = lateralScores['noseTipProjection'] ?? 0;
+      lateralFlags = {
+        'aquilineNose': dorsalScore >= 3,
+        'snubNose': nasoLabScore >= 2 && nasoLabRaw >= 115.0,
+        'droopingTip': nasoLabScore <= -2 && nasoLabRaw <= 112.0,
+        'saddleNose': dorsalScore <= -3,
+        'flatNose': tipProjScore <= -3,
+      };
+    }
+
+    // ─── derived 재계산 (현재 엔진) ───
+    final zForTree = <String, double>{...zAdjustedMap, ...lateralZMap};
     final tree = scoreTree(zForTree);
     final breakdown = deriveAttributeScoresDetailed(
       tree: tree,
@@ -345,7 +400,7 @@ class FaceReadingReport {
     final rules = _rehydrateRuleEvidence(breakdown);
 
     return FaceReadingReport(
-      ethnicity: Ethnicity.values.byName(j['ethnicity'] as String),
+      ethnicity: ethnicity,
       gender: gender,
       ageGroup: ageGroup,
       timestamp: DateTime.parse(j['timestamp'] as String),
@@ -370,6 +425,26 @@ class FaceReadingReport {
       schemaVersion: version,
     );
   }
+}
+
+// ─── 직렬화 호환 헬퍼 ─────────────────────────────────────────────────
+//
+// `metrics` / `lateralMetrics` 는 v3 에서 `{id: rawValue(double)}` 로 슬림화.
+// 과거 payload 는 `{id: {rawValue, zScore, …}}` 였는데 그 경우에도 rawValue 만
+// 꺼내 쓴다 — 저장된 z 는 신뢰하지 않는다 (stale-z 버그 차단).
+Map<String, double> _extractRawMap(Object? raw) {
+  final map = raw as Map<String, dynamic>;
+  final out = <String, double>{};
+  for (final e in map.entries) {
+    final v = e.value;
+    if (v is num) {
+      out[e.key] = v.toDouble();
+    } else if (v is Map<String, dynamic>) {
+      final r = v['rawValue'];
+      if (r is num) out[e.key] = r.toDouble();
+    }
+  }
+  return out;
 }
 
 // ─── 재계산 헬퍼 (capture → derived) ──────────────────────────────────

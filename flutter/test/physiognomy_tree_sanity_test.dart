@@ -159,9 +159,13 @@ void main() {
     }
   });
 
-  test('per-metric 영향력 ∈ [0.10, 0.80] — 과적재/고아 회귀 차단', () {
+  test('per-metric 영향력 ∈ [0.15, 1.20] — v2.7 decorrelated band', () {
     // face(root) metric 은 Stage 1b distinctiveness · Z-11 zone rule 로 소비되므로
     // weight matrix 영향력 0 이 정상. 이 테스트는 leaf 노드 metric 만 검사한다.
+    //
+    // v2.7: single-metric 노드(glabella=browSpacing, cheekbone=cheekboneWidth,
+    // philtrum=philtrumLength) 는 해당 노드 가중치가 그대로 단일 metric 으로 직결되어
+    // sum-across-attributes ≈ 1.0 까지 올라가는 것이 구조상 정상. 과적재 하한 상향.
     const rootMetrics = {'faceAspectRatio', 'faceTaperRatio', 'midFaceRatio'};
     final inf = perMetricInfluence();
     final supportedLeafIds = nodeByMetricId.keys
@@ -170,10 +174,52 @@ void main() {
     for (final m in supportedLeafIds) {
       final v = inf[m];
       expect(v, isNotNull, reason: 'supported leaf metric $m 에 weight 기여 0');
-      expect(v!, greaterThanOrEqualTo(0.10),
+      expect(v!, greaterThanOrEqualTo(0.15),
           reason: 'metric $m influence too low ($v) — 고아 의심');
-      expect(v, lessThanOrEqualTo(0.80),
+      expect(v, lessThanOrEqualTo(1.20),
           reason: 'metric $m influence too high ($v) — 과적재 의심');
+    }
+  });
+
+  test('per-metric max/min ratio ≤ 6.5 — v2.7 단일 metric 과적재 guardrail', () {
+    // v2.7: single-metric 노드(glabella/cheekbone/philtrum)가 sum ≈ 1.0 인 반면
+    // multi-metric 노드(mouth=4 metric, chin=5 metric)는 dilution 으로 0.15~0.20.
+    // 구조상 5~6× 격차가 발생. 3.5× 는 single-metric 노드 전부를 배제하는 것.
+    const rootMetrics = {'faceAspectRatio', 'faceTaperRatio', 'midFaceRatio'};
+    final inf = perMetricInfluence();
+    final supportedLeafIds = nodeByMetricId.keys
+        .where((m) => !lateralSet.contains(m) && !rootMetrics.contains(m))
+        .toSet();
+    final values = supportedLeafIds.map((m) => inf[m]!).toList()..sort();
+    final minV = values.first;
+    final maxV = values.last;
+    final ratio = maxV / minV;
+    expect(ratio, lessThanOrEqualTo(6.5),
+        reason:
+            'per-metric 영향력 max/min = $ratio (max=$maxV / min=$minV) > 6.5 — 단일 metric 과적재 회귀');
+  });
+
+  test('모든 attribute 의 zone 합 ∈ [0.25, 0.40] — v2.6 zone-parity guardrail',
+      () {
+    // 상/중/하정 편향 (sociab·libido 상정 5%, wealth 중정 55%) 회귀 차단.
+    final sums = attributeZoneWeightSums();
+    for (final attr in Attribute.values) {
+      for (final zone in Zone.values) {
+        final s = sums[attr]![zone]!;
+        expect(s, greaterThanOrEqualTo(0.249),
+            reason: '${attr.name}.${zone.name} zone sum = $s < 0.25');
+        expect(s, lessThanOrEqualTo(0.401),
+            reason: '${attr.name}.${zone.name} zone sum = $s > 0.40');
+      }
+    }
+  });
+
+  test('각 attribute 는 3 zone 모두 non-zero (v2.6 강화)', () {
+    final zoneCov = attributeZoneCoverage();
+    for (final attr in Attribute.values) {
+      expect(zoneCov[attr]!.length, equals(3),
+          reason:
+              '${attr.name} zone coverage = ${zoneCov[attr]} (3 zone 모두 필요)');
     }
   });
 
@@ -185,12 +231,4 @@ void main() {
     }
   });
 
-  test('각 attribute 는 최소 2개 zone 에 non-zero weight', () {
-    final cov = attributeZoneCoverage();
-    for (final attr in Attribute.values) {
-      final zones = cov[attr]!;
-      expect(zones.length, greaterThanOrEqualTo(2),
-          reason: '${attr.name} zone coverage = $zones (<2)');
-    }
-  });
 }

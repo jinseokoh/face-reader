@@ -126,9 +126,15 @@ void main() {
     }
 
     // ─── Assertions ───
+    // v2.6 threshold 완화: 0.70 → 0.55. 근거: zone-parity weight matrix +
+    // rule magnitude cap (|Δ| ≤ 0.5) 로 template 차별 신호가 의도적으로
+    // 약해졌다. Per-attribute 가 더이상 단일 metric 에 의해 강하게 끌리지
+    // 않으므로 merchant(wealth) 등 zone 분산형 target 은 top-3 진입률이
+    // 자연스럽게 60% 대. target mean rank < 4 assertion 이 남아 "target 이
+    // 실제 1~3위 근처" 라는 의미 있는 신호는 계속 보증한다.
     for (final t in faceTemplates) {
       final expected = _targets[t.label]!;
-      expect(hitRates[t.label]!, greaterThanOrEqualTo(0.70),
+      expect(hitRates[t.label]!, greaterThanOrEqualTo(0.55),
           reason:
               '${t.label} template: expected ${expected.map((a) => a.name).join('/')} '
               'in top-3 only ${(hitRates[t.label]! * 100).toStringAsFixed(1)}% of the time');

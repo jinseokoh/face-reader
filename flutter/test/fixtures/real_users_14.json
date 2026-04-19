@@ -1,0 +1,58 @@
+[
+  {
+    "id": "0bf9ac44", "gender": "female", "faceShape": "oval",
+    "z": {"faceAspectRatio": -1.746, "faceTaperRatio": -0.769, "lowerFaceFullness": -0.557, "upperFaceRatio": 0.832, "midFaceRatio": 1.556, "lowerFaceRatio": -1.598, "gonialAngle": 0.898, "intercanthalRatio": 0.024, "eyeFissureRatio": 1.090, "eyeCanthalTilt": 0.504, "eyebrowThickness": 1.513, "browEyeDistance": -0.269, "nasalWidthRatio": 0.398, "nasalHeightRatio": 0.957, "mouthWidthRatio": -0.140, "mouthCornerAngle": 1.307, "lipFullnessRatio": -1.265, "philtrumLength": -0.025, "foreheadWidth": 1.595, "cheekboneWidth": 1.139, "chinAngle": 2.366, "eyeAspect": -0.019, "eyebrowCurvature": 9.618, "eyebrowTiltDirection": 0.623, "upperVsLowerLipRatio": -2.562, "browSpacing": 0.539}
+  },
+  {
+    "id": "148144e5", "gender": "female", "faceShape": "oval",
+    "z": {"faceAspectRatio": -1.486, "faceTaperRatio": -0.333, "lowerFaceFullness": -0.273, "upperFaceRatio": 0.651, "midFaceRatio": 0.985, "lowerFaceRatio": -1.042, "gonialAngle": 0.550, "intercanthalRatio": 0.118, "eyeFissureRatio": 0.811, "eyeCanthalTilt": 0.266, "eyebrowThickness": 1.218, "browEyeDistance": -0.555, "nasalWidthRatio": 0.953, "nasalHeightRatio": 0.320, "mouthWidthRatio": 0.308, "mouthCornerAngle": 1.088, "lipFullnessRatio": -1.404, "philtrumLength": -0.251, "foreheadWidth": 1.258, "cheekboneWidth": 1.032, "chinAngle": 2.473, "eyeAspect": -0.680, "eyebrowCurvature": 8.622, "eyebrowTiltDirection": 0.856, "upperVsLowerLipRatio": -2.291, "browSpacing": 0.167}
+  },
+  {
+    "id": "1b9619e9", "gender": "female", "faceShape": "round",
+    "z": {"faceAspectRatio": -2.294, "faceTaperRatio": 0.574, "lowerFaceFullness": 0.466, "upperFaceRatio": -0.534, "midFaceRatio": 1.478, "lowerFaceRatio": -0.458, "gonialAngle": -0.520, "intercanthalRatio": -0.778, "eyeFissureRatio": 0.002, "eyeCanthalTilt": -0.266, "eyebrowThickness": 0.130, "browEyeDistance": 0.013, "nasalWidthRatio": 2.238, "nasalHeightRatio": 0.577, "mouthWidthRatio": 0.290, "mouthCornerAngle": 0.125, "lipFullnessRatio": -2.211, "philtrumLength": -1.000, "foreheadWidth": -0.079, "cheekboneWidth": 0.277, "chinAngle": 2.776, "eyeAspect": -0.355, "eyebrowCurvature": 9.476, "eyebrowTiltDirection": -3.884, "upperVsLowerLipRatio": -1.853, "browSpacing": -0.270}
+  },
+  {
+    "id": "2071142a", "gender": "female", "faceShape": "oval",
+    "z": {"faceAspectRatio": -0.125, "faceTaperRatio": -0.576, "lowerFaceFullness": -0.398, "upperFaceRatio": 0.379, "midFaceRatio": 0.303, "lowerFaceRatio": -0.471, "gonialAngle": 0.370, "intercanthalRatio": 0.382, "eyeFissureRatio": 0.583, "eyeCanthalTilt": 0.251, "eyebrowThickness": 0.397, "browEyeDistance": -1.064, "nasalWidthRatio": -0.296, "nasalHeightRatio": -0.537, "mouthWidthRatio": -0.751, "mouthCornerAngle": -0.028, "lipFullnessRatio": -0.034, "philtrumLength": 0.247, "foreheadWidth": 0.797, "cheekboneWidth": 0.862, "chinAngle": 2.427, "eyeAspect": 0.021, "eyebrowCurvature": 8.958, "eyebrowTiltDirection": -0.220, "upperVsLowerLipRatio": -1.733, "browSpacing": -0.147}
+  },
+  {
+    "id": "2af865fc", "gender": "female", "faceShape": "oblong",
+    "z": {"faceAspectRatio": 0.375, "faceTaperRatio": 0.329, "lowerFaceFullness": 0.254, "upperFaceRatio": -0.280, "midFaceRatio": 0.138, "lowerFaceRatio": 0.144, "gonialAngle": -0.526, "intercanthalRatio": -0.369, "eyeFissureRatio": 0.128, "eyeCanthalTilt": -0.310, "eyebrowThickness": -0.207, "browEyeDistance": -1.623, "nasalWidthRatio": 0.784, "nasalHeightRatio": -0.855, "mouthWidthRatio": -0.091, "mouthCornerAngle": -0.476, "lipFullnessRatio": -0.655, "philtrumLength": 0.590, "foreheadWidth": -0.387, "cheekboneWidth": 0.559, "chinAngle": 2.827, "eyeAspect": -0.402, "eyebrowCurvature": 8.392, "eyebrowTiltDirection": -2.142, "upperVsLowerLipRatio": -1.383, "browSpacing": -0.822}
+  },
+  {
+    "id": "3c1525c4", "gender": "female", "faceShape": "oval",
+    "z": {"faceAspectRatio": -1.495, "faceTaperRatio": 0.194, "lowerFaceFullness": 0.371, "upperFaceRatio": -0.688, "midFaceRatio": 0.254, "lowerFaceRatio": 0.418, "gonialAngle": -0.038, "intercanthalRatio": -0.592, "eyeFissureRatio": 0.116, "eyeCanthalTilt": -0.235, "eyebrowThickness": -0.088, "browEyeDistance": -0.818, "nasalWidthRatio": -0.254, "nasalHeightRatio": -0.727, "mouthWidthRatio": -1.434, "mouthCornerAngle": -0.905, "lipFullnessRatio": 0.080, "philtrumLength": 1.288, "foreheadWidth": -0.098, "cheekboneWidth": 0.360, "chinAngle": 2.512, "eyeAspect": -0.023, "eyebrowCurvature": 9.145, "eyebrowTiltDirection": -2.569, "upperVsLowerLipRatio": -1.221, "browSpacing": -0.364}
+  },
+  {
+    "id": "49e75632", "gender": "female", "faceShape": "unknown",
+    "z": {"faceAspectRatio": 0.187, "faceTaperRatio": -0.166, "lowerFaceFullness": -0.088, "upperFaceRatio": 0.030, "midFaceRatio": 0.055, "lowerFaceRatio": -0.033, "gonialAngle": 0.303, "intercanthalRatio": 0.456, "eyeFissureRatio": 0.437, "eyeCanthalTilt": -0.157, "eyebrowThickness": -0.143, "browEyeDistance": -0.870, "nasalWidthRatio": -0.178, "nasalHeightRatio": -0.840, "mouthWidthRatio": -0.401, "mouthCornerAngle": 0.403, "lipFullnessRatio": -0.429, "philtrumLength": 1.014, "foreheadWidth": 0.393, "cheekboneWidth": 0.956, "chinAngle": 2.326, "eyeAspect": -0.259, "eyebrowCurvature": 8.726, "eyebrowTiltDirection": -1.293, "upperVsLowerLipRatio": -1.621, "browSpacing": -0.222}
+  },
+  {
+    "id": "5a397e71", "gender": "female", "faceShape": "heart",
+    "z": {"faceAspectRatio": -0.654, "faceTaperRatio": -0.306, "lowerFaceFullness": -0.177, "upperFaceRatio": -0.469, "midFaceRatio": 0.088, "lowerFaceRatio": 0.336, "gonialAngle": 0.252, "intercanthalRatio": -0.942, "eyeFissureRatio": 0.008, "eyeCanthalTilt": -0.667, "eyebrowThickness": 0.746, "browEyeDistance": -0.424, "nasalWidthRatio": 2.332, "nasalHeightRatio": -0.882, "mouthWidthRatio": 1.725, "mouthCornerAngle": 1.141, "lipFullnessRatio": 1.357, "philtrumLength": -0.401, "foreheadWidth": 0.155, "cheekboneWidth": 0.443, "chinAngle": 2.691, "eyeAspect": -1.906, "eyebrowCurvature": 8.546, "eyebrowTiltDirection": -3.412, "upperVsLowerLipRatio": -2.330, "browSpacing": -0.794}
+  },
+  {
+    "id": "5e31b499", "gender": "female", "faceShape": "oval",
+    "z": {"faceAspectRatio": -1.635, "faceTaperRatio": -0.186, "lowerFaceFullness": -0.097, "upperFaceRatio": 0.035, "midFaceRatio": 0.383, "lowerFaceRatio": -0.255, "gonialAngle": 0.213, "intercanthalRatio": -0.654, "eyeFissureRatio": 0.319, "eyeCanthalTilt": -0.053, "eyebrowThickness": 1.165, "browEyeDistance": -1.134, "nasalWidthRatio": 0.024, "nasalHeightRatio": -0.439, "mouthWidthRatio": -0.654, "mouthCornerAngle": 0.132, "lipFullnessRatio": -0.893, "philtrumLength": 0.374, "foreheadWidth": 0.232, "cheekboneWidth": 0.431, "chinAngle": 2.644, "eyeAspect": -0.893, "eyebrowCurvature": 8.736, "eyebrowTiltDirection": -0.725, "upperVsLowerLipRatio": -1.958, "browSpacing": -0.458}
+  },
+  {
+    "id": "65b08220", "gender": "female", "faceShape": "heart",
+    "z": {"faceAspectRatio": -0.410, "faceTaperRatio": -0.174, "lowerFaceFullness": -0.164, "upperFaceRatio": -0.110, "midFaceRatio": 0.785, "lowerFaceRatio": -0.381, "gonialAngle": 0.645, "intercanthalRatio": 0.225, "eyeFissureRatio": 0.323, "eyeCanthalTilt": -0.259, "eyebrowThickness": 0.130, "browEyeDistance": -0.074, "nasalWidthRatio": 1.982, "nasalHeightRatio": 0.004, "mouthWidthRatio": 2.066, "mouthCornerAngle": 2.305, "lipFullnessRatio": 1.371, "philtrumLength": -1.528, "foreheadWidth": 0.286, "cheekboneWidth": 0.968, "chinAngle": 2.224, "eyeAspect": -1.704, "eyebrowCurvature": 9.172, "eyebrowTiltDirection": -1.760, "upperVsLowerLipRatio": -2.990, "browSpacing": -0.050}
+  },
+  {
+    "id": "91dbb875", "gender": "female", "faceShape": "oval",
+    "z": {"faceAspectRatio": -0.289, "faceTaperRatio": -0.942, "lowerFaceFullness": -0.536, "upperFaceRatio": -0.063, "midFaceRatio": 0.185, "lowerFaceRatio": -0.054, "gonialAngle": 0.442, "intercanthalRatio": 0.529, "eyeFissureRatio": 0.649, "eyeCanthalTilt": 0.050, "eyebrowThickness": -0.198, "browEyeDistance": -0.219, "nasalWidthRatio": -0.784, "nasalHeightRatio": -0.826, "mouthWidthRatio": -0.864, "mouthCornerAngle": -0.177, "lipFullnessRatio": 1.177, "philtrumLength": 0.668, "foreheadWidth": 0.981, "cheekboneWidth": 0.881, "chinAngle": 2.369, "eyeAspect": 0.450, "eyebrowCurvature": 10.027, "eyebrowTiltDirection": -1.516, "upperVsLowerLipRatio": -1.325, "browSpacing": 0.056}
+  },
+  {
+    "id": "99c181b2", "gender": "female", "faceShape": "oval",
+    "z": {"faceAspectRatio": -0.204, "faceTaperRatio": -0.343, "lowerFaceFullness": -0.231, "upperFaceRatio": 0.187, "midFaceRatio": 0.377, "lowerFaceRatio": -0.356, "gonialAngle": 0.328, "intercanthalRatio": 0.611, "eyeFissureRatio": 0.541, "eyeCanthalTilt": 0.061, "eyebrowThickness": -0.071, "browEyeDistance": -0.836, "nasalWidthRatio": -0.473, "nasalHeightRatio": -0.492, "mouthWidthRatio": -0.490, "mouthCornerAngle": 0.135, "lipFullnessRatio": -0.191, "philtrumLength": 0.571, "foreheadWidth": 0.334, "cheekboneWidth": 0.975, "chinAngle": 2.328, "eyeAspect": -0.333, "eyebrowCurvature": 9.220, "eyebrowTiltDirection": -0.689, "upperVsLowerLipRatio": -1.522, "browSpacing": -0.095}
+  },
+  {
+    "id": "b3f8a775", "gender": "female", "faceShape": "heart",
+    "z": {"faceAspectRatio": -1.045, "faceTaperRatio": -1.170, "lowerFaceFullness": -0.620, "upperFaceRatio": 0.406, "midFaceRatio": 0.626, "lowerFaceRatio": -0.616, "gonialAngle": 1.397, "intercanthalRatio": 0.115, "eyeFissureRatio": 0.850, "eyeCanthalTilt": 0.240, "eyebrowThickness": 1.371, "browEyeDistance": 0.430, "nasalWidthRatio": -0.841, "nasalHeightRatio": -0.041, "mouthWidthRatio": -1.664, "mouthCornerAngle": 0.323, "lipFullnessRatio": 0.400, "philtrumLength": 0.195, "foreheadWidth": 1.827, "cheekboneWidth": 0.747, "chinAngle": 2.074, "eyeAspect": -0.525, "eyebrowCurvature": 9.746, "eyebrowTiltDirection": 1.290, "upperVsLowerLipRatio": -2.062, "browSpacing": 0.564}
+  },
+  {
+    "id": "b4cd662f", "gender": "female", "faceShape": "oblong",
+    "z": {"faceAspectRatio": 0.654, "faceTaperRatio": -0.223, "lowerFaceFullness": -0.111, "upperFaceRatio": 0.076, "midFaceRatio": 0.245, "lowerFaceRatio": -0.175, "gonialAngle": 0.469, "intercanthalRatio": 0.383, "eyeFissureRatio": 0.551, "eyeCanthalTilt": 0.157, "eyebrowThickness": -0.270, "browEyeDistance": -1.006, "nasalWidthRatio": -0.276, "nasalHeightRatio": -0.608, "mouthWidthRatio": -0.644, "mouthCornerAngle": 0.088, "lipFullnessRatio": -0.091, "philtrumLength": 0.764, "foreheadWidth": 0.288, "cheekboneWidth": 0.798, "chinAngle": 2.175, "eyeAspect": 0.086, "eyebrowCurvature": 8.919, "eyebrowTiltDirection": -0.255, "upperVsLowerLipRatio": -1.628, "browSpacing": -0.198}
+  }
+]

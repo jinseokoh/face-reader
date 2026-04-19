@@ -456,24 +456,20 @@ class CompatibilityReportPage extends StatelessWidget {
   /// will simultaneously hit high compat. The Monte Carlo now uses template-
   /// based correlated face generation to better mirror real users.
   ///
-  /// Empirically-verified distribution (2026-04-18 face/ear 제외 + shape preset 재보정, 20,000 pairs):
-  ///   ≥ 81 → 천생연분  (11%)
-  ///   ≥ 72 → 좋은 궁합 (30%)
-  ///   ≥ 64 → 보통       (29%)
+  /// Empirically-verified distribution (2026-04-19 v2.6 zone-parity + rule cap,
+  /// 20,000 pairs, MC p90/p60/p30):
+  ///   ≥ 83 → 천생연분  (10%)
+  ///   ≥ 73 → 좋은 궁합 (30%)
+  ///   ≥ 65 → 보통       (30%)
   ///   else → 어려운 궁합 (30%)
-  ///
-  /// A2 (명궁 P-09/P-09B) + A4 (광대 조합 3종) 으로 compat 분포가
-  /// 기존 bottom-heavy (10/25/25/40) 에서 evenly-distributed (10/30/30/30)
-  /// 로 shift. positive rule 양이 늘면서 상호 compat 일치 확률이 올라갔고,
-  /// 이는 엔진의 자연 shape — flattery 가 아닌 현실의 호환성 분포에 가까움.
   ///
   /// 재보정 절차: flutter test test/compat_calibration_test.dart 실행 → 출력된
   /// _resolveLabel thresholds 를 그대로 아래에 붙여 넣고, compat_label_fairness
   /// 가 green 인지 확인.
   String _resolveLabel(int score) {
-    if (score >= 85) return '천생연분';
-    if (score >= 75) return '좋은 궁합';
-    if (score >= 67) return '보통';
+    if (score >= 83) return '천생연분';
+    if (score >= 73) return '좋은 궁합';
+    if (score >= 65) return '보통';
     return '어려운 궁합';
   }
 

@@ -64,4 +64,21 @@ class SupabaseService {
     await _client.from('metrics').update({'alias': alias}).eq('id', uuid);
     debugPrint('[Supabase] updated alias id=$uuid alias=$alias');
   }
+
+  /// Upsert metrics payload for an existing record. pull-to-refresh 후 slim
+  /// capture JSON 을 서버에 동기화하는 용도.
+  Future<void> upsertMetricsJson(FaceReadingReport report) async {
+    final id = report.supabaseId;
+    if (id == null) return;
+    await _client.from('metrics').upsert({
+      'id': id,
+      'metrics_json': report.toJsonString(),
+      'source': report.source.name,
+      'ethnicity': report.ethnicity.name,
+      'gender': report.gender.name,
+      'age_group': report.ageGroup.name,
+      'expires_at': report.expiresAt.toUtc().toIso8601String(),
+    });
+    debugPrint('[Supabase] upserted metrics id=$id');
+  }
 }

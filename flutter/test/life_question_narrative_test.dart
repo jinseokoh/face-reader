@@ -122,33 +122,39 @@ List<String> _sectionBodies(String full) {
 
 void main() {
   group('life question narrative', () {
-    test('30대 남성: 8개 섹션 전부 생성, 각 섹션 450자 이상', () {
+    test('30대 남성: 7개 섹션 전부 생성, 각 섹션 300자 이상', () {
       final report =
           _buildReport(gender: Gender.male, age: AgeGroup.thirties);
       final full = assembleLifeQuestions(report);
 
-      expect(_countSections(full), 8,
-          reason: '30대 이상은 바람기·관능도 포함 8개 섹션');
+      // v3 섹션: 재능·건강·재물·대인·연애·관능도·조언 = 7.
+      // 바람기 섹션은 연애운 Shadow 의 1-line 특징으로 통합됨.
+      expect(_countSections(full), 7,
+          reason: '30대 이상은 관능도 포함 7개 섹션');
+      expect(full.contains('## 바람기'), isFalse,
+          reason: '바람기는 더 이상 독립 섹션이 아님');
+      expect(full.contains('## 관능도'), isTrue);
 
       final bodies = _sectionBodies(full);
       for (var i = 0; i < bodies.length; i++) {
-        // 400~600자 평균 목표 (v3). 개별 섹션 최소 = 420자 (여유 20자).
-        expect(bodies[i].length, greaterThanOrEqualTo(420),
+        expect(bodies[i].length, greaterThanOrEqualTo(300),
             reason: 'section $i too short: ${bodies[i].length} chars');
       }
     });
 
-    test('20대 여성: 관능도 제외 7개 섹션', () {
+    test('20대 여성: 관능도 제외 6개 섹션', () {
       final report =
           _buildReport(gender: Gender.female, age: AgeGroup.twenties);
       final full = assembleLifeQuestions(report);
 
-      expect(_countSections(full), 7, reason: '20대는 바람기만 포함, 관능도 제외');
-      expect(full.contains('## 바람기'), isTrue);
+      expect(_countSections(full), 6,
+          reason: '20대는 관능도·바람기 모두 제외, 연애운 안에서 바람기 한 줄 평 처리');
+      expect(full.contains('## 바람기'), isFalse);
       expect(full.contains('## 관능도'), isFalse);
+      expect(full.contains('## 연애운'), isTrue);
     });
 
-    test('10대: 바람기·관능도 모두 제외 6개 섹션', () {
+    test('10대: 관능도 제외 6개 섹션', () {
       final report = _buildReport(gender: Gender.male, age: AgeGroup.teens);
       final full = assembleLifeQuestions(report);
 
@@ -157,12 +163,12 @@ void main() {
       expect(full.contains('## 관능도'), isFalse);
     });
 
-    test('50대 이상: 8개 섹션 + 종합 조언에 덜어내기 맥락', () {
+    test('50대 이상: 7개 섹션 + 종합 조언에 덜어내기 맥락', () {
       final report =
           _buildReport(gender: Gender.female, age: AgeGroup.fifties);
       final full = assembleLifeQuestions(report);
 
-      expect(_countSections(full), 8);
+      expect(_countSections(full), 7);
       expect(full.contains('덜어내는'), isTrue,
           reason: '50+ 라면 종합 조언이 \'덜어내는 기술\' 맥락으로 분기되어야 한다');
     });

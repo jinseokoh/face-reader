@@ -249,5 +249,8 @@ String formatMeanStd(Map<Attribute, ({double mean, double std})> male,
   return buf.toString();
 }
 
+// v2.8 (2026-04-19): N=14 real-user (eastAsian female 30s) empirical 재보정
+// 후 metric z 분포가 N(0, ~1) 로 수렴. ref 이동으로 "camera/selfie +bias"
+// 가정이 ref 에 흡수됐으므로 MC 도 bias=0.0, std=1.0 로 정렬한다.
 const double _inputMean = 0.0;
-const double _inputStd = 0.85;
+const double _inputStd = 1.0;

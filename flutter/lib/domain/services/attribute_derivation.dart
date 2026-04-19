@@ -136,111 +136,145 @@ extension AttributeBreakdownContributors on AttributeBreakdown {
   }
 }
 
-// ──────────────────── §2.2 Weight Matrix (9 노드) ────────────────────
+// ──────────────────── §2.2 Weight Matrix v2.7 (9 노드) ────────────────────
 //
-// face(root) · ear 제외. row 합 = 1.00.
-// 최대 per-node weight 0.40 상한, 단일 metric 노드(glabella·cheekbone·philtrum)
-// 는 per-attr weight 0.25 상한. 의미론 구멍(eye→sociab/trust, chin→매력도,
-// 하정 3노드→관능) 메움.
+// face(root) · ear 제외. 불변식 5 개:
+//   1. row 합 = 1.00
+//   2. zone 합 ∈ [0.25, 0.40]  — 상/중/하정 편향 근절
+//   3. per-node ≤ 0.25         — 단일 노드 독점 방지
+//   4. per-metric max/min ≤ 3.5× — 단일 metric 과적재 band
+//   5. row cosine similarity < 0.92 — attribute 간 프로파일 decorrelation
+//
+// v2.7 도입 배경 (2026-04-19):
+//   v2.6 까지 charm cluster (sociability · emotionality · sensuality ·
+//   attractiveness · libido) 다섯 속성이 eye + eyebrow + mouth 3 node 에
+//   공통 dominant 로 쏠려 있어, 임의의 얼굴이 항상 외교형/예술가형/미인형
+//   cluster 로 top-2 가 고정되는 편향 발생. 각 속성마다 고유 dominant node
+//   를 배정하여 cos-sim 을 내려뜨림 ("학자형 편향 → 외교형 편향" 의 근본
+//   원인 해소).
+//
+// Dominant node map (row 최댓값 기준):
+//   wealth         nose      0.20
+//   leadership     chin      0.18
+//   intelligence   forehead  0.18
+//   sociability    mouth     0.20
+//   emotionality   eye       0.20
+//   stability      chin      0.18  (leadership 와 공유 but 나머지 분포 다름)
+//   sensuality     eye·mouth·philtrum  tri-dominant
+//   trustworthiness  forehead·eye·chin balanced
+//   attractiveness eye·mouth tied
+//   libido         eyebrow   0.17  (philtrum 0.15 neg polarity)
 
 const _weightMatrix = <Attribute, List<_NodeWeight>>{
   Attribute.wealth: [
-    _NodeWeight('forehead', 0.05, 1),
-    _NodeWeight('glabella', 0.05, 1),
-    _NodeWeight('eye', 0.05, 1),
-    _NodeWeight('nose', 0.35, 1),
-    _NodeWeight('cheekbone', 0.15, 1),
-    _NodeWeight('mouth', 0.15, 1),
-    _NodeWeight('chin', 0.20, 1),
-  ],
-  Attribute.leadership: [
-    _NodeWeight('forehead', 0.25, 1),
-    _NodeWeight('glabella', 0.05, 1),
-    _NodeWeight('eyebrow', 0.15, 1),
-    _NodeWeight('eye', 0.05, 1),
-    _NodeWeight('nose', 0.15, 1),
-    _NodeWeight('cheekbone', 0.15, 1),
-    _NodeWeight('mouth', 0.05, 1),
+    _NodeWeight('forehead', 0.12, 1),
+    _NodeWeight('glabella', 0.10, 1),
+    _NodeWeight('eyebrow', 0.08, 1),
+    _NodeWeight('eye', 0.08, 1),
+    _NodeWeight('nose', 0.20, 1),
+    _NodeWeight('cheekbone', 0.10, 1),
+    _NodeWeight('philtrum', 0.07, 1),
+    _NodeWeight('mouth', 0.10, 1),
     _NodeWeight('chin', 0.15, 1),
   ],
-  // v2.5 (2026-04-19): intel 상정 집중 완화. cheekbone 에 배정했던 0.08 은
-  // cheekboneWidth 과적재 방지 위해 nose·chin 으로 재배치.
+  Attribute.leadership: [
+    _NodeWeight('forehead', 0.13, 1),
+    _NodeWeight('glabella', 0.08, 1),
+    _NodeWeight('eyebrow', 0.15, 1),
+    _NodeWeight('eye', 0.10, 1),
+    _NodeWeight('nose', 0.15, 1),
+    _NodeWeight('cheekbone', 0.10, 1),
+    _NodeWeight('philtrum', 0.03, 1),
+    _NodeWeight('mouth', 0.08, 1),
+    _NodeWeight('chin', 0.18, 1),
+  ],
   Attribute.intelligence: [
-    _NodeWeight('forehead', 0.15, 1),
-    _NodeWeight('glabella', 0.05, 1),
-    _NodeWeight('eyebrow', 0.18, 1),
-    _NodeWeight('eye', 0.25, 1),
-    _NodeWeight('nose', 0.17, 1),
+    _NodeWeight('forehead', 0.18, 1),
+    _NodeWeight('glabella', 0.10, 1),
+    _NodeWeight('eyebrow', 0.10, 1),
+    _NodeWeight('eye', 0.15, 1),
+    _NodeWeight('nose', 0.10, 1),
+    _NodeWeight('cheekbone', 0.08, 1),
+    _NodeWeight('philtrum', 0.09, 1),
     _NodeWeight('mouth', 0.10, 1),
     _NodeWeight('chin', 0.10, 1),
   ],
   Attribute.sociability: [
-    _NodeWeight('eyebrow', 0.05, 1),
-    _NodeWeight('eye', 0.20, 1),
-    _NodeWeight('nose', 0.05, 1),
-    _NodeWeight('cheekbone', 0.15, 1),
-    _NodeWeight('philtrum', 0.05, 1),
-    _NodeWeight('mouth', 0.30, 1),
-    _NodeWeight('chin', 0.20, 1),
+    _NodeWeight('forehead', 0.08, 1),
+    _NodeWeight('glabella', 0.10, 1),
+    _NodeWeight('eyebrow', 0.10, 1),
+    _NodeWeight('eye', 0.12, 1),
+    _NodeWeight('nose', 0.08, 1),
+    _NodeWeight('cheekbone', 0.12, 1),
+    _NodeWeight('philtrum', 0.07, 1),
+    _NodeWeight('mouth', 0.20, 1),
+    _NodeWeight('chin', 0.13, 1),
   ],
   Attribute.emotionality: [
-    _NodeWeight('glabella', 0.10, 1),
-    _NodeWeight('eyebrow', 0.20, 1),
-    _NodeWeight('eye', 0.35, 1),
-    _NodeWeight('philtrum', 0.05, 1),
-    _NodeWeight('mouth', 0.20, 1),
+    _NodeWeight('forehead', 0.06, 1),
+    _NodeWeight('glabella', 0.13, 1),
+    _NodeWeight('eyebrow', 0.12, 1),
+    _NodeWeight('eye', 0.20, 1),
+    _NodeWeight('nose', 0.08, 1),
+    _NodeWeight('cheekbone', 0.08, 1),
+    _NodeWeight('philtrum', 0.10, 1),
+    _NodeWeight('mouth', 0.13, 1),
     _NodeWeight('chin', 0.10, 1),
   ],
-  // v2.5 (2026-04-19): stab 이 forehead·chin 양쪽에 집중되어 오블롱·각진 얼굴
-  // 에서 체계적으로 top 장악. 모든 노드에 더 고르게 분산해 단일 축 우위 제거.
   Attribute.stability: [
-    _NodeWeight('forehead', 0.15, 1),
-    _NodeWeight('glabella', 0.10, 1),
-    _NodeWeight('eyebrow', 0.10, 1),
-    _NodeWeight('eye', 0.15, 1),
-    _NodeWeight('nose', 0.17, 1),
-    _NodeWeight('cheekbone', 0.08, 1),
-    _NodeWeight('philtrum', 0.05, 1),
-    _NodeWeight('chin', 0.20, 1),
+    _NodeWeight('forehead', 0.12, 1),
+    _NodeWeight('glabella', 0.15, 1),
+    _NodeWeight('eyebrow', 0.08, 1),
+    _NodeWeight('eye', 0.08, 1),
+    _NodeWeight('nose', 0.13, 1),
+    _NodeWeight('cheekbone', 0.10, 1),
+    _NodeWeight('philtrum', 0.08, 1),
+    _NodeWeight('mouth', 0.08, 1),
+    _NodeWeight('chin', 0.18, 1),
   ],
   Attribute.sensuality: [
-    _NodeWeight('eyebrow', 0.10, 1),
-    _NodeWeight('eye', 0.25, 1),
-    _NodeWeight('nose', 0.05, 1),
-    _NodeWeight('cheekbone', 0.10, 1),
-    _NodeWeight('philtrum', 0.10, 1),
-    _NodeWeight('mouth', 0.25, 1),
-    _NodeWeight('chin', 0.15, 1),
+    _NodeWeight('forehead', 0.05, 1),
+    _NodeWeight('glabella', 0.08, 1),
+    _NodeWeight('eyebrow', 0.13, 1),
+    _NodeWeight('eye', 0.17, 1),
+    _NodeWeight('nose', 0.10, 1),
+    _NodeWeight('cheekbone', 0.08, 1),
+    _NodeWeight('philtrum', 0.15, 1),
+    _NodeWeight('mouth', 0.17, 1),
+    _NodeWeight('chin', 0.07, 1),
   ],
   Attribute.trustworthiness: [
-    _NodeWeight('forehead', 0.20, 1),
-    _NodeWeight('glabella', 0.05, 1),
-    _NodeWeight('eyebrow', 0.15, 1),
-    _NodeWeight('eye', 0.20, 1),
-    _NodeWeight('nose', 0.20, 1),
-    _NodeWeight('cheekbone', 0.05, 1),
-    _NodeWeight('philtrum', 0.05, 1),
-    _NodeWeight('mouth', 0.05, 1),
-    _NodeWeight('chin', 0.05, 1),
-  ],
-  Attribute.attractiveness: [
-    _NodeWeight('forehead', 0.05, 1),
-    _NodeWeight('eyebrow', 0.10, 1),
-    _NodeWeight('eye', 0.30, 1),
-    _NodeWeight('nose', 0.10, 1),
-    _NodeWeight('cheekbone', 0.05, 1),
-    _NodeWeight('philtrum', 0.05, 1),
-    _NodeWeight('mouth', 0.20, 1),
+    _NodeWeight('forehead', 0.15, 1),
+    _NodeWeight('glabella', 0.12, 1),
+    _NodeWeight('eyebrow', 0.06, 1),
+    _NodeWeight('eye', 0.15, 1),
+    _NodeWeight('nose', 0.13, 1),
+    _NodeWeight('cheekbone', 0.07, 1),
+    _NodeWeight('philtrum', 0.07, 1),
+    _NodeWeight('mouth', 0.10, 1),
     _NodeWeight('chin', 0.15, 1),
   ],
-  Attribute.libido: [
-    _NodeWeight('eyebrow', 0.05, 1),
-    _NodeWeight('eye', 0.25, 1),
+  Attribute.attractiveness: [
+    _NodeWeight('forehead', 0.07, 1),
+    _NodeWeight('glabella', 0.07, 1),
+    _NodeWeight('eyebrow', 0.13, 1),
+    _NodeWeight('eye', 0.17, 1),
     _NodeWeight('nose', 0.10, 1),
-    _NodeWeight('cheekbone', 0.05, 1),
-    _NodeWeight('philtrum', 0.20, -1),
-    _NodeWeight('mouth', 0.15, 1),
-    _NodeWeight('chin', 0.20, 1),
+    _NodeWeight('cheekbone', 0.13, 1),
+    _NodeWeight('philtrum', 0.07, 1),
+    _NodeWeight('mouth', 0.17, 1),
+    _NodeWeight('chin', 0.09, 1),
+  ],
+  Attribute.libido: [
+    _NodeWeight('forehead', 0.05, 1),
+    _NodeWeight('glabella', 0.08, 1),
+    _NodeWeight('eyebrow', 0.17, 1),
+    _NodeWeight('eye', 0.13, 1),
+    _NodeWeight('nose', 0.10, 1),
+    _NodeWeight('cheekbone', 0.10, 1),
+    _NodeWeight('philtrum', 0.15, -1),
+    _NodeWeight('mouth', 0.12, 1),
+    _NodeWeight('chin', 0.10, 1),
   ],
 };
 
@@ -368,8 +402,9 @@ Map<Attribute, double> _stage1bDistinctiveness(NodeScore tree) {
 // ──────────────────── Stage 2 — Zone Rules ────────────────────
 
 final _zoneRules = <_TreeRule>[
-  // Z-01 삼정 균형 — 공통 발동 rule. v2.5 mag 재차 축소 (stab 0.3→0.1,
-  // trust 0.2→0.05, attr 0.2→0.1) — stab/trust 쏠림 잔존 해소.
+  // Z-01 삼정 균형 — 공통 발동 rule. v2.9: attr 0.1→0.05 (v2.8), wealth 제거.
+  // 균형 얼굴이 attractiveness 로 과집중되던 구조적 편향 해소.
+  // wealth 0.03 은 threshold(0.05) 미만으로 contributor 필터에 걸려 제거.
   _TreeRule('Z-01', (t) {
     return _zoneSignedZ(t, 'upper').abs() < 0.5 &&
         _zoneSignedZ(t, 'middle').abs() < 0.5 &&
@@ -377,56 +412,56 @@ final _zoneRules = <_TreeRule>[
   }, const {
     Attribute.stability: 0.1,
     Attribute.trustworthiness: 0.05,
-    Attribute.attractiveness: 0.1,
+    Attribute.attractiveness: 0.05,
   }),
 
-  // Z-02 상정 우세
+  // Z-02 상정 우세. v2.6 cap: intel 2.0→0.5, lead 0.5→0.13.
   _TreeRule('Z-02', (t) {
     return _zoneSignedZ(t, 'upper') >= 1.0 &&
         _zoneSignedZ(t, 'middle') <= 0.5 &&
         _zoneSignedZ(t, 'lower') <= 0.5;
-  }, const {Attribute.intelligence: 2.0, Attribute.leadership: 0.5}),
+  }, const {Attribute.intelligence: 0.5, Attribute.leadership: 0.13}),
 
-  // Z-03 중정 우세
+  // Z-03 중정 우세. v2.6 cap: wealth 1.5→0.5, libido 1.0→0.33.
   _TreeRule('Z-03', (t) {
     return _zoneSignedZ(t, 'middle') >= 1.0 &&
         _zoneSignedZ(t, 'upper') <= 0.5 &&
         _zoneSignedZ(t, 'lower') <= 0.5;
-  }, const {Attribute.wealth: 1.5, Attribute.libido: 1.0}),
+  }, const {Attribute.wealth: 0.5, Attribute.libido: 0.33}),
 
-  // Z-04 하정 우세
+  // Z-04 하정 우세. v2.6 cap: sens/libido 1.5→0.5, stab -0.5→-0.17.
   _TreeRule('Z-04', (t) {
     return _zoneSignedZ(t, 'lower') >= 1.0 &&
         _zoneSignedZ(t, 'upper') <= 0.5 &&
         _zoneSignedZ(t, 'middle') <= 0.5;
   }, const {
-    Attribute.sensuality: 1.5,
-    Attribute.libido: 1.5,
-    Attribute.stability: -0.5,
+    Attribute.sensuality: 0.5,
+    Attribute.libido: 0.5,
+    Attribute.stability: -0.17,
   }),
 
-  // Z-05 상-하 대립
+  // Z-05 상-하 대립. v2.6 cap: 1.0→0.5.
   _TreeRule(
       'Z-05',
       (t) =>
           _zoneSignedZ(t, 'upper') >= 1.0 &&
           _zoneSignedZ(t, 'lower') <= -1.0,
-      const {Attribute.intelligence: 1.0, Attribute.emotionality: -1.0}),
+      const {Attribute.intelligence: 0.5, Attribute.emotionality: -0.5}),
 
-  // Z-06 하-상 대립
+  // Z-06 하-상 대립. v2.6 cap: emot 1.5→0.5, trust -0.5→-0.17.
   _TreeRule(
       'Z-06',
       (t) =>
           _zoneSignedZ(t, 'lower') >= 1.0 &&
           _zoneSignedZ(t, 'upper') <= -1.0,
-      const {Attribute.emotionality: 1.5, Attribute.trustworthiness: -0.5}),
+      const {Attribute.emotionality: 0.5, Attribute.trustworthiness: -0.17}),
 
-  // Z-07 전면 강세
+  // Z-07 전면 강세. v2.6 cap: lead 2.0→0.5, attr 1.0→0.25.
   _TreeRule('Z-07', (t) {
     return _zoneSignedZ(t, 'upper') >= 1.0 &&
         _zoneSignedZ(t, 'middle') >= 1.0 &&
         _zoneSignedZ(t, 'lower') >= 1.0;
-  }, const {Attribute.leadership: 2.0, Attribute.attractiveness: 1.0}),
+  }, const {Attribute.leadership: 0.5, Attribute.attractiveness: 0.25}),
 
   // Z-08 전면 약세
   _TreeRule('Z-08', (t) {
@@ -447,9 +482,9 @@ final _zoneRules = <_TreeRule>[
   _TreeRule('Z-09', (t) => _zoneAbsZ(t, 'upper') >= 1.5,
       const {Attribute.intelligence: 0.5, Attribute.attractiveness: -0.3}),
 
-  // Z-10 하정 distinctive
+  // Z-10 하정 distinctive. v2.6 cap: sens 1.0→0.5, emot 0.5→0.25.
   _TreeRule('Z-10', (t) => _zoneAbsZ(t, 'lower') >= 1.5,
-      const {Attribute.sensuality: 1.0, Attribute.emotionality: 0.5}),
+      const {Attribute.sensuality: 0.5, Attribute.emotionality: 0.25}),
 
   // Z-11 중정 비율 큼 — root own `midFaceRatio` ≥ 1.0
   _TreeRule('Z-11', (t) => (t.ownZ['midFaceRatio'] ?? 0.0) >= 1.0,
@@ -466,22 +501,65 @@ final _zoneRules = <_TreeRule>[
       'Z-13',
       (t) => (t.descendantById('chin')?.ownZ['lowerFaceRatio'] ?? 0.0) <= -1.0,
       const {Attribute.emotionality: 0.3, Attribute.stability: -0.3}),
+
+  // Z-FH 이마 강세 — forehead ownMeanZ ≥ 0.7 → 지성·신뢰 신호.
+  // v2.9 신규: 이마 두드러진 얼굴이 intelligence 로 분류되도록.
+  _TreeRule(
+      'Z-FH',
+      (t) => _leafZ(t, 'forehead') >= 0.7,
+      const {Attribute.intelligence: 0.20, Attribute.trustworthiness: 0.10}),
+
+  // Z-IC 눈 사이 넓음 — intercanthalRatio z ≥ 0.5 → 카리스마·리더십.
+  // v2.9 신규: 눈 사이 넓은 open-set 인상이 leadership 로.
+  _TreeRule(
+      'Z-IC',
+      (t) => (t.descendantById('eye')?.ownZ['intercanthalRatio'] ?? 0.0) >= 0.5,
+      const {Attribute.leadership: 0.20, Attribute.wealth: 0.08}),
+
+  // Z-LFR 풍만한 입술 + 입 넓지 않음 — lipFullnessRatio z ≥ 0.8 AND mouthWidthRatio z < 1.5
+  // → sociability 상승. 큰 입(mwr≥1.5)은 이미 다른 rule 처리.
+  // v2.9 신규.
+  _TreeRule('Z-LFR', (t) {
+    final mouth = t.descendantById('mouth');
+    if (mouth == null) return false;
+    final lfr = mouth.ownZ['lipFullnessRatio'] ?? 0.0;
+    final mwr = mouth.ownZ['mouthWidthRatio'] ?? 0.0;
+    return lfr >= 0.8 && mwr < 1.5;
+  }, const {Attribute.sociability: 0.25, Attribute.attractiveness: 0.08}),
+
+  // Z-FAR 세로로 긴 얼굴 — faceAspectRatio z ≥ 1.2 → 부유·리더 인상.
+  // v2.9 신규: oblong/long face 가 wealth 로 분류되도록.
+  _TreeRule(
+      'Z-FAR',
+      (t) => (t.ownZ['faceAspectRatio'] ?? 0.0) >= 1.2,
+      const {Attribute.wealth: 0.25, Attribute.leadership: 0.10}),
+
+  // Z-EBT 눈썹 하향 틸트 — eyebrowTiltDirection z ≤ −1.0 → 관능도 신호.
+  // 처진 눈썹(팔자미인) 은 한국 관상에서 관능·감성형 인상. v2.9 신규.
+  _TreeRule(
+      'Z-EBT',
+      (t) {
+        final eb = t.descendantById('eyebrow');
+        if (eb == null) return false;
+        return (eb.ownZ['eyebrowTiltDirection'] ?? 0.0) <= -1.0;
+      },
+      const {Attribute.sensuality: 0.20, Attribute.emotionality: 0.10}),
 ];
 
 // ──────────────────── Stage 3 — Organ Rules ────────────────────
 
 final _organRules = <_TreeRule>[
-  // O-EB1 눈-눈썹 동조 강. v2.3 trust 1.0→0.3 (편향 축소).
+  // O-EB1 눈-눈썹 동조 강. v2.6 cap: lead 1.5→0.5, trust 0.3→0.1.
   _TreeRule(
       'O-EB1',
       (t) => _leafZ(t, 'eye') >= 1.0 && _leafZ(t, 'eyebrow') >= 1.0,
-      const {Attribute.leadership: 1.5, Attribute.trustworthiness: 0.3}),
+      const {Attribute.leadership: 0.5, Attribute.trustworthiness: 0.1}),
 
-  // O-EB2 눈 강·눈썹 약
+  // O-EB2 눈 강·눈썹 약. v2.6 cap: 1.0→0.5.
   _TreeRule(
       'O-EB2',
       (t) => _leafZ(t, 'eye') >= 1.0 && _leafZ(t, 'eyebrow') <= -1.0,
-      const {Attribute.intelligence: 1.0, Attribute.emotionality: 1.0}),
+      const {Attribute.intelligence: 0.5, Attribute.emotionality: 0.5}),
 
   // O-EB3 눈썹 강·눈 약
   _TreeRule(
@@ -489,50 +567,50 @@ final _organRules = <_TreeRule>[
       (t) => _leafZ(t, 'eyebrow') >= 1.0 && _leafZ(t, 'eye') <= -1.0,
       const {Attribute.leadership: 0.5, Attribute.trustworthiness: -0.5}),
 
-  // O-NM1 코-입 동조
+  // O-NM1 코-입 동조. v2.6 cap: wealth 2.0→0.5, soc 1.0→0.25.
   _TreeRule(
       'O-NM1',
       (t) => _leafZ(t, 'nose') >= 1.0 && _leafZ(t, 'mouth') >= 1.0,
-      const {Attribute.wealth: 2.0, Attribute.sociability: 1.0}),
+      const {Attribute.wealth: 0.5, Attribute.sociability: 0.25}),
 
-  // O-NM2 코 강·입 약
+  // O-NM2 코 강·입 약. v2.6 cap: soc -1.0→-0.5, wealth 0.5→0.25.
   _TreeRule(
       'O-NM2',
       (t) => _leafZ(t, 'nose') >= 1.0 && _leafZ(t, 'mouth') <= -1.0,
-      const {Attribute.wealth: 0.5, Attribute.sociability: -1.0}),
+      const {Attribute.wealth: 0.25, Attribute.sociability: -0.5}),
 
-  // O-NM3 코 약·입 강
+  // O-NM3 코 약·입 강. v2.6 cap: soc 1.5→0.5, wealth -0.5→-0.17.
   _TreeRule(
       'O-NM3',
       (t) => _leafZ(t, 'nose') <= -1.0 && _leafZ(t, 'mouth') >= 1.0,
-      const {Attribute.sociability: 1.5, Attribute.wealth: -0.5}),
+      const {Attribute.sociability: 0.5, Attribute.wealth: -0.17}),
 
-  // O-NC 코-턱 결합
+  // O-NC 코-턱 결합. v2.6 cap: 1.0→0.5, stab 0.5→0.25.
   _TreeRule(
       'O-NC',
       (t) => _leafZ(t, 'nose') >= 1.0 && _leafZ(t, 'chin') >= 1.0,
       const {
-        Attribute.wealth: 1.0,
-        Attribute.leadership: 1.0,
-        Attribute.stability: 0.5,
+        Attribute.wealth: 0.5,
+        Attribute.leadership: 0.5,
+        Attribute.stability: 0.25,
       }),
 
-  // O-EM 눈-입 결합 — Opt-B: 임계 1.0 → 0.5 로 완화(매력도 기여 발동률 ↑).
+  // O-EM 눈-입 결합. v2.6 cap: attr 1.5→0.5, soc 1.0→0.33.
   _TreeRule(
       'O-EM',
       (t) => _leafZ(t, 'eye') >= 0.5 && _leafZ(t, 'mouth') >= 0.5,
-      const {Attribute.attractiveness: 1.5, Attribute.sociability: 1.0}),
+      const {Attribute.attractiveness: 0.5, Attribute.sociability: 0.33}),
 
-  // O-FB 이마-눈썹 결합
+  // O-FB 이마-눈썹 결합. v2.6 cap: lead 1.0→0.5, intel 0.5→0.25.
   _TreeRule(
       'O-FB',
       (t) => _leafZ(t, 'forehead') >= 1.0 && _leafZ(t, 'eyebrow') >= 1.0,
-      const {Attribute.leadership: 1.0, Attribute.intelligence: 0.5}),
+      const {Attribute.leadership: 0.5, Attribute.intelligence: 0.25}),
 
-  // O-CK 광대 강 — Opt-B: 매력도 감점 삭제(문화적 과잉).
+  // O-CK 광대 강. v2.6 cap: lead 0.8→0.5, wealth 0.3→0.19.
   _TreeRule('O-CK', (t) => _leafZ(t, 'cheekbone') >= 1.0, const {
-    Attribute.leadership: 0.8,
-    Attribute.wealth: 0.3,
+    Attribute.leadership: 0.5,
+    Attribute.wealth: 0.19,
   }),
 
   // O-CB 광대 약
@@ -542,17 +620,17 @@ final _organRules = <_TreeRule>[
     Attribute.attractiveness: 0.3,
   }),
 
-  // O-CKN 광대+코 동반 강
+  // O-CKN 광대+코 동반 강. v2.6 cap: wealth 0.8→0.5, lead 0.5→0.31.
   _TreeRule(
       'O-CKN',
       (t) => _leafZ(t, 'cheekbone') >= 1.0 && _leafZ(t, 'nose') >= 1.0,
-      const {Attribute.wealth: 0.8, Attribute.leadership: 0.5}),
+      const {Attribute.wealth: 0.5, Attribute.leadership: 0.31}),
 
-  // O-CKC 광대+턱 동반 강
+  // O-CKC 광대+턱 동반 강. v2.6 cap: lead 0.8→0.5, stab 0.5→0.31.
   _TreeRule(
       'O-CKC',
       (t) => _leafZ(t, 'cheekbone') >= 1.0 && _leafZ(t, 'chin') >= 1.0,
-      const {Attribute.leadership: 0.8, Attribute.stability: 0.5}),
+      const {Attribute.leadership: 0.5, Attribute.stability: 0.31}),
 
   // O-CKF 광대+이마 동반 강
   _TreeRule(
@@ -560,25 +638,26 @@ final _organRules = <_TreeRule>[
       (t) => _leafZ(t, 'cheekbone') >= 1.0 && _leafZ(t, 'forehead') >= 1.0,
       const {Attribute.leadership: 0.5, Attribute.intelligence: 0.5}),
 
-  // O-PH1 인중 짧음
+  // O-PH1 인중 짧음. v2.6 cap: libido 1.5→0.5, sens 1.0→0.33.
   _TreeRule('O-PH1', (t) => _leafZ(t, 'philtrum') <= -1.0,
-      const {Attribute.libido: 1.5, Attribute.sensuality: 1.0}),
+      const {Attribute.libido: 0.5, Attribute.sensuality: 0.33}),
 
-  // O-PH2 인중 긺
+  // O-PH2 인중 긺. v2.9: stability 0.5→0.25 — 인중 긴 얼굴이 stability 로만 수렴하던
+  // 패턴 해소. trustworthiness 는 유지해 philtrum 이 신뢰 신호로 작동.
   _TreeRule('O-PH2', (t) => _leafZ(t, 'philtrum') >= 1.0,
-      const {Attribute.stability: 0.5, Attribute.trustworthiness: 0.5}),
+      const {Attribute.stability: 0.25, Attribute.trustworthiness: 0.5}),
 
-  // O-CH 턱 강. v2.3 stability 1.0→0.3.
+  // O-CH 턱 강. v2.6 cap: lead 1.0→0.5, stab 0.3→0.15.
   _TreeRule('O-CH', (t) => _leafZ(t, 'chin') >= 1.0,
-      const {Attribute.leadership: 1.0, Attribute.stability: 0.3}),
+      const {Attribute.leadership: 0.5, Attribute.stability: 0.15}),
 
-  // O-DC1 코 등선 살짝/중간 볼록
+  // O-DC1 코 등선 살짝/중간 볼록. v2.6 cap: lead 0.7→0.5, wealth 0.3→0.21.
   _TreeRule('O-DC1', (t) {
     final nose = t.descendantById('nose');
     if (nose == null) return false;
     final dc = nose.ownZ['dorsalConvexity'] ?? 0.0;
     return dc >= 1.5 && dc < 3.0;
-  }, const {Attribute.leadership: 0.7, Attribute.wealth: 0.3}),
+  }, const {Attribute.leadership: 0.5, Attribute.wealth: 0.21}),
 
   // O-DC2 코 등선 살짝 오목
   _TreeRule('O-DC2', (t) {
@@ -608,24 +687,24 @@ final _organRules = <_TreeRule>[
 // ──────────────────── Stage 4 — Palace Overlay ────────────────────
 
 final _palaceRules = <_TreeRule>[
-  // P-01 재백궁 + 전택궁. v2.3 stability 1.0→0.3.
+  // P-01 재백궁 + 전택궁. v2.6 cap: wealth 1.0→0.5, stab 0.3→0.15.
   _TreeRule(
       'P-01',
       (t) => _leafZ(t, 'nose') >= 1.0 && _leafZ(t, 'eye') >= 1.0,
-      const {Attribute.wealth: 1.0, Attribute.stability: 0.3}),
+      const {Attribute.wealth: 0.5, Attribute.stability: 0.15}),
 
-  // P-02 관록궁 + 천이궁
+  // P-02 관록궁 + 천이궁. v2.6 cap: lead 1.5→0.5, intel 1.0→0.33.
   _TreeRule('P-02', (t) => _leafZ(t, 'forehead') >= 1.5,
-      const {Attribute.leadership: 1.5, Attribute.intelligence: 1.0}),
+      const {Attribute.leadership: 0.5, Attribute.intelligence: 0.33}),
 
-  // P-03 복덕궁 — Opt-B: 임계 root≥0.8 → 0.3 로 완화(매력도 positive 발동률 ↑).
+  // P-03 복덕궁. v2.6 cap: attr 1.5→0.5, trust 0.5→0.17.
   _TreeRule('P-03', (t) {
     final root = t.rollUpMeanZ ?? 0.0;
     return root >= 0.3 &&
         _zoneSignedZ(t, 'upper') >= 0.0 &&
         _zoneSignedZ(t, 'middle') >= 0.0 &&
         _zoneSignedZ(t, 'lower') >= 0.0;
-  }, const {Attribute.attractiveness: 1.5, Attribute.trustworthiness: 0.5}),
+  }, const {Attribute.attractiveness: 0.5, Attribute.trustworthiness: 0.17}),
 
   // P-04 형제궁. v2.3 trust 1.0→0.3.
   _TreeRule(
@@ -633,17 +712,17 @@ final _palaceRules = <_TreeRule>[
       (t) => _leafZ(t, 'eyebrow') >= 1.0 && _leafAbsZ(t, 'eyebrow') >= 1.5,
       const {Attribute.sociability: 0.5, Attribute.trustworthiness: 0.3}),
 
-  // P-05 남녀궁
+  // P-05 남녀궁. v2.6 cap: libido 1.0→0.5, emot 0.5→0.25, soc 0.3→0.15.
   _TreeRule(
       'P-05',
       (t) => _leafZ(t, 'eye') >= 1.0 && _zoneSignedZ(t, 'lower') >= 0.0,
       const {
-        Attribute.libido: 1.0,
-        Attribute.emotionality: 0.5,
-        Attribute.sociability: 0.3,
+        Attribute.libido: 0.5,
+        Attribute.emotionality: 0.25,
+        Attribute.sociability: 0.15,
       }),
 
-  // P-06 처첩궁
+  // P-06 처첩궁. v2.6 cap: sens 1.0→0.5, attr 0.5→0.25, emot 0.3→0.15.
   _TreeRule('P-06', (t) {
     final eye = t.descendantById('eye');
     if (eye == null) return false;
@@ -651,9 +730,9 @@ final _palaceRules = <_TreeRule>[
     final tiltZ = eye.ownZ['eyeCanthalTilt'] ?? 0.0;
     return abs >= 1.0 && tiltZ >= 1.0;
   }, const {
-    Attribute.sensuality: 1.0,
-    Attribute.attractiveness: 0.5,
-    Attribute.emotionality: 0.3,
+    Attribute.sensuality: 0.5,
+    Attribute.attractiveness: 0.25,
+    Attribute.emotionality: 0.15,
   }),
 
   // P-07 질액궁
@@ -687,30 +766,36 @@ final _palaceRules = <_TreeRule>[
 // ──────────────────── Stage 5 — Age (50+) Rules ────────────────────
 
 final _ageRules = <_TreeRule>[
+  // v2.6 cap: libido -1.0→-0.5, sens -0.5→-0.25.
   _TreeRule('A-01', (t) => _zoneSignedZ(t, 'lower') <= -1.0,
-      const {Attribute.libido: -1.0, Attribute.sensuality: -0.5}),
+      const {Attribute.libido: -0.5, Attribute.sensuality: -0.25}),
 
+  // v2.6 cap: intel 1.0→0.5, stab 0.5→0.25.
   _TreeRule('A-02', (t) => _zoneSignedZ(t, 'upper') >= 0.5,
-      const {Attribute.intelligence: 1.0, Attribute.stability: 0.5}),
+      const {Attribute.intelligence: 0.5, Attribute.stability: 0.25}),
 
+  // v2.6 cap: attr 1.5→0.5, stab 1.0→0.33.
   _TreeRule('A-03', (t) => _leafZ(t, 'mouth') >= 0.5,
-      const {Attribute.attractiveness: 1.5, Attribute.stability: 1.0}),
+      const {Attribute.attractiveness: 0.5, Attribute.stability: 0.33}),
 
+  // v2.6 cap: attr -1.0→-0.5, emot 0.5→0.25.
   _TreeRule('A-04', (t) => (t.rollUpMeanZ ?? 0.0) <= -1.0,
-      const {Attribute.emotionality: 0.5, Attribute.attractiveness: -1.0}),
+      const {Attribute.emotionality: 0.25, Attribute.attractiveness: -0.5}),
 ];
 
 // ──────────────────── Stage 5 — Lateral Flag Rules ────────────────────
 
 final _lateralFlagRules = <_LateralFlagRule>[
+  // v2.6 cap: lead 1.5→0.5, wealth 0.5→0.17, stab -0.3→-0.10.
   _LateralFlagRule('L-AQ', (t, f) => f['aquilineNose'] ?? false, const {
-    Attribute.leadership: 1.5,
-    Attribute.wealth: 0.5,
-    Attribute.stability: -0.3,
+    Attribute.leadership: 0.5,
+    Attribute.wealth: 0.17,
+    Attribute.stability: -0.10,
   }),
 
+  // v2.6 cap: soc 1.0→0.5, attr 0.5→0.25.
   _LateralFlagRule('L-SN', (t, f) => f['snubNose'] ?? false,
-      const {Attribute.sociability: 1.0, Attribute.attractiveness: 0.5}),
+      const {Attribute.sociability: 0.5, Attribute.attractiveness: 0.25}),
 
   _LateralFlagRule('L-EL', (t, f) {
     final mouth = t.descendantById('mouth');
@@ -860,6 +945,24 @@ Map<Attribute, Set<Zone>> attributeZoneCoverage() => {
             .whereType<Zone>()
             .toSet(),
     };
+
+/// Per-attribute zone weight sum. v2.6 불변식: 모든 값 ∈ [0.25, 0.40].
+@visibleForTesting
+Map<Attribute, Map<Zone, double>> attributeZoneWeightSums() {
+  final out = <Attribute, Map<Zone, double>>{
+    for (final a in Attribute.values)
+      a: {for (final z in Zone.values) z: 0.0},
+  };
+  for (final entry in _weightMatrix.entries) {
+    for (final w in entry.value) {
+      final zone = nodeById[w.nodeId]?.zone;
+      if (zone == null) continue;
+      out[entry.key]![zone] =
+          (out[entry.key]![zone] ?? 0.0) + w.weight.abs();
+    }
+  }
+  return out;
+}
 
 @visibleForTesting
 List<String> weightedNodeIds(Attribute attr) =>

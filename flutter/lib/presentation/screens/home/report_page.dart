@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:face_reader/core/theme.dart';
 import 'package:face_reader/data/constants/face_reference_data.dart';
+import 'package:face_reader/data/constants/metric_text_blocks.dart';
 import 'package:face_reader/data/constants/node_text_blocks.dart';
 import 'package:face_reader/data/enums/age_group.dart';
 import 'package:face_reader/data/enums/attribute.dart';
@@ -98,7 +99,7 @@ class _ExpandableAttributeBarState extends State<_ExpandableAttributeBar> {
                     style: TextStyle(
                         color: _Palette.darkBrown,
                         fontSize: 16,
-                        fontWeight: FontWeight.bold)),
+                        fontWeight: FontWeight.w400)),
               ),
               Icon(
                 _expanded
@@ -144,10 +145,10 @@ class _ExpandableAttributeBarState extends State<_ExpandableAttributeBar> {
                     '${c.value >= 0 ? '+' : ''}${c.value.toStringAsFixed(2)}',
                     style: TextStyle(
                       color: c.value >= 0
-                          ? _Palette.olive
-                          : _Palette.warmBrown,
+                          ? const Color(0xFFC0392B)
+                          : const Color(0xFF2C5AA0),
                       fontSize: 13,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w400,
                     ),
                   ),
                 ],
@@ -243,131 +244,13 @@ const _ruleLabels = <String, String>{
   'L-EL': 'E-line 전돌',
 };
 
-// ─── Metric Row (compact) ───
-class _MetricRow extends StatelessWidget {
-  final String nameKo;
-  final String nameEn;
-  final double zScore;
-  final int metricScore;
-
-  const _MetricRow({
-    required this.nameKo,
-    required this.nameEn,
-    required this.zScore,
-    required this.metricScore,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: _Palette.cream,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(nameKo,
-                        style: TextStyle(
-                            color: AppTheme.textPrimary,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600)),
-                    Text(nameEn,
-                        style: TextStyle(
-                            color: AppTheme.textHint, fontSize: 12)),
-                  ],
-                ),
-              ),
-              _ScoreBadge(score: metricScore),
-            ],
-          ),
-          const SizedBox(height: 8),
-          _MiniGauge(zScore: zScore),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Mini Gauge (tortoise gradient) ───
-class _MiniGauge extends StatelessWidget {
-  final double zScore;
-
-  const _MiniGauge({required this.zScore});
-
-  @override
-  Widget build(BuildContext context) {
-    final clamped = zScore.clamp(-3.0, 3.0);
-    final position = (clamped + 3.0) / 6.0;
-
-    return SizedBox(
-      height: 12,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final width = constraints.maxWidth;
-          final center = width / 2;
-          final markerX = position * width;
-
-          return Stack(
-            clipBehavior: Clip.none,
-            children: [
-              // Track
-              Positioned(
-                top: 2,
-                left: 0,
-                right: 0,
-                child: Container(
-                  height: 6,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(3),
-                    gradient: const LinearGradient(
-                      colors: [
-                        _Palette.lightOlive,
-                        _Palette.shell,
-                        _Palette.shell,
-                        _Palette.sand,
-                      ],
-                      stops: [0.0, 0.35, 0.65, 1.0],
-                    ),
-                  ),
-                ),
-              ),
-              // Center line
-              Positioned(
-                top: 0,
-                left: center - 0.5,
-                child: Container(
-                    width: 1, height: 10, color: _Palette.amber),
-              ),
-              // Marker
-              Positioned(
-                top: 0,
-                left: (markerX - 5).clamp(0, width - 10),
-                child: Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: _Palette.darkBrown,
-                    shape: BoxShape.circle,
-                    border:
-                        Border.all(color: Colors.white, width: 1.5),
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
+// metric id → MetricInfo lookup (frontal + lateral merged) for per-metric
+// 세부 측정값 해석. 각 metric 은 higherLabel/lowerLabel 을 지닌다 — z 부호로
+// 골라 노출.
+final Map<String, MetricInfo> _metricInfoById = {
+  for (final info in metricInfoList) info.id: info,
+  for (final info in lateralMetricInfoList) info.id: info,
+};
 
 // ─── Tortoise palette ───
 class _Palette {
@@ -455,12 +338,12 @@ class _NodeZBar extends StatelessWidget {
   }
 }
 
-// ─── Expandable Node Bar (tappable → shows 관상학 해석 + metric z 리스트) ───
+// ─── Node Bar (always-expanded: 관상학 해석 + metric z 리스트 전부 노출) ───
 //
-// 14-node tree 의 각 노드(root·zone·leaf) 를 탭해서 펼치면 해당 node 의
-// z-band(high/mid/low) 에 맞는 전통 관상 해석 본문과 귀속된 metric 의
-// z-score 가 노출된다. 본문 SSOT: `lib/data/constants/node_text_blocks.dart`.
-class _ExpandableNodeBar extends StatefulWidget {
+// 14-node tree 의 각 노드(root·zone·leaf) 는 z-band(high/mid/low) 에 맞는
+// 전통 관상 해석 본문과 귀속된 metric 의 z-score 를 항상 펼쳐서 렌더한다.
+// 본문 SSOT: `lib/data/constants/node_text_blocks.dart`.
+class _NodeBar extends StatelessWidget {
   final String nodeId;
   final String label;
   final double z;
@@ -472,7 +355,7 @@ class _ExpandableNodeBar extends StatefulWidget {
   final bool isRoot;
   final bool supported;
 
-  const _ExpandableNodeBar({
+  const _NodeBar({
     required this.nodeId,
     required this.label,
     required this.z,
@@ -486,112 +369,145 @@ class _ExpandableNodeBar extends StatefulWidget {
   });
 
   @override
-  State<_ExpandableNodeBar> createState() => _ExpandableNodeBarState();
-}
-
-class _ExpandableNodeBarState extends State<_ExpandableNodeBar> {
-  // zone(상/중/하정) 노드는 기본 펼쳐진 상태로 렌더 — 사용자가 탭 affordance 를
-  // 한눈에 알아볼 수 있도록 첫 샘플 해석을 바로 노출.
-  late bool _expanded = widget.isZone;
-
-  @override
   Widget build(BuildContext context) {
-    final fontWeight = widget.isZone || widget.isRoot
-        ? FontWeight.w600
-        : FontWeight.w400;
+    final isLeaf = !isZone && !isRoot;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        GestureDetector(
-          onTap: () => setState(() => _expanded = !_expanded),
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 80,
-                  child: Text(
-                    widget.label,
-                    style: TextStyle(
-                      color: _Palette.darkBrown,
-                      fontSize: 14,
-                      fontWeight: fontWeight,
+        Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 84,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: isLeaf ? Colors.transparent : _Palette.darkBrown,
+                      borderRadius: BorderRadius.circular(4),
+                      border: isLeaf
+                          ? Border.all(color: _Palette.darkBrown, width: 1)
+                          : null,
+                    ),
+                    child: Text(
+                      label.trim(),
+                      style: TextStyle(
+                        color: isLeaf ? _Palette.darkBrown : _Palette.cream,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.2,
+                      ),
                     ),
                   ),
                 ),
-                Expanded(child: _NodeZBar(z: widget.z)),
-                const SizedBox(width: 6),
-                SizedBox(
-                  width: 44,
-                  child: Text(
-                    widget.z.toStringAsFixed(2),
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                      color: _Palette.darkBrown,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
+              ),
+              Expanded(child: _NodeZBar(z: z)),
+              const SizedBox(width: 6),
+              SizedBox(
+                width: 48,
+                child: Text(
+                  '${z >= 0 ? '+' : ''}${z.toStringAsFixed(2)}',
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    color: z >= 0
+                        ? const Color(0xFFC0392B)
+                        : const Color(0xFF2C5AA0),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
-                const SizedBox(width: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: _expanded
-                        ? _Palette.amber.withValues(alpha: 0.25)
-                        : _Palette.shell,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Icon(
-                    _expanded
-                        ? Icons.keyboard_arrow_up
-                        : Icons.keyboard_arrow_down,
-                    color: _Palette.darkBrown,
-                    size: 18,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
-        if (_expanded) _buildExpandedBody(),
+        _buildBody(),
       ],
     );
   }
 
-  Widget _buildExpandedBody() {
-    final block = nodeBlockForZ(widget.nodeId, widget.z);
-    final body = block != null ? resolveNodeBody(block, widget.gender) : '';
+  Widget _buildBody() {
+    final block = nodeBlockForZ(nodeId, z);
+    final body = block != null ? resolveNodeBody(block, gender) : '';
 
     final metricRows = <Widget>[];
-    if (widget.supported) {
-      for (final mid in widget.metricIds) {
-        final m = widget.metrics[mid] ?? widget.lateralMetrics?[mid];
+    if (supported) {
+      for (final mid in metricIds) {
+        final m = metrics[mid] ?? lateralMetrics?[mid];
         if (m == null) continue;
-        final z = m.zScore;
+        final zm = m.zScore;
+        final info = _metricInfoById[mid];
+        final label =
+            info?.nameKo ?? metricDisplayLabels[mid] ?? mid;
+        // z 부호 → higherLabel/lowerLabel. |z| ≲ 0.35 는 평균권 → 중립 문구.
+        final String interp;
+        if (info == null) {
+          interp = '';
+        } else if (zm.abs() < 0.35) {
+          interp = '평균 수준';
+        } else {
+          interp = zm >= 0 ? info.higherLabel : info.lowerLabel;
+        }
+        // metric-level 관상학 해석 본문 (metricBodyForZ).
+        final String? metricBody = metricBodyForZ(mid, zm);
+        final valueColor = zm >= 0
+            ? const Color(0xFFC0392B) // warm red for +
+            : const Color(0xFF2C5AA0); // cool blue for −
         metricRows.add(
           Padding(
-            padding: const EdgeInsets.only(bottom: 2),
-            child: Row(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(
-                  width: 120,
-                  child: Text(
-                    metricDisplayLabels[mid] ?? mid,
-                    style: TextStyle(
-                      color: _Palette.warmBrown,
-                      fontSize: 12,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: TextStyle(
+                          color: _Palette.darkBrown,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${zm >= 0 ? '+' : ''}${zm.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        color: valueColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ),
+                if (interp.isNotEmpty && metricBody == null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2, left: 2),
+                    child: Text(
+                      interp,
+                      style: TextStyle(
+                        color: _Palette.warmBrown,
+                        fontSize: 13,
+                        height: 1.45,
+                      ),
                     ),
                   ),
-                ),
-                Text(
-                  '${z >= 0 ? '+' : ''}${z.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    color: z >= 0 ? _Palette.darkBrown : _Palette.olive,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                if (metricBody != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4, left: 2, right: 2),
+                    child: Text(
+                      metricBody,
+                      style: TextStyle(
+                        color: _Palette.warmBrown,
+                        fontSize: 13,
+                        height: 1.5,
+                      ),
+                    ),
                   ),
-                ),
               ],
             ),
           ),
@@ -599,15 +515,27 @@ class _ExpandableNodeBarState extends State<_ExpandableNodeBar> {
       }
     }
 
+    // combo rules — 같은 노드 scope 내 trigger 된 조합 해석.
+    final zMap = <String, double>{};
+    for (final mid in metricIds) {
+      final m = metrics[mid] ?? lateralMetrics?[mid];
+      if (m != null) zMap[mid] = m.zScore;
+    }
+    final combos = triggeredCombos(metricIds, zMap);
+
+    if (body.isEmpty && metricRows.isEmpty && combos.isEmpty) {
+      return const SizedBox(height: 6);
+    }
+
     return Padding(
-      padding: const EdgeInsets.only(left: 16, right: 8, top: 4, bottom: 10),
+      padding: const EdgeInsets.only(left: 12, right: 4, top: 4, bottom: 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (body.isNotEmpty)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: _Palette.shell.withValues(alpha: 0.4),
                 borderRadius: BorderRadius.circular(8),
@@ -616,23 +544,70 @@ class _ExpandableNodeBarState extends State<_ExpandableNodeBar> {
                 body,
                 style: TextStyle(
                   color: _Palette.warmBrown,
-                  fontSize: 12.5,
-                  height: 1.55,
+                  fontSize: 15,
+                  height: 1.65,
                 ),
               ),
             ),
           if (metricRows.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 22),
             Text(
               '세부 측정값',
               style: TextStyle(
                 color: _Palette.darkBrown,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 12),
             ...metricRows,
+          ],
+          if (combos.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              '부위 해석 조합',
+              style: TextStyle(
+                color: _Palette.darkBrown,
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+            const SizedBox(height: 6),
+            for (final combo in combos)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: _Palette.shell.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2, right: 8),
+                        child: Icon(
+                          Icons.auto_awesome,
+                          size: 16,
+                          color: _Palette.amber,
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          combo.body,
+                          style: TextStyle(
+                            color: _Palette.warmBrown,
+                            fontSize: 13,
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ],
       ),
@@ -779,15 +754,17 @@ class _SamjeongRadarPainter extends CustomPainter {
               style: const TextStyle(
                 color: _Palette.darkBrown,
                 fontSize: 13,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w500,
               ),
             ),
             TextSpan(
               text: '${z >= 0 ? '+' : ''}${z.toStringAsFixed(2)}',
               style: TextStyle(
-                color: _NodeZBar.heatColor(z),
+                color: z >= 0
+                    ? const Color(0xFFC0392B)
+                    : const Color(0xFF2C5AA0),
                 fontSize: 12,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w400,
               ),
             ),
           ],
@@ -812,7 +789,7 @@ class _SamjeongRadarPainter extends CustomPainter {
 }
 
 class _ReportPageState extends ConsumerState<ReportPage> {
-  bool _showMetrics = false;
+  bool _showNodeDetails = false;
 
   FaceReadingReport get report => widget.report;
 
@@ -846,11 +823,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
           const SizedBox(height: 20),
           _buildReadingSection(),
           const SizedBox(height: 20),
-          _buildMetricsToggle(),
-          if (_showMetrics) ...[
-            const SizedBox(height: 12),
-            _buildMetricsDetail(),
-          ],
+          _buildNodeScoreSection(),
         ],
       ),
     );
@@ -996,8 +969,6 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                 evidence: report.attributes[e.key],
               ),
             )),
-        const SizedBox(height: 16),
-        _buildNodeScoreSection(),
       ],
     );
   }
@@ -1014,18 +985,18 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     ];
     const nodeLabels = {
       'face': '얼굴',
-      'upper': '  상정',
-      'forehead': '    이마',
-      'glabella': '    미간',
-      'eyebrow': '    눈썹',
-      'middle': '  중정',
-      'eye': '    눈',
-      'nose': '    코',
-      'cheekbone': '    광대',
-      'lower': '  하정',
-      'philtrum': '    인중',
-      'mouth': '    입',
-      'chin': '    턱',
+      'upper': '상정',
+      'forehead': '이마',
+      'glabella': '미간',
+      'eyebrow': '눈썹',
+      'middle': '중정',
+      'eye': '눈',
+      'nose': '코',
+      'cheekbone': '광대',
+      'lower': '하정',
+      'philtrum': '인중',
+      'mouth': '입',
+      'chin': '턱',
     };
 
     return Container(
@@ -1038,46 +1009,61 @@ class _ReportPageState extends ConsumerState<ReportPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('부위별 상세 해석',
-              style: TextStyle(
-                  color: _Palette.darkBrown,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold)),
-          const SizedBox(height: 2),
-          Text('각 부위를 탭하면 관상학 해석과 세부 측정값이 펼쳐집니다.',
-              style: TextStyle(
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () =>
+                setState(() => _showNodeDetails = !_showNodeDetails),
+            child: Row(
+              children: [
+                Text('부위별 상세 해석',
+                    style: TextStyle(
+                        color: _Palette.darkBrown,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold)),
+                const Spacer(),
+                Icon(
+                  _showNodeDetails
+                      ? Icons.keyboard_arrow_up
+                      : Icons.keyboard_arrow_down,
                   color: _Palette.warmBrown,
-                  fontSize: 12,
-                  fontStyle: FontStyle.italic)),
-          const SizedBox(height: 6),
-          if (report.nodeScores.containsKey('upper') &&
-              report.nodeScores.containsKey('middle') &&
-              report.nodeScores.containsKey('lower')) ...[
-            const SizedBox(height: 4),
-            _SamjeongRadar(
-              upper: report.nodeScores['upper']!.rollUpMeanZ,
-              middle: report.nodeScores['middle']!.rollUpMeanZ,
-              lower: report.nodeScores['lower']!.rollUpMeanZ,
+                ),
+              ],
             ),
-            const SizedBox(height: 6),
-          ] else
+          ),
+          if (_showNodeDetails) ...[
             const SizedBox(height: 10),
-          for (final nodeId in nodeOrder)
-            if (report.nodeScores.containsKey(nodeId))
-              _ExpandableNodeBar(
-                nodeId: nodeId,
-                label: nodeLabels[nodeId] ?? nodeId,
-                z: report.nodeScores[nodeId]!.rollUpMeanZ,
-                gender: report.gender,
-                metrics: report.metrics,
-                lateralMetrics: report.lateralMetrics,
-                metricIds: nodeById[nodeId]?.metricIds ?? const [],
-                isZone: nodeId == 'upper' ||
-                    nodeId == 'middle' ||
-                    nodeId == 'lower',
-                isRoot: nodeId == 'face',
-                supported: nodeId != 'ear',
+            if (report.nodeScores.containsKey('upper') &&
+                report.nodeScores.containsKey('middle') &&
+                report.nodeScores.containsKey('lower')) ...[
+              _SamjeongRadar(
+                upper: report.nodeScores['upper']!.rollUpMeanZ,
+                middle: report.nodeScores['middle']!.rollUpMeanZ,
+                lower: report.nodeScores['lower']!.rollUpMeanZ,
               ),
+              const SizedBox(height: 10),
+            ],
+            for (final nodeId in nodeOrder)
+              if (report.nodeScores.containsKey(nodeId)) ...[
+                if (nodeId == 'upper' ||
+                    nodeId == 'middle' ||
+                    nodeId == 'lower')
+                  const SizedBox(height: 14),
+                _NodeBar(
+                  nodeId: nodeId,
+                  label: nodeLabels[nodeId] ?? nodeId,
+                  z: report.nodeScores[nodeId]!.rollUpMeanZ,
+                  gender: report.gender,
+                  metrics: report.metrics,
+                  lateralMetrics: report.lateralMetrics,
+                  metricIds: nodeById[nodeId]?.metricIds ?? const [],
+                  isZone: nodeId == 'upper' ||
+                      nodeId == 'middle' ||
+                      nodeId == 'lower',
+                  isRoot: nodeId == 'face',
+                  supported: nodeId != 'ear',
+                ),
+              ],
+          ],
         ],
       ),
     );
@@ -1101,125 +1087,6 @@ class _ReportPageState extends ConsumerState<ReportPage> {
         const SizedBox(width: 6),
         _badge(report.ethnicity.labelKo),
       ],
-    );
-  }
-
-Widget _buildLateralCategory() {
-    final lm = report.lateralMetrics;
-    if (lm == null) return const SizedBox.shrink();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('측면(3/4)',
-            style: TextStyle(
-                color: _Palette.warmBrown,
-                fontSize: 16,
-                fontWeight: FontWeight.bold)),
-        const SizedBox(height: 6),
-        ...lateralMetricInfoList.map((info) {
-          final metric = lm[info.id];
-          if (metric == null) return const SizedBox.shrink();
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: _MetricRow(
-              nameKo: info.nameKo,
-              nameEn: info.nameEn,
-              zScore: metric.zScore,
-              metricScore: metric.metricScore,
-            ),
-          );
-        }),
-      ],
-    );
-  }
-
-  Widget _buildMetricCategory(String title, String category) {
-    final infos =
-        metricInfoList.where((m) => m.category == category).toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title,
-            style: TextStyle(
-                color: _Palette.warmBrown,
-                fontSize: 16,
-                fontWeight: FontWeight.bold)),
-        const SizedBox(height: 6),
-        ...infos.map((info) {
-          final metric = report.metrics[info.id];
-          if (metric == null) return const SizedBox.shrink();
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: _MetricRow(
-              nameKo: info.nameKo,
-              nameEn: info.nameEn,
-              zScore: metric.zScore,
-              metricScore: metric.metricScore,
-            ),
-          );
-        }),
-      ],
-    );
-  }
-
-  Widget _buildMetricsDetail() {
-    final categories = [
-      ('얼굴', 'face'),
-      ('눈', 'eyes'),
-      ('코', 'nose'),
-      ('입', 'mouth'),
-    ];
-    final hasLateral = report.lateralMetrics != null;
-
-    return Column(
-      children: [
-        for (final (title, cat) in categories) ...[
-          _buildMetricCategory(title, cat),
-          const SizedBox(height: 12),
-        ],
-        if (hasLateral) ...[
-          _buildLateralCategory(),
-          const SizedBox(height: 12),
-        ],
-        const SizedBox(height: 8),
-        _buildReferenceList(),
-      ],
-    );
-  }
-
-  // ─── Metrics Detail Toggle ───
-  Widget _buildMetricsToggle() {
-    return GestureDetector(
-      onTap: () => setState(() => _showMetrics = !_showMetrics),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: _Palette.cream,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: _Palette.shell),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.straighten,
-                color: _Palette.warmBrown, size: 20),
-            const SizedBox(width: 10),
-            Text(
-                'AI 관상 측정값 (${17 + (report.lateralMetrics?.length ?? 0)} Metrics)',
-                style: TextStyle(
-                    color: _Palette.darkBrown,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600)),
-            const Spacer(),
-            Icon(
-              _showMetrics
-                  ? Icons.keyboard_arrow_up
-                  : Icons.keyboard_arrow_down,
-              color: _Palette.warmBrown,
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -1294,55 +1161,6 @@ Widget _buildLateralCategory() {
           ],
         ],
       ),
-    );
-  }
-
-  Widget _buildReferenceList() {
-    const references = [
-      '파카스 두개안면 계측학 (Farkas, 1994) — 2,500명 대상 166개 비율 인덱스',
-      '눈 사이 거리 메타분석 (PMC9029890) — 67개 연구, 22,638명 분석',
-      '신고전 비율 검증 연구 (PMC4369102) — 얼굴 3등분 비율 유효성 검증',
-      '미국 국립산업안전보건원 안면 계측 데이터 (NIOSH) — 3,997명 18개 측정값',
-      '구글 미디어파이프 얼굴 메시 — 468개 랜드마크 기반 측정',
-      '동아시아 얼굴 인체측정 연구 — 얼굴 비율 통계 데이터',
-      '컴퓨터 비전 안면 랜드마크 연구 — 얼굴 특징점 기반 정량 분석',
-      '동양 관상학 고전 (마의상법, 신상전편) — 오관·삼정·십이궁 해석 체계',
-      '안면 노화 인류학 (Mendelson & Wong, 2012) — 연조직 노화 변화 보정 근거',
-      '얼굴 매력도 연구 (Rhodes, 2006) — 평균성·대칭성과 매력의 상관관계',
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('참고 자료 리스트',
-            style: TextStyle(
-                color: _Palette.warmBrown,
-                fontSize: 16,
-                fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        for (var i = 0; i < references.length; i++)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 24,
-                  child: Text('${i + 1}.',
-                      style: TextStyle(
-                          color: _Palette.amber,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600)),
-                ),
-                Expanded(
-                  child: Text(references[i],
-                      style: TextStyle(
-                          color: AppTheme.textSecondary, fontSize: 16)),
-                ),
-              ],
-            ),
-          ),
-      ],
     );
   }
 
@@ -1621,43 +1439,3 @@ Widget _buildLateralCategory() {
   }
 }
 
-// ─── Score Badge ───
-class _ScoreBadge extends StatelessWidget {
-  final int score;
-
-  const _ScoreBadge({required this.score});
-
-  @override
-  Widget build(BuildContext context) {
-    final label = _scoreLabel(score);
-    final color = _scoreColor(score);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(label,
-          style: TextStyle(
-              color: color, fontSize: 14, fontWeight: FontWeight.bold)),
-    );
-  }
-
-  String _scoreLabel(int s) {
-    switch (s) {
-      case 3:  return '매우 큼';
-      case 2:  return '큼';
-      case 1:  return '약간 큼';
-      case 0:  return '평균';
-      case -1: return '약간 작음';
-      case -2: return '작음';
-      case -3: return '매우 작음';
-      default: return s > 0 ? '매우 큼' : '매우 작음';
-    }
-  }
-
-  Color _scoreColor(int s) {
-    return _Palette.darkBrown;
-  }
-}
