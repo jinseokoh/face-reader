@@ -1,6 +1,6 @@
 # Documentation Index
 
-**마지막 업데이트**: 2026-04-18
+**마지막 업데이트**: 2026-04-19 (engine v2.5)
 
 Face Reader 관상 앱의 전체 문서 인덱스. **큰 그림 → 엔진 내부 → 실행 결과 → 외부 인프라** 순으로 계층화.
 
@@ -30,7 +30,7 @@ docs/
 | 문서 | 파이프라인 위치 |
 |---|---|
 | [engine/TAXONOMY.md](engine/TAXONOMY.md) | **1. 14-node tree SSOT** + 노드별 전통 의미·metric/rule 매칭. 삼정(三停) + 오관/오악/사독/십이궁 오버레이 |
-| [engine/ATTRIBUTES.md](engine/ATTRIBUTES.md) | **2. 10-attribute weight matrix** (9-node, face/ear 제외) + 6-stage pipeline (shape preset · base · distinctiveness · zone · organ · palace · age/lateral) |
+| [engine/ATTRIBUTES.md](engine/ATTRIBUTES.md) | **2. 10-attribute weight matrix** (9-node, face/ear 제외) + 5-stage pipeline (base · distinctiveness · zone · organ · palace · age/lateral). Stage 0 shape preset 은 v2.2 에서 철수. |
 | [engine/NORMALIZATION.md](engine/NORMALIZATION.md) | **3. raw → 5.0~10.0 정규화** (40% within-face rank + 60% global quantile, 상관 Monte Carlo 20,000 샘플) |
 | [engine/COMPATIBILITY.md](engine/COMPATIBILITY.md) | **4. 궁합 엔진** — attribute harmony · archetype matrix · special interaction |
 | [engine/RATIONALE.md](engine/RATIONALE.md) | **설계 근거** — metric 선정, 10 attribute 도출, archetype 분류의 research/관상 전통 뿌리 |

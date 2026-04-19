@@ -104,21 +104,27 @@ SSOT: `docs/engine/TAXONOMY.md`, 코드 `flutter/lib/domain/models/physiognomy_t
 
 이 분리 덕에 한 node 에서 **방향(signed)** 과 **distinctiveness(abs)** 를 독립 규칙으로 쓸 수 있다 — 하정이 "긍정 방향으로 강함" 과 "단순히 극단적임" 을 구분.
 
-### 2.3 6-Stage Derivation Pipeline (engine v2, 2026-04-18)
+### 2.3 Derivation Pipeline (engine v2.5, 2026-04-19)
 
 `attribute_derivation.dart` 에서 순차 적용. 각 stage 는 기여량을 단순 합산(re-normalization 없음).
 
 | Stage | 이름 | 역할 |
 |---|---|---|
-| 0 | **shape preset** | FaceShape(oval/oblong/round/square/heart/unknown) × ML 확신도 → attribute delta. 얼굴형이 관상 해석 첫 관문임을 반영 |
-| 1 | **base linear** | 9-node weight matrix ×10 속성 (face/ear 제외). node 별 signed-z × weight × polarity |
-| 1b | **distinctiveness** | attractiveness = symmetric bell (faceAbs≈0.7 피크 +0.20, 극단 −0.25) · intelligence(+ upper abs) · emotionality(+ lower abs) |
-| 2 | **zone rules** (13) | 삼정 조화/대립 + 비율 rule (Z-01 균형·Z-04 하정 우세·Z-11 중정 비율 등) |
-| 3 | **organ rules** (19) | 오관 쌍 조합 (O-EB1 눈+눈썹·O-NM1 코+입·O-EM 눈+입 임계 0.5·O-CK 광대 강 등) |
-| 4 | **palace rules** (10) | 십이궁 cross-node overlay (P-01 재백+전택·P-03 복덕 임계 0.3·P-09 명궁 등) |
-| 5 | gender/age/lateral | 성별 weight delta 5속성 · 50+ 규칙 4개 · 측면 flag 규칙 3개 (L-AQ 매부리 등) |
+| 0 | ~~shape preset~~ | **RETIRED v2.2**. FaceShape 는 raw score 에 관여 안 함 (archetype overlay · narrative 에만 사용). |
+| 1 | **base linear** | 9-node weight matrix ×10 속성 (face/ear 제외). node 별 signed-z × weight × polarity. intel/stability 매트릭스 v2.5 에서 재분산. |
+| 1b | **distinctiveness** | intelligence(+ upper abs) · emotionality(+ lower abs). 매력도 bell 은 v2.2 에서 철수. |
+| 2 | **zone rules** (13) | 삼정 조화/대립 + 비율 rule. v2.3/v2.5 에서 Z-01, Z-12 magnitude 축소. |
+| 3 | **organ rules** (19) | 오관 쌍 조합. v2.3 에서 O-CH, O-EB1 magnitude 축소. |
+| 4 | **palace rules** (10) | 십이궁 overlay. v2.3/v2.5 에서 P-01, P-04, P-08, P-09 magnitude 축소. |
+| 5 | gender/age/lateral | 성별 weight delta · 50+ 규칙 4개 · 측면 flag 규칙 3개 |
 
-각 stage 는 `TriggeredRule` 리스트로 기록되어 **AttributeBreakdown** 에 남는다 — UI 에서 "왜 이 점수?" top-N 근거 표시에 사용. Stage 0 기여는 `'shape'` contributor 로 노출.
+각 stage 는 `TriggeredRule` 리스트로 기록되어 **AttributeBreakdown** 에 남는다 — UI 에서 "왜 이 점수?" top-N 근거 표시에 사용.
+
+### 2.4 편향 감시 test (2026-04-19 추가)
+
+`test/shape_archetype_bias_test.dart`: 5 shape × 2000 샘플 → 각 shape 의
+top-1 attr 분포 max concentration < 27% 유지. 이 assertion 실패 시
+shape-bound archetype 편향이 regressed — CI 에서 FAIL.
 
 가중치·극성·규칙 숫자 근거: `docs/engine/ATTRIBUTES.md` v0.2. 출처는 마의상법·유장상법·신상전편 + Pallett et al. 2010 PNAS + BiSeNet parsing 영역.
 

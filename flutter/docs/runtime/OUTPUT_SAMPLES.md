@@ -72,19 +72,28 @@ FaceReadingReport
 
 ```dart
 class FaceReadingReport {
-  static const int kReportSchemaVersion = 2;    // engine v2 (9-node + shape preset)
-  final int schemaVersion;                       // 스키마 불일치 시 history_provider 자동 폐기
+  // v3 (2026-04-18): Hive 에 capture 만 저장. 해석(nodeScores/attributes/
+  // rules/archetype) 은 load 시 현재 엔진으로 재계산. 엔진 버전 업그레이드
+  // 가 스토리지에 영향 없음.
+  static const int kReportSchemaVersion = 3;
+  final int schemaVersion;
 
+  // ─── Persistent (Hive 에 저장) ───
   // Track 1 — 얼굴형
-  FaceShape faceShape;             // 도메인 enum (oval/oblong/round/square/heart/unknown)
-  String? faceShapeLabel;          // legacy: ML 분류기 English 원본
+  FaceShape faceShape;             // oval/oblong/round/square/heart/unknown
+  String? faceShapeLabel;          // ML 분류기 English 원본
   double? faceShapeConfidence;
 
-  // Track 2 — 관상 속성
-  Map<Attribute, AttributeEvidence> attributes;  // 10개 속성 상세 (shapePreset 포함 contributors)
-  List<RuleEvidence> rules;                      // 발동된 rule 목록
+  // Metric 원본
+  Map<String, MetricResult> metrics;             // 17 frontal
+  Map<String, MetricResult>? lateralMetrics;     // 8 lateral (옵션)
+  Map<String, bool>? lateralFlags;
+
+  // ─── Derived (load 시 재계산) ───
+  Map<Attribute, AttributeEvidence> attributes;  // 10개 속성 상세
+  List<RuleEvidence> rules;                      // 발동 rule (v2.5 기준)
   Map<String, NodeEvidence> nodeScores;          // 14-node tree scores
-  Map<String, MetricResult> metrics;             // 17+8 metric 결과
+  ArchetypeResult archetype;                     // primary/secondary/special
 
   // convenience getter
   Map<Attribute, double> get attributeScores;    // normalized 5.0~10.0

@@ -19,11 +19,21 @@
 7. 건강과 수명
 8. 종합 조언
 
-v3 변경점 (2026-04-18):
+v3 변경점 (2026-04-18 → 2026-04-19):
 - 연애·바람기·관능도 3 섹션을 **치환이 아닌 별도 BeatPool** 로 분리. 총 6 개 pool.
 - 하드코딩된 `@{noble_m}` 제거 → `@{noble}` 로 통일 (`_genderedKey` 가 정상 분기).
-- 섹션당 평균 400~600자 타이트화 (v2 의 600 평균에서 축소).
-- 관능도 섹션: 오랜 관계의 농밀한 결, 음주·파티 기(氣) 누수, 만족 선까지 지속되는 욕구 — 성별별 상이한 프레임으로 전문가 톤.
+- 섹션당 평균 400~600자 타이트화.
+- **관능도 아키타입 7종 확장** (남/여 각각):
+  농밀 지속 · 호기심 탐험 · 상상 감각 · 풍채 주도 · 직선 본능 · 기품 절제 · 잠재 집중.
+  침실 묘사 디테일(조명·시트·호흡·손끝) 강화, "음주·파티 경계" 반복 제거.
+- **얼굴-특화 slot** 3개: `@__STRONGEST_NODE__`, `@__SECOND_NODE__`, `@__DOMINANT_PALACE__`.
+  얼굴마다 다른 부위·팰리스 이름이 본문에 박힘.
+- **음양(陰陽) 축 통합** (2026-04-18): `yin_yang.dart` 의 `YinYangBalance` 를
+  `_Features.yinYang` 에 바인드. talent opening · conclude opening fragment 에
+  `_yangStrong / _yinStrong / _yyHarmony` predicate 기반 variant 추가 → 음양
+  쏠림이 본문 첫 톤을 결정.
+- **Seed entropy 대폭 확장**: rule bitmap · archetype · faceShape · top contributor
+  까지 섞어 seed 발산. 슬롯 pool 도 대부분 2배 확장 (intense 6→11 등).
 
 단일 얼굴 → 단일 본문이라는 결정론은 유지하면서, **서로 다른 얼굴끼리는 거의 겹치지 않는 prose** 를 뽑아내는 것이 설계 목표. 같은 템플릿을 문장 단위로 바꿔치기하는 수준이 아니라 어휘·관상 용어·인용 궁/악까지 face hash 로 섞이도록 구조화.
 

@@ -2,19 +2,51 @@
 
 관상 분석 Flutter 앱. MediaPipe Face Mesh(468 landmarks) 을 입력으로 17 frontal + 8 lateral metric → z-score → 14-node tree → 10 attribute → archetype · compat 까지 일관된 파이프라인.
 
-마지막 업데이트: 2026-04-18
+마지막 업데이트: 2026-04-19 (engine v2.5)
 
 ---
 
-## 🚧 진행 중 / 대기 중 작업 (PC 간 이어받기 용)
+## 🚀 다음 PC 에서 이어받을 때 먼저 읽기
 
-세션이 새로 시작되면 먼저 이 섹션 확인. 완료된 항목은 줄 삭제, 진행 상태는 체크리스트에서 갱신.
+세션 시작 시 이 섹션 먼저 확인. engine v2.5 가 현재 stable baseline.
 
-현재 P0 / P1 모두 ✅ 완료 (2026-04-18).
+### 엔진 버전 스냅샷 (2026-04-19)
 
-**완료**:
-- 서술 엔진 성별 분기 전면 재설계 — 연애·바람기·관능도 남/여 별도 pool, 섹션 400~600자, `'색기' → '관능도'` 명칭 통일.
-- 14-node 부위별 expandable UI — `node_text_blocks.dart` SSOT (14×3 band + eye/nose/mouth/cheekbone 성별 분기) + `_ExpandableNodeBar` 위젯.
+- **engine v2.5** · narrative v3 · Hive schemaVersion 3
+- Stage 0 shape preset: **철수** (raw score 에 얼굴형 관여 0)
+- 매력도 Stage 1b distinctiveness: **철수** (bell 제거)
+- intelligence weight matrix: 상정 90% → 38% 분산
+- stability weight matrix: forehead+chin 55% → 35% 분산
+- Z-01 (삼정 균형) 공통 rule: stab 0.1, trust 0.05, attr 0.1 (축소 완료)
+- 얼굴형 은 archetype shape-gated overlay + narrative Layer B 에만 남음
+
+### 회귀 차단 test
+
+- `test/shape_archetype_bias_test.dart` — 5 shape × 2000 샘플 → 각 shape 의 top-1 attr 분포 < 27%. 이 assertion 깨지면 shape-bound archetype 편향 부활.
+- `test/physiognomy_tree_sanity_test.dart` — per-metric 영향력 ∈ [0.10, 0.80].
+- `test/score_distribution_test.dart` — spread invariant, saturation < 5%.
+
+### 다음 작업 (우선순위순)
+
+| 우선 | 작업 | 근거 | 재개 지시 |
+|---|---|---|---|
+| P0 | **실사용자 metric 분포 수집** → quantile 재보정 | 현 calibration 은 상관 MC 기반 (idealized). 실측 N≥100 확보 후 재보정하면 "neutral face → 전 속성 p50" 이 수치적으로 맞춰짐 | `"Supabase metrics 테이블에서 최근 N명 z-score 분포 export → score_calibration.dart 의 sampler input 에 실측 분포 주입"` |
+| P1 | **Per-shape quantile 테이블** (Opt-D) | oval/oblong/round/square/heart 각각 독립 quantile 로 shape-conditional bias 근본 제거 | `"attribute_normalize.dart 에 _attrQuantilesByShape 도입. 각 shape 당 21-point × 10 attr × 2 gender. MC sampler 에 shape 드로우 stratification 추가."` |
+| P1 | **Soft predicate 로 band 전환** (narrative variation) | 현 `_Band.high/mid/low` hard cutoff 가 plateau/cliff 문제 만듦. 연속 확률로 전환 시 인접 z 의 의미 있는 차이가 fragment 선택에 반영 | `"life_question_narrative.dart 의 _Frag predicate 를 bool → double(0~1) 로. weighted sampling."` |
+| P2 | **Fragment variant 확장 (재능·재물·사회·건강 섹션)** | 관능도만 7-아키타입 확장 완료. 나머지 섹션도 fallback 에 2~3 variants 추가 | `"_talentOpening, _wealthOpening, _socialOpening 등 fallback variant 수를 2→5 로 확장"` |
+| P2 | **UI 에 음양 축 표시** | `yin_yang.dart` 에서 `YinYangBalance` 계산은 되는데 UI 에 라벨만 있고 시각 요소 부족 | `"report_page 부위별 섹션 위에 음양 balance 바 추가"` |
+| P3 | **docs/engine 리팩토링** | ATTRIBUTES.md v0.3 가 v2.5 와 부분 동기화 상태. 완전 재작성 필요 | `"docs/engine/ATTRIBUTES.md 를 v2.5 매트릭스·rule 기준 전면 재작성"` |
+
+### 최근 커밋 시퀀스 (역순)
+```
+83c9e35 intel/stability weight matrix 분산 + Z-01 재축소
+e11fd99 shape-bound archetype 편향 제거 (v2.3 rule mag)
+821b3d7 음양 축 + 귀(ear) UI 제거
+811c205 Hive capture-only (schemaVersion 3)
+3848e4d Stage 0 preset + 매력도 bell 철수
+4597666 node UI 가시성 (tap affordance)
+57c1fb4 관능도 농밀 rewrite · 얼굴형 절제
+```
 
 ---
 

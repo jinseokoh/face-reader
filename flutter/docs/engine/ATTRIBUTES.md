@@ -10,14 +10,36 @@
 
 **역할**: 9-node × 10-attribute weight matrix (face/ear 제외) 설계 + 6-stage derivation pipeline 규칙 명세.
 
-**v0.3 변경점 (engine v2, 2026-04-18)**:
-- face(root)·ear 제외한 9-노드 매트릭스 재설계. row 합 1.00 유지.
-- Stage 0 face-shape preset (FaceShape enum × ML 확신도) 신설.
-- Stage 1b 매력도 distinctiveness: 기존 monotonic `-0.3×faceAbs` → symmetric bell `(0.20-0.5×|faceAbs-0.7|).clamp(-0.25, +0.20)`.
-- Rule 튜닝: O-EM 임계 1.0→0.5, P-03 root 임계 0.8→0.3, O-CK 매력도 감점 삭제.
-- Gender delta: 매력도 face→eye/chin 재배치.
-- 상관 MC (bone/mid latent + shape 분포 prior) 로 quantile 재생성.
-- 매력도 쏠림 해소 — raw p50 0.29 → 0.68, 속성간 최대편차 4.9× → 2.0×.
+**v0.3 → v2.5 변경 스택 (2026-04-18 → 2026-04-19)**:
+
+v2.0 (2026-04-18):
+- face(root)·ear 제외한 9-노드 매트릭스 재설계.
+- Stage 0 face-shape preset 신설 (이후 v2.2 에서 철수).
+- Stage 1b 매력도 symmetric bell 도입 (이후 v2.2 에서 철수).
+- Rule 튜닝: O-EM 1.0→0.5, P-03 0.8→0.3.
+
+v2.2 (2026-04-18):
+- **Stage 0 preset 완전 철수** — 얼굴형이 raw score 에 1도 관여 안 함.
+  FaceShape 는 archetype overlay + narrative Layer B 에만 존속.
+- **매력도 distinctiveness bell 철수** — attr 는 node weight + rule 로만.
+
+v2.3 (2026-04-18):
+- 공통 rule magnitude 축소 (shape-bound stab/trust 쏠림 해소):
+  Z-01 stab 1.5→0.3, O-CH stab 1.0→0.3, O-EB1 trust 1.0→0.3,
+  P-01 stab 1.0→0.3, P-04 trust 1.0→0.3.
+
+v2.5 (2026-04-19, 현행):
+- intelligence weight matrix 재설계: 상정 집중 90% → 38% (forehead
+  0.25→0.15, eyebrow 0.25→0.18, eye 0.30→0.25, nose 0.05→0.17,
+  mouth→0.10, chin 0.05→0.10).
+- stability weight matrix 재설계: forehead+chin 집중 55% → 35%
+  (forehead 0.20→0.15, chin 0.35→0.20, eye 0.05→0.15, nose 0.15→0.17).
+- Z-01 재축소: stab 0.3→0.1, trust 0.2→0.05, attr 0.2→0.1.
+- Z-12 mag 축소: stab 0.5→0.2, trust 0.3→0.1.
+- P-09 stab 0.5→0.2.
+- **증명**: `test/shape_archetype_bias_test.dart` — 5 shape × 2000 샘플의
+  top-1 attr 분포 max concentration 29.8% → 25.4% (assertion < 27%).
+  oblong intel 23.8% → 11.0% (2배 감소).
 
 ---
 
@@ -73,18 +95,23 @@ missing  → 0 기여
 
 모든 가중치는 §12 research + 2026-04-18 엔진 재조정에서 도출. **합 = 1.00** (각 행). libido 의 philtrum 만 polarity `-1`.
 
+**v2.5 매트릭스** (현행, 2026-04-19):
+
 | Attribute \\ Node | 이마 | 미간 | 눈썹 | 눈 | 코 | 광대 | 인중 | 입 | 턱 |
 |---|---|---|---|---|---|---|---|---|---|
 | **wealth** 재물운 | 0.05 | 0.05 | — | 0.05 | **0.35** | 0.15 | — | 0.15 | 0.20 |
 | **leadership** 리더십 | **0.25** | 0.05 | 0.15 | 0.05 | 0.15 | 0.15 | — | 0.05 | 0.15 |
-| **intelligence** 통찰력 | 0.25 | 0.10 | 0.25 | **0.30** | 0.05 | — | — | — | 0.05 |
+| **intelligence** 통찰력 | 0.15 | 0.05 | 0.18 | **0.25** | 0.17 | — | — | 0.10 | 0.10 |
 | **sociability** 사회성 | — | — | 0.05 | 0.20 | 0.05 | 0.15 | 0.05 | **0.30** | 0.20 |
 | **emotionality** 감정성 | — | 0.10 | 0.20 | **0.35** | — | — | 0.05 | 0.20 | 0.10 |
-| **stability** 안정성 | 0.20 | 0.10 | 0.05 | 0.05 | 0.15 | 0.05 | 0.05 | — | **0.35** |
+| **stability** 안정성 | 0.15 | 0.10 | 0.10 | 0.15 | 0.17 | 0.08 | 0.05 | — | **0.20** |
 | **sensuality** 바람기 | — | — | 0.10 | 0.25 | 0.05 | 0.10 | 0.10 | 0.25 | 0.15 |
 | **trustworthiness** 신뢰성 | 0.20 | 0.05 | 0.15 | 0.20 | 0.20 | 0.05 | 0.05 | 0.05 | 0.05 |
 | **attractiveness** 매력도 | 0.05 | — | 0.10 | **0.30** | 0.10 | 0.05 | 0.05 | 0.20 | 0.15 |
 | **libido** 관능도 | — | — | 0.05 | 0.25 | 0.10 | 0.05 | **0.20(−)** | 0.15 | 0.20 |
+
+v2.5 에서 수정된 행: intelligence, stability (상정·chin 과집중 해소).
+다른 attribute 행은 v0.3 대비 미변경.
 
 각 행 합 = 1.00. zone 노드(상/중/하) 자체는 base 에 투입하지 않고 **zone 규칙**(§4.1) 에서 사용.
 
@@ -95,34 +122,25 @@ missing  → 0 기여
 - nose 최고 weight 0.50→0.35 (lateral 의존성 완화), trust nose 0.35→0.20.
 - philtrum libido 0.40(−)→0.20(−) (단일 metric 과적재 완화).
 
-### 2.3 Stage 0 — Face Shape Preset
+### 2.3 Stage 0 — Face Shape Preset (RETIRED v2.2)
 
-6-stage 의 첫 관문. `FaceShape enum × ML 확신도` 로 attribute delta 주입.
+v2.0 에 도입되었으나 v2.2 (2026-04-18) 에서 철수. 얼굴형이 raw score 에 주는 영향 = 0.
+FaceShape 는 `classifyArchetype` 의 shape-gated overlay 와 narrative Layer B 에만 영향.
 
-```
-oval:              attractiveness +0.30, sociability +0.20, stability +0.15, trust +0.10
-oblong:            intelligence  +0.30, emotionality +0.20, trust +0.10, sociab -0.15, sens -0.10
-round:             wealth +0.25, sociability +0.25, emotionality +0.15, lead -0.15, stab -0.10
-square:            leadership +0.30, stability +0.25, trust +0.15, attr -0.15, sens -0.10
-heart:             intelligence +0.25, sensuality +0.20, attr +0.15, stab -0.20, wealth -0.10
-unknown:           (모든 속성 0)
-```
-
-최종 기여 = delta × confidence. ML ≥ 0.5 면 ML 원값, 그 이하면 3-metric fallback 매치 시 0.6 / 미매치 시 0.0.
-
-Stage 0 는 "얼굴형이 부위 해석보다 먼저 오는 첫 관문" 이라는 관상학 전통(圓 달걀형=복덕, 田 각진=의지, 甲 역삼각=총명 등)의 현대적 수렴.
+철수 이유: halve+gate 로도 calibration ↔ production 편향 제거 불충분. 얼굴형 →
+archetype 간접 경로 (metric 상관 + 낮은 quantile p50) 가 근본 원인.
 
 ### 2.4 Stage 1b — Distinctiveness 가산 (magnitude 축)
 
-일부 속성은 편차 강도에도 반응한다 (`rollUpMeanAbsZ` 또는 `zoneAbsZ`):
+v2.2 (2026-04-18) 에서 매력도 distinctiveness 완전 철수. 현행:
 
-| Attribute | 소스 | 공식 (v2) | 이유 |
+| Attribute | 소스 | 공식 | 이유 |
 |---|---|---|---|
-| attractiveness | face.rollUpMeanAbsZ | `(0.20 − 0.5 × \|faceAbs−0.7\|).clamp(−0.25, +0.20)` | 평균 근접(faceAbs≈0.7) 피크 +0.20, 양극단 −0.25. **v2 에서 monotonic penalty 를 symmetric bell 로 교체** → 매력도 쏠림 해소 |
 | intelligence | upper.rollUpMeanAbsZ | `+0.2 × clamp(abs−0.5, 0, 1.5)` | 상정 차별화 시 지적 인상 강화 |
 | emotionality | lower.rollUpMeanAbsZ | `+0.3 × clamp(abs−0.5, 0, 1.5)` | 하정 강한 표정 → 감정 풍부 |
 
-v2 에서 매력도 distinctiveness 가 항상 음수였던 구조를 symmetric bell 로 바꾸면서 매력도 raw p50 이 0.29 → 0.68 로 상승. null guard: `rollUpMeanAbsZ == null` (empty tree) 이면 0 반환.
+매력도는 node weight + rule 로만 결정 (bell 이 calibration p50 을 부풀려
+production 얼굴이 체계적으로 낮은 percentile 을 받는 오염 제거).
 
 ---
 
