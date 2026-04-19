@@ -363,15 +363,18 @@ Map<Attribute, double> _stage1bDistinctiveness(NodeScore tree) {
 // ──────────────────── Stage 2 — Zone Rules ────────────────────
 
 final _zoneRules = <_TreeRule>[
-  // Z-01 삼정 균형
+  // Z-01 삼정 균형 — fires for most balanced faces. v2.3(2026-04-19) 매그니튜드
+  // 대폭 축소. 과거 stab 1.5 / trust 1.0 / attr 0.5 가 "모든 얼굴형이 stab +
+  // trust 로 수렴" 하는 편향의 최대 기여 요인이었음(shape_archetype_bias_test
+  // 로 증명). 현재 공통 발동의 가벼운 보너스 수준으로 제한.
   _TreeRule('Z-01', (t) {
     return _zoneSignedZ(t, 'upper').abs() < 0.5 &&
         _zoneSignedZ(t, 'middle').abs() < 0.5 &&
         _zoneSignedZ(t, 'lower').abs() < 0.5;
   }, const {
-    Attribute.stability: 1.5,
-    Attribute.trustworthiness: 1.0,
-    Attribute.attractiveness: 0.5,
+    Attribute.stability: 0.3,
+    Attribute.trustworthiness: 0.2,
+    Attribute.attractiveness: 0.2,
   }),
 
   // Z-02 상정 우세
@@ -465,11 +468,11 @@ final _zoneRules = <_TreeRule>[
 // ──────────────────── Stage 3 — Organ Rules ────────────────────
 
 final _organRules = <_TreeRule>[
-  // O-EB1 눈-눈썹 동조 강
+  // O-EB1 눈-눈썹 동조 강. v2.3 trust 1.0→0.3 (편향 축소).
   _TreeRule(
       'O-EB1',
       (t) => _leafZ(t, 'eye') >= 1.0 && _leafZ(t, 'eyebrow') >= 1.0,
-      const {Attribute.leadership: 1.5, Attribute.trustworthiness: 1.0}),
+      const {Attribute.leadership: 1.5, Attribute.trustworthiness: 0.3}),
 
   // O-EB2 눈 강·눈썹 약
   _TreeRule(
@@ -562,9 +565,9 @@ final _organRules = <_TreeRule>[
   _TreeRule('O-PH2', (t) => _leafZ(t, 'philtrum') >= 1.0,
       const {Attribute.stability: 0.5, Attribute.trustworthiness: 0.5}),
 
-  // O-CH 턱 강
+  // O-CH 턱 강. v2.3 stability 1.0→0.3.
   _TreeRule('O-CH', (t) => _leafZ(t, 'chin') >= 1.0,
-      const {Attribute.leadership: 1.0, Attribute.stability: 1.0}),
+      const {Attribute.leadership: 1.0, Attribute.stability: 0.3}),
 
   // O-DC1 코 등선 살짝/중간 볼록
   _TreeRule('O-DC1', (t) {
@@ -602,11 +605,11 @@ final _organRules = <_TreeRule>[
 // ──────────────────── Stage 4 — Palace Overlay ────────────────────
 
 final _palaceRules = <_TreeRule>[
-  // P-01 재백궁 + 전택궁
+  // P-01 재백궁 + 전택궁. v2.3 stability 1.0→0.3.
   _TreeRule(
       'P-01',
       (t) => _leafZ(t, 'nose') >= 1.0 && _leafZ(t, 'eye') >= 1.0,
-      const {Attribute.wealth: 1.0, Attribute.stability: 1.0}),
+      const {Attribute.wealth: 1.0, Attribute.stability: 0.3}),
 
   // P-02 관록궁 + 천이궁
   _TreeRule('P-02', (t) => _leafZ(t, 'forehead') >= 1.5,
@@ -621,11 +624,11 @@ final _palaceRules = <_TreeRule>[
         _zoneSignedZ(t, 'lower') >= 0.0;
   }, const {Attribute.attractiveness: 1.5, Attribute.trustworthiness: 0.5}),
 
-  // P-04 형제궁
+  // P-04 형제궁. v2.3 trust 1.0→0.3.
   _TreeRule(
       'P-04',
       (t) => _leafZ(t, 'eyebrow') >= 1.0 && _leafAbsZ(t, 'eyebrow') >= 1.5,
-      const {Attribute.sociability: 0.5, Attribute.trustworthiness: 1.0}),
+      const {Attribute.sociability: 0.5, Attribute.trustworthiness: 0.3}),
 
   // P-05 남녀궁
   _TreeRule(
@@ -654,12 +657,12 @@ final _palaceRules = <_TreeRule>[
   _TreeRule('P-07', (t) => _leafAbsZ(t, 'nose') >= 1.5,
       const {Attribute.stability: -0.5}),
 
-  // P-08 천이궁
+  // P-08 천이궁. v2.3 stability 0.5→0.2.
   _TreeRule('P-08', (t) {
     return _leafZ(t, 'forehead') >= 1.0 && (t.rollUpMeanAbsZ ?? 0.0) >= 0.5;
   }, const {
     Attribute.leadership: 0.5,
-    Attribute.stability: 0.5,
+    Attribute.stability: 0.2,
     Attribute.intelligence: 0.5,
   }),
 

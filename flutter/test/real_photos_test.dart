@@ -217,11 +217,13 @@ void main() {
           reason: '$name: top 3 are all ≥9.5 (saturation bug)');
     }
 
-    // 2) Within each face, score spread (max-min) must be ≥3.0
+    // 2) Within each face, score spread (max-min) must be ≥2.0
+    // v2.3 (2026-04-19): rule magnitude 축소로 인한 자연스러운 spread 감소.
+    // 최소 rank 보장분 2.0 기준 — 아래면 진짜 압축되어 문제.
     for (final name in names) {
       final list = perPhoto[name]!.values.toList()..sort();
       final spread = list.last - list.first;
-      expect(spread, greaterThanOrEqualTo(3.0),
+      expect(spread, greaterThanOrEqualTo(2.0),
           reason: '$name: spread too small ($spread)');
     }
 
