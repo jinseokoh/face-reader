@@ -18,9 +18,9 @@ import 'package:face_reader/domain/services/compat_calibration.dart';
 // Must mirror _resolveLabel in compatibility_report_page.dart EXACTLY.
 // 2026-04-19 재보정 (v2.3 rule magnitude 축소 반영).
 String resolveLabel(int score) {
-  if (score >= 84) return '천생연분';
-  if (score >= 74) return '좋은 궁합';
-  if (score >= 65) return '보통';
+  if (score >= 85) return '천생연분';
+  if (score >= 75) return '좋은 궁합';
+  if (score >= 67) return '보통';
   return '어려운 궁합';
 }
 

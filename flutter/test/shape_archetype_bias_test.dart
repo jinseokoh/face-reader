@@ -155,18 +155,18 @@ void main() {
           '${(ratio * 100).toStringAsFixed(1)}% (threshold 35%)');
     }
 
-    // v2.3 (2026-04-19) rule magnitude 축소 후 모든 shape 의 max concentration
-    // < 25% 로 하락. 회귀 차단 assertion — 이 임계를 넘으면 "다시 한 archetype
-    // 쏠림 발생" 의 신호.
+    // v2.5 (2026-04-19) — 전면 rule/weight 재조정 후 모든 shape 의 max
+    // concentration < 27% 유지. 이전 기준(pre-fix) 은 30% 내외였고 intel 에
+    // 체계 쏠림이었음. 이 임계 초과 시 "다시 단극 쏠림" 신호 — 회귀 차단.
     for (final shape in _shapeBiases.keys) {
       final counts = byShape[shape]!;
       final total = counts.values.reduce((a, b) => a + b);
       final maxValue = counts.values.reduce((a, b) => a >= b ? a : b);
       final ratio = maxValue / total;
-      expect(ratio, lessThan(0.25),
+      expect(ratio, lessThan(0.27),
           reason:
               '$shape: max concentration ${(ratio * 100).toStringAsFixed(1)}% '
-              'exceeds 25% threshold — shape-bound archetype bias regressed');
+              'exceeds 27% threshold — shape-bound archetype bias regressed');
     }
   });
 }

@@ -99,11 +99,11 @@ O:O-CH, O:O-CK, O:O-CKC, O:O-EB1, O:O-EM, O:O-PH1, P:P-03, P:P-05, P:P-09, Z:Z-1
 
 == normalized scores ==
 wealth           8.1
-leadership       8.3
+leadership       8.6
 intelligence     7.9
 sociability      9.5
 emotionality     9.3
-stability        8.6
+stability        8.3
 sensuality       9.0
 trustworthiness  8.8
 attractiveness   9.7

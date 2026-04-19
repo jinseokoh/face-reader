@@ -163,13 +163,16 @@ const _weightMatrix = <Attribute, List<_NodeWeight>>{
     _NodeWeight('mouth', 0.05, 1),
     _NodeWeight('chin', 0.15, 1),
   ],
+  // v2.5 (2026-04-19): intel 상정 집중 완화. cheekbone 에 배정했던 0.08 은
+  // cheekboneWidth 과적재 방지 위해 nose·chin 으로 재배치.
   Attribute.intelligence: [
-    _NodeWeight('forehead', 0.25, 1),
-    _NodeWeight('glabella', 0.10, 1),
-    _NodeWeight('eyebrow', 0.25, 1),
-    _NodeWeight('eye', 0.30, 1),
-    _NodeWeight('nose', 0.05, 1),
-    _NodeWeight('chin', 0.05, 1),
+    _NodeWeight('forehead', 0.15, 1),
+    _NodeWeight('glabella', 0.05, 1),
+    _NodeWeight('eyebrow', 0.18, 1),
+    _NodeWeight('eye', 0.25, 1),
+    _NodeWeight('nose', 0.17, 1),
+    _NodeWeight('mouth', 0.10, 1),
+    _NodeWeight('chin', 0.10, 1),
   ],
   Attribute.sociability: [
     _NodeWeight('eyebrow', 0.05, 1),
@@ -188,15 +191,17 @@ const _weightMatrix = <Attribute, List<_NodeWeight>>{
     _NodeWeight('mouth', 0.20, 1),
     _NodeWeight('chin', 0.10, 1),
   ],
+  // v2.5 (2026-04-19): stab 이 forehead·chin 양쪽에 집중되어 오블롱·각진 얼굴
+  // 에서 체계적으로 top 장악. 모든 노드에 더 고르게 분산해 단일 축 우위 제거.
   Attribute.stability: [
-    _NodeWeight('forehead', 0.20, 1),
+    _NodeWeight('forehead', 0.15, 1),
     _NodeWeight('glabella', 0.10, 1),
-    _NodeWeight('eyebrow', 0.05, 1),
-    _NodeWeight('eye', 0.05, 1),
-    _NodeWeight('nose', 0.15, 1),
-    _NodeWeight('cheekbone', 0.05, 1),
+    _NodeWeight('eyebrow', 0.10, 1),
+    _NodeWeight('eye', 0.15, 1),
+    _NodeWeight('nose', 0.17, 1),
+    _NodeWeight('cheekbone', 0.08, 1),
     _NodeWeight('philtrum', 0.05, 1),
-    _NodeWeight('chin', 0.35, 1),
+    _NodeWeight('chin', 0.20, 1),
   ],
   Attribute.sensuality: [
     _NodeWeight('eyebrow', 0.10, 1),
@@ -363,18 +368,16 @@ Map<Attribute, double> _stage1bDistinctiveness(NodeScore tree) {
 // ──────────────────── Stage 2 — Zone Rules ────────────────────
 
 final _zoneRules = <_TreeRule>[
-  // Z-01 삼정 균형 — fires for most balanced faces. v2.3(2026-04-19) 매그니튜드
-  // 대폭 축소. 과거 stab 1.5 / trust 1.0 / attr 0.5 가 "모든 얼굴형이 stab +
-  // trust 로 수렴" 하는 편향의 최대 기여 요인이었음(shape_archetype_bias_test
-  // 로 증명). 현재 공통 발동의 가벼운 보너스 수준으로 제한.
+  // Z-01 삼정 균형 — 공통 발동 rule. v2.5 mag 재차 축소 (stab 0.3→0.1,
+  // trust 0.2→0.05, attr 0.2→0.1) — stab/trust 쏠림 잔존 해소.
   _TreeRule('Z-01', (t) {
     return _zoneSignedZ(t, 'upper').abs() < 0.5 &&
         _zoneSignedZ(t, 'middle').abs() < 0.5 &&
         _zoneSignedZ(t, 'lower').abs() < 0.5;
   }, const {
-    Attribute.stability: 0.3,
-    Attribute.trustworthiness: 0.2,
-    Attribute.attractiveness: 0.2,
+    Attribute.stability: 0.1,
+    Attribute.trustworthiness: 0.05,
+    Attribute.attractiveness: 0.1,
   }),
 
   // Z-02 상정 우세
@@ -452,11 +455,11 @@ final _zoneRules = <_TreeRule>[
   _TreeRule('Z-11', (t) => (t.ownZ['midFaceRatio'] ?? 0.0) >= 1.0,
       const {Attribute.wealth: 0.5, Attribute.sociability: 0.3}),
 
-  // Z-12 하정 비율 큼 — chin 의 lowerFaceRatio z ≥ 1.0
+  // Z-12 하정 비율 큼 — chin 의 lowerFaceRatio z ≥ 1.0. v2.4 mag 축소.
   _TreeRule(
       'Z-12',
       (t) => (t.descendantById('chin')?.ownZ['lowerFaceRatio'] ?? 0.0) >= 1.0,
-      const {Attribute.stability: 0.5, Attribute.trustworthiness: 0.3}),
+      const {Attribute.stability: 0.2, Attribute.trustworthiness: 0.1}),
 
   // Z-13 하정 비율 작음
   _TreeRule(
@@ -666,10 +669,10 @@ final _palaceRules = <_TreeRule>[
     Attribute.intelligence: 0.5,
   }),
 
-  // P-09 명궁 넓음
+  // P-09 명궁 넓음. v2.4 stability 0.5→0.2.
   _TreeRule('P-09', (t) => _leafZ(t, 'glabella') >= 1.0, const {
     Attribute.wealth: 0.5,
-    Attribute.stability: 0.5,
+    Attribute.stability: 0.2,
     Attribute.leadership: 0.3,
   }),
 

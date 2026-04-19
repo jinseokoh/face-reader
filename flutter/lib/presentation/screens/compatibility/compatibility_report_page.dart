@@ -471,9 +471,9 @@ class CompatibilityReportPage extends StatelessWidget {
   /// _resolveLabel thresholds 를 그대로 아래에 붙여 넣고, compat_label_fairness
   /// 가 green 인지 확인.
   String _resolveLabel(int score) {
-    if (score >= 84) return '천생연분';
-    if (score >= 74) return '좋은 궁합';
-    if (score >= 65) return '보통';
+    if (score >= 85) return '천생연분';
+    if (score >= 75) return '좋은 궁합';
+    if (score >= 67) return '보통';
     return '어려운 궁합';
   }
 
