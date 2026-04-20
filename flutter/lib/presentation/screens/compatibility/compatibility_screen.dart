@@ -275,6 +275,7 @@ class _CompatibilityItem extends ConsumerWidget {
               '${partnerReport.ageGroup.labelKo} ${partnerReport.gender.labelKo} · ${partnerReport.archetype.primaryLabel}',
           albumUuid: partnerUuid,
           thumbnailPath: partnerReport.thumbnailPath,
+          myThumbnailPath: myReport.thumbnailPath,
         ),
       ),
     );

@@ -456,12 +456,13 @@ final _zoneRules = <_TreeRule>[
           _zoneSignedZ(t, 'upper') <= -1.0,
       const {Attribute.emotionality: 0.5, Attribute.trustworthiness: -0.17}),
 
-  // Z-07 전면 강세. v2.6 cap: lead 2.0→0.5, attr 1.0→0.25.
+  // Z-07 전면 강세 — 三停俱足 = 권위. 매력 분리 (v2.9: Z-NG 五官端正 으로 이관).
+  //   원형 麻衣相法 "三停俱足者, 富貴雙全" 은 富貴(권력) 명제이지 美 명제 아님.
   _TreeRule('Z-07', (t) {
     return _zoneSignedZ(t, 'upper') >= 1.0 &&
         _zoneSignedZ(t, 'middle') >= 1.0 &&
         _zoneSignedZ(t, 'lower') >= 1.0;
-  }, const {Attribute.leadership: 0.5, Attribute.attractiveness: 0.25}),
+  }, const {Attribute.leadership: 0.5}),
 
   // Z-08 전면 약세
   _TreeRule('Z-08', (t) {
@@ -478,9 +479,9 @@ final _zoneRules = <_TreeRule>[
     Attribute.attractiveness: -0.5,
   }),
 
-  // Z-09 상정 distinctive
+  // Z-09 상정 distinctive — 매력 음수는 O-EZ (눈 자체 부조화) 로 정확화 (v2.9).
   _TreeRule('Z-09', (t) => _zoneAbsZ(t, 'upper') >= 1.5,
-      const {Attribute.intelligence: 0.5, Attribute.attractiveness: -0.3}),
+      const {Attribute.intelligence: 0.5}),
 
   // Z-10 하정 distinctive. v2.6 cap: sens 1.0→0.5, emot 0.5→0.25.
   _TreeRule('Z-10', (t) => _zoneAbsZ(t, 'lower') >= 1.5,
@@ -516,16 +517,14 @@ final _zoneRules = <_TreeRule>[
       (t) => (t.descendantById('eye')?.ownZ['intercanthalRatio'] ?? 0.0) >= 0.5,
       const {Attribute.leadership: 0.20, Attribute.wealth: 0.08}),
 
-  // Z-LFR 풍만한 입술 + 입 넓지 않음 — lipFullnessRatio z ≥ 0.8 AND mouthWidthRatio z < 1.5
-  // → sociability 상승. 큰 입(mwr≥1.5)은 이미 다른 rule 처리.
-  // v2.9 신규.
+  // Z-LFR 풍만한 입술 — sociability 전용. 매력은 O-RL (朱唇小口) 로 narrowing (v2.9).
   _TreeRule('Z-LFR', (t) {
     final mouth = t.descendantById('mouth');
     if (mouth == null) return false;
     final lfr = mouth.ownZ['lipFullnessRatio'] ?? 0.0;
     final mwr = mouth.ownZ['mouthWidthRatio'] ?? 0.0;
     return lfr >= 0.8 && mwr < 1.5;
-  }, const {Attribute.sociability: 0.25, Attribute.attractiveness: 0.08}),
+  }, const {Attribute.sociability: 0.25}),
 
   // Z-FAR 세로로 긴 얼굴 — faceAspectRatio z ≥ 1.2 → 부유·리더 인상.
   // v2.9 신규: oblong/long face 가 wealth 로 분류되도록.
@@ -544,6 +543,17 @@ final _zoneRules = <_TreeRule>[
         return (eb.ownZ['eyebrowTiltDirection'] ?? 0.0) <= -1.0;
       },
       const {Attribute.sensuality: 0.20, Attribute.emotionality: 0.10}),
+
+  // Z-NG 五官端正 — 三停 모두 abs < 0.7 AND root rollUp ≥ 0.3.
+  //   神相全編 "五官端正, 必爲美相". 균형형 美 — 강세가 아닌 조화의 매력.
+  //   Z-01 (abs < 0.5 + 음수 zone 허용) 보다 우상향 / 더 narrow.
+  //   v2.9 신규: Z-07 의 attractiveness 부분 대체.
+  _TreeRule('Z-NG', (t) {
+    return _zoneAbsZ(t, 'upper') < 0.7 &&
+        _zoneAbsZ(t, 'middle') < 0.7 &&
+        _zoneAbsZ(t, 'lower') < 0.7 &&
+        (t.rollUpMeanZ ?? 0.0) >= 0.3;
+  }, const {Attribute.attractiveness: 0.3}),
 ];
 
 // ──────────────────── Stage 3 — Organ Rules ────────────────────
@@ -595,11 +605,12 @@ final _organRules = <_TreeRule>[
         Attribute.stability: 0.25,
       }),
 
-  // O-EM 눈-입 결합. v2.6 cap: attr 1.5→0.5, soc 1.0→0.33.
+  // O-EM 눈-입 결합 — sociability 전용으로 축소. 매력은 O-MM/O-EM2 로 분리 (v2.9).
+  //   임계 0.5 → 1.0 으로 통일 (다른 organ pair rule 과 일치).
   _TreeRule(
       'O-EM',
-      (t) => _leafZ(t, 'eye') >= 0.5 && _leafZ(t, 'mouth') >= 0.5,
-      const {Attribute.attractiveness: 0.5, Attribute.sociability: 0.33}),
+      (t) => _leafZ(t, 'eye') >= 1.0 && _leafZ(t, 'mouth') >= 1.0,
+      const {Attribute.sociability: 0.33}),
 
   // O-FB 이마-눈썹 결합. v2.6 cap: lead 1.0→0.5, intel 0.5→0.25.
   _TreeRule(
@@ -682,6 +693,55 @@ final _organRules = <_TreeRule>[
     final nf = nose.ownZ['nasofrontalAngle'] ?? 0.0;
     return nf <= -1.5;
   }, const {Attribute.leadership: 0.5, Attribute.stability: -0.3}),
+
+  // ─── 美人相 organ rule set (v2.9) ───
+  // 麻衣相法·神相全編 美貌 명제 기반. attractiveness 전용 narrow rule.
+  // 기존 lax/stacking source (O-EM 임계 0.5, Z-07/P-03 자동 stacking) 대체.
+
+  // O-MM 美目流盼 — eye z≥1.0 AND eyeCanthalTilt z ∈ [0.3, 2.0].
+  //   麻衣相法 "目如秋水, 媚生於目". 잘 발달한 눈 + 살짝 올라간 눈매 = 매력.
+  //   P-06 처첩궁(eye absZ≥1 + tilt≥1)과 차별: P-06 은 sensuality 강조,
+  //   O-MM 은 attractiveness 전용. 둘 다 발동 가능 (강한 매력+관능 동시).
+  _TreeRule('O-MM', (t) {
+    final eye = t.descendantById('eye');
+    if (eye == null) return false;
+    final tilt = eye.ownZ['eyeCanthalTilt'] ?? 0.0;
+    return _leafZ(t, 'eye') >= 1.0 && tilt >= 0.3 && tilt <= 2.0;
+  }, const {Attribute.attractiveness: 0.4}),
+
+  // O-EM2 眉目清秀 — eye z≥1.0 AND eyebrow z≥0.5 AND eyebrowTilt ≥ -0.5.
+  //   神相全編 "眉清目秀, 萬人之上". 눈 잘생기고 눈썹 단정 (처지지 않음).
+  //   기존 O-EM (눈+입 lax) 의 attractiveness 부분 대체.
+  _TreeRule('O-EM2', (t) {
+    final eb = t.descendantById('eyebrow');
+    if (eb == null) return false;
+    final ebTilt = eb.ownZ['eyebrowTiltDirection'] ?? 0.0;
+    return _leafZ(t, 'eye') >= 1.0 && _leafZ(t, 'eyebrow') >= 0.5 && ebTilt >= -0.5;
+  }, const {Attribute.attractiveness: 0.3}),
+
+  // O-RL 朱唇小口 — lipFullnessRatio z≥0.8 AND mouthWidthRatio z ∈ [-1.0, 0.3].
+  //   麻衣相法 "唇如塗朱, 口如櫻桃". 도톰한 입술 + 작거나 보통 입.
+  //   넓은 입 (mwr > 0.3) 은 sociability 신호로 분리 (Z-LFR).
+  _TreeRule('O-RL', (t) {
+    final mouth = t.descendantById('mouth');
+    if (mouth == null) return false;
+    final lfr = mouth.ownZ['lipFullnessRatio'] ?? 0.0;
+    final mwr = mouth.ownZ['mouthWidthRatio'] ?? 0.0;
+    return lfr >= 0.8 && mwr >= -1.0 && mwr <= 0.3;
+  }, const {Attribute.attractiveness: 0.3}),
+
+  // O-CKE 顴骨突過 — cheekbone z≥1.5. 광대 너무 솟음 = 인상 거침.
+  //   麻衣相法 "顴骨高聳露骨, 神色不和".
+  _TreeRule('O-CKE', (t) => _leafZ(t, 'cheekbone') >= 1.5,
+      const {Attribute.attractiveness: -0.3}),
+
+  // O-EZ 目偏不正 — eye absZ≥1.5 AND signed≤-0.5. 눈 부조화 (편차 큼 + 약함).
+  //   神相全編 "目陷偏者, 形不和, 神不全". Z-09 (상정 abs) 보다 정확.
+  _TreeRule('O-EZ', (t) {
+    final eye = t.descendantById('eye');
+    if (eye == null) return false;
+    return (eye.ownMeanAbsZ ?? 0.0) >= 1.5 && _leafZ(t, 'eye') <= -0.5;
+  }, const {Attribute.attractiveness: -0.3}),
 ];
 
 // ──────────────────── Stage 4 — Palace Overlay ────────────────────
@@ -697,14 +757,15 @@ final _palaceRules = <_TreeRule>[
   _TreeRule('P-02', (t) => _leafZ(t, 'forehead') >= 1.5,
       const {Attribute.leadership: 0.5, Attribute.intelligence: 0.33}),
 
-  // P-03 복덕궁. v2.6 cap: attr 1.5→0.5, trust 0.5→0.17.
+  // P-03 복덕궁 — trust cross-zone 신호 전용. 매력은 P-MJ (印堂明潤) 로 narrowing (v2.9).
+  //   福德宮은 본래 福·德 (안정·신뢰) 평가이지 美貌 자체 아님.
   _TreeRule('P-03', (t) {
     final root = t.rollUpMeanZ ?? 0.0;
     return root >= 0.3 &&
         _zoneSignedZ(t, 'upper') >= 0.0 &&
         _zoneSignedZ(t, 'middle') >= 0.0 &&
         _zoneSignedZ(t, 'lower') >= 0.0;
-  }, const {Attribute.attractiveness: 0.5, Attribute.trustworthiness: 0.17}),
+  }, const {Attribute.trustworthiness: 0.17}),
 
   // P-04 형제궁. v2.3 trust 1.0→0.3.
   _TreeRule(
@@ -761,6 +822,13 @@ final _palaceRules = <_TreeRule>[
     Attribute.intelligence: 0.3,
     Attribute.stability: -0.3,
   }),
+
+  // P-MJ 印堂明潤 — glabella ownMeanZ ≥ 0.7.
+  //   印堂 (명궁) 은 一身之主. 명궁 명윤하면 神氣 발현 → 美 신호.
+  //   P-03 복덕궁의 attractiveness 부분 narrowing (cross-zone → single node).
+  //   v2.9 신규.
+  _TreeRule('P-MJ', (t) => _leafZ(t, 'glabella') >= 0.7,
+      const {Attribute.attractiveness: 0.3}),
 ];
 
 // ──────────────────── Stage 5 — Age (50+) Rules ────────────────────

@@ -85,8 +85,11 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
         if (!report.expiresAt.isAfter(now)) continue; // expired → drop
         parsed.add(report);
         nextJson.add(report.toJsonString()); // slim 재직렬화
-      } catch (e) {
-        debugPrint('[History] reload: keep unparseable raw (entry $i): $e');
+      } catch (e, st) {
+        debugPrint('[History] reload FAIL entry $i: $e');
+        debugPrint('[History] reload FAIL stacktrace:\n$st');
+        debugPrint('[History] reload FAIL raw head: '
+            '${json.length > 200 ? json.substring(0, 200) : json}');
         nextJson.add(json); // 원본 raw 보존
       }
     }
@@ -121,10 +124,13 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
         } else {
           anyExpired = true;
         }
-      } catch (e) {
+      } catch (e, st) {
         // Parse 실패는 엔진 전환 중 일시적으로 날 수 있다. raw JSON 은 절대
         // 건드리지 않고 이번 세션에만 skip. 다음 load 에서 다시 시도.
-        debugPrint('[History] skip entry $i (parse error, raw kept): $e');
+        debugPrint('[History] load FAIL entry $i: $e');
+        debugPrint('[History] load FAIL stacktrace:\n$st');
+        debugPrint('[History] load FAIL raw head: '
+            '${json.length > 200 ? json.substring(0, 200) : json}');
         anyParseError = true;
         survivorJson.add(json);
       }

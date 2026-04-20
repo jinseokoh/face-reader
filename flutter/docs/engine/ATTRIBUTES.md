@@ -1,16 +1,16 @@
 # 10 속성 → Tree Node 재도출 설계서
 
-**버전**: 0.3 (engine v2, face/ear 제외 + Stage 0 shape preset)
-**마지막 업데이트**: 2026-04-18
+**버전**: v2.9 (engine v2, face/ear 제외, Stage 0 preset 철수, dominant decorrelation, 실사용자 ref re-centering, 美人相 rule 7 개 도입)
+**마지막 업데이트**: 2026-04-20
 **기반 문서**:
 - `docs/engine/TAXONOMY.md` v2.0 (14-node tree SSOT + 노드별 metric/rule 매칭)
 - `lib/domain/services/physiognomy_scoring.dart` (NodeScore tree)
-- `lib/domain/services/attribute_derivation.dart` (6-stage pipeline)
+- `lib/domain/services/attribute_derivation.dart` (5-stage pipeline)
 - **관상 전통 research** (v0.2 반영) — §12 참조
 
-**역할**: 9-node × 10-attribute weight matrix (face/ear 제외) 설계 + 6-stage derivation pipeline 규칙 명세.
+**역할**: 9-node × 10-attribute weight matrix (face/ear 제외) 설계 + 5-stage derivation pipeline 규칙 명세.
 
-**v0.3 → v2.5 변경 스택 (2026-04-18 → 2026-04-19)**:
+**v0.3 → v2.9 변경 스택 (2026-04-18 → 2026-04-20)**:
 
 v2.0 (2026-04-18):
 - face(root)·ear 제외한 9-노드 매트릭스 재설계.
@@ -28,7 +28,7 @@ v2.3 (2026-04-18):
   Z-01 stab 1.5→0.3, O-CH stab 1.0→0.3, O-EB1 trust 1.0→0.3,
   P-01 stab 1.0→0.3, P-04 trust 1.0→0.3.
 
-v2.5 (2026-04-19, 현행):
+v2.5 (2026-04-19):
 - intelligence weight matrix 재설계: 상정 집중 90% → 38% (forehead
   0.25→0.15, eyebrow 0.25→0.18, eye 0.30→0.25, nose 0.05→0.17,
   mouth→0.10, chin 0.05→0.10).
@@ -40,6 +40,35 @@ v2.5 (2026-04-19, 현행):
 - **증명**: `test/shape_archetype_bias_test.dart` — 5 shape × 2000 샘플의
   top-1 attr 분포 max concentration 29.8% → 25.4% (assertion < 27%).
   oblong intel 23.8% → 11.0% (2배 감소).
+
+v2.6 (2026-04-19):
+- 모든 rule magnitude cap |Δ| ≤ 0.5. step-function dominance 차단.
+- per-metric 영향력 ∈ [0.15, 1.20], max/min ≤ 6.5×.
+- compat threshold 84/73/65 재보정.
+
+v2.7 (2026-04-19):
+- **dominant node decorrelation** — 10 attribute 가 각기 다른 1 개 노드를
+  top weight(≥0.17)로 가지도록 row 재설계. row cosine similarity < 0.92.
+- charm cluster (sociability·emotionality·sensuality·attractiveness·libido)
+  가 eye+eyebrow+mouth 3 노드에 공통 dominant 로 쏠리던 편향(외교형/
+  예술가형/미인형 cluster top-2 고정)의 구조적 원인 제거.
+- attractiveness: eye·mouth tied (각 0.17), chin 0.09 로 분산.
+
+v2.8 (2026-04-19):
+- N=14 eastAsian female 30s 실사용자 empirical z 가 N(0,1) 에 수렴하도록
+  reference mean 19 metric 재조정 + MC sampler bias=0.0, std=1.0.
+- max archetype concentration 28.6% (4/14).
+
+v2.9 (2026-04-20, 현행):
+- **美人相 rule 7 개 도입** — 麻衣相法·神相全編 美貌 명제 grounded:
+  - Z-NG 五官端正 (균형형 美), O-MM 桃花眼, O-EM2 眉目清秀, O-RL 朱唇小口,
+    O-CKE 顴骨突過 (-), O-EZ 目偏不正 (-), P-MJ 印堂明潤.
+- **기존 lax/stacking 매력 신호 narrowing**:
+  - O-EM 임계 0.5→1.0, attractiveness 제거 (sociability 0.33 만).
+  - Z-07 attractiveness 제거 (권위 명제로 정확화). Z-09 attractiveness 음수 제거.
+  - P-03 attractiveness 제거 (trust 0.17 전용). Z-LFR attractiveness 제거.
+- **compat threshold 재보정**: 83/73/65 → **85/72/64** (MC p90/p60/p30).
+- **evidence snapshot 갱신**: rules 13→16, attractiveness 9.4→8.6 (lax stacking 제거 효과).
 
 ---
 
@@ -95,25 +124,24 @@ missing  → 0 기여
 
 모든 가중치는 §12 research + 2026-04-18 엔진 재조정에서 도출. **합 = 1.00** (각 행). libido 의 philtrum 만 polarity `-1`.
 
-**v2.5 매트릭스** (현행, 2026-04-19):
+**v2.7 매트릭스** (현행, 2026-04-19, code SSOT = `attribute_derivation.dart::_weightMatrix`):
 
 | Attribute \\ Node | 이마 | 미간 | 눈썹 | 눈 | 코 | 광대 | 인중 | 입 | 턱 |
 |---|---|---|---|---|---|---|---|---|---|
-| **wealth** 재물운 | 0.05 | 0.05 | — | 0.05 | **0.35** | 0.15 | — | 0.15 | 0.20 |
-| **leadership** 리더십 | **0.25** | 0.05 | 0.15 | 0.05 | 0.15 | 0.15 | — | 0.05 | 0.15 |
-| **intelligence** 통찰력 | 0.15 | 0.05 | 0.18 | **0.25** | 0.17 | — | — | 0.10 | 0.10 |
-| **sociability** 사회성 | — | — | 0.05 | 0.20 | 0.05 | 0.15 | 0.05 | **0.30** | 0.20 |
-| **emotionality** 감정성 | — | 0.10 | 0.20 | **0.35** | — | — | 0.05 | 0.20 | 0.10 |
-| **stability** 안정성 | 0.15 | 0.10 | 0.10 | 0.15 | 0.17 | 0.08 | 0.05 | — | **0.20** |
-| **sensuality** 바람기 | — | — | 0.10 | 0.25 | 0.05 | 0.10 | 0.10 | 0.25 | 0.15 |
-| **trustworthiness** 신뢰성 | 0.20 | 0.05 | 0.15 | 0.20 | 0.20 | 0.05 | 0.05 | 0.05 | 0.05 |
-| **attractiveness** 매력도 | 0.05 | — | 0.10 | **0.30** | 0.10 | 0.05 | 0.05 | 0.20 | 0.15 |
-| **libido** 관능도 | — | — | 0.05 | 0.25 | 0.10 | 0.05 | **0.20(−)** | 0.15 | 0.20 |
+| **wealth** 재물운 | 0.12 | 0.10 | 0.08 | 0.08 | **0.20** | 0.10 | 0.07 | 0.10 | 0.15 |
+| **leadership** 리더십 | 0.13 | 0.08 | 0.15 | 0.10 | 0.15 | 0.10 | 0.03 | 0.08 | **0.18** |
+| **intelligence** 통찰력 | **0.18** | 0.10 | 0.10 | 0.15 | 0.10 | 0.08 | 0.09 | 0.10 | 0.10 |
+| **sociability** 사회성 | 0.08 | 0.10 | 0.10 | 0.12 | 0.08 | 0.12 | 0.07 | **0.20** | 0.13 |
+| **emotionality** 감정성 | 0.06 | 0.13 | 0.12 | **0.20** | 0.08 | 0.08 | 0.10 | 0.13 | 0.10 |
+| **stability** 안정성 | 0.12 | 0.15 | 0.08 | 0.08 | 0.13 | 0.10 | 0.08 | 0.08 | **0.18** |
+| **sensuality** 바람기 | 0.05 | 0.08 | 0.13 | **0.17** | 0.10 | 0.08 | 0.15 | **0.17** | 0.07 |
+| **trustworthiness** 신뢰성 | **0.15** | 0.12 | 0.06 | **0.15** | 0.13 | 0.07 | 0.07 | 0.10 | **0.15** |
+| **attractiveness** 매력도 | 0.07 | 0.07 | 0.13 | **0.17** | 0.10 | 0.13 | 0.07 | **0.17** | 0.09 |
+| **libido** 관능도 | 0.05 | 0.08 | **0.17** | 0.13 | 0.10 | 0.10 | 0.15(−) | 0.12 | 0.10 |
 
-v2.5 에서 수정된 행: intelligence, stability (상정·chin 과집중 해소).
-다른 attribute 행은 v0.3 대비 미변경.
+각 행 합 = 1.00. zone 노드(상/중/하) 자체는 base 에 투입하지 않고 **zone 규칙**(§4.1) 에서 사용. libido 의 philtrum 만 polarity `-1`.
 
-각 행 합 = 1.00. zone 노드(상/중/하) 자체는 base 에 투입하지 않고 **zone 규칙**(§4.1) 에서 사용.
+v2.7 핵심: 10 attribute 가 각기 다른 1 개 노드를 top weight(≥0.17) 로 가지도록 **dominant node decorrelation** — wealth=nose / leadership=chin / intelligence=forehead / sociability=mouth / emotionality=eye / stability=chin+glabella / sensuality=eye·mouth tied / trustworthiness=forehead·eye·chin balanced / **attractiveness=eye·mouth tied** / libido=eyebrow. charm cluster (sociability·emotionality·sensuality·attractiveness·libido) 가 eye+eyebrow+mouth 3 노드에 공통 dominant 로 쏠려 외교형/예술가형/미인형 cluster 로 top-2 가 고정되던 편향 해소. row cosine similarity < 0.92 강제.
 
 **v0.3 재조정 핵심 (2026-04-18)**:
 - cheekbone 의 총 영향력 1.13 → 0.75 로 완화 (단일 metric 과적재 해소).
@@ -165,41 +193,62 @@ base (linear)
 
 ### 4.1 Zone Rules (삼정 조화·불균형)
 
-입력: `upper.rollUp*`, `middle.rollUp*`, `lower.rollUp*`.
+입력: `upper.rollUp*`, `middle.rollUp*`, `lower.rollUp*`. v2.6 cap: 단일 effect \|Δ\| ≤ 0.5.
 
-| ID | 조건 | 효과 |
-|---|---|---|
-| Z-01 삼정 균형 | 세 zone 모두 \|rollUpMeanZ\| < 0.5 | stability +1.5, trustworthiness +1.0, attractiveness +0.5 |
-| Z-02 상정 우세 | upper.rollUpMeanZ ≥ 1 & 나머지 ≤ 0.5 | intelligence +2.0, leadership +0.5 |
-| Z-03 중정 우세 | middle.rollUpMeanZ ≥ 1 & 나머지 ≤ 0.5 | wealth +1.5, libido +1.0 |
-| Z-04 하정 우세 | lower.rollUpMeanZ ≥ 1 & 나머지 ≤ 0.5 | sensuality +1.5, libido +1.5, stability -0.5 |
-| Z-05 상-하 대립 | upper ≥ 1 & lower ≤ -1 | intelligence +1.0, emotionality -1.0 |
-| Z-06 하-상 대립 | lower ≥ 1 & upper ≤ -1 | emotionality +1.5, trustworthiness -0.5 |
-| Z-07 전면 강세 | 세 zone 모두 rollUpMeanZ ≥ 1 | leadership +2.0, attractiveness +1.0 (특출) |
-| Z-08 전면 약세 | 세 zone 모두 rollUpMeanZ ≤ -1 | 모든 긍정 속성 -0.5 |
-| Z-09 상정 distinctive | upper.rollUpMeanAbsZ ≥ 1.5 | intelligence +0.5, attractiveness -0.3 (강한 인상이나 부조화) |
-| Z-10 하정 distinctive | lower.rollUpMeanAbsZ ≥ 1.5 | sensuality +1.0, emotionality +0.5 |
+| ID | 조건 | 효과 | 근거 |
+|---|---|---|---|
+| Z-01 삼정 균형 | 세 zone 모두 \|signedZ\| < 0.5 | stability +0.1, trust +0.05, attractiveness +0.05 | 三停均等, 福壽綿長 (麻衣相法) |
+| Z-02 상정 우세 | upper signedZ ≥ 1 & 나머지 ≤ 0.5 | intelligence +0.5, leadership +0.13 | |
+| Z-03 중정 우세 | middle signedZ ≥ 1 & 나머지 ≤ 0.5 | wealth +0.5, libido +0.33 | |
+| Z-04 하정 우세 | lower signedZ ≥ 1 & 나머지 ≤ 0.5 | sensuality +0.5, libido +0.5, stability -0.17 | |
+| Z-05 상-하 대립 | upper ≥ 1 & lower ≤ -1 | intelligence +0.5, emotionality -0.5 | |
+| Z-06 하-상 대립 | lower ≥ 1 & upper ≤ -1 | emotionality +0.5, trust -0.17 | |
+| Z-07 전면 강세 | 세 zone 모두 signedZ ≥ 1 | leadership +0.5 | 三停俱足者 富貴雙全 (麻衣) — 권위 명제. 美 부분은 Z-NG 로 분리 (v2.9) |
+| Z-08 전면 약세 | 세 zone 모두 signedZ ≤ -1 | 7 positive attr -0.5 | |
+| Z-09 상정 distinctive | upper absZ ≥ 1.5 | intelligence +0.5 | 매력 음수는 O-EZ 로 정확화 (v2.9) |
+| Z-10 하정 distinctive | lower absZ ≥ 1.5 | sensuality +0.5, emotionality +0.25 | |
+| Z-11 중정 비율 큼 | root `midFaceRatio` z ≥ 1.0 | wealth +0.5, sociability +0.3 | 中停隆滿者 富 |
+| Z-12 하정 비율 큼 | chin `lowerFaceRatio` z ≥ 1.0 | stability +0.2, trust +0.1 | |
+| Z-13 하정 비율 작음 | chin `lowerFaceRatio` z ≤ -1.0 | emotionality +0.3, stability -0.3 | |
+| Z-FH 이마 강세 | forehead leafZ ≥ 0.7 | intelligence +0.20, trust +0.10 | v2.9 신규 — 학자형 신호 분산 |
+| Z-IC 눈 사이 넓음 | eye `intercanthalRatio` z ≥ 0.5 | leadership +0.20, wealth +0.08 | v2.9 신규 — open-set 인상 |
+| Z-LFR 풍만한 입술 | mouth `lipFullnessRatio` z ≥ 0.8 & `mouthWidthRatio` z < 1.5 | sociability +0.25 | 美 부분은 O-RL 로 narrowing (v2.9) |
+| Z-FAR 세로로 긴 얼굴 | root `faceAspectRatio` z ≥ 1.2 | wealth +0.25, leadership +0.10 | v2.9 — oblong 형 wealth 분류 |
+| Z-EBT 처진 눈썹 | eyebrow `eyebrowTiltDirection` z ≤ -1.0 | sensuality +0.20, emotionality +0.10 | 八字眉 — 관능·감성형 (한국 관상) |
+| **Z-NG 五官端正** | 三停 모두 absZ < 0.7 & root rollUpMeanZ ≥ 0.3 | attractiveness +0.3 | 神相全編 "五官端正, 必爲美相" — 균형형 美 (v2.9) |
 
 ### 4.2 Organ Rules (오관 쌍·조합)
 
-입력: 개별 leaf node 의 ownMeanZ / ownMeanAbsZ.
+입력: 개별 leaf node 의 ownMeanZ / ownMeanAbsZ. v2.6 cap: \|Δ\| ≤ 0.5. 임계 통일: ≥ 1.0 / ≤ -1.0.
 
 | ID | 조건 | 효과 | 전통 근거 |
 |---|---|---|---|
-| O-EB1 눈-눈썹 동조 강 | eye & eyebrow 둘 다 ownMeanZ ≥ 1 | leadership +1.5, trustworthiness +1.0 | 감찰관+보수관 연합 |
-| O-EB2 눈 강·눈썹 약 | eye ≥ 1 & eyebrow ≤ -1 | intelligence +1.0, emotionality +1.0 | 눈빛 있으나 의지 부족 |
-| O-EB3 눈썹 강·눈 약 | eyebrow ≥ 1 & eye ≤ -1 | leadership +0.5, trustworthiness -0.5 | 고집형 |
-| O-NM1 코-입 동조 | nose & mouth 둘 다 ownMeanZ ≥ 1 | wealth +2.0, sociability +1.0 | 심변관+출납관 (재·식 동시) |
-| O-NM2 코 강·입 약 | nose ≥ 1 & mouth ≤ -1 | wealth +0.5, sociability -1.0 | 축재형 폐쇄 |
-| O-NM3 코 약·입 강 | nose ≤ -1 & mouth ≥ 1 | sociability +1.5, wealth -0.5 | 소비형 외향 |
-| O-NC 코-턱 결합 | nose ≥ 1 & chin ≥ 1 | wealth +1.0, leadership +1.0, stability +0.5 | 숭산+항산 |
-| O-EM 눈-입 결합 | eye ≥ 1 & mouth ≥ 1 | attractiveness +1.5, sociability +1.0 | 감찰관+출납관 |
-| O-FB 이마-눈썹 결합 | forehead ≥ 1 & eyebrow ≥ 1 | leadership +1.0, intelligence +0.5 | 상정 기세 |
-| O-CK 광대 강 | cheekbone.ownMeanZ ≥ 1 | leadership +0.5, attractiveness -0.2 | 태·화산 권위 |
-| O-CB 광대 약 | cheekbone.ownMeanZ ≤ -1 | leadership -0.5, attractiveness +0.3 | 부드러운 인상 |
-| O-PH 인중 짧음 | philtrum.ownMeanZ ≤ -1 | libido +1.5, sensuality +1.0, (age≥50 추가 감점 별도) | 생식궁 |
-| O-PH2 인중 긺 | philtrum.ownMeanZ ≥ 1 | stability +0.5, trustworthiness +0.5 | 신중 |
-| O-CH 턱 강 | chin.ownMeanZ ≥ 1 | leadership +1.0, stability +1.0 | 항산 |
+| O-EB1 눈-눈썹 동조 강 | eye & eyebrow 둘 다 leafZ ≥ 1 | leadership +0.5, trust +0.1 | 감찰관+보수관 연합 |
+| O-EB2 눈 강·눈썹 약 | eye ≥ 1 & eyebrow ≤ -1 | intelligence +0.5, emotionality +0.5 | 눈빛 있으나 의지 부족 |
+| O-EB3 눈썹 강·눈 약 | eyebrow ≥ 1 & eye ≤ -1 | leadership +0.5, trust -0.5 | 고집형 |
+| O-NM1 코-입 동조 | nose & mouth 둘 다 leafZ ≥ 1 | wealth +0.5, sociability +0.25 | 심변관+출납관 (재·식 동시) |
+| O-NM2 코 강·입 약 | nose ≥ 1 & mouth ≤ -1 | wealth +0.25, sociability -0.5 | 축재형 폐쇄 |
+| O-NM3 코 약·입 강 | nose ≤ -1 & mouth ≥ 1 | sociability +0.5, wealth -0.17 | 소비형 외향 |
+| O-NC 코-턱 결합 | nose ≥ 1 & chin ≥ 1 | wealth +0.5, leadership +0.5, stability +0.25 | 숭산+항산 |
+| O-EM 눈-입 결합 | eye ≥ 1 & mouth ≥ 1 | sociability +0.33 | 감찰관+출납관 — sociability 전용 축소 (v2.9). 美 부분은 O-MM/O-EM2 로 분리 |
+| O-FB 이마-눈썹 결합 | forehead ≥ 1 & eyebrow ≥ 1 | leadership +0.5, intelligence +0.25 | 상정 기세 |
+| O-CK 광대 강 | cheekbone leafZ ≥ 1 | leadership +0.5, wealth +0.19 | 태·화산 권위 |
+| O-CB 광대 약 | cheekbone leafZ ≤ -1 | leadership -0.5, sociability +0.3, attractiveness +0.3 | 부드러운 인상 |
+| O-CKN 광대+코 동반 강 | cheekbone & nose 둘 다 ≥ 1 | wealth +0.5, leadership +0.31 | |
+| O-CKC 광대+턱 동반 강 | cheekbone & chin 둘 다 ≥ 1 | leadership +0.5, stability +0.31 | |
+| O-CKF 광대+이마 동반 강 | cheekbone & forehead 둘 다 ≥ 1 | leadership +0.5, intelligence +0.5 | |
+| O-PH1 인중 짧음 | philtrum leafZ ≤ -1 | libido +0.5, sensuality +0.33 (age≥50 추가 감점 별도) | 생식궁 |
+| O-PH2 인중 긺 | philtrum leafZ ≥ 1 | stability +0.25, trust +0.5 | 신중 |
+| O-CH 턱 강 | chin leafZ ≥ 1 | leadership +0.5, stability +0.15 | 항산 |
+| O-DC1 매부리코 살짝 | nose `dorsalConvexity` z ∈ [1.5, 3) | leadership +0.5, wealth +0.21 | |
+| O-DC2 코 등선 살짝 오목 | nose `dorsalConvexity` z ∈ (-3, -1.5] | sensuality +0.5, emotionality +0.3 | |
+| O-NF1 비전두각 큼 | nose `nasofrontalAngle` z ≥ 1.5 | intelligence +0.5, trust +0.5 | |
+| O-NF2 비전두각 작음 | nose `nasofrontalAngle` z ≤ -1.5 | leadership +0.5, stability -0.3 | |
+| **O-MM 美目流盼** | eye leafZ ≥ 1 & `eyeCanthalTilt` z ∈ [0.3, 2.0] | attractiveness +0.4 | 麻衣相法 "目如秋水, 媚生於目" — 桃花眼 (v2.9) |
+| **O-EM2 眉目清秀** | eye ≥ 1 & eyebrow ≥ 0.5 & `eyebrowTiltDirection` z ≥ -0.5 | attractiveness +0.3 | 神相全編 "眉清目秀, 萬人之上" (v2.9) |
+| **O-RL 朱唇小口** | mouth `lipFullnessRatio` z ≥ 0.8 & `mouthWidthRatio` z ∈ [-1.0, 0.3] | attractiveness +0.3 | 麻衣相法 "唇如塗朱, 口如櫻桃" (v2.9) |
+| **O-CKE 顴骨突過** | cheekbone leafZ ≥ 1.5 | attractiveness -0.3 | 麻衣相法 "顴骨高聳露骨, 神色不和" (v2.9) |
+| **O-EZ 目偏不正** | eye absZ ≥ 1.5 & signed leafZ ≤ -0.5 | attractiveness -0.3 | 神相全編 "目陷偏者, 形不和, 神不全" (v2.9) |
 
 ### 4.3 Palace Overlay Rules (십이궁 시너지)
 
@@ -207,15 +256,17 @@ base (linear)
 
 | ID | 궁 조합 | 조건 | 효과 |
 |---|---|---|---|
-| P-01 재백+전택 | 재백(코)+전택(눈) | nose & eye 둘 다 ownMeanZ ≥ 1 | wealth +1.0, stability +1.0 |
-| P-02 관록+천이 | 관록+천이 (둘 다 이마) | forehead.ownMeanZ ≥ 1.5 | leadership +1.5, intelligence +1.0 |
-| P-03 복덕 cross | 전체 rollUp (bokdeok 은 cross-node overlay) | face.rollUpMeanZ ≥ 0.8 & 세 zone 모두 ≥ 0 | attractiveness +1.5, trustworthiness +0.5 |
-| P-04 형제궁 | 형제(눈썹) | eyebrow.ownMeanZ ≥ 1 & ownMeanAbsZ ≥ 1.5 | sociability +0.5, trustworthiness +1.0 |
-| P-05 남녀궁 | 남녀(눈 아래) | eye.ownMeanZ ≥ 1 & lower.rollUpMeanZ ≥ 0 | libido +1.0, emotionality +0.5, sociability +0.3 |
-| P-06 처첩궁 | 처첩(눈꼬리) | eye.ownMeanAbsZ ≥ 1 & eyeCanthalTilt z ≥ 1 | sensuality +1.0, attractiveness +0.5, emotionality +0.3 |
-| P-07 질액궁 | 질액(산근=코뿌리) | nose.ownMeanAbsZ ≥ 1.5 | stability -0.5 (극단 = 체질 부조화, 중년 위기) |
-| P-08 천이궁 | 천이(이마 양옆) | forehead.ownMeanZ ≥ 1 & face.rollUpMeanAbsZ ≥ 0.5 | leadership +0.5, stability +0.5, intelligence +0.5 |
-| P-09 명궁 공백 처리 | glabella | glabella.ownMetricCount == 0 | no-op (로그만, 정책: skip silently). Phase 4 에서 `glabellaWidth` 도입 시 활성화. |
+| P-01 재백+전택 | 재백(코)+전택(눈) | nose & eye 둘 다 leafZ ≥ 1 | wealth +0.5, stability +0.15 |
+| P-02 관록+천이 | 관록+천이 (둘 다 이마) | forehead leafZ ≥ 1.5 | leadership +0.5, intelligence +0.33 |
+| P-03 복덕 cross | 전체 rollUp + 세 zone 모두 비음수 | root rollUpMeanZ ≥ 0.3 & 세 zone signedZ ≥ 0 | trust +0.17 (v2.9: trust 전용. 美 부분은 P-MJ 로 narrowing) |
+| P-04 형제궁 | 형제(눈썹) | eyebrow leafZ ≥ 1 & leafAbsZ ≥ 1.5 | sociability +0.5, trust +0.3 |
+| P-05 남녀궁 | 남녀(눈 아래) | eye leafZ ≥ 1 & lower zone signedZ ≥ 0 | libido +0.5, emotionality +0.25, sociability +0.15 |
+| P-06 처첩궁 | 처첩(눈꼬리) | eye absZ ≥ 1 & `eyeCanthalTilt` z ≥ 1 | sensuality +0.5, attractiveness +0.25, emotionality +0.15 |
+| P-07 질액궁 | 질액(산근=코뿌리) | nose absZ ≥ 1.5 | stability -0.5 (체질 부조화) |
+| P-08 천이궁 | 천이(이마 양옆) | forehead leafZ ≥ 1 & root rollUpMeanAbsZ ≥ 0.5 | leadership +0.5, stability +0.2, intelligence +0.5 |
+| P-09 명궁 넓음 | glabella | glabella leafZ ≥ 1 | wealth +0.5, stability +0.2, leadership +0.3 |
+| P-09B 명궁 좁음 | glabella | glabella leafZ ≤ -1 | emotionality +0.5, intelligence +0.3, stability -0.3 |
+| **P-MJ 印堂明潤** | 명궁(glabella) | glabella leafZ ≥ 0.7 | attractiveness +0.3 — 印堂은 一身之主, 명윤하면 神氣 발현 (v2.9) |
 
 ### 4.4 Signed vs AbsZ 사용 규칙 — 요약
 

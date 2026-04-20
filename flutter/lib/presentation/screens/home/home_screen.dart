@@ -275,7 +275,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       maxWidth: 1024,
       maxHeight: 1024,
     );
-    if (frontalPick == null) return;
+    if (frontalPick == null) {
+      _dismissTopMessage();
+      return;
+    }
 
     setState(() => _isProcessing = true);
     _AlbumPhoto frontal;
@@ -284,6 +287,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isProcessing = false);
+        _dismissTopMessage();
         _showError(e.toString());
       }
       return;
@@ -318,6 +322,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         } catch (e) {
           if (mounted) {
             setState(() => _isProcessing = false);
+            _dismissTopMessage();
             _showError(e.toString());
           }
           return;

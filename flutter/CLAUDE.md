@@ -2,25 +2,27 @@
 
 관상 분석 Flutter 앱. MediaPipe Face Mesh(468 landmarks) 을 입력으로 17 frontal + 8 lateral metric → z-score → 14-node tree → 10 attribute → archetype · compat 까지 일관된 파이프라인.
 
-마지막 업데이트: 2026-04-19 (engine v2.8)
+마지막 업데이트: 2026-04-20 (engine v2.9)
 
 ---
 
 ## 🚀 다음 PC 에서 이어받을 때 먼저 읽기
 
-세션 시작 시 이 섹션 먼저 확인. engine v2.8 (N=14 실사용자 ref re-centering + bias=0.0 MC) 이 현재 stable baseline.
+세션 시작 시 이 섹션 먼저 확인. engine v2.9 (美人相 rule 7 개 도입 + 매력도 lax/stacking narrowing) 이 현재 stable baseline.
 
-### 엔진 버전 스냅샷 (2026-04-19)
+### 엔진 버전 스냅샷 (2026-04-20)
 
-- **engine v2.8** · narrative v3 · Hive schemaVersion 3
+- **engine v2.9** · narrative v3 · Hive schemaVersion 3
 - Stage 0 shape preset: **철수** (raw score 에 얼굴형 관여 0)
 - 매력도 Stage 1b distinctiveness: **철수** (bell 제거)
 - 얼굴형 은 archetype shape-gated overlay + narrative Layer B 에만 남음
 - MC sampler **bias=0.0, std=1.0** (N=14 eastAsian female 30s 실사용자 empirical z 가 N(0,1) 에 수렴하도록 ref 재보정 완료)
 - eastAsian female reference 19 metric mean 재조정 (faceAspectRatio 1.35→1.30, midFaceRatio 0.30→0.32, cheekboneWidth 0.90→0.93 등)
-- compat threshold 84→83 (bias=0 MC p90 이동분 흡수)
+- compat threshold 85/72/64 (v2.9 美人相 rule 도입 후 MC p90/p60/p30 재계산)
+- 美人相 rule set (v2.9): Z-NG 五官端正, O-MM 桃花眼, O-EM2 眉目清秀, O-RL 朱唇小口, O-CKE 顴骨突過(-), O-EZ 目偏不正(-), P-MJ 印堂明潤. 麻衣相法·神相全編 grounded
+- 매력도 narrowing: O-EM 임계 0.5→1.0 + attractiveness 제거, Z-07/Z-09/P-03/Z-LFR 의 attractiveness 부분 제거
 
-#### v2.8 핵심 invariant (회귀 차단용)
+#### v2.9 핵심 invariant (회귀 차단용)
 
 1. **attribute row 합 = 1.00 ± 0.01** — 9 node(face/ear 제외) 가중치 정규화.
 2. **zone 합 ∈ [0.25, 0.40]** per (attribute × zone) — 각 속성이 상·중·하정 중 어느 한 곳에 55% 이상 몰리지 않도록.
@@ -36,20 +38,30 @@
 - `test/shape_archetype_bias_test.dart` — 5 shape × 2000 샘플 → 각 shape 의 top-1 attr 분포 < 35%. shape-bound archetype 편향 부활 차단.
 - `test/archetype_template_sanity_test.dart` — 6 template hit rate ≥ 55% (rule cap 으로 template 차별 신호 약화를 의도적으로 허용).
 - `test/score_distribution_test.dart` — spread invariant, saturation < 5%.
-- `test/compat_label_fairness_test.dart` — 10/30/30/30 ± 5%, thresholds **83/73/65**.
+- `test/compat_label_fairness_test.dart` — 10/30/30/30 ± 5%, thresholds **85/72/64** (v2.9 재보정).
 - `test/evidence_snapshot_test.dart` — 고정 z-map 에 대한 rule/score/contributor 완전 snapshot.
 - `test/real_users_recalibration_test.dart` — N=14 실사용자 empirical z 분포 + archetype concentration 진단 (현재 max 28.6% = 4/14).
+
+### 이번 세션 완료 (uncommitted, 2026-04-20)
+
+- **engine v2.9 문서 동기화** — `docs/engine/ATTRIBUTES.md` §4 Zone/Organ/Palace 표 전면 갱신(21/24/9 행, 麻衣相法·神相全編 근거 열 포함), `CLAUDE.md` snapshot·invariant·threshold v2.9 승격.
+- **compat 리포트 썸네일 좌우 재배치** — `compatibility_report_page.dart` 에 `myThumbnailPath` 필드 추가, 좌상단=내 사진 / 우상단=상대 사진 배치. `compatibility_screen.dart` 에서 `myReport.thumbnailPath` 배선.
+- **앨범 picker cancel snackbar 잔존 버그 수정** — `home_screen.dart` 정면·측면 cancel 경로 + error catch 에 `_dismissTopMessage()` 삽입.
+- **pull-to-refresh state 증발 — 진단 계측 삽입** — `history_provider.dart` `_loadFromHive`/`reloadFromHive` catch 블록에 stacktrace + raw head 200자 `debugPrint` 삽입. (근본 fix 는 P0 참고)
+
+`flutter analyze` clean, 110 test green, compat label 분포 29.1/27.9/32.6/10.3% (±5% 게이트 내).
 
 ### 다음 작업 (우선순위순)
 
 | 우선 | 작업 | 근거 | 재개 지시 |
 |---|---|---|---|
+| P0 | **이번 세션 4종 변경 커밋 분리** | uncommitted 상태로 다음 세션 넘기지 말 것. docs / compat ui / snackbar fix / history diagnostics 4개의 atomic commit 으로 분리 | `"git add -p 로 (1) docs/engine/ATTRIBUTES.md + CLAUDE.md — engine v2.9 sync, (2) compat report 썸네일 좌우 재배치, (3) 앨범 picker cancel snackbar dismiss, (4) history_provider reload/load FAIL stacktrace 로깅. 커밋 메시지는 최근 '<pending> engine v2.8 …' 스타일"` |
+| P0 | **pull-to-refresh state 증발 root-cause 고정** | 진단 로그는 삽입 완료. 실기에서 재현 후 stacktrace 확보가 필요. `fromJsonString` 이 rawValue→엔진 재계산 도중 어느 라인에서 터지는지 정확히 짚어야 함 | `"실기 앱 run → 관상 tab 에서 pull-to-refresh → 콘솔의 [History] reload FAIL entry N: … + stacktrace + raw head 전부 수집. 해당 라인 원인 제거 + reloadFromHive 가 parse 실패 시 in-memory state entry 드롭하지 않도록 방어(현재는 parsed 만 state 로 커밋 → 실패 entry 소멸). 관건은 'Hive raw 보존' 은 이미 되어 있으니 state 쪽 보수적 업데이트만 추가"` |
 | P0 | **실사용자 N 확장** (현 N=14 eastAsian female 30s → ≥100 전 demographic) | v2.8 은 단일 demographic 14 명으로 ref 재보정. 남·타 ethnicity·age 는 아직 idealized MC 기반 | `"test/fixtures/real_users_*.json 에 male/caucasian/40s 등 추가 수집 후 real_users_recalibration_test.dart 로 per-demographic 재보정"` |
 | P1 | **Per-shape quantile 테이블** (Opt-D) | oval/oblong/round/square/heart 각각 독립 quantile 로 shape-conditional bias 근본 제거 | `"attribute_normalize.dart 에 _attrQuantilesByShape 도입. 각 shape 당 21-point × 10 attr × 2 gender. MC sampler 에 shape 드로우 stratification 추가."` |
 | P1 | **Soft predicate 로 band 전환** (narrative variation) | 현 `_Band.high/mid/low` hard cutoff 가 plateau/cliff 문제 만듦. 연속 확률로 전환 시 인접 z 의 의미 있는 차이가 fragment 선택에 반영 | `"life_question_narrative.dart 의 _Frag predicate 를 bool → double(0~1) 로. weighted sampling."` |
 | P2 | **Fragment variant 확장 (재능·재물·사회·건강 섹션)** | 관능도만 7-아키타입 확장 완료. 나머지 섹션도 fallback 에 2~3 variants 추가 | `"_talentOpening, _wealthOpening, _socialOpening 등 fallback variant 수를 2→5 로 확장"` |
 | P2 | **UI 에 음양 축 표시** | `yin_yang.dart` 에서 `YinYangBalance` 계산은 되는데 UI 에 라벨만 있고 시각 요소 부족 | `"report_page 부위별 섹션 위에 음양 balance 바 추가"` |
-| P3 | **docs/engine 리팩토링** | ATTRIBUTES.md v0.3 가 v2.5 와 부분 동기화 상태. 완전 재작성 필요 | `"docs/engine/ATTRIBUTES.md 를 v2.5 매트릭스·rule 기준 전면 재작성"` |
 
 ### 최근 커밋 시퀀스 (역순)
 ```
@@ -321,7 +333,7 @@ flutter test test/calibration_test.dart
 - `archetype_fairness_test.dart` — archetype 분포 공정성
 - `archetype_template_sanity_test.dart` — 6 template 별 ≥70% hit
 - `score_distribution_test.dart` — spread ≥ 3.0, saturation < 5%
-- `compat_label_fairness_test.dart` — 10/30/30/30 분포 (thresholds 84/73/65, 2026-04-19 v2.6 재보정)
+- `compat_label_fairness_test.dart` — 10/30/30/30 분포 (thresholds 85/72/64, 2026-04-20 v2.9 재보정)
 
 ## Platform Setup
 

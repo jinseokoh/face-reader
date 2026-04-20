@@ -31,6 +31,7 @@ class CompatibilityReportPage extends StatelessWidget {
   final String albumName;
   final String albumUuid;
   final String? thumbnailPath;
+  final String? myThumbnailPath;
 
   const CompatibilityReportPage({
     super.key,
@@ -38,6 +39,7 @@ class CompatibilityReportPage extends StatelessWidget {
     required this.albumName,
     required this.albumUuid,
     this.thumbnailPath,
+    this.myThumbnailPath,
   });
 
   @override
@@ -135,27 +137,25 @@ class CompatibilityReportPage extends StatelessWidget {
       ),
     );
 
-    // Album thumbnail at top-left, same 40×40 size as physiognomy list items.
-    final thumbWidget = _buildThumbnail();
-    if (thumbWidget == null) return container;
+    // 40×40 thumbnails: 내 사진 top-left, 상대방 사진 top-right.
+    final myThumb = _buildThumbnail(myThumbnailPath);
+    final partnerThumb = _buildThumbnail(thumbnailPath);
+    if (myThumb == null && partnerThumb == null) return container;
     // StackFit.passthrough — pass the parent's (ListView) tight cross-axis
     // width constraint through to the inner Container so it stays full-width.
-    // Default StackFit.loose collapses Container to its child's intrinsic width.
     return Stack(
       fit: StackFit.passthrough,
       children: [
         container,
-        Positioned(
-          top: 12,
-          left: 12,
-          child: thumbWidget,
-        ),
+        if (myThumb != null)
+          Positioned(top: 12, left: 12, child: myThumb),
+        if (partnerThumb != null)
+          Positioned(top: 12, right: 12, child: partnerThumb),
       ],
     );
   }
 
-  Widget? _buildThumbnail() {
-    final path = thumbnailPath;
+  Widget? _buildThumbnail(String? path) {
     if (path == null) return null;
     final file = File(path);
     if (!file.existsSync()) return null;
@@ -467,9 +467,9 @@ class CompatibilityReportPage extends StatelessWidget {
   /// _resolveLabel thresholds 를 그대로 아래에 붙여 넣고, compat_label_fairness
   /// 가 green 인지 확인.
   String _resolveLabel(int score) {
-    if (score >= 83) return '천생연분';
-    if (score >= 73) return '좋은 궁합';
-    if (score >= 65) return '보통';
+    if (score >= 85) return '천생연분';
+    if (score >= 72) return '좋은 궁합';
+    if (score >= 64) return '보통';
     return '어려운 궁합';
   }
 
