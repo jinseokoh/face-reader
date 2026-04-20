@@ -434,9 +434,16 @@ class _NodeBar extends StatelessWidget {
 
     final metricRows = <Widget>[];
     if (supported) {
+      // count visible first so we can drop trailing padding on the last row.
+      var visibleTotal = 0;
+      for (final mid in metricIds) {
+        if ((metrics[mid] ?? lateralMetrics?[mid]) != null) visibleTotal++;
+      }
+      var visibleIndex = 0;
       for (final mid in metricIds) {
         final m = metrics[mid] ?? lateralMetrics?[mid];
         if (m == null) continue;
+        final isLastMetric = (++visibleIndex) == visibleTotal;
         final zm = m.zScore;
         final info = _metricInfoById[mid];
         final label =
@@ -457,7 +464,7 @@ class _NodeBar extends StatelessWidget {
             : const Color(0xFF2C5AA0); // cool blue for −
         metricRows.add(
           Padding(
-            padding: const EdgeInsets.only(bottom: 8),
+            padding: EdgeInsets.only(bottom: isLastMetric ? 0 : 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -527,8 +534,13 @@ class _NodeBar extends StatelessWidget {
       return const SizedBox(height: 6);
     }
 
+    // Spacing rhythm (통일):
+    //   · 인접 섹션 사이 (body / 세부 측정값 / 부위 해석 조합): 14
+    //   · 서브 타이틀 → 첫 항목: 8
+    //   · 항목과 항목 사이: 8 (마지막 항목은 trailing 0)
+    //   · 노드 외곽 bottom: 0 — 바깥쪽에서 통일된 inter-node 간격으로 제어.
     return Padding(
-      padding: const EdgeInsets.only(left: 12, right: 4, top: 4, bottom: 14),
+      padding: const EdgeInsets.only(left: 12, right: 4, top: 4, bottom: 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -550,7 +562,7 @@ class _NodeBar extends StatelessWidget {
               ),
             ),
           if (metricRows.isNotEmpty) ...[
-            const SizedBox(height: 22),
+            const SizedBox(height: 14),
             Text(
               '세부 측정값',
               style: TextStyle(
@@ -559,11 +571,11 @@ class _NodeBar extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             ...metricRows,
           ],
           if (combos.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             Text(
               '부위 해석 조합',
               style: TextStyle(
@@ -572,10 +584,11 @@ class _NodeBar extends StatelessWidget {
                 fontWeight: FontWeight.w400,
               ),
             ),
-            const SizedBox(height: 6),
-            for (final combo in combos)
+            const SizedBox(height: 8),
+            for (int ci = 0; ci < combos.length; ci++)
               Padding(
-                padding: const EdgeInsets.only(bottom: 8),
+                padding:
+                    EdgeInsets.only(bottom: ci == combos.length - 1 ? 0 : 8),
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(10),
@@ -596,7 +609,7 @@ class _NodeBar extends StatelessWidget {
                       ),
                       Expanded(
                         child: Text(
-                          combo.body,
+                          combos[ci].body,
                           style: TextStyle(
                             color: _Palette.warmBrown,
                             fontSize: 13,
@@ -1031,23 +1044,19 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             ),
           ),
           if (_showNodeDetails) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 14),
             if (report.nodeScores.containsKey('upper') &&
                 report.nodeScores.containsKey('middle') &&
-                report.nodeScores.containsKey('lower')) ...[
+                report.nodeScores.containsKey('lower'))
               _SamjeongRadar(
                 upper: report.nodeScores['upper']!.rollUpMeanZ,
                 middle: report.nodeScores['middle']!.rollUpMeanZ,
                 lower: report.nodeScores['lower']!.rollUpMeanZ,
               ),
-              const SizedBox(height: 10),
-            ],
+            // 모든 노드 사이에 통일된 14px 간격.
             for (final nodeId in nodeOrder)
               if (report.nodeScores.containsKey(nodeId)) ...[
-                if (nodeId == 'upper' ||
-                    nodeId == 'middle' ||
-                    nodeId == 'lower')
-                  const SizedBox(height: 14),
+                const SizedBox(height: 14),
                 _NodeBar(
                   nodeId: nodeId,
                   label: nodeLabels[nodeId] ?? nodeId,
@@ -1165,6 +1174,14 @@ class _ReportPageState extends ConsumerState<ReportPage> {
   }
 
 // ─── Save ───
+  //
+  // Markers the PDF renderer understands:
+  //   `=== 제목 ===`  → H1 (22pt bold)
+  //   `--- 섹션 ---`  → H2 (16pt bold)
+  //   `▶ 노드 …`      → node header (14pt bold, 좌측 바)
+  //   `  · …`         → indented metric line (11pt)
+  //   `  ◉ …`         → indented combo line (11pt)
+  //   그 외            → body paragraph (11pt)
   String _generateText() {
     final time = report.timestamp;
     final timeStr =
@@ -1194,42 +1211,88 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     }
     buf.writeln();
 
-    buf.writeln('--- 분석 ---');
+    buf.writeln('--- 관상 해석 ---');
     buf.writeln(assembled.assembledText);
     buf.writeln();
 
-    final totalMetrics =
-        report.metrics.length + (report.lateralMetrics?.length ?? 0);
-    buf.writeln('--- AI 관상 측정값 ($totalMetrics Metrics) ---');
-
-    final categories = [
-      ('얼굴', 'face'),
-      ('눈', 'eyes'),
-      ('코', 'nose'),
-      ('입', 'mouth'),
+    // 부위별 상세 해석 — UI `_NodeBar` 와 동일한 본문/세부 측정값/조합.
+    // nodeOrder / nodeLabels 는 `_buildNodeScoreSection` 과 일치.
+    const nodeOrder = [
+      'face', 'upper', 'forehead', 'glabella', 'eyebrow',
+      'middle', 'eye', 'nose', 'cheekbone',
+      'lower', 'philtrum', 'mouth', 'chin',
     ];
-    for (final (title, cat) in categories) {
-      final infos = metricInfoList.where((m) => m.category == cat).toList();
-      if (infos.isEmpty) continue;
-      buf.writeln('[$title]');
-      for (final info in infos) {
-        final metric = report.metrics[info.id];
-        if (metric == null) continue;
-        buf.writeln(
-            '  ${info.nameKo} (${info.nameEn}): score=${metric.metricScore}, z=${metric.zScore.toStringAsFixed(2)}');
-      }
+    const nodeLabels = {
+      'face': '얼굴',
+      'upper': '상정',
+      'forehead': '이마',
+      'glabella': '미간',
+      'eyebrow': '눈썹',
+      'middle': '중정',
+      'eye': '눈',
+      'nose': '코',
+      'cheekbone': '광대',
+      'lower': '하정',
+      'philtrum': '인중',
+      'mouth': '입',
+      'chin': '턱',
+    };
+
+    buf.writeln('--- 부위별 상세 해석 ---');
+    buf.writeln();
+
+    // 삼정 요약 (radar 를 텍스트로 치환).
+    final upperZ = report.nodeScores['upper']?.rollUpMeanZ;
+    final middleZ = report.nodeScores['middle']?.rollUpMeanZ;
+    final lowerZ = report.nodeScores['lower']?.rollUpMeanZ;
+    if (upperZ != null && middleZ != null && lowerZ != null) {
+      buf.writeln(
+          '삼정 균형 — 상정 ${_fmtZ(upperZ)} · 중정 ${_fmtZ(middleZ)} · 하정 ${_fmtZ(lowerZ)}');
       buf.writeln();
     }
 
-    final lm = report.lateralMetrics;
-    if (lm != null && lm.isNotEmpty) {
-      buf.writeln('[측면(3/4)]');
-      for (final info in lateralMetricInfoList) {
-        final metric = lm[info.id];
-        if (metric == null) continue;
-        buf.writeln(
-            '  ${info.nameKo} (${info.nameEn}): score=${metric.metricScore}, z=${metric.zScore.toStringAsFixed(2)}');
+    for (final nodeId in nodeOrder) {
+      final score = report.nodeScores[nodeId];
+      if (score == null) continue;
+      final label = nodeLabels[nodeId] ?? nodeId;
+      final z = score.rollUpMeanZ;
+
+      buf.writeln('▶ $label (z ${_fmtZ(z)})');
+
+      final block = nodeBlockForZ(nodeId, z);
+      final body = block != null ? resolveNodeBody(block, report.gender) : '';
+      if (body.isNotEmpty) {
+        buf.writeln(body);
       }
+
+      // leaf 노드 세부 측정값 (zone/root 는 metricIds 없음).
+      final metricIds = nodeById[nodeId]?.metricIds ?? const <String>[];
+      final zMap = <String, double>{};
+      for (final mid in metricIds) {
+        final m = report.metrics[mid] ?? report.lateralMetrics?[mid];
+        if (m == null) continue;
+        zMap[mid] = m.zScore;
+        final info = _metricInfoById[mid];
+        final zm = m.zScore;
+        final mLabel = info?.nameKo ?? metricDisplayLabels[mid] ?? mid;
+        final interp = info == null
+            ? ''
+            : (zm.abs() < 0.35
+                ? '평균 수준'
+                : (zm >= 0 ? info.higherLabel : info.lowerLabel));
+        final metricBody = metricBodyForZ(mid, zm);
+        final tail = metricBody ?? (interp.isNotEmpty ? interp : '');
+        buf.writeln(tail.isEmpty
+            ? '  · $mLabel (${_fmtZ(zm)})'
+            : '  · $mLabel (${_fmtZ(zm)}) — $tail');
+      }
+
+      // 조합 해석 (triggeredCombos).
+      final combos = triggeredCombos(metricIds, zMap);
+      for (final combo in combos) {
+        buf.writeln('  ◉ ${combo.body}');
+      }
+
       buf.writeln();
     }
 
@@ -1251,6 +1314,104 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     }
 
     return buf.toString();
+  }
+
+  static String _fmtZ(double z) =>
+      '${z >= 0 ? '+' : ''}${z.toStringAsFixed(2)}';
+
+  /// Render one text line into a PDF widget based on its marker prefix.
+  /// Markers mirror `_generateText`:
+  ///   `===` H1, `---` H2, `▶` node header, `  ·` metric, `  ◉` combo.
+  static pw.Widget _renderPdfLine(String line) {
+    if (line.startsWith('===')) {
+      return pw.Padding(
+        padding: const pw.EdgeInsets.only(top: 4, bottom: 10),
+        child: pw.Text(
+          line.replaceAll('=', '').trim(),
+          style:
+              pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold),
+        ),
+      );
+    }
+    if (line.startsWith('---')) {
+      return pw.Padding(
+        padding: const pw.EdgeInsets.only(top: 16, bottom: 6),
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text(
+              line.replaceAll('-', '').trim(),
+              style: pw.TextStyle(
+                  fontSize: 15, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 2),
+            pw.Container(
+              height: 0.6,
+              color: PdfColor.fromInt(0xFF5C4033),
+            ),
+          ],
+        ),
+      );
+    }
+    if (line.startsWith('▶')) {
+      final text = line.substring(1).trim();
+      return pw.Padding(
+        padding: const pw.EdgeInsets.only(top: 10, bottom: 3),
+        child: pw.Container(
+          padding:
+              const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: pw.BoxDecoration(
+            color: PdfColor.fromInt(0xFFEDE5D5),
+            borderRadius: pw.BorderRadius.circular(3),
+          ),
+          child: pw.Text(
+            text,
+            style: pw.TextStyle(
+              fontSize: 13,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColor.fromInt(0xFF5C4033),
+            ),
+          ),
+        ),
+      );
+    }
+    if (line.startsWith('  · ')) {
+      return pw.Padding(
+        padding:
+            const pw.EdgeInsets.only(left: 14, top: 1, bottom: 1, right: 0),
+        child: pw.Text(
+          '· ${line.substring(4)}',
+          style: pw.TextStyle(
+              fontSize: 10.5, color: PdfColor.fromInt(0xFF7B5B3A)),
+        ),
+      );
+    }
+    if (line.startsWith('  ◉ ')) {
+      // NotoSerifKR 는 italic variant 가 없어 italic 지정 시 한글이 Helvetica
+      // 로 fallback → tofu. 색상으로만 구분한다. 또한 Geometric Shapes 의
+      // ◉ 역시 CJK serif 에 없어 ※ 로 치환.
+      return pw.Padding(
+        padding:
+            const pw.EdgeInsets.only(left: 14, top: 2, bottom: 2),
+        child: pw.Text(
+          '※ ${line.substring(4)}',
+          style: pw.TextStyle(
+            fontSize: 10.5,
+            color: PdfColor.fromInt(0xFF9B7B4F),
+          ),
+        ),
+      );
+    }
+    if (line.trim().isEmpty) {
+      return pw.SizedBox(height: 6);
+    }
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 1.5),
+      child: pw.Text(
+        line,
+        style: const pw.TextStyle(fontSize: 11, lineSpacing: 2.5),
+      ),
+    );
   }
 
 
@@ -1376,29 +1537,9 @@ class _ReportPageState extends ConsumerState<ReportPage> {
       pdfDoc.addPage(
         pw.MultiPage(
           pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.fromLTRB(36, 40, 36, 40),
           build: (pw.Context ctx) {
-            return lines.map((line) {
-              if (line.startsWith('===')) {
-                return pw.Padding(
-                  padding: const pw.EdgeInsets.only(bottom: 8),
-                  child: pw.Text(line.replaceAll('=', '').trim(),
-                      style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold)),
-                );
-              } else if (line.startsWith('---')) {
-                return pw.Padding(
-                  padding: const pw.EdgeInsets.only(top: 12, bottom: 4),
-                  child: pw.Text(line.replaceAll('-', '').trim(),
-                      style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
-                );
-              } else if (line.trim().isEmpty) {
-                return pw.SizedBox(height: 6);
-              } else {
-                return pw.Padding(
-                  padding: const pw.EdgeInsets.symmetric(vertical: 1),
-                  child: pw.Text(line, style: const pw.TextStyle(fontSize: 11)),
-                );
-              }
-            }).toList();
+            return lines.map(_renderPdfLine).toList();
           },
         ),
       );

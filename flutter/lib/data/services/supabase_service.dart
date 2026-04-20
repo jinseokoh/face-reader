@@ -20,6 +20,7 @@ class SupabaseService {
 
     final data = {
       'id': id,
+      'user_id': _client.auth.currentUser?.id,
       'metrics_json': report.toJsonString(),
       'source': report.source.name,
       'ethnicity': report.ethnicity.name,
@@ -72,6 +73,7 @@ class SupabaseService {
     if (id == null) return;
     await _client.from('metrics').upsert({
       'id': id,
+      'user_id': _client.auth.currentUser?.id,
       'metrics_json': report.toJsonString(),
       'source': report.source.name,
       'ethnicity': report.ethnicity.name,

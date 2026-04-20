@@ -47,6 +47,19 @@
 				</array>
 			</dict>
 		</dict>
+		<key>CFBundleURLTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleTypeRole</key>
+				<string>Editor</string>
+				<key>CFBundleURLName</key>
+				<string>com.chuck.facereader.auth</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>face-reader</string>
+				</array>
+			</dict>
+		</array>
 		<key>NSCameraUsageDescription</key>
 		<string>Camera access is needed for face mesh detection</string>
 		<key>NSPhotoLibraryUsageDescription</key>

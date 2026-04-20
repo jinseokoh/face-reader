@@ -3,6 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
 import 'package:face_reader/data/services/auth_service.dart';
+import 'package:face_reader/domain/models/coin_transaction.dart';
 
 class CoinProduct {
   final String id;
@@ -66,12 +67,18 @@ class CoinService {
   /// Purchase a coin product. Returns number of coins purchased, or 0 on failure.
   Future<int> purchase(CoinProduct product) async {
     try {
-      await Purchases.purchase(PurchaseParams.storeProduct(product.storeProduct));
+      await Purchases.purchase(
+        PurchaseParams.storeProduct(product.storeProduct),
+      );
       final coins = _coinMap[product.id] ?? 0;
 
-      // Add coins to Supabase
       if (AuthService().isLoggedIn) {
-        await AuthService().addCoins(coins);
+        await AuthService().addCoins(
+          coins,
+          kind: CoinTxKind.purchase,
+          productId: product.id,
+          description: '$coins 코인 충전',
+        );
       }
 
       debugPrint('[CoinService] purchased ${product.id} → +$coins coins');

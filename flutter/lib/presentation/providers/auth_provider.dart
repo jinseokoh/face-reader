@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -8,41 +10,51 @@ final authProvider = NotifierProvider<AuthNotifier, AuthUser?>(
 );
 
 class AuthNotifier extends Notifier<AuthUser?> {
-  @override
-  AuthUser? build() => AuthService().currentUser;
+  StreamSubscription<AuthUser?>? _sub;
 
-  Future<bool> login() async {
-    try {
-      final user = await AuthService().loginWithKakao();
+  @override
+  AuthUser? build() {
+    _sub = AuthService().profileStream.listen((user) {
       state = user;
-      return true;
+    });
+    ref.onDispose(() => _sub?.cancel());
+    return AuthService().currentUser;
+  }
+
+  /// Kakao OAuth. Browser opens asynchronously; the actual profile arrives
+  /// through `profileStream` once the deep link redirects back. Returns
+  /// whether the browser was launched.
+  Future<bool> loginWithKakao() async {
+    try {
+      return await AuthService().loginWithKakao();
     } catch (e) {
-      debugPrint('[AuthProvider] login error: $e');
+      debugPrint('[AuthProvider] kakao login error: $e');
       return false;
     }
   }
 
+  Future<bool> loginWithEmail(String email, String password) async {
+    return AuthService().loginWithEmail(email, password);
+  }
+
+  Future<bool> signUpWithEmail(String email, String password) async {
+    return AuthService().signUpWithEmail(email, password);
+  }
+
   Future<void> logout() async {
     await AuthService().logout();
-    state = null;
   }
 
   Future<void> refreshCoins() async {
     await AuthService().refreshCoins();
-    state = AuthService().currentUser;
   }
 
-  Future<bool> deductCoins(int amount) async {
-    final success = await AuthService().deductCoins(amount);
-    if (success) {
-      state = AuthService().currentUser;
-    }
-    return success;
+  Future<bool> deductCoins(int amount, {String? description}) async {
+    return AuthService().deductCoins(amount, description: description);
   }
 
   Future<void> addCoins(int amount) async {
     await AuthService().addCoins(amount);
-    state = AuthService().currentUser;
   }
 
   bool get isLoggedIn => state != null;

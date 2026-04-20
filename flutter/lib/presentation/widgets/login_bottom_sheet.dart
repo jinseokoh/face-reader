@@ -3,15 +3,22 @@ import 'package:face_reader/presentation/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Shows a login bottom sheet. Returns true if login succeeded.
+/// Shows a login bottom sheet. Returns true if login succeeded (Kakao browser
+/// launched or email sign-in/up succeeded).
 Future<bool> showLoginBottomSheet(BuildContext context, WidgetRef ref) async {
   final result = await showModalBottomSheet<bool>(
     context: context,
+    isScrollControlled: true,
     backgroundColor: Colors.white,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
-    builder: (ctx) => const _LoginSheet(),
+    builder: (ctx) => Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(ctx).viewInsets.bottom,
+      ),
+      child: const _LoginSheet(),
+    ),
   );
   return result ?? false;
 }
@@ -25,6 +32,56 @@ class _LoginSheet extends ConsumerStatefulWidget {
 
 class _LoginSheetState extends ConsumerState<_LoginSheet> {
   bool _isLoading = false;
+  bool _showEmail = false;
+  bool _isSignUp = false;
+
+  final _emailCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _emailCtrl.dispose();
+    _passwordCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _kakaoLogin() async {
+    setState(() => _isLoading = true);
+    final launched = await ref.read(authProvider.notifier).loginWithKakao();
+    if (mounted) {
+      Navigator.of(context).pop(launched);
+    }
+  }
+
+  Future<void> _emailSubmit() async {
+    final email = _emailCtrl.text.trim();
+    final password = _passwordCtrl.text;
+    if (email.isEmpty || password.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('이메일과 6자 이상 비밀번호를 입력하세요')),
+      );
+      return;
+    }
+    setState(() => _isLoading = true);
+    final notifier = ref.read(authProvider.notifier);
+    final success = _isSignUp
+        ? await notifier.signUpWithEmail(email, password)
+        : await notifier.loginWithEmail(email, password);
+    if (!mounted) return;
+    if (success) {
+      Navigator.of(context).pop(true);
+      if (_isSignUp) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('가입 확인 메일을 확인해주세요')),
+        );
+      }
+    } else {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_isSignUp ? '가입 실패' : '로그인 실패')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,16 +116,17 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
               width: double.infinity,
               height: 48,
               child: ElevatedButton(
-                onPressed: _isLoading ? null : _login,
+                onPressed: _isLoading ? null : _kakaoLogin,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFEE500),
                   foregroundColor: const Color(0xFF3C1E1E),
-                  disabledBackgroundColor: const Color(0xFFFEE500).withValues(alpha: 0.5),
+                  disabledBackgroundColor:
+                      const Color(0xFFFEE500).withValues(alpha: 0.5),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: _isLoading
+                child: _isLoading && !_showEmail
                     ? const SizedBox(
                         width: 20,
                         height: 20,
@@ -82,6 +140,76 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
               ),
             ),
             const SizedBox(height: 12),
+            TextButton(
+              onPressed: _isLoading
+                  ? null
+                  : () => setState(() => _showEmail = !_showEmail),
+              child: Text(
+                _showEmail ? '닫기' : '이메일로 로그인',
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+              ),
+            ),
+            if (_showEmail) ...[
+              const SizedBox(height: 8),
+              TextField(
+                controller: _emailCtrl,
+                keyboardType: TextInputType.emailAddress,
+                autofillHints: const [AutofillHints.email],
+                decoration: InputDecoration(
+                  labelText: '이메일',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _passwordCtrl,
+                obscureText: true,
+                autofillHints: const [AutofillHints.password],
+                decoration: InputDecoration(
+                  labelText: '비밀번호 (6자 이상)',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _emailSubmit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.textPrimary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: _isLoading && _showEmail
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(_isSignUp ? '가입하기' : '로그인',
+                          style: const TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w600)),
+                ),
+              ),
+              const SizedBox(height: 4),
+              TextButton(
+                onPressed: _isLoading
+                    ? null
+                    : () => setState(() => _isSignUp = !_isSignUp),
+                child: Text(
+                  _isSignUp ? '이미 계정이 있습니다' : '계정이 없으신가요? 가입하기',
+                  style: TextStyle(color: AppTheme.textHint, fontSize: 12),
+                ),
+              ),
+            ],
+            const SizedBox(height: 8),
             Text(
               '첫 로그인 시 3코인 지급!',
               style: TextStyle(color: AppTheme.accent, fontSize: 13),
@@ -90,13 +218,5 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
         ),
       ),
     );
-  }
-
-  Future<void> _login() async {
-    setState(() => _isLoading = true);
-    final success = await ref.read(authProvider.notifier).login();
-    if (mounted) {
-      Navigator.of(context).pop(success);
-    }
   }
 }

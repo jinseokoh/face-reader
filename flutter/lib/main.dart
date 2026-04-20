@@ -19,10 +19,13 @@ void main() async {
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL']!,
     anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
+    authOptions: const FlutterAuthClientOptions(
+      authFlowType: AuthFlowType.pkce,
+    ),
   );
   await initHive();
   await CoinService().initialize();
-  await AuthService().restoreSession();
+  await AuthService().initialize();
   // Warm up face-shape TFLite classifier; failure is non-fatal (falls back
   // to legacy LDA rule at call site).
   try {
