@@ -13,6 +13,7 @@ import 'package:face_reader/data/services/supabase_service.dart';
 import 'package:face_reader/domain/models/face_reading_report.dart';
 import 'package:face_reader/domain/models/physiognomy_tree.dart';
 import 'package:face_reader/domain/services/report_assembler.dart';
+import 'package:face_reader/domain/services/yin_yang.dart';
 import 'package:face_reader/presentation/providers/auth_provider.dart';
 import 'package:face_reader/presentation/widgets/login_bottom_sheet.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -655,6 +656,159 @@ class _SamjeongRadar extends StatelessWidget {
   }
 }
 
+// ─── Yin-Yang balance bar (음기 ←→ 양기 축) ───
+class _YinYangBar extends StatelessWidget {
+  final YinYangBalance balance;
+  const _YinYangBar({required this.balance});
+
+  static const _yinColor = Color(0xFF2C5AA0);   // 음기 — 깊은 푸른빛(水·月)
+  static const _yangColor = Color(0xFFC0392B);  // 양기 — 불빛 붉음(火·日)
+  static const _harmonyColor = Color(0xFF9B7B4F); // 음양 조화 — amber
+
+  @override
+  Widget build(BuildContext context) {
+    final skew = balance.skew;
+    // skew ∈ [-2.5, +2.5] → position ∈ [0, 1].
+    final position = ((skew.clamp(-2.5, 2.5) + 2.5) / 5.0).toDouble();
+    final mag = balance.magnitude.clamp(0.0, 2.0).toDouble();
+    final toneColor = _toneColor(balance.tone);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _Palette.sand.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Text('음양 균형',
+                  style: TextStyle(
+                      color: _Palette.darkBrown,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600)),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 3),
+                decoration: BoxDecoration(
+                  color: toneColor.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                      color: toneColor.withValues(alpha: 0.45), width: 1),
+                ),
+                child: Text(
+                  balance.label,
+                  style: TextStyle(
+                    color: toneColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final width = constraints.maxWidth;
+              final markerX = width * position;
+              return SizedBox(
+                height: 28,
+                child: Stack(
+                  alignment: Alignment.centerLeft,
+                  children: [
+                    // 축 bar — yin(왼쪽, 푸른) → harmony(중앙, amber) → yang(오른쪽, 붉음).
+                    Positioned.fill(
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [
+                              _yinColor,
+                              _harmonyColor,
+                              _yangColor,
+                            ],
+                            stops: [0.0, 0.5, 1.0],
+                          ),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ),
+                    // 중앙 tick (조화 기준선).
+                    Positioned(
+                      left: width / 2 - 0.5,
+                      top: 4,
+                      bottom: 4,
+                      child: Container(
+                        width: 1,
+                        color: Colors.white.withValues(alpha: 0.7),
+                      ),
+                    ),
+                    // skew marker.
+                    Positioned(
+                      left: (markerX - 7).clamp(0.0, width - 14),
+                      child: Container(
+                        width: 14,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(7),
+                          border: Border.all(
+                              color: toneColor, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: toneColor.withValues(alpha: 0.35),
+                              blurRadius: 4,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Text('음기',
+                  style: TextStyle(color: _yinColor, fontSize: 11)),
+              const Spacer(),
+              Text(
+                'skew ${skew >= 0 ? '+' : ''}${skew.toStringAsFixed(2)}  ·  강도 ${mag.toStringAsFixed(2)}',
+                style: TextStyle(
+                    color: _Palette.warmBrown, fontSize: 11),
+              ),
+              const Spacer(),
+              Text('양기',
+                  style: TextStyle(color: _yangColor, fontSize: 11)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _toneColor(YinYangTone tone) {
+    switch (tone) {
+      case YinYangTone.strongYang:
+      case YinYangTone.leaningYang:
+        return _yangColor;
+      case YinYangTone.strongYin:
+      case YinYangTone.leaningYin:
+        return _yinColor;
+      case YinYangTone.harmony:
+        return _harmonyColor;
+    }
+  }
+}
+
 class _SamjeongRadarPainter extends CustomPainter {
   final double upper;
   final double middle;
@@ -986,6 +1140,19 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     );
   }
 
+  YinYangBalance _computeReportYinYang() {
+    final zMap = <String, double>{
+      for (final m in report.metrics.values) m.id: m.zScore,
+    };
+    final lateral = report.lateralMetrics;
+    if (lateral != null) {
+      for (final m in lateral.values) {
+        zMap[m.id] = m.zScore;
+      }
+    }
+    return computeYinYang(zMap);
+  }
+
   // ─── 14-node tree scores (transparency) ───
   Widget _buildNodeScoreSection() {
     if (report.nodeScores.isEmpty) return const SizedBox.shrink();
@@ -1044,6 +1211,8 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             ),
           ),
           if (_showNodeDetails) ...[
+            const SizedBox(height: 14),
+            _YinYangBar(balance: _computeReportYinYang()),
             const SizedBox(height: 14),
             if (report.nodeScores.containsKey('upper') &&
                 report.nodeScores.containsKey('middle') &&
@@ -1239,6 +1408,12 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     };
 
     buf.writeln('--- 부위별 상세 해석 ---');
+    buf.writeln();
+
+    // 음양 균형 요약 (bar 를 텍스트로 치환).
+    final yinYang = _computeReportYinYang();
+    buf.writeln(
+        '음양 균형 — ${yinYang.label} (skew ${_fmtZ(yinYang.skew)} · 강도 ${yinYang.magnitude.toStringAsFixed(2)})');
     buf.writeln();
 
     // 삼정 요약 (radar 를 텍스트로 치환).
