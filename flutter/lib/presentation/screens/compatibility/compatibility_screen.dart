@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:face_reader/core/theme.dart';
 import 'package:face_reader/domain/models/face_reading_report.dart';
 import 'package:face_reader/domain/services/compat/compat_adapter.dart';
+import 'package:face_reader/domain/services/compat/five_element.dart';
 import 'package:face_reader/domain/services/compat/compat_label.dart';
 import 'package:face_reader/domain/services/compat/compat_narrative.dart';
 import 'package:face_reader/domain/services/compat/compat_pipeline.dart';
