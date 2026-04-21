@@ -86,8 +86,10 @@ void main() {
 
       expect(n.summary.length, greaterThanOrEqualTo(40));
       expect(n.corePoints.length, greaterThanOrEqualTo(80));
-      expect(n.conflictScenarios.length, greaterThanOrEqualTo(20));
-      expect(n.strategy.length, greaterThanOrEqualTo(40));
+      // 갈등·전략 섹션은 3부 구조(도입 + per-item 근거/궤적/폭발·실행/실패 +
+      // 마무리)로 농후해졌으므로 이전 대비 약 2 배 길이를 요구한다.
+      expect(n.conflictScenarios.length, greaterThanOrEqualTo(200));
+      expect(n.strategy.length, greaterThanOrEqualTo(250));
       expect(n.scoreReason.length, greaterThanOrEqualTo(80));
     });
 

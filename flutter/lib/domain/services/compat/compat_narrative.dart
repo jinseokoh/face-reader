@@ -168,72 +168,182 @@ String _coreSection(List<CompatFinding> findings) {
 }
 
 // ─────────────── section 3 — 갈등 시나리오 ───────────────
+//
+// 3부 구조로 농후함 확보:
+//   (1) 섹션 도입 — label 별 갈등 전반 성격
+//   (2) 각 시나리오 — 관상 근거 + 실제 궤적 + 폭발 지점(domain pool)
+//   (3) 섹션 마무리 — 세 갈등의 공통분모
 
 String _conflictSection(
-    CompatibilityReport r, List<CompatFinding> findings) {
+    CompatibilityReport r, List<CompatFinding> findings, int pairSeed) {
   final neg = findings.where((f) => f.delta < 0 && f.scenario != null).toList();
   neg.sort((a, b) => a.delta.compareTo(b.delta));
   final pick = neg.take(3).toList();
 
   if (pick.isEmpty) {
-    return '두 분 사이에서 크게 문제될 지점은 특별히 읽히지 않습니다. '
-        '평소 관계 관리를 기본 수준으로 해 주시면 큰 갈등 없이 흘러갈 조합입니다.';
+    return '두 분 사이에서 눈에 띄게 터질 지점은 읽히지 않습니다. '
+        '어른의 관계는 갈등이 없는 게 아니라 예측 가능한 쪽에 속하므로, '
+        '평소 기본 관리만 해 주시면 크게 흔들릴 일이 드문 조합입니다. '
+        '단, 예측 가능해 보이는 평온을 권태로 읽는 순간부터 숨은 마찰이 튀어나오니 그 경계를 놓치지 마시기 바랍니다.';
   }
 
   final buf = StringBuffer();
+
+  // (1) 섹션 도입 — label 별.
+  final introPool = conflictIntroByLabel[r.label] ?? const <String>[];
+  final intro = _pickVariant(introPool, pairSeed);
+  if (intro.isNotEmpty) {
+    buf.writeln(intro);
+    buf.writeln();
+  }
+
+  // (2) 각 시나리오 — 근거·궤적·폭발.
   for (int i = 0; i < pick.length; i++) {
     final f = pick[i];
-    buf.writeln('시나리오 ${i + 1} (${f.domain})');
-    buf.writeln(f.scenario!);
+    buf.writeln('시나리오 ${i + 1} — ${f.title} (${f.domain})');
+    buf.writeln('관상 근거: ${f.meaning}');
+    buf.writeln('실제 궤적: ${f.scenario!}');
+    final escPool = conflictEscalationByDomain[f.domain] ??
+        conflictEscalationByDomain['_default']!;
+    final esc = _pickVariant(escPool, pairSeed + f.id.hashCode + i);
+    buf.writeln('폭발 지점: $esc');
     if (i != pick.length - 1) buf.writeln();
   }
+
+  // (3) 섹션 마무리 — 공통분모.
+  final outroPool = conflictOutroByLabel[r.label] ?? const <String>[];
+  final outro = _pickVariant(outroPool, pairSeed + 0x11D3);
+  if (outro.isNotEmpty) {
+    buf.writeln();
+    buf.write(outro);
+  }
+
   return buf.toString().trimRight();
 }
 
 // ─────────────── section 4 — 관계 운영 전략 ───────────────
+//
+// 3부 구조:
+//   (1) 섹션 도입 — label 별 전략 방향
+//   (2) 각 action — 근거 + 실행 디테일(domain pool) + 실패 패턴(domain pool)
+//   (3) 섹션 마무리 — 실행 우선순위 힌트
+
+/// 전략 1 항목 = (action 문장, 근거 도메인, 원본 finding).
+/// label-specific action 은 finding 이 없어 rationale 이 label 기반.
+class _StrategyItem {
+  final String action;
+  final String? domain; // domain null → label-level
+  final String rationale;
+  const _StrategyItem({
+    required this.action,
+    required this.domain,
+    required this.rationale,
+  });
+}
 
 String _strategySection(
-    CompatibilityReport r, List<CompatFinding> findings) {
-  final actions = <String>[];
+    CompatibilityReport r, List<CompatFinding> findings, int pairSeed) {
+  final items = <_StrategyItem>[];
 
-  // 라벨별 기본 전략 1 개.
+  // 라벨별 기본 전략 1 개 — rationale 은 label 자체.
   switch (r.label) {
     case CompatLabel.cheonjakjihap:
-      actions.add('궁합이 좋다고 방심하지 말 것. 일상적인 연락·기념일·생활습관 같은 기본기를 놓치는 순간 우위가 빠르게 줄어듭니다.');
+      items.add(const _StrategyItem(
+        action:
+            '궁합이 좋다고 방심하지 말 것. 일상적인 연락·기념일·생활습관 같은 기본기를 놓치는 순간 우위가 빠르게 줄어듭니다.',
+        domain: null,
+        rationale: '이 관계는 이미 유리한 기본값을 갖고 있어, 전략의 핵심은 "유지"입니다.',
+      ));
       break;
     case CompatLabel.sangkyeongyeobin:
-      actions.add('예의를 지키다 오히려 벽이 생기기 쉬운 관계이니, 한 달에 한 번 정도는 형식을 깨는 솔직한 대화나 둘만의 여행을 의도적으로 만들어 두시기 바랍니다.');
+      items.add(const _StrategyItem(
+        action:
+            '예의를 지키다 오히려 벽이 생기기 쉬운 관계이니, 한 달에 한 번 정도는 형식을 깨는 솔직한 대화나 둘만의 여행을 의도적으로 만들어 두시기 바랍니다.',
+        domain: null,
+        rationale: '격과 신뢰가 살아 있는 페어는 "언제 격을 내릴지" 합의가 관계 온도를 결정합니다.',
+      ));
       break;
     case CompatLabel.mahapgaseong:
-      actions.add('서로 맞춰 가는 단계를 초반 1~2년으로 잡고, 그 사이에는 "누가 옳은가"보다 "어떻게 맞춰 갈 것인가"를 대화의 기준으로 삼아야 합니다.');
+      items.add(const _StrategyItem(
+        action:
+            '서로 맞춰 가는 단계를 초반 1~2년으로 잡고, 그 사이에는 "누가 옳은가"보다 "어떻게 맞춰 갈 것인가"를 대화의 기준으로 삼아야 합니다.',
+        domain: null,
+        rationale: '속도 차이가 기본값인 페어는 결론 프레임을 과정 프레임으로 바꿔야 갈등이 줄어듭니다.',
+      ));
       break;
     case CompatLabel.hyeonggeuknanjo:
-      actions.add('감정으로 풀려 하지 말고, 돈·가사·시간 사용처럼 갈등이 잦은 영역은 규칙을 종이에 적어 두고 주기적으로 점검하는 구조로 바꿔야 합니다.');
+      items.add(const _StrategyItem(
+        action:
+            '감정으로 풀려 하지 말고, 돈·가사·시간 사용처럼 갈등이 잦은 영역은 규칙을 종이에 적어 두고 주기적으로 점검하는 구조로 바꿔야 합니다.',
+        domain: null,
+        rationale: '충돌이 기본값인 페어는 개별 대화보다 합의된 규칙이 관계를 지탱합니다.',
+      ));
       break;
   }
 
-  // 부정 발견 상위 2 개에서 구체 행동 뽑기.
-  final negActions = findings
+  // 부정 발견 상위 2 개 — 실제 finding.action + rationale = finding.meaning.
+  final negFindings = findings
       .where((f) => f.delta < 0 && f.action != null)
       .toList()
     ..sort((a, b) => a.delta.compareTo(b.delta));
-  for (final f in negActions.take(2)) {
-    actions.add(f.action!);
+  for (final f in negFindings.take(2)) {
+    items.add(_StrategyItem(
+      action: f.action!,
+      domain: f.domain,
+      rationale: f.meaning,
+    ));
   }
 
-  // 긍정 발견 상위 1 개 — 강점을 일부러 자주 꺼내라는 안내.
-  final posActions = findings
+  // 긍정 발견 상위 1 개 — 강점을 놓치지 않기.
+  final posFindings = findings
       .where((f) => f.delta > 0 && f.action != null)
       .toList()
     ..sort((a, b) => b.delta.compareTo(a.delta));
-  if (posActions.isNotEmpty) {
-    actions.add(posActions.first.action!);
+  if (posFindings.isNotEmpty) {
+    final f = posFindings.first;
+    items.add(_StrategyItem(
+      action: f.action!,
+      domain: f.domain,
+      rationale: f.meaning,
+    ));
   }
 
   final buf = StringBuffer();
-  for (int i = 0; i < actions.length; i++) {
-    buf.writeln('${i + 1}. ${actions[i]}');
+
+  // (1) 섹션 도입.
+  final introPool = strategyIntroByLabel[r.label] ?? const <String>[];
+  final intro = _pickVariant(introPool, pairSeed + 0x2A);
+  if (intro.isNotEmpty) {
+    buf.writeln(intro);
+    buf.writeln();
   }
+
+  // (2) 각 item — action·근거·실행·실패.
+  for (int i = 0; i < items.length; i++) {
+    final item = items[i];
+    final domainKey = item.domain ?? '_default';
+    final howPool = strategyHowByDomain[domainKey] ??
+        strategyHowByDomain['_default']!;
+    final failPool = strategyFailureByDomain[domainKey] ??
+        strategyFailureByDomain['_default']!;
+    final how = _pickVariant(howPool, pairSeed + i * 37 + 13);
+    final fail = _pickVariant(failPool, pairSeed + i * 41 + 29);
+
+    buf.writeln('${i + 1}. ${item.action}');
+    buf.writeln('   근거: ${item.rationale}');
+    buf.writeln('   실행 디테일: $how');
+    buf.writeln('   실패 패턴: $fail');
+    if (i != items.length - 1) buf.writeln();
+  }
+
+  // (3) 섹션 마무리.
+  final outroPool = strategyOutroByLabel[r.label] ?? const <String>[];
+  final outro = _pickVariant(outroPool, pairSeed + 0x4E2);
+  if (outro.isNotEmpty) {
+    buf.writeln();
+    buf.write(outro);
+  }
+
   return buf.toString().trimRight();
 }
 
@@ -404,8 +514,8 @@ CompatNarrative buildCompatNarrative({
   return CompatNarrative(
     summary: _summarySection(report, findings),
     corePoints: _coreSection(findings),
-    conflictScenarios: _conflictSection(report, findings),
-    strategy: _strategySection(report, findings),
+    conflictScenarios: _conflictSection(report, findings, pairSeed),
+    strategy: _strategySection(report, findings, pairSeed),
     scoreReason: _scoreSection(report),
     intimacyChapter: _intimacyChapter(report, pairSeed),
   );
