@@ -132,7 +132,7 @@ const Map<String, List<String>> _slotPools = {
 };
 
 final List<_Frag> _concludeAdvice = [
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '마지막으로, 관상은 예언이 아니라 지도입니다. 타고난 골격과 기색이 길 위의 지형을 보여주지만, 그 위에서 어떤 속도로 어떤 방향으로 걷느냐는 오늘의 당신이 결정합니다. 같은 관상이라도 누군가는 타고난 장점을 20%밖에 열지 못하고 지나가고, 다른 누군가는 타고난 약점까지 무기로 바꾸며 80%를 열어냅니다. 분석이 제시한 강점은 더 @{deep} 밀어붙이고, 그림자는 먼저 알아차리는 쪽에 서십시오. 관상이 약속한 가장 좋은 풍경은 \'알고 선택한 사람\'에게만 열립니다.',
   ]),
 ];
@@ -141,19 +141,19 @@ final List<_Frag> _concludeAdvice = [
 
 // archetype 레이블은 _resolveText Step 0 에서 runtime features 로 치환된다.
 final List<_Frag> _concludeOpening = [
-  _Frag(_yangStrong, [
+  _Frag.hard(_yangStrong, [
     "당신의 얼굴은 양기(陽氣)가 짙게 서린 상입니다. '@__PRIMARY_ARCHETYPE__' 의 골격 위에 '@__SECONDARY_ARCHETYPE__' 의 결이 얹혀 있지만, 그 모든 것을 관통하는 축은 강건·진취·돌파의 양기이며, 인생의 결정적 국면에서 머뭇거리지 않고 선을 넘어서는 기질이 당신의 궤적을 만듭니다.",
   ]),
-  _Frag(_yinStrong, [
+  _Frag.hard(_yinStrong, [
     "당신의 얼굴은 음기(陰氣)가 @{deep} 깃든 상입니다. '@__PRIMARY_ARCHETYPE__' 위에 '@__SECONDARY_ARCHETYPE__' 의 결이 흐르지만, 전체를 감싸는 기운은 수렴·포용·유연의 음기이며, 서두르지 않고 시간을 동맹으로 삼는 결이 당신의 평생 자산입니다.",
   ]),
-  _Frag(_yyHarmony, [
+  _Frag.hard(_yyHarmony, [
     "당신의 얼굴은 음양(陰陽)이 @{rare} 고르게 맞물린 조화의 상입니다. '@__PRIMARY_ARCHETYPE__' 과 '@__SECONDARY_ARCHETYPE__' 이 겹친 위에, 강함과 부드러움을 자유롭게 교체할 수 있는 중용의 결이 자리하여, 어떤 환경에서도 자기 자리를 빨리 찾는 적응력이 최대 강점이 됩니다.",
   ]),
-  _Frag((f) => f.specialArchetype != null, [
+  _Frag.hard((f) => f.specialArchetype != null, [
     "지금까지 겹쳐본 여러 영역을 한 장으로 보면, 당신의 관상은 '@__PRIMARY_ARCHETYPE__' 위에 '@__SECONDARY_ARCHETYPE__'의 결이 겹쳐 흐르는 @{structure}입니다. 특히 얼굴에 '@__SPECIAL_ARCHETYPE__'이 함께 서려 있어, 평균적 해석의 범위를 넘어서는 결정적 국면을 인생 중·후반에 한 번 이상 통과하게 될 가능성이 높습니다.",
   ]),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     "지금까지 겹쳐본 여러 영역을 한 장으로 보면, 당신의 관상은 '@__PRIMARY_ARCHETYPE__'의 골격 위에 '@__SECONDARY_ARCHETYPE__'의 결이 함께 흐르는 @{structure}입니다. 겉으로 먼저 드러나는 것은 '@__PRIMARY_ARCHETYPE__'이지만, 인생 중반을 실질적으로 움직이는 동력은 오히려 '@__SECONDARY_ARCHETYPE__' 쪽에 더 많이 담겨 있습니다.",
     "당신의 얼굴에는 '@__PRIMARY_ARCHETYPE__'과 '@__SECONDARY_ARCHETYPE__'이 한 몸에 겹쳐 있어, 단일 방향으로 힘을 쏟는 전형보다 상황에 따라 두 얼굴을 번갈아 쓸 수 있는 @{rare} 결을 지녔습니다.",
   ]),
@@ -161,16 +161,16 @@ final List<_Frag> _concludeOpening = [
 
 // 연령대별 배타 predicate — 가장 구체적 band 가 단독으로 매칭되도록.
 final List<_Frag> _concludeStage = [
-  _Frag((f) => f.age.isOver50, [
+  _Frag.hard((f) => f.age.isOver50, [
     '당신의 현재 단계에서 관상이 강조하는 지점은 \'덜어내는 기술\'입니다. 쌓아 올리는 시기는 이미 상당 부분 지나왔고, 지금부터는 남길 것과 흘려보낼 것을 가르는 판단이 말년의 빛깔을 결정합니다. 오랜 세월이 빚어낸 깊이가 관상을 @{intense} 풍성하게 만드는 시기이며, 타고난 골격의 좋은 기운은 오히려 지금 @{intense} 드러납니다.',
   ]),
-  _Frag((f) => f.age.isOver30 && !f.age.isOver50, [
+  _Frag.hard((f) => f.age.isOver30 && !f.age.isOver50, [
     '당신의 현재 단계에서 관상이 강조하는 지점은 \'축적의 설계\'입니다. 초기의 재능이 드러난 시기이고, 지금부터 10년은 그 재능을 어떤 시스템 위에 올려놓느냐가 평생 곡선의 기울기를 결정합니다. \'중년 발복\'의 기반이 만들어지는 구간이기에, 작은 선택들이 복리처럼 쌓여 5~7년 뒤 전혀 다른 풍경을 만들어냅니다.',
   ]),
-  _Frag((f) => f.age.isOver20 && !f.age.isOver30, [
+  _Frag.hard((f) => f.age.isOver20 && !f.age.isOver30, [
     '당신의 현재 단계에서 관상이 강조하는 지점은 \'결을 세우는 일\'입니다. 재능의 윤곽은 드러났지만 아직 주변에 맞추어 깎이기 쉬운 시기이며, 이때 결을 또렷이 세우지 못하면 이후 10년의 선택이 계속 흔들립니다. 지금 필요한 것은 답을 서둘러 찾는 일보다 당신 자신의 질문을 또렷이 세우는 일입니다.',
   ]),
-  _Frag((f) => !f.age.isOver20, [
+  _Frag.hard((f) => !f.age.isOver20, [
     '당신의 현재 단계에서 관상이 강조하는 지점은 \'가능성의 확장\'입니다. 아직 어떤 방향으로도 굳어 있지 않은 시기이기에, 경험의 폭이 그대로 나중의 얼굴에 새겨집니다. 지금의 다양성이 이후 관상의 깊이를 결정합니다.',
   ]),
 ];
@@ -209,7 +209,7 @@ final List<_Frag> _healthAdvice = [
   _Frag(_lowPair(Attribute.stability, Attribute.emotionality), [
     '체질도 예민하고 감정의 기반도 얇은 결입니다. 이는 약하다가 아니라 "정밀하다"에 가깝고, 정밀한 기계는 거친 환경을 피할 수만 있으면 오히려 오래 갑니다. 과격한 운동보다 규칙적 수면과 예측 가능한 일상이 당신의 건강 자산입니다.',
   ]),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '건강을 지키는 길은 셋입니다. 첫째, 수면·식사·운동 중 가장 약한 한 가지만 먼저 표준화할 것. 둘째, 몸의 "이상 없음" 신호를 맹신하지 말고 자각 증상이 없는 시점에 정기 점검을 박아 둘 것. 셋째, 감정의 피로가 몸의 피로로 옮겨 가는 통로를 스스로 알아두는 것—이 셋이 맞물릴 때 관상이 약속한 수명의 상한이 열립니다.',
   ]),
 ];
@@ -252,7 +252,7 @@ final List<_Frag> _healthOpening = [
   _Frag(_lowPair(Attribute.stability, Attribute.emotionality), [
     '체질도 얇고 감정의 기반도 엷은 결입니다. 과격한 환경을 피할 수만 있으면 정밀한 기계처럼 오래 가는 타입—규칙적 수면과 예측 가능한 일상이 당신의 건강 자산입니다.',
   ]),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '당신의 건강 곡선은 평균의 결을 따르되, 특정 구간에서 한 번의 큰 점검이 전체를 좌우하는 @{structure}입니다. 약한 고리를 일찍 발견하는 사람만이 관상이 약속한 상한에 닿습니다.',
   ]),
 ];
@@ -270,31 +270,31 @@ final List<_Frag> _healthShadow = [
   _Frag(_highOf(Attribute.emotionality), [
     '다만 감정의 진폭이 크면 몸도 그 진폭을 따라 움직입니다. 기쁜 날과 무너지는 날의 컨디션 격차가 또래보다 넓은 결—감정의 배수로 설계가 건강 관리의 숨은 중심축입니다.',
   ]),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '다만 당신의 수명은 육체의 과로보다 해소되지 않은 감정의 누적으로 더 많이 갉아먹히는 유형입니다. 감정의 배수로 설계가 건강 관리의 진짜 중심축입니다.',
   ]),
 ];
 
 final List<_Frag> _healthStrength = [
-  _Frag((f) => f.fired('P-07') || f.nodeAZ('nose') >= 1.2, [
+  _Frag.hard((f) => f.fired('P-07') || f.nodeAZ('nose') >= 1.2, [
     '@{mount_c}의 구조가 @{intense} 드러나는 상은 관상학에서 40대 전후의 "중년 건강 관문"을 강조하는 신호입니다. 호흡기·순환기 쪽을 미리 점검해 두는 것이 결정적 도움이 됩니다.',
   ]),
-  _Frag((f) => f.fired('Z-09'), [
+  _Frag.hard((f) => f.fired('Z-09'), [
     '상정(上停)의 기운이 @{intense} 강한 상은 머리를 많이 쓰는 기질을 의미합니다. 수면의 질이 건강의 어떤 요소보다 먼저 흔들리기 쉬운 유형입니다.',
   ]),
-  _Frag((f) => f.fired('O-CH') || f.nodeZ('chin') >= 0.8, [
+  _Frag.hard((f) => f.fired('O-CH') || f.nodeZ('chin') >= 0.8, [
     '@{mount_n}이 듬직한 구조는 관상학에서 "말년 강건"의 상징으로, 50대 이후의 체력이 동년배보다 떨어지지 않는 기질을 뒷받침합니다.',
   ]),
-  _Frag((f) => f.fired('P-05') || f.nodeZ('glabella') >= 0.5, [
+  _Frag.hard((f) => f.fired('P-05') || f.nodeZ('glabella') >= 0.5, [
     '@{palace_destiny}이 맑게 자리한 상은 정신적 피로의 회복력이 강한 결입니다. 감정이 흔들려도 하룻밤 자면 기본선으로 되돌아오는 유형의 신호입니다.',
   ]),
-  _Frag((f) => f.fired('Z-04'), [
+  _Frag.hard((f) => f.fired('Z-04'), [
     '하정(下停)이 후중한 상은 위장·신장 쪽의 근기가 좋은 결로 읽힙니다. 식습관의 축적이 가장 정직하게 수명으로 환원되는 타입입니다.',
   ]),
-  _Frag((f) => f.bandOf(Attribute.emotionality) == _Band.high, [
+  _Frag.hard((f) => f.bandOf(Attribute.emotionality) == _Band.high, [
     '감정의 해상도가 높은 결은 스트레스의 뿌리를 먼저 인식하는 이점을 만듭니다. 불안으로 방치만 하지 않으면 오히려 건강 관리의 조기 경보기가 되는 구조입니다.',
   ]),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '당신의 체질은 "평균의 결"을 갖추되 한 가지 약한 고리가 있으며, 그 고리를 일찍 발견한 사람만이 관상이 약속한 상한에 도달합니다.',
   ]),
 ];
@@ -327,7 +327,7 @@ final List<_Frag> _romanceAdviceFemale = [
   _Frag(_lowPair(Attribute.attractiveness, Attribute.emotionality), [
     '연애가 인생의 중심 축이 아닌 결입니다. 결핍이 아니라 방향—"반려"로서의 파트너십, 동지적 결합의 가능성도 진지하게 고려할 수 있습니다. 꼭 같은 속도로 가지 않아도 같은 방향을 보는 사람이 당신에겐 더 잘 맞습니다.',
   ]),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '연애운을 살리는 세 축: "끌리는 사람"과 "일상에 맞는 사람"을 따로 저울질하는 훈련, 비교의 습관에 기한을 두는 규율, 그리고 이별의 품위. 마지막 장면의 결이 다음 @{fate_word}의 색을 결정하는 것이 여성 관상의 숨은 자산입니다.',
   ]),
 ];
@@ -359,7 +359,7 @@ final List<_Frag> _romanceAdviceMale = [
   _Frag(_lowPair(Attribute.attractiveness, Attribute.emotionality), [
     '연애가 인생의 주축이 아닌 결입니다. 결핍이 아니라 방향—자기 세계·직업·관심사의 깊이를 먼저 쌓아 두면 그 결이 파트너를 자연스럽게 끌어옵니다. 서두르지 않는 것이 가장 좋은 전략입니다.',
   ]),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '연애운을 살리는 세 축: "끌리는 상대"와 "일상에 맞는 상대"를 분리해 평가하는 눈, 권태 구간을 피하지 않고 통과할 설계, 이별의 품격. 마지막 장면이 가장 오래 기억되는 것이 남성 연애의 숨은 자산입니다.',
   ]),
 ];
@@ -407,7 +407,7 @@ final List<_Frag> _romanceOpeningFemale = [
   _Frag(_bandPair(Attribute.attractiveness, _Band.low, Attribute.emotionality, _Band.low), [
     '당신의 연애는 \'동지(同志) 결합\' 의 결에 가깝습니다. 뜨거운 구애보다 같은 가치·같은 방향을 확인한 상대와 조용히 나란히 걷는 형태이며, 결혼이라는 결론에 도달하는 직진성이 평균보다 @{intense} 강합니다.',
   ]),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '당신의 연애는 \'시작은 느리되 시작한 뒤로는 깊이 들어가는\' 결입니다. 첫 만남에서 즉시 불이 붙기보다 같은 자리에 두세 번 마주친 뒤 관심의 불씨가 번져가는 유형이며, 결혼으로 이어지는 관계에서 진가가 @{intense} 드러납니다.',
   ]),
 ];
@@ -448,96 +448,96 @@ final List<_Frag> _romanceOpeningMale = [
   _Frag(_bandPair(Attribute.attractiveness, _Band.low, Attribute.emotionality, _Band.low), [
     '당신의 연애는 \'자기 세계(世界) 주도\' 형에 가깝습니다. 화려한 구애나 감정 곡예 없이 자신의 일·목표·루틴을 단단히 가진 상대에게 조용히 끌리는 결이며, 결혼 상대를 고르는 기준이 일찍 확정되는 직선성이 특징입니다.',
   ]),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '당신의 연애는 \'다가서는 자\'의 결이 기본입니다. 같은 공간에 끌리는 사람이 있으면 시선을 피하지 않고 먼저 말을 건네는 기질이어서, 관계의 출발점을 설계하는 쪽이 대개 당신이며 이 주도성이 연애의 색을 결정합니다.',
   ]),
 ];
 final List<_Frag> _romanceShadowFemale = [
   // libido-driven 바람기 1-line (libido high & stability not high — 정서 누수형)
-  _Frag((f) => f.bandOf(Attribute.libido) == _Band.high && f.bandOf(Attribute.stability) != _Band.high, [
+  _Frag.hard((f) => f.bandOf(Attribute.libido) == _Band.high && f.bandOf(Attribute.stability) != _Band.high, [
     '바람기의 결은 \'정서 누수형\' 입니다. 육체적 이탈보다 현재 관계에서 채워지지 않는 공감을 다른 상대에게서 구하는 심리 외도의 경로가 먼저 열리며, 대화가 깊어지는 상대가 나타나는 시기를 경계해야 합니다.',
   ]),
-  _Frag((f) => f.bandOf(Attribute.libido) == _Band.high && f.bandOf(Attribute.stability) == _Band.high, [
+  _Frag.hard((f) => f.bandOf(Attribute.libido) == _Band.high && f.bandOf(Attribute.stability) == _Band.high, [
     '바람기의 결은 강한 자기 통제 안에 눌려 있습니다. @{palace_mate}의 안정감이 선을 지키되, 한 번 넘으면 돌아오기 어려운 \'한 번의 큰 이탈\' 형이라 관계 만족도가 떨어지는 장기 신호를 방치하지 않는 편이 안전합니다.',
   ]),
-  _Frag((f) => f.bandOf(Attribute.attractiveness) == _Band.high && f.bandOf(Attribute.stability) != _Band.high, [
+  _Frag.hard((f) => f.bandOf(Attribute.attractiveness) == _Band.high && f.bandOf(Attribute.stability) != _Band.high, [
     '또 \'설렘의 유통기한\' 문제가 따릅니다. 시작의 화력이 강한 만큼 권태가 먼저 찾아오기 쉬우며, 그 공백을 덮으려 다음 상대를 미리 떠올리는 결이 들어서면 좋은 인연을 놓치는 패턴이 쌓일 수 있습니다.',
   ]),
-  _Frag((f) => f.bandOf(Attribute.emotionality) == _Band.high && f.bandOf(Attribute.trustworthiness) != _Band.high, [
+  _Frag.hard((f) => f.bandOf(Attribute.emotionality) == _Band.high && f.bandOf(Attribute.trustworthiness) != _Band.high, [
     '또 \'혼자 앞서 나가는\' 위험이 있습니다. 상대의 신호를 깊게 해석하는 감수성이 때로는 신호가 아닌 것까지 신호로 읽어, 상대가 아직 정리하지 못한 감정을 당신이 먼저 미래로 번역해 속도의 낙차를 만들기 쉽습니다.',
   ]),
-  _Frag((f) => f.bandOf(Attribute.stability) == _Band.high && f.bandOf(Attribute.sociability) == _Band.low, [
+  _Frag.hard((f) => f.bandOf(Attribute.stability) == _Band.high && f.bandOf(Attribute.sociability) == _Band.low, [
     '또 \'만날 자리 자체가 좁다\' 는 한계에 부딪히기 쉽습니다. 검증의 기질이 강점이지만 동시에 새 사람과의 접점에 잘 들어서지 않는 결이어서, 좋은 인연이 지나가는 시기를 모르고 보낼 수 있습니다.',
   ]),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '당신의 연애는 \'결정 지연\' 의 그림자가 있습니다. 상대의 신호를 감지한 상태에서도 조금만 더 확인하려다 적극적 경쟁자에게 자리를 넘기는 시나리오가 되풀이되기 쉬우며, 완벽한 증거는 결혼 뒤에도 오지 않습니다.',
   ]),
 ];
 final List<_Frag> _romanceShadowMale = [
   // libido-driven 바람기 1-line (libido high & stability not high — 상황 의존형)
-  _Frag((f) => f.bandOf(Attribute.libido) == _Band.high && f.bandOf(Attribute.stability) != _Band.high, [
+  _Frag.hard((f) => f.bandOf(Attribute.libido) == _Band.high && f.bandOf(Attribute.stability) != _Band.high, [
     '바람기의 결은 \'상황 의존형\' 입니다. 먼저 적극적으로 찾아 나서는 결이 아니라 출장·회식·원거리 주말 등 관계의 선이 흐려지는 물리적 환경이 열릴 때 경계가 무너지는 형이라, 반복되는 출장 주기와 음주 빈도가 최대 리스크입니다.',
   ]),
-  _Frag((f) => f.bandOf(Attribute.libido) == _Band.high && f.bandOf(Attribute.stability) == _Band.high, [
+  _Frag.hard((f) => f.bandOf(Attribute.libido) == _Band.high && f.bandOf(Attribute.stability) == _Band.high, [
     '바람기의 결은 의지로 눌러 온 구조입니다. @{mount_n}의 단단함이 선을 지키되 한 번 넘으면 가정 전체를 흔드는 \'대형 이탈\' 형이라, 관계 만족도의 장기 하락 신호를 방치하지 않아야 합니다.',
   ]),
-  _Frag((f) => f.bandOf(Attribute.attractiveness) == _Band.high && f.bandOf(Attribute.stability) != _Band.high, [
+  _Frag.hard((f) => f.bandOf(Attribute.attractiveness) == _Band.high && f.bandOf(Attribute.stability) != _Band.high, [
     '또 \'설렘의 유통기한\' 문제가 되풀이됩니다. 시작의 화력이 강한 만큼 일상 단계로 넘어가는 6개월에서 1년 사이 권태가 먼저 찾아오며, 그 공백을 새 자극으로 메우려 할 때 좋은 사람을 놓치는 패턴이 쌓이기 쉽습니다.',
   ]),
   _Frag(_highOf(Attribute.leadership), [
     '또 주도성이 강한 만큼 \'내가 정한 속도\' 를 상대에게 강요하기 쉽습니다. 상대의 결이 따라오지 못할 때 관심이 식는 속도도 빠른 편이라, 기다릴 수 있는 인내가 연애 수명의 핵심이 됩니다.',
   ]),
-  _Frag((f) => f.bandOf(Attribute.stability) == _Band.high && f.bandOf(Attribute.sociability) != _Band.high, [
+  _Frag.hard((f) => f.bandOf(Attribute.stability) == _Band.high && f.bandOf(Attribute.sociability) != _Band.high, [
     '또 \'만날 자리 자체가 좁다\' 는 한계에 부딪히기 쉽습니다. 검증의 기질이 강점이지만 동시에 새 사람과의 접점에 잘 들어서지 않는 결이어서, 좋은 인연이 지나가는 시기를 모르고 보낼 수 있습니다.',
   ]),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '당신의 연애는 \'한 사람에 집중되면 주변이 흐려지는\' 기질이 있어, 가장 뜨거운 시기일수록 생활의 축 — 일·친구·건강 — 을 의식적으로 유지하지 않으면 중요한 자리를 같이 놓치기 쉽습니다.',
   ]),
 ];
 final List<_Frag> _romanceStrengthFemale = [
-  _Frag((f) => f.fired('P-08'), [
+  _Frag.hard((f) => f.fired('P-08'), [
     '@{palace_sex} 아래 누당(淚堂)의 윤기가 살아 있는 구조는 도화기(桃花期)가 규칙적으로 돌아오는 결로, 한 해에 한두 번 의미 있는 인연의 문이 열리는 주기성이 자리합니다.',
   ]),
-  _Frag((f) => f.fired('L-EL'), [
+  _Frag.hard((f) => f.fired('L-EL'), [
     '측면에서 입술선이 도톰하게 드러나는 상은 관상학의 \'도화(桃花) 기색\' 이며, 상대의 시선이 당신의 입매에 오래 머무는 @{subtle} 매력을 만듭니다.',
   ]),
-  _Frag((f) => f.bandOf(Attribute.trustworthiness) == _Band.high, [
+  _Frag.hard((f) => f.bandOf(Attribute.trustworthiness) == _Band.high, [
     '언행이 일치하는 상은 \'한 번 정하면 끝까지 가는\' 신뢰를 상대에게 각인시키며, 장기 관계의 뿌리를 @{deep} 박게 하는 @{noble_f} 덕(德)이 서려 있습니다.',
   ]),
-  _Frag((f) => f.bandOf(Attribute.emotionality) == _Band.high, [
+  _Frag.hard((f) => f.bandOf(Attribute.emotionality) == _Band.high, [
     '상대의 속결을 @{observe} 감수성은 갈등의 싹을 일찍 알아보는 결로 작동하며, 작은 신호에서 관계의 방향을 조정할 수 있는 여인의 지혜가 @{result_carry}.',
   ]),
-  _Frag((f) => f.nodeZ('mouth') >= 0.5, [
+  _Frag.hard((f) => f.nodeZ('mouth') >= 0.5, [
     '@{organ_mouth}의 결이 단정한 구조는 \'말로 관계를 지키는\' 힘을 의미하며, 잘 다듬어진 말 한 마디가 연인의 마음을 오래 묶어두는 매력의 축이 됩니다.',
   ]),
-  _Frag((f) => f.nodeZ('eye') >= 0.5, [
+  _Frag.hard((f) => f.nodeZ('eye') >= 0.5, [
     '눈빛에 윤기가 서린 상은 상대를 \'담아두는\' 시선의 힘이 있어, 짧은 순간에도 당신이 자신을 알아봐 주었다는 기억을 상대에게 오래 남깁니다.',
   ]),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '당신의 연애는 관계의 \'양\' 보다 \'질\' 이 우선이며, 맞는 사람 한 명을 만났을 때의 밀도가 평균을 크게 뛰어넘는 결을 가졌습니다.',
   ]),
 ];
 
 final List<_Frag> _romanceStrengthMale = [
-  _Frag((f) => f.fired('O-EB1') || f.fired('O-EB2'), [
+  _Frag.hard((f) => f.fired('O-EB1') || f.fired('O-EB2'), [
     '눈썹이 또렷한 구조는 자기 의사를 흐리지 않는 결이라, 애매한 썸에 오래 머무르지 않고 관계의 성격을 일찍 정리합니다. 상대가 \'끌려다닌다\'는 느낌 없이 당신의 속도를 따라오게 만드는 장부의 결단이 @{result_carry}.',
   ]),
-  _Frag((f) => f.fired('O-CK') || f.nodeZ('cheekbone') >= 0.8, [
+  _Frag.hard((f) => f.fired('O-CK') || f.nodeZ('cheekbone') >= 0.8, [
     '@{mount_e}·@{mount_w}이 받쳐주는 구조는 \'기백(氣魄)\' 이 실린 결로, 당신이 들어서는 순간 공기의 중심이 옮겨 가는 결이 연애의 출발점에서 @{intense} 작동합니다.',
   ]),
-  _Frag((f) => f.fired('L-AQ'), [
+  _Frag.hard((f) => f.fired('L-AQ'), [
     '측면에서 드러나는 @{organ_nose}의 단단한 윤곽은 \'사내의 기운\' 이 실린 결로, 상대가 당신의 결정에 기대고 싶어지는 장부의 중심축을 형성합니다.',
   ]),
-  _Frag((f) => f.bandOf(Attribute.trustworthiness) == _Band.high, [
+  _Frag.hard((f) => f.bandOf(Attribute.trustworthiness) == _Band.high, [
     '말과 행동이 일치하는 상은 연애에서도 \'해 주겠다 한 것은 반드시 해내는\' 결로 작동해, 시간이 지날수록 상대의 신뢰가 두텁게 쌓이는 @{noble_m} 덕이 배어 있습니다.',
   ]),
-  _Frag((f) => f.bandOf(Attribute.wealth) == _Band.high || f.nodeZ('nose') >= 0.8, [
+  _Frag.hard((f) => f.bandOf(Attribute.wealth) == _Band.high || f.nodeZ('nose') >= 0.8, [
     '@{palace_wealth}이 두터운 상은 연애에서도 \'생활의 기반\' 을 먼저 갖추는 결이며, 상대에게 막연한 약속 대신 구체적 안정감을 보여주는 @{intense} 매력을 만듭니다.',
   ]),
-  _Frag((f) => f.nodeZ('chin') >= 0.5, [
+  _Frag.hard((f) => f.nodeZ('chin') >= 0.5, [
     '@{mount_n}이 단정한 상은 \'한 번 정하면 끝까지 간다\' 는 지각(地閣)의 결이며, 흔들리지 않는 뿌리가 장기 관계의 가장 큰 축이 됩니다.',
   ]),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '당신의 연애는 순간의 분위기보다 누적된 기백에서 힘을 얻는 결이어서, 한 번에 타오르기보다 여러 장면을 겹쳐 당신의 결을 각인시키는 장기전에서 유리합니다.',
   ]),
 ];
@@ -546,7 +546,7 @@ final List<_Frag> _sensualAdviceFemale = [
   _Frag(_highPair(Attribute.libido, Attribute.sensuality), [
     '풍부한 결이니 삶의 주축 중 하나로 당당히 다뤄라. 미혼이라면—서두르지 말고 자기 리듬, 취향, 속도를 먼저 정확히 파악한 뒤 결이 맞는 상대를 고르는 게 장기 만족을 결정한다. 파트너가 있다면—같은 사람과의 관계에서 매번 새로운 각도를 만드는 "창의적 재사용" 이 최고 농도를 만드는 방향이다. 새 사람이 답이 아니라 새 장면이 답이다.',
   ]),
-  _Frag(
+  _Frag.hard(
     (f) => f.bandOf(Attribute.libido) == _Band.high &&
         f.bandOf(Attribute.sensuality) != _Band.high,
     [
@@ -568,7 +568,7 @@ final List<_Frag> _sensualAdviceFemale = [
   _Frag(_bandPair(Attribute.libido, _Band.low, Attribute.sensuality, _Band.mid), [
     '조건이 겹쳐야 발화하는 결이다. 미혼이라면—긴 호흡의 상대를 찾는 게 곧 전략이다. 짧은 시간 안에 평가되는 관계에서는 이 결이 절대 드러나지 않는다. 파트너가 있다면—몸이 깨어나는 조건(신뢰, 공간, 반복) 을 파트너와 언어로 공유해 둬라.',
   ]),
-  _Frag(
+  _Frag.hard(
     (f) => f.bandOf(Attribute.libido) == _Band.low &&
         f.bandOf(Attribute.sensuality) == _Band.low &&
         f.bandOf(Attribute.emotionality) != _Band.low,
@@ -576,7 +576,7 @@ final List<_Frag> _sensualAdviceFemale = [
       '관능이 감정의 온도에 따라 결정되는 결이다. 미혼이라면—"몸의 반응이 느리다" 가 결함이 아니라 순서가 다른 거라고 받아들여라. 파트너가 있다면—정서적 결합이 깊어질수록 몸의 결도 같이 깊어지는 타입이라, 관계의 연륜 자체가 최대 자산이다.',
     ],
   ),
-  _Frag(
+  _Frag.hard(
     (f) => f.bandOf(Attribute.libido) == _Band.low &&
         f.bandOf(Attribute.sensuality) == _Band.low &&
         f.bandOf(Attribute.emotionality) == _Band.low,
@@ -584,7 +584,7 @@ final List<_Frag> _sensualAdviceFemale = [
       '관능이 전반적으로 엷게 정돈된 결이고, 이건 결함이 아니라 타고난 방향이다. 미혼이라면—몸의 밀도 중심 관계 말고 동지적, 동료적 결합의 가능성도 진지하게 고려할 수 있다. 파트너가 있다면—서로의 페이스를 존중하는 게 관계의 수명을 결정한다.',
     ],
   ),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '관능은 삶의 부수 요소가 아니라 행복의 주요 축 중 하나다. 미혼이든 파트너가 있든, 자기 몸의 리듬을 솔직하게 들여다보고 건강히 즐기는 태도가 평생 결을 받쳐 준다. 숨기거나 억누르는 관성 대신 표현과 대화의 언어를 길러라.',
     '이 결을 가꾸는 핵심은 셋이다. 첫째, 자기 몸의 리듬을 정기적으로 관찰하고 기록할 것. 둘째, 미혼이라면 "결이 맞는 상대" 의 조건을 먼저 정의하고, 파트너가 있다면 작은 실험을 꾸준히 도입할 것. 셋째, 침실 문화를 숨길 것이 아니라 "가꿀 것" 으로 대하는 태도—이게 전체 결을 결정한다.',
   ]),
@@ -594,7 +594,7 @@ final List<_Frag> _sensualAdviceMale = [
   _Frag(_highPair(Attribute.libido, Attribute.sensuality), [
     '풍부한 결이니 삶의 중심축 중 하나로 당당히 다뤄라. 미혼이라면—서두르지 말고 자기 리듬, 취향, 속도를 먼저 정확히 파악한 뒤 결이 맞는 상대를 고르는 게 장기 만족을 결정한다. 파트너가 있다면—같은 사람과의 관계에서 매번 새로운 각도를 만드는 "창의적 재사용" 이 최고 농도를 만드는 방향이다. 새 사람이 아니라 새 장면이 답이다.',
   ]),
-  _Frag(
+  _Frag.hard(
     (f) => f.bandOf(Attribute.libido) == _Band.high &&
         f.bandOf(Attribute.sensuality) != _Band.high,
     [
@@ -616,7 +616,7 @@ final List<_Frag> _sensualAdviceMale = [
   _Frag(_bandPair(Attribute.libido, _Band.low, Attribute.sensuality, _Band.mid), [
     '조건이 겹쳐야 발화하는 결이다. 미혼이라면—긴 호흡의 상대를 찾는 게 곧 전략이다. 짧은 시간 안에 평가되는 관계에서는 이 결이 절대 안 드러난다. 파트너가 있다면—몸이 깨어나는 조건(신뢰, 공간, 반복) 을 파트너와 언어로 공유해 둬라.',
   ]),
-  _Frag(
+  _Frag.hard(
     (f) => f.bandOf(Attribute.libido) == _Band.low &&
         f.bandOf(Attribute.sensuality) == _Band.low &&
         f.bandOf(Attribute.emotionality) != _Band.low,
@@ -624,7 +624,7 @@ final List<_Frag> _sensualAdviceMale = [
       '관능이 감정의 온도에 따라 결정되는 결이다. 미혼이라면—"몸의 반응이 느리다" 가 결함이 아니라 그냥 순서가 다른 거라고 받아들여라. 파트너가 있다면—정서적 결합이 깊어질수록 몸의 결도 같이 깊어지는 타입이라, 관계의 연륜 자체가 최대 자산이다.',
     ],
   ),
-  _Frag(
+  _Frag.hard(
     (f) => f.bandOf(Attribute.libido) == _Band.low &&
         f.bandOf(Attribute.sensuality) == _Band.low &&
         f.bandOf(Attribute.emotionality) == _Band.low,
@@ -632,7 +632,7 @@ final List<_Frag> _sensualAdviceMale = [
       '관능이 전반적으로 엷게 정돈된 결이고, 이건 결함이 아니라 타고난 방향이다. 미혼이라면—몸의 밀도 중심 관계 말고 동지적, 동료적 결합의 가능성도 진지하게 고려할 수 있다. 파트너가 있다면—서로의 페이스를 존중하는 게 관계의 수명을 결정한다.',
     ],
   ),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '관능은 삶의 부수 요소가 아니라 행복의 주요 축 중 하나다. 미혼이든 파트너가 있든, 자기 몸의 리듬을 솔직하게 들여다보고 건강히 즐기는 태도가 평생 결을 받쳐 준다. 숨기거나 억누르는 관성 대신 표현과 대화의 언어를 길러라.',
     '이 결을 가꾸는 핵심은 셋이다. 첫째, 자기 몸의 리듬을 정기적으로 관찰하고 기록할 것. 둘째, 미혼이라면 "결이 맞는 상대" 의 조건을 먼저 정의하고, 파트너가 있다면 작은 실험을 꾸준히 도입할 것. 셋째, 침실 문화를 숨길 것이 아니라 "가꿀 것" 으로 대하는 태도—이게 전체 결을 결정한다.',
   ]),
@@ -684,7 +684,7 @@ final List<_Frag> _sensualOpeningFemale = [
   _Frag(_lowPair(Attribute.libido, Attribute.sensuality), [
     '성적 에너지가 무대 한가운데가 아니라 조명 바깥쪽에 앉아 있는 결이다. 결핍이 아니라 방향이다. 정갈함, 절제, 독립이 앞선다—혼자만의 공간과 시간이 관계보다 먼저인 타입.',
   ]),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '어느 쪽으로도 쏠리지 않은 평이한 결. 상황과 상대에 맞춰 유연히 움직이는 구조—극단 없이 삶에 자연스럽게 녹아 있는 타입이다.',
   ]),
 ];
@@ -761,7 +761,7 @@ final List<_Frag> _sensualOpeningMale = [
       '성적 에너지가 삶의 무대 한가운데가 아니라 조명 바깥쪽에 서 있는 결이다. 이건 결핍이 아니라 방향이다. 정갈함과 독립성이 자연스럽게 앞서는 타입—혼자 있는 일요일 오전이 편안한 결.',
     ],
   ),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '뚜렷한 극단이 없다. 상황과 상대에 따라 유연하게 움직이는 타입. 큰 기복 없이 삶에 자연스럽게 녹아 있는 결—파도라기보다 호흡에 가까운 리듬이다.',
   ]),
 ];
@@ -776,7 +776,7 @@ final List<_Frag> _sensualShadowFemale = [
   _Frag(_and2(_highOf(Attribute.libido), _lowOf(Attribute.stability)), [
     '욕구는 강한데 안정성이 낮은 결은 에너지가 여러 방향으로 흩어지기 쉽다. 늦은 밤 감정적인 결정, 충동적 약속 같은 것들로 새 나가는 구조. 수면, 식사, 운동—이 기본 세 축만 먼저 잡아 줘도 오히려 결이 더 깊어진다.',
   ]),
-  _Frag(
+  _Frag.hard(
     (f) => f.bandOf(Attribute.libido) == _Band.high &&
         f.bandOf(Attribute.attractiveness) == _Band.high &&
         f.bandOf(Attribute.stability) == _Band.low,
@@ -790,7 +790,7 @@ final List<_Frag> _sensualShadowFemale = [
   _Frag(_bandPair(Attribute.libido, _Band.low, Attribute.sensuality, _Band.high), [
     '머릿속의 그림은 선명한데, 몸이 그걸 따라가지 않는 결이다. 상상과 실행의 간격이 평생 따라붙는 타입—이 간격을 억지로 없앨 필요는 없다. 한 달에 한 번 정도, 상상했던 조건 하나를 실제 공간으로 옮겨 보는 것만으로 결이 끊기지 않는다.',
   ]),
-  _Frag(
+  _Frag.hard(
     (f) => f.bandOf(Attribute.libido) == _Band.low &&
         f.bandOf(Attribute.sensuality) == _Band.low &&
         f.bandOf(Attribute.emotionality) == _Band.low,
@@ -804,13 +804,13 @@ final List<_Frag> _sensualShadowFemale = [
   _Frag(_highPair(Attribute.sensuality, Attribute.emotionality), [
     '감정의 진폭이 관능의 방향을 크게 흔드는 결이다. 마음이 허전한 밤에 그게 엉뚱한 곳으로 흐르기 쉬운 구조—그래서 파트너 (또는 혼자라면 자기 자신) 와 감정을 점검하는 대화 루틴이 안전판이 된다.',
   ]),
-  _Frag((f) => f.fired('O-PH1') || f.fired('O-PH2'), [
+  _Frag.hard((f) => f.fired('O-PH1') || f.fired('O-PH2'), [
     '인중 쪽 결이 유독 두드러졌다. 호르몬 리듬이 얼굴과 관능 표현에 그대로 반영되는 구조—수면, 영양의 기본 축을 지키면 밀도가 저절로 유지된다. 생리 주기와 컨디션의 상관을 기록해 두면 자기 패턴이 보이는 타입이다.',
   ]),
   _Frag(_lowOf(Attribute.libido), [
     '이 축이 엷은 결은 "남들만큼 뜨거워야 한다" 는 기준에서 먼저 자유로워져야 한다. 자기 결을 결함으로 읽지 말고 방향으로 받아들이는 태도가 관계의 자율성을 지키는 핵심이다.',
   ]),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '관능의 결은 긴 시간 속에서 소리 없이 얇아진다. 갑자기가 아니라, 한 달이 두 달 되고 반년 되면서 스며들듯 옅어지는 구조다. 계절 바뀔 때마다 한 번씩 자기 몸의 신호를 점검하는 짧은 루틴이 평생 밀도를 받쳐 준다.',
     '관능의 리듬은 업무, 수면, 계절, 생리 주기 같은 외부 요인에 생각보다 크게 흔들린다. 마감 주간에 관심이 뚝 떨어지는 건 결함이 아니라 당연한 반응이다. 자기 상태를 정기적으로 읽고 기록하는 습관이 관계의 온도를 흔들리지 않게 받쳐 준다.',
   ]),
@@ -826,7 +826,7 @@ final List<_Frag> _sensualShadowMale = [
   _Frag(_and2(_highOf(Attribute.libido), _lowOf(Attribute.stability)), [
     '욕구는 강한데 안정성이 낮은 결은 에너지가 여기저기로 흩어지기 쉽다. 새벽 2시 문자, 충동적인 약속 같은 걸로 새 나가는 구조. 수면, 식사, 운동 이 기본 축 세 개만 잡아 줘도 오히려 관능의 밀도가 깊어진다.',
   ]),
-  _Frag(
+  _Frag.hard(
     (f) => f.bandOf(Attribute.libido) == _Band.high &&
         f.bandOf(Attribute.attractiveness) == _Band.high &&
         f.bandOf(Attribute.stability) == _Band.low,
@@ -840,7 +840,7 @@ final List<_Frag> _sensualShadowMale = [
   _Frag(_bandPair(Attribute.libido, _Band.low, Attribute.sensuality, _Band.high), [
     '머릿속에서는 선명한데 몸이 따라가지 않는 결이다. 상상과 실행의 간격이 평생 따라붙는 타입—이 간격을 제로로 만들 필요는 없다. 한 달에 한 번만, 상상했던 조건 중 하나를 실제 공간으로 옮겨 봐도 결이 끊기지 않는다.',
   ]),
-  _Frag(
+  _Frag.hard(
     (f) => f.bandOf(Attribute.libido) == _Band.low &&
         f.bandOf(Attribute.sensuality) == _Band.low &&
         f.bandOf(Attribute.emotionality) == _Band.low,
@@ -854,10 +854,10 @@ final List<_Frag> _sensualShadowMale = [
   _Frag(_highPair(Attribute.sensuality, Attribute.emotionality), [
     '감정의 진폭이 관능의 방향을 크게 흔드는 결이다. 마음이 허전한 밤에 그게 엉뚱한 곳으로 흘러가기 쉬운 구조—그래서 파트너 (또는 혼자라면 자기 자신) 와 감정을 점검하는 짧은 대화 루틴이 방파제가 된다.',
   ]),
-  _Frag((f) => f.fired('O-PH1') || f.fired('O-PH2'), [
+  _Frag.hard((f) => f.fired('O-PH1') || f.fired('O-PH2'), [
     '인중 쪽 결이 유독 두드러진 구조다. 이건 호르몬 리듬이 얼굴과 관능 표현에 그대로 반영된다는 뜻—수면 부족하면 얼굴부터 표시가 나는 타입이다. 잠과 영양, 이 기본만 지켜도 밀도가 알아서 유지된다.',
   ]),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '관능의 결은 긴 시간 속에서 소리 없이 얇아진다. 어느 날 갑자기가 아니라, 한 달이 두 달 되고 반년 되면서 스며들듯 옅어지는 구조다. 계절 바뀔 때마다 한 번씩 자기 몸의 신호를 점검하는 짧은 루틴이 평생 밀도를 받쳐 준다.',
     '관능의 리듬은 업무, 수면, 계절 같은 외부 요인에 생각보다 크게 흔들린다. 마감 주간에 관심이 뚝 떨어지는 게 이상한 게 아니라는 뜻이다. 자기 상태를 정기적으로 읽고 기록하는 습관이 관계의 온도를 흔들리지 않게 받쳐 준다.',
   ]),
@@ -947,22 +947,22 @@ final List<_Frag> _sensualStrengthFemale = [
   _Frag(_metLo('faceAspectRatio'), [
     '얼굴이 가로로 넓다. 활력과 포용의 에너지가 자리 잡은 결이라 표현이 활달하고 개방적이다. 같이 있으면 공기가 환해지는 타입—주말 모임의 중심에 자연스럽게 놓이는 결이다.',
   ]),
-  _Frag((f) => f.fired('L-EL'), [
+  _Frag.hard((f) => f.fired('L-EL'), [
     '옆에서 보면 입술이 E-line 을 넘어 나와 있다. 관능이 입매에서 먼저 드러나는 해부학적 구조—말하는 동안 상대 시선이 입에 머문다. 이야기 내용보다 입 모양이 먼저 기억되는 결이다.',
   ]),
-  _Frag(_yangStrong, [
+  _Frag.hard(_yangStrong, [
     '여성의 얼굴에 양(陽) 의 기운이 뚜렷이 쏠린 결은 드문 타입이다. 관능의 리듬이 적극적이고 주도적인 쪽으로 자연스럽게 기운다—"먼저 움직이는 쪽" 을 당당하게 활용할 때 가장 선명한 매력이 드러나는 구조다.',
   ]),
-  _Frag(_yinStrong, [
+  _Frag.hard(_yinStrong, [
     '얼굴 전체에 음(陰) 의 기운이 짙게 쏠려 있다. 수용과 포용의 축이 관능의 뼈대가 되는 타입—상대를 끌어안는 결 자체에서 농도가 피어난다. 시간이 깊어질수록 결이 더 또렷해지는 구조다.',
   ]),
-  _Frag(_yyHarmony, [
+  _Frag.hard(_yyHarmony, [
     '얼굴에 음양이 고르게 자리했다. 표현이 주도와 수용 사이를 자유롭게 오가는 유연형—파트너의 결에 맞춰 모드를 바꾸는 적응력이 최대 강점이다.',
   ]),
-  _Frag((f) => f.fired('O-PH1') || f.fired('O-PH2'), [
+  _Frag.hard((f) => f.fired('O-PH1') || f.fired('O-PH2'), [
     '인중 쪽 결이 유독 두드러진 구조다. 호르몬과 생리 주기의 흐름이 표정과 밀도에 직접 나타나는 타입—그래서 몸의 리듬을 읽는 습관 하나가 이 결의 수명을 결정한다.',
   ]),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '관능의 신호가 특정 부위에 몰리지 않고 얼굴 전체에 고르게 분포해 있다. 드라마틱한 단서 하나는 없지만 여러 부위가 함께 협업하는 결—폭이 넓고 안정적이다.',
     '부위별 신호가 모두 평균권에서 움직인다. 한 군데에 집중된 장점 대신 여러 축이 동시에 돌아가는 팀플레이형 결—상황별 적응력이 가장 큰 자산이다.',
   ]),
@@ -1052,19 +1052,19 @@ final List<_Frag> _sensualStrengthMale = [
   _Frag(_metLo('faceAspectRatio'), [
     '얼굴이 가로로 넓다. 활력과 포용의 에너지가 자리 잡은 결이라 표현이 활달하고 개방적이다. 같이 있으면 공기가 환해지는 타입—주말 브런치 자리의 분위기 메이커 같은 결이다.',
   ]),
-  _Frag((f) => f.fired('L-EL'), [
+  _Frag.hard((f) => f.fired('L-EL'), [
     '옆에서 보면 입술이 E-line 을 넘어 나와 있다. 관능이 입매에서 먼저 드러나는 해부학적 구조—말할 때마다 상대 시선이 입에 머문다. 이야기 내용보다 입 모양이 먼저 기억되는 결이다.',
   ]),
-  _Frag(_yangStrong, [
+  _Frag.hard(_yangStrong, [
     '얼굴 전체에 양(陽)의 기운이 짙게 서렸다. 관능의 리듬이 적극적이고 주도적인 쪽으로 기울어 있는 결—"먼저 움직이는 쪽" 이 자연스럽다. 상대가 그걸 기다리는 구조이기도 하다.',
   ]),
-  _Frag(_yinStrong, [
+  _Frag.hard(_yinStrong, [
     '얼굴에 음(陰)의 기운이 깊이 깃들어 있다. 관능이 수용과 포용 쪽으로 기울어 있어서, 격렬한 파도보다 잔잔한 깊이로 관계를 만든다. 조명 꺼진 방의 부드러운 정적 같은 결이다.',
   ]),
-  _Frag(_yyHarmony, [
+  _Frag.hard(_yyHarmony, [
     '얼굴에 음양이 고르게 자리했다. 주도와 수용 사이를 자유롭게 오가는 유연형—오늘은 리드하고 내일은 받아주는 식의 전환이 매끄럽다. 파트너의 결에 맞춰 모드를 바꾸는 적응력이 최대 강점이다.',
   ]),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '관능의 신호가 특정 부위에 몰리지 않고 얼굴 전체에 고르게 분포한다. 드라마틱한 단서 하나는 없지만 여러 부위가 함께 협업하는 구조—폭이 넓고 안정적이다.',
     '부위별 신호가 모두 평균권에서 움직인다. 한 군데에 집중된 장점 대신 여러 축이 동시에 돌아가는 팀플레이형 결이다. 상황별 적응력이 이 구조의 진짜 자산이다.',
   ]),
@@ -1098,7 +1098,7 @@ final List<_Frag> _socialAdvice = [
   _Frag(_lowPair(Attribute.sociability, Attribute.trustworthiness), [
     '관계가 인생의 중심축이 아닌 결입니다. 고립을 걱정하기보다 "혼자 쌓는 시간의 결과"를 세상에 보여 주는 출구 하나를 확보하십시오—일·작품·문장이 당신의 관계를 대신 열어주는 구조입니다.',
   ]),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '관계의 운을 키우는 세 축: 미지근한 온도를 오래 유지하는 감각, 먼저 안부를 건네는 월간 루틴, 모든 사람을 품으려 하지 않는 절제. 이 셋이 지켜질 때 꼭 지켜야 할 사람이 곁에 오래 남습니다.',
   ]),
 ];
@@ -1141,7 +1141,7 @@ final List<_Frag> _socialOpening = [
   _Frag(_lowPair(Attribute.sociability, Attribute.trustworthiness), [
     '사람을 여는 문도, 오래 품는 문도 @{faint} 좁은 결입니다. 관상학에서 "고립상(孤立相)"이 살짝 드러나는 유형—혼자 쌓는 시간에서 진짜 결과물이 나오는 독립형 @{structure}입니다.',
   ]),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '당신의 대인관계는 뚜렷한 쏠림 없이 상황에 맞춰 유연히 움직이는 결입니다. 넓이와 깊이 사이에서 균형을 잡는 중용의 @{structure}—어느 자리에 놓여도 그 자리의 온도에 맞춰 녹아드는 적응력이 있습니다.',
   ]),
 ];
@@ -1159,31 +1159,31 @@ final List<_Frag> _socialShadow = [
   _Frag(_highOf(Attribute.emotionality), [
     '다만 관계의 거리 조절 폭이 @{subtle} 좁은 편입니다. 가까워지면 너무 깊이 들어가고 한 번 실망하면 단번에 멀어져버리는 "0 아니면 100" 패턴이 반복되기 쉬운 @{structure}입니다.',
   ]),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '다만 에너지 배분이 불균형해지기 쉬운 결입니다. 중요한 사람에게 과하게 몰아주고 나머지는 방치하는 패턴이 반복되면, 결정적 순간에 "주변에 사람이 너무 없다"는 느낌이 찾아오기 쉽습니다.',
   ]),
 ];
 
 final List<_Frag> _socialStrength = [
-  _Frag((f) => f.fired('O-EM') || f.fired('O-PH2'), [
+  _Frag.hard((f) => f.fired('O-EM') || f.fired('O-PH2'), [
     '입과 눈의 표현이 함께 살아 있는 구조는 대화의 리듬감이 좋은 결입니다. 상대가 "이 사람과 있을 때 내 편이 된 것 같다"는 인상을 받기 쉬운 유형입니다.',
   ]),
-  _Frag((f) => f.fired('L-AQ'), [
+  _Frag.hard((f) => f.fired('L-AQ'), [
     '측면의 매부리형 코는 결정적 순간에 자기 주장을 또렷이 내세우는 기질이며, 관계가 한쪽으로 끌려가지 않는 자기 중심축을 가진 결입니다.',
   ]),
-  _Frag((f) => f.fired('L-SN'), [
+  _Frag.hard((f) => f.fired('L-SN'), [
     '들창코의 결은 관상학에서 "사교의 기(氣)"가 열려 있다고 보는 신호로, 낯선 자리에 섞여드는 속도가 남다르게 빠른 기질입니다.',
   ]),
-  _Frag((f) => f.nodeZ('mouth') >= 0.8, [
+  _Frag.hard((f) => f.nodeZ('mouth') >= 0.8, [
     '입의 결이 @{intense} 살아 있는 상은 대화의 완급을 자유롭게 조절하는 기질이며, 협상·설득·중재 자리에서 유독 강한 존재감을 냅니다.',
   ]),
-  _Frag((f) => f.fired('P-10') || f.nodeZ('eye') >= 0.8, [
+  _Frag.hard((f) => f.fired('P-10') || f.nodeZ('eye') >= 0.8, [
     '눈매가 맑게 자리한 상은 "첫인상의 호감"을 만드는 결입니다. 처음 보는 자리에서 경계를 풀어주는 무언의 신호가 됩니다.',
   ]),
-  _Frag((f) => f.nodeZ('eyebrow') >= 0.5, [
+  _Frag.hard((f) => f.nodeZ('eyebrow') >= 0.5, [
     '눈썹이 정돈된 상은 관상학에서 "형제궁(兄弟宮)"이 살아 있는 결로, 또래·동료 관계에서 중재자 역할이 자연스럽게 주어지는 기질입니다.',
   ]),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '당신의 관계는 "오래가는 소수"와 "스치듯 지나가는 다수" 사이의 분리가 또렷한 구조로, 시간이 지날수록 핵심 그룹의 밀도가 @{deep} 짙어지는 결을 가졌습니다.',
   ]),
 ];
@@ -1216,7 +1216,7 @@ final List<_Frag> _talentAdvice = [
   _Frag(_lowPair(Attribute.intelligence, Attribute.leadership), [
     '"손끝·몸·감각"의 결로 자라는 유형입니다. 추상적 판단이나 대규모 지휘보다 몸으로 익히는 기술, 반복으로 쌓이는 솜씨에서 진가가 나옵니다. 평가 축을 바꾸면 결핍이 아니라 방향이 됩니다—숫자가 아닌 결과물의 완성도로 승부하십시오.',
   ]),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '@{talent_word}을 살리는 길은 셋입니다. 첫째, @__STRONGEST_NODE__의 결이 가장 @{intense} 작동하는 환경을 일찍 고르십시오. 둘째, 단기 평가에 흔들리지 않는 @{heart}의 중심—남의 속도와 비교하지 않는 훈련이 3년 이후 곡선을 결정합니다. 셋째, 결과물을 외부에 내놓는 정기 루틴. 이 셋이 맞물릴 때 관상이 약속한 천장이 열립니다.',
   ]),
 ];
@@ -1260,7 +1260,7 @@ final List<_Frag> _talentOpening = [
   _Frag(_lowPair(Attribute.intelligence, Attribute.leadership), [
     '머리의 날카로움이나 통솔력이 무대 중앙이 아니라 조명 바깥쪽에 앉아 있는 결입니다. 손끝·몸·감각으로 자라는 유형—추상적 판단보다 몸으로 익히는 솜씨에서 진가가 드러나는 @{structure}입니다.',
   ]),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '@{talent_word}이 한 방향으로 쏠리지 않고 여러 영역에 고루 잠재된 형태입니다. 삼정(三停)이 균형을 이룬 상으로, @__STRONGEST_NODE__의 결이 가장 @{intense} 드러나며 이 부위가 관여하는 영역에서 또래보다 반 걸음 앞서는 감각이 붙어 있습니다.',
     '"결을 타고 쌓이는" 축적형입니다. 한 번의 스파크보다 3년·5년·10년의 결이 겹칠 때 진짜 모습이 드러나며, 같은 일을 다른 각도로 반복할수록 깊이가 @{intense} 붙는 유형입니다.',
   ]),
@@ -1270,19 +1270,19 @@ final List<_Frag> _talentShadow = [
   _Frag(_highPair(Attribute.intelligence, Attribute.leadership), [
     '다만 머리와 발이 함께 뛰는 결은 "혼자 다 해야 직성이 풀리는" 피로를 낳기 쉽습니다. 위임이 서툴면 능력의 천장이 본인의 체력에 묶이고, 팀 안에서 동료가 자라나지 못하는 구조적 그림자가 따라옵니다.',
   ]),
-  _Frag((f) => f.bandOf(Attribute.intelligence) == _Band.high && f.bandOf(Attribute.leadership) == _Band.low, [
+  _Frag.hard((f) => f.bandOf(Attribute.intelligence) == _Band.high && f.bandOf(Attribute.leadership) == _Band.low, [
     '다만 앞에 나서는 자리가 오래 비어 있으면, 당신이 쌓은 분석과 설계가 다른 사람의 이름으로 옮겨가기 쉽습니다. @{organ_mouth}이 무거운 상의 전형적 그림자로, 의도적 노출 루틴 없이는 실력이 저평가됩니다.',
   ]),
-  _Frag((f) => f.bandOf(Attribute.intelligence) == _Band.low && f.bandOf(Attribute.leadership) == _Band.high, [
+  _Frag.hard((f) => f.bandOf(Attribute.intelligence) == _Band.low && f.bandOf(Attribute.leadership) == _Band.high, [
     '다만 직관이 강한 만큼 근거 없는 추진이 사고로 이어지기 쉽습니다. 분석형 조력자를 옆에 두지 않으면 "가는 속도는 빠른데 도착지가 틀리는" 패턴이 반복됩니다.',
   ]),
   _Frag(_lowOf(Attribute.stability), [
     '다만 흥미가 이동하는 속도가 빠른 편입니다. 관상학이 "상정 과강(上停過强)"이라 부르는 기질—머리가 먼저 달려가 몸이 따라잡지 못하면 재능이 쌓이지 않고 흩어지는 구조입니다.',
   ]),
-  _Frag((f) => f.bandOf(Attribute.emotionality) == _Band.high && f.bandOf(Attribute.stability) != _Band.high, [
+  _Frag.hard((f) => f.bandOf(Attribute.emotionality) == _Band.high && f.bandOf(Attribute.stability) != _Band.high, [
     '다만 감수성이 @{deep} 박힌 만큼 비판에 흔들리는 폭도 넓습니다. @{palace_destiny}이 맑으면 탁기도 그대로 비치는 결—외부 피드백을 어떻게 거르는지가 평생의 숙제입니다.',
   ]),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '다만 당신의 @{talent_word}은 쌓는 시간에 정직하게 비례합니다. 남이 일찍 빛나는 모습에 흔들리면 잠재력이 절반만 열린 채 평생이 흐르기 쉬운 @{structure}입니다.',
     '다만 @__STRONGEST_NODE__에 기운이 @{deep} 실린 만큼 이 부위에만 의지하면 전체 균형이 깨질 수 있습니다. 의식적으로 반대축을 훈련해야 하는 구조입니다.',
     '다만 "보여주는 기술"이 약한 편이라, 실력에 비해 덜 평가되는 패턴이 반복되기 쉽습니다. 의도적 노출 루틴이 이 결점의 유일한 해법입니다.',
@@ -1290,31 +1290,31 @@ final List<_Frag> _talentShadow = [
 ];
 
 final List<_Frag> _talentStrength = [
-  _Frag((f) => f.fired('O-EB1') || f.fired('O-EB2'), [
+  _Frag.hard((f) => f.fired('O-EB1') || f.fired('O-EB2'), [
     '눈썹이 @{intense} 자리잡은 상입니다. @{organ_brow}이 @{strong_adj} 살아 있는 결—새 지식의 초기 흡수 속도가 빠르고, 한 번 방향을 정하면 중간에 꺾이지 않는 @{noble} 집요함이 함께 박혀 있습니다.',
     '짙고 정돈된 눈썹은 "의지의 결"이 @{deep} 박힌 상입니다. 목표가 서면 결실까지 밀어붙이는 기질이 강하게 작동하는 구조입니다.',
   ]),
-  _Frag((f) => f.fired('P-02') || f.nodeZ('forehead') >= 1.0, [
+  _Frag.hard((f) => f.fired('P-02') || f.nodeZ('forehead') >= 1.0, [
     '@{open_wide} 반듯한 이마는 관상학이 "천정(天庭) 열림"이라 부르는 상으로, 윗사람의 도움과 윗선의 기회가 먼저 찾아오는 기질을 @{intense} 암시합니다.',
     '이마의 평탄함이 @{strong_adj} 드러나는 상은 초년운과 지도력의 기반이 동시에 열려 있다는 신호로 읽힙니다.',
   ]),
-  _Frag((f) => f.fired('O-EM'), [
+  _Frag.hard((f) => f.fired('O-EM'), [
     '눈과 입의 표현이 함께 살아 있는 구조는 감정을 언어로 정확히 옮기는 @{rare} 재능입니다. 글·강연·연기에서 @{intense} 설득력을 만드는 결입니다.',
   ]),
-  _Frag((f) => f.fired('O-CK') || f.nodeZ('cheekbone') >= 0.8, [
+  _Frag.hard((f) => f.fired('O-CK') || f.nodeZ('cheekbone') >= 0.8, [
     '@{mount_e}·@{mount_w}이 @{strong_adj} 받쳐주는 상은 사람을 부려 일을 만드는 기질입니다. 혼자 잘하는 것보다 조직·팀을 통해 @{talent_word}이 확장되는 유형입니다.',
     '광대가 힘차게 자리한 구조는 @{noble} 호령의 기운을 담습니다. 순수 전문가보다 리더·관리자의 자리에서 진가가 @{intense} 드러납니다.',
   ]),
-  _Frag((f) => f.fired('O-FB'), [
+  _Frag.hard((f) => f.fired('O-FB'), [
     '이마와 턱이 함께 단정한 구조는 "시작과 끝이 정렬된 상"입니다. 한 프로젝트를 처음부터 끝까지 담당했을 때 가장 좋은 결과가 나오는 기질입니다.',
   ]),
-  _Frag((f) => f.nodeAZ('nose') >= 1.0, [
+  _Frag.hard((f) => f.nodeAZ('nose') >= 1.0, [
     '@{mount_c}이 또렷한 상은 자기 @{path_word}에 대한 확신이 강한 기질이며, 외부 평가에 흔들리지 않고 자기 길을 @{intense} 밀고 나가는 동력이 됩니다.',
   ]),
-  _Frag((f) => f.fired('A-02'), [
+  _Frag.hard((f) => f.fired('A-02'), [
     '이마 기운의 열림은 "조년발(早年發)"의 신호로, 젊은 시기의 도약이 동년배보다 앞서 찾아오는 기질을 의미합니다.',
   ]),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '당신의 기질은 화려한 한순간의 폭발보다 시간에 정직하게 비례하는 축적형—관상학이 "대기만성(大器晩成)"이라 부르는 결에 가깝습니다.',
     '@__STRONGEST_NODE__의 결이 @{talent_word}의 기폭제 역할을 합니다. 이 부위가 활성화될 때 주변 공기가 당신 쪽으로 기울어지는 상입니다.',
     '"첫 만남의 인상"보다 "세 번째 만남 이후 자리잡는 신뢰"에서 힘이 나오는 유형입니다. 초면의 화력보다 축적된 시간이 자산인 @{structure}입니다.',
@@ -1349,7 +1349,7 @@ final List<_Frag> _wealthAdvice = [
   _Frag(_lowPair(Attribute.wealth, Attribute.stability), [
     '재물이 인생의 중심축이 아닌 결입니다. 억지로 이 축을 중심에 놓으면 오히려 소모가 크고, 자기 @{talent_word}·관계·경험을 중심에 두고 돈은 그 부산물로 따라오는 구조를 설계할 때 훨씬 나은 곡선이 그려집니다.',
   ]),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '재물의 상한을 여는 세 축: 고정 저축의 자동화, 남의 돈·남의 시간을 다루는 경험, 감정 과잉 시점의 결정 보류. 이 셋이 지켜질 때 관상이 예고한 @{palace_wealth}의 잠재력이 순서대로 열립니다.',
   ]),
 ];
@@ -1392,7 +1392,7 @@ final List<_Frag> _wealthOpening = [
   _Frag(_lowPair(Attribute.wealth, Attribute.stability), [
     '재물이 인생의 중심축이 아닌 결입니다. 관상학에서 "입은 있되 곳간이 얇은 상"이라 부르는 유형—수양과 구조 설계로 가장 크게 바뀌는 영역이므로 기질의 경향을 인정하되 갇히지 않는 태도가 가장 중요합니다.',
   ]),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '당신의 재물운은 평균대 위에서 단단한 결을 유지하는 @{structure}입니다. 30대부터 들이는 재물 자산의 총량이 말년 곡선의 기울기를 그대로 결정하는 정직한 구조입니다.',
   ]),
 ];
@@ -1404,34 +1404,34 @@ final List<_Frag> _wealthShadow = [
   _Frag(_lowOf(Attribute.wealth), [
     '다만 들어오는 문 옆에 나가는 문이 함께 열린 형국입니다. 관상학이 "수입을 늘리는 노력보다 새는 구멍을 먼저 막는 설계가 훨씬 큰 효과를 만든다"고 일러주는 전형적 결입니다.',
   ]),
-  _Frag((f) => f.fired('Z-09') || f.bandOf(Attribute.emotionality) == _Band.high, [
+  _Frag.hard((f) => f.fired('Z-09') || f.bandOf(Attribute.emotionality) == _Band.high, [
     '다만 재물 판단 위에 감정이 먼저 덧씌워지는 위험이 따릅니다. 관계·분위기에 휩쓸린 지출이나 무리한 보증·투자에 발을 들이기 쉬운 구조—큰 결정은 반드시 24시간 묵혀야 위험의 절반이 사라집니다.',
   ]),
   _Frag(_lowOf(Attribute.stability), [
     '다만 호황기에 들뜨기 쉬운 결입니다. 좋은 흐름이 올 때마다 포지션을 키워 나쁜 구간의 낙차가 평균보다 넓어지는 패턴—호황기의 확장을 나쁜 시기의 완충으로 얼마나 잘 바꾸는지가 평생 재산의 크기를 결정합니다.',
   ]),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '다만 당신의 @{structure}에는 "갑작스러운 유혹"에 취약한 구간이 주기적으로 돌아옵니다. 그 구간을 미리 이름 붙여 두면, 같은 유혹이 찾아와도 결정이 달라집니다.',
   ]),
 ];
 
 final List<_Frag> _wealthStrength = [
-  _Frag((f) => f.fired('P-06') || f.nodeZ('nose') >= 1.0, [
+  _Frag.hard((f) => f.fired('P-06') || f.nodeZ('nose') >= 1.0, [
     '@{mount_c}이 @{strong_adj} 자리잡은 구조는 관상학이 "중년발복(中年發福)"이라 부르는 신호—30대 후반에서 40대 사이에 재물의 꼭짓점이 찾아오는 기질을 @{intense} 암시합니다.',
   ]),
-  _Frag((f) => f.fired('O-CK') || f.nodeZ('cheekbone') >= 0.8, [
+  _Frag.hard((f) => f.fired('O-CK') || f.nodeZ('cheekbone') >= 0.8, [
     '@{mount_e}·@{mount_w}이 힘차게 받쳐주는 구조는 사람을 부려 돈을 만드는 기질입니다. 순수 근로보다 운영·관리·조직으로 부를 키우는 길이 @{intense} 잘 맞습니다.',
   ]),
-  _Frag((f) => f.fired('Z-04') || f.nodeZ('chin') >= 1.0, [
+  _Frag.hard((f) => f.fired('Z-04') || f.nodeZ('chin') >= 1.0, [
     '@{mount_n}이 @{strong_adj} 두터운 구조는 "말년재운"의 상징입니다. 50대 이후에도 재물의 뿌리가 마르지 않고 오히려 @{deep} 깊어지는 후복(後福)의 결입니다.',
   ]),
-  _Frag((f) => f.fired('Z-11'), [
+  _Frag.hard((f) => f.fired('Z-11'), [
     '중정의 기운이 @{intense} 열린 상은 중년 집중 발복의 신호로, 가장 큰 결실이 인생의 중간에 집결되는 리듬을 뜻합니다.',
   ]),
-  _Frag((f) => f.fired('O-NM1') || f.fired('O-NM2'), [
+  _Frag.hard((f) => f.fired('O-NM1') || f.fired('O-NM2'), [
     '코와 입의 결이 함께 살아 있는 구조는 "수입과 지출을 모두 통제하는 상"으로, 새는 구멍도 스스로 관리하는 @{rare} 기질을 뒷받침합니다.',
   ]),
-  _Frag((f) => true, [
+  _Frag.hard((f) => true, [
     '당신의 재물 곡선은 단기보다 장기에서 진가가 드러나는 @{structure}이며, 5년 단위로 돌아보는 습관이 붙을 때 가장 크게 늘어납니다.',
   ]),
 ];
@@ -1468,11 +1468,8 @@ String assembleLifeQuestions(FaceReadingReport r) {
   return parts.map((e) => '## ${e.key}\n${e.value}').join('\n\n');
 }
 
-bool Function(_Features) _and2(
-  bool Function(_Features) p1,
-  bool Function(_Features) p2,
-) =>
-    (f) => p1(f) && p2(f);
+/// 두 weight 곱. bool `&&` 의 soft 등가물.
+_WeightFn _and2(_WeightFn p1, _WeightFn p2) => (f) => p1(f) * p2(f);
 
 _Band _band(double s) {
   if (s >= 8.0) return _Band.high;
@@ -1480,8 +1477,59 @@ _Band _band(double s) {
   return _Band.low;
 }
 
-bool Function(_Features) _bandPair(Attribute a, _Band ba, Attribute b, _Band bb) =>
-    (f) => f.bandOf(a) == ba && f.bandOf(b) == bb;
+// ─── Soft band weights ──────────────────────────────────────────────────
+// 5.0~10.0 정규화 점수에 대해 high/mid/low band 소속도를 연속 [0, 1] 로
+// 반환. hard cutoff (8.0 / 6.5) 근처의 plateau/cliff 를 제거하기 위함.
+// _hi 는 [6.5, 8.0] 구간에서 선형 상승, _lo 는 [5.0, 6.5] 구간에서 하강,
+// _mi 는 나머지. boundary 에서 양측 fragment 가 섞여 뽑히도록 설계.
+
+double _hi(double s) {
+  if (s >= 8.0) return 1.0;
+  if (s <= 6.5) return 0.0;
+  return (s - 6.5) / 1.5;
+}
+
+double _lo(double s) {
+  if (s <= 5.0) return 1.0;
+  if (s >= 6.5) return 0.0;
+  return (6.5 - s) / 1.5;
+}
+
+double _mi(double s) {
+  final rest = 1.0 - _hi(s) - _lo(s);
+  return rest < 0 ? 0.0 : rest;
+}
+
+double _bandWeight(double s, _Band b) {
+  switch (b) {
+    case _Band.high:
+      return _hi(s);
+    case _Band.mid:
+      return _mi(s);
+    case _Band.low:
+      return _lo(s);
+  }
+}
+
+/// z-score 용 ramp. |z| 기준 0.5 에서 정점 가까이 가고 0 에서 0.
+/// metric / node 단위 예전 hard `>= 0.5` 임계에 대응.
+double _softHiZ(double z) {
+  if (z >= 1.0) return 1.0;
+  if (z <= 0.0) return 0.0;
+  return z;
+}
+
+double _softLoZ(double z) => _softHiZ(-z);
+
+double _softMidZ(double z) {
+  final a = z.abs();
+  if (a <= 0.2) return 1.0;
+  if (a >= 1.0) return 0.0;
+  return (1.0 - a) / 0.8;
+}
+
+_WeightFn _bandPair(Attribute a, _Band ba, Attribute b, _Band bb) =>
+    (f) => _bandWeight(f.scoreOf(a), ba) * _bandWeight(f.scoreOf(b), bb);
 
 String _buildSection(_Features f, List<_BeatPool> beats, int sectionSalt) {
   final buf = StringBuffer();
@@ -1623,39 +1671,54 @@ String _genderedKey(String key, _Features f) {
 // 마지막 fragment 는 항상 fallback (applies = (_) => true).
 // ═══════════════════════════════════════════════════════════════════════
 
-// Helper predicates
-bool Function(_Features) _highOf(Attribute a) =>
-    (f) => f.bandOf(a) == _Band.high;
+// Helper predicates — 모두 soft weight 반환. band cutoff 경계의
+// plateau/cliff 를 연속 ramp 로 풀어낸다.
+_WeightFn _highOf(Attribute a) => (f) => _hi(f.scoreOf(a));
 
-bool Function(_Features) _highPair(Attribute a, Attribute b) =>
-    (f) => f.bandOf(a) == _Band.high && f.bandOf(b) == _Band.high;
+_WeightFn _highPair(Attribute a, Attribute b) =>
+    (f) => _hi(f.scoreOf(a)) * _hi(f.scoreOf(b));
 
-bool Function(_Features) _lowOf(Attribute a) =>
-    (f) => f.bandOf(a) == _Band.low;
+_WeightFn _lowOf(Attribute a) => (f) => _lo(f.scoreOf(a));
 
-bool Function(_Features) _lowPair(Attribute a, Attribute b) =>
-    (f) => f.bandOf(a) == _Band.low && f.bandOf(b) == _Band.low;
+_WeightFn _lowPair(Attribute a, Attribute b) =>
+    (f) => _lo(f.scoreOf(a)) * _lo(f.scoreOf(b));
 
-bool Function(_Features) _metHi(String id) => (f) => f.mz(id) >= 0.5;
+_WeightFn _metHi(String id) => (f) => _softHiZ(f.mz(id));
 
-bool Function(_Features) _metLo(String id) => (f) => f.mz(id) <= -0.5;
+_WeightFn _metLo(String id) => (f) => _softLoZ(f.mz(id));
 
-bool Function(_Features) _metMid(String id) => (f) {
-      final z = f.mz(id);
-      return z > -0.5 && z < 0.5;
-    };
+_WeightFn _metMid(String id) => (f) => _softMidZ(f.mz(id));
 
-bool Function(_Features) _midOf(Attribute a) =>
-    (f) => f.bandOf(a) == _Band.mid;
+_WeightFn _midOf(Attribute a) => (f) => _mi(f.scoreOf(a));
 
-bool Function(_Features) _notLowOf(Attribute a) =>
-    (f) => f.bandOf(a) != _Band.low;
+_WeightFn _notLowOf(Attribute a) => (f) => 1.0 - _lo(f.scoreOf(a));
 
+/// Weighted sampling. 각 fragment 의 weight(∈[0,1]) 를 누적 분포로 보고
+/// seed 로 결정 지점을 찍는다. 모든 weight=0 이면 빈 문자열 (pool 미스).
+/// deterministic: 같은 seed+pool 이면 항상 같은 fragment.
 String _pickBeat(_BeatPool pool, _Features f, int beatSalt) {
-  final valid = pool.where((fr) => fr.applies(f)).toList();
-  if (valid.isEmpty) return '';
+  if (pool.isEmpty) return '';
+  final weights = List<double>.filled(pool.length, 0.0);
+  var total = 0.0;
+  for (var i = 0; i < pool.length; i++) {
+    final w = pool[i].weight(f);
+    final clipped = w.isNaN ? 0.0 : w.clamp(0.0, 1.0).toDouble();
+    weights[i] = clipped;
+    total += clipped;
+  }
+  if (total <= 0) return '';
   final beatSeed = (f.seed ^ (beatSalt * 2654435761)) & 0x7FFFFFFF;
-  final frag = valid[beatSeed % valid.length];
+  final target = (beatSeed / 0x7FFFFFFF) * total;
+  var cumulative = 0.0;
+  var idx = pool.length - 1;
+  for (var i = 0; i < pool.length; i++) {
+    cumulative += weights[i];
+    if (target <= cumulative) {
+      idx = i;
+      break;
+    }
+  }
+  final frag = pool[idx];
   final variantSeed = (beatSeed ^ 0x1DEA1BEE) & 0x7FFFFFFF;
   final chosen = frag.variants[variantSeed % frag.variants.length];
   return _resolveText(chosen, f, beatSeed);
@@ -1765,9 +1828,19 @@ class _Features {
 
 // ─── Fragment + Picker ──────────────────────────────────────────────────
 
+typedef _WeightFn = double Function(_Features);
+
 class _Frag {
-  final bool Function(_Features) applies;
+  /// 프래그먼트가 얼마만큼 "이 얼굴에 어울리는가" — [0.0, 1.0].
+  /// 0 은 완전 배제, 1 은 완전 합치. 중간값은 weighted sampling 으로
+  /// band 경계 부근에서 plateau/cliff 를 풀어준다.
+  final _WeightFn weight;
   final List<String> variants;
-  const _Frag(this.applies, this.variants);
+  _Frag(this.weight, this.variants);
+
+  /// boolean predicate 래퍼 — 나이·아키타입·rule-fired 처럼 본질적으로
+  /// 이산인 조건은 true → 1.0, false → 0.0 으로 고정.
+  _Frag.hard(bool Function(_Features) applies, this.variants)
+      : weight = ((f) => applies(f) ? 1.0 : 0.0);
 }
 
