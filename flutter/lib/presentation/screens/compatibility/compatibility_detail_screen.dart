@@ -295,6 +295,11 @@ class _CompatibilityDetailScreenState
     buf.writeln();
     buf.writeln('--- 점수와 이유 ---');
     buf.writeln(n.scoreReason);
+    if (n.intimacyChapter != null) {
+      buf.writeln();
+      buf.writeln('--- 성숙한 친밀의 결 ---');
+      buf.writeln(n.intimacyChapter);
+    }
 
     return buf.toString();
   }
@@ -652,6 +657,12 @@ class _NarrativeSections extends StatelessWidget {
       children: [
         for (int i = 0; i < bodies.length; i++)
           _NarrativeCard(title: _titles[i], body: bodies[i]),
+        // 성숙한 연령 이성 페어 전용 optional 섹션 — intimacy.gateActive 통과 시만 렌더.
+        if (narrative.intimacyChapter != null)
+          _NarrativeCard(
+            title: '성숙한 친밀의 결',
+            body: narrative.intimacyChapter!,
+          ),
       ],
     );
   }

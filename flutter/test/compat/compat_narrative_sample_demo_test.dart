@@ -111,6 +111,12 @@ void _printNarrative(String label, CompatibilityReport r, CompatNarrative n) {
   print('\n[5] 궁합 점수와 이유');
   // ignore: avoid_print
   print(n.scoreReason);
+  if (n.intimacyChapter != null) {
+    // ignore: avoid_print
+    print('\n[+] 성숙한 친밀의 결');
+    // ignore: avoid_print
+    print(n.intimacyChapter);
+  }
   // ignore: avoid_print
   print('');
 }

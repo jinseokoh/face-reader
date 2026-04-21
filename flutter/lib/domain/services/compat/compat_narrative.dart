@@ -15,16 +15,22 @@ library;
 
 import 'compat_finding.dart';
 import 'compat_label.dart';
+import 'compat_phrase_pool.dart';
 import 'compat_pipeline.dart';
 import 'five_element.dart';
 
 /// 5-섹션 최종 출력.
+///
+/// `intimacyChapter` 는 30~50대 이성 페어 전용 optional 섹션. gate 미통과
+/// 시 null. 기본 `sectionsInOrder` 에는 포함시키지 않아 기존 구조(5 섹션)의
+/// 계약이 깨지지 않는다 — UI/export 쪽에서 별도로 렌더한다.
 class CompatNarrative {
   final String summary;
   final String corePoints;
   final String conflictScenarios;
   final String strategy;
   final String scoreReason;
+  final String? intimacyChapter;
 
   const CompatNarrative({
     required this.summary,
@@ -32,6 +38,7 @@ class CompatNarrative {
     required this.conflictScenarios,
     required this.strategy,
     required this.scoreReason,
+    this.intimacyChapter,
   });
 
   List<String> get sectionsInOrder => [
@@ -286,6 +293,107 @@ String _weakestLayer(CompatibilityReport r) {
   return pairs.first.key;
 }
 
+// ─────────────── intimacy chapter (30~50 이성 gate) ───────────────
+//
+// 성숙한 연령의 이성 관계를 관상학적 근거·실생활 관찰·bucket 별 조언의
+// 3부 구조로 다루는 optional 섹션. intimacy.gateActive == false 면 null.
+//
+// bucket 분류:
+//   - high (≥ 65): 기회 인식·관리 권유
+//   - mid  (45~65): 실험·조율
+//   - low  (< 45):  경계·속도 조절
+//
+// pair-seed 로 deterministic 하게 variant 선택. axis 문단은 cause →
+// observation → bucket별 advice 3 문장으로 구성돼 근거와 농후함을 확보.
+
+String _intimacyBucket(double sub) {
+  if (sub >= 65) return 'high';
+  if (sub >= 45) return 'mid';
+  return 'low';
+}
+
+String? _intimacyChapter(CompatibilityReport r, int pairSeed) {
+  if (!r.intimacy.gateActive) return null;
+
+  final bucket = _intimacyBucket(r.sub.intimacyScore);
+  final subInt = r.sub.intimacyScore.round().toString();
+
+  final buf = StringBuffer();
+
+  // Opener — bucket 별 pool, pair-seed 로 variant 선택. {X} 치환.
+  final openerPool = intimacyOpenerByBucket[bucket] ?? const <String>[];
+  final opener = _pickVariant(openerPool, pairSeed).replaceAll('{X}', subInt);
+  if (opener.isNotEmpty) {
+    buf.writeln(opener);
+  }
+
+  // Axis 문단 — cause + observation + bucket별 advice 3 문장으로 농후.
+  for (final comp in r.intimacy.components) {
+    final sign = _intimacySign(comp.value);
+    final key = '${comp.id}-$sign';
+    final detail = intimacyAxisDetails[key];
+    if (detail == null) continue;
+
+    final advice = bucket == 'high'
+        ? detail.adviceHigh
+        : bucket == 'low'
+            ? detail.adviceLow
+            // mid bucket 은 high/low 조언 중 더 중립적인 쪽 선택 — pair-seed 로
+            // 분기시키되, 낮은 점수에서 들이대는 문제가 재발하지 않도록
+            // low 쪽에 약간 기울여 둔다 (seed even → low, odd → high).
+            : (((pairSeed + comp.id.hashCode) & 1) == 0
+                ? detail.adviceLow
+                : detail.adviceHigh);
+
+    buf.writeln();
+    buf.writeln('[${_axisLabel(comp.id)}]');
+    buf.writeln(detail.cause);
+    buf.writeln(detail.observation);
+    buf.writeln(advice);
+  }
+
+  // Closing — bucket 별 pool.
+  final closingPool = intimacyClosingByBucket[bucket] ?? const <String>[];
+  final closing = _pickVariant(closingPool, pairSeed + 0x1F49C);
+  if (closing.isNotEmpty) {
+    buf.writeln();
+    buf.write(closing);
+  }
+
+  return buf.toString().trim();
+}
+
+/// axis id → 본문 header. 한자는 괄호 풀이로만 허용.
+String _axisLabel(String axisId) {
+  switch (axisId) {
+    case 'mwGong':
+      return '남녀궁 — 눈 아래 와잠';
+    case 'spouse':
+      return '부부궁 — 눈꼬리 바깥';
+    case 'lip':
+      return '입 — 입술과 입꼬리';
+    case 'eye':
+      return '눈 — 시선의 결';
+    default:
+      return axisId;
+  }
+}
+
+/// axis value → {pos, neu, neg}. axis 마다 range 가 달라(±10~±18) 일괄
+/// ±3 컷오프를 쓰되, 실제 발동 패턴은 intimacy.dart 의 flag 조합이 극단
+/// delta 를 만들어 내므로 대부분 neg/pos 로 깔끔하게 떨어진다.
+String _intimacySign(double v) {
+  if (v >= 3) return 'pos';
+  if (v <= -3) return 'neg';
+  return 'neu';
+}
+
+String _pickVariant(List<String> variants, int seed) {
+  if (variants.isEmpty) return '';
+  final idx = seed.abs() % variants.length;
+  return variants[idx];
+}
+
 // ─────────────── top-level builder ───────────────
 
 CompatNarrative buildCompatNarrative({
@@ -299,6 +407,7 @@ CompatNarrative buildCompatNarrative({
     conflictScenarios: _conflictSection(report, findings),
     strategy: _strategySection(report, findings),
     scoreReason: _scoreSection(report),
+    intimacyChapter: _intimacyChapter(report, pairSeed),
   );
 }
 
