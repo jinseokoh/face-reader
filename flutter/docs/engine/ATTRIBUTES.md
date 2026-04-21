@@ -409,7 +409,6 @@ AttributeBreakdown deriveAttributeScoresDetailed({...});
 |---|---|
 | `domain/models/face_analysis.dart` | `deriveAttributeScores(tree, ...)` → `normalizeAllScores` |
 | `domain/services/score_calibration.dart` (×2) | Monte Carlo quantile 생성 시 동일 경로 |
-| `domain/services/compat_calibration.dart` | `normalizeScore` (single-attr) — quantile 테이블만 갱신 |
 
 `normalizeAllScores` / `normalizeScore` 시그니처는 고정. quantile 테이블 재생성만으로 분포 변경 흡수.
 

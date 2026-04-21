@@ -44,16 +44,6 @@ class SupabaseService {
     return response;
   }
 
-  /// Fetch two metrics records for compatibility reports.
-  Future<List<Map<String, dynamic>>> getMetricsPair(
-      String uuid1, String uuid2) async {
-    final response = await _client
-        .from('metrics')
-        .select()
-        .inFilter('id', [uuid1, uuid2]);
-    return List<Map<String, dynamic>>.from(response);
-  }
-
   /// Delete a metrics record by UUID
   Future<void> deleteMetrics(String uuid) async {
     await _client.from('metrics').delete().eq('id', uuid);

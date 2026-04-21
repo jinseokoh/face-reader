@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart';
+import 'dart:developer' as dev;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 
@@ -6,7 +7,17 @@ import 'package:face_reader/core/hive/hive_setup.dart';
 import 'package:face_reader/data/services/supabase_service.dart';
 import 'package:face_reader/domain/models/face_reading_report.dart';
 
-final historyProvider = NotifierProvider<HistoryNotifier, List<FaceReadingReport>>(
+/// debugPrint 의 rate-limit 을 피하려 raw `print` + `dev.log` 이중 출력.
+/// `print` 은 stdout(`flutter logs` 에 그대로), `dev.log` 은 DevTools 타임라인에 꽂힘.
+/// 로그가 안 보이면 이 함수부터 의심할 것.
+void _log(String msg) {
+  // ignore: avoid_print
+  print('[History] $msg');
+  dev.log(msg, name: 'History');
+}
+
+final historyProvider =
+    NotifierProvider<HistoryNotifier, List<FaceReadingReport>>(
   HistoryNotifier.new,
 );
 
@@ -15,28 +26,31 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
 
   @override
   List<FaceReadingReport> build() {
+    _log('build() — initial load from Hive');
     return _loadFromHive();
   }
 
-  void add(FaceReadingReport report) {
+  Future<void> add(FaceReadingReport report) async {
+    _log('add: supabaseId=${report.supabaseId} alias=${report.alias} '
+        'faceShape=${report.faceShape.name} metrics=${report.metrics.length}');
     state = [report, ...state];
-    _saveToHive();
+    await _saveToHive();
   }
 
-  void remove(int index) {
+  Future<void> remove(int index) async {
     final report = state[index];
+    _log('remove index=$index supabaseId=${report.supabaseId}');
     state = [...state]..removeAt(index);
-    _saveToHive();
-    // Delete from Supabase in background
+    await _saveToHive();
     final uuid = report.supabaseId;
     if (uuid != null) {
       SupabaseService().deleteMetrics(uuid).catchError((e) {
-        debugPrint('[History] supabase delete error: $e');
+        _log('supabase delete error: $e');
       });
     }
   }
 
-  void setMyFace(int index) {
+  Future<void> setMyFace(int index) async {
     final updated = <FaceReadingReport>[];
     for (int i = 0; i < state.length; i++) {
       final r = state[i];
@@ -44,64 +58,98 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
       updated.add(r);
     }
     state = [...updated];
-    _saveToHive();
+    await _saveToHive();
   }
 
-  void updateAlias(int index, String alias) {
+  Future<void> updateAlias(int index, String alias) async {
     final report = state[index];
     report.alias = alias.isEmpty ? null : alias;
     state = [...state];
-    _saveToHive();
-    // Update Supabase in background
+    await _saveToHive();
     final uuid = report.supabaseId;
     if (uuid != null) {
       SupabaseService().updateAlias(uuid, alias).catchError((e) {
-        debugPrint('[History] supabase alias update error: $e');
+        _log('supabase alias update error: $e');
       });
     }
   }
 
-  void updateHive() {
-    _saveToHive();
+  Future<void> updateHive() async {
+    await _saveToHive();
   }
 
   /// Pull-to-refresh 재계산 파이프라인:
   ///   1. Hive 의 각 리포트를 load — `fromJsonString` 이 rawValue 에서 현재
   ///      reference·age adjustment·rule·quantile 로 완전 재계산.
   ///   2. parse 성공한 entry 만 slim capture (rawValue only) 로 Hive 덮어쓰기.
-  ///      parse 실패 entry 는 raw 를 그대로 유지 — 일시적 파싱 오류로 기록이
-  ///      사라지지 않도록 보호.
-  ///   3. Supabase 의 metrics_json 도 성공 entry 에 한해 upsert — 서버 공유
-  ///      링크·궁합 fetch 도 새 공식으로 동기화.
-  void reloadFromHive() {
+  ///      parse 실패 entry 는 raw 를 그대로 유지.
+  ///   3. Supabase 의 metrics_json 도 성공 entry 에 한해 upsert.
+  Future<void> reloadFromHive() async {
     final parsed = <FaceReadingReport>[];
     final nextJson = <String>[];
+    int droppedExpired = 0;
+    int droppedNull = 0;
+    int failedCount = 0;
     final now = DateTime.now();
-    for (int i = 0; i < _box.length; i++) {
+    final boxLen = _box.length;
+    _log('reload START box.length=$boxLen state.length=${state.length} '
+        'box.values.length=${_box.values.length} '
+        'box.keys=${_box.keys.take(10).toList()}');
+    for (int i = 0; i < boxLen; i++) {
       final json = _box.getAt(i);
-      if (json == null) continue;
+      if (json == null) {
+        droppedNull++;
+        _log('reload SKIP entry $i: json==null');
+        continue;
+      }
+      _log('reload entry $i: len=${json.length} '
+          'head=${json.length > 160 ? json.substring(0, 160) : json}');
       try {
         final report = FaceReadingReport.fromJsonString(json);
-        if (!report.expiresAt.isAfter(now)) continue; // expired → drop
+        final alive = report.expiresAt.isAfter(now);
+        _log('reload entry $i PARSED: expiresAt=${report.expiresAt} '
+            'alive=$alive supabaseId=${report.supabaseId} alias=${report.alias}');
+        if (!alive) {
+          droppedExpired++;
+          _log('reload DROP entry $i: expired (expiresAt=${report.expiresAt})');
+          continue;
+        }
         parsed.add(report);
-        nextJson.add(report.toJsonString()); // slim 재직렬화
+        nextJson.add(report.toJsonString());
       } catch (e, st) {
-        debugPrint('[History] reload FAIL entry $i: $e');
-        debugPrint('[History] reload FAIL stacktrace:\n$st');
-        debugPrint('[History] reload FAIL raw head: '
+        failedCount++;
+        _log('reload FAIL entry $i: $e');
+        _log('reload FAIL stacktrace:\n$st');
+        _log('reload FAIL raw head: '
             '${json.length > 200 ? json.substring(0, 200) : json}');
-        nextJson.add(json); // 원본 raw 보존
+        nextJson.add(json);
       }
     }
-    state = parsed;
-    _box.clear();
-    for (final j in nextJson) {
-      _box.add(j);
+    _log('reload SUMMARY parsed=${parsed.length} expired=$droppedExpired '
+        'null=$droppedNull failed=$failedCount nextJson=${nextJson.length}');
+
+    // 방어: parsed 가 0 인데 기존 state 가 비어있지 않다면 box 재기록 금지.
+    // Hive 가 async flush race 로 비어보이는 경우 전부 날려버리지 않도록.
+    if (parsed.isEmpty && state.isNotEmpty && failedCount == 0) {
+      _log('reload ABORT — box empty but state has ${state.length}. '
+          'Hive async race 의심 — state/box 유지하고 return.');
+      return;
     }
+
+    state = parsed;
+    final cleared = await _box.clear();
+    _log('reload box.clear() done: cleared=$cleared');
+    for (int i = 0; i < nextJson.length; i++) {
+      final key = await _box.add(nextJson[i]);
+      _log('reload box.add[$i] done: key=$key box.length=${_box.length}');
+    }
+    await _box.flush();
+    _log('reload END state=${state.length} box=${_box.length} '
+        'box.values.length=${_box.values.length}');
     for (final r in parsed) {
       if (r.supabaseId != null) {
         SupabaseService().upsertMetricsJson(r).catchError((e) {
-          debugPrint('[History] supabase upsert error: $e');
+          _log('supabase upsert error: $e');
         });
       }
     }
@@ -111,49 +159,82 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
     final reports = <FaceReadingReport>[];
     final survivorJson = <String>[];
     final now = DateTime.now();
-    bool anyExpired = false;
-    bool anyParseError = false;
-    for (int i = 0; i < _box.length; i++) {
+    final boxLen = _box.length;
+    int expiredCount = 0;
+    int failCount = 0;
+    int nullCount = 0;
+    _log('load START box.length=$boxLen box.values.length=${_box.values.length}');
+    for (int i = 0; i < boxLen; i++) {
       final json = _box.getAt(i);
-      if (json == null) continue;
+      if (json == null) {
+        nullCount++;
+        _log('load SKIP entry $i: json==null');
+        continue;
+      }
+      _log('load entry $i: len=${json.length} '
+          'head=${json.length > 160 ? json.substring(0, 160) : json}');
       try {
         final report = FaceReadingReport.fromJsonString(json);
-        if (report.expiresAt.isAfter(now)) {
+        final alive = report.expiresAt.isAfter(now);
+        _log('load entry $i PARSED: expiresAt=${report.expiresAt} '
+            'alive=$alive supabaseId=${report.supabaseId}');
+        if (alive) {
           reports.add(report);
           survivorJson.add(json);
         } else {
-          anyExpired = true;
+          expiredCount++;
+          _log('load DROP entry $i: expired');
         }
       } catch (e, st) {
-        // Parse 실패는 엔진 전환 중 일시적으로 날 수 있다. raw JSON 은 절대
-        // 건드리지 않고 이번 세션에만 skip. 다음 load 에서 다시 시도.
-        debugPrint('[History] load FAIL entry $i: $e');
-        debugPrint('[History] load FAIL stacktrace:\n$st');
-        debugPrint('[History] load FAIL raw head: '
+        failCount++;
+        _log('load FAIL entry $i: $e');
+        _log('load FAIL stacktrace:\n$st');
+        _log('load FAIL raw head: '
             '${json.length > 200 ? json.substring(0, 200) : json}');
-        anyParseError = true;
         survivorJson.add(json);
       }
     }
-    // 실제 만료된 엔트리만 치워서 box 를 정리. parse 실패 entry 는 raw 유지.
+    final anyExpired = expiredCount > 0;
+    final anyParseError = failCount > 0;
+    _log('load SUMMARY alive=${reports.length} expired=$expiredCount '
+        'fail=$failCount null=$nullCount survivor=${survivorJson.length}');
+    // build() 는 sync 이므로 compaction 은 fire-and-forget. log 로 추적.
     if (anyExpired && !anyParseError) {
-      _box.clear();
-      for (final report in reports) {
-        _box.add(report.toJsonString());
-      }
+      _log('load COMPACT scheduled (alive-only) n=${reports.length}');
+      Future(() async {
+        await _box.clear();
+        for (final r in reports) {
+          await _box.add(r.toJsonString());
+        }
+        await _box.flush();
+        _log('load COMPACTED (alive-only) → box=${_box.length}');
+      });
     } else if (anyExpired) {
-      _box.clear();
-      for (final j in survivorJson) {
-        _box.add(j);
-      }
+      _log('load COMPACT scheduled (survivor) n=${survivorJson.length}');
+      Future(() async {
+        await _box.clear();
+        for (final j in survivorJson) {
+          await _box.add(j);
+        }
+        await _box.flush();
+        _log('load COMPACTED (survivor) → box=${_box.length}');
+      });
+    } else {
+      _log('load NO-COMPACT box unchanged=${_box.length}');
     }
     return reports;
   }
 
-  void _saveToHive() {
-    _box.clear();
-    for (final report in state) {
-      _box.add(report.toJsonString());
+  Future<void> _saveToHive() async {
+    _log('save START state=${state.length} prev_box=${_box.length} '
+        'prev_values=${_box.values.length}');
+    final cleared = await _box.clear();
+    _log('save AFTER clear: cleared=$cleared box.length=${_box.length}');
+    for (int i = 0; i < state.length; i++) {
+      final key = await _box.add(state[i].toJsonString());
+      _log('save AFTER add[$i] key=$key box.length=${_box.length}');
     }
+    await _box.flush();
+    _log('save END box=${_box.length} values=${_box.values.length}');
   }
 }

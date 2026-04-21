@@ -75,7 +75,7 @@ class FaceReadingReport {
   // v3 (2026-04-18): Hive 에 capture 만 저장. 해석(nodeScores/attributes/
   // rules/archetype) 은 load 시 현재 엔진으로 재계산. 엔진 버전 업그레이드
   // 가 스토리지에 영향 없음.
-  static const int kReportSchemaVersion = 3;
+  static const int kReportSchemaVersion = 1;
   final int schemaVersion;
 
   // ─── Persistent (Hive 에 저장) ───
@@ -158,5 +158,6 @@ class FaceReadingReport {
 ## 연관 문서
 
 - [OVERVIEW.md](../architecture/OVERVIEW.md) — 전체 파이프라인 설계 (§4 Runtime Pipeline)
+- [HIVE_SCHEMA.md](HIVE_SCHEMA.md) — Hive 저장 포맷 SSOT (v3 capture-only · 17 frontal + 8 lateral key 완전 목록 · 확장 체크리스트)
 - [NORMALIZATION.md](../engine/NORMALIZATION.md) — raw → 5~10 정규화 상세
 - [PLAN.md](../supabase/PLAN.md) — Supabase 연동 계획

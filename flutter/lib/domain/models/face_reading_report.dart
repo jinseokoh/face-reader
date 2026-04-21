@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as dev;
 
 import 'package:face_reader/data/constants/face_reference_data.dart';
 import 'package:face_reader/data/enums/age_group.dart';
@@ -177,12 +178,15 @@ class AttributeEvidence {
 /// 엔진(weight matrix · rule · calibration) 변경은 이 버전을 건드리지 않는다 —
 /// 해석은 Hive 에 저장하지 않고 load 시 현재 엔진으로 재계산되므로 자동으로
 /// 최신 값이 반영된다.
-///
-/// v1: legacy (derived fields 를 Hive 에 함께 저장).
-/// v2: 2026-04-18. Stage 0 preset 도입 등 파이프라인 개편 초기.
-/// v3: 2026-04-18. Hive 에 capture(metric/lateral/flag/faceShape/meta) 만 저장.
-///     nodeScores·attributes·rules·archetype 은 load 시 현재 엔진으로 재계산.
-const int kReportSchemaVersion = 3;
+const int kReportSchemaVersion = 1;
+
+/// fromJsonString 의 각 rehydrate 단계를 trace — parse 실패 시 마지막 로그의
+/// 다음 단계가 범인. `print` 는 rate-limit 없어 반드시 찍힘.
+void _trace(String step) {
+  // ignore: avoid_print
+  print('[Report.rehydrate] $step');
+  dev.log(step, name: 'Report.rehydrate');
+}
 
 class FaceReadingReport {
   final Ethnicity ethnicity;
@@ -298,38 +302,56 @@ class FaceReadingReport {
   /// archetype) 는 현재 엔진으로 **load 시 재계산**한다. 구 버전(v1/v2) 은
   /// 폐기.
   factory FaceReadingReport.fromJsonString(String jsonStr) {
+    _trace('enter len=${jsonStr.length}');
     final j = jsonDecode(jsonStr) as Map<String, dynamic>;
-    final version = (j['schemaVersion'] as num?)?.toInt() ?? 1;
+    _trace('jsonDecode OK keys=${j.keys.toList()}');
+    final version = (j['schemaVersion'] as num?)?.toInt() ?? 0;
+    _trace('schemaVersion=$version (expected $kReportSchemaVersion)');
     if (version != kReportSchemaVersion) {
       throw FormatException(
           'FaceReadingReport schemaVersion mismatch: $version != $kReportSchemaVersion');
     }
 
     // ─── capture 필드 파싱 ───
+    _trace('enum decode: ethnicity=${j['ethnicity']} gender=${j['gender']} '
+        'ageGroup=${j['ageGroup']} source=${j['source']}');
     final ethnicity = Ethnicity.values.byName(j['ethnicity'] as String);
     final gender = Gender.values.byName(j['gender'] as String);
     final ageGroup = AgeGroup.values.byName(j['ageGroup'] as String);
     final isOver50 = ageGroup.isOver50;
+    _trace('enums OK: $ethnicity/$gender/$ageGroup isOver50=$isOver50');
     final rawMetrics = _extractRawMap(j['metrics']);
+    _trace('rawMetrics: ${rawMetrics.length} keys=${rawMetrics.keys.toList()}');
     final rawLateral = j['lateralMetrics'] == null
         ? null
         : _extractRawMap(j['lateralMetrics']);
+    _trace('rawLateral: ${rawLateral?.length ?? "null"} '
+        '${rawLateral?.keys.toList() ?? ""}');
     final faceShapeLabel = j['faceShapeLabel'] as String?;
     final faceShapeConfidence = (j['faceShapeConfidence'] as num?)?.toDouble();
+    _trace('faceShapeLabel=$faceShapeLabel conf=$faceShapeConfidence '
+        'faceShapeRaw=${j['faceShape']}');
     final faceShape = j['faceShape'] is String
         ? FaceShape.values.byName(j['faceShape'] as String)
         : FaceShapeLabel.fromEnglish(faceShapeLabel);
+    _trace('faceShape=$faceShape');
 
     // ─── rawValue → 현재 reference 로 재 z-score ───
     // 저장은 rawValue 만. z/zAdjusted/metricScore 는 현재 ref·age adjustment 로
     // 여기서 100% 재계산된다. reference 를 바꾸면 기존 리포트도 새 ref 기준의
     // 해석을 받는다 — stale-z 고착 버그 차단.
+    _trace('frontalRefs lookup: referenceData[$ethnicity]?=${referenceData[ethnicity] != null} '
+        '[gender]?=${referenceData[ethnicity]?[gender] != null}');
     final frontalRefs = referenceData[ethnicity]![gender]!;
+    _trace('frontalRefs ${frontalRefs.length} keys=${frontalRefs.keys.toList()}');
     final metrics = <String, MetricResult>{};
     final zAdjustedMap = <String, double>{};
     for (final info in metricInfoList) {
       final raw = rawMetrics[info.id];
       if (raw == null) continue; // 구 리포트 누락 metric 은 skip
+      if (frontalRefs[info.id] == null) {
+        _trace('MISS frontalRefs[${info.id}] — throw');
+      }
       final ref = frontalRefs[info.id]!;
       final z = (raw - ref.mean) / ref.sd;
       final zAdj = adjustForAge(info.id, z, gender, isOver50);
@@ -342,17 +364,24 @@ class FaceReadingReport {
         metricScore: convertToScore(zAdj, info.type),
       );
     }
+    _trace('frontal z done: ${metrics.length} metrics');
 
     Map<String, MetricResult>? lateralMetrics;
     Map<String, bool>? lateralFlags;
     final lateralZMap = <String, double>{};
     if (rawLateral != null) {
+      _trace('lateralRefs lookup: lateralReferenceData[$ethnicity]?='
+          '${lateralReferenceData[ethnicity] != null} '
+          '[gender]?=${lateralReferenceData[ethnicity]?[gender] != null}');
       final lateralRefs = lateralReferenceData[ethnicity]![gender]!;
       lateralMetrics = <String, MetricResult>{};
       final lateralScores = <String, int>{};
       for (final info in lateralMetricInfoList) {
         final raw = rawLateral[info.id];
         if (raw == null) continue;
+        if (lateralRefs[info.id] == null) {
+          _trace('MISS lateralRefs[${info.id}] — throw');
+        }
         final ref = lateralRefs[info.id]!;
         final z = (raw - ref.mean) / ref.sd;
         final score = convertToScore(z, info.type);
@@ -366,6 +395,7 @@ class FaceReadingReport {
           metricScore: score,
         );
       }
+      _trace('lateral z done: ${lateralMetrics.length} metrics');
       // Lateral flags — 현재 z 기준으로 재계산 (face_analysis.dart 의 동일 로직).
       final dorsalScore = lateralScores['dorsalConvexity'] ?? 0;
       final nasoLabScore = lateralScores['nasolabialAngle'] ?? 0;
@@ -378,11 +408,14 @@ class FaceReadingReport {
         'saddleNose': dorsalScore <= -3,
         'flatNose': tipProjScore <= -3,
       };
+      _trace('lateralFlags=$lateralFlags');
     }
 
     // ─── derived 재계산 (현재 엔진) ───
     final zForTree = <String, double>{...zAdjustedMap, ...lateralZMap};
+    _trace('scoreTree input ${zForTree.length} z');
     final tree = scoreTree(zForTree);
+    _trace('scoreTree OK');
     final breakdown = deriveAttributeScoresDetailed(
       tree: tree,
       gender: gender,
@@ -392,12 +425,17 @@ class FaceReadingReport {
       faceShape: faceShape,
       shapeConfidence: faceShapeConfidence ?? 0.0,
     );
+    _trace('deriveAttributeScoresDetailed OK');
     final normalizedScores = normalizeAllScores(breakdown.total, gender);
+    _trace('normalizeAllScores OK');
     final archetype = classifyArchetype(normalizedScores, shape: faceShape);
+    _trace('classifyArchetype OK → ${archetype.runtimeType}');
 
     final nodeScores = _rehydrateNodeScores(tree);
     final attributes = _rehydrateAttributeEvidence(breakdown, normalizedScores);
     final rules = _rehydrateRuleEvidence(breakdown);
+    _trace('rehydrate evidence done: nodes=${nodeScores.length} '
+        'attrs=${attributes.length} rules=${rules.length}');
 
     return FaceReadingReport(
       ethnicity: ethnicity,

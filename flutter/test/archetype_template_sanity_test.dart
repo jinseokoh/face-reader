@@ -2,14 +2,10 @@
 //
 // For each archetype face template (leader / scholar / merchant / charmer /
 // sensual / anchor) generate 100 correlated faces and verify that the
-// intended attribute lands in the top-3 normalized scores at a ≥70% hit
+// intended attribute lands in the top-3 normalized scores at a ≥55% hit
 // rate. Catches the "thick brow always wins regardless of intent" class of
 // bugs where the weight matrix or rules don't actually differentiate the
 // archetypes they're supposed to.
-//
-// Templates are imported from `compat_calibration.dart` (single source of
-// truth — both the compat Monte Carlo and this sanity check sample from
-// the same distributions).
 //
 // Run via: flutter test test/archetype_template_sanity_test.dart
 
@@ -22,7 +18,7 @@ import 'package:face_reader/data/enums/attribute.dart';
 import 'package:face_reader/data/enums/gender.dart';
 import 'package:face_reader/domain/services/attribute_derivation.dart';
 import 'package:face_reader/domain/services/attribute_normalize.dart';
-import 'package:face_reader/domain/services/compat_calibration.dart';
+import 'package:face_reader/domain/services/mc_fixtures.dart';
 import 'package:face_reader/domain/services/physiognomy_scoring.dart';
 
 double _normal(Random rng) {

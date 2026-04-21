@@ -197,7 +197,7 @@ Reference 는 East Asian (Korean/Han Chinese) baseline 을 타 인종에도 공�
    8. archetype 분류 (shape-gated special archetype overlay 포함)
           │
           ▼
-FaceReadingReport (schemaVersion=2)
+FaceReadingReport (schemaVersion=1)
    · faceShape (FaceShape enum) + legacy faceShapeLabel/Confidence  (Track 1)
    · attributeScores(10) + breakdown (shapePreset 포함)              (Track 2)
    · lateralMetrics + flags                                           (Track 3)

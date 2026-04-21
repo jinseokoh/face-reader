@@ -102,7 +102,7 @@ Map<Attribute, double> normalizeAllScores(
   return result;
 }
 
-/// Single-attribute normalization — used by partial flows (compat engine)
+/// Single-attribute normalization — used by partial flows
 /// that can't run the full 10-attribute rank step.
 double normalizeScore(double raw, Attribute attr, Gender gender) {
   final pct = _rawToPercentile(raw, attr, gender);

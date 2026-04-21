@@ -79,7 +79,6 @@ Hive 초기화 제거.
 **새 파일: `lib/data/services/supabase_service.dart`**
 - `saveMetrics(FaceReadingReport report)` → metrics에 insert, UUID 반환
 - `getMetrics(String uuid)` → 공유 링크용 단건 조회
-- `getMetricsPair(String uuid1, String uuid2)` → 궁합용 2건 조회
 
 **`face_mesh_page.dart` / `album_preview_page.dart`**
 - 분석 완료 후 `saveMetrics(report)` 호출
@@ -91,7 +90,6 @@ Hive 초기화 제거.
 ### 1.5 카카오 공유하기
 
 - 딥링크 URL: `https://face.whatsupkorea.com/report/{uuid}`
-- 궁합: `https://face.whatsupkorea.com/compat/{uuid1}/{uuid2}`
 
 ### 1.6 딥링크 (Universal Links / App Links)
 

@@ -81,8 +81,8 @@ extension FaceShapeLabel on FaceShape {
   }
 }
 
-/// 한국 성인 얼굴형 분포 — MC calibration(score_calibration / compat_calibration)
-/// 공용. 합 = 1.00. 실사용자 데이터 확보 후 재보정 대상.
+/// 한국 성인 얼굴형 분포 — MC calibration (score_calibration).
+/// 합 = 1.00. 실사용자 데이터 확보 후 재보정 대상.
 const Map<FaceShape, double> koreanShapeDistribution = {
   FaceShape.oval: 0.35,
   FaceShape.oblong: 0.18,

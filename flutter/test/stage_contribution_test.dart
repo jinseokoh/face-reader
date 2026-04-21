@@ -5,9 +5,9 @@
 // zone, organ, palace) per attribute. A dominant stage or a fully dormant
 // stage signals a weight/threshold imbalance.
 //
-// Uses the shared `faceTemplates` (same distribution as compat calibration)
-// because real faces have STRONG metric correlations (e.g. nose ↔ mouth for
-// wealth rules) that independent Gaussian sampling underrepresents.
+// Uses the shared `faceTemplates` because real faces have STRONG metric
+// correlations (e.g. nose ↔ mouth for wealth rules) that independent
+// Gaussian sampling underrepresents.
 //
 // Run via: flutter test test/stage_contribution_test.dart
 
@@ -19,7 +19,7 @@ import 'package:face_reader/data/constants/face_reference_data.dart';
 import 'package:face_reader/data/enums/attribute.dart';
 import 'package:face_reader/data/enums/gender.dart';
 import 'package:face_reader/domain/services/attribute_derivation.dart';
-import 'package:face_reader/domain/services/compat_calibration.dart';
+import 'package:face_reader/domain/services/mc_fixtures.dart';
 import 'package:face_reader/domain/services/physiognomy_scoring.dart';
 
 double _normal(Random rng) {

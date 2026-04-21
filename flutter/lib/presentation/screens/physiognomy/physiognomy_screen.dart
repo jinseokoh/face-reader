@@ -5,7 +5,6 @@ import 'package:face_reader/data/enums/age_group.dart';
 import 'package:face_reader/data/enums/ethnicity.dart';
 import 'package:face_reader/data/enums/gender.dart';
 import 'package:face_reader/domain/models/face_reading_report.dart';
-import 'package:face_reader/presentation/providers/compat_albums_provider.dart';
 import 'package:face_reader/presentation/providers/history_provider.dart';
 import 'package:face_reader/presentation/providers/tab_provider.dart';
 import 'package:face_reader/presentation/screens/home/report_page.dart';
@@ -35,18 +34,6 @@ class _PhysiognomyItem extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final displayName = report.alias ?? _faceShape();
 
-    // 내 얼굴이 history 어딘가에 설정되어 있어야만 궁합 보기 옵션을 노출.
-    // 그리고 내 얼굴 항목 자체에는 궁합 보기 노출 안 함 (자기 자신과 페어링 불가).
-    final hasMyFace = ref.watch(historyProvider).any(
-        (r) => r.source == AnalysisSource.camera && r.isMyFace);
-    final canShowCompat = hasMyFace && !report.isMyFace;
-
-    // Slidable actions:
-    //  - Camera tab + 내 얼굴 자체: 내 얼굴(재설정), 삭제
-    //  - Camera tab + 다른 selfie + 내 얼굴 설정됨: 내 얼굴, 궁합 보기, 삭제
-    //  - Camera tab + 다른 selfie + 내 얼굴 미설정: 내 얼굴, 삭제
-    //  - Album tab + 내 얼굴 설정됨: 궁합 보기, 삭제
-    //  - Album tab + 내 얼굴 미설정: 삭제만
     final actions = <Widget>[];
     if (source == AnalysisSource.camera) {
       actions.add(_slidableAction(
@@ -54,14 +41,6 @@ class _PhysiognomyItem extends ConsumerWidget {
         label: '내 관상',
         bg: Colors.green.shade600,
         onPressed: () => _setMyFace(context, ref),
-      ));
-    }
-    if (canShowCompat) {
-      actions.add(_slidableAction(
-        icon: Icons.favorite,
-        label: '궁합 보기',
-        bg: Colors.indigo.shade600,
-        onPressed: () => _openCompatibility(context, ref),
       ));
     }
     actions.add(_slidableAction(
@@ -239,48 +218,7 @@ class _PhysiognomyItem extends ConsumerWidget {
     );
   }
 
-  void _confirmDeleteWithCompatWarning(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('삭제 확인'),
-        content: const Text(
-            '이 인물과의 궁합 분석 항목도 함께 사라집니다. 정말 삭제하시겠습니까?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('취소', style: TextStyle(color: AppTheme.textHint)),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _doDelete(context, ref);
-            },
-            child: Text('삭제', style: TextStyle(color: Colors.red.shade600)),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _delete(BuildContext context, WidgetRef ref) {
-    // For any item (camera or album) already opted into compat: warn that the
-    // compat row will also disappear.
-    final uuid = report.supabaseId;
-    if (uuid != null && ref.read(compatAlbumsProvider).contains(uuid)) {
-      _confirmDeleteWithCompatWarning(context, ref);
-      return;
-    }
-    _doDelete(context, ref);
-  }
-
-  void _doDelete(BuildContext context, WidgetRef ref) {
-    // Purge any compat opt-in entry tied to this report's uuid (orphan
-    // prevention) — applies to both camera and album sources.
-    final uuid = report.supabaseId;
-    if (uuid != null) {
-      ref.read(compatAlbumsProvider.notifier).remove(uuid);
-    }
     ref.read(historyProvider.notifier).remove(index);
     showTopSnackBar(
       Overlay.of(context),
@@ -384,37 +322,6 @@ class _PhysiognomyItem extends ConsumerWidget {
     return label;
   }
 
-  void _openCompatibility(BuildContext context, WidgetRef ref) {
-    final albumUuid = report.supabaseId;
-    if (albumUuid == null) return;
-    // Prerequisite: 카메라 탭에서 "내 얼굴"이 설정되어 있어야 궁합 화면이 렌더링됨.
-    // 없으면 compatAlbums에 추가해도 궁합 탭은 "내 얼굴 먼저..." gate 메시지로
-    // 막혀서 사용자에겐 "아무 일도 안 일어난" 것처럼 보임 → prerequisite 안내.
-    final hasMyFace = ref.read(historyProvider).any(
-        (r) => r.source == AnalysisSource.camera && r.isMyFace);
-    if (!hasMyFace) {
-      showTopSnackBar(
-        Overlay.of(context),
-        CompactSnackBar.info(
-            message: '먼저 카메라 탭에서 내 얼굴을 분석하고 "내 얼굴"로 설정해주세요'),
-      );
-      return;
-    }
-    final already = ref.read(compatAlbumsProvider).contains(albumUuid);
-    if (already) {
-      showTopSnackBar(
-        Overlay.of(context),
-        CompactSnackBar.info(message: '이미 궁합 항목에 있습니다'),
-      );
-      return;
-    }
-    ref.read(compatAlbumsProvider.notifier).add(albumUuid);
-    showTopSnackBar(
-      Overlay.of(context),
-      CompactSnackBar.success(message: '궁합 항목에 추가되었습니다'),
-    );
-  }
-
   void _setMyFace(BuildContext context, WidgetRef ref) {
     ref.read(historyProvider.notifier).setMyFace(index);
     showTopSnackBar(
@@ -460,10 +367,6 @@ class _PhysiognomyItem extends ConsumerWidget {
   }
 
   void _showBottomMenu(BuildContext context, WidgetRef ref) {
-    final hasMyFace = ref.read(historyProvider).any(
-        (r) => r.source == AnalysisSource.camera && r.isMyFace);
-    final canShowCompat = hasMyFace && !report.isMyFace;
-
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -480,15 +383,6 @@ class _PhysiognomyItem extends ConsumerWidget {
                 onTap: () {
                   Navigator.pop(ctx);
                   _setMyFace(context, ref);
-                },
-              ),
-            if (canShowCompat)
-              ListTile(
-                leading: Icon(Icons.favorite, color: Colors.indigo.shade600),
-                title: const Text('궁합 보기'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _openCompatibility(context, ref);
                 },
               ),
             ListTile(
@@ -656,7 +550,14 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
   /// Pull-to-refresh: Hive capture 은 그대로, 해석만 현재 엔진(weight matrix ·
   /// rule · quantile) 으로 재계산. 새 공식이 기존 리포트에 즉시 반영된다.
   Future<void> _handleRefresh() async {
-    ref.read(historyProvider.notifier).reloadFromHive();
+    // ignore: avoid_print
+    print('[PhysiognomyScreen] pull-to-refresh START');
+    final before = ref.read(historyProvider).length;
+    await ref.read(historyProvider.notifier).reloadFromHive();
+    final after = ref.read(historyProvider).length;
+    // ignore: avoid_print
+    print('[PhysiognomyScreen] pull-to-refresh reloadFromHive returned: '
+        'state before=$before → after=$after');
     // 시각적 feedback 을 위해 최소 latency 유지.
     await Future<void>.delayed(const Duration(milliseconds: 400));
     if (!mounted) return;

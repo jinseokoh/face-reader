@@ -1,370 +1,200 @@
 import 'dart:io';
 
-import 'package:face_reader/core/theme.dart';
-import 'package:face_reader/data/enums/age_group.dart';
-import 'package:face_reader/data/enums/gender.dart';
-import 'package:face_reader/domain/models/face_reading_report.dart';
-import 'package:face_reader/domain/services/compatibility_engine.dart';
-import 'package:face_reader/presentation/providers/compat_albums_provider.dart';
-import 'package:face_reader/presentation/providers/history_provider.dart';
-import 'package:face_reader/presentation/screens/compatibility/compatibility_report_page.dart';
-import 'package:face_reader/presentation/widgets/compact_snack_bar.dart';
-import 'package:face_reader/presentation/widgets/compatibility_info_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_slidable/flutter_slidable.dart';
-import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
-class CompatibilityScreen extends ConsumerWidget {
+import 'package:face_reader/core/theme.dart';
+import 'package:face_reader/domain/models/face_reading_report.dart';
+import 'package:face_reader/domain/services/compat/compat_adapter.dart';
+import 'package:face_reader/domain/services/compat/compat_label.dart';
+import 'package:face_reader/domain/services/compat/compat_narrative.dart';
+import 'package:face_reader/domain/services/compat/compat_pipeline.dart';
+import 'package:face_reader/presentation/providers/history_provider.dart';
+
+/// 궁합 엔진 v1 — 五行·十二宮·五官·三停·陰陽 4-layer hybrid.
+/// 설계 SSOT: `docs/compat/FRAMEWORK.md`.
+class CompatibilityScreen extends ConsumerStatefulWidget {
   const CompatibilityScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final history = ref.watch(historyProvider);
+  ConsumerState<CompatibilityScreen> createState() =>
+      _CompatibilityScreenState();
+}
 
-    final myFace = history
-        .where((r) => r.source == AnalysisSource.camera && r.isMyFace)
-        .toList();
-    // Compat candidates: any non-myFace report (camera selfie or album photo).
-    // Album-only assumption removed.
-    final compatCandidates = history.where((r) => !r.isMyFace).toList();
+class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
+  String? _selectedAlbumId;
+
+  @override
+  Widget build(BuildContext context) {
+    final history = ref.watch(historyProvider);
+    final myFace = history.where((r) => r.isMyFace).cast<FaceReadingReport?>().firstOrNull;
+    final albums =
+        history.where((r) => !r.isMyFace).toList(growable: false);
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text('궁합'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.info_outline),
-            onPressed: () => _showInfoDialog(context),
-          ),
-        ],
-      ),
-      body: _buildBody(context, ref, myFace, compatCandidates),
+      backgroundColor: AppTheme.background,
+      appBar: AppBar(title: const Text('궁합')),
+      body: _buildBody(myFace, albums),
     );
   }
 
-  Widget _buildBody(
-    BuildContext context,
-    WidgetRef ref,
-    List<FaceReadingReport> myFace,
-    List<FaceReadingReport> compatCandidates,
-  ) {
-    final history = ref.watch(historyProvider);
-    final cameraCount =
-        history.where((r) => r.source == AnalysisSource.camera).length;
-    final albumCount =
-        history.where((r) => r.source == AnalysisSource.album).length;
-    final hasMyFace = myFace.isNotEmpty;
-
-    // Only compute compat items once myFace is set — otherwise list is moot.
-    List<FaceReadingReport> compatItems = const [];
-    if (hasMyFace) {
-      final compatAlbums = ref.watch(compatAlbumsProvider);
-      compatItems = [
-        for (final r in history)
-          if (!r.isMyFace &&
-              (r.supabaseId?.isNotEmpty ?? false) &&
-              compatAlbums.contains(r.supabaseId))
-            r,
-      ];
+  Widget _buildBody(FaceReadingReport? myFace, List<FaceReadingReport> albums) {
+    if (myFace == null) {
+      return _guide(
+        '내 얼굴이 설정되어 있지 않습니다.',
+        '히스토리에서 내 얼굴을 선택한 뒤 여기로 돌아오세요.',
+      );
     }
-
-    if (!hasMyFace || compatItems.isEmpty) {
-      return _PrerequisiteStepper(
-        cameraCount: cameraCount,
-        albumCount: albumCount,
-        hasMyFace: hasMyFace,
-        hasCompatItems: compatItems.isNotEmpty,
+    if (albums.isEmpty) {
+      return _guide(
+        '비교할 앨범 얼굴이 없습니다.',
+        '홈에서 한 장 더 캡처한 뒤 궁합을 확인해 보세요.',
       );
     }
 
-    final me = myFace.first;
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: compatItems.length,
-      itemBuilder: (context, index) {
-        final partner = compatItems[index];
-        return _CompatibilityItem(myReport: me, partnerReport: partner);
-      },
-    );
-  }
+    final selected = _resolveSelected(albums);
+    final bundle = selected == null
+        ? null
+        : analyzeCompatibilityFromReports(my: myFace, album: selected);
 
-  void _showInfoDialog(BuildContext context) {
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: 'info',
-      barrierColor: Colors.black54,
-      transitionDuration: const Duration(milliseconds: 400),
-      transitionBuilder: (ctx, anim, secondAnim, child) {
-        return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0, 0.3),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
-          child: FadeTransition(opacity: anim, child: child),
-        );
-      },
-      pageBuilder: (ctx, anim, secondAnim) {
-        final maxH = MediaQuery.of(ctx).size.height * 0.8;
-        return Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: maxH),
-            child: CompatibilityInfoDialog(maxHeight: maxH),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _CompatibilityItem extends ConsumerWidget {
-  final FaceReadingReport myReport;
-  final FaceReadingReport partnerReport;
-
-  const _CompatibilityItem({
-    required this.myReport,
-    required this.partnerReport,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final partnerName =
-        partnerReport.alias ??
-        '${partnerReport.ageGroup.labelKo} ${partnerReport.gender.labelKo} · ${partnerReport.archetype.primaryLabel}';
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Slidable(
-        key: ValueKey(partnerReport.timestamp.toIso8601String()),
-        endActionPane: ActionPane(
-          motion: const DrawerMotion(),
-          children: [
-            CustomSlidableAction(
-              onPressed: (_) => _delete(context, ref),
-              backgroundColor: Colors.red.shade600,
-              foregroundColor: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              padding: EdgeInsets.zero,
-              child: const Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.delete),
-                  SizedBox(height: 4),
-                  Text('삭제', style: TextStyle(fontSize: 12)),
-                ],
-              ),
-            ),
-          ],
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 48),
+      children: [
+        _PersonStrip(my: myFace, album: selected),
+        const SizedBox(height: 12),
+        _AlbumPicker(
+          albums: albums,
+          selectedId: _selectedKey(selected),
+          onSelect: (r) => setState(() {
+            _selectedAlbumId = _selectedKey(r);
+          }),
         ),
-        child: Material(
-          color: AppTheme.surface,
-          borderRadius: BorderRadius.circular(14),
-          child: InkWell(
-            onTap: () => _viewCompatibility(context),
-            onLongPress: () => _showBottomMenu(context, ref),
-            borderRadius: BorderRadius.circular(14),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Icon(
-                    myReport.gender == Gender.female
-                        ? Icons.face_3
-                        : Icons.face_6,
-                    color: AppTheme.textSecondary,
-                    size: 32,
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Icon(
-                      Icons.favorite,
-                      color: Colors.red.shade300,
-                      size: 18,
-                    ),
-                  ),
-                  _buildPartnerAvatar(),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      partnerName,
-                      style: TextStyle(
-                        color: AppTheme.textPrimary,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  Icon(Icons.chevron_right, color: AppTheme.textHint),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
+        const SizedBox(height: 20),
+        if (bundle != null) ...[
+          _TotalHeader(report: bundle.report),
+          const SizedBox(height: 16),
+          _SubScorePanel(report: bundle.report),
+          const SizedBox(height: 20),
+          _NarrativeSections(narrative: bundle.narrative),
+        ] else
+          _guide('앨범을 선택해 주세요.', '위 chip 에서 비교 대상 얼굴을 고르면 해석이 열립니다.'),
+      ],
     );
   }
 
-  Widget _buildPartnerAvatar() {
-    if (partnerReport.thumbnailPath != null) {
-      final file = File(partnerReport.thumbnailPath!);
-      if (file.existsSync()) {
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Image.file(file, width: 32, height: 32, fit: BoxFit.cover),
-        );
+  String _selectedKey(FaceReadingReport? r) =>
+      r?.supabaseId ?? r?.timestamp.toIso8601String() ?? '';
+
+  FaceReadingReport? _resolveSelected(List<FaceReadingReport> albums) {
+    if (_selectedAlbumId != null) {
+      for (final a in albums) {
+        if (_selectedKey(a) == _selectedAlbumId) return a;
       }
     }
-    // Fallback icon: gender face for camera selfies, photo_library for album.
-    final fallbackIcon = partnerReport.source == AnalysisSource.camera
-        ? (partnerReport.gender == Gender.female ? Icons.face_3 : Icons.face_6)
-        : Icons.photo_library;
-    return Icon(fallbackIcon, color: AppTheme.textSecondary, size: 32);
+    return albums.first;
   }
 
-  void _delete(BuildContext context, WidgetRef ref) {
-    // Remove the partner uuid from the compat opt-in set.
-    // The original physiognomy report itself stays intact in 관상 tab.
-    final partnerUuid = partnerReport.supabaseId;
-    if (partnerUuid == null) return;
-    ref.read(compatAlbumsProvider.notifier).remove(partnerUuid);
-    showTopSnackBar(
-      Overlay.of(context),
-      CompactSnackBar.success(message: '궁합 항목이 삭제되었습니다'),
-    );
-  }
-
-  void _showBottomMenu(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Icon(Icons.delete, color: Colors.red.shade600),
-              title: const Text('삭제'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _delete(context, ref);
-              },
-            ),
-          ],
+  Widget _guide(String title, String detail) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.auto_awesome, color: AppTheme.textHint, size: 56),
+              const SizedBox(height: 20),
+              Text(title,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Text(detail,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      color: AppTheme.textSecondary, fontSize: 13, height: 1.5)),
+            ],
+          ),
         ),
-      ),
-    );
-  }
-
-  void _viewCompatibility(BuildContext context) {
-    final result = evaluateCompatibility(myReport, partnerReport);
-    // UUID — always set for new reports (UUID-first architecture).
-    // Fallback to timestamp digits for legacy Hive entries without supabaseId.
-    final partnerUuid =
-        partnerReport.supabaseId ??
-        partnerReport.timestamp.millisecondsSinceEpoch.toString();
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => CompatibilityReportPage(
-          result: result,
-          albumName:
-              partnerReport.alias ??
-              '${partnerReport.ageGroup.labelKo} ${partnerReport.gender.labelKo} · ${partnerReport.archetype.primaryLabel}',
-          albumUuid: partnerUuid,
-          thumbnailPath: partnerReport.thumbnailPath,
-          myThumbnailPath: myReport.thumbnailPath,
-        ),
-      ),
-    );
-  }
+      );
 }
 
-class _PrerequisiteStepper extends StatelessWidget {
-  final int cameraCount;
-  final int albumCount;
-  final bool hasMyFace;
-  final bool hasCompatItems;
+// ─────────────────────────────────────────────────────────────
+// Components
+// ─────────────────────────────────────────────────────────────
 
-  const _PrerequisiteStepper({
-    required this.cameraCount,
-    required this.albumCount,
-    required this.hasMyFace,
-    required this.hasCompatItems,
-  });
+class _PersonStrip extends StatelessWidget {
+  final FaceReadingReport my;
+  final FaceReadingReport? album;
+  const _PersonStrip({required this.my, required this.album});
 
   @override
   Widget build(BuildContext context) {
-    final step1Done = cameraCount >= 1;
-    final step2Done = albumCount >= 1;
-    final step3Done = hasMyFace;
-    final step4Done = hasCompatItems;
+    return Row(
+      children: [
+        Expanded(child: _PersonCard(report: my, label: '我')),
+        const SizedBox(width: 12),
+        const Icon(Icons.compare_arrows, color: AppTheme.textHint),
+        const SizedBox(width: 12),
+        Expanded(
+          child: album == null
+              ? _PersonCard.empty()
+              : _PersonCard(report: album!, label: '彼'),
+        ),
+      ],
+    );
+  }
+}
 
-    int currentStep = 1;
-    if (step1Done) currentStep = 2;
-    if (step1Done && step2Done) currentStep = 3;
-    if (step1Done && step2Done && step3Done) currentStep = 4;
+class _PersonCard extends StatelessWidget {
+  final FaceReadingReport? report;
+  final String label;
+  const _PersonCard({required FaceReadingReport this.report, required this.label});
+  const _PersonCard.empty()
+      : report = null,
+        label = '';
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  @override
+  Widget build(BuildContext context) {
+    final r = report;
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Row(
         children: [
-          const Text(
-            '궁합을 보려면',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.textPrimary,
+          _Thumb(path: r?.thumbnailPath),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label,
+                    style: const TextStyle(
+                        fontFamily: 'SongMyung',
+                        fontSize: 15,
+                        color: AppTheme.accent)),
+                const SizedBox(height: 2),
+                Text(r?.alias ?? (r == null ? '대상 없음' : '이름 없음'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: AppTheme.textPrimary)),
+                if (r != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    '${r.gender.name} · ${r.ageGroup.name} · ${r.faceShape.name}',
+                    style: const TextStyle(
+                        fontSize: 11, color: AppTheme.textSecondary),
+                  ),
+                ],
+              ],
             ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            '아래 네 단계를 순서대로 진행해 주세요.',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppTheme.textSecondary,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 28),
-          _StepRow(
-            number: 1,
-            title: '카메라로 관상 분석',
-            hint: '홈 탭에서, 카메라 열기를 선택해 나의 관상을 분석해 봅니다.',
-            doneLabel: '$cameraCount개 완료',
-            done: step1Done,
-            isCurrent: currentStep == 1,
-            isLast: false,
-          ),
-          _StepRow(
-            number: 2,
-            title: '앨범 사진으로 관상 분석',
-            hint: '홈 탭에서, 앨범 열기를 선택해 상대방의 관상을 분석해 봅니다.',
-            doneLabel: '$albumCount개 완료',
-            done: step2Done,
-            isCurrent: currentStep == 2,
-            isLast: false,
-          ),
-          _StepRow(
-            number: 3,
-            title: '내 관상 지정',
-            hint: '관상 탭에서, 카메라 리스트 아이템을 길게 누르거나 스와이프하여 "내 관상"을 지정합니다.',
-            doneLabel: '지정 완료',
-            done: step3Done,
-            isCurrent: currentStep == 3,
-            isLast: false,
-          ),
-          _StepRow(
-            number: 4,
-            title: '궁합 보기 추가',
-            hint: '관상 탭의 상대방 항목을 길게 누르거나 스와이프하여 "궁합 보기"를 선택합니다.',
-            doneLabel: '목록에 추가됨',
-            done: step4Done,
-            isCurrent: currentStep == 4,
-            isLast: true,
           ),
         ],
       ),
@@ -372,141 +202,266 @@ class _PrerequisiteStepper extends StatelessWidget {
   }
 }
 
-class _StepRow extends StatelessWidget {
-  static const _doneColor = Color(0xFF4CAF50);
+class _Thumb extends StatelessWidget {
+  final String? path;
+  const _Thumb({required this.path});
+  @override
+  Widget build(BuildContext context) {
+    final p = path;
+    final file = p != null ? File(p) : null;
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        color: AppTheme.border,
+        borderRadius: BorderRadius.circular(8),
+        image: file != null && file.existsSync()
+            ? DecorationImage(image: FileImage(file), fit: BoxFit.cover)
+            : null,
+      ),
+      child: file == null || !file.existsSync()
+          ? const Icon(Icons.person, color: AppTheme.textHint)
+          : null,
+    );
+  }
+}
 
-  final int number;
-  final String title;
-  final String hint;
-  final String doneLabel;
-  final bool done;
-  final bool isCurrent;
-  final bool isLast;
-
-  const _StepRow({
-    required this.number,
-    required this.title,
-    required this.hint,
-    required this.doneLabel,
-    required this.done,
-    required this.isCurrent,
-    required this.isLast,
+class _AlbumPicker extends StatelessWidget {
+  final List<FaceReadingReport> albums;
+  final String selectedId;
+  final ValueChanged<FaceReadingReport> onSelect;
+  const _AlbumPicker({
+    required this.albums,
+    required this.selectedId,
+    required this.onSelect,
   });
 
   @override
   Widget build(BuildContext context) {
-    final indicatorColor = done
-        ? _doneColor
-        : (isCurrent ? AppTheme.textPrimary : AppTheme.border);
-    final titleColor = done || isCurrent
-        ? AppTheme.textPrimary
-        : AppTheme.textHint;
-    final hintColor = isCurrent && !done
-        ? AppTheme.textSecondary
-        : AppTheme.textHint;
+    return SizedBox(
+      height: 40,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: albums.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (ctx, i) {
+          final r = albums[i];
+          final id = r.supabaseId ?? r.timestamp.toIso8601String();
+          final sel = id == selectedId;
+          return ChoiceChip(
+            label: Text(r.alias ?? '앨범 ${i + 1}'),
+            selected: sel,
+            onSelected: (_) => onSelect(r),
+          );
+        },
+      ),
+    );
+  }
+}
 
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+class _TotalHeader extends StatelessWidget {
+  final CompatibilityReport report;
+  const _TotalHeader({required this.report});
+  @override
+  Widget build(BuildContext context) {
+    final label = report.label;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Column(
         children: [
-          Column(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: done ? _doneColor : Colors.white,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: indicatorColor, width: 2),
-                ),
-                alignment: Alignment.center,
-                child: done
-                    ? const Icon(Icons.check, color: Colors.white, size: 18)
-                    : Text(
-                        '$number',
-                        style: TextStyle(
-                          color: indicatorColor,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                        ),
-                      ),
-              ),
-              if (!isLast)
-                Expanded(
-                  child: Container(
-                    width: 2,
-                    color: done
-                        ? _doneColor.withValues(alpha: 0.35)
-                        : AppTheme.border,
+          Text(label.hanja,
+              style: const TextStyle(
+                  fontFamily: 'SongMyung',
+                  fontSize: 26,
+                  color: AppTheme.textPrimary,
+                  letterSpacing: 4)),
+          const SizedBox(height: 4),
+          Text(label.korean,
+              style: const TextStyle(
+                  fontSize: 13,
+                  color: AppTheme.textSecondary,
+                  letterSpacing: 2)),
+          const SizedBox(height: 14),
+          Text(report.total.toStringAsFixed(0),
+              style: const TextStyle(
+                  fontSize: 56,
+                  fontWeight: FontWeight.w300,
+                  color: AppTheme.textPrimary,
+                  height: 1)),
+          const SizedBox(height: 4),
+          const Text('/ 99',
+              style: TextStyle(fontSize: 12, color: AppTheme.textHint)),
+          const SizedBox(height: 10),
+          Text('${report.myElement.primary.hanja}形  '
+              '×  ${report.albumElement.primary.hanja}形  '
+              '— ${report.elementRelation.kind.hanja}',
+              style: const TextStyle(
+                  fontSize: 13, color: AppTheme.accent, letterSpacing: 1.5)),
+        ],
+      ),
+    );
+  }
+}
+
+class _SubScorePanel extends StatelessWidget {
+  final CompatibilityReport report;
+  const _SubScorePanel({required this.report});
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = <_SubRow>[
+      _SubRow('五形和', report.sub.elementScore, 0.20),
+      _SubRow('宮位調', report.sub.palaceScore, 0.40),
+      _SubRow('氣質合', report.sub.qiScore, 0.25),
+      _SubRow(
+        '情性諧',
+        report.sub.intimacyScore,
+        0.15,
+        muted: !report.intimacy.gateActive,
+      ),
+    ];
+    return Column(
+      children: [for (final r in rows) _SubBar(row: r)],
+    );
+  }
+}
+
+class _SubRow {
+  final String label;
+  final double value;
+  final double weight;
+  final bool muted;
+  _SubRow(this.label, this.value, this.weight, {this.muted = false});
+}
+
+class _SubBar extends StatelessWidget {
+  final _SubRow row;
+  const _SubBar({required this.row});
+  @override
+  Widget build(BuildContext context) {
+    final frac = (row.value.clamp(0, 99) / 99.0).toDouble();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 64,
+            child: Text(row.label,
+                style: TextStyle(
+                    fontFamily: 'SongMyung',
+                    fontSize: 13,
+                    color: row.muted
+                        ? AppTheme.textHint
+                        : AppTheme.textPrimary)),
+          ),
+          Expanded(
+            child: Stack(
+              children: [
+                Container(
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: AppTheme.border,
+                    borderRadius: BorderRadius.circular(5),
                   ),
                 ),
-            ],
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(bottom: isLast ? 0 : 20),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: isCurrent && !done
-                      ? AppTheme.surface
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            title,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: titleColor,
-                            ),
-                          ),
-                        ),
-                        if (done)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _doneColor.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              doneLabel,
-                              style: const TextStyle(
-                                color: _doneColor,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                      ],
+                FractionallySizedBox(
+                  widthFactor: frac,
+                  child: Container(
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: row.muted ? AppTheme.textHint : AppTheme.accent,
+                      borderRadius: BorderRadius.circular(5),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      hint,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: hintColor,
-                        height: 1.5,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 48,
+            child: Text(
+              row.muted ? '— · ${(row.weight * 100).toInt()}%' :
+                  '${row.value.toStringAsFixed(0)} · ${(row.weight * 100).toInt()}%',
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                  fontSize: 11, color: AppTheme.textSecondary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NarrativeSections extends StatelessWidget {
+  final CompatNarrative narrative;
+  const _NarrativeSections({required this.narrative});
+
+  static const _titles = [
+    '總評',
+    '五形相配',
+    '宮位照應',
+    '氣質合章',
+    '情性之合',
+    '長久之道',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final bodies = <String>[
+      narrative.overview,
+      narrative.elementSection,
+      narrative.palaceSection,
+      narrative.qiSection,
+      if (narrative.intimacySection != null) narrative.intimacySection!,
+      narrative.longTermSection,
+    ];
+    final titleOffsets = narrative.intimacySection == null
+        ? const [0, 1, 2, 3, 5]
+        : const [0, 1, 2, 3, 4, 5];
+    return Column(
+      children: [
+        for (int i = 0; i < bodies.length; i++)
+          _NarrativeCard(title: _titles[titleOffsets[i]], body: bodies[i]),
+      ],
+    );
+  }
+}
+
+class _NarrativeCard extends StatelessWidget {
+  final String title;
+  final String body;
+  const _NarrativeCard({required this.title, required this.body});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title,
+              style: const TextStyle(
+                  fontFamily: 'SongMyung',
+                  fontSize: 16,
+                  color: AppTheme.textPrimary,
+                  letterSpacing: 3)),
+          const SizedBox(height: 10),
+          Text(body,
+              style: const TextStyle(
+                  fontSize: 14, color: AppTheme.textPrimary, height: 1.7)),
         ],
       ),
     );

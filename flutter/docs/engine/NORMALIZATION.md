@@ -103,7 +103,7 @@ v10 은 최소 rank-기여 spread 가 2.0 (v9 의 3.0 → 2.0). calibration 이 
 - **Bar chart 가독성**: 10 속성이 동일 스케일이라 높낮이 즉시 구분
 - **직관 해석**: "7.5 = 상위 25%" 같이 사용자가 숫자를 바로 해석
 - **Archetype 선명화**: top 2 속성이 뚜렷하게 추출되어 archetype intro 텍스트가 의미 있음
-- **Compat 비교 공정**: 두 사람 attribute 를 같은 스케일로 비교 → 궁합 점수 공평
+- **속성 간 공정 비교**: 모든 속성이 같은 스케일 → 부위별/속성별 상대 비교 의미 있음
 
 ### 4.2 엔진 측면
 
@@ -130,7 +130,6 @@ flutter test test/calibration_test.dart
 
 - `archetype_fairness_test.dart` — archetype 분포 공정성
 - `score_distribution_test.dart` — spread / saturation
-- `compat_label_fairness_test.dart` — 궁합 라벨 분포
 
 **재생성 설정** (engine v2, 2026-04-18): 20,000 샘플, seed=42. 상관 sampler:
 - base: N(0, 0.85)

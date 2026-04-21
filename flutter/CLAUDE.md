@@ -1,8 +1,8 @@
 # Face Reader — Claude Code 오리엔테이션
 
-관상 분석 Flutter 앱. MediaPipe Face Mesh(468 landmarks) 을 입력으로 17 frontal + 8 lateral metric → z-score → 14-node tree → 10 attribute → archetype · compat 까지 일관된 파이프라인.
+관상 분석 Flutter 앱. MediaPipe Face Mesh(468 landmarks) 을 입력으로 17 frontal + 8 lateral metric → z-score → 14-node tree → 10 attribute → archetype 까지 일관된 관상 파이프라인. 궁합은 관상 엔진과 **동등한 별도 엔진**으로 전통 관상학(五行·十二宮·五官·三停·陰陽) grounded 재설계 중 — 설계 SSOT: `docs/compat/FRAMEWORK.md`.
 
-마지막 업데이트: 2026-04-20 (engine v2.9)
+마지막 업데이트: 2026-04-21 (engine v2.9 · compat v1 재설계 착수)
 
 ---
 
@@ -12,13 +12,12 @@
 
 ### 엔진 버전 스냅샷 (2026-04-20)
 
-- **engine v2.9** · narrative v3 · Hive schemaVersion 3
+- **engine v2.9** · narrative v3 · Hive schemaVersion 1
 - Stage 0 shape preset: **철수** (raw score 에 얼굴형 관여 0)
 - 매력도 Stage 1b distinctiveness: **철수** (bell 제거)
 - 얼굴형 은 archetype shape-gated overlay + narrative Layer B 에만 남음
 - MC sampler **bias=0.0, std=1.0** (N=14 eastAsian female 30s 실사용자 empirical z 가 N(0,1) 에 수렴하도록 ref 재보정 완료)
 - eastAsian female reference 19 metric mean 재조정 (faceAspectRatio 1.35→1.30, midFaceRatio 0.30→0.32, cheekboneWidth 0.90→0.93 등)
-- compat threshold 85/72/64 (v2.9 美人相 rule 도입 후 MC p90/p60/p30 재계산)
 - 美人相 rule set (v2.9): Z-NG 五官端正, O-MM 桃花眼, O-EM2 眉目清秀, O-RL 朱唇小口, O-CKE 顴骨突過(-), O-EZ 目偏不正(-), P-MJ 印堂明潤. 麻衣相法·神相全編 grounded
 - 매력도 narrowing: O-EM 임계 0.5→1.0 + attractiveness 제거, Z-07/Z-09/P-03/Z-LFR 의 attractiveness 부분 제거
 
@@ -38,24 +37,24 @@
 - `test/shape_archetype_bias_test.dart` — 5 shape × 2000 샘플 → 각 shape 의 top-1 attr 분포 < 35%. shape-bound archetype 편향 부활 차단.
 - `test/archetype_template_sanity_test.dart` — 6 template hit rate ≥ 55% (rule cap 으로 template 차별 신호 약화를 의도적으로 허용).
 - `test/score_distribution_test.dart` — spread invariant, saturation < 5%.
-- `test/compat_label_fairness_test.dart` — 10/30/30/30 ± 5%, thresholds **85/72/64** (v2.9 재보정).
 - `test/evidence_snapshot_test.dart` — 고정 z-map 에 대한 rule/score/contributor 완전 snapshot.
 - `test/real_users_recalibration_test.dart` — N=14 실사용자 empirical z 분포 + archetype concentration 진단 (현재 max 28.6% = 4/14).
 
-### 이번 세션 완료 (uncommitted, 2026-04-20)
+### 이번 세션 완료 (uncommitted, 2026-04-21)
 
-- **engine v2.9 문서 동기화** — `docs/engine/ATTRIBUTES.md` §4 Zone/Organ/Palace 표 전면 갱신(21/24/9 행, 麻衣相法·神相全編 근거 열 포함), `CLAUDE.md` snapshot·invariant·threshold v2.9 승격.
-- **compat 리포트 썸네일 좌우 재배치** — `compatibility_report_page.dart` 에 `myThumbnailPath` 필드 추가, 좌상단=내 사진 / 우상단=상대 사진 배치. `compatibility_screen.dart` 에서 `myReport.thumbnailPath` 배선.
-- **앨범 picker cancel snackbar 잔존 버그 수정** — `home_screen.dart` 정면·측면 cancel 경로 + error catch 에 `_dismissTopMessage()` 삽입.
-- **pull-to-refresh state 증발 — 진단 계측 삽입** — `history_provider.dart` `_loadFromHive`/`reloadFromHive` catch 블록에 stacktrace + raw head 200자 `debugPrint` 삽입. (근본 fix 는 P0 참고)
+- **궁합 엔진 전면 재설계 착수** — `docs/compat/FRAMEWORK.md` SSOT 작성 (五行 body classifier + 十二宮 state engine + 五官/三停/陰陽 pair matcher · 4-layer hybrid · 6-section narrative · 재보정 절차). 麻衣相法·神相全編·柳莊相法·水鏡集 grounded.
+- **레거시 궁합 자산 완전 dump** — `compatibility_engine.dart` · `compat_calibration.dart` · `compatibility_result.dart` · `compatibility_text_blocks.dart` · `compatibility_report_page.dart` · `compat_albums_provider.dart` · `compatibility_info_dialog.dart` · 관련 test 3 종 · `docs/engine/COMPATIBILITY.md` 전부 삭제. MC face template 은 `lib/domain/services/mc_fixtures.dart` 로 추출 (physiognomy 테스트가 공용).
+- **궁합 탭 stub** — `compatibility_screen.dart` 를 "재설계 중" placeholder 로 교체 (app.dart bottom nav 그대로).
+- **Hive `compat_albums` box 제거** · **Supabase `getMetricsPair` 제거** · 부수 provider/UI ref 전부 정리.
 
-`flutter analyze` clean, 110 test green, compat label 분포 29.1/27.9/32.6/10.3% (±5% 게이트 내).
+`flutter analyze` clean (0 error, pre-existing warning 4 종만 잔존), **102 test 전부 green**.
 
 ### 다음 작업 (우선순위순)
 
 | 우선 | 작업 | 근거 | 재개 지시 |
 |---|---|---|---|
-| P0 | **이번 세션 4종 변경 커밋 분리** | uncommitted 상태로 다음 세션 넘기지 말 것. docs / compat ui / snackbar fix / history diagnostics 4개의 atomic commit 으로 분리 | `"git add -p 로 (1) docs/engine/ATTRIBUTES.md + CLAUDE.md — engine v2.9 sync, (2) compat report 썸네일 좌우 재배치, (3) 앨범 picker cancel snackbar dismiss, (4) history_provider reload/load FAIL stacktrace 로깅. 커밋 메시지는 최근 '<pending> engine v2.8 …' 스타일"` |
+| P0 | **이번 세션 커밋 분리** | uncommitted 상태로 다음 세션 넘기지 말 것. 크게 (a) 궁합 엔진 dump + docs/compat SSOT + stub, (b) engine v2.9 문서 동기화, (c) pull-to-refresh 진단 로깅, (d) 앨범 picker cancel snackbar fix 로 분리 | `"git add -p 로 위 4 묶음 atomic 커밋. '<pending> compat v1 재설계 · 레거시 dump + FRAMEWORK SSOT' 스타일"` |
+| P1 | **궁합 엔진 P2 — 五行 body classifier 구현** | `lib/domain/services/compat/` 하위 신규 파일군. `docs/compat/FRAMEWORK.md` §2 z-score weighted formula 그대로. distribution test 로 5 element 고르게 나오는지 검증 | `"docs/compat/FRAMEWORK.md §2 읽고 five_element_classifier.dart + test/compat/five_element_distribution_test.dart 작성"` |
 | P0 | **pull-to-refresh state 증발 root-cause 고정** | 진단 로그는 삽입 완료. 실기에서 재현 후 stacktrace 확보가 필요. `fromJsonString` 이 rawValue→엔진 재계산 도중 어느 라인에서 터지는지 정확히 짚어야 함 | `"실기 앱 run → 관상 tab 에서 pull-to-refresh → 콘솔의 [History] reload FAIL entry N: … + stacktrace + raw head 전부 수집. 해당 라인 원인 제거 + reloadFromHive 가 parse 실패 시 in-memory state entry 드롭하지 않도록 방어(현재는 parsed 만 state 로 커밋 → 실패 entry 소멸). 관건은 'Hive raw 보존' 은 이미 되어 있으니 state 쪽 보수적 업데이트만 추가"` |
 | P0 | **실사용자 N 확장** (현 N=14 eastAsian female 30s → ≥100 전 demographic) | v2.8 은 단일 demographic 14 명으로 ref 재보정. 남·타 ethnicity·age 는 아직 idealized MC 기반 | `"test/fixtures/real_users_*.json 에 male/caucasian/40s 등 추가 수집 후 real_users_recalibration_test.dart 로 per-demographic 재보정"` |
 | P1 | **Per-shape quantile 테이블** (Opt-D) | oval/oblong/round/square/heart 각각 독립 quantile 로 shape-conditional bias 근본 제거 | `"attribute_normalize.dart 에 _attrQuantilesByShape 도입. 각 shape 당 21-point × 10 attr × 2 gender. MC sampler 에 shape 드로우 stratification 추가."` |
@@ -72,7 +71,7 @@
 83c9e35 intel/stability weight matrix 분산 + Z-01 재축소
 e11fd99 shape-bound archetype 편향 제거 (v2.3 rule mag)
 821b3d7 음양 축 + 귀(ear) UI 제거
-811c205 Hive capture-only (schemaVersion 3)
+811c205 Hive capture-only (schemaVersion)
 3848e4d Stage 0 preset + 매력도 bell 철수
 ```
 
@@ -117,7 +116,6 @@ lib/
 │   │   ├── face_reference_data.dart           # 17 frontal + 8 lateral 기준값 (6 ethnicity × 2 gender) — SSOT
 │   │   ├── archetype_text_blocks.dart         # Archetype intro / special archetype 본문
 │   │   ├── rule_text_blocks.dart              # Rule ID → 본문 매핑
-│   │   └── compatibility_text_blocks.dart     # Compat 섹션별 variant 풀
 │   ├── enums/                                 # Attribute, Gender, AgeGroup, Ethnicity, MetricType
 │   ├── repositories/metaphor_repository.dart  # Rule → 은유 텍스트 매칭
 │   └── services/
@@ -128,7 +126,6 @@ lib/
 │   │   ├── physiognomy_tree.dart              # 14 node 구조 SSOT (docs/engine/TAXONOMY.md)
 │   │   ├── face_analysis.dart                 # analyzeFaceReading() — 엔드투엔드 파이프라인
 │   │   ├── face_reading_report.dart           # rich evidence schema (아래 참조)
-│   │   └── compatibility_result.dart
 │   └── services/
 │       ├── face_metrics.dart                  # 17 frontal ratio/angle/shape
 │       ├── face_metrics_lateral.dart          # 8 lateral 3/4-view + yaw classify
@@ -138,8 +135,7 @@ lib/
 │       ├── attribute_normalize.dart           # 성별 quantile → 5.0~10.0 normalize
 │       ├── score_calibration.dart             # Monte Carlo 기반 quantile table 생성
 │       ├── archetype.dart                     # 10 attribute → top-2 기반 archetype
-│       ├── compat_calibration.dart            # Compat 라벨 threshold Monte Carlo
-│       ├── compatibility_engine.dart          # 페어 리포트 비교
+│       ├── mc_fixtures.dart                   # 공용 6 face template (physiognomy MC 테스트)
 │       ├── report_assembler.dart              # 본문 조립 래퍼 (intro/closing + life questions)
 │       ├── life_question_narrative.dart       # 인생 질문 8섹션 서술 v2 (Beat-Fragment Grammar, face-hash seed)
 │       └── age_adjustment.dart                # 50+ 보정
@@ -151,12 +147,12 @@ lib/
     │   │   ├── face_mesh_page.dart            # 카메라 + mesh overlay + 2단계 캡처
     │   │   ├── album_preview_page.dart        # 앨범 모드 preview/confirm
     │   │   └── report_page.dart               # 리포트 UI + 속성 expand + 14-node tree
-    │   ├── compatibility/                     # compat picker + report
+    │   ├── compatibility/                     # compat 탭 stub (신규 엔진은 docs/compat/FRAMEWORK.md P2~P7 에서 제작)
     │   └── physiognomy/                       # 관상 설명 스크린
     └── widgets/
 
 docs/                                           # 모든 문서 — 진입은 README.md
-test/                                           # 73 tests (calibration, fairness, spread, compat 라벨 분포, …)
+test/                                           # 102 tests (calibration, fairness, spread, invariant snapshots, …)
 ```
 
 ## Report Schema (rich evidence)
@@ -331,9 +327,8 @@ flutter test test/calibration_test.dart
 출력된 21-point map 을 `attribute_normalize.dart` 의 `_attrQuantilesMale` / `_attrQuantilesFemale` 에 붙여 넣고, 하위 테스트 green 확인:
 
 - `archetype_fairness_test.dart` — archetype 분포 공정성
-- `archetype_template_sanity_test.dart` — 6 template 별 ≥70% hit
+- `archetype_template_sanity_test.dart` — 6 template 별 ≥55% hit
 - `score_distribution_test.dart` — spread ≥ 3.0, saturation < 5%
-- `compat_label_fairness_test.dart` — 10/30/30/30 분포 (thresholds 85/72/64, 2026-04-20 v2.9 재보정)
 
 ## Platform Setup
 
