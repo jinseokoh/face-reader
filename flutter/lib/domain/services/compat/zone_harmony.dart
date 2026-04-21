@@ -115,41 +115,49 @@ ZoneHarmony matchZoneHarmony({
   final ml = my[FaceZone.lower]!;
   final al = album[FaceZone.lower]!;
 
-  // ── 상정 ──
+  // ── 상정 (이마·사상·배움) ──
   if (_bothStrong(mu, au)) {
     add('ZP-UP-BOTH-STRONG', 6,
-        '上停雙聳 — 사상과 학문의 대화가 공명하는 관계.');
+        '두 분 다 이마가 훤히 트여, 책·뉴스·관심 분야 대화가 자연스럽게 오가는 관계입니다.');
   } else if (_bothWeak(mu, au)) {
-    add('ZP-UP-BOTH-WEAK', -12, '上停雙薄 — 큰 그림을 함께 그리기 어려운 조합.');
+    add('ZP-UP-BOTH-WEAK', -12,
+        '두 분 다 이마가 얇아, 장기 계획이나 큰 그림을 함께 세우는 데 서툰 편입니다.');
   } else if (_oneStrongOneBal(mu, au)) {
-    add('ZP-UP-ONE-STRONG', 3, '上停一聳 — 한 쪽의 이상이 관계를 이끕니다.');
+    add('ZP-UP-ONE-STRONG', 3,
+        '한 분의 이마가 유독 트여 있어, 그 쪽이 관계의 방향과 이상을 이끌어 가는 모양입니다.');
   } else if (_oneStrongOneWeak(mu, au)) {
-    add('ZP-UP-CROSS', 0, '上停高低 — 사상 격차가 서로에게 자극이 됩니다.');
+    add('ZP-UP-CROSS', 0,
+        '이마 발달 정도 차이가 커, 가치관과 배움의 속도 차이가 서로에게 자극이 됩니다.');
   }
 
-  // ── 중정 (의지) ──
+  // ── 중정 (광대·코·의지·추진력) ──
   if (_bothStrong(mm, am)) {
     add('ZP-MID-BOTH-STRONG', -6,
-        '中停雙峻 — 의지끼리 부딪혀 주도권 다툼이 생기기 쉽습니다.');
+        '두 분 다 얼굴 중간이 강해, 의지끼리 부딪혀 주도권 다툼이 자주 생기는 조합입니다.');
   } else if (_bothWeak(mm, am)) {
-    add('ZP-MID-BOTH-WEAK', -10, '中停雙薄 — 일 추진력이 함께 느슨해지는 경향.');
+    add('ZP-MID-BOTH-WEAK', -10,
+        '두 분 다 중간 얼굴이 약해, 일 추진력이 함께 느슨해져 결정이 자꾸 미뤄지는 경향이 있습니다.');
   } else if (_oneStrongOneBal(mm, am)) {
     add('ZP-MID-ONE-STRONG', 6,
-        '中停一主 — 한 쪽이 의지의 축이 되어 실행의 바퀴가 구릅니다.');
+        '한 분이 뚜렷한 추진력을 쥐고 있어, 실행의 축을 잡아 주는 구도입니다.');
   } else if (_oneStrongOneWeak(mm, am)) {
-    add('ZP-MID-CROSS', 2, '中停高低 — 의지 격차가 역할 분담을 자연스럽게 만듭니다.');
+    add('ZP-MID-CROSS', 2,
+        '추진력 격차가 커서, 자연스럽게 리드와 서포트 역할이 나뉘는 관계입니다.');
   }
 
-  // ── 하정 (정·애정) ──
+  // ── 하정 (턱·입·정·애정) ──
   if (_bothStrong(ml, al)) {
     add('ZP-LO-BOTH-STRONG', 8,
-        '下停雙厚 — 정과 애정이 공명해 가정의 온기가 깊어집니다.');
+        '두 분 다 턱이 두텁고 단단해, 가족·자녀·가까운 이에 대한 정이 함께 깊은 조합입니다.');
   } else if (_bothWeak(ml, al)) {
-    add('ZP-LO-BOTH-WEAK', -18, '下停雙薄 — 애정 표현이 함께 수줍은 조합.');
+    add('ZP-LO-BOTH-WEAK', -18,
+        '두 분 다 턱이 얇아, 애정 표현과 감정 나눔이 함께 수줍어 오해가 쌓이기 쉬운 조합입니다.');
   } else if (_oneStrongOneBal(ml, al)) {
-    add('ZP-LO-ONE-STRONG', 4, '下停一厚 — 한 쪽의 따뜻함이 둘 사이를 채웁니다.');
+    add('ZP-LO-ONE-STRONG', 4,
+        '한 분의 턱이 두터워, 그 쪽의 따뜻함이 둘 사이의 정을 채워 주는 모양입니다.');
   } else if (_oneStrongOneWeak(ml, al)) {
-    add('ZP-LO-CROSS', 0, '下停互補 — 정의 농도가 달라 배움이 생깁니다.');
+    add('ZP-LO-CROSS', 0,
+        '정의 농도가 서로 달라, 오히려 애정 표현 방식을 서로에게서 배우게 됩니다.');
   }
 
   // ── 교차 구조 pattern (상정×하정 대각) ──
@@ -158,13 +166,14 @@ ZoneHarmony matchZoneHarmony({
   final crossDiag2 = au.isStrong && ml.isStrong && !mm.isStrong && !am.isStrong;
   if (crossDiag1 || crossDiag2) {
     add('ZP-XC-UP-DOWN', 8,
-        '上下交暉 — 한 쪽의 이상과 다른 쪽의 정이 드라마틱하게 맞물립니다.');
+        '한 분은 이마(이상), 다른 분은 턱(정)이 강해, 큰 그림과 살림 감각이 정확히 맞물리는 구도입니다.');
   }
 
   // ── 전 zone mirror / complement ──
   final allMirror = _mirror(mu, au) && _mirror(mm, am) && _mirror(ml, al);
   if (allMirror && (mu.isStrong || mu.isWeak)) {
-    add('ZP-MIRROR-ALL', 6, '三停相映 — 사상·의지·정이 모두 닮아 빠르게 통합니다.');
+    add('ZP-MIRROR-ALL', 6,
+        '이마·중간·턱 세 구획이 모두 닮아, 말하지 않아도 통하는 순간이 자주 만들어집니다.');
   }
 
   final allComplement = (mu.level != au.level) &&
@@ -172,7 +181,7 @@ ZoneHarmony matchZoneHarmony({
       (ml.level != al.level);
   if (allComplement) {
     add('ZP-COMPLEMENT-ALL', 6,
-        '三停互補 — 세 zone 이 서로 정반대라 드라마틱한 상보 관계.');
+        '세 구획이 모두 서로 정반대라, 한 사람의 약점을 다른 사람이 정확히 채워 주는 상보 관계입니다.');
   }
 
   // cap.

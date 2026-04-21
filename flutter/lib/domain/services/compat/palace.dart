@@ -47,6 +47,7 @@ enum Palace {
 }
 
 extension PalaceLabel on Palace {
+  /// 한자 4자 고전 표기 (옛 문헌 인용 또는 괄호 보조용).
   String get hanja {
     switch (this) {
       case Palace.life:
@@ -73,6 +74,96 @@ extension PalaceLabel on Palace {
         return '福德宮';
       case Palace.parents:
         return '父母宮';
+    }
+  }
+
+  /// 한국어 이름. 해설문 본문에서 이 이름을 우선 쓴다.
+  String get korean {
+    switch (this) {
+      case Palace.life:
+        return '명궁';
+      case Palace.wealth:
+        return '재백궁';
+      case Palace.sibling:
+        return '형제궁';
+      case Palace.property:
+        return '전택궁';
+      case Palace.children:
+        return '남녀궁';
+      case Palace.slave:
+        return '노복궁';
+      case Palace.spouse:
+        return '부부궁';
+      case Palace.illness:
+        return '질액궁';
+      case Palace.migration:
+        return '천이궁';
+      case Palace.career:
+        return '관록궁';
+      case Palace.fortune:
+        return '복덕궁';
+      case Palace.parents:
+        return '부모궁';
+    }
+  }
+
+  /// 얼굴 위 어디에 있는 궁인지 한 줄 설명. 처음 언급될 때만 쓴다.
+  String get locationKo {
+    switch (this) {
+      case Palace.life:
+        return '미간 가운데';
+      case Palace.wealth:
+        return '코 전체';
+      case Palace.sibling:
+        return '눈썹';
+      case Palace.property:
+        return '눈과 눈썹 사이';
+      case Palace.children:
+        return '눈 아래 와잠 부근';
+      case Palace.slave:
+        return '턱 옆면';
+      case Palace.spouse:
+        return '눈꼬리 바깥';
+      case Palace.illness:
+        return '콧대 뿌리(산근)';
+      case Palace.migration:
+        return '관자놀이';
+      case Palace.career:
+        return '이마 한가운데';
+      case Palace.fortune:
+        return '이마 위 좌우';
+      case Palace.parents:
+        return '이마 윗부분 좌우';
+    }
+  }
+
+  /// 그 궁이 맡은 삶의 영역. 해설 본문에서 "무엇을 보는 궁인지" 안내에 쓴다.
+  String get domainKo {
+    switch (this) {
+      case Palace.life:
+        return '일상의 기개와 결단';
+      case Palace.wealth:
+        return '재물과 축적';
+      case Palace.sibling:
+        return '형제·동료와의 정';
+      case Palace.property:
+        return '주거와 가정의 안정';
+      case Palace.children:
+        return '자녀와 친밀함';
+      case Palace.slave:
+        return '주변 사람·인맥';
+      case Palace.spouse:
+        return '배우자와의 인연';
+      case Palace.illness:
+        return '건강과 체력';
+      case Palace.migration:
+        return '이주와 바깥 활동';
+      case Palace.career:
+        return '직업과 사회적 지위';
+      case Palace.fortune:
+        return '복과 여유';
+      case Palace.parents:
+        return '부모와의 인연';
     }
   }
 }

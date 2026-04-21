@@ -28,6 +28,20 @@ extension CompatOrganLabel on CompatOrgan {
         return '口';
     }
   }
+
+  /// 한국어 이름. 해설문에서 이걸 우선 쓴다.
+  String get korean {
+    switch (this) {
+      case CompatOrgan.eyebrow:
+        return '눈썹';
+      case CompatOrgan.eye:
+        return '눈';
+      case CompatOrgan.nose:
+        return '코';
+      case CompatOrgan.mouth:
+        return '입';
+    }
+  }
 }
 
 class OrganPairEvidence {
@@ -207,28 +221,28 @@ const List<OrganRule> organRules = [
     organ: CompatOrgan.eyebrow,
     matcher: _brBothThick,
     delta: -8,
-    verdict: '雙濃相對 — 의지 둘이 맞부딪혀 불꽃이 잦습니다.',
+    verdict: '두 분 모두 눈썹(眉)이 짙고 굵어 의지가 강한 쪽끼리 만난 모양입니다. 서로 자기 뜻을 꺾지 않으려 해 작은 일에서도 불꽃이 자주 일 수 있으니, 한 박자 쉬고 듣는 연습이 관계를 지켜 줍니다.',
   ),
   OrganRule(
     id: 'OP-BR-THICK-THIN',
     organ: CompatOrgan.eyebrow,
     matcher: _brThickThin,
     delta: 14,
-    verdict: '一濃一淡 — 이끄는 이와 따르는 이의 호흡이 자연스럽습니다.',
+    verdict: '한 분은 짙은 눈썹, 다른 분은 맑고 가는 눈썹입니다. 이끄는 이와 따라가는 이의 결이 자연스럽게 나뉘어 역할 분담이 편안하게 맞물리는 조합입니다.',
   ),
   OrganRule(
     id: 'OP-BR-BOTH-BALANCED',
     organ: CompatOrgan.eyebrow,
     matcher: _brBothBalanced,
     delta: 6,
-    verdict: '眉宇調和 — 감정이 극단으로 치우치지 않는 조합.',
+    verdict: '두 분의 눈썹이 모두 적당한 농도로 단정합니다. 감정이 한쪽 극단으로 치우치지 않아 일상이 잔잔히 흐르기 좋은 상(相)입니다.',
   ),
   OrganRule(
     id: 'OP-BR-BOTH-BRIGHT',
     organ: CompatOrgan.eyebrow,
     matcher: _brBothThinBright,
     delta: 10,
-    verdict: '眉淸宇開 — 이성적 판단이 나란히 빛나는 조용한 궁합.',
+    verdict: '두 분 모두 눈썹이 맑고 눈썹과 눈 사이(田宅宮 언저리)가 넓게 트였습니다. 고전에서는 이 모양을 이성적 판단이 나란히 빛나는 조용한 궁합으로 읽습니다.',
   ),
 
   // ──── 目 (eye) — weight 0.34 ─────────────────────────────────────
@@ -237,35 +251,35 @@ const List<OrganRule> organRules = [
     organ: CompatOrgan.eye,
     matcher: _eyeFenghuangTaohua,
     delta: 24,
-    verdict: '鳳配桃花 宜室宜家 — 단단한 눈매와 촉촉한 입술이 가장 조화로운 조합.',
+    verdict: '한 분은 눈꼬리가 살짝 올라간 봉황눈(鳳眼)의 기운이 강하고, 다른 분은 입술이 도톰해 도화(桃花)의 결을 갖추셨습니다. 전통 관상학에서 가장 잘 어울린다고 꼽는 이상적인 조합으로, 단단함과 촉촉함이 한 짝으로 맞물립니다.',
   ),
   OrganRule(
     id: 'OP-EY-BOTH-DRAGON',
     organ: CompatOrgan.eye,
     matcher: _eyeBothDragon,
     delta: 10,
-    verdict: '雙龍相對 — 기개 있는 눈끼리 서로의 세계를 인정합니다.',
+    verdict: '두 분 모두 눈이 크면서도 흘러내리지 않는 용안(龍眼)의 기세를 갖추셨습니다. 기개 있는 눈끼리 만나 서로의 세계를 깎아내리지 않고 존중하는 모양입니다.',
   ),
   OrganRule(
     id: 'OP-EY-BOTH-PEACH',
     organ: CompatOrgan.eye,
     matcher: _eyeBothPeach,
     delta: -4,
-    verdict: '雙桃相映 — 초반 끌림은 강하나 시선이 서로를 벗어나기 쉽습니다.',
+    verdict: '두 분 모두 입술이 도톰하고 눈꼬리가 살짝 올라간 도화(桃花)의 결을 갖추셨습니다. 초반의 끌림은 유난히 강하지만 시선이 각각 다른 곳으로 향할 수 있어, 서로만 바라보겠다는 의식적 다짐이 필요합니다.',
   ),
   OrganRule(
     id: 'OP-EY-DROOPING-BOTH',
     organ: CompatOrgan.eye,
     matcher: _eyeDroopingBoth,
     delta: -12,
-    verdict: '雙慵眼 — 무기력이 겹쳐 관계 온도가 식어갑니다.',
+    verdict: '두 분 모두 눈꼬리가 아래로 처져 권태로운 기운(慵眼)이 겹칩니다. 무기력이 함께 가라앉기 쉬운 결이라, 일부러 활력을 불어넣을 일을 만들어야 관계의 온도가 유지됩니다.',
   ),
   OrganRule(
     id: 'OP-EY-SHARP-SOFT',
     organ: CompatOrgan.eye,
     matcher: _eyeSharpSoft,
     delta: 18,
-    verdict: '剛柔相濟 — 날카로움과 부드러움이 한 짝으로 물립니다.',
+    verdict: '한 분의 눈은 날카롭게 위로 뻗고 다른 분의 눈은 크고 둥글게 부드럽습니다. 강(剛)과 유(柔)가 서로의 빈자리를 정확히 메우는 조합이라, 고전에서는 이 짝을 오래가는 결합으로 봅니다.',
   ),
 
   // ──── 鼻 (nose) — weight 0.24 ────────────────────────────────────
@@ -274,42 +288,42 @@ const List<OrganRule> organRules = [
     organ: CompatOrgan.nose,
     matcher: _noseBothHighBridge,
     delta: -6,
-    verdict: '雙峰對峙 — 재운은 강하나 주도권이 비슷해 충돌 여지가 큽니다.',
+    verdict: '두 분 모두 콧대가 높아 재운(財運)은 나란히 강합니다. 다만 주도권과 자존심이 비슷한 높이라 돈·일의 결정을 두고 부딪힐 여지가 있으니, 영역을 미리 나누어 두는 편이 좋습니다.',
   ),
   OrganRule(
     id: 'OP-NS-HIGH-MODEST',
     organ: CompatOrgan.nose,
     matcher: _noseHighVsModest,
     delta: 10,
-    verdict: '一高一平 — 경제 주도가 자연스럽게 갈라집니다.',
+    verdict: '한 분의 콧대는 높고 다른 분의 콧대는 낮은 편입니다. 경제 주도권이 자연스럽게 한쪽으로 기울고 다른 쪽이 살림의 결을 다듬는 구도라, 돈 문제로 다툴 일이 적은 조합입니다.',
   ),
   OrganRule(
     id: 'OP-NS-BOTH-AQUILINE',
     organ: CompatOrgan.nose,
     matcher: _noseBothAquiline,
     delta: -14,
-    verdict: '雙鉤相擊 — 자존심·이익 계산이 사사건건 부딪힙니다.',
+    verdict: '두 분 모두 코에 매부리(鉤) 기운이 있어 자존심과 이익 계산이 날카롭게 섭니다. 같은 성향끼리 부딪히면 사소한 손익 문제에도 예민해지기 쉬우니, 한 쪽이 먼저 양보하는 신호를 미리 정해 두시면 좋습니다.',
   ),
   OrganRule(
     id: 'OP-NS-AQUI-SNUB',
     organ: CompatOrgan.nose,
     matcher: _noseAquilineSnub,
     delta: 12,
-    verdict: '鉤鼻配獅鼻 — 야심과 애교가 의외로 어울립니다.',
+    verdict: '한 분의 코는 야심 어린 매부리 결, 다른 분의 코는 귀염성 있는 들창의 결입니다. 야망과 애교가 의외로 잘 어울리는 한 쌍으로, 서로의 부족한 부분을 정확히 메워 줍니다.',
   ),
   OrganRule(
     id: 'OP-NS-GARLIC-BOTH',
     organ: CompatOrgan.nose,
     matcher: _noseGarlicBoth,
     delta: 16,
-    verdict: '雙蒜齊立 — 소박하고 끈기 있는 재물 궁합.',
+    verdict: '두 분 모두 콧방울이 풍성한 복스러운 모양(蒜頭)입니다. 화려함보다 끈기 있는 재물의 결이라, 함께 알뜰히 쌓아 올리는 살림에 유리한 조합입니다.',
   ),
   OrganRule(
     id: 'OP-NS-THIN-BOTH',
     organ: CompatOrgan.nose,
     matcher: _noseThinBoth,
     delta: -10,
-    verdict: '雙刀鼻 — 계산적 강박이 겹쳐 날 서게 다툽니다.',
+    verdict: '두 분 모두 콧대가 칼처럼 가늘고 예민합니다. 계산이 날카로운 기운이 겹쳐 작은 돈 문제에도 날이 설 수 있으니, 지출 원칙을 미리 합의해 두는 편이 관계를 지켜 줍니다.',
   ),
 
   // ──── 口 (mouth) — weight 0.26 ───────────────────────────────────
@@ -318,35 +332,35 @@ const List<OrganRule> organRules = [
     organ: CompatOrgan.mouth,
     matcher: _mouthBothFullLip,
     delta: 12,
-    verdict: '雙唇豊艶 — 감각적 공명이 대화의 결을 부드럽게 합니다.',
+    verdict: '두 분의 입술이 모두 도톰하고 윤기가 돕니다. 감각적으로 쉽게 공명해 대화가 메마르지 않고 부드럽게 흐르는 조합입니다.',
   ),
   OrganRule(
     id: 'OP-MO-BIG-SMALL',
     organ: CompatOrgan.mouth,
     matcher: _mouthBigVsSmall,
     delta: 10,
-    verdict: '一大一小 — 말하는 이와 듣는 이의 역할이 자연스럽습니다.',
+    verdict: '한 분의 입은 크고 다른 분의 입은 작아 말의 양이 자연스럽게 나뉘는 결입니다. 말하는 이와 듣는 이의 역할이 억지 없이 맞아 들어가는 조합입니다.',
   ),
   OrganRule(
     id: 'OP-MO-WIDE-SMILE',
     organ: CompatOrgan.mouth,
     matcher: _mouthBothWideSmile,
     delta: 10,
-    verdict: '雙笑迎門 — 일상의 행복 지수가 함께 오릅니다.',
+    verdict: '두 분 모두 입꼬리가 위로 올라가 웃음기가 자주 맺히는 상입니다. 나란히 웃는 집안은 복이 스스로 찾아든다고 하니, 이 조합의 일상 행복 지수가 높습니다.',
   ),
   OrganRule(
     id: 'OP-MO-CORNER-DOWN',
     organ: CompatOrgan.mouth,
     matcher: _mouthBothCornerDown,
     delta: -14,
-    verdict: '雙角下垂 — 침묵의 벽이 쉽게 세워지는 조합.',
+    verdict: '두 분 모두 입꼬리가 아래로 처져 있어 침묵이 쉽게 깔리는 조합입니다. 말로 풀지 않으면 벽이 금방 단단해지니, 사소한 감정도 소리 내어 전하는 습관이 필요합니다.',
   ),
   OrganRule(
     id: 'OP-MO-CHERRY-SMALL',
     organ: CompatOrgan.mouth,
     matcher: _mouthCherrySmallBoth,
     delta: -6,
-    verdict: '雙櫻口小 — 표현이 함께 움츠러드는 경향.',
+    verdict: '두 분 모두 입이 작고 얇아 표현이 조심스러운 결입니다. 같이 있으면 마음이 움츠러들기 쉬우니, 편지·메모처럼 부담이 적은 창구로라도 감정을 자주 내어 보이셔야 합니다.',
   ),
 ];
 

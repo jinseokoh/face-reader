@@ -104,7 +104,7 @@ enum ElementRelationKind {
 }
 
 extension ElementRelationKindLabel on ElementRelationKind {
-  /// 한자 2글자 라벨 (生/比和/剋 + 방향).
+  /// 한자 라벨 (괄호 보조용).
   String get hanja {
     switch (this) {
       case ElementRelationKind.identity:
@@ -117,6 +117,40 @@ extension ElementRelationKindLabel on ElementRelationKind {
         return '相剋';
       case ElementRelationKind.overcome:
         return '被剋';
+    }
+  }
+
+  /// 한국어 설명 한 줄. 해설 본문에서 우선 쓴다.
+  String get koreanLabel {
+    switch (this) {
+      case ElementRelationKind.identity:
+        return '같은 형끼리의 공명';
+      case ElementRelationKind.generating:
+        return '내가 상대를 낳아 주는 상생';
+      case ElementRelationKind.generated:
+        return '상대가 나를 받쳐 주는 상생';
+      case ElementRelationKind.overcoming:
+        return '내가 상대를 다스리는 상극';
+      case ElementRelationKind.overcome:
+        return '상대가 나를 누르는 상극';
+    }
+  }
+}
+
+extension FiveElementTraits on FiveElement {
+  /// 체형·성정의 한 문장 묘사. 해설 본문 "나의 형"·"상대의 형" 소개에 쓴다.
+  String get traitKo {
+    switch (this) {
+      case FiveElement.wood:
+        return '길쭉한 골격에 상정이 높아 곧게 자라는 나무의 결';
+      case FiveElement.fire:
+        return '광대가 솟고 아래로 좁아지는 불꽃의 결, 예의를 중히 여기는 성정';
+      case FiveElement.earth:
+        return '두툼하고 방정한 땅의 결, 신의를 지키는 성정';
+      case FiveElement.metal:
+        return '각진 뼈대가 단단한 금속의 결, 의리를 우선하는 성정';
+      case FiveElement.water:
+        return '둥글고 살집 있는 물의 결, 지혜와 수용을 품은 성정';
     }
   }
 }

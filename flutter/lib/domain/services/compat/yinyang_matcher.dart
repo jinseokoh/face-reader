@@ -61,23 +61,23 @@ YinYangMatch matchYinYang({
   if ((myYang && aYin) || (myYin && aYang)) {
     delta = 18;
     kind = YinYangPatternKind.yangYinIdeal;
-    verdict = '剛柔相濟 — 강한 양과 부드러운 음이 만난 고전적 이상형.';
+    verdict = '한 분은 추진하는 양의 기운, 다른 분은 받쳐 주는 음의 기운이라 고전적으로 가장 안정된 짝입니다.';
   } else if (myYang && aYang) {
     delta = -12;
     kind = YinYangPatternKind.yangYang;
-    verdict = '雙陽相抗 — 둘 다 강한 기세라 충돌이 잦을 수 있습니다.';
+    verdict = '두 분 모두 추진하는 양의 기운이 강해, 같은 자리를 놓고 부딪히는 일이 잦을 수 있습니다.';
   } else if (myYin && aYin) {
     delta = -8;
     kind = YinYangPatternKind.yinYin;
-    verdict = '雙陰相依 — 서로 기대는 힘은 좋으나 추진력이 느슨해집니다.';
+    verdict = '두 분 모두 받아 주는 음의 기운이라 서로 편하게 기대지만, 먼저 나서는 힘이 부족해 결정이 자꾸 미뤄집니다.';
   } else if (myBal && aBal) {
     delta = 2;
     kind = YinYangPatternKind.balancedBoth;
-    verdict = '中和雙臨 — 두 사람 모두 음양 중용, 잔잔한 조화.';
+    verdict = '두 분 모두 음양이 중용 쪽에 있어, 큰 파고 없이 잔잔한 조화가 유지됩니다.';
   } else {
     delta = 2;
     kind = YinYangPatternKind.oneBalanced;
-    verdict = '一中一偏 — 한 쪽 중용이 다른 쪽의 기운을 살짝 고릅니다.';
+    verdict = '한 분은 중용, 다른 분은 한쪽으로 살짝 기운 구도라, 중심 잡힌 쪽이 완충 역할을 합니다.';
   }
 
   // 성별 기대 어긋남 overlay (남陰 · 여陽 조합). modern cross — 낙인 아닌 서술.
@@ -89,7 +89,7 @@ YinYangMatch matchYinYang({
   if (myReversed && albumReversed) {
     delta -= 4;
     kind = YinYangPatternKind.modernCross;
-    verdict = '陰陽倒置 — 전통 기대와 역전된 조합, 역할을 현대적으로 재정의하게 됩니다.';
+    verdict = '전통적인 성별 기대와 음양이 반대로 맞물린 구도라, 역할 분담을 두 분이 직접 현대적으로 다시 정의하게 됩니다.';
   }
 
   return YinYangMatch(

@@ -169,18 +169,18 @@ void main() {
     expect(bundle.report.myPalaces.length, 12);
     expect(bundle.report.albumPalaces.length, 12);
 
-    // narrative 구조.
-    expect(bundle.narrative.overview.length, greaterThanOrEqualTo(80));
-    expect(bundle.narrative.elementSection.length, greaterThanOrEqualTo(80));
-    expect(bundle.narrative.palaceSection.length, greaterThanOrEqualTo(80));
-    expect(bundle.narrative.qiSection.length, greaterThanOrEqualTo(80));
-    expect(bundle.narrative.intimacySection, isNotNull); // 30 × 40 opposite
-    expect(bundle.narrative.longTermSection.length, greaterThanOrEqualTo(40));
+    // narrative 구조 (5-섹션 분석가 리포트).
+    expect(bundle.narrative.summary.length, greaterThanOrEqualTo(40));
+    expect(bundle.narrative.corePoints.length, greaterThanOrEqualTo(80));
+    expect(bundle.narrative.conflictScenarios.length, greaterThanOrEqualTo(20));
+    expect(bundle.narrative.strategy.length, greaterThanOrEqualTo(40));
+    expect(bundle.narrative.scoreReason.length, greaterThanOrEqualTo(80));
+    expect(bundle.narrative.sectionsInOrder.length, 5);
 
     // 결정적 — 동일 입력이면 동일 output.
     final b2 = analyzeCompatibilityFromReports(my: my, album: album);
     expect(b2.report.total, closeTo(bundle.report.total, 1e-6));
-    expect(b2.narrative.overview, bundle.narrative.overview);
+    expect(b2.narrative.summary, bundle.narrative.summary);
   });
 
   test('P7 smoke — same-sex 면 intimacy gate off', () {
@@ -200,7 +200,9 @@ void main() {
     final bundle = analyzeCompatibilityFromReports(my: a, album: b);
     expect(bundle.report.intimacy.gateActive, false);
     expect(bundle.report.sub.intimacyScore, 50.0);
-    expect(bundle.narrative.intimacySection, isNull);
+    // same-sex 여도 narrative 는 5 섹션 모두 출력 (scoreReason 에 친밀 미계산 명시).
+    expect(bundle.narrative.sectionsInOrder.length, 5);
+    expect(bundle.narrative.scoreReason.contains('친밀'), true);
   });
 
   test('attribute/archetype 재사용 없음 — compat engine 순수성', () {

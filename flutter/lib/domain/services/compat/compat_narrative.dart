@@ -1,60 +1,50 @@
-/// Compat narrative 6-section assembler — §11.
+/// 궁합 서술 — 분석가 리포트 5섹션.
 ///
-/// Input: CompatibilityReport + pair seed (deterministic variant 선택).
-/// Output: CompatNarrative — 6 섹션 Korean 본문.
+/// 출력 구조 (고정):
+///   1. 한줄 요약 — 이 관계의 본질
+///   2. 핵심 궁합 3가지 — 각 항목마다 (의미 / 실제 모습 / 장점 / 주의할 점)
+///   3. 현실 갈등 시나리오 2~3개 — 구체적 상황
+///   4. 관계 운영 전략 — 실제 행동 지침
+///   5. 궁합 점수 + 이유
 ///
-/// 구성:
-///   1. 총평 (overview)        — label opener + 4 sub-score snapshot
-///   2. 五形相配                 — element relation kind + primary/secondary
-///   3. 宮位照應                 — top 3 PP rule evidence
-///   4. 氣質合章                 — top 1~2 organ + zone dominant + yinyang
-///   5. 情性之合 (nullable)       — intimacy.gateActive 때만
-///   6. 長久之道                 — label 기반 advice
+/// 원칙:
+///   - 본문 text 에 한자 쓰지 않는다 (용어는 괄호 안에 보조로만).
+///   - 추상 표현("기운이 흐른다") 금지. 실제 행동·상황으로 설명.
+///   - 분석가 톤, 직설적으로, 감성팔이 금지.
 library;
 
-import 'dart:math';
-
+import 'compat_finding.dart';
 import 'compat_label.dart';
-import 'compat_phrase_pool.dart';
 import 'compat_pipeline.dart';
 import 'five_element.dart';
-import 'organ_pair_rules.dart';
-import 'palace.dart';
-import 'yinyang_matcher.dart';
 
-/// 6-section 최종 출력.
+/// 5-섹션 최종 출력.
 class CompatNarrative {
-  final String overview;
-  final String elementSection;
-  final String palaceSection;
-  final String qiSection;
-
-  /// 30~50대 opposite-gender gate 미통과 시 null.
-  final String? intimacySection;
-  final String longTermSection;
+  final String summary;
+  final String corePoints;
+  final String conflictScenarios;
+  final String strategy;
+  final String scoreReason;
 
   const CompatNarrative({
-    required this.overview,
-    required this.elementSection,
-    required this.palaceSection,
-    required this.qiSection,
-    required this.intimacySection,
-    required this.longTermSection,
+    required this.summary,
+    required this.corePoints,
+    required this.conflictScenarios,
+    required this.strategy,
+    required this.scoreReason,
   });
 
   List<String> get sectionsInOrder => [
-        overview,
-        elementSection,
-        palaceSection,
-        qiSection,
-        if (intimacySection != null) intimacySection!,
-        longTermSection,
+        summary,
+        corePoints,
+        conflictScenarios,
+        strategy,
+        scoreReason,
       ];
 }
 
-/// pair-hash seed 로 variant 선택. §11 variant seed 계산.
+/// pair-hash seed — 현재 구조에서는 decorative. 인터페이스 유지를 위해 남김.
 int computePairSeed(String myReportId, String albumReportId) {
-  // 단순 FNV-ish. report id 가 UUID 든 임시 id 든 안정적 int 로 매핑.
   int h(String s) {
     var x = 0x811c9dc5;
     for (final c in s.codeUnits) {
@@ -66,151 +56,249 @@ int computePairSeed(String myReportId, String albumReportId) {
   return (h(myReportId) * 31 + h(albumReportId)) & 0x7fffffff;
 }
 
-String _pick(List<String> pool, Random rng) =>
-    pool.isEmpty ? '' : pool[rng.nextInt(pool.length)];
+// ─────────────── 공통 라벨 ───────────────
 
-String _sign(double d) => d > 0.1 ? 'pos' : (d < -0.1 ? 'neg' : 'neu');
+String _labelHeadline(CompatLabel l) {
+  switch (l) {
+    case CompatLabel.cheonjakjihap:
+      return '얼굴로 읽으면 흔치 않게 궁합이 잘 맞는 관계';
+    case CompatLabel.sangkyeongyeobin:
+      return '서로 예의를 지키며 안정적으로 오래갈 관계';
+    case CompatLabel.mahapgaseong:
+      return '노력해서 맞춰 가야 완성되는 관계';
+    case CompatLabel.hyeonggeuknanjo:
+      return '자주 부딪힐 소지가 크니 조심해서 지켜야 하는 관계';
+  }
+}
 
-/// section 1 — 총평.
-String _overviewSection(
-    CompatibilityReport r, Random rng, CompatLabel label) {
-  final opener = _pick(labelOverviewPhrases[label] ?? const [], rng);
+// ─────────────── finding 수집 ───────────────
+
+List<CompatFinding> _gatherFindings(CompatibilityReport r) {
+  final list = <CompatFinding>[];
+
+  for (final e in r.palacePair.evidence) {
+    list.add(CompatFinding.fromPalace(e));
+  }
+  for (final e in r.organPair.evidence) {
+    list.add(CompatFinding.fromOrgan(e));
+  }
+  for (final e in r.zoneHarmony.evidence) {
+    list.add(CompatFinding.fromZone(e));
+  }
+  // yinyang 은 단일 pattern.
+  list.add(CompatFinding.fromYinYang(r.yinYangMatch));
+
+  // 오행 관계는 방향성 자체가 관계의 본질이라 반드시 포함.
+  list.add(CompatFinding.fromElement(r.myElement, r.albumElement, r.elementRelation));
+
+  // 중요도 = |delta| * priority.
+  list.sort((a, b) => b.priority.compareTo(a.priority));
+  return list;
+}
+
+// ─────────────── section 1 — 한줄 요약 ───────────────
+
+String _summarySection(CompatibilityReport r, List<CompatFinding> findings) {
+  final total = r.total.toStringAsFixed(0);
+  final headline = _labelHeadline(r.label);
+
+  final myEl = r.myElement.primary.korean;
+  final alEl = r.albumElement.primary.korean;
+  final dir = _relationShort(r.elementRelation.kind);
+
+  return '$headline입니다. '
+      '$total점으로 ${r.label.korean}(네 등급 중 ${_labelTier(r.label)}번째)에 해당하고, '
+      '얼굴 전체의 기본 성향은 $myEl과 $alEl이 만나 $dir 구도를 이룹니다.';
+}
+
+int _labelTier(CompatLabel l) {
+  switch (l) {
+    case CompatLabel.cheonjakjihap:
+      return 1;
+    case CompatLabel.sangkyeongyeobin:
+      return 2;
+    case CompatLabel.mahapgaseong:
+      return 3;
+    case CompatLabel.hyeonggeuknanjo:
+      return 4;
+  }
+}
+
+String _relationShort(ElementRelationKind k) {
+  switch (k) {
+    case ElementRelationKind.generating:
+      return '내가 상대를 북돋우는';
+    case ElementRelationKind.generated:
+      return '상대가 나를 받쳐 주는';
+    case ElementRelationKind.overcoming:
+      return '내가 상대를 누르는';
+    case ElementRelationKind.overcome:
+      return '상대가 나를 누르는';
+    case ElementRelationKind.identity:
+      return '비슷한 결끼리 만나는';
+  }
+}
+
+// ─────────────── section 2 — 핵심 궁합 3가지 ───────────────
+
+String _coreSection(List<CompatFinding> findings) {
+  final top = findings.take(3).toList();
+  if (top.isEmpty) {
+    return '특별히 도드라지는 패턴이 없습니다. 일상이 큰 기복 없이 평탄하게 흘러갈 조합입니다.';
+  }
+
+  final buf = StringBuffer();
+  for (int i = 0; i < top.length; i++) {
+    final f = top[i];
+    buf.writeln('${i + 1}. ${f.title} (${f.domain})');
+    buf.writeln('   - 의미: ${f.meaning}');
+    buf.writeln('   - 실제 모습: ${f.observation}');
+    buf.writeln('   - 장점: ${f.strength}');
+    buf.writeln('   - 주의할 점: ${f.caution}');
+    if (i != top.length - 1) buf.writeln();
+  }
+  return buf.toString().trimRight();
+}
+
+// ─────────────── section 3 — 갈등 시나리오 ───────────────
+
+String _conflictSection(
+    CompatibilityReport r, List<CompatFinding> findings) {
+  final neg = findings.where((f) => f.delta < 0 && f.scenario != null).toList();
+  neg.sort((a, b) => a.delta.compareTo(b.delta));
+  final pick = neg.take(3).toList();
+
+  if (pick.isEmpty) {
+    return '두 분 사이에서 크게 문제될 지점은 특별히 읽히지 않습니다. '
+        '평소 관계 관리를 기본 수준으로 해 주시면 큰 갈등 없이 흘러갈 조합입니다.';
+  }
+
+  final buf = StringBuffer();
+  for (int i = 0; i < pick.length; i++) {
+    final f = pick[i];
+    buf.writeln('시나리오 ${i + 1} (${f.domain})');
+    buf.writeln(f.scenario!);
+    if (i != pick.length - 1) buf.writeln();
+  }
+  return buf.toString().trimRight();
+}
+
+// ─────────────── section 4 — 관계 운영 전략 ───────────────
+
+String _strategySection(
+    CompatibilityReport r, List<CompatFinding> findings) {
+  final actions = <String>[];
+
+  // 라벨별 기본 전략 1 개.
+  switch (r.label) {
+    case CompatLabel.cheonjakjihap:
+      actions.add('궁합이 좋다고 방심하지 말 것. 일상적인 연락·기념일·생활습관 같은 기본기를 놓치는 순간 우위가 빠르게 줄어듭니다.');
+      break;
+    case CompatLabel.sangkyeongyeobin:
+      actions.add('예의를 지키다 오히려 벽이 생기기 쉬운 관계이니, 한 달에 한 번 정도는 형식을 깨는 솔직한 대화나 둘만의 여행을 의도적으로 만들어 두시기 바랍니다.');
+      break;
+    case CompatLabel.mahapgaseong:
+      actions.add('서로 맞춰 가는 단계를 초반 1~2년으로 잡고, 그 사이에는 "누가 옳은가"보다 "어떻게 맞춰 갈 것인가"를 대화의 기준으로 삼아야 합니다.');
+      break;
+    case CompatLabel.hyeonggeuknanjo:
+      actions.add('감정으로 풀려 하지 말고, 돈·가사·시간 사용처럼 갈등이 잦은 영역은 규칙을 종이에 적어 두고 주기적으로 점검하는 구조로 바꿔야 합니다.');
+      break;
+  }
+
+  // 부정 발견 상위 2 개에서 구체 행동 뽑기.
+  final negActions = findings
+      .where((f) => f.delta < 0 && f.action != null)
+      .toList()
+    ..sort((a, b) => a.delta.compareTo(b.delta));
+  for (final f in negActions.take(2)) {
+    actions.add(f.action!);
+  }
+
+  // 긍정 발견 상위 1 개 — 강점을 일부러 자주 꺼내라는 안내.
+  final posActions = findings
+      .where((f) => f.delta > 0 && f.action != null)
+      .toList()
+    ..sort((a, b) => b.delta.compareTo(a.delta));
+  if (posActions.isNotEmpty) {
+    actions.add(posActions.first.action!);
+  }
+
+  final buf = StringBuffer();
+  for (int i = 0; i < actions.length; i++) {
+    buf.writeln('${i + 1}. ${actions[i]}');
+  }
+  return buf.toString().trimRight();
+}
+
+// ─────────────── section 5 — 점수 + 이유 ───────────────
+
+String _scoreSection(CompatibilityReport r) {
+  final total = r.total.toStringAsFixed(0);
   final el = r.sub.elementScore.toStringAsFixed(0);
   final pa = r.sub.palaceScore.toStringAsFixed(0);
   final qi = r.sub.qiScore.toStringAsFixed(0);
   final it = r.intimacy.gateActive
       ? r.sub.intimacyScore.toStringAsFixed(0)
-      : '—';
-  final total = r.total.toStringAsFixed(0);
-  return '$opener\n\n'
-      '총점 $total — 四柱로 보면 五形 $el · 宮位 $pa · 氣質 $qi · 情性 $it의 결이 쌓여 이 자리에 이릅니다. '
-      '각 층의 울림이 서로 다르게 ${label.korean}의 괘를 만듭니다.';
-}
+      : null;
 
-/// section 2 — 五形相配.
-String _elementSection(
-    CompatibilityReport r, Random rng) {
-  final kind = r.elementRelation.kind;
-  var base = _pick(elementRelationPhrases[kind] ?? const [], rng);
-  base = base
-      .replaceAll('{my}', r.myElement.primary.hanja)
-      .replaceAll('{album}', r.albumElement.primary.hanja);
+  final strongest = _strongestLayer(r);
+  final weakest = _weakestLayer(r);
 
-  final myHybrid = r.myElement.isHybrid
-      ? ' (나의 형은 ${r.myElement.primary.korean}에 ${r.myElement.secondary.korean}이 섞인 겸형)'
-      : '';
-  final albumHybrid = r.albumElement.isHybrid
-      ? ' (상대의 형은 ${r.albumElement.primary.korean}에 ${r.albumElement.secondary.korean}이 섞인 겸형)'
-      : '';
-
-  return '$base\n\n'
-      '내 얼굴은 ${r.myElement.primary.hanja}形${myHybrid}, '
-      '상대는 ${r.albumElement.primary.hanja}形${albumHybrid}으로 읽힙니다. '
-      '${kind.hanja}의 자리라 두 형의 기(氣)가 ${_relationDirection(kind)} 흐릅니다.';
-}
-
-String _relationDirection(ElementRelationKind kind) {
-  switch (kind) {
-    case ElementRelationKind.generating:
-      return '내 쪽에서 상대로';
-    case ElementRelationKind.generated:
-      return '상대에서 내 쪽으로';
-    case ElementRelationKind.overcoming:
-      return '내 쪽이 상대를 누르는 방향으로';
-    case ElementRelationKind.overcome:
-      return '상대가 내 쪽을 누르는 방향으로';
-    case ElementRelationKind.identity:
-      return '같은 결로 나란히';
+  final buf = StringBuffer();
+  buf.writeln('종합 점수: $total점 / 99점 만점 기준');
+  buf.writeln();
+  buf.writeln('세부 점수:');
+  buf.writeln('- 오행(얼굴형 기본 성향): $el점');
+  buf.writeln('- 궁위(결혼·가족·재물 등 12개 영역): $pa점');
+  buf.writeln('- 기질(눈·코·입·삼정·음양의 짝): $qi점');
+  if (it != null) {
+    buf.writeln('- 친밀(부부·친밀감 영역, 30~50대 이성 기준): $it점');
+  } else {
+    buf.writeln('- 친밀: 이번 조합에서는 따로 계산하지 않음');
   }
+  buf.writeln();
+  buf.writeln('이 점수가 나온 이유:');
+  buf.writeln('- 가장 강한 축은 "$strongest" 영역이라, 여기가 이 관계를 지탱합니다.');
+  buf.writeln('- 가장 약한 축은 "$weakest" 영역이라, 갈등은 여기서 먼저 터집니다.');
+  buf.write('- 등급상 네 단계 중 ${_labelTier(r.label)}번째(${r.label.korean})로, ${_labelHeadline(r.label)}에 해당합니다.');
+  return buf.toString();
 }
 
-/// section 3 — 宮位照應. top 3 PP rule by |delta|.
-String _palaceSection(CompatibilityReport r, Random rng) {
-  if (r.palacePair.evidence.isEmpty) {
-    return '宮位照應 — 12 궁 모두 중용에 가까워 특별한 발동이 없습니다. '
-        '큰 결의 차이 없이 흘러가는 조합.';
-  }
-  final sorted = [...r.palacePair.evidence]
-    ..sort((a, b) => b.delta.abs().compareTo(a.delta.abs()));
-  final top = sorted.take(3).toList();
-  final lines = <String>[];
-  for (final e in top) {
-    lines.add('• ${e.palace.hanja}: ${e.verdict}');
-  }
-  return '宮位照應 — 十二宮 중 가장 뚜렷이 울린 세 궁.\n\n'
-      '${lines.join('\n')}\n\n'
-      '이 세 결이 결혼 가중치의 중심축(妻妾 0.28 · 男女 0.22 · 命 0.15)에 '
-      '얼마나 걸쳐 있느냐가 ${r.label.korean}의 괘를 결정했습니다.';
+String _strongestLayer(CompatibilityReport r) {
+  final pairs = <MapEntry<String, double>>[
+    MapEntry('오행(기본 성향)', r.sub.elementScore),
+    MapEntry('궁위(12개 생활 영역)', r.sub.palaceScore),
+    MapEntry('기질(얼굴 세부 짝)', r.sub.qiScore),
+    if (r.intimacy.gateActive)
+      MapEntry('친밀(부부·친밀 영역)', r.sub.intimacyScore),
+  ]..sort((a, b) => b.value.compareTo(a.value));
+  return pairs.first.key;
 }
 
-/// section 4 — 氣質合章. organ top 1~2 + zone dominant + yinyang.
-String _qiSection(CompatibilityReport r, Random rng) {
-  final organSorted = [...r.organPair.evidence]
-    ..sort((a, b) => b.delta.abs().compareTo(a.delta.abs()));
-  final topOrgans = organSorted.take(2).toList();
-
-  final yyPhrase = _pick(yinYangPhrases[r.yinYangMatch.kind] ?? const [], rng);
-
-  final zoneLines = <String>[];
-  final zoneSorted = [...r.zoneHarmony.evidence]
-    ..sort((a, b) => b.delta.abs().compareTo(a.delta.abs()));
-  for (final p in zoneSorted.take(2)) {
-    zoneLines.add('• ${p.verdict}');
-  }
-
-  final organLines = topOrgans.isEmpty
-      ? '• 五官 특이 패턴은 잠잠, 중용의 조합.'
-      : topOrgans
-          .map((e) => '• ${e.organ.hanja}: ${e.verdict}')
-          .join('\n');
-
-  final zoneText = zoneLines.isEmpty ? '• 三停 특이 패턴 없음.' : zoneLines.join('\n');
-
-  return '氣質合章 — 五官·三停·陰陽 세 축의 울림.\n\n'
-      '[五官]\n$organLines\n\n'
-      '[三停]\n$zoneText\n\n'
-      '[陰陽] $yyPhrase';
+String _weakestLayer(CompatibilityReport r) {
+  final pairs = <MapEntry<String, double>>[
+    MapEntry('오행(기본 성향)', r.sub.elementScore),
+    MapEntry('궁위(12개 생활 영역)', r.sub.palaceScore),
+    MapEntry('기질(얼굴 세부 짝)', r.sub.qiScore),
+    if (r.intimacy.gateActive)
+      MapEntry('친밀(부부·친밀 영역)', r.sub.intimacyScore),
+  ]..sort((a, b) => a.value.compareTo(b.value));
+  return pairs.first.key;
 }
 
-/// section 5 — 情性之合. gate off 이면 null.
-String? _intimacySection(CompatibilityReport r, Random rng) {
-  if (!r.intimacy.gateActive) return null;
-  final lines = <String>[];
-  for (final c in r.intimacy.components) {
-    final sign = _sign(c.value);
-    final pool = intimacyAxisPhrases['${c.id}-$sign'] ?? const [];
-    if (pool.isEmpty) continue;
-    lines.add('• ${_pick(pool, rng)}');
-  }
-  if (lines.isEmpty) {
-    lines.add('• 情性 네 축이 모두 중용 — 무난한 친밀 결합.');
-  }
-  final sub = r.sub.intimacyScore.toStringAsFixed(0);
-  return '情性之合 — 男女宮 · 妻妾宮 · 입술 · 눈빛 네 축에서 읽은 친밀의 결.\n\n'
-      '${lines.join('\n')}\n\n'
-      '종합 情性 점수 $sub — 30~50대 이성 게이트 통과분.';
-}
-
-/// section 6 — 長久之道. label 기반 조언.
-String _longTermSection(
-    CompatibilityReport r, Random rng, CompatLabel label) {
-  final advice = _pick(longTermAdvicePhrases[label] ?? const [], rng);
-  return '長久之道 — 오래가기 위해 지켜야 할 결.\n\n$advice';
-}
+// ─────────────── top-level builder ───────────────
 
 CompatNarrative buildCompatNarrative({
   required CompatibilityReport report,
   required int pairSeed,
 }) {
-  // 각 섹션은 같은 Random 에서 순차 추출 — pairSeed 고정이면 출력도 고정.
-  final rng = Random(pairSeed);
-  final label = report.label;
+  final findings = _gatherFindings(report);
   return CompatNarrative(
-    overview: _overviewSection(report, rng, label),
-    elementSection: _elementSection(report, rng),
-    palaceSection: _palaceSection(report, rng),
-    qiSection: _qiSection(report, rng),
-    intimacySection: _intimacySection(report, rng),
-    longTermSection: _longTermSection(report, rng, label),
+    summary: _summarySection(report, findings),
+    corePoints: _coreSection(findings),
+    conflictScenarios: _conflictSection(report, findings),
+    strategy: _strategySection(report, findings),
+    scoreReason: _scoreSection(report),
   );
 }
+
