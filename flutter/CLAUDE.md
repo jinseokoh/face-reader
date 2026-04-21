@@ -2,7 +2,7 @@
 
 관상 분석 Flutter 앱. MediaPipe Face Mesh(468 landmarks) 을 입력으로 17 frontal + 8 lateral metric → z-score → 14-node tree → 10 attribute → archetype 까지 일관된 관상 파이프라인. 궁합은 관상 엔진과 **동등한 별도 엔진**으로 전통 관상학(五行·十二宮·五官·三停·陰陽) grounded 재설계 중 — 설계 SSOT: `docs/compat/FRAMEWORK.md`.
 
-마지막 업데이트: 2026-04-21 (engine v2.9 · compat v1 재설계 착수)
+마지막 업데이트: 2026-04-21 (engine v2.9 · Opt-D per-shape quantile + narrative soft predicate + 음양 bar UI)
 
 ---
 
@@ -40,39 +40,34 @@
 - `test/evidence_snapshot_test.dart` — 고정 z-map 에 대한 rule/score/contributor 완전 snapshot.
 - `test/real_users_recalibration_test.dart` — N=14 실사용자 empirical z 분포 + archetype concentration 진단 (현재 max 28.6% = 4/14).
 
-### 이번 세션 완료 (uncommitted, 2026-04-21)
+### 이번 세션 완료 (2026-04-21)
 
-- **궁합 엔진 전면 재설계 착수** — `docs/compat/FRAMEWORK.md` SSOT 작성 (五行 body classifier + 十二宮 state engine + 五官/三停/陰陽 pair matcher · 4-layer hybrid · 6-section narrative · 재보정 절차). 麻衣相法·神相全編·柳莊相法·水鏡集 grounded.
-- **레거시 궁합 자산 완전 dump** — `compatibility_engine.dart` · `compat_calibration.dart` · `compatibility_result.dart` · `compatibility_text_blocks.dart` · `compatibility_report_page.dart` · `compat_albums_provider.dart` · `compatibility_info_dialog.dart` · 관련 test 3 종 · `docs/engine/COMPATIBILITY.md` 전부 삭제. MC face template 은 `lib/domain/services/mc_fixtures.dart` 로 추출 (physiognomy 테스트가 공용).
-- **궁합 탭 stub** — `compatibility_screen.dart` 를 "재설계 중" placeholder 로 교체 (app.dart bottom nav 그대로).
-- **Hive `compat_albums` box 제거** · **Supabase `getMetricsPair` 제거** · 부수 provider/UI ref 전부 정리.
+- **per-shape quantile (Opt-D)** — `attribute_normalize.dart` 에 `_attrQuantilesByShape` 도입 (5 shape × 2 gender × 10 attr × 21-point). `score_calibration.dart` 에 `calibrateQuantilesByShape` + `_simulateRaws(fixedShape:)` stratification 추가. shape-conditional bias 근본 제거.
+- **narrative soft predicate** — `_Frag.weight: double Function` 로 전환 (bool → double). band plateau/cliff 제거, `_hi/_lo/_mi` ramp + `_softHiZ/_softLoZ/_softMidZ` + cumulative-weight sampling 으로 인접 z 의 변화가 fragment 선택에 연속 반영. 결정성(동일 seed → 동일 fragment) 유지.
+- **narrative fallback 1→5** — 재능·재물·사회·건강 섹션의 Opening/Advice/Shadow/Strength 16 개 pool 을 각 5 variants 로 확장. @{slot} 토큰(palace_*·mount_*·talent_word·structure) + @__STRONGEST_NODE__ 조합.
+- **음양 bar UI** — `report_page.dart` 에 `_YinYangBar` 위젯 추가. 부위별 상세 해석 섹션 상단 (삼정 radar 위) 에 음기(푸른)→조화(amber)→양기(붉음) 그라디언트 + skew marker + tone pill. PDF/텍스트 export 에도 음양 균형 line 추가.
 
-`flutter analyze` clean (0 error, pre-existing warning 4 종만 잔존), **102 test 전부 green**.
+`flutter analyze` clean, **133 test 전부 green** (neural calibration prints 포함).
 
 ### 다음 작업 (우선순위순)
 
 | 우선 | 작업 | 근거 | 재개 지시 |
 |---|---|---|---|
-| P0 | **이번 세션 커밋 분리** | uncommitted 상태로 다음 세션 넘기지 말 것. 크게 (a) 궁합 엔진 dump + docs/compat SSOT + stub, (b) engine v2.9 문서 동기화, (c) pull-to-refresh 진단 로깅, (d) 앨범 picker cancel snackbar fix 로 분리 | `"git add -p 로 위 4 묶음 atomic 커밋. '<pending> compat v1 재설계 · 레거시 dump + FRAMEWORK SSOT' 스타일"` |
 | P1 | **궁합 엔진 P2 — 五行 body classifier 구현** | `lib/domain/services/compat/` 하위 신규 파일군. `docs/compat/FRAMEWORK.md` §2 z-score weighted formula 그대로. distribution test 로 5 element 고르게 나오는지 검증 | `"docs/compat/FRAMEWORK.md §2 읽고 five_element_classifier.dart + test/compat/five_element_distribution_test.dart 작성"` |
 | P0 | **pull-to-refresh state 증발 root-cause 고정** | 진단 로그는 삽입 완료. 실기에서 재현 후 stacktrace 확보가 필요. `fromJsonString` 이 rawValue→엔진 재계산 도중 어느 라인에서 터지는지 정확히 짚어야 함 | `"실기 앱 run → 관상 tab 에서 pull-to-refresh → 콘솔의 [History] reload FAIL entry N: … + stacktrace + raw head 전부 수집. 해당 라인 원인 제거 + reloadFromHive 가 parse 실패 시 in-memory state entry 드롭하지 않도록 방어(현재는 parsed 만 state 로 커밋 → 실패 entry 소멸). 관건은 'Hive raw 보존' 은 이미 되어 있으니 state 쪽 보수적 업데이트만 추가"` |
 | P0 | **실사용자 N 확장** (현 N=14 eastAsian female 30s → ≥100 전 demographic) | v2.8 은 단일 demographic 14 명으로 ref 재보정. 남·타 ethnicity·age 는 아직 idealized MC 기반 | `"test/fixtures/real_users_*.json 에 male/caucasian/40s 등 추가 수집 후 real_users_recalibration_test.dart 로 per-demographic 재보정"` |
-| P1 | **Per-shape quantile 테이블** (Opt-D) | oval/oblong/round/square/heart 각각 독립 quantile 로 shape-conditional bias 근본 제거 | `"attribute_normalize.dart 에 _attrQuantilesByShape 도입. 각 shape 당 21-point × 10 attr × 2 gender. MC sampler 에 shape 드로우 stratification 추가."` |
-| P1 | **Soft predicate 로 band 전환** (narrative variation) | 현 `_Band.high/mid/low` hard cutoff 가 plateau/cliff 문제 만듦. 연속 확률로 전환 시 인접 z 의 의미 있는 차이가 fragment 선택에 반영 | `"life_question_narrative.dart 의 _Frag predicate 를 bool → double(0~1) 로. weighted sampling."` |
-| P2 | **Fragment variant 확장 (재능·재물·사회·건강 섹션)** | 관능도만 7-아키타입 확장 완료. 나머지 섹션도 fallback 에 2~3 variants 추가 | `"_talentOpening, _wealthOpening, _socialOpening 등 fallback variant 수를 2→5 로 확장"` |
-| P2 | **UI 에 음양 축 표시** | `yin_yang.dart` 에서 `YinYangBalance` 계산은 되는데 UI 에 라벨만 있고 시각 요소 부족 | `"report_page 부위별 섹션 위에 음양 balance 바 추가"` |
 
 ### 최근 커밋 시퀀스 (역순)
 ```
-<pending> engine v2.8 N=14 eastAsian female 실사용자 ref re-centering + bias=0.0 MC 재보정 (max concentration 28.6%)
-<pending> engine v2.7 decorrelated weight matrix + bias=0.2 MC alignment
-<pending> engine v2.6 zone-parity + rule cap + per-metric guardrail
+8ee3870 report: 음양 균형 bar — 부위별 상세 해석 섹션 상단 시각화
+6e29f86 narrative fallback variants 1→5 — 재능·재물·사회·건강 4 섹션
+7e705fe narrative soft predicate — band plateau/cliff 제거 (weighted sampling)
+3d3c136 per-shape quantile normalize (Opt-D) — shape-conditional bias 근본 제거
+58cb846 compat v1 엔진 전면 재설계 — 五行·十二宮·五官·三停·陰陽·情性 4-layer hybrid
+8e8637d update attribute md
+f5b1159 update pdf generation logic
+22b8843 engine v2.8 + narrative v3 섹션 재설계
 5896024 engine v2.5 sync + 다음 작업 handoff 정리
-83c9e35 intel/stability weight matrix 분산 + Z-01 재축소
-e11fd99 shape-bound archetype 편향 제거 (v2.3 rule mag)
-821b3d7 음양 축 + 귀(ear) UI 제거
-811c205 Hive capture-only (schemaVersion)
-3848e4d Stage 0 preset + 매력도 bell 철수
 ```
 
 ---
