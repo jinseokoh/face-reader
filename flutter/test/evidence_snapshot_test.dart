@@ -90,26 +90,26 @@ $leadershipTop3
 
 void main() {
   test('evidence snapshot — 재물·권력 중정 강세 프로파일 (male, 정면-only)', () {
-    // 2026-04-19 v2.9 재조정: 美人相 rule 7 개 도입 (Z-NG, O-MM, O-EM2, O-RL,
-    // O-CKE, O-EZ, P-MJ) + Z-07/O-EM/P-03/Z-09/Z-LFR 의 attractiveness 부분 분리.
-    // attractiveness 9.4 → 8.6 (lax stacking 제거 + O-CKE 음수). 다른 attribute
-    // 의 미세 변동은 rank-blend normalize 의 인접 inversion 때문.
+    // 2026-04-21 v2.9 + Opt-D 재보정: per-shape quantile table 도입에 맞춰
+    // shape-agnostic fallback 테이블도 v2.8 sampler(bias=0.0, std=1.0) 기준으로
+    // 동기화. 본 스냅샷은 shape 인자 미전달(= FaceShape.unknown) 경로를 타므로
+    // agnostic 테이블만 탄다. Rule set / contributor 는 동일, normalize 만 shift.
     // ignore: prefer_const_declarations
     final goldenSnapshot = '''
 == rules (sorted) ==
 O:O-CH, O:O-CK, O:O-CKC, O:O-CKE, O:O-EB1, O:O-EM, O:O-EM2, O:O-PH1, P:P-03, P:P-05, P:P-09, P:P-MJ, Z:Z-11, Z:Z-12, Z:Z-FH, Z:Z-LFR
 
 == normalized scores ==
-wealth           9.2
-leadership       10.0
-intelligence     8.1
+wealth           8.7
+leadership       8.5
+intelligence     8.0
 sociability      9.8
-emotionality     9.0
-stability        9.6
-sensuality       8.4
-trustworthiness  8.8
-attractiveness   8.6
-libido           9.4
+emotionality     9.5
+stability        9.3
+sensuality       8.9
+trustworthiness  8.3
+attractiveness   9.1
+libido           10.0
 
 == wealth top-3 contributors ==
 Z-11=0.50, P-09=0.50, O-CK=0.19

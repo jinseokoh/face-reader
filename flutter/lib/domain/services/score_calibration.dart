@@ -31,16 +31,53 @@ Map<Attribute, List<double>> calibrateQuantiles({
   int seed = 42,
   Gender gender = Gender.male,
 }) {
-  final raws = _simulateRaws(samples: samples, seed: seed, gender: gender);
-  final result = <Attribute, List<double>>{};
+  final raws =
+      _simulateRaws(samples: samples, seed: seed, gender: gender);
+  return _toQuantiles(raws);
+}
+
+/// Per-shape quantile tables — 5 known shapes × 10 attribute × 21 points.
+/// shape = FaceShape.unknown 는 포함되지 않음 (agnostic fallback 는
+/// [calibrateQuantiles] 결과 사용).
+///
+/// 각 shape 는 N samples 만큼 `fixedShape` 로 고정해 MC 를 돌린다. 같은 seed
+/// 계열(seed, seed+1, …)로 shape 별 독립 분포.
+Map<FaceShape, Map<Attribute, List<double>>> calibrateQuantilesByShape({
+  int samples = 20000,
+  int seed = 42,
+  Gender gender = Gender.male,
+}) {
+  const shapes = [
+    FaceShape.oval,
+    FaceShape.oblong,
+    FaceShape.round,
+    FaceShape.square,
+    FaceShape.heart,
+  ];
+  final result = <FaceShape, Map<Attribute, List<double>>>{};
+  for (int i = 0; i < shapes.length; i++) {
+    final s = shapes[i];
+    final raws = _simulateRaws(
+      samples: samples,
+      seed: seed + i,
+      gender: gender,
+      fixedShape: s,
+    );
+    result[s] = _toQuantiles(raws);
+  }
+  return result;
+}
+
+Map<Attribute, List<double>> _toQuantiles(Map<Attribute, List<double>> raws) {
+  final out = <Attribute, List<double>>{};
   for (final attr in Attribute.values) {
     final list = raws[attr]!..sort();
-    result[attr] = List<double>.generate(21, (i) {
+    out[attr] = List<double>.generate(21, (i) {
       final idx = ((list.length - 1) * (i / 20)).round();
       return list[idx];
     });
   }
-  return result;
+  return out;
 }
 
 /// Per-attribute (mean, std) of raw scores — for distribution-health checks.
@@ -156,6 +193,7 @@ Map<Attribute, List<double>> _simulateRaws({
   required int samples,
   required int seed,
   required Gender gender,
+  FaceShape? fixedShape,
 }) {
   final rng = Random(seed);
   final raws = {for (final a in Attribute.values) a: <double>[]};
@@ -173,7 +211,7 @@ Map<Attribute, List<double>> _simulateRaws({
     // 샘플 단위 공통 성분 2 개.
     final zBone = normal();
     final zMid = normal();
-    final shape = drawShape(rng);
+    final shape = fixedShape ?? drawShape(rng);
     final bias = _shapeMetricBias[shape] ?? const <String, double>{};
 
     final z = <String, double>{};
@@ -221,6 +259,38 @@ String formatQuantiles(
   buf.writeln('const _attrQuantilesFemale = <Attribute, List<double>>{');
   for (final attr in Attribute.values) {
     buf.writeln('  Attribute.${attr.name}: ${fmtArr(female[attr]!)},');
+  }
+  buf.writeln('};');
+  return buf.toString();
+}
+
+/// Format per-shape quantile tables — outputs a nested const map keyed by
+/// FaceShape → Gender → Attribute. Drop-in for attribute_normalize.dart.
+String formatQuantilesByShape(
+  Map<FaceShape, Map<Attribute, List<double>>> male,
+  Map<FaceShape, Map<Attribute, List<double>>> female,
+) {
+  String fmtArr(List<double> q) =>
+      '[${q.map((v) => v.toStringAsFixed(3)).join(', ')}]';
+
+  final buf = StringBuffer();
+  buf.writeln('const _attrQuantilesByShape ='
+      ' <FaceShape, Map<Gender, Map<Attribute, List<double>>>>{');
+  for (final shape in male.keys) {
+    buf.writeln('  FaceShape.${shape.name}: {');
+    buf.writeln('    Gender.male: {');
+    for (final attr in Attribute.values) {
+      buf.writeln(
+          '      Attribute.${attr.name}: ${fmtArr(male[shape]![attr]!)},');
+    }
+    buf.writeln('    },');
+    buf.writeln('    Gender.female: {');
+    for (final attr in Attribute.values) {
+      buf.writeln(
+          '      Attribute.${attr.name}: ${fmtArr(female[shape]![attr]!)},');
+    }
+    buf.writeln('    },');
+    buf.writeln('  },');
   }
   buf.writeln('};');
   return buf.toString();

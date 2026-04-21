@@ -276,8 +276,11 @@ FaceReadingReport analyzeFaceReading({
   );
   final rawScores = breakdown.total;
 
-  // Step 7: Rank-aware normalization → 5~10 with within-face spread
-  final normalizedScores = normalizeAllScores(rawScores, gender);
+  // Step 7: Rank-aware normalization → 5~10 with within-face spread.
+  // shape-conditional bias 제거 위해 per-shape × gender quantile 사용. shape
+  // 미상(FaceShape.unknown) 이면 내부에서 shape-agnostic 테이블로 fallback.
+  final normalizedScores =
+      normalizeAllScores(rawScores, gender, shape: faceShape);
 
   // Step 8: Archetype classification (shape-gated overlay 포함)
   final archetype = classifyArchetype(normalizedScores, shape: faceShape);

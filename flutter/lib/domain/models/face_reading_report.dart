@@ -426,7 +426,8 @@ class FaceReadingReport {
       shapeConfidence: faceShapeConfidence ?? 0.0,
     );
     _trace('deriveAttributeScoresDetailed OK');
-    final normalizedScores = normalizeAllScores(breakdown.total, gender);
+    final normalizedScores =
+        normalizeAllScores(breakdown.total, gender, shape: faceShape);
     _trace('normalizeAllScores OK');
     final archetype = classifyArchetype(normalizedScores, shape: faceShape);
     _trace('classifyArchetype OK → ${archetype.runtimeType}');
