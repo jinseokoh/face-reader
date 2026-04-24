@@ -18,6 +18,7 @@ import 'package:face_reader/domain/services/compat/compat_adapter.dart';
 import 'package:face_reader/domain/services/compat/compat_label.dart';
 import 'package:face_reader/domain/services/compat/compat_narrative.dart';
 import 'package:face_reader/domain/services/compat/compat_pipeline.dart';
+import 'package:face_reader/domain/services/compat/compat_sub_display.dart';
 import 'package:face_reader/domain/services/compat/five_element.dart';
 import 'package:face_reader/presentation/providers/auth_provider.dart';
 import 'package:face_reader/presentation/widgets/login_bottom_sheet.dart';
@@ -202,7 +203,7 @@ class _CompatibilityDetailScreenState
       final myAlias = widget.my.alias ?? '나';
       final albumAlias = widget.album.alias ?? '상대';
       final desc =
-          '$myAlias × $albumAlias — ${r.label.korean} ${r.total.toStringAsFixed(0)}/99';
+          '$myAlias × $albumAlias — ${r.label.korean} ${r.total.toStringAsFixed(0)}/100';
 
       final template = FeedTemplate(
         content: Content(
@@ -266,18 +267,26 @@ class _CompatibilityDetailScreenState
     buf.writeln();
 
     buf.writeln('--- 종합 ---');
-    buf.writeln('점수: ${r.total.toStringAsFixed(0)}점 / 99점 만점');
+    buf.writeln('점수: ${r.total.toStringAsFixed(0)}점 / 100점 만점');
     buf.writeln('등급: ${r.label.korean} (${r.label.hanja})');
     buf.writeln(
         '오행: ${r.myElement.primary.korean} × ${r.albumElement.primary.korean} · ${_relationKindKo(r.elementRelation.kind)}');
     buf.writeln();
 
     buf.writeln('--- 세부 점수 ---');
-    buf.writeln('오행: ${r.sub.elementScore.toStringAsFixed(0)} (가중 20%)');
-    buf.writeln('궁위: ${r.sub.palaceScore.toStringAsFixed(0)} (가중 40%)');
-    buf.writeln('기질: ${r.sub.qiScore.toStringAsFixed(0)} (가중 25%)');
-    buf.writeln(r.intimacy.gateActive
-        ? '친밀: ${r.sub.intimacyScore.toStringAsFixed(0)} (가중 15%)'
+    buf.writeln(
+        '오행: ${subScoreToDisplay(CompatSubKind.element, r.sub.elementScore)!.toStringAsFixed(0)} (가중 20%)');
+    buf.writeln(
+        '궁위: ${subScoreToDisplay(CompatSubKind.palace, r.sub.palaceScore)!.toStringAsFixed(0)} (가중 40%)');
+    buf.writeln(
+        '기질: ${subScoreToDisplay(CompatSubKind.qi, r.sub.qiScore)!.toStringAsFixed(0)} (가중 25%)');
+    final itDisplay = subScoreToDisplay(
+      CompatSubKind.intimacy,
+      r.sub.intimacyScore,
+      gateOff: !r.intimacy.gateActive,
+    );
+    buf.writeln(itDisplay != null
+        ? '친밀: ${itDisplay.toStringAsFixed(0)} (가중 15%)'
         : '친밀: 이번 조합에서는 따로 계산하지 않음');
     buf.writeln();
 
@@ -506,7 +515,7 @@ class _TotalHeader extends StatelessWidget {
                   color: AppTheme.textPrimary,
                   height: 1)),
           const SizedBox(height: 4),
-          const Text('/ 99',
+          const Text('/ 100',
               style: TextStyle(fontSize: 12, color: AppTheme.textHint)),
           const SizedBox(height: 10),
           Text(
@@ -543,12 +552,22 @@ class _SubScorePanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rows = <_SubRow>[
-      _SubRow('오행', report.sub.elementScore, 0.20),
-      _SubRow('궁위', report.sub.palaceScore, 0.40),
-      _SubRow('기질', report.sub.qiScore, 0.25),
+      _SubRow('오행',
+          subScoreToDisplay(CompatSubKind.element, report.sub.elementScore)!,
+          0.20),
+      _SubRow('궁위',
+          subScoreToDisplay(CompatSubKind.palace, report.sub.palaceScore)!,
+          0.40),
+      _SubRow(
+          '기질', subScoreToDisplay(CompatSubKind.qi, report.sub.qiScore)!, 0.25),
       _SubRow(
         '친밀',
-        report.sub.intimacyScore,
+        subScoreToDisplay(
+              CompatSubKind.intimacy,
+              report.sub.intimacyScore,
+              gateOff: !report.intimacy.gateActive,
+            ) ??
+            0.0,
         0.15,
         muted: !report.intimacy.gateActive,
       ),
@@ -572,7 +591,7 @@ class _SubBar extends StatelessWidget {
   const _SubBar({required this.row});
   @override
   Widget build(BuildContext context) {
-    final frac = (row.value.clamp(0, 99) / 99.0).toDouble();
+    final frac = (row.value.clamp(0, 100) / 100.0).toDouble();
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(

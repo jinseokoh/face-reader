@@ -11,6 +11,7 @@ import 'package:face_reader/domain/models/face_reading_report.dart';
 import 'package:face_reader/domain/services/compat/compat_adapter.dart';
 import 'package:face_reader/domain/services/compat/compat_label.dart';
 import 'package:face_reader/domain/services/compat/compat_pipeline.dart';
+import 'package:face_reader/domain/services/compat/compat_sub_display.dart';
 import 'package:face_reader/domain/services/compat/five_element.dart';
 import 'package:face_reader/presentation/providers/history_provider.dart';
 import 'package:face_reader/presentation/screens/compatibility/compatibility_detail_screen.dart';
@@ -61,7 +62,7 @@ class CompatibilityScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: const [
-              Text('두 얼굴을 4개 층위로 비교해 99점 만점으로 채점합니다.',
+              Text('두 얼굴을 4개 층위로 비교해 100점 만점으로 채점합니다.',
                   style: TextStyle(
                       fontSize: 13,
                       color: AppTheme.textSecondary,
@@ -264,7 +265,7 @@ class _CompatListCard extends StatelessWidget {
                               color: AppTheme.textPrimary,
                               height: 1)),
                       const SizedBox(height: 2),
-                      const Text('/ 99',
+                      const Text('/ 100',
                           style: TextStyle(
                               fontSize: 10, color: AppTheme.textHint)),
                     ],
@@ -326,12 +327,22 @@ class _MiniBars extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final entries = <_MiniEntry>[
-      _MiniEntry('오행', report.sub.elementScore, false),
-      _MiniEntry('궁위', report.sub.palaceScore, false),
-      _MiniEntry('기질', report.sub.qiScore, false),
+      _MiniEntry('오행',
+          subScoreToDisplay(CompatSubKind.element, report.sub.elementScore)!,
+          false),
+      _MiniEntry('궁위',
+          subScoreToDisplay(CompatSubKind.palace, report.sub.palaceScore)!,
+          false),
+      _MiniEntry(
+          '기질', subScoreToDisplay(CompatSubKind.qi, report.sub.qiScore)!, false),
       _MiniEntry(
         '친밀',
-        report.sub.intimacyScore,
+        subScoreToDisplay(
+              CompatSubKind.intimacy,
+              report.sub.intimacyScore,
+              gateOff: !report.intimacy.gateActive,
+            ) ??
+            0.0,
         !report.intimacy.gateActive,
       ),
     ];
@@ -359,7 +370,7 @@ class _MiniBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final frac = (entry.value.clamp(0, 99) / 99.0).toDouble();
+    final frac = (entry.value.clamp(0, 100) / 100.0).toDouble();
     final color = entry.muted ? AppTheme.textHint : AppTheme.accent;
     final labelColor =
         entry.muted ? AppTheme.textHint : AppTheme.textSecondary;

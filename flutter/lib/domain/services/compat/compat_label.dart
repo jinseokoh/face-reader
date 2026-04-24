@@ -45,7 +45,7 @@ extension CompatLabelLabel on CompatLabel {
   }
 }
 
-/// §8.1 초기 경계. MC 재보정 완료 후 이 표 갱신.
+/// §8.1 label 경계 — 100점 만점 UI scale.
 /// total ≥ thresholds.cheonjakjihap → 天作之合
 /// total ≥ thresholds.sangkyeongyeobin → 相敬如賓
 /// total ≥ thresholds.mahapgaseong → 磨合可成
@@ -62,12 +62,13 @@ class CompatLabelThresholds {
   });
 }
 
-/// MC 재보정 결과 — `compat_calibration_test.dart` 의 20k pair seed=42 분포에서
-/// total 의 p90/p60/p30. 10/30/30/30 target 분포를 달성한다.
+/// aggregator 의 `_remapToUserScale` 가 MC p30/p60/p90 을 56/78/90 에 정확히
+/// 꽂도록 설계되어 있어, 이 리터럴이 그대로 10/30/30/30 target 분포를 만든다.
+/// UX 기준: 한국 사용자 직관에 맞춰 50/75/90 근처 짝수 경계.
 const CompatLabelThresholds kCompatLabelThresholds = CompatLabelThresholds(
-  cheonjakjihap: 59.63,
-  sangkyeongyeobin: 54.44,
-  mahapgaseong: 50.54,
+  cheonjakjihap: 90.0,
+  sangkyeongyeobin: 78.0,
+  mahapgaseong: 56.0,
 );
 
 CompatLabel classifyLabel(double total,

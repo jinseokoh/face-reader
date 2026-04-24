@@ -115,6 +115,7 @@ void main() {
   final palaceScores = <double>[];
   final qiScores = <double>[];
   final intimacyScores = <double>[];
+  final intimacyGateOnScores = <double>[];
   final byRelation = <ElementRelationKind, _Agg>{
     for (final k in ElementRelationKind.values) k: _Agg(),
   };
@@ -128,6 +129,7 @@ void main() {
     palaceScores.add(r.sub.palaceScore);
     qiScores.add(r.sub.qiScore);
     intimacyScores.add(r.sub.intimacyScore);
+    if (r.intimacy.gateActive) intimacyGateOnScores.add(r.sub.intimacyScore);
     byRelation[r.elementRelation.kind]!.add(r.total);
   }
 
@@ -136,6 +138,7 @@ void main() {
   palaceScores.sort();
   qiScores.sort();
   intimacyScores.sort();
+  intimacyGateOnScores.sort();
 
   double pct(List<double> xs, double p) => xs[(xs.length * p).floor()];
   double meanOf(List<double> xs) => xs.reduce((a, b) => a + b) / xs.length;
@@ -176,16 +179,20 @@ void main() {
     'element': elementScores,
     'palace': palaceScores,
     'qi': qiScores,
-    'intimacy': intimacyScores,
+    'intimacy(all)': intimacyScores,
+    'intimacy(on)': intimacyGateOnScores,
   }.entries) {
     final xs = entry.value;
+    if (xs.isEmpty) continue;
     // ignore: avoid_print
-    print('${entry.key.padRight(8)} '
+    print('${entry.key.padRight(13)} '
         'p10=${pct(xs, 0.10).toStringAsFixed(2)} '
+        'p30=${pct(xs, 0.30).toStringAsFixed(2)} '
         'p50=${pct(xs, 0.50).toStringAsFixed(2)} '
+        'p60=${pct(xs, 0.60).toStringAsFixed(2)} '
         'p90=${pct(xs, 0.90).toStringAsFixed(2)} '
         'mean=${meanOf(xs).toStringAsFixed(2)} '
-        'spread=${(pct(xs, 0.90) - pct(xs, 0.10)).toStringAsFixed(2)}');
+        'n=${xs.length}');
   }
 
   // ── invariant 1: total spread ──────────────────────────
@@ -281,9 +288,10 @@ void main() {
         intimacyScore: 60,
       ),
     );
-    // raw = 60, deviation = 10, total = 50 + 10*1.4 = 64.
+    // raw = 60, deviation = 10, spread = 50 + 10*1.4 = 64.
+    // remap: 64 ∈ [59.63, 99] → 90 + (64-59.63)/(99-59.63)*10 ≈ 91.11.
     expect(agg.rawTotal, closeTo(60.0, 1e-9));
-    expect(agg.total, closeTo(64.0, 1e-9));
+    expect(agg.total, closeTo(91.1101, 1e-3));
 
     final neutral = aggregateCompat(
       sub: const CompatSubScores(
@@ -293,6 +301,7 @@ void main() {
         intimacyScore: 50,
       ),
     );
-    expect(neutral.total, closeTo(50.0, 1e-9));
+    // raw = 50, spread = 50. remap: 50 ∈ [5, 50.54] → 45/45.54*56 ≈ 55.34.
+    expect(neutral.total, closeTo(55.3360, 1e-3));
   });
 }

@@ -162,7 +162,7 @@ void main() {
     final bundle = analyzeCompatibilityFromReports(my: my, album: album);
 
     // report 구조 sanity.
-    expect(bundle.report.total, inInclusiveRange(5.0, 99.0));
+    expect(bundle.report.total, inInclusiveRange(0.0, 100.0));
     expect(bundle.report.sub.elementScore, inInclusiveRange(5.0, 99.0));
     expect(bundle.report.sub.palaceScore, inInclusiveRange(5.0, 99.0));
     expect(bundle.report.sub.qiScore, inInclusiveRange(5.0, 99.0));

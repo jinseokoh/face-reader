@@ -17,6 +17,7 @@ import 'compat_finding.dart';
 import 'compat_label.dart';
 import 'compat_phrase_pool.dart';
 import 'compat_pipeline.dart';
+import 'compat_sub_display.dart';
 import 'five_element.dart';
 
 /// 5-섹션 최종 출력.
@@ -351,18 +352,24 @@ String _strategySection(
 
 String _scoreSection(CompatibilityReport r) {
   final total = r.total.toStringAsFixed(0);
-  final el = r.sub.elementScore.toStringAsFixed(0);
-  final pa = r.sub.palaceScore.toStringAsFixed(0);
-  final qi = r.sub.qiScore.toStringAsFixed(0);
-  final it = r.intimacy.gateActive
-      ? r.sub.intimacyScore.toStringAsFixed(0)
-      : null;
+  final el = subScoreToDisplay(CompatSubKind.element, r.sub.elementScore)!
+      .toStringAsFixed(0);
+  final pa = subScoreToDisplay(CompatSubKind.palace, r.sub.palaceScore)!
+      .toStringAsFixed(0);
+  final qi = subScoreToDisplay(CompatSubKind.qi, r.sub.qiScore)!
+      .toStringAsFixed(0);
+  final itDisplay = subScoreToDisplay(
+    CompatSubKind.intimacy,
+    r.sub.intimacyScore,
+    gateOff: !r.intimacy.gateActive,
+  );
+  final it = itDisplay?.toStringAsFixed(0);
 
   final strongest = _strongestLayer(r);
   final weakest = _weakestLayer(r);
 
   final buf = StringBuffer();
-  buf.writeln('종합 점수: $total점 / 99점 만점 기준');
+  buf.writeln('종합 점수: $total점 / 100점 만점 기준');
   buf.writeln();
   buf.writeln('세부 점수:');
   buf.writeln('- 오행(얼굴형 기본 성향): $el점');
@@ -381,25 +388,30 @@ String _scoreSection(CompatibilityReport r) {
   return buf.toString();
 }
 
-String _strongestLayer(CompatibilityReport r) {
-  final pairs = <MapEntry<String, double>>[
-    MapEntry('오행(기본 성향)', r.sub.elementScore),
-    MapEntry('궁위(12개 생활 영역)', r.sub.palaceScore),
-    MapEntry('기질(얼굴 세부 짝)', r.sub.qiScore),
+List<MapEntry<String, double>> _subDisplayPairs(CompatibilityReport r) {
+  return [
+    MapEntry('오행(기본 성향)',
+        subScoreToDisplay(CompatSubKind.element, r.sub.elementScore)!),
+    MapEntry('궁위(12개 생활 영역)',
+        subScoreToDisplay(CompatSubKind.palace, r.sub.palaceScore)!),
+    MapEntry('기질(얼굴 세부 짝)',
+        subScoreToDisplay(CompatSubKind.qi, r.sub.qiScore)!),
     if (r.intimacy.gateActive)
-      MapEntry('친밀(부부·친밀 영역)', r.sub.intimacyScore),
-  ]..sort((a, b) => b.value.compareTo(a.value));
+      MapEntry(
+          '친밀(부부·친밀 영역)',
+          subScoreToDisplay(CompatSubKind.intimacy, r.sub.intimacyScore)!),
+  ];
+}
+
+String _strongestLayer(CompatibilityReport r) {
+  final pairs = _subDisplayPairs(r)
+    ..sort((a, b) => b.value.compareTo(a.value));
   return pairs.first.key;
 }
 
 String _weakestLayer(CompatibilityReport r) {
-  final pairs = <MapEntry<String, double>>[
-    MapEntry('오행(기본 성향)', r.sub.elementScore),
-    MapEntry('궁위(12개 생활 영역)', r.sub.palaceScore),
-    MapEntry('기질(얼굴 세부 짝)', r.sub.qiScore),
-    if (r.intimacy.gateActive)
-      MapEntry('친밀(부부·친밀 영역)', r.sub.intimacyScore),
-  ]..sort((a, b) => a.value.compareTo(b.value));
+  final pairs = _subDisplayPairs(r)
+    ..sort((a, b) => a.value.compareTo(b.value));
   return pairs.first.key;
 }
 
