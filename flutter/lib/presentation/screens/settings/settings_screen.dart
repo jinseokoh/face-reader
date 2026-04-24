@@ -91,7 +91,7 @@ class SettingsScreen extends ConsumerWidget {
                   // Coin row
                   Row(
                     children: [
-                      Icon(Icons.paid_outlined,
+                      Icon(Icons.toll_outlined,
                           color: AppTheme.textSecondary, size: 28),
                       const SizedBox(width: 12),
                       Text('남은 코인',
