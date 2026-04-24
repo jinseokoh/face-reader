@@ -781,7 +781,7 @@ class _YinYangBar extends StatelessWidget {
                   style: TextStyle(color: _yinColor, fontSize: 11)),
               const Spacer(),
               Text(
-                'skew ${skew >= 0 ? '+' : ''}${skew.toStringAsFixed(2)}  ·  강도 ${mag.toStringAsFixed(2)}',
+                '편향성 ${skew >= 0 ? '+' : ''}${skew.toStringAsFixed(2)}  ·  강도 ${mag.toStringAsFixed(2)}',
                 style: TextStyle(
                     color: _Palette.warmBrown, fontSize: 11),
               ),
@@ -960,6 +960,21 @@ class _ReportPageState extends ConsumerState<ReportPage> {
 
   FaceReadingReport get report => widget.report;
 
+  /// 관상 파이프라인이 근거로 삼는 학술·전통 자료 10선. UI 의 참고 자료
+  /// 섹션과 PDF/클립보드 export 가 공유한다.
+  static const List<String> _references = [
+    '파카스 두개안면 계측학 (Farkas, 1994) — 2,500명 대상 166개 비율 인덱스',
+    '눈 사이 거리 메타분석 (PMC9029890) — 67개 연구, 22,638명 분석',
+    '신고전 비율 검증 연구 (PMC4369102) — 얼굴 3등분 비율 유효성 검증',
+    '미국 국립산업안전보건원 안면 계측 데이터 (NIOSH) — 3,997명 18개 측정값',
+    '구글 미디어파이프 얼굴 메시 — 468개 랜드마크 기반 측정',
+    '동아시아 얼굴 인체측정 연구 — 얼굴 비율 통계 데이터',
+    '컴퓨터 비전 안면 랜드마크 연구 — 얼굴 특징점 기반 정량 분석',
+    '동양 관상학 고전 (마의상법, 신상전편) — 오관·삼정·십이궁 해석 체계',
+    '안면 노화 인류학 (Mendelson & Wong, 2012) — 연조직 노화 변화 보정 근거',
+    '얼굴 매력도 연구 (Rhodes, 2006) — 평균성·대칭성과 매력의 상관관계',
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -991,8 +1006,58 @@ class _ReportPageState extends ConsumerState<ReportPage> {
           _buildReadingSection(),
           const SizedBox(height: 20),
           _buildNodeScoreSection(),
+          const SizedBox(height: 24),
+          _buildReferencesSection(),
         ],
       ),
+    );
+  }
+
+  Widget _buildReferencesSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('참고 자료',
+            style: TextStyle(
+                color: AppTheme.textPrimary,
+                fontSize: 19,
+                fontWeight: FontWeight.bold)),
+        const SizedBox(height: 6),
+        const Text(
+          '이 분석이 근거로 삼는 학술·전통 자료입니다.',
+          style: TextStyle(
+              color: AppTheme.textSecondary, fontSize: 12, height: 1.4),
+        ),
+        const SizedBox(height: 12),
+        for (var i = 0; i < _references.length; i++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 22,
+                  child: Text(
+                    '${i + 1}.',
+                    style: const TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    _references[i],
+                    style: const TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 12,
+                        height: 1.5),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 
@@ -1372,7 +1437,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     }
     buf.writeln();
 
-    buf.writeln('--- 10대 속성 ---');
+    buf.writeln('--- 관상 10대 속성 ---');
     final sorted = report.attributeScores.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
     for (final e in sorted) {
@@ -1413,7 +1478,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     // 음양 균형 요약 (bar 를 텍스트로 치환).
     final yinYang = _computeReportYinYang();
     buf.writeln(
-        '음양 균형 — ${yinYang.label} (skew ${_fmtZ(yinYang.skew)} · 강도 ${yinYang.magnitude.toStringAsFixed(2)})');
+        '음양 균형 — ${yinYang.label} (편향성 ${_fmtZ(yinYang.skew)} · 강도 ${yinYang.magnitude.toStringAsFixed(2)})');
     buf.writeln();
 
     // 삼정 요약 (radar 를 텍스트로 치환).
@@ -1472,20 +1537,8 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     }
 
     buf.writeln('--- 참고 자료 ---');
-    const references = [
-      '파카스 두개안면 계측학 (Farkas, 1994) — 2,500명 대상 166개 비율 인덱스',
-      '눈 사이 거리 메타분석 (PMC9029890) — 67개 연구, 22,638명 분석',
-      '신고전 비율 검증 연구 (PMC4369102) — 얼굴 3등분 비율 유효성 검증',
-      '미국 국립산업안전보건원 안면 계측 데이터 (NIOSH) — 3,997명 18개 측정값',
-      '구글 미디어파이프 얼굴 메시 — 468개 랜드마크 기반 측정',
-      '동아시아 얼굴 인체측정 연구 — 얼굴 비율 통계 데이터',
-      '컴퓨터 비전 안면 랜드마크 연구 — 얼굴 특징점 기반 정량 분석',
-      '동양 관상학 고전 (마의상법, 신상전편) — 오관·삼정·십이궁 해석 체계',
-      '안면 노화 인류학 (Mendelson & Wong, 2012) — 연조직 노화 변화 보정 근거',
-      '얼굴 매력도 연구 (Rhodes, 2006) — 평균성·대칭성과 매력의 상관관계',
-    ];
-    for (var i = 0; i < references.length; i++) {
-      buf.writeln('${i + 1}. ${references[i]}');
+    for (var i = 0; i < _references.length; i++) {
+      buf.writeln('${i + 1}. ${_references[i]}');
     }
 
     return buf.toString();
@@ -1496,7 +1549,8 @@ class _ReportPageState extends ConsumerState<ReportPage> {
 
   /// Render one text line into a PDF widget based on its marker prefix.
   /// Markers mirror `_generateText`:
-  ///   `===` H1, `---` H2, `▶` node header, `  ·` metric, `  ◉` combo.
+  ///   `===` H1, `---` H2, `## ` narrative subheader `[제목]`,
+  ///   `▶` node header, `  ·` metric, `  ◉` combo.
   static pw.Widget _renderPdfLine(String line) {
     if (line.startsWith('===')) {
       return pw.Padding(
@@ -1525,6 +1579,20 @@ class _ReportPageState extends ConsumerState<ReportPage> {
               color: PdfColor.fromInt(0xFF5C4033),
             ),
           ],
+        ),
+      );
+    }
+    if (line.startsWith('## ')) {
+      final text = line.substring(3).trim();
+      return pw.Padding(
+        padding: const pw.EdgeInsets.only(top: 12, bottom: 4),
+        child: pw.Text(
+          '[$text]',
+          style: pw.TextStyle(
+            fontSize: 13,
+            fontWeight: pw.FontWeight.bold,
+            color: PdfColor.fromInt(0xFF5C4033),
+          ),
         ),
       );
     }
