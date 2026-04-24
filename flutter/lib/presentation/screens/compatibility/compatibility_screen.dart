@@ -7,17 +7,23 @@ import 'package:face_reader/core/theme.dart';
 import 'package:face_reader/data/enums/age_group.dart';
 import 'package:face_reader/data/enums/face_shape.dart';
 import 'package:face_reader/data/enums/gender.dart';
+import 'package:face_reader/data/services/compat_unlock_service.dart';
+import 'package:face_reader/data/services/supabase_service.dart';
 import 'package:face_reader/domain/models/face_reading_report.dart';
 import 'package:face_reader/domain/services/compat/compat_adapter.dart';
 import 'package:face_reader/domain/services/compat/compat_label.dart';
+import 'package:face_reader/domain/services/compat/compat_pair_key.dart';
 import 'package:face_reader/domain/services/compat/compat_pipeline.dart';
 import 'package:face_reader/domain/services/compat/compat_sub_display.dart';
 import 'package:face_reader/domain/services/compat/five_element.dart';
+import 'package:face_reader/presentation/providers/auth_provider.dart';
+import 'package:face_reader/presentation/providers/compat_unlock_provider.dart';
 import 'package:face_reader/presentation/providers/history_provider.dart';
 import 'package:face_reader/presentation/screens/compatibility/compatibility_detail_screen.dart';
+import 'package:face_reader/presentation/widgets/login_bottom_sheet.dart';
+import 'package:face_reader/presentation/widgets/purchase_sheet.dart';
 
-/// 궁합 탭 — 앨범 리스트.
-/// 카드 탭 → `CompatibilityDetailScreen` push (현재 화면 그대로).
+/// 궁합 탭 — 앨범 리스트. 기본 lock, 2 코인 해제.
 class CompatibilityScreen extends ConsumerWidget {
   const CompatibilityScreen({super.key});
 
@@ -30,6 +36,8 @@ class CompatibilityScreen extends ConsumerWidget {
         .firstOrNull;
     final albums =
         history.where((r) => !r.isMyFace).toList(growable: false);
+    final unlocksAsync = ref.watch(compatUnlocksProvider);
+    final unlocked = unlocksAsync.asData?.value ?? const <String>{};
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -43,8 +51,163 @@ class CompatibilityScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: _buildBody(context, myFace, albums),
+      body: _body(context, ref, myFace, albums, unlocked),
     );
+  }
+
+  Widget _body(
+    BuildContext context,
+    WidgetRef ref,
+    FaceReadingReport? myFace,
+    List<FaceReadingReport> albums,
+    Set<String> unlocked,
+  ) {
+    if (myFace == null) {
+      return _guide(
+        '내 얼굴이 설정되어 있지 않습니다.',
+        '히스토리에서 내 얼굴을 선택한 뒤 여기로 돌아오세요.',
+      );
+    }
+    if (albums.isEmpty) {
+      return _guide(
+        '비교할 앨범 얼굴이 없습니다.',
+        '홈에서 한 장 더 캡처한 뒤 궁합을 확인해 보세요.',
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+      itemCount: albums.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
+      itemBuilder: (ctx, i) {
+        final album = albums[i];
+        final key = tryPairKey(myFace, album);
+        final isUnlocked = key != null && unlocked.contains(key);
+
+        if (isUnlocked) {
+          return _CompatListCard(
+            my: myFace,
+            album: album,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) =>
+                    CompatibilityDetailScreen(my: myFace, album: album),
+              ),
+            ),
+          );
+        }
+        return _CompatLockedCard(
+          album: album,
+          onUnlockPressed: () =>
+              _handleUnlockPressed(context, ref, myFace, album),
+        );
+      },
+    );
+  }
+
+  Future<void> _handleUnlockPressed(
+    BuildContext context,
+    WidgetRef ref,
+    FaceReadingReport my,
+    FaceReadingReport album,
+  ) async {
+    // 1. 로그인 확인.
+    final auth = ref.read(authProvider.notifier);
+    if (!auth.isLoggedIn) {
+      final ok = await showLoginBottomSheet(context, ref);
+      if (!ok || !context.mounted) return;
+    }
+
+    // 2. supabaseId 보장 — 없으면 saveMetrics 로 생성 후 Hive 갱신.
+    try {
+      await _ensureSupabaseId(ref, my);
+      await _ensureSupabaseId(ref, album);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('저장 중 오류: $e'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+      return;
+    }
+
+    final key = tryPairKey(my, album);
+    if (key == null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('저장된 ID 를 찾을 수 없습니다. 잠시 후 다시 시도해 주세요.')),
+        );
+      }
+      return;
+    }
+
+    // 3. 잔액 확인.
+    final balance = auth.coins;
+    if (balance < 2) {
+      if (!context.mounted) return;
+      await PurchaseSheet.show(context, onPurchased: () async {
+        if (!context.mounted) return;
+        // 충전 성공 시 다시 시도.
+        await _handleUnlockPressed(context, ref, my, album);
+      });
+      return;
+    }
+
+    // 4. 확인 다이얼로그.
+    if (!context.mounted) return;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surface,
+        title: const Text('궁합 해제',
+            style: TextStyle(
+                fontFamily: 'SongMyung',
+                fontSize: 17,
+                color: AppTheme.textPrimary)),
+        content: Text(
+          '2 코인을 사용해 이 궁합을 해제할까요?\n잔액 $balance → ${balance - 2}',
+          style: const TextStyle(color: AppTheme.textSecondary, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('해제'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    // 5. RPC.
+    final newBalance = await CompatUnlockService().unlock(key);
+    if (!context.mounted) return;
+    if (newBalance == -1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('코인이 부족합니다.')),
+      );
+      return;
+    }
+
+    // 6. 갱신.
+    await auth.refreshCoins();
+    ref.invalidate(compatUnlocksProvider);
+  }
+
+  /// report.supabaseId 가 null 이면 saveMetrics 로 UUID 를 할당하고 Hive 에
+  /// 써서 다음 실행에서도 같은 key 가 유지되도록 한다.
+  Future<void> _ensureSupabaseId(
+      WidgetRef ref, FaceReadingReport report) async {
+    if (report.supabaseId != null) return;
+    final uuid = await SupabaseService().saveMetrics(report);
+    report.supabaseId = uuid;
+    await ref.read(historyProvider.notifier).updateHive();
   }
 
   void _showInfoDialog(BuildContext context) {
@@ -108,44 +271,6 @@ class CompatibilityScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildBody(
-    BuildContext context,
-    FaceReadingReport? myFace,
-    List<FaceReadingReport> albums,
-  ) {
-    if (myFace == null) {
-      return _guide(
-        '내 얼굴이 설정되어 있지 않습니다.',
-        '히스토리에서 내 얼굴을 선택한 뒤 여기로 돌아오세요.',
-      );
-    }
-    if (albums.isEmpty) {
-      return _guide(
-        '비교할 앨범 얼굴이 없습니다.',
-        '홈에서 한 장 더 캡처한 뒤 궁합을 확인해 보세요.',
-      );
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-      itemCount: albums.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 12),
-      itemBuilder: (ctx, i) {
-        final album = albums[i];
-        return _CompatListCard(
-          my: myFace,
-          album: album,
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) =>
-                  CompatibilityDetailScreen(my: myFace, album: album),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   Widget _guide(String title, String detail) => Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -174,7 +299,105 @@ class CompatibilityScreen extends ConsumerWidget {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Compat list card
+// Locked card — 기본 상태. 상대 프로필만 보여주고 해제 CTA.
+// ─────────────────────────────────────────────────────────────
+
+class _CompatLockedCard extends ConsumerWidget {
+  final FaceReadingReport album;
+  final VoidCallback onUnlockPressed;
+  const _CompatLockedCard({
+    required this.album,
+    required this.onUnlockPressed,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isLoggedIn = ref.watch(authProvider) != null;
+    final coins = ref.watch(authProvider)?.coins ?? 0;
+    final alias = album.alias;
+    final demographic =
+        '${album.gender.labelKo} · ${album.ageGroup.labelKo} · ${album.faceShape.korean}';
+
+    final cta = isLoggedIn
+        ? '2 코인으로 해제 · 잔액 $coins'
+        : '카카오 로그인하고 3 코인 받기';
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _Thumb(path: album.thumbnailPath, size: 56),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(alias ?? demographic,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textPrimary)),
+                    if (alias != null) ...[
+                      const SizedBox(height: 2),
+                      Text(demographic,
+                          style: const TextStyle(
+                              fontSize: 11, color: AppTheme.textSecondary)),
+                    ],
+                  ],
+                ),
+              ),
+              const Icon(Icons.lock_outline,
+                  color: AppTheme.textHint, size: 20),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(height: 1, color: AppTheme.border),
+          const SizedBox(height: 12),
+          Text(
+            isLoggedIn
+                ? '궁합 결과는 2 코인으로 열어볼 수 있습니다.'
+                : '카카오 로그인하면 가입 보너스 3 코인으로 바로 열어볼 수 있어요.',
+            style: const TextStyle(
+                fontSize: 12, color: AppTheme.textSecondary, height: 1.5),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: ElevatedButton(
+              onPressed: onUnlockPressed,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.accent,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                elevation: 0,
+              ),
+              child: Text(cta,
+                  style: const TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.w600)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Unlocked card — 기존 구조 그대로.
 // ─────────────────────────────────────────────────────────────
 
 class _CompatListCard extends StatelessWidget {
@@ -430,68 +653,72 @@ class _MiniBar extends StatelessWidget {
 class _Thumb extends StatelessWidget {
   final String? path;
   final double size;
-  const _Thumb({required this.path, this.size = 48});
+  const _Thumb({required this.path, required this.size});
+
   @override
   Widget build(BuildContext context) {
-    final p = path;
-    final file = p != null ? File(p) : null;
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: AppTheme.border,
-        borderRadius: BorderRadius.circular(8),
-        image: file != null && file.existsSync()
-            ? DecorationImage(image: FileImage(file), fit: BoxFit.cover)
-            : null,
+    final radius = size / 2;
+    if (path == null || path!.isEmpty) {
+      return CircleAvatar(
+        radius: radius,
+        backgroundColor: AppTheme.border,
+        child: const Icon(Icons.person, color: AppTheme.textHint, size: 28),
+      );
+    }
+    final file = File(path!);
+    return ClipOval(
+      child: Image.file(
+        file,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => CircleAvatar(
+          radius: radius,
+          backgroundColor: AppTheme.border,
+          child: const Icon(Icons.broken_image,
+              color: AppTheme.textHint, size: 20),
+        ),
       ),
-      child: file == null || !file.existsSync()
-          ? const Icon(Icons.person, color: AppTheme.textHint)
-          : null,
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────
-// Info dialog rows
+// Info dialog helpers
 // ─────────────────────────────────────────────────────────────
 
 class _InfoRow extends StatelessWidget {
   final String title;
   final String weight;
   final String body;
-  const _InfoRow({
-    required this.title,
-    required this.weight,
-    required this.body,
-  });
-
+  const _InfoRow(
+      {required this.title, required this.weight, required this.body});
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Column(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Text(title,
-                  style: const TextStyle(
-                      fontFamily: 'SongMyung',
-                      fontSize: 14,
-                      color: AppTheme.textPrimary)),
-              const SizedBox(width: 8),
-              Text(weight,
-                  style: const TextStyle(
-                      fontSize: 11, color: AppTheme.accent)),
-            ],
+          SizedBox(
+            width: 40,
+            child: Text(title,
+                style: const TextStyle(
+                    fontFamily: 'SongMyung',
+                    fontSize: 13,
+                    color: AppTheme.textPrimary)),
           ),
-          const SizedBox(height: 2),
-          Text(body,
-              style: const TextStyle(
-                  fontSize: 12,
-                  color: AppTheme.textSecondary,
-                  height: 1.45)),
+          SizedBox(
+            width: 44,
+            child: Text(weight,
+                style: const TextStyle(
+                    fontSize: 12, color: AppTheme.textSecondary)),
+          ),
+          Expanded(
+            child: Text(body,
+                style: const TextStyle(
+                    fontSize: 12, color: AppTheme.textSecondary, height: 1.4)),
+          ),
         ],
       ),
     );
@@ -501,33 +728,25 @@ class _InfoRow extends StatelessWidget {
 class _LabelRow extends StatelessWidget {
   final CompatLabel label;
   const _LabelRow({required this.label});
-
   @override
   Widget build(BuildContext context) {
-    final color = _CompatListCard._labelColor(label);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.only(bottom: 4),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 8,
-            height: 8,
-            margin: const EdgeInsets.only(top: 5, right: 8),
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-            ),
+          SizedBox(
+            width: 92,
+            child: Text('${label.korean} (${label.hanja})',
+                style: const TextStyle(
+                    fontFamily: 'SongMyung',
+                    fontSize: 13,
+                    color: AppTheme.textPrimary)),
           ),
-          Expanded(
-            child: Text(
-              '${label.korean} (${label.hanja}) — ${_tagline(label)}',
+          Text(_tagline(label),
               style: const TextStyle(
                   fontSize: 12,
-                  color: AppTheme.textPrimary,
-                  height: 1.45),
-            ),
-          ),
+                  color: AppTheme.textSecondary,
+                  height: 1.4)),
         ],
       ),
     );
@@ -536,13 +755,13 @@ class _LabelRow extends StatelessWidget {
   static String _tagline(CompatLabel l) {
     switch (l) {
       case CompatLabel.cheonjakjihap:
-        return '하늘이 맺어 준 드문 자리';
+        return '얼굴로 읽으면 흔치 않게 잘 맞는 자리';
       case CompatLabel.sangkyeongyeobin:
-        return '예를 지키며 오래가는 자리';
+        return '예를 지키며 오래 가는 자리';
       case CompatLabel.mahapgaseong:
         return '다듬으며 이루어 가는 자리';
       case CompatLabel.hyeonggeuknanjo:
-        return '서로를 조심히 지켜 줘야 하는 자리';
+        return '서로 조심히 지켜 줘야 하는 자리';
     }
   }
 }
