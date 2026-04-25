@@ -66,9 +66,11 @@ class _CompatibilityDetailScreenState
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 48),
         children: [
-          _PersonStrip(my: widget.my, album: widget.album),
-          const SizedBox(height: 20),
-          _TotalHeader(report: _bundle.report),
+          _TotalHeader(
+            my: widget.my,
+            album: widget.album,
+            report: _bundle.report,
+          ),
           const SizedBox(height: 16),
           _SubScorePanel(report: _bundle.report),
           const SizedBox(height: 20),
@@ -114,7 +116,7 @@ class _CompatibilityDetailScreenState
                         fontSize: 16,
                         fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
-                Text('인스타·카톡에 그대로 보낼 수 있는 정사각 카드입니다.',
+                Text('인스타·카톡에 그대로 보낼 수 있는 카드입니다.',
                     style: TextStyle(
                         color: AppTheme.textSecondary,
                         fontSize: 12,
@@ -264,81 +266,6 @@ String _relationKindKo(ElementRelationKind k) {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-// Person strip
-// ─────────────────────────────────────────────────────────────
-
-class _PersonStrip extends StatelessWidget {
-  final FaceReadingReport my;
-  final FaceReadingReport album;
-  const _PersonStrip({required this.my, required this.album});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(child: _PersonCard(report: my, label: '나')),
-        const SizedBox(width: 16),
-        Expanded(child: _PersonCard(report: album, label: '상대')),
-      ],
-    );
-  }
-}
-
-class _PersonCard extends StatelessWidget {
-  final FaceReadingReport report;
-  final String label;
-  const _PersonCard({required this.report, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    final r = report;
-    final alias = r.alias;
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.border),
-      ),
-      child: Row(
-        children: [
-          _Thumb(path: r.thumbnailPath),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label,
-                    style: const TextStyle(
-                        fontFamily: 'SongMyung',
-                        fontSize: 15,
-                        color: AppTheme.accent)),
-                if (alias != null) ...[
-                  const SizedBox(height: 2),
-                  Text(alias,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                          color: AppTheme.textPrimary)),
-                ],
-                const SizedBox(height: 2),
-                Text(
-                  '${r.gender.labelKo} · ${r.ageGroup.labelKo} · ${r.faceShape.korean}',
-                  style: const TextStyle(
-                      fontSize: 11, color: AppTheme.textSecondary),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _Thumb extends StatelessWidget {
   final String? path;
   final double size;
@@ -370,47 +297,119 @@ class _Thumb extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────
 
 class _TotalHeader extends StatelessWidget {
+  final FaceReadingReport my;
+  final FaceReadingReport album;
   final CompatibilityReport report;
-  const _TotalHeader({required this.report});
+  const _TotalHeader({
+    required this.my,
+    required this.album,
+    required this.report,
+  });
   @override
   Widget build(BuildContext context) {
     final label = report.label;
+    final myAlias = my.alias ?? '나';
+    final albumAlias = album.alias ?? '상대';
+    final myDemographic =
+        '${my.gender.labelKo} · ${my.ageGroup.labelKo} · ${my.faceShape.korean}';
+    final albumDemographic =
+        '${album.gender.labelKo} · ${album.ageGroup.labelKo} · ${album.faceShape.korean}';
+    final relation =
+        '${report.myElement.primary.korean} × ${report.albumElement.primary.korean}  ·  ${_relationKindKo(report.elementRelation.kind)}';
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.border),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [_CompatPalette.darkBrown, _CompatPalette.warmBrown],
+        ),
+        borderRadius: BorderRadius.circular(20),
       ),
+      padding: const EdgeInsets.all(20),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(label.korean,
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text('AI 관상가 궁합평가',
+                style: TextStyle(
+                    color: _CompatPalette.sand,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1)),
+          ),
+          const SizedBox(height: 10),
+          RichText(
+            text: TextSpan(
               style: const TextStyle(
-                  fontFamily: 'SongMyung',
-                  fontSize: 26,
-                  color: AppTheme.textPrimary,
-                  letterSpacing: 4)),
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  height: 1.0),
+              children: [
+                TextSpan(text: label.korean),
+                TextSpan(
+                  text: '(${label.hanja})',
+                  style: TextStyle(
+                      color: _CompatPalette.sand,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 6),
           Text(_labelTagline(label),
-              style: const TextStyle(
-                  fontSize: 13,
-                  color: AppTheme.textSecondary,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  color: _CompatPalette.sand,
+                  fontSize: 12,
                   letterSpacing: 1)),
-          const SizedBox(height: 14),
-          Text(report.total.toStringAsFixed(0),
-              style: const TextStyle(
-                  fontSize: 56,
-                  fontWeight: FontWeight.w300,
-                  color: AppTheme.textPrimary,
-                  height: 1)),
-          const SizedBox(height: 4),
-          const Text('/ 100',
-              style: TextStyle(fontSize: 12, color: AppTheme.textHint)),
-          const SizedBox(height: 10),
-          Text(
-              '${report.myElement.primary.korean} × ${report.albumElement.primary.korean}  · ${_relationKindKo(report.elementRelation.kind)}',
-              style: const TextStyle(
-                  fontSize: 13, color: AppTheme.accent, letterSpacing: 1.5)),
+          const SizedBox(height: 18),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                  child: _CompatShareSide(
+                      report: my,
+                      alias: myAlias,
+                      demographic: myDemographic)),
+              const Padding(
+                padding: EdgeInsets.only(top: 24),
+                child: Text('×',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w300)),
+              ),
+              Expanded(
+                  child: _CompatShareSide(
+                      report: album,
+                      alias: albumAlias,
+                      demographic: albumDemographic)),
+            ],
+          ),
+          const SizedBox(height: 18),
+          _CompatChipsBlock(report: report),
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(10),
+              border:
+                  Border.all(color: Colors.white.withValues(alpha: 0.18)),
+            ),
+            child: Text(relation,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1)),
+          ),
         ],
       ),
     );
@@ -449,17 +448,15 @@ class _SubScorePanel extends StatelessWidget {
           0.40),
       _SubRow(
           '기질', subScoreToDisplay(CompatSubKind.qi, report.sub.qiScore)!, 0.25),
-      _SubRow(
-        '친밀',
-        subScoreToDisplay(
-              CompatSubKind.intimacy,
-              report.sub.intimacyScore,
-              gateOff: !report.intimacy.gateActive,
-            ) ??
-            0.0,
-        0.15,
-        muted: !report.intimacy.gateActive,
-      ),
+      // 친밀: 30~50대 이성 페어 등 intimacy gate 통과 시에만 노출. gate off 면 row 자체를 숨김.
+      if (report.intimacy.gateActive)
+        _SubRow(
+          '친밀',
+          subScoreToDisplay(
+                  CompatSubKind.intimacy, report.sub.intimacyScore) ??
+              0.0,
+          0.15,
+        ),
     ];
     return Column(
       children: [for (final r in rows) _SubBar(row: r)],
@@ -471,8 +468,7 @@ class _SubRow {
   final String label;
   final double value;
   final double weight;
-  final bool muted;
-  _SubRow(this.label, this.value, this.weight, {this.muted = false});
+  _SubRow(this.label, this.value, this.weight);
 }
 
 class _SubBar extends StatelessWidget {
@@ -488,12 +484,10 @@ class _SubBar extends StatelessWidget {
           SizedBox(
             width: 64,
             child: Text(row.label,
-                style: TextStyle(
+                style: const TextStyle(
                     fontFamily: 'SongMyung',
                     fontSize: 13,
-                    color: row.muted
-                        ? AppTheme.textHint
-                        : AppTheme.textPrimary)),
+                    color: AppTheme.textPrimary)),
           ),
           Expanded(
             child: Stack(
@@ -510,7 +504,7 @@ class _SubBar extends StatelessWidget {
                   child: Container(
                     height: 10,
                     decoration: BoxDecoration(
-                      color: row.muted ? AppTheme.textHint : AppTheme.accent,
+                      color: AppTheme.accent,
                       borderRadius: BorderRadius.circular(5),
                     ),
                   ),
@@ -522,9 +516,7 @@ class _SubBar extends StatelessWidget {
           SizedBox(
             width: 48,
             child: Text(
-              row.muted
-                  ? '— · ${(row.weight * 100).toInt()}%'
-                  : '${row.value.toStringAsFixed(0)} · ${(row.weight * 100).toInt()}%',
+              '${row.value.toStringAsFixed(0)} · ${(row.weight * 100).toInt()}%',
               textAlign: TextAlign.right,
               style:
                   const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
@@ -618,6 +610,14 @@ class _CompatPalette {
   static const darkBrown = Color(0xFF5C4033);
   static const warmBrown = Color(0xFF7B5B3A);
   static const sand = Color(0xFFBFA67A);
+
+  // 강점/약점 칩 — 관상 hero `_Palette` 와 동일 (통일감).
+  static const strengthBg = Color(0xFFE0EBDA);
+  static const strengthFg = Color(0xFF2C5A36);
+  static const strengthBorder = Color(0xFF6B9F70);
+  static const weaknessBg = Color(0xFFF5DCD8);
+  static const weaknessFg = Color(0xFF8C2E1F);
+  static const weaknessBorder = Color(0xFFC97165);
 }
 
 class _CompatShareCard extends StatelessWidget {
@@ -658,19 +658,35 @@ class _CompatShareCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text('당신들의 궁합',
-                style: TextStyle(
-                    color: _CompatPalette.sand,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1)),
-            const SizedBox(height: 14),
-            Text(report.label.korean,
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text('AI 관상가 궁합평가',
+                  style: TextStyle(
+                      color: _CompatPalette.sand,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1)),
+            ),
+            const SizedBox(height: 10),
+            RichText(
+              text: TextSpan(
                 style: const TextStyle(
-                    fontFamily: 'SongMyung',
                     color: Colors.white,
-                    fontSize: 26,
-                    letterSpacing: 4)),
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    height: 1.0),
+                children: [
+                  TextSpan(text: report.label.korean),
+                  TextSpan(
+                    text: '(${report.label.hanja})',
+                    style: TextStyle(
+                        color: _CompatPalette.sand,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 6),
             Text(tagline,
                 textAlign: TextAlign.center,
@@ -678,8 +694,6 @@ class _CompatShareCard extends StatelessWidget {
                     color: _CompatPalette.sand,
                     fontSize: 12,
                     letterSpacing: 1)),
-            const SizedBox(height: 18),
-            _CompatChipsBlock(report: report),
             const SizedBox(height: 18),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -704,6 +718,8 @@ class _CompatShareCard extends StatelessWidget {
                         demographic: albumDemographic)),
               ],
             ),
+            const SizedBox(height: 18),
+            _CompatChipsBlock(report: report),
             const SizedBox(height: 16),
             Container(
               width: double.infinity,
@@ -737,61 +753,10 @@ class _CompatChipsBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final chips = chipsForCompat(report);
-    final split = splitChips(chips);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (split.warm.isNotEmpty) ...[
-          _ChipRowLabel(
-              text: '장점',
-              dotColor: Colors.white.withValues(alpha: 0.85)),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [for (final c in split.warm) _ShareHashtag(chip: c)],
-          ),
-        ],
-        if (split.warm.isNotEmpty && split.cool.isNotEmpty)
-          const SizedBox(height: 12),
-        if (split.cool.isNotEmpty) ...[
-          _ChipRowLabel(
-              text: '단점', dotColor: _CompatPalette.sand),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [for (final c in split.cool) _ShareHashtag(chip: c)],
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-class _ChipRowLabel extends StatelessWidget {
-  final String text;
-  final Color dotColor;
-  const _ChipRowLabel({required this.text, required this.dotColor});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 6,
-          height: 6,
-          margin: const EdgeInsets.only(right: 6),
-          decoration: BoxDecoration(
-              color: dotColor, borderRadius: BorderRadius.circular(3)),
-        ),
-        Text(text,
-            style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.5)),
-      ],
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: [for (final c in chips) _ShareHashtag(chip: c)],
     );
   }
 }
@@ -803,23 +768,23 @@ class _ShareHashtag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isWarm = chip.tone == CompatChipTone.warm;
-    final bg = isWarm
-        ? Colors.white.withValues(alpha: 0.18)
-        : Colors.black.withValues(alpha: 0.22);
+    final bg = isWarm ? _CompatPalette.strengthBg : _CompatPalette.weaknessBg;
+    final fg = isWarm ? _CompatPalette.strengthFg : _CompatPalette.weaknessFg;
     final border = isWarm
-        ? Colors.white.withValues(alpha: 0.30)
-        : Colors.white.withValues(alpha: 0.10);
+        ? _CompatPalette.strengthBorder
+        : _CompatPalette.weaknessBorder;
+    final prefix = isWarm ? '👍 ' : '👎 ';
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: border),
       ),
-      child: Text(chip.label,
-          style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12,
+      child: Text('$prefix${chip.label}',
+          style: TextStyle(
+              color: fg,
+              fontSize: 13,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.2)),
     );

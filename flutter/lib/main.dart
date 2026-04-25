@@ -1,9 +1,12 @@
 import 'package:face_reader/app.dart';
 import 'package:face_reader/core/hive/hive_setup.dart';
+import 'package:face_reader/data/services/analytics_service.dart';
 import 'package:face_reader/data/services/auth_service.dart';
 import 'package:face_reader/data/services/coin_service.dart';
 import 'package:face_reader/data/services/face_shape_classifier.dart';
 import 'package:face_reader/core/theme.dart';
+import 'package:face_reader/firebase_options.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,6 +18,9 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   timeago.setLocaleMessages('ko', timeago.KoMessages());
   await dotenv.load(fileName: '.env');
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   KakaoSdk.init(nativeAppKey: dotenv.env['KAKAO_NATIVE_APP_KEY']!);
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL']!,
@@ -33,6 +39,7 @@ void main() async {
   } catch (_) {
     // intentionally swallowed — see classifier load() for logging
   }
+  await AnalyticsService.instance.logAppOpen();
   runApp(const ProviderScope(child: MyApp()));
 }
 

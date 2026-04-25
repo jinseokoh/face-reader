@@ -14,12 +14,16 @@ class CompatChip {
 }
 
 /// total 점수 → (장점 갯수, 단점 갯수). 합 6.
+/// label 경계(90/78/56, `compat_label.dart`) 와 정렬:
+///  - 천작지합(≥90)   → 5/1   장점 압도
+///  - 상경여빈(≥78)   → 4/2   장점 우세
+///  - 마합가성(≥56)   → 3/3   균형
+///  - 형극난조(<56)   → 2/4 또는 1/5 — 단점이 반드시 더 많이 노출
 ({int warm, int cool}) _ratioForTotal(double total) {
-  if (total >= 80) return (warm: 5, cool: 1);
-  if (total >= 65) return (warm: 4, cool: 2);
-  if (total >= 50) return (warm: 3, cool: 3);
+  if (total >= 90) return (warm: 5, cool: 1);
+  if (total >= 78) return (warm: 4, cool: 2);
+  if (total >= 56) return (warm: 3, cool: 3);
   if (total >= 35) return (warm: 2, cool: 4);
-  if (total >= 20) return (warm: 1, cool: 5);
   return (warm: 1, cool: 5);
 }
 

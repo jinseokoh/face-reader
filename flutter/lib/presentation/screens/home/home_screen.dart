@@ -6,6 +6,7 @@ import 'package:face_reader/core/theme.dart';
 import 'package:face_reader/data/enums/age_group.dart';
 import 'package:face_reader/data/enums/ethnicity.dart';
 import 'package:face_reader/data/enums/gender.dart';
+import 'package:face_reader/data/services/analytics_service.dart';
 import 'package:face_reader/data/services/supabase_service.dart';
 import 'package:face_reader/domain/models/face_analysis.dart';
 import 'package:face_reader/domain/models/face_reading_report.dart';
@@ -261,6 +262,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _openAlbum() async {
+    AnalyticsService.instance.logAlbumOpen();
     if (!ref.read(authProvider.notifier).isLoggedIn) {
       final loggedIn = await showLoginBottomSheet(context, ref);
       if (!loggedIn) return;
@@ -367,6 +369,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _openCamera() {
+    AnalyticsService.instance.logCameraOpen();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,

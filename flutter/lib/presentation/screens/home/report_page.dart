@@ -263,6 +263,16 @@ class _Palette {
   static const cream = Color(0xFFF5EFE0);
   static const shell = Color(0xFFEDE5D5);
 
+  // 강점 (TL;DR warm tone) — 톤다운된 sage/forest green 계열.
+  static const strengthBg = Color(0xFFE0EBDA);
+  static const strengthFg = Color(0xFF2C5A36);
+  static const strengthBorder = Color(0xFF6B9F70);
+
+  // 약점 (TL;DR cool tone) — 톤다운된 brick red 계열.
+  static const weaknessBg = Color(0xFFF5DCD8);
+  static const weaknessFg = Color(0xFF8C2E1F);
+  static const weaknessBorder = Color(0xFFC97165);
+
   static const gradient = LinearGradient(
     colors: [darkBrown, warmBrown, amber, sand, olive, lightOlive],
     stops: [0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
@@ -1000,8 +1010,6 @@ class _ReportPageState extends ConsumerState<ReportPage> {
           _buildHeader(),
           const SizedBox(height: 16),
           _buildArchetypeCard(),
-          const SizedBox(height: 14),
-          _buildTldrChips(),
           const SizedBox(height: 20),
           _buildAttributeSection(),
           const SizedBox(height: 20),
@@ -1088,6 +1096,18 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     final weakest = sortedAttrs.last;
     final strengthLine = attributeStrengthLine[top3.first.key] ?? '';
     final shadowLine = attributeShadowLine[weakest.key] ?? '';
+    // accent(특수 archetype) 칩은 헤더에 이미 노출 중 — chip 영역에서는 생략.
+    final tldrChips = <_TldrChipData>[
+      for (final e in top3)
+        _TldrChipData(
+          label: attributeChipHigh[e.key] ?? '#${e.key.labelKo}',
+          tone: _ChipTone.warm,
+        ),
+      _TldrChipData(
+        label: attributeChipLow[weakest.key] ?? '#${weakest.key.labelKo}',
+        tone: _ChipTone.cool,
+      ),
+    ];
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1100,91 +1120,93 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             _Palette.warmBrown,
           ],
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('당신의 관상',
-                        style: TextStyle(
-                            color: _Palette.sand,
-                            fontSize: 16,
-                            letterSpacing: 1)),
-                    const SizedBox(height: 8),
-                    Text(arch.primaryLabel,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 4),
-                    Text('${arch.secondaryLabel} 기질',
-                        style: TextStyle(
-                            color: _Palette.sand, fontSize: 16)),
-                    if (arch.specialArchetype != null) ...[
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.3)),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('AI 관상가 평가',
+                          style: TextStyle(
+                              color: _Palette.sand,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1)),
+                      const SizedBox(height: 10),
+                      Text(arch.primaryLabel,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              height: 1.0)),
+                      const SizedBox(height: 6),
+                      Text('${arch.secondaryLabel} 기질',
+                          style: TextStyle(
+                              color: _Palette.sand,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500)),
+                      if (arch.specialArchetype != null) ...[
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.3)),
+                          ),
+                          child: Text(arch.specialArchetype!,
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600)),
                         ),
-                        child: Text(arch.specialArchetype!,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600)),
-                      ),
+                      ],
                     ],
-                  ],
-                ),
-              ),
-              Builder(builder: (_) {
-                final imageUrl =
-                    'https://jicaenyzunjdlcxcdbfb.supabase.co/storage/v1/object/public/images/archetypes/${report.gender.name}.${arch.primary.name}.png';
-                return ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: CachedNetworkImage(
-                    imageUrl: imageUrl,
-                    width: 120,
-                    height: 150,
-                    fit: BoxFit.cover,
-                    placeholder: (_, url) => Container(
-                      width: 120,
-                      height: 150,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Center(
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
-                      ),
-                    ),
-                    errorWidget: (_, url, e) => Container(
-                      width: 120,
-                      height: 150,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Center(
-                        child: Icon(Icons.image_not_supported,
-                            color: Colors.white54, size: 32),
-                      ),
-                    ),
                   ),
-                );
-              }),
-            ],
+                ),
+                const SizedBox(width: 12),
+                Builder(builder: (_) {
+                  final imageUrl =
+                      'https://jicaenyzunjdlcxcdbfb.supabase.co/storage/v1/object/public/images/archetypes/${report.gender.name}.${arch.primary.name}.png';
+                  return ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      width: 110,
+                      height: 130,
+                      fit: BoxFit.cover,
+                      placeholder: (_, url) => Container(
+                        width: 110,
+                        height: 130,
+                        color: Colors.white.withValues(alpha: 0.12),
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
+                        ),
+                      ),
+                      errorWidget: (_, url, e) => Container(
+                        width: 110,
+                        height: 130,
+                        color: Colors.white.withValues(alpha: 0.12),
+                        child: const Center(
+                          child: Icon(Icons.image_not_supported,
+                              color: Colors.white54, size: 32),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
           if (catchphrase.isNotEmpty)
@@ -1202,7 +1224,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                 catchphrase,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 15,
+                  fontSize: 13.5,
                   height: 1.45,
                   fontWeight: FontWeight.w600,
                   fontStyle: FontStyle.italic,
@@ -1211,69 +1233,24 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             ),
           const SizedBox(height: 14),
           _HeroLine(
-            label: '장점',
+            label: '강점',
             line: strengthLine,
-            tagColor: _Palette.sand,
+            tagColor: Colors.white.withValues(alpha: 0.6),
           ),
           const SizedBox(height: 8),
           _HeroLine(
-            label: '단점',
+            label: '약점',
             line: shadowLine,
             tagColor: Colors.white.withValues(alpha: 0.6),
           ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [for (final c in tldrChips) _TldrChip(data: c)],
+          ),
           const SizedBox(height: 16),
           _HeroTop3(top3: top3),
-        ],
-      ),
-    );
-  }
-
-  // ─── TL;DR chip 그리드 (B) ───
-  Widget _buildTldrChips() {
-    final sorted = report.attributeScores.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    final top3 = sorted.take(3).toList();
-    final bottom1 = sorted.last;
-
-    final chips = <_TldrChipData>[
-      for (final e in top3)
-        _TldrChipData(
-          label: attributeChipHigh[e.key] ?? '#${e.key.labelKo}',
-          tone: _ChipTone.warm,
-        ),
-      _TldrChipData(
-        label: attributeChipLow[bottom1.key] ?? '#${bottom1.key.labelKo}',
-        tone: _ChipTone.cool,
-      ),
-      if (report.archetype.specialArchetype != null)
-        _TldrChipData(
-          label: '#${report.archetype.specialArchetype!.split(' ').first}',
-          tone: _ChipTone.accent,
-        ),
-    ];
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-      decoration: BoxDecoration(
-        color: _Palette.cream,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _Palette.shell),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('한 눈에 보는 나',
-              style: TextStyle(
-                  color: _Palette.darkBrown,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.3)),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [for (final c in chips) _TldrChip(data: c)],
-          ),
         ],
       ),
     );
@@ -1311,7 +1288,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                         fontSize: 16,
                         fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
-                Text('인스타·카톡에 그대로 보낼 수 있는 정사각 카드입니다.',
+                Text('인스타·카톡에 그대로 보낼 수 있는 카드입니다.',
                     style: TextStyle(
                         color: AppTheme.textSecondary,
                         fontSize: 12,
@@ -1786,21 +1763,24 @@ class _TldrChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (bg, fg, border) = switch (data.tone) {
+    final (bg, fg, border, prefix) = switch (data.tone) {
       _ChipTone.warm => (
-          _Palette.warmBrown.withValues(alpha: 0.12),
-          _Palette.darkBrown,
-          _Palette.warmBrown.withValues(alpha: 0.35),
+          _Palette.strengthBg,
+          _Palette.strengthFg,
+          _Palette.strengthBorder,
+          '👍 ',
         ),
       _ChipTone.cool => (
-          _Palette.shell,
-          _Palette.warmBrown,
-          _Palette.sand,
+          _Palette.weaknessBg,
+          _Palette.weaknessFg,
+          _Palette.weaknessBorder,
+          '👎 ',
         ),
       _ChipTone.accent => (
           _Palette.darkBrown,
           Colors.white,
           _Palette.darkBrown,
+          '',
         ),
     };
     return Container(
@@ -1811,7 +1791,7 @@ class _TldrChip extends StatelessWidget {
         border: Border.all(color: border),
       ),
       child: Text(
-        data.label,
+        '$prefix${data.label}',
         style: TextStyle(
             color: fg,
             fontSize: 13,
@@ -1838,6 +1818,18 @@ class _ShareCard extends StatelessWidget {
     final weakest = sortedAttrs.last;
     final strengthLine = attributeStrengthLine[top3.first.key] ?? '';
     final shadowLine = attributeShadowLine[weakest.key] ?? '';
+    // accent(특수 archetype) 칩은 헤더에 이미 노출 중 — chip 영역에서는 생략.
+    final tldrChips = <_TldrChipData>[
+      for (final e in top3)
+        _TldrChipData(
+          label: attributeChipHigh[e.key] ?? '#${e.key.labelKo}',
+          tone: _ChipTone.warm,
+        ),
+      _TldrChipData(
+        label: attributeChipLow[weakest.key] ?? '#${weakest.key.labelKo}',
+        tone: _ChipTone.cool,
+      ),
+    ];
     final imageUrl =
         'https://jicaenyzunjdlcxcdbfb.supabase.co/storage/v1/object/public/images/archetypes/${report.gender.name}.${arch.primary.name}.png';
 
@@ -1857,22 +1849,21 @@ class _ShareCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('당신의 관상',
-                style: TextStyle(
-                    color: _Palette.sand,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1)),
-            const SizedBox(height: 12),
             IntrinsicHeight(
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Text('AI 관상가 평가',
+                            style: TextStyle(
+                                color: _Palette.sand,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1)),
+                        const SizedBox(height: 10),
                         Text(arch.primaryLabel,
                             style: const TextStyle(
                                 color: Colors.white,
@@ -1958,15 +1949,21 @@ class _ShareCard extends StatelessWidget {
               const SizedBox(height: 14),
             ],
             _HeroLine(
-              label: '장점',
+              label: '강점',
               line: strengthLine,
-              tagColor: _Palette.sand,
+              tagColor: Colors.white.withValues(alpha: 0.6),
             ),
             const SizedBox(height: 8),
             _HeroLine(
-              label: '단점',
+              label: '약점',
               line: shadowLine,
               tagColor: Colors.white.withValues(alpha: 0.6),
+            ),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [for (final c in tldrChips) _TldrChip(data: c)],
             ),
             const SizedBox(height: 16),
             _HeroTop3(top3: top3),

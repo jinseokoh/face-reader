@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:face_reader/core/theme.dart';
+import 'package:face_reader/data/services/analytics_service.dart';
 import 'package:face_reader/data/services/coin_service.dart';
 import 'package:face_reader/presentation/providers/auth_provider.dart';
 
@@ -48,6 +49,7 @@ class _PurchaseSheetState extends ConsumerState<PurchaseSheet> {
   }
 
   Future<void> _purchase(CoinProduct product) async {
+    AnalyticsService.instance.logClickCoin(product.coins);
     setState(() => _purchasing = product.id);
     final coins = await CoinService().purchase(product);
     if (coins > 0) {
@@ -81,6 +83,45 @@ class _PurchaseSheetState extends ConsumerState<PurchaseSheet> {
                     fontSize: 18,
                     fontWeight: FontWeight.w600)),
             const SizedBox(height: 20),
+            // 광고 보상 옵션 — 광고 SDK 미통합 상태의 placeholder. UI 자리만 잡고
+            // SDK 연결되면 onPressed 만 실 reward 흐름으로 교체.
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: _purchasing != null
+                      ? null
+                      : () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('광고 시청 기능은 곧 활성화됩니다'),
+                            ),
+                          );
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.surface,
+                    foregroundColor: AppTheme.textPrimary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: AppTheme.border),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('1 코인',
+                          style: TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w600)),
+                      Text('광고보기',
+                          style: TextStyle(
+                              color: AppTheme.textSecondary, fontSize: 14)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
             if (_isLoading)
               const Padding(
                 padding: EdgeInsets.all(24),
