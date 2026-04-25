@@ -23,7 +23,7 @@ import 'package:face_reader/presentation/screens/compatibility/compatibility_det
 import 'package:face_reader/presentation/widgets/login_bottom_sheet.dart';
 import 'package:face_reader/presentation/widgets/purchase_sheet.dart';
 
-/// 궁합 탭 — 앨범 리스트. 기본 lock, 2 코인 해제.
+/// 궁합 탭 — 앨범 리스트. 기본 lock, 1 코인 해제.
 class CompatibilityScreen extends ConsumerWidget {
   const CompatibilityScreen({super.key});
 
@@ -46,7 +46,7 @@ class CompatibilityScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.info_outline),
-            tooltip: '궁합 엔진 안내',
+            tooltip: '궁합 분석에 대하여',
             onPressed: () => _showInfoDialog(context),
           ),
         ],
@@ -146,7 +146,7 @@ class CompatibilityScreen extends ConsumerWidget {
 
     // 3. 잔액 확인.
     final balance = auth.coins;
-    if (balance < 2) {
+    if (balance < 1) {
       if (!context.mounted) return;
       await PurchaseSheet.show(context, onPurchased: () async {
         if (!context.mounted) return;
@@ -168,7 +168,7 @@ class CompatibilityScreen extends ConsumerWidget {
                 fontSize: 17,
                 color: AppTheme.textPrimary)),
         content: Text(
-          '2 코인을 사용해 이 궁합을 해제할까요?\n잔액 $balance → ${balance - 2}',
+          '1 코인을 사용해 이 궁합을 해제할까요?\n잔액 $balance → ${balance - 1}',
           style: const TextStyle(color: AppTheme.textSecondary, height: 1.5),
         ),
         actions: [
@@ -228,7 +228,7 @@ class CompatibilityScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.surface,
-        title: const Text('궁합 엔진 안내',
+        title: const Text('궁합 분석에 대하여',
             style: TextStyle(
                 fontFamily: 'SongMyung',
                 fontSize: 18,
@@ -332,7 +332,7 @@ class _CompatLockedCard extends ConsumerWidget {
         '${album.gender.labelKo} · ${album.ageGroup.labelKo} · ${album.faceShape.korean}';
 
     final cta = isLoggedIn
-        ? '2 코인으로 해제 · 잔액 $coins'
+        ? '1 코인으로 해제 · 잔액 $coins'
         : '카카오 로그인하고 3 코인 받기';
 
     return Container(
@@ -379,7 +379,7 @@ class _CompatLockedCard extends ConsumerWidget {
           const SizedBox(height: 12),
           Text(
             isLoggedIn
-                ? '궁합 결과는 2 코인으로 열어볼 수 있습니다.'
+                ? '궁합 결과는 1 코인으로 열어볼 수 있습니다.'
                 : '카카오 로그인하면 가입 보너스 3 코인으로 바로 열어볼 수 있어요.',
             style: const TextStyle(
                 fontSize: 12, color: AppTheme.textSecondary, height: 1.5),
@@ -744,22 +744,51 @@ class _LabelRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 92,
-            child: Text('${label.korean} (${label.hanja})',
-                style: const TextStyle(
-                    fontFamily: 'SongMyung',
-                    fontSize: 13,
-                    color: AppTheme.textPrimary)),
+          Container(
+            width: 3,
+            height: 32,
+            margin: const EdgeInsets.only(top: 2, right: 10),
+            decoration: BoxDecoration(
+              color: AppTheme.accent,
+              borderRadius: BorderRadius.circular(2),
+            ),
           ),
-          Text(_tagline(label),
-              style: const TextStyle(
-                  fontSize: 12,
-                  color: AppTheme.textSecondary,
-                  height: 1.4)),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                RichText(
+                  text: TextSpan(
+                    style: const TextStyle(
+                        fontFamily: 'SongMyung',
+                        fontSize: 14,
+                        color: AppTheme.textPrimary),
+                    children: [
+                      TextSpan(text: label.korean),
+                      const TextSpan(text: '  '),
+                      TextSpan(
+                        text: label.hanja,
+                        style: const TextStyle(
+                            fontSize: 11,
+                            color: AppTheme.textHint,
+                            fontWeight: FontWeight.w400),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(_tagline(label),
+                    style: const TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textSecondary,
+                        height: 1.4)),
+              ],
+            ),
+          ),
         ],
       ),
     );

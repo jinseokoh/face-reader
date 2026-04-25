@@ -1,13 +1,32 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 import 'package:face_reader/core/theme.dart';
+import 'package:face_reader/data/enums/face_shape.dart';
+import 'package:face_reader/data/enums/gender.dart';
+import 'package:face_reader/data/enums/age_group.dart';
 import 'package:face_reader/domain/models/coin_transaction.dart';
+import 'package:face_reader/domain/models/face_reading_report.dart';
 import 'package:face_reader/presentation/providers/auth_provider.dart';
+import 'package:face_reader/presentation/providers/history_provider.dart';
 import 'package:face_reader/presentation/providers/wallet_provider.dart';
 import 'package:face_reader/presentation/widgets/login_bottom_sheet.dart';
 import 'package:face_reader/presentation/widgets/purchase_sheet.dart';
+
+const _txDescriptionLabels = {
+  'compat-unlock': '궁합 보기',
+};
+
+String _describeTx(CoinTransaction tx) {
+  final desc = tx.description;
+  if (desc != null) {
+    return _txDescriptionLabels[desc] ?? desc;
+  }
+  return tx.kind.label;
+}
 
 class WalletPage extends ConsumerWidget {
   const WalletPage({super.key});
@@ -101,7 +120,7 @@ class _BalanceCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Icon(Icons.paid_outlined,
+              Icon(Icons.toll_outlined,
                   color: AppTheme.textSecondary, size: 28),
               const SizedBox(width: 8),
               Text('$coins',
@@ -142,16 +161,41 @@ class _BalanceCard extends StatelessWidget {
   }
 }
 
-class _TransactionTile extends StatelessWidget {
+class _TransactionTile extends ConsumerWidget {
   final CoinTransaction tx;
   const _TransactionTile({required this.tx});
 
+  FaceReadingReport? _resolveAlbum(List<FaceReadingReport> history) {
+    if (tx.description != 'compat-unlock') return null;
+    final ref = tx.referenceId;
+    if (ref == null) return null;
+    final parts = ref.split('::');
+    if (parts.length != 2) return null;
+    final albumId = parts[1];
+    if (albumId.isEmpty) return null;
+    for (final r in history) {
+      if (r.supabaseId == albumId) return r;
+    }
+    return null;
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isCredit = tx.kind.isCredit;
     final sign = isCredit ? '+' : '';
     final amountColor =
         isCredit ? const Color(0xFF2E7D32) : const Color(0xFFC62828);
+
+    final history = ref.watch(historyProvider);
+    final album = _resolveAlbum(history);
+    final demographic = album == null
+        ? null
+        : '${album.gender.labelKo} · ${album.ageGroup.labelKo} · ${album.faceShape.korean}';
+    final subtitle = album == null
+        ? null
+        : (album.alias != null && album.alias!.isNotEmpty
+            ? '${album.alias} · $demographic'
+            : demographic);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -164,30 +208,25 @@ class _TransactionTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: Colors.white,
-              child: Icon(
-                switch (tx.kind) {
-                  CoinTxKind.purchase => Icons.add_shopping_cart_outlined,
-                  CoinTxKind.bonus => Icons.card_giftcard_outlined,
-                  CoinTxKind.refund => Icons.undo_outlined,
-                  CoinTxKind.spend => Icons.remove_circle_outline,
-                },
-                color: AppTheme.textSecondary,
-                size: 20,
-              ),
-            ),
+            _TxLeading(tx: tx, album: album),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(tx.description ?? tx.kind.label,
+                  Text(_describeTx(tx),
                       style: TextStyle(
                           color: AppTheme.textPrimary,
                           fontSize: 14,
                           fontWeight: FontWeight.w500)),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 2),
+                    Text(subtitle,
+                        style: const TextStyle(
+                            color: AppTheme.textSecondary, fontSize: 12),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
+                  ],
                   const SizedBox(height: 2),
                   Text(
                     timeago.format(tx.createdAt, locale: 'ko'),
@@ -215,6 +254,47 @@ class _TransactionTile extends StatelessWidget {
       ),
     );
   }
+}
+
+class _TxLeading extends StatelessWidget {
+  final CoinTransaction tx;
+  final FaceReadingReport? album;
+  const _TxLeading({required this.tx, required this.album});
+
+  @override
+  Widget build(BuildContext context) {
+    final path = album?.thumbnailPath;
+    if (path != null && path.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.file(
+          File(path),
+          width: 36,
+          height: 36,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _txIconAvatar(tx),
+        ),
+      );
+    }
+    return _txIconAvatar(tx);
+  }
+}
+
+Widget _txIconAvatar(CoinTransaction tx) {
+  return CircleAvatar(
+    radius: 18,
+    backgroundColor: Colors.white,
+    child: Icon(
+      switch (tx.kind) {
+        CoinTxKind.purchase => Icons.add_shopping_cart_outlined,
+        CoinTxKind.bonus => Icons.card_giftcard_outlined,
+        CoinTxKind.refund => Icons.undo_outlined,
+        CoinTxKind.spend => Icons.remove_circle_outline,
+      },
+      color: AppTheme.textSecondary,
+      size: 20,
+    ),
+  );
 }
 
 class _EmptyHistory extends StatelessWidget {

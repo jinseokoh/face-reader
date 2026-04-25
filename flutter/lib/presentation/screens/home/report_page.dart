@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:face_reader/core/theme.dart';
+import 'package:face_reader/data/constants/archetype_catchphrase.dart';
 import 'package:face_reader/data/constants/face_reference_data.dart';
 import 'package:face_reader/data/constants/metric_text_blocks.dart';
 import 'package:face_reader/data/constants/node_text_blocks.dart';
@@ -14,16 +16,13 @@ import 'package:face_reader/domain/models/face_reading_report.dart';
 import 'package:face_reader/domain/models/physiognomy_tree.dart';
 import 'package:face_reader/domain/services/report_assembler.dart';
 import 'package:face_reader/domain/services/yin_yang.dart';
-import 'package:face_reader/presentation/providers/auth_provider.dart';
-import 'package:face_reader/presentation/widgets/login_bottom_sheet.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart' hide Gender;
 import 'package:path_provider/path_provider.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
+import 'package:share_plus/share_plus.dart';
 
 
 class ReportPage extends ConsumerStatefulWidget {
@@ -957,6 +956,7 @@ class _SamjeongRadarPainter extends CustomPainter {
 
 class _ReportPageState extends ConsumerState<ReportPage> {
   bool _showNodeDetails = false;
+  final GlobalKey _shareCardKey = GlobalKey();
 
   FaceReadingReport get report => widget.report;
 
@@ -983,9 +983,9 @@ class _ReportPageState extends ConsumerState<ReportPage> {
         title: const Text('관상 분석'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.save_alt),
-            tooltip: '저장',
-            onPressed: () => _showSaveOptions(context),
+            icon: const Icon(Icons.ios_share),
+            tooltip: '카드 이미지 공유',
+            onPressed: () => _showShareCardSheet(context),
           ),
           IconButton(
             icon: const Icon(Icons.share),
@@ -1000,14 +1000,14 @@ class _ReportPageState extends ConsumerState<ReportPage> {
           _buildHeader(),
           const SizedBox(height: 16),
           _buildArchetypeCard(),
+          const SizedBox(height: 14),
+          _buildTldrChips(),
           const SizedBox(height: 20),
           _buildAttributeSection(),
           const SizedBox(height: 20),
           _buildReadingSection(),
           const SizedBox(height: 20),
           _buildNodeScoreSection(),
-          const SizedBox(height: 24),
-          _buildReferencesSection(),
         ],
       ),
     );
@@ -1017,21 +1017,22 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('참고 자료',
+        Text('참고 자료',
             style: TextStyle(
-                color: AppTheme.textPrimary,
-                fontSize: 19,
+                color: _Palette.darkBrown,
+                fontSize: 16,
                 fontWeight: FontWeight.bold)),
         const SizedBox(height: 6),
-        const Text(
+        Text(
           '이 분석이 근거로 삼는 학술·전통 자료입니다.',
           style: TextStyle(
-              color: AppTheme.textSecondary, fontSize: 12, height: 1.4),
+              color: _Palette.warmBrown, fontSize: 12, height: 1.4),
         ),
         const SizedBox(height: 12),
         for (var i = 0; i < _references.length; i++)
           Padding(
-            padding: const EdgeInsets.only(bottom: 8),
+            padding: EdgeInsets.only(
+                bottom: i == _references.length - 1 ? 0 : 8),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1039,8 +1040,8 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                   width: 22,
                   child: Text(
                     '${i + 1}.',
-                    style: const TextStyle(
-                        color: AppTheme.textSecondary,
+                    style: TextStyle(
+                        color: _Palette.warmBrown,
                         fontSize: 12,
                         fontWeight: FontWeight.w600),
                   ),
@@ -1048,8 +1049,8 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                 Expanded(
                   child: Text(
                     _references[i],
-                    style: const TextStyle(
-                        color: AppTheme.textSecondary,
+                    style: TextStyle(
+                        color: _Palette.warmBrown,
                         fontSize: 12,
                         height: 1.5),
                   ),
@@ -1080,6 +1081,13 @@ class _ReportPageState extends ConsumerState<ReportPage> {
   // ─── Archetype Card ───
   Widget _buildArchetypeCard() {
     final arch = report.archetype;
+    final catchphrase = archetypeCatchphrase[arch.primary] ?? '';
+    final sortedAttrs = report.attributeScores.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final top3 = sortedAttrs.take(3).toList();
+    final weakest = sortedAttrs.last;
+    final strengthLine = attributeStrengthLine[top3.first.key] ?? '';
+    final shadowLine = attributeShadowLine[weakest.key] ?? '';
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1094,89 +1102,282 @@ class _ReportPageState extends ConsumerState<ReportPage> {
         ),
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('당신의 관상',
-                    style: TextStyle(
-                        color: _Palette.sand, fontSize: 16, letterSpacing: 1)),
-                const SizedBox(height: 8),
-                Text(arch.primaryLabel,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Text('${arch.secondaryLabel} 기질',
-                    style: TextStyle(
-                        color: _Palette.sand, fontSize: 16)),
-                if (arch.specialArchetype != null) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.3)),
-                    ),
-                    child: Text(arch.specialArchetype!,
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('당신의 관상',
+                        style: TextStyle(
+                            color: _Palette.sand,
+                            fontSize: 16,
+                            letterSpacing: 1)),
+                    const SizedBox(height: 8),
+                    Text(arch.primaryLabel,
                         style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600)),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          Builder(builder: (_) {
-            final imageUrl = 'https://jicaenyzunjdlcxcdbfb.supabase.co/storage/v1/object/public/images/archetypes/${report.gender.name}.${arch.primary.name}.png';
-            debugPrint('[Archetype] loading image: $imageUrl');
-            return ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: CachedNetworkImage(
-                imageUrl: imageUrl,
-                width: 120,
-                height: 150,
-                fit: BoxFit.cover,
-                placeholder: (_, url) => Container(
-                  width: 120,
-                  height: 150,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Center(
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white),
-                  ),
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    Text('${arch.secondaryLabel} 기질',
+                        style: TextStyle(
+                            color: _Palette.sand, fontSize: 16)),
+                    if (arch.specialArchetype != null) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.3)),
+                        ),
+                        child: Text(arch.specialArchetype!,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600)),
+                      ),
+                    ],
+                  ],
                 ),
-                errorWidget: (_, url, e) {
-                  debugPrint('[Archetype] image error: $e url=$url');
-                  return Container(
+              ),
+              Builder(builder: (_) {
+                final imageUrl =
+                    'https://jicaenyzunjdlcxcdbfb.supabase.co/storage/v1/object/public/images/archetypes/${report.gender.name}.${arch.primary.name}.png';
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: CachedNetworkImage(
+                    imageUrl: imageUrl,
                     width: 120,
                     height: 150,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
+                    fit: BoxFit.cover,
+                    placeholder: (_, url) => Container(
+                      width: 120,
+                      height: 150,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
+                      ),
                     ),
-                    child: const Center(
-                      child: Icon(Icons.image_not_supported,
-                          color: Colors.white54, size: 32),
+                    errorWidget: (_, url, e) => Container(
+                      width: 120,
+                      height: 150,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Center(
+                        child: Icon(Icons.image_not_supported,
+                            color: Colors.white54, size: 32),
+                      ),
                     ),
-                  );
-                },
+                  ),
+                );
+              }),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (catchphrase.isNotEmpty)
+            Container(
+              width: double.infinity,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.18)),
               ),
-            );
-          }),
+              child: Text(
+                catchphrase,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  height: 1.45,
+                  fontWeight: FontWeight.w600,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          const SizedBox(height: 14),
+          _HeroLine(
+            label: '장점',
+            line: strengthLine,
+            tagColor: _Palette.sand,
+          ),
+          const SizedBox(height: 8),
+          _HeroLine(
+            label: '단점',
+            line: shadowLine,
+            tagColor: Colors.white.withValues(alpha: 0.6),
+          ),
+          const SizedBox(height: 16),
+          _HeroTop3(top3: top3),
         ],
       ),
     );
+  }
+
+  // ─── TL;DR chip 그리드 (B) ───
+  Widget _buildTldrChips() {
+    final sorted = report.attributeScores.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final top3 = sorted.take(3).toList();
+    final bottom1 = sorted.last;
+
+    final chips = <_TldrChipData>[
+      for (final e in top3)
+        _TldrChipData(
+          label: attributeChipHigh[e.key] ?? '#${e.key.labelKo}',
+          tone: _ChipTone.warm,
+        ),
+      _TldrChipData(
+        label: attributeChipLow[bottom1.key] ?? '#${bottom1.key.labelKo}',
+        tone: _ChipTone.cool,
+      ),
+      if (report.archetype.specialArchetype != null)
+        _TldrChipData(
+          label: '#${report.archetype.specialArchetype!.split(' ').first}',
+          tone: _ChipTone.accent,
+        ),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+      decoration: BoxDecoration(
+        color: _Palette.cream,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _Palette.shell),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('한 눈에 보는 나',
+              style: TextStyle(
+                  color: _Palette.darkBrown,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.3)),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [for (final c in chips) _TldrChip(data: c)],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Share card sheet (C) ───
+  void _showShareCardSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 14),
+                  decoration: BoxDecoration(
+                    color: AppTheme.border,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Text('한 장 공유 카드',
+                    style: TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text('인스타·카톡에 그대로 보낼 수 있는 정사각 카드입니다.',
+                    style: TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 12,
+                        height: 1.4)),
+                const SizedBox(height: 14),
+                Center(
+                  child: RepaintBoundary(
+                    key: _shareCardKey,
+                    child: _ShareCard(report: report),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () => _captureAndShareCard(ctx),
+                  icon: const Icon(Icons.ios_share),
+                  label: const Text('이미지로 공유',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.textPrimary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _captureAndShareCard(BuildContext sheetContext) async {
+    try {
+      final boundary = _shareCardKey.currentContext?.findRenderObject()
+          as RenderRepaintBoundary?;
+      if (boundary == null) {
+        throw Exception('share card not mounted');
+      }
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) {
+        throw Exception('failed to encode png');
+      }
+      final bytes = byteData.buffer.asUint8List();
+      final dir = await getTemporaryDirectory();
+      final file = File(
+          '${dir.path}/face_archetype_${DateTime.now().millisecondsSinceEpoch}.png');
+      await file.writeAsBytes(bytes);
+      final arch = report.archetype;
+      final catchphrase = archetypeCatchphrase[arch.primary] ?? '';
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          text: '${arch.primaryLabel} · $catchphrase',
+        ),
+      );
+      if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+    } catch (e, st) {
+      debugPrint('[ShareCard] capture failed: $e\n$st');
+      if (!sheetContext.mounted) return;
+      ScaffoldMessenger.of(sheetContext).showSnackBar(
+        SnackBar(content: Text('공유 카드 생성 실패: $e')),
+      );
+    }
   }
 
   // ─── 10 Attribute Scores (expandable with contributors) ───
@@ -1306,6 +1507,10 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                   supported: nodeId != 'ear',
                 ),
               ],
+            const SizedBox(height: 20),
+            Divider(height: 1, thickness: 1, color: _Palette.shell),
+            const SizedBox(height: 16),
+            _buildReferencesSection(),
           ],
         ],
       ),
@@ -1407,273 +1612,20 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     );
   }
 
-// ─── Save ───
-  //
-  // Markers the PDF renderer understands:
-  //   `=== 제목 ===`  → H1 (22pt bold)
-  //   `--- 섹션 ---`  → H2 (16pt bold)
-  //   `▶ 노드 …`      → node header (14pt bold, 좌측 바)
-  //   `  · …`         → indented metric line (11pt)
-  //   `  ◉ …`         → indented combo line (11pt)
-  //   그 외            → body paragraph (11pt)
-  String _generateText() {
-    final time = report.timestamp;
-    final timeStr =
-        '${time.year}.${time.month.toString().padLeft(2, '0')}.${time.day.toString().padLeft(2, '0')} '
-        '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
-
-    final assembled = assembleReport(report);
-
-    final buf = StringBuffer();
-    buf.writeln('=== 관상 분석 ===');
-    buf.writeln('날짜: $timeStr');
-    buf.writeln(
-        '${report.gender.labelKo} · ${report.ageGroup.labelKo} · ${report.ethnicity.labelKo}');
-    buf.writeln();
-    buf.writeln(
-        '유형: ${report.archetype.primaryLabel} (${report.archetype.secondaryLabel} 기질)');
-    if (report.archetype.specialArchetype != null) {
-      buf.writeln('특수상: ${report.archetype.specialArchetype}');
-    }
-    buf.writeln();
-
-    buf.writeln('--- 관상 10대 속성 ---');
-    final sorted = report.attributeScores.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    for (final e in sorted) {
-      buf.writeln('${e.key.labelKo}: ${e.value.toStringAsFixed(1)}');
-    }
-    buf.writeln();
-
-    buf.writeln('--- 관상 해석 ---');
-    buf.writeln(assembled.assembledText);
-    buf.writeln();
-
-    // 부위별 상세 해석 — UI `_NodeBar` 와 동일한 본문/세부 측정값/조합.
-    // nodeOrder / nodeLabels 는 `_buildNodeScoreSection` 과 일치.
-    const nodeOrder = [
-      'face', 'upper', 'forehead', 'glabella', 'eyebrow',
-      'middle', 'eye', 'nose', 'cheekbone',
-      'lower', 'philtrum', 'mouth', 'chin',
-    ];
-    const nodeLabels = {
-      'face': '얼굴',
-      'upper': '상정',
-      'forehead': '이마',
-      'glabella': '미간',
-      'eyebrow': '눈썹',
-      'middle': '중정',
-      'eye': '눈',
-      'nose': '코',
-      'cheekbone': '광대',
-      'lower': '하정',
-      'philtrum': '인중',
-      'mouth': '입',
-      'chin': '턱',
-    };
-
-    buf.writeln('--- 부위별 상세 해석 ---');
-    buf.writeln();
-
-    // 음양 균형 요약 (bar 를 텍스트로 치환).
-    final yinYang = _computeReportYinYang();
-    buf.writeln(
-        '음양 균형 — ${yinYang.label} (편향성 ${_fmtZ(yinYang.skew)} · 강도 ${yinYang.magnitude.toStringAsFixed(2)})');
-    buf.writeln();
-
-    // 삼정 요약 (radar 를 텍스트로 치환).
-    final upperZ = report.nodeScores['upper']?.rollUpMeanZ;
-    final middleZ = report.nodeScores['middle']?.rollUpMeanZ;
-    final lowerZ = report.nodeScores['lower']?.rollUpMeanZ;
-    if (upperZ != null && middleZ != null && lowerZ != null) {
-      buf.writeln(
-          '삼정 균형 — 상정 ${_fmtZ(upperZ)} · 중정 ${_fmtZ(middleZ)} · 하정 ${_fmtZ(lowerZ)}');
-      buf.writeln();
-    }
-
-    for (final nodeId in nodeOrder) {
-      final score = report.nodeScores[nodeId];
-      if (score == null) continue;
-      final label = nodeLabels[nodeId] ?? nodeId;
-      final z = score.rollUpMeanZ;
-
-      buf.writeln('▶ $label (z ${_fmtZ(z)})');
-
-      final block = nodeBlockForZ(nodeId, z);
-      final body = block != null ? resolveNodeBody(block, report.gender) : '';
-      if (body.isNotEmpty) {
-        buf.writeln(body);
-      }
-
-      // leaf 노드 세부 측정값 (zone/root 는 metricIds 없음).
-      final metricIds = nodeById[nodeId]?.metricIds ?? const <String>[];
-      final zMap = <String, double>{};
-      for (final mid in metricIds) {
-        final m = report.metrics[mid] ?? report.lateralMetrics?[mid];
-        if (m == null) continue;
-        zMap[mid] = m.zScore;
-        final info = _metricInfoById[mid];
-        final zm = m.zScore;
-        final mLabel = info?.nameKo ?? metricDisplayLabels[mid] ?? mid;
-        final interp = info == null
-            ? ''
-            : (zm.abs() < 0.35
-                ? '평균 수준'
-                : (zm >= 0 ? info.higherLabel : info.lowerLabel));
-        final metricBody = metricBodyForZ(mid, zm);
-        final tail = metricBody ?? (interp.isNotEmpty ? interp : '');
-        buf.writeln(tail.isEmpty
-            ? '  · $mLabel (${_fmtZ(zm)})'
-            : '  · $mLabel (${_fmtZ(zm)}) — $tail');
-      }
-
-      // 조합 해석 (triggeredCombos).
-      final combos = triggeredCombos(metricIds, zMap);
-      for (final combo in combos) {
-        buf.writeln('  ◉ ${combo.body}');
-      }
-
-      buf.writeln();
-    }
-
-    buf.writeln('--- 참고 자료 ---');
-    for (var i = 0; i < _references.length; i++) {
-      buf.writeln('${i + 1}. ${_references[i]}');
-    }
-
-    return buf.toString();
-  }
-
-  static String _fmtZ(double z) =>
-      '${z >= 0 ? '+' : ''}${z.toStringAsFixed(2)}';
-
-  /// Render one text line into a PDF widget based on its marker prefix.
-  /// Markers mirror `_generateText`:
-  ///   `===` H1, `---` H2, `## ` narrative subheader `[제목]`,
-  ///   `▶` node header, `  ·` metric, `  ◉` combo.
-  static pw.Widget _renderPdfLine(String line) {
-    if (line.startsWith('===')) {
-      return pw.Padding(
-        padding: const pw.EdgeInsets.only(top: 4, bottom: 10),
-        child: pw.Text(
-          line.replaceAll('=', '').trim(),
-          style:
-              pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold),
-        ),
-      );
-    }
-    if (line.startsWith('---')) {
-      return pw.Padding(
-        padding: const pw.EdgeInsets.only(top: 16, bottom: 6),
-        child: pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            pw.Text(
-              line.replaceAll('-', '').trim(),
-              style: pw.TextStyle(
-                  fontSize: 15, fontWeight: pw.FontWeight.bold),
-            ),
-            pw.SizedBox(height: 2),
-            pw.Container(
-              height: 0.6,
-              color: PdfColor.fromInt(0xFF5C4033),
-            ),
-          ],
-        ),
-      );
-    }
-    if (line.startsWith('## ')) {
-      final text = line.substring(3).trim();
-      return pw.Padding(
-        padding: const pw.EdgeInsets.only(top: 12, bottom: 4),
-        child: pw.Text(
-          '[$text]',
-          style: pw.TextStyle(
-            fontSize: 13,
-            fontWeight: pw.FontWeight.bold,
-            color: PdfColor.fromInt(0xFF5C4033),
-          ),
-        ),
-      );
-    }
-    if (line.startsWith('▶')) {
-      final text = line.substring(1).trim();
-      return pw.Padding(
-        padding: const pw.EdgeInsets.only(top: 10, bottom: 3),
-        child: pw.Container(
-          padding:
-              const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-          decoration: pw.BoxDecoration(
-            color: PdfColor.fromInt(0xFFEDE5D5),
-            borderRadius: pw.BorderRadius.circular(3),
-          ),
-          child: pw.Text(
-            text,
-            style: pw.TextStyle(
-              fontSize: 13,
-              fontWeight: pw.FontWeight.bold,
-              color: PdfColor.fromInt(0xFF5C4033),
-            ),
-          ),
-        ),
-      );
-    }
-    if (line.startsWith('  · ')) {
-      return pw.Padding(
-        padding:
-            const pw.EdgeInsets.only(left: 14, top: 1, bottom: 1, right: 0),
-        child: pw.Text(
-          '· ${line.substring(4)}',
-          style: pw.TextStyle(
-              fontSize: 10.5, color: PdfColor.fromInt(0xFF7B5B3A)),
-        ),
-      );
-    }
-    if (line.startsWith('  ◉ ')) {
-      // NotoSerifKR 는 italic variant 가 없어 italic 지정 시 한글이 Helvetica
-      // 로 fallback → tofu. 색상으로만 구분한다. 또한 Geometric Shapes 의
-      // ◉ 역시 CJK serif 에 없어 ※ 로 치환.
-      return pw.Padding(
-        padding:
-            const pw.EdgeInsets.only(left: 14, top: 2, bottom: 2),
-        child: pw.Text(
-          '※ ${line.substring(4)}',
-          style: pw.TextStyle(
-            fontSize: 10.5,
-            color: PdfColor.fromInt(0xFF9B7B4F),
-          ),
-        ),
-      );
-    }
-    if (line.trim().isEmpty) {
-      return pw.SizedBox(height: 6);
-    }
-    return pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(vertical: 1.5),
-      child: pw.Text(
-        line,
-        style: const pw.TextStyle(fontSize: 11, lineSpacing: 2.5),
-      ),
-    );
-  }
-
-
   Future<void> _shareViaKakao(BuildContext context) async {
     try {
-      // Ensure report is saved to Supabase first
       String? uuid = widget.report.supabaseId;
       if (uuid == null) {
         uuid = await SupabaseService().saveMetrics(widget.report);
         widget.report.supabaseId = uuid;
       }
-
       final link = 'https://face.whatsupkorea.com/report/$uuid';
-
       final template = FeedTemplate(
         content: Content(
           title: '관상 분석 결과',
           description: '나의 관상을 분석해 보세요!',
-          imageUrl: Uri.parse('https://jicaenyzunjdlcxcdbfb.supabase.co/storage/v1/object/public/assets/share-thumbnail.png'),
+          imageUrl: Uri.parse(
+              'https://jicaenyzunjdlcxcdbfb.supabase.co/storage/v1/object/public/assets/share-thumbnail.png'),
           link: Link(
             webUrl: Uri.parse(link),
             mobileWebUrl: Uri.parse(link),
@@ -1689,11 +1641,9 @@ class _ReportPageState extends ConsumerState<ReportPage> {
           ),
         ],
       );
-
       await ShareClient.instance.shareDefault(template: template);
     } catch (e, st) {
-      debugPrint('[KakaoShare] error: $e');
-      debugPrint('[KakaoShare] stackTrace: $st');
+      debugPrint('[KakaoShare] error: $e\n$st');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1704,122 +1654,326 @@ class _ReportPageState extends ConsumerState<ReportPage> {
       }
     }
   }
+}
 
-  Future<void> _showSaveOptions(BuildContext context) async {
-    if (!ref.read(authProvider.notifier).isLoggedIn) {
-      final loggedIn = await showLoginBottomSheet(context, ref);
-      if (!loggedIn || !context.mounted) return;
-    }
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+// ─────────────────────────────────────────────────────────────
+// Hero / TL;DR / Share card primitives
+// ─────────────────────────────────────────────────────────────
+
+class _HeroLine extends StatelessWidget {
+  final String label;
+  final String line;
+  final Color tagColor;
+  const _HeroLine({
+    required this.label,
+    required this.line,
+    required this.tagColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 56,
+          child: Text(label,
+              style: TextStyle(
+                  color: tagColor,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.3)),
+        ),
+        Expanded(
+          child: Text(line,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13.5,
+                  height: 1.45,
+                  fontWeight: FontWeight.w500)),
+        ),
+      ],
+    );
+  }
+}
+
+class _HeroTop3 extends StatelessWidget {
+  final List<MapEntry<Attribute, double>> top3;
+  const _HeroTop3({required this.top3});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        for (var i = 0; i < top3.length; i++) ...[
+          if (i > 0) const SizedBox(width: 10),
+          Expanded(child: _HeroTop3Cell(rank: i + 1, entry: top3[i])),
+        ],
+      ],
+    );
+  }
+}
+
+class _HeroTop3Cell extends StatelessWidget {
+  final int rank;
+  final MapEntry<Attribute, double> entry;
+  const _HeroTop3Cell({required this.rank, required this.entry});
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = ((entry.value - 5.0) / 5.0).clamp(0.0, 1.0);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
       ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('$rank순위',
+              style: TextStyle(
+                  color: _Palette.sand,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5)),
+          const SizedBox(height: 4),
+          Text(entry.key.labelKo,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700)),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: Stack(
               children: [
-                ListTile(
-                  leading:
-                      Icon(Icons.copy, color: AppTheme.textSecondary),
-                  title: Text('클립보드에 복사',
-                      style: TextStyle(
-                          color: AppTheme.textPrimary)),
-                  onTap: () {
-                    Clipboard.setData(
-                        ClipboardData(text: _generateText()));
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text('클립보드에 복사되었습니다')),
-                    );
-                  },
+                Container(
+                  height: 6,
+                  color: Colors.white.withValues(alpha: 0.18),
                 ),
-                ListTile(
-                  leading:
-                      Icon(Icons.picture_as_pdf, color: AppTheme.textSecondary),
-                  title: Text('PDF로 저장',
-                      style: TextStyle(
-                          color: AppTheme.textPrimary)),
-                  onTap: () async {
-                    Navigator.pop(ctx);
-                    await _saveToPdf(context);
-                  },
+                FractionallySizedBox(
+                  widthFactor: pct,
+                  child: Container(height: 6, color: Colors.white),
                 ),
               ],
             ),
           ),
-        );
-      },
+          const SizedBox(height: 4),
+          Text(entry.value.toStringAsFixed(1),
+              style: TextStyle(
+                  color: _Palette.sand,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600)),
+        ],
+      ),
     );
   }
+}
 
-  Future<void> _saveToPdf(BuildContext context) async {
-    try {
-      final regularData =
-          await rootBundle.load('assets/fonts/NotoSerifKR-Regular.ttf');
-      final boldData =
-          await rootBundle.load('assets/fonts/NotoSerifKR-Bold.ttf');
-      final regularTtf = pw.Font.ttf(regularData);
-      final boldTtf = pw.Font.ttf(boldData);
-      // NotoSerifKR covers Korean + Latin punctuation (·).
-      // Register both Regular AND Bold slots — bold-styled titles need a real
-      // bold variant; otherwise pw.FontWeight.bold falls back to Helvetica
-      // which lacks Korean glyphs and renders titles as tofu boxes.
-      final pdfDoc = pw.Document(
-        theme: pw.ThemeData.withFont(base: regularTtf, bold: boldTtf),
-      );
+enum _ChipTone { warm, cool, accent }
 
-      final text = _generateText();
-      final lines = text.split('\n');
+class _TldrChipData {
+  final String label;
+  final _ChipTone tone;
+  const _TldrChipData({required this.label, required this.tone});
+}
 
-      pdfDoc.addPage(
-        pw.MultiPage(
-          pageFormat: PdfPageFormat.a4,
-          margin: const pw.EdgeInsets.fromLTRB(36, 40, 36, 40),
-          build: (pw.Context ctx) {
-            return lines.map(_renderPdfLine).toList();
-          },
+class _TldrChip extends StatelessWidget {
+  final _TldrChipData data;
+  const _TldrChip({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    final (bg, fg, border) = switch (data.tone) {
+      _ChipTone.warm => (
+          _Palette.warmBrown.withValues(alpha: 0.12),
+          _Palette.darkBrown,
+          _Palette.warmBrown.withValues(alpha: 0.35),
         ),
-      );
+      _ChipTone.cool => (
+          _Palette.shell,
+          _Palette.warmBrown,
+          _Palette.sand,
+        ),
+      _ChipTone.accent => (
+          _Palette.darkBrown,
+          Colors.white,
+          _Palette.darkBrown,
+        ),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: border),
+      ),
+      child: Text(
+        data.label,
+        style: TextStyle(
+            color: fg,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.2),
+      ),
+    );
+  }
+}
 
-      // Save to Downloads folder (accessible to user)
-      Directory? dir;
-      if (Platform.isAndroid) {
-        dir = Directory('/storage/emulated/0/Download');
-        if (!await dir.exists()) {
-          dir = await getApplicationDocumentsDirectory();
-        }
-      } else {
-        dir = await getApplicationDocumentsDirectory();
-      }
-      // Same report → same filename → overwrite previous file
-      final reportUuid = report.supabaseId ??
-          report.timestamp.millisecondsSinceEpoch.toString();
-      final filename = 'face-$reportUuid.pdf';
-      final file = File('${dir.path}/$filename');
-      await file.writeAsBytes(await pdfDoc.save());
+// 인스타·카톡 공유용 카드 (화면에 360×520 으로 prescaled, 캡처 시 pixelRatio 3.0 으로 1080×1560).
+// hero 카드의 모든 핵심 정보(archetype·special·catchphrase·장점·단점·TOP3 rank/bar)를 동일하게 담는다.
+class _ShareCard extends StatelessWidget {
+  final FaceReadingReport report;
+  const _ShareCard({required this.report});
 
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('PDF 저장 완료: $filename')),
-        );
-      }
-    } catch (e) {
-      debugPrint('[PDF] error: $e');
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('PDF 저장 실패: $e'),
-            backgroundColor: Colors.red.shade700,
-          ),
-        );
-      }
-    }
+  @override
+  Widget build(BuildContext context) {
+    final arch = report.archetype;
+    final catchphrase = archetypeCatchphrase[arch.primary] ?? '';
+    final sortedAttrs = report.attributeScores.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final top3 = sortedAttrs.take(3).toList();
+    final weakest = sortedAttrs.last;
+    final strengthLine = attributeStrengthLine[top3.first.key] ?? '';
+    final shadowLine = attributeShadowLine[weakest.key] ?? '';
+    final imageUrl =
+        'https://jicaenyzunjdlcxcdbfb.supabase.co/storage/v1/object/public/images/archetypes/${report.gender.name}.${arch.primary.name}.png';
+
+    return Container(
+      width: 360,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [_Palette.darkBrown, _Palette.warmBrown],
+        ),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('당신의 관상',
+                style: TextStyle(
+                    color: _Palette.sand,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1)),
+            const SizedBox(height: 12),
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(arch.primaryLabel,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                                height: 1.0)),
+                        const SizedBox(height: 6),
+                        Text('${arch.secondaryLabel} 기질',
+                            style: TextStyle(
+                                color: _Palette.sand,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500)),
+                        if (arch.specialArchetype != null) ...[
+                          const SizedBox(height: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                  color:
+                                      Colors.white.withValues(alpha: 0.3)),
+                            ),
+                            child: Text(arch.specialArchetype!,
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600)),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      width: 110,
+                      height: 130,
+                      fit: BoxFit.cover,
+                      placeholder: (_, _) => Container(
+                        width: 110,
+                        height: 130,
+                        color: Colors.white.withValues(alpha: 0.12),
+                      ),
+                      errorWidget: (_, _, _) => Container(
+                        width: 110,
+                        height: 130,
+                        color: Colors.white.withValues(alpha: 0.12),
+                        child: const Icon(Icons.face,
+                            color: Colors.white54, size: 32),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (catchphrase.isNotEmpty) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.18)),
+                ),
+                child: Text(
+                  catchphrase,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13.5,
+                    height: 1.45,
+                    fontWeight: FontWeight.w600,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+            ],
+            _HeroLine(
+              label: '장점',
+              line: strengthLine,
+              tagColor: _Palette.sand,
+            ),
+            const SizedBox(height: 8),
+            _HeroLine(
+              label: '단점',
+              line: shadowLine,
+              tagColor: Colors.white.withValues(alpha: 0.6),
+            ),
+            const SizedBox(height: 16),
+            _HeroTop3(top3: top3),
+          ],
+        ),
+      ),
+    );
   }
 }
 

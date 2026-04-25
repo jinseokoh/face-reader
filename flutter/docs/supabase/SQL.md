@@ -128,7 +128,7 @@ SELECT cron.schedule(
 
 ### `unlocks` — 궁합 카드 해제 내역
 
-리스트의 각 (my × album) 페어는 기본 **lock**. `unlock_compat` RPC 가 코인 2 개 차감 + 이 테이블에 row insert 를 한 트랜잭션으로 수행. client 는 이 테이블을 읽어 "어떤 페어가 unlock 인지" 판정.
+리스트의 각 (my × album) 페어는 기본 **lock**. `unlock_compat` RPC 가 코인 1 개 차감 + 이 테이블에 row insert 를 한 트랜잭션으로 수행. client 는 이 테이블을 읽어 "어떤 페어가 unlock 인지" 판정.
 
 ```sql
 CREATE TABLE unlocks (
@@ -271,9 +271,9 @@ BEGIN
 END; $$;
 ```
 
-### `unlock_compat` — 궁합 카드 해제 (코인 2 차감)
+### `unlock_compat` — 궁합 카드 해제 (코인 1 차감)
 
-원자 단위로: ①이미 해제됐는지 확인 → 그러면 잔액만 반환 (idempotent), ②잔액 2 이상이면 차감, ③`unlocks` insert, ④`coins` ledger 에 `spend` 기록.
+원자 단위로: ①이미 해제됐는지 확인 → 그러면 잔액만 반환 (idempotent), ②잔액 1 이상이면 차감, ③`unlocks` insert, ④`coins` ledger 에 `spend` 기록.
 
 반환값: 성공·기해제 시 새 잔액, 잔액 부족 시 `-1`.
 
@@ -302,15 +302,15 @@ BEGIN
     RETURN v_balance;
   END IF;
 
-  UPDATE users SET coins = coins - 2
-    WHERE id = v_uid AND coins >= 2
+  UPDATE users SET coins = coins - 1
+    WHERE id = v_uid AND coins >= 1
     RETURNING coins INTO v_balance;
   IF v_balance IS NULL THEN RETURN -1; END IF;
 
   INSERT INTO unlocks (user_id, pair_key) VALUES (v_uid, p_pair_key);
 
   INSERT INTO coins (user_id, kind, amount, balance_after, reference_id, description)
-    VALUES (v_uid, 'spend', -2, v_balance, p_pair_key, 'compat-unlock');
+    VALUES (v_uid, 'spend', -1, v_balance, p_pair_key, 'compat-unlock');
 
   RETURN v_balance;
 END; $$;
