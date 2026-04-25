@@ -126,21 +126,21 @@ SELECT cron.schedule(
 );
 ```
 
-### `compat_unlocks` — 궁합 카드 해제 내역
+### `unlocks` — 궁합 카드 해제 내역
 
 리스트의 각 (my × album) 페어는 기본 **lock**. `unlock_compat` RPC 가 코인 2 개 차감 + 이 테이블에 row insert 를 한 트랜잭션으로 수행. client 는 이 테이블을 읽어 "어떤 페어가 unlock 인지" 판정.
 
 ```sql
-CREATE TABLE compat_unlocks (
+CREATE TABLE unlocks (
   user_id    UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   pair_key   TEXT        NOT NULL,
   created_at TIMESTAMPTZ DEFAULT now(),
   PRIMARY KEY (user_id, pair_key)
 );
 
-ALTER TABLE compat_unlocks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE unlocks ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "compat_unlocks_self_read" ON compat_unlocks
+CREATE POLICY "unlocks_self_read" ON unlocks
   FOR SELECT USING (user_id = auth.uid());
 -- INSERT/DELETE 정책 없음 — unlock_compat RPC 만.
 ```
@@ -273,7 +273,7 @@ END; $$;
 
 ### `unlock_compat` — 궁합 카드 해제 (코인 2 차감)
 
-원자 단위로: ①이미 해제됐는지 확인 → 그러면 잔액만 반환 (idempotent), ②잔액 2 이상이면 차감, ③`compat_unlocks` insert, ④`coins` ledger 에 `spend` 기록.
+원자 단위로: ①이미 해제됐는지 확인 → 그러면 잔액만 반환 (idempotent), ②잔액 2 이상이면 차감, ③`unlocks` insert, ④`coins` ledger 에 `spend` 기록.
 
 반환값: 성공·기해제 시 새 잔액, 잔액 부족 시 `-1`.
 
@@ -293,7 +293,7 @@ BEGIN
   END IF;
 
   SELECT EXISTS(
-    SELECT 1 FROM compat_unlocks
+    SELECT 1 FROM unlocks
     WHERE user_id = v_uid AND pair_key = p_pair_key
   ) INTO v_already;
 
@@ -307,7 +307,7 @@ BEGIN
     RETURNING coins INTO v_balance;
   IF v_balance IS NULL THEN RETURN -1; END IF;
 
-  INSERT INTO compat_unlocks (user_id, pair_key) VALUES (v_uid, p_pair_key);
+  INSERT INTO unlocks (user_id, pair_key) VALUES (v_uid, p_pair_key);
 
   INSERT INTO coins (user_id, kind, amount, balance_after, reference_id, description)
     VALUES (v_uid, 'spend', -2, v_balance, p_pair_key, 'compat-unlock');
@@ -338,7 +338,7 @@ GRANT  EXECUTE ON FUNCTION unlock_compat(TEXT)                      TO authentic
 -- 로그인된 세션에서 (Dashboard SQL Editor 는 'Run as authenticated' 체크)
 SELECT coins FROM users WHERE id = auth.uid();
 SELECT * FROM coins WHERE user_id = auth.uid() ORDER BY created_at DESC LIMIT 10;
-SELECT * FROM compat_unlocks WHERE user_id = auth.uid();
+SELECT * FROM unlocks WHERE user_id = auth.uid();
 
 -- 잔액 부족 시 -1 확인
 SELECT spend_coins(9999, 'test', 'smoke');
@@ -354,7 +354,7 @@ SELECT unlock_compat('test-pair-key');  -- 잔액 그대로 (재차감 없음)
 
 ```sql
 -- WARNING: 데이터 전부 날아감. prod 금지.
-DROP TABLE IF EXISTS compat_unlocks CASCADE;
+DROP TABLE IF EXISTS unlocks CASCADE;
 DROP TABLE IF EXISTS coins          CASCADE;
 DROP TABLE IF EXISTS metrics        CASCADE;
 DROP TABLE IF EXISTS users          CASCADE;

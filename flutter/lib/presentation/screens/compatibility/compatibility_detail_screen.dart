@@ -389,9 +389,7 @@ class _PersonStrip extends StatelessWidget {
     return Row(
       children: [
         Expanded(child: _PersonCard(report: my, label: '나')),
-        const SizedBox(width: 12),
-        const Icon(Icons.compare_arrows, color: AppTheme.textHint),
-        const SizedBox(width: 12),
+        const SizedBox(width: 16),
         Expanded(child: _PersonCard(report: album, label: '상대')),
       ],
     );

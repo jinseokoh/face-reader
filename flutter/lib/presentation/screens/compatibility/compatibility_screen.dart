@@ -186,7 +186,20 @@ class CompatibilityScreen extends ConsumerWidget {
     if (confirm != true) return;
 
     // 5. RPC.
-    final newBalance = await CompatUnlockService().unlock(key);
+    final int newBalance;
+    try {
+      newBalance = await CompatUnlockService().unlock(key);
+    } catch (e, st) {
+      debugPrint('[CompatUnlock] unlock failed: $e\n$st');
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('해제 중 오류: $e'),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+      return;
+    }
     if (!context.mounted) return;
     if (newBalance == -1) {
       ScaffoldMessenger.of(context).showSnackBar(

@@ -32,7 +32,7 @@ class _PhysiognomyInfoDialogState extends State<PhysiognomyInfoDialog>
     '본 앱의 결과는 과학적 측정과 전통 문화적 해석이 만나는 흥미로운 교차점으로서 '
         '즐겁게 참고하시되, 어디까지나 재미와 교양의 영역으로 받아들여 주시기 바랍니다. '
         '모든 사람의 얼굴에는 저마다의 아름다움과 고유한 이야기가 담겨 있습니다. '
-        '보다 존중하는 시각으로 얼굴을 바라보는 계기가 되길 바랍니다. -- 위험한 관상가, 오진석 드림',
+        '보다 존중하는 시각으로 얼굴을 바라보는 계기가 되길 바랍니다. -- AI 관상가, 오진석 드림',
   ];
 
   late final AnimationController _controller;

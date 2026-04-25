@@ -71,7 +71,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           children: [
             const SizedBox(height: 40),
             Text(
-              '위험한 관상가',
+              'AI 관상가',
               style: TextStyle(
                 fontFamily: 'SongMyung',
                 color: AppTheme.textPrimary,

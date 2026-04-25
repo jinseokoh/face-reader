@@ -1,7 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.CAMERA"/>
     <application
-android:label="위험한 관상가"
+android:label="AI 관상가"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
         <activity
