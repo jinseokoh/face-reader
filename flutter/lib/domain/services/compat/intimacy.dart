@@ -3,7 +3,7 @@
 /// Gate: 30~50 대 + opposite gender 만 fire. 그 외는 50 중립 + 섹션 숨김.
 ///
 /// 재료:
-/// - 눈 아래 와잠 · 눈꼬리 옆 state pair delta
+/// - 男女宮 · 妻妾宮 state pair delta
 /// - lip geometry (lipFullnessRatio · mouthCornerAngle · philtrumLength)
 /// - eye charisma (eyeCanthalTilt + yinYang skew)
 library;
@@ -46,7 +46,7 @@ bool _genderOpposite(Gender a, Gender b) => a != b;
 double _clamp(double v, double lo, double hi) =>
     v < lo ? lo : (v > hi ? hi : v);
 
-/// 눈 아래 와잠 pair delta (range ±18).
+/// 男女宮 pair delta (range ±18).
 /// 양방향 비대칭: strong fire 가 template 양성 bias 로 흔하므로 delta 축소,
 /// weak fire 는 rare 라 delta 를 확대해 mean 을 50 근방에 유지.
 double _mwGongDelta(PalaceState? my, PalaceState? al) {
@@ -69,7 +69,7 @@ double _mwGongDelta(PalaceState? my, PalaceState? al) {
   return 0;
 }
 
-/// 눈꼬리 옆 pair delta (range ±18).
+/// 妻妾宮 pair delta (range ±18).
 double _spouseDelta(PalaceState? my, PalaceState? al) {
   if (my == null || al == null) return 0.0;
   if (my.isStrong && al.isStrong) {
@@ -113,7 +113,7 @@ double _lipGeometryDelta(
   if (myCorner >= 0.3 && alCorner >= 0.3) d += 2;
   // 처진 입꼬리 동반.
   if (myCorner <= -0.5 && alCorner <= -0.5) d -= 12;
-  // 긴 인중 — 관능 지표.
+  // 긴 인중 — 전통적 관능 지표.
   if ((myPhil >= 0.5 || alPhil >= 0.5) && (myPhil + alPhil) / 2 >= 0.3) {
     d += 1;
   }
@@ -173,8 +173,8 @@ IntimacyResult computeIntimacy({
     subScore: sub,
     gateActive: true,
     components: [
-      IntimacyComponent(id: 'mwGong', value: mw, note: '눈 아래 와잠 pair'),
-      IntimacyComponent(id: 'spouse', value: sp, note: '눈꼬리 옆 pair'),
+      IntimacyComponent(id: 'mwGong', value: mw, note: '男女宮 pair'),
+      IntimacyComponent(id: 'spouse', value: sp, note: '妻妾宮 pair'),
       IntimacyComponent(id: 'lip', value: lip, note: 'lip geometry'),
       IntimacyComponent(id: 'eye', value: eye, note: 'eye charisma'),
     ],

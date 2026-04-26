@@ -560,7 +560,7 @@ class _NarrativeSections extends StatelessWidget {
         // 성숙한 연령 이성 페어 전용 optional 섹션 — intimacy.gateActive 통과 시만 렌더.
         if (narrative.intimacyChapter != null)
           _NarrativeCard(
-            title: '어른의 친밀 분석',
+            title: '성숙한 친밀의 결',
             body: narrative.intimacyChapter!,
           ),
       ],

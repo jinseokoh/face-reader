@@ -372,11 +372,11 @@ String _scoreSection(CompatibilityReport r) {
   buf.writeln('종합 점수: $total점 / 100점 만점 기준');
   buf.writeln();
   buf.writeln('세부 점수:');
-  buf.writeln('- 얼굴 결(기본 성향): $el점');
-  buf.writeln('- 생활 영역(12개): $pa점');
-  buf.writeln('- 세부 짝(눈·코·입의 결합): $qi점');
+  buf.writeln('- 오행(얼굴형 기본 성향): $el점');
+  buf.writeln('- 궁위(결혼·가족·재물 등 12개 영역): $pa점');
+  buf.writeln('- 기질(눈·코·입·삼정·음양의 짝): $qi점');
   if (it != null) {
-    buf.writeln('- 친밀(30~50대 이성 기준): $it점');
+    buf.writeln('- 친밀(부부·친밀감 영역, 30~50대 이성 기준): $it점');
   } else {
     buf.writeln('- 친밀: 이번 조합에서는 따로 계산하지 않음');
   }
@@ -390,15 +390,15 @@ String _scoreSection(CompatibilityReport r) {
 
 List<MapEntry<String, double>> _subDisplayPairs(CompatibilityReport r) {
   return [
-    MapEntry('얼굴 결(기본 성향)',
+    MapEntry('오행(기본 성향)',
         subScoreToDisplay(CompatSubKind.element, r.sub.elementScore)!),
-    MapEntry('생활 영역(12개)',
+    MapEntry('궁위(12개 생활 영역)',
         subScoreToDisplay(CompatSubKind.palace, r.sub.palaceScore)!),
-    MapEntry('세부 짝(눈·코·입)',
+    MapEntry('기질(얼굴 세부 짝)',
         subScoreToDisplay(CompatSubKind.qi, r.sub.qiScore)!),
     if (r.intimacy.gateActive)
       MapEntry(
-          '친밀(30~50대 이성)',
+          '친밀(부부·친밀 영역)',
           subScoreToDisplay(CompatSubKind.intimacy, r.sub.intimacyScore)!),
   ];
 }
@@ -489,13 +489,13 @@ String? _intimacyChapter(CompatibilityReport r, int pairSeed) {
 String _axisLabel(String axisId) {
   switch (axisId) {
     case 'mwGong':
-      return '애정·표현 — 눈 아래 와잠';
+      return '남녀궁 — 눈 아래 와잠';
     case 'spouse':
-      return '오래 가는 결 — 눈꼬리 바깥';
+      return '부부궁 — 눈꼬리 바깥';
     case 'lip':
-      return '입과 입꼬리';
+      return '입 — 입술과 입꼬리';
     case 'eye':
-      return '시선의 결';
+      return '눈 — 시선의 결';
     default:
       return axisId;
   }

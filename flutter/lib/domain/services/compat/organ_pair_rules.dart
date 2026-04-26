@@ -112,7 +112,7 @@ bool _oneAboveOneBelow(
         Map<String, double> a, Map<String, double> b, String id, double hi, double lo) =>
     (_z(a, id) >= hi && _z(b, id) <= lo) || (_z(b, id) >= hi && _z(a, id) <= lo);
 
-// ────────── 눈썹 (eyebrow) matcher ──────────
+// ────────── 眉 (eyebrow) matcher ──────────
 
 bool _brBothThick(Map<String, double> a, Map<String, double> b,
         Map<String, bool> af, Map<String, bool> bf) =>
@@ -131,11 +131,11 @@ bool _brBothBalanced(Map<String, double> a, Map<String, double> b,
   return aa.abs() < 0.4 && bb.abs() < 0.4;
 }
 
-// ────────── 눈 (eye) matcher ──────────
+// ────────── 目 (eye) matcher ──────────
 
 bool _eyeFenghuangTaohua(Map<String, double> a, Map<String, double> b,
     Map<String, bool> af, Map<String, bool> bf) {
-  // 눈꼬리 올라간 눈(tilt 강) × 매혹적인 눈(lipFullness 강) — 한 명 tilt, 다른 명 촉촉.
+  // 鳳眼(tilt 강) × 桃花眼 (lipFullness 강) — 한 명 tilt, 다른 명 촉촉.
   final aTilt = _z(a, 'eyeCanthalTilt');
   final bTilt = _z(b, 'eyeCanthalTilt');
   final aLip = _z(a, 'lipFullnessRatio');
@@ -171,7 +171,7 @@ bool _eyeSharpSoft(Map<String, double> a, Map<String, double> b,
   return (aSharp && bSoft) || (bSharp && aSoft);
 }
 
-// ────────── 코 (nose) matcher ──────────
+// ────────── 鼻 (nose) matcher ──────────
 
 bool _noseBothHighBridge(Map<String, double> a, Map<String, double> b,
         Map<String, bool> af, Map<String, bool> bf) =>
@@ -193,7 +193,7 @@ bool _noseThinBoth(Map<String, double> a, Map<String, double> b,
         Map<String, bool> af, Map<String, bool> bf) =>
     _bothBelow(a, b, 'nasalWidthRatio', -0.7);
 
-// ────────── 입 (mouth) matcher ──────────
+// ────────── 口 (mouth) matcher ──────────
 
 bool _mouthBothFullLip(Map<String, double> a, Map<String, double> b,
         Map<String, bool> af, Map<String, bool> bf) =>
@@ -215,13 +215,13 @@ bool _mouthCherrySmallBoth(Map<String, double> a, Map<String, double> b,
 // ────────── 전체 rule 카탈로그 ──────────
 
 const List<OrganRule> organRules = [
-  // ──── 눈썹 (eyebrow) — weight 0.16 ─────────────────────────────────
+  // ──── 眉 (eyebrow) — weight 0.16 ─────────────────────────────────
   OrganRule(
     id: 'OP-BR-BOTH-THICK',
     organ: CompatOrgan.eyebrow,
     matcher: _brBothThick,
     delta: -8,
-    verdict: '두 분 모두 눈썹이 짙고 굵어 의지가 강한 쪽끼리 만난 모양입니다. 서로 자기 뜻을 꺾지 않으려 해 작은 일에서도 불꽃이 자주 일 수 있으니, 한 박자 쉬고 듣는 연습이 관계를 지켜 줍니다.',
+    verdict: '두 분 모두 눈썹(眉)이 짙고 굵어 의지가 강한 쪽끼리 만난 모양입니다. 서로 자기 뜻을 꺾지 않으려 해 작은 일에서도 불꽃이 자주 일 수 있으니, 한 박자 쉬고 듣는 연습이 관계를 지켜 줍니다.',
   ),
   OrganRule(
     id: 'OP-BR-THICK-THIN',
@@ -235,60 +235,60 @@ const List<OrganRule> organRules = [
     organ: CompatOrgan.eyebrow,
     matcher: _brBothBalanced,
     delta: 6,
-    verdict: '두 분의 눈썹이 모두 적당한 농도로 단정합니다. 감정이 한쪽 극단으로 치우치지 않아 일상이 잔잔히 흐르기 좋은 조합입니다.',
+    verdict: '두 분의 눈썹이 모두 적당한 농도로 단정합니다. 감정이 한쪽 극단으로 치우치지 않아 일상이 잔잔히 흐르기 좋은 상(相)입니다.',
   ),
   OrganRule(
     id: 'OP-BR-BOTH-BRIGHT',
     organ: CompatOrgan.eyebrow,
     matcher: _brBothThinBright,
     delta: 10,
-    verdict: '두 분 모두 눈썹이 맑고 눈썹과 눈 사이가 넓게 트였습니다. 분석상 이성적 판단이 나란히 빛나는 조용한 궁합입니다.',
+    verdict: '두 분 모두 눈썹이 맑고 눈썹과 눈 사이(田宅宮 언저리)가 넓게 트였습니다. 고전에서는 이 모양을 이성적 판단이 나란히 빛나는 조용한 궁합으로 읽습니다.',
   ),
 
-  // ──── 눈 (eye) — weight 0.34 ─────────────────────────────────────
+  // ──── 目 (eye) — weight 0.34 ─────────────────────────────────────
   OrganRule(
     id: 'OP-EY-FENG-TAOHUA',
     organ: CompatOrgan.eye,
     matcher: _eyeFenghuangTaohua,
     delta: 24,
-    verdict: '한 분은 눈꼬리가 살짝 올라간 날카로운 눈매이고, 다른 분은 입술이 도톰해 매혹적인 결을 갖추셨습니다. 단단함과 촉촉함이 한 짝으로 맞물리는, 분석상 가장 이상적인 조합입니다.',
+    verdict: '한 분은 눈꼬리가 살짝 올라간 봉황눈(鳳眼)의 기운이 강하고, 다른 분은 입술이 도톰해 도화(桃花)의 결을 갖추셨습니다. 전통 관상학에서 가장 잘 어울린다고 꼽는 이상적인 조합으로, 단단함과 촉촉함이 한 짝으로 맞물립니다.',
   ),
   OrganRule(
     id: 'OP-EY-BOTH-DRAGON',
     organ: CompatOrgan.eye,
     matcher: _eyeBothDragon,
     delta: 10,
-    verdict: '두 분 모두 눈이 크면서도 흘러내리지 않는 기개 있는 눈매를 갖추셨습니다. 서로의 세계를 깎아내리지 않고 존중하는 모양입니다.',
+    verdict: '두 분 모두 눈이 크면서도 흘러내리지 않는 용안(龍眼)의 기세를 갖추셨습니다. 기개 있는 눈끼리 만나 서로의 세계를 깎아내리지 않고 존중하는 모양입니다.',
   ),
   OrganRule(
     id: 'OP-EY-BOTH-PEACH',
     organ: CompatOrgan.eye,
     matcher: _eyeBothPeach,
     delta: -4,
-    verdict: '두 분 모두 입술이 도톰하고 눈꼬리가 살짝 올라간 매혹적인 결을 갖추셨습니다. 초반의 끌림은 유난히 강하지만 시선이 각각 다른 곳으로 향할 수 있어, 서로만 바라보겠다는 의식적 다짐이 필요합니다.',
+    verdict: '두 분 모두 입술이 도톰하고 눈꼬리가 살짝 올라간 도화(桃花)의 결을 갖추셨습니다. 초반의 끌림은 유난히 강하지만 시선이 각각 다른 곳으로 향할 수 있어, 서로만 바라보겠다는 의식적 다짐이 필요합니다.',
   ),
   OrganRule(
     id: 'OP-EY-DROOPING-BOTH',
     organ: CompatOrgan.eye,
     matcher: _eyeDroopingBoth,
     delta: -12,
-    verdict: '두 분 모두 눈꼬리가 아래로 처져 나른한 분위기가 겹칩니다. 무기력이 함께 가라앉기 쉬운 결이라, 일부러 활력을 불어넣을 일을 만들어야 관계의 온도가 유지됩니다.',
+    verdict: '두 분 모두 눈꼬리가 아래로 처져 권태로운 기운(慵眼)이 겹칩니다. 무기력이 함께 가라앉기 쉬운 결이라, 일부러 활력을 불어넣을 일을 만들어야 관계의 온도가 유지됩니다.',
   ),
   OrganRule(
     id: 'OP-EY-SHARP-SOFT',
     organ: CompatOrgan.eye,
     matcher: _eyeSharpSoft,
     delta: 18,
-    verdict: '한 분의 눈은 날카롭게 위로 뻗고 다른 분의 눈은 크고 둥글게 부드럽습니다. 강함과 부드러움이 서로의 빈자리를 정확히 메우는 조합이라, 오래가는 결합으로 읽힙니다.',
+    verdict: '한 분의 눈은 날카롭게 위로 뻗고 다른 분의 눈은 크고 둥글게 부드럽습니다. 강(剛)과 유(柔)가 서로의 빈자리를 정확히 메우는 조합이라, 고전에서는 이 짝을 오래가는 결합으로 봅니다.',
   ),
 
-  // ──── 코 (nose) — weight 0.24 ────────────────────────────────────
+  // ──── 鼻 (nose) — weight 0.24 ────────────────────────────────────
   OrganRule(
     id: 'OP-NS-BOTH-HIGH',
     organ: CompatOrgan.nose,
     matcher: _noseBothHighBridge,
     delta: -6,
-    verdict: '두 분 모두 콧대가 높아 재물 감각은 나란히 강합니다. 다만 주도권과 자존심이 비슷한 높이라 돈이나 일의 결정을 두고 부딪힐 여지가 있으니, 영역을 미리 나누어 두세요.',
+    verdict: '두 분 모두 콧대가 높아 재운(財運)은 나란히 강합니다. 다만 주도권과 자존심이 비슷한 높이라 돈·일의 결정을 두고 부딪힐 여지가 있으니, 영역을 미리 나누어 두는 편이 좋습니다.',
   ),
   OrganRule(
     id: 'OP-NS-HIGH-MODEST',
@@ -302,7 +302,7 @@ const List<OrganRule> organRules = [
     organ: CompatOrgan.nose,
     matcher: _noseBothAquiline,
     delta: -14,
-    verdict: '두 분 모두 코에 매부리 기운이 있어 자존심과 이익 계산이 날카롭게 섭니다. 같은 성향끼리 부딪히면 사소한 손익 문제에도 예민해지기 쉬우니, 한 쪽이 먼저 양보하는 신호를 미리 정해 두면 좋습니다.',
+    verdict: '두 분 모두 코에 매부리(鉤) 기운이 있어 자존심과 이익 계산이 날카롭게 섭니다. 같은 성향끼리 부딪히면 사소한 손익 문제에도 예민해지기 쉬우니, 한 쪽이 먼저 양보하는 신호를 미리 정해 두시면 좋습니다.',
   ),
   OrganRule(
     id: 'OP-NS-AQUI-SNUB',
@@ -316,17 +316,17 @@ const List<OrganRule> organRules = [
     organ: CompatOrgan.nose,
     matcher: _noseGarlicBoth,
     delta: 16,
-    verdict: '두 분 모두 콧방울이 풍성한 복스러운 모양입니다. 화려함보다 끈기 있는 재물의 결이라, 함께 알뜰히 쌓아 올리는 살림에 유리한 조합입니다.',
+    verdict: '두 분 모두 콧방울이 풍성한 복스러운 모양(蒜頭)입니다. 화려함보다 끈기 있는 재물의 결이라, 함께 알뜰히 쌓아 올리는 살림에 유리한 조합입니다.',
   ),
   OrganRule(
     id: 'OP-NS-THIN-BOTH',
     organ: CompatOrgan.nose,
     matcher: _noseThinBoth,
     delta: -10,
-    verdict: '두 분 모두 콧대가 칼처럼 가늘고 예민합니다. 계산이 날카로운 성향이 겹쳐 작은 돈 문제에도 날이 설 수 있으니, 지출 원칙을 미리 합의해 두세요.',
+    verdict: '두 분 모두 콧대가 칼처럼 가늘고 예민합니다. 계산이 날카로운 기운이 겹쳐 작은 돈 문제에도 날이 설 수 있으니, 지출 원칙을 미리 합의해 두는 편이 관계를 지켜 줍니다.',
   ),
 
-  // ──── 입 (mouth) — weight 0.26 ───────────────────────────────────
+  // ──── 口 (mouth) — weight 0.26 ───────────────────────────────────
   OrganRule(
     id: 'OP-MO-BOTH-FULL',
     organ: CompatOrgan.mouth,
@@ -360,7 +360,7 @@ const List<OrganRule> organRules = [
     organ: CompatOrgan.mouth,
     matcher: _mouthCherrySmallBoth,
     delta: -6,
-    verdict: '두 분 모두 입이 작고 얇아 표현이 조심스러운 결입니다. 같이 있으면 마음이 움츠러들기 쉬우니, 편지나 메모처럼 부담이 적은 창구로라도 감정을 자주 내어 보여야 합니다.',
+    verdict: '두 분 모두 입이 작고 얇아 표현이 조심스러운 결입니다. 같이 있으면 마음이 움츠러들기 쉬우니, 편지·메모처럼 부담이 적은 창구로라도 감정을 자주 내어 보이셔야 합니다.',
   ),
 ];
 

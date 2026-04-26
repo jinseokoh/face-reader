@@ -81,29 +81,29 @@ extension PalaceLabel on Palace {
   String get korean {
     switch (this) {
       case Palace.life:
-        return '마음의 중심';
+        return '명궁';
       case Palace.wealth:
-        return '돈 운';
+        return '재백궁';
       case Palace.sibling:
-        return '또래·동료';
+        return '형제궁';
       case Palace.property:
-        return '집·일상';
+        return '전택궁';
       case Palace.children:
-        return '애정·끌림';
+        return '남녀궁';
       case Palace.slave:
-        return '주변 사람';
+        return '노복궁';
       case Palace.spouse:
-        return '오래 가는 짝';
+        return '부부궁';
       case Palace.illness:
-        return '몸 컨디션';
+        return '질액궁';
       case Palace.migration:
-        return '이동·새 환경';
+        return '천이궁';
       case Palace.career:
-        return '일·사회적 자리';
+        return '관록궁';
       case Palace.fortune:
-        return '여유·평온';
+        return '복덕궁';
       case Palace.parents:
-        return '부모·뿌리';
+        return '부모궁';
     }
   }
 
@@ -141,29 +141,29 @@ extension PalaceLabel on Palace {
   String get domainKo {
     switch (this) {
       case Palace.life:
-        return '일상의 결단과 중심';
+        return '일상의 기개와 결단';
       case Palace.wealth:
-        return '돈과 재산';
+        return '재물과 축적';
       case Palace.sibling:
-        return '또래·동료와의 관계';
+        return '형제·동료와의 정';
       case Palace.property:
-        return '집과 생활 안정';
+        return '주거와 가정의 안정';
       case Palace.children:
-        return '애정과 끌림';
+        return '자녀와 친밀함';
       case Palace.slave:
-        return '주변 사람과 네트워크';
+        return '주변 사람·인맥';
       case Palace.spouse:
-        return '오래 함께할 짝';
+        return '배우자와의 인연';
       case Palace.illness:
-        return '건강과 컨디션';
+        return '건강과 체력';
       case Palace.migration:
-        return '이동과 환경 변화';
+        return '이주와 바깥 활동';
       case Palace.career:
-        return '일과 사회적 위치';
+        return '직업과 사회적 지위';
       case Palace.fortune:
-        return '여유와 평온';
+        return '복과 여유';
       case Palace.parents:
-        return '부모와의 관계';
+        return '부모와의 인연';
     }
   }
 }

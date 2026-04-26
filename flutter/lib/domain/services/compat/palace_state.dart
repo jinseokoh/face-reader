@@ -3,7 +3,7 @@
 /// 입력은 capture 단 raw evidence:
 ///  - `zMap`: 17 frontal zAdjusted + 8 lateral z (id → double)
 ///  - `nodeZ`: 14 node ownMeanZ (nodeId → double)
-///  - `ageGroup`: age-gated flag (눈꼬리 잔주름은 30+ 에서만 유효) 판정용
+///  - `ageGroup`: age-gated flag (魚尾紋 은 30+ 에서만 유효) 판정용
 ///  - `lateralFlags`: aquilineNose 등 (FaceReadingReport 가 이미 산출)
 ///
 /// 출력된 state 는 palace_pair_matcher 의 입력.
@@ -16,7 +16,7 @@ import 'palace.dart';
 /// 궁별 관여 metric/node id. zMean 과 absZMax 계산 대상.
 /// `node:` 접두는 nodeZ 조회, 접두 없으면 zMap 조회.
 const Map<Palace, List<String>> _palaceSignals = {
-  // 命宮 — 미간: glabella 노드 중심.
+  // 命宮 — 印堂 (미간): glabella 노드 중심.
   Palace.life: ['node:glabella', 'intercanthalRatio'],
   // 財帛宮 — 코 전체.
   Palace.wealth: [
@@ -34,23 +34,23 @@ const Map<Palace, List<String>> _palaceSignals = {
     'eyeFissureRatio',
     'eyeCanthalTilt',
   ],
-  // 奴僕宮 — 턱 양옆. chin node.
+  // 奴僕宮 — 地閣 兩側. chin node.
   Palace.slave: [
     'node:chin',
     'lowerFaceRatio',
     'lowerFaceFullness',
   ],
-  // 妻妾宮 — 눈꼬리 옆. eyeCanthalTilt·browEyeDistance(외각).
+  // 妻妾宮 — 魚尾. eyeCanthalTilt·browEyeDistance(외각).
   Palace.spouse: ['eyeCanthalTilt', 'browEyeDistance'],
-  // 疾厄宮 — 콧대 뿌리(산근). lateral nasofrontalAngle + intercanthalRatio.
+  // 疾厄宮 — 山根. lateral nasofrontalAngle + intercanthalRatio.
   Palace.illness: ['nasofrontalAngle', 'dorsalConvexity', 'intercanthalRatio'],
-  // 遷移宮 — 이마 옆 끝. forehead node + faceAspectRatio.
+  // 遷移宮 — 驛馬 (이마 옆 끝). forehead node + faceAspectRatio.
   Palace.migration: ['node:forehead', 'faceAspectRatio'],
-  // 官祿宮 — 이마 중앙.
+  // 官祿宮 — 중정 (이마 중앙).
   Palace.career: ['node:forehead', 'upperFaceRatio', 'foreheadWidth'],
-  // 福德宮 — 이마 위 좌우.
+  // 福德宮 — 天倉 (이마 위 좌우).
   Palace.fortune: ['node:glabella', 'upperFaceRatio', 'browEyeDistance'],
-  // 父母宮 — 이마 위 좌우.
+  // 父母宮 — 日角·月角 (이마 위 좌우).
   Palace.parents: ['upperFaceRatio', 'foreheadWidth'],
 };
 
@@ -62,7 +62,7 @@ const double _levelThreshold = 0.2;
 
 /// 궁 별 metric 부호 보정 — "palace strong = 吉상" 이 일관되도록 특정
 /// metric 의 z 를 뒤집는다. 예: `nasofrontalAngle` z 가 높으면 코-이마
-/// 전이가 평탄 = 산근 낮음 = 몸 컨디션 weak 이므로 부호를 뒤집어 평균에 더한다.
+/// 전이가 평탄 = 산근 낮음 = 疾厄 weak 이므로 부호를 뒤집어 평균에 더한다.
 const Map<Palace, Map<String, double>> _palaceMetricSign = {
   Palace.illness: {
     // 높은 각 = 산근 평탄(吉상 weak) → 부호 뒤집어 palace zMean 에 반영.
@@ -108,11 +108,11 @@ Set<PalaceFlag> _computeFlags({
 
   switch (palace) {
     case Palace.life:
-      // 미간이 넓고 밝음 — glabella 넓고 밝음 + 미간이 답답하게 좁지 않아야.
+      // 印堂明潤 — glabella 넓고 밝음 + 미간이 답답하게 좁지 않아야.
       if (nz('glabella') >= 1.0 && z('intercanthalRatio') >= -0.3) {
         flags.add(PalaceFlag.glabellaBright);
       }
-      // 미간이 좁고 어두움 — glabella 어둡거나 미간 좁음. AND 조건으로 꽉 조이는 경우.
+      // 印堂緊結 — glabella 어둡거나 미간 좁음. AND 조건으로 꽉 조이는 경우.
       if (nz('glabella') <= -1.0 && z('intercanthalRatio') <= -0.5) {
         flags.add(PalaceFlag.glabellaTight);
       }
