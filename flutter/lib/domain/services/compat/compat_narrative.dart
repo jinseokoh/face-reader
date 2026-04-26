@@ -191,10 +191,18 @@ String? _intimacyChapter(CompatibilityReport r, int pairSeed) {
   final bucket = _intimacyBucket(r.sub.intimacyScore);
   final subInt = r.sub.intimacyScore.round().toString();
 
+  // gender-별 pool 선택 — narrative 시점은 r.myGender (album 은 자동 반대성).
+  final openerByBucket = intimacyOpenerByBucketByGender[r.myGender] ??
+      const <String, List<String>>{};
+  final closingByBucket = intimacyClosingByBucketByGender[r.myGender] ??
+      const <String, List<String>>{};
+  final axisDetails = intimacyAxisDetailsByGender[r.myGender] ??
+      const <String, IntimacyAxisDetail>{};
+
   final buf = StringBuffer();
 
   // Opener — bucket 별 pool, pair-seed 로 variant 선택. {X} 치환.
-  final openerPool = intimacyOpenerByBucket[bucket] ?? const <String>[];
+  final openerPool = openerByBucket[bucket] ?? const <String>[];
   final opener = _pickVariant(openerPool, pairSeed).replaceAll('{X}', subInt);
   if (opener.isNotEmpty) {
     buf.writeln(opener);
@@ -204,7 +212,7 @@ String? _intimacyChapter(CompatibilityReport r, int pairSeed) {
   for (final comp in r.intimacy.components) {
     final sign = _intimacySign(comp.value);
     final key = '${comp.id}-$sign';
-    final detail = intimacyAxisDetails[key];
+    final detail = axisDetails[key];
     if (detail == null) continue;
 
     final advice = bucket == 'high'
@@ -226,7 +234,7 @@ String? _intimacyChapter(CompatibilityReport r, int pairSeed) {
   }
 
   // Closing — bucket 별 pool.
-  final closingPool = intimacyClosingByBucket[bucket] ?? const <String>[];
+  final closingPool = closingByBucket[bucket] ?? const <String>[];
   final closing = _pickVariant(closingPool, pairSeed + 0x1F49C);
   if (closing.isNotEmpty) {
     buf.writeln();
@@ -463,7 +471,7 @@ List<MapEntry<String, double>> _subDisplayPairs(CompatibilityReport r) {
         subScoreToDisplay(CompatSubKind.qi, r.sub.qiScore)!),
     if (r.intimacy.gateActive)
       MapEntry(
-          '친밀(부부·친밀 영역)',
+          '끌림(밀착도·텐션 영역)',
           subScoreToDisplay(CompatSubKind.intimacy, r.sub.intimacyScore)!),
   ];
 }

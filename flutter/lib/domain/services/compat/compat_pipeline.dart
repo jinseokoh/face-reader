@@ -74,6 +74,9 @@ class CompatibilityReport {
   final double total;
   final CompatLabel label;
 
+  // narrative perspective — intimacy chapter 의 gender-별 advice 분기 등에 사용.
+  final Gender myGender;
+
   const CompatibilityReport({
     required this.myElement,
     required this.albumElement,
@@ -89,6 +92,7 @@ class CompatibilityReport {
     required this.sub,
     required this.total,
     required this.label,
+    required this.myGender,
   });
 }
 
@@ -188,5 +192,6 @@ CompatibilityReport analyzeCompatibility({
     sub: sub,
     total: agg.total,
     label: agg.label,
+    myGender: my.gender,
   );
 }
