@@ -1,6 +1,6 @@
 # Supabase — Face Reader 현재 스키마 SSOT
 
-**마지막 업데이트**: 2026-04-24
+**마지막 업데이트**: 2026-04-26
 **프로젝트 ref**: `jicaenyzunjdlcxcdbfb`
 
 이 문서는 현재 Supabase DB 의 **실제 상태**를 그대로 기록한다. 마이그레이션 내역이 아니라 "지금 대시보드에 있는 것 그대로". 스키마를 바꿀 때는 이 파일을 함께 갱신한다.
@@ -32,16 +32,17 @@ psql "postgresql://postgres.jicaenyzunjdlcxcdbfb:[password]@aws-0-[region].poole
 
 ### `users` — 프로필 + 코인 잔액 (SoT)
 
-`auth.users` 와 1:1. 가입 시 트리거로 자동 생성. `coins` 컬럼이 잔액 SoT — ledger(`public.coins`) 와 동기화는 `grant_coins`/`spend_coins` RPC 가 보장.
+`auth.users` 와 1:1. 가입 시 트리거로 자동 생성. `coins` 컬럼이 잔액 SoT — ledger(`public.coins`) 와 동기화는 `grant_coins`/`spend_coins` RPC 가 보장. `signup_bonus_skipped` 는 같은 email/kakao_id 가 과거 보너스를 받은 적 있어 dedup 으로 보너스가 차단된 계정 표시 — 클라이언트가 1회 안내 다이얼로그를 띄우는 근거.
 
 ```sql
 CREATE TABLE users (
-  id                UUID        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  kakao_user_id     TEXT,
-  nickname          TEXT,
-  profile_image_url TEXT,
-  coins             INT         NOT NULL DEFAULT 0,
-  created_at        TIMESTAMPTZ DEFAULT now()
+  id                   UUID        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  kakao_user_id        TEXT,
+  nickname             TEXT,
+  profile_image_url    TEXT,
+  coins                INT         NOT NULL DEFAULT 0,
+  signup_bonus_skipped BOOLEAN     NOT NULL DEFAULT FALSE,
+  created_at           TIMESTAMPTZ DEFAULT now()
 );
 
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
@@ -147,13 +148,46 @@ CREATE POLICY "unlocks_self_read" ON unlocks
 
 **pair_key 규칙** (client 가 생성): `${my.supabaseId}::${album.supabaseId}` — 비대칭 (나 × 상대), 순서 고정. 두 report 모두 `supabaseId` 가 할당된 뒤에만 unlock 시도.
 
+### `bonus_recipients` — 회원가입 보너스 수령 이력 (영구)
+
+같은 사용자가 계정을 지웠다 다시 만들거나 다른 provider 로 재가입하더라도 보너스 3 코인이 이중 발급되지 않도록 email + kakao_user_id 단위로 영구 기록한다. `handle_new_user` 트리거가 가입 시점에 이 테이블을 조회해 dedup 판정.
+
+```sql
+CREATE TABLE bonus_recipients (
+  id            BIGSERIAL   PRIMARY KEY,
+  email         TEXT,
+  kakao_user_id TEXT,
+  granted_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK (email IS NOT NULL OR kakao_user_id IS NOT NULL)
+);
+
+CREATE INDEX bonus_recipients_email_idx
+  ON bonus_recipients (email)
+  WHERE email IS NOT NULL;
+
+CREATE INDEX bonus_recipients_kakao_idx
+  ON bonus_recipients (kakao_user_id)
+  WHERE kakao_user_id IS NOT NULL;
+
+ALTER TABLE bonus_recipients ENABLE ROW LEVEL SECURITY;
+
+-- 일반 클라이언트는 SELECT/INSERT/UPDATE/DELETE 모두 차단.
+-- 트리거 (SECURITY DEFINER) 만 접근.
+CREATE POLICY "bonus_recipients_no_access"
+  ON bonus_recipients
+  FOR ALL TO authenticated, anon
+  USING (false) WITH CHECK (false);
+```
+
 ---
 
 ## Triggers
 
 ### `handle_new_user` — 가입 시 프로필 + 보너스 3 코인
 
-`auth.users` 에 insert 가 일어날 때 `public.users` 행 + `public.coins` ledger row 자동 생성. Kakao 로그인에서 넘어오는 메타데이터(`name`, `nickname`, `avatar_url`, `picture`, `provider_id`) 를 유연하게 수용.
+`auth.users` 에 insert 가 일어날 때 `public.users` 행 자동 생성. Kakao 로그인 메타데이터(`name`, `nickname`, `avatar_url`, `picture`, `provider_id`) 를 유연하게 수용.
+
+같은 email 또는 kakao_user_id 가 과거에 보너스를 받은 적 있으면(`bonus_recipients` 조회) 보너스를 발급하지 않고 `signup_bonus_skipped = TRUE` 로 표시한다. 클라이언트는 이 flag 가 true 인 사용자에게 1회 안내 다이얼로그를 띄운다 ("보너스 코인은 이미 지급했었기 때문에 더이상 지급되지 않습니다").
 
 ```sql
 CREATE OR REPLACE FUNCTION handle_new_user()
@@ -161,9 +195,11 @@ RETURNS TRIGGER
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
 AS $$
 DECLARE
-  v_nickname TEXT;
-  v_avatar   TEXT;
-  v_kakao_id TEXT;
+  v_nickname        TEXT;
+  v_avatar          TEXT;
+  v_kakao_id        TEXT;
+  v_email           TEXT := lower(NEW.email);
+  v_already_bonused BOOLEAN;
 BEGIN
   v_nickname := COALESCE(
     NEW.raw_user_meta_data->>'name',
@@ -176,11 +212,29 @@ BEGIN
   );
   v_kakao_id := NEW.raw_user_meta_data->>'provider_id';
 
-  INSERT INTO public.users (id, kakao_user_id, nickname, profile_image_url, coins)
-    VALUES (NEW.id, v_kakao_id, v_nickname, v_avatar, 3);
+  SELECT EXISTS (
+    SELECT 1 FROM public.bonus_recipients
+    WHERE (v_email    IS NOT NULL AND email         = v_email)
+       OR (v_kakao_id IS NOT NULL AND kakao_user_id = v_kakao_id)
+  ) INTO v_already_bonused;
 
-  INSERT INTO public.coins (user_id, kind, amount, balance_after, description)
+  IF v_already_bonused THEN
+    INSERT INTO public.users
+      (id, kakao_user_id, nickname, profile_image_url, coins, signup_bonus_skipped)
+    VALUES
+      (NEW.id, v_kakao_id, v_nickname, v_avatar, 0, TRUE);
+  ELSE
+    INSERT INTO public.users
+      (id, kakao_user_id, nickname, profile_image_url, coins, signup_bonus_skipped)
+    VALUES
+      (NEW.id, v_kakao_id, v_nickname, v_avatar, 3, FALSE);
+
+    INSERT INTO public.coins (user_id, kind, amount, balance_after, description)
     VALUES (NEW.id, 'bonus', 3, 3, '회원가입 보너스');
+
+    INSERT INTO public.bonus_recipients (email, kakao_user_id)
+    VALUES (v_email, v_kakao_id);
+  END IF;
 
   RETURN NEW;
 END; $$;

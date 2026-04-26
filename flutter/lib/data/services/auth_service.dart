@@ -12,6 +12,10 @@ class AuthUser {
   final String? nickname;
   final String? profileImageUrl;
   final int coins;
+  /// 가입 시 같은 email/kakao_user_id 가 이미 보너스를 받은 적 있어
+  /// 보너스 3 코인이 dedup 으로 차단된 계정. 클라이언트는 이 flag 로 1회
+  /// 안내 다이얼로그를 띄운다.
+  final bool signupBonusSkipped;
 
   const AuthUser({
     required this.id,
@@ -19,6 +23,7 @@ class AuthUser {
     this.kakaoUserId,
     this.nickname,
     this.profileImageUrl,
+    this.signupBonusSkipped = false,
   });
 
   AuthUser copyWith({int? coins}) => AuthUser(
@@ -27,6 +32,7 @@ class AuthUser {
         nickname: nickname,
         profileImageUrl: profileImageUrl,
         coins: coins ?? this.coins,
+        signupBonusSkipped: signupBonusSkipped,
       );
 }
 
@@ -47,10 +53,18 @@ class AuthService {
 
   StreamSubscription<AuthState>? _sub;
   final _profileChanged = StreamController<AuthUser?>.broadcast();
+  final _signupBonusSkippedNotice = StreamController<void>.broadcast();
+  // Per-session: 한 번 안내한 사용자 id 는 다시 띄우지 않는다.
+  final Set<String> _signupBonusNoticeShown = <String>{};
 
   /// Stream that fires when the signed-in profile changes (login, logout,
   /// coin balance refresh). Used by providers to react.
   Stream<AuthUser?> get profileStream => _profileChanged.stream;
+
+  /// 가입 시 dedup 으로 보너스가 차단된 계정이 처음 로드되었을 때 1회 emit.
+  /// app.dart 에서 listen → 안내 다이얼로그.
+  Stream<void> get signupBonusSkippedNotice =>
+      _signupBonusSkippedNotice.stream;
 
   Future<void> initialize() async {
     _sub = _client.auth.onAuthStateChange.listen((state) async {
@@ -95,6 +109,12 @@ class AuthService {
   void _setUser(AuthUser? user) {
     _currentUser = user;
     _profileChanged.add(user);
+    if (user != null &&
+        user.signupBonusSkipped &&
+        !_signupBonusNoticeShown.contains(user.id)) {
+      _signupBonusNoticeShown.add(user.id);
+      _signupBonusSkippedNotice.add(null);
+    }
   }
 
   /// Kakao OAuth via Supabase. Opens a browser/webview; the actual session
@@ -203,10 +223,12 @@ class AuthService {
         nickname: row['nickname'] as String?,
         profileImageUrl: row['profile_image_url'] as String?,
         coins: (row['coins'] as int?) ?? 0,
+        signupBonusSkipped: (row['signup_bonus_skipped'] as bool?) ?? false,
       );
 
   void dispose() {
     _sub?.cancel();
     _profileChanged.close();
+    _signupBonusSkippedNotice.close();
   }
 }
