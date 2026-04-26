@@ -232,8 +232,12 @@ BEGIN
     INSERT INTO public.coins (user_id, kind, amount, balance_after, description)
     VALUES (NEW.id, 'bonus', 3, 3, '회원가입 보너스');
 
-    INSERT INTO public.bonus_recipients (email, kakao_user_id)
-    VALUES (v_email, v_kakao_id);
+    -- 식별자가 하나라도 있어야만 dedup ledger 에 기록 (CHECK 제약 보호).
+    -- 둘 다 NULL 인 케이스는 dedup 자체가 불가능하므로 그냥 skip.
+    IF v_email IS NOT NULL OR v_kakao_id IS NOT NULL THEN
+      INSERT INTO public.bonus_recipients (email, kakao_user_id)
+      VALUES (v_email, v_kakao_id);
+    END IF;
   END IF;
 
   RETURN NEW;

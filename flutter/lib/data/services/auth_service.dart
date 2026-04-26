@@ -67,8 +67,13 @@ class AuthService {
       _signupBonusSkippedNotice.stream;
 
   Future<void> initialize() async {
+    debugPrint('[Auth] initialize start, currentSession=${_client.auth.currentSession != null}');
     _sub = _client.auth.onAuthStateChange.listen((state) async {
       final session = state.session;
+      debugPrint('[Auth] onAuthStateChange event=${state.event} '
+          'hasSession=${session != null} '
+          'userId=${session?.user.id} '
+          'email=${session?.user.email}');
       if (session == null) {
         _setUser(null);
       } else {
@@ -84,25 +89,30 @@ class AuthService {
   Future<void> _loadProfile() async {
     final authUser = _client.auth.currentUser;
     if (authUser == null) {
+      debugPrint('[Auth] _loadProfile: no auth user');
       _setUser(null);
       return;
     }
+    debugPrint('[Auth] _loadProfile start id=${authUser.id} email=${authUser.email}');
     try {
       final row = await _client
           .from('users')
           .select()
           .eq('id', authUser.id)
           .maybeSingle();
+      debugPrint('[Auth] _loadProfile users row keys=${row?.keys.toList()}');
       if (row == null) {
         debugPrint('[Auth] public.users row missing for ${authUser.id} '
             '— trigger may have failed');
         _setUser(null);
         return;
       }
-      _setUser(_mapUser(row));
-      debugPrint('[Auth] profile loaded: ${_currentUser!.nickname}');
-    } catch (e) {
-      debugPrint('[Auth] profile load failed: $e');
+      final mapped = _mapUser(row);
+      _setUser(mapped);
+      debugPrint('[Auth] profile loaded: nickname=${mapped.nickname} '
+          'coins=${mapped.coins} signupBonusSkipped=${mapped.signupBonusSkipped}');
+    } catch (e, st) {
+      debugPrint('[Auth] profile load failed: $e\n$st');
     }
   }
 
@@ -121,14 +131,17 @@ class AuthService {
   /// arrives asynchronously through `onAuthStateChange` once the deep link
   /// redirects back. Returns true if the browser was opened successfully.
   Future<bool> loginWithKakao() async {
+    debugPrint('[Auth] loginWithKakao: invoking signInWithOAuth (redirect=$_redirectUrl)');
     try {
-      return await _client.auth.signInWithOAuth(
+      final launched = await _client.auth.signInWithOAuth(
         OAuthProvider.kakao,
         redirectTo: _redirectUrl,
         authScreenLaunchMode: LaunchMode.externalApplication,
       );
-    } catch (e) {
-      debugPrint('[Auth] kakao oauth error: $e');
+      debugPrint('[Auth] loginWithKakao: browser launched=$launched');
+      return launched;
+    } catch (e, st) {
+      debugPrint('[Auth] kakao oauth error: $e\n$st');
       return false;
     }
   }
