@@ -100,9 +100,43 @@
 
 | 우선 | 작업 | 근거 | 재개 지시 |
 |---|---|---|---|
+| P0 | **공유 link 통합 — share_card publish + app_links 라우팅** | 이미지 공유 / 카톡 공유 두 entry 를 share_plus 단일 [공유] 버튼으로 통합. 카드 PNG + 요약 row 를 supabase 에 publish 하면 `react/` 의 share host 가 카톡 미리보기 + 미설치 사용자용 SSR 페이지 + universal/app link 라우팅 담당. 자세한 계약·schema·AASA 는 `react/DEEPLINK.md` SSOT | `"react/DEEPLINK.md §3 의 SharePublisher 스펙 그대로 lib/domain/services/share/share_publisher.dart 작성. nanoid + RepaintBoundary PNG + R2 upload + supabase share_card insert + share_plus shareUri. 그 다음 main.dart 에 app_links 패키지 초기화 + /r/:shortId path → ReportPage routing"` |
+| P0 | **AASA / assetlinks 실값 + iOS entitlements + Android intent-filter** | universal/app link 동작의 양쪽 필수 설정. `react/public/.well-known/` 두 파일은 placeholder 상태. iOS Runner.entitlements + Android Manifest 양쪽 도메인 박기 | `"react/DEEPLINK.md §4 체크리스트 따라가며 react/public/.well-known/ TEAMID + Play SHA256 실값 박기. ios/Runner/Runner.entitlements 에 applinks:share.face.app, AndroidManifest.xml 에 autoVerify intent-filter 추가"` |
 | P1 | **궁합 엔진 P2 — 五行 body classifier 구현** | `lib/domain/services/compat/` 하위 신규 파일군. `docs/compat/FRAMEWORK.md` §2 z-score weighted formula 그대로. distribution test 로 5 element 고르게 나오는지 검증 | `"docs/compat/FRAMEWORK.md §2 읽고 five_element_classifier.dart + test/compat/five_element_distribution_test.dart 작성"` |
 | P0 | **pull-to-refresh state 증발 root-cause 고정** | 진단 로그는 삽입 완료. 실기에서 재현 후 stacktrace 확보가 필요. `fromJsonString` 이 rawValue→엔진 재계산 도중 어느 라인에서 터지는지 정확히 짚어야 함 | `"실기 앱 run → 관상 tab 에서 pull-to-refresh → 콘솔의 [History] reload FAIL entry N: … + stacktrace + raw head 전부 수집. 해당 라인 원인 제거 + reloadFromHive 가 parse 실패 시 in-memory state entry 드롭하지 않도록 방어(현재는 parsed 만 state 로 커밋 → 실패 entry 소멸). 관건은 'Hive raw 보존' 은 이미 되어 있으니 state 쪽 보수적 업데이트만 추가"` |
 | P0 | **실사용자 N 확장** (현 N=14 eastAsian female 30s → ≥100 전 demographic) | v2.8 은 단일 demographic 14 명으로 ref 재보정. 남·타 ethnicity·age 는 아직 idealized MC 기반 | `"test/fixtures/real_users_*.json 에 male/caucasian/40s 등 추가 수집 후 real_users_recalibration_test.dart 로 per-demographic 재보정"` |
+| P1 | **친밀 narrative gender 분기 컨텐츠 채우기** | `compat_phrase_pool.dart` 의 `intimacyAxisDetailsByGender` / `intimacyOpenerByBucketByGender` / `intimacyClosingByBucketByGender` male/female 두 블록은 동일 복제 상태. male 은 적극·결단 톤, female 은 수용·해석 톤으로 자유 분기 | `"compat_phrase_pool.dart 의 Gender.female 블록 3 곳을 수용·해석 톤으로 다듬기. 같은 fact 의 정반대 시점 (남자=행동 지시 / 여자=수용·해석 프레이밍)"` |
+
+### 공유 link 통합 — Flutter ↔ React 앱 인터랙트 (2026-04-26 추가)
+
+이미지/카톡 공유의 두 entry 를 `share_plus` 단일 [공유] 버튼으로 통합하고, 받는 사람이 link 를 탭했을 때 `react/` 폴더의 Cloudflare Workers + React Router v7 SSR 앱이 카드 미리보기·랜딩·deep link 라우팅을 담당. 비용 안전성 (Vercel 회피) + 카톡 viral bandwidth unmetered 가 stack 결정 이유. 자세한 SSOT: `react/DEEPLINK.md`.
+
+```
+[Flutter] [공유] 탭
+  → RepaintBoundary → 1200×630 PNG
+  → nanoid 8자리 shortId
+  → R2 / Supabase Storage upload (PNG)
+  → Supabase share_card insert (shortId, og_meta, highlights[3], …)
+  → share_plus 로 https://share.face.app/r/{shortId} 발송
+        ↓
+[받는 사람 카톡 탭]
+  → 앱 설치 OK : universal/app link → app_links 패키지가 /r/:shortId 라우팅 → ReportPage
+  → 앱 미설치  : react/ 의 SSR 페이지가 카드+요약+CTA → store fallback
+  → 카톡 크롤러: react/ 의 meta export 가 OG tag 동적 주입
+```
+
+Flutter 쪽 책임:
+- **publish**: `lib/domain/services/share/share_publisher.dart` (P0 신규) — nanoid + RepaintBoundary + R2 upload + supabase insert + share_plus
+- **inbound**: `lib/main.dart` — `app_links` 패키지로 `/r/:shortId` 수신 → ReportPage 라우팅
+- **iOS associated-domains**: `ios/Runner/Runner.entitlements` 에 `applinks:share.face.app`
+- **Android intent-filter**: `AndroidManifest.xml` 에 `autoVerify="true"` + `https://share.face.app/r/`
+- **저장 금지 항목**: 친밀 챕터·갈등 시나리오 본문·얼굴 이미지·landmark — share_card row 에 절대 들어가지 않음 (privacy + 카톡 단톡 leak 방지)
+
+React 앱 쪽 책임 (참고용, 작업은 별도 디렉토리):
+- `react/app/routes/share.tsx` — loader (supabase fetch) + meta (OG 동적) + UI
+- `react/app/lib/types.ts` — `ShareCardData` 인터페이스가 share_card row schema 의 SSOT — Flutter 의 publish 함수와 1:1 매칭. 변경 시 양쪽 동시 PR
+- `react/public/.well-known/{aasa, assetlinks.json}` — Flutter 의 entitlements/manifest 와 도메인·bundle ID 일치 필수
+- `react/wrangler.jsonc` 의 `APP_STORE_URL` / `PLAY_STORE_URL` — 미설치 fallback CTA URL
 
 ### 최근 커밋 시퀀스 (역순)
 ```

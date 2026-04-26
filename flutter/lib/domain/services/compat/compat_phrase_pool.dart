@@ -234,7 +234,7 @@ const Map<Gender, Map<String, IntimacyAxisDetail>> intimacyAxisDetailsByGender =
     'eye-neu': IntimacyAxisDetail(
       cause: '시선의 속도가 비슷한 안정형입니다.',
       observation: '편안합니다. 대신, 자극은 없습니다. 좋게 말하면 안정, 나쁘게 말하면 심심.',
-      adviceHigh: '이건 오래 가는 그림입니다. 대신, 재미는 따로 만들어야 합니다.',
+      adviceHigh: '이건 오래 가는 그림입니다. 대신, 같이 재미를 느낄 수 있는 환경을 만들어야 합니다.',
       adviceLow: '지루하면 끝입니다. 이 조합은 재미 없으면 유지 안 됩니다.',
     ),
     'eye-neg': IntimacyAxisDetail(
@@ -401,7 +401,7 @@ const Map<Gender, Map<String, List<String>>> intimacyOpenerByBucketByGender = {
     'mid': [
       '끌림 강도 {X}점. 애매하게 끌리는 구간입니다. 밀어볼지, 여기서 접을지 — 결국 한쪽이 먼저 방향을 정해야 합니다.',
       '{X}점이면 반은 맞고 반은 안 맞는 상태입니다. 문제는 이걸 맞춰갈지, 그냥 편한 쪽으로 흘릴지입니다.',
-      '{X}점. 솔직히 말하면, 한 번 선 넘으면 달라집니다. 근데 그 선을 누가 먼저 넘느냐에서 갈립니다.',
+      '{X}점. 두 사람의 관계는, 한 번 선 넘으면 달라집니다. 근데 그 선을 누가 먼저 넘느냐에서 갈립니다.',
     ],
     'low': [
       '끌림 강도 {X}점. 솔직히 말하면, 자연스럽게 이어질 그림은 아닙니다. 억지로 끌고 가면 괜히 어색함만 남는 그림입니다.',

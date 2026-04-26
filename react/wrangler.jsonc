@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "face-share-host",
+  "compatibility_date": "2026-04-26",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "./workers/app.ts",
+  "observability": { "enabled": true },
+  "assets": {
+    "directory": "./build/client",
+    "binding": "ASSETS"
+  },
+  "vars": {
+    "APP_LINK_BASE": "https://share.face.app/r/",
+    "APP_STORE_URL": "https://apps.apple.com/app/idXXXXXXXXX",
+    "PLAY_STORE_URL": "https://play.google.com/store/apps/details?id=com.example.face",
+    "APP_BUNDLE_ID_IOS": "com.example.face",
+    "APP_BUNDLE_ID_ANDROID": "com.example.face"
+  }
+}
