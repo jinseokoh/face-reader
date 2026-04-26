@@ -20,13 +20,13 @@ extension CompatLabelLabel on CompatLabel {
   String get korean {
     switch (this) {
       case CompatLabel.cheonjakjihap:
-        return '천작지합';
+        return '정말 잘 맞는 사이';
       case CompatLabel.sangkyeongyeobin:
-        return '상경여빈';
+        return '조용히 깊어지는 사이';
       case CompatLabel.mahapgaseong:
-        return '마합가성';
+        return '맞춰 가야 완성되는 사이';
       case CompatLabel.hyeonggeuknanjo:
-        return '형극난조';
+        return '자주 부딪히는 사이';
     }
   }
 

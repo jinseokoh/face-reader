@@ -84,22 +84,22 @@ class FiveElements {
   bool get isHybrid => confidence < 0.08;
 }
 
-/// 5×5 관계 분류. 자기 자신은 `identity`, 상생 고리는 `generating`/`generated`,
-/// 상극 대각은 `overcoming`/`overcome`.
+/// 5×5 관계 분류. 자기 자신은 `identity`, 북돋움 고리는 `generating`/`generated`,
+/// 누름 대각은 `overcoming`/`overcome`.
 enum ElementRelationKind {
-  /// 比和 — 같은 五形 (e.g. 木×木).
+  /// 닮은 결끼리 — 같은 五形 (e.g. 木×木).
   identity,
 
-  /// 生(출력) — 내가 상대를 낳음 (e.g. 木→火).
+  /// 북돋움(출력) — 내가 상대를 낳음 (e.g. 木→火).
   generating,
 
-  /// 被生 — 상대가 나를 낳음 (e.g. 水→木).
+  /// 북돋움 받음 — 상대가 나를 낳음 (e.g. 水→木).
   generated,
 
-  /// 剋(출력) — 내가 상대를 극함 (e.g. 木→土).
+  /// 누름(출력) — 내가 상대를 극함 (e.g. 木→土).
   overcoming,
 
-  /// 被剋 — 상대가 나를 극함 (e.g. 金→木).
+  /// 눌림 — 상대가 나를 극함 (e.g. 金→木).
   overcome,
 }
 
@@ -124,15 +124,15 @@ extension ElementRelationKindLabel on ElementRelationKind {
   String get koreanLabel {
     switch (this) {
       case ElementRelationKind.identity:
-        return '같은 형끼리의 공명';
+        return '닮은 결끼리의 공명';
       case ElementRelationKind.generating:
-        return '내가 상대를 낳아 주는 상생';
+        return '내가 상대를 북돋우는 관계';
       case ElementRelationKind.generated:
-        return '상대가 나를 받쳐 주는 상생';
+        return '상대가 나를 받쳐 주는 관계';
       case ElementRelationKind.overcoming:
-        return '내가 상대를 다스리는 상극';
+        return '내가 상대를 누르는 관계';
       case ElementRelationKind.overcome:
-        return '상대가 나를 누르는 상극';
+        return '상대가 나를 누르는 관계';
     }
   }
 }
@@ -158,7 +158,7 @@ extension FiveElementTraits on FiveElement {
 /// L1 최종 산출물 — `ElementRelation`.
 ///
 /// 두 `FiveElements` (my·album) 의 primary 와 secondary 를 모두 고려한
-/// blended 점수 + 상생·상극 kind 라벨.
+/// blended 점수 + 북돋움·누름 kind 라벨.
 class ElementRelation {
   final FiveElements my;
   final FiveElements album;
