@@ -1,4 +1,4 @@
-package com.example.ks
+package com.scienceintegration.face
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -257,46 +257,55 @@ class CompatibilityScreen extends ConsumerWidget {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.surface,
+        backgroundColor: Colors.white,
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('궁합 분석에 대하여',
             style: TextStyle(
                 fontFamily: 'SongMyung',
                 fontSize: 18,
+                fontWeight: FontWeight.w600,
                 color: AppTheme.textPrimary)),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: const [
-              Text('두 얼굴을 4개 층위로 비교해 100점 만점으로 채점합니다.',
-                  style: TextStyle(
-                      fontSize: 13,
-                      color: AppTheme.textSecondary,
-                      height: 1.5)),
-              SizedBox(height: 14),
+              Text(
+                '두 사람의 관상학적 특징을 네 갈래로 분석해 얼마나 잘 어울릴 수 있는지를 등급으로 나눕니다.',
+                style: TextStyle(
+                  fontFamily: 'SongMyung',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w400,
+                  color: AppTheme.textSecondary,
+                  height: 1.7,
+                ),
+              ),
+              SizedBox(height: 18),
               _InfoRow(
                   title: '오행',
                   weight: '20%',
-                  body: '얼굴형 기본 성향. 木·火·土·金·水 의 생극 관계.'),
+                  body: '얼굴형 기본 성향. 木 火 土 金 水 의 생극 관계.'),
               _InfoRow(
                   title: '궁위',
                   weight: '40%',
-                  body: '결혼·가족·재물·자녀 등 12개 영역의 짝.'),
+                  body: '결혼 가족 재물 자녀 등 12개 영역의 짝.'),
               _InfoRow(
                   title: '기질',
                   weight: '25%',
-                  body: '눈·코·입·삼정·음양의 짝. 성격 합.'),
+                  body: '눈 코 입 삼정 음양의 짝. 성격 합.'),
               _InfoRow(
                   title: '친밀',
                   weight: '15%',
-                  body: '부부·친밀감 영역. 30~50대 이성 조합에서만 활성.'),
-              SizedBox(height: 16),
+                  body: '이성 친밀도. 30~50대 이성 사이에서만 출력.'),
+              SizedBox(height: 20),
               Text('등급',
                   style: TextStyle(
                       fontFamily: 'SongMyung',
-                      fontSize: 14,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                       color: AppTheme.textPrimary)),
-              SizedBox(height: 8),
+              SizedBox(height: 10),
               _LabelRow(label: CompatLabel.cheonjakjihap),
               _LabelRow(label: CompatLabel.sangkyeongyeobin),
               _LabelRow(label: CompatLabel.mahapgaseong),
@@ -308,7 +317,10 @@ class CompatibilityScreen extends ConsumerWidget {
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('닫기',
-                style: TextStyle(color: AppTheme.textPrimary)),
+                style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimary)),
           ),
         ],
       ),
@@ -437,13 +449,13 @@ class _CompatListCard extends StatelessWidget {
   static Color _labelColor(CompatLabel l) {
     switch (l) {
       case CompatLabel.cheonjakjihap:
-        return const Color(0xFFE2A857);
+        return const Color(0xFF4A8B5C); // 1순위 — 녹색
       case CompatLabel.sangkyeongyeobin:
-        return const Color(0xFF7BAE7E);
+        return const Color(0xFF4A7BA8); // 2순위 — 파랑
       case CompatLabel.mahapgaseong:
-        return AppTheme.textSecondary;
+        return const Color(0xFF7B5FA0); // 3순위 — 보라
       case CompatLabel.hyeonggeuknanjo:
-        return const Color(0xFF8E6F70);
+        return const Color(0xFFB05858); // 4순위 — 빨강
     }
   }
 
@@ -574,28 +586,36 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 40,
+            width: 44,
             child: Text(title,
                 style: const TextStyle(
                     fontFamily: 'SongMyung',
-                    fontSize: 13,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
                     color: AppTheme.textPrimary)),
           ),
           SizedBox(
-            width: 44,
+            width: 48,
             child: Text(weight,
                 style: const TextStyle(
-                    fontSize: 12, color: AppTheme.textSecondary)),
+                    fontFamily: 'SongMyung',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                    color: AppTheme.textHint)),
           ),
           Expanded(
             child: Text(body,
                 style: const TextStyle(
-                    fontSize: 12, color: AppTheme.textSecondary, height: 1.4)),
+                    fontFamily: 'SongMyung',
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
+                    color: AppTheme.textSecondary,
+                    height: 1.6)),
           ),
         ],
       ),
@@ -608,17 +628,19 @@ class _LabelRow extends StatelessWidget {
   const _LabelRow({required this.label});
   @override
   Widget build(BuildContext context) {
+    final pair = _tagline(label);
+    final accent = _CompatListCard._labelColor(label);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             width: 3,
-            height: 32,
+            height: 56,
             margin: const EdgeInsets.only(top: 2, right: 10),
             decoration: BoxDecoration(
-              color: AppTheme.accent,
+              color: accent,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -631,6 +653,7 @@ class _LabelRow extends StatelessWidget {
                     style: const TextStyle(
                         fontFamily: 'SongMyung',
                         fontSize: 14,
+                        fontWeight: FontWeight.w600,
                         color: AppTheme.textPrimary),
                     children: [
                       TextSpan(text: label.korean),
@@ -638,19 +661,30 @@ class _LabelRow extends StatelessWidget {
                       TextSpan(
                         text: label.hanja,
                         style: const TextStyle(
-                            fontSize: 11,
-                            color: AppTheme.textHint,
-                            fontWeight: FontWeight.w400),
+                            fontFamily: 'SongMyung',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
+                            color: AppTheme.textHint),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(_tagline(label),
+                const SizedBox(height: 4),
+                Text(pair.headline,
                     style: const TextStyle(
-                        fontSize: 12,
+                        fontFamily: 'SongMyung',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimary,
+                        height: 1.5)),
+                const SizedBox(height: 2),
+                Text(pair.detail,
+                    style: const TextStyle(
+                        fontFamily: 'SongMyung',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
                         color: AppTheme.textSecondary,
-                        height: 1.4)),
+                        height: 1.6)),
               ],
             ),
           ),
@@ -659,16 +693,24 @@ class _LabelRow extends StatelessWidget {
     );
   }
 
-  static String _tagline(CompatLabel l) {
+  static _TaglinePair _tagline(CompatLabel l) {
     switch (l) {
       case CompatLabel.cheonjakjihap:
-        return '얼굴로 읽으면 흔치 않게 잘 맞는 자리 · 좋은 점 압도';
+        return const _TaglinePair(
+            headline: '좋은 점 압도',
+            detail: '얼굴로 읽으면 흔치 않게 잘 맞는 자리.');
       case CompatLabel.sangkyeongyeobin:
-        return '예를 지키며 오래 가는 자리 · 좋은 점 우세';
+        return const _TaglinePair(
+            headline: '좋은 점 우세',
+            detail: '예를 지키며 오래 가는 자리.');
       case CompatLabel.mahapgaseong:
-        return '다듬으며 이루어 가는 자리 · 좋은 점·우려되는 점 균형';
+        return const _TaglinePair(
+            headline: '좋은 점과 우려가 균형',
+            detail: '다듬으며 이루어 가는 자리.');
       case CompatLabel.hyeonggeuknanjo:
-        return '서로 조심히 지켜 줘야 하는 자리 · 우려되는 점 우세';
+        return const _TaglinePair(
+            headline: '우려되는 점 우세',
+            detail: '서로 조심히 지켜 줘야 하는 자리.');
     }
   }
 }
@@ -774,6 +816,12 @@ class _MiniEntry {
   final double value;
   final bool muted;
   const _MiniEntry(this.korean, this.value, this.muted);
+}
+
+class _TaglinePair {
+  final String headline;
+  final String detail;
+  const _TaglinePair({required this.headline, required this.detail});
 }
 
 // ─────────────────────────────────────────────────────────────

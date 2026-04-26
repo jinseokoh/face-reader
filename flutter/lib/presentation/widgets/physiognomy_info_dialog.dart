@@ -84,7 +84,11 @@ class _PhysiognomyInfoDialogState extends State<PhysiognomyInfoDialog>
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text('닫기', style: TextStyle(color: AppTheme.textPrimary)),
+          child: const Text('닫기',
+              style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary)),
         ),
       ],
     );

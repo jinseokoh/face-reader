@@ -1,5 +1,52 @@
 # Face Reader — Claude Code 오리엔테이션
 
+## ⛔ 0. UI 통일감 — 절대 1순위 (이 규칙 위반 시 즉시 폐기·재작업)
+
+**대부님은 화면 간·요소 간 디자인 불일치를 못 견디는 사람이다.** 폰트 패밀리·크기·웨이트가 화면마다 다르면 그 자체로 결함이다. 모든 신규/수정 UI 는 아래 토큰 외 값을 절대 쓰지 않는다.
+
+### 0.1 폰트 — 본문은 SongMyung, 버튼은 system default
+
+- **본문/제목/라벨**: SongMyung 단일 패밀리. (Pretendard·기타 sans 금지. material default 금지 — `fontFamily: 'SongMyung'` 명시.)
+- **버튼 라벨 (TextButton/ElevatedButton/OutlinedButton/FilledButton/IconButton/CupertinoButton/MaterialButton 의 child Text, AppBar action, 다이얼로그 actions, BottomSheet CTA)**: fontFamily 자체를 명시하지 않는다 (system default 사용). 위반은 `.claude/hooks/block-button-songmyung.py` PreToolUse hook 이 자동 차단한다.
+- 영문/숫자만 단독으로 나오는 메타 캡션은 예외 가능. 한국어와 함께 나오는 본문 줄은 무조건 SongMyung.
+
+### 0.2 텍스트 hierarchy — 6 단 token 만 허용
+
+| token | size | weight | color | 용도 |
+|---|---|---|---|---|
+| display | 28 | bold | textPrimary | 화면 최상단 타이틀 (예: "AI 관상가") |
+| modalTitle | 18 | w600 | textPrimary | AlertDialog/모달 제목 |
+| sectionTitle | 16 | w600 | textPrimary | 섹션 헤딩 (리포트 내 큰 구획) |
+| subTitle | 14 | w600 | textPrimary | InfoRow / LabelRow / 카드 헤더 |
+| body | 15 | w400 | textSecondary | 모달·리포트 본문 단락 (height 1.7~1.8) |
+| caption | 13 | w400 | textSecondary | 보조 설명·tagline (height 1.5~1.6) |
+| hint | 12 | w400 | textHint | 한자·메타라벨·percent |
+
+**금지:** 같은 modal 안에서 두 가지 fontWeight 가 섞여 있는데 한쪽만 명시(나머지 default w400) 되는 패턴. 모든 Text 위젯은 fontFamily/size/weight/color 를 명시하거나 위 token 의 helper 를 통해서만 만든다.
+
+### 0.3 모달·다이얼로그 표준
+- background: `Colors.white`
+- shape: `RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))`
+- title: modalTitle token (18 / w600 / SongMyung / textPrimary)
+- content body: body token (15 / w400 / SongMyung / textSecondary / height 1.8)
+- 닫기 버튼: TextButton, fontSize 15 / w600 / textPrimary, **fontFamily 미지정 (system default)** — §0.1 의 버튼 룰 적용
+
+### 0.4 pill / chip / row label 안 텍스트 단일톤
+하나의 pill/chip/single-line label 안에서 색·크기를 분리하지 않는다. priority 차이는 줄 분리 또는 background tint 로만.
+
+### 0.5 가운데점(`·`) 남발 금지
+한 줄에 두 개 이상의 의미를 우겨넣을 때 `·` 로 잇지 않는다. 줄 바꿈으로 분리한다. 예:
+```
+✗  얼굴로 읽으면 흔치 않게 잘 맞는 자리 · 좋은 점 압도
+✓  좋은 점 압도
+   얼굴로 읽으면 흔치 않게 잘 맞는 자리.
+```
+
+### 0.6 같은 역할이면 같은 위젯
+"관상 분석에 대하여" / "궁합 분석에 대하여" 처럼 역할이 같은 두 modal 은 동일한 base widget(또는 동일한 style 토큰 set)을 공유해야 한다. 따로 만들면 반드시 어긋난다.
+
+---
+
 관상 분석 Flutter 앱. MediaPipe Face Mesh(468 landmarks) 을 입력으로 17 frontal + 8 lateral metric → z-score → 14-node tree → 10 attribute → archetype 까지 일관된 관상 파이프라인. 궁합은 관상 엔진과 **동등한 별도 엔진**으로 전통 관상학(五行·十二宮·五官·三停·陰陽) grounded 재설계 중 — 설계 SSOT: `docs/compat/FRAMEWORK.md`.
 
 마지막 업데이트: 2026-04-21 (engine v2.9 · Opt-D per-shape quantile + narrative soft predicate + 음양 bar UI)
