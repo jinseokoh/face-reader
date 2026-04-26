@@ -13,47 +13,6 @@ import 'package:face_reader/data/enums/age_group.dart';
 
 import 'palace.dart';
 
-/// 궁별 관여 metric/node id. zMean 과 absZMax 계산 대상.
-/// `node:` 접두는 nodeZ 조회, 접두 없으면 zMap 조회.
-const Map<Palace, List<String>> _palaceSignals = {
-  // 命宮 — 印堂 (미간): glabella 노드 중심.
-  Palace.life: ['node:glabella', 'intercanthalRatio'],
-  // 財帛宮 — 코 전체.
-  Palace.wealth: [
-    'node:nose',
-    'nasalWidthRatio',
-    'nasalHeightRatio',
-  ],
-  // 兄弟宮 — 눈썹.
-  Palace.sibling: ['node:eyebrow', 'eyebrowThickness', 'browEyeDistance'],
-  // 田宅宮 — 눈과 눈썹 사이·상안검.
-  Palace.property: ['browEyeDistance', 'eyeFissureRatio'],
-  // 男女宮 — 누당·눈 아래 와잠. eye node + canthal tilt.
-  Palace.children: [
-    'node:eye',
-    'eyeFissureRatio',
-    'eyeCanthalTilt',
-  ],
-  // 奴僕宮 — 地閣 兩側. chin node.
-  Palace.slave: [
-    'node:chin',
-    'lowerFaceRatio',
-    'lowerFaceFullness',
-  ],
-  // 妻妾宮 — 魚尾. eyeCanthalTilt·browEyeDistance(외각).
-  Palace.spouse: ['eyeCanthalTilt', 'browEyeDistance'],
-  // 疾厄宮 — 山根. lateral nasofrontalAngle + intercanthalRatio.
-  Palace.illness: ['nasofrontalAngle', 'dorsalConvexity', 'intercanthalRatio'],
-  // 遷移宮 — 驛馬 (이마 옆 끝). forehead node + faceAspectRatio.
-  Palace.migration: ['node:forehead', 'faceAspectRatio'],
-  // 官祿宮 — 중정 (이마 중앙).
-  Palace.career: ['node:forehead', 'upperFaceRatio', 'foreheadWidth'],
-  // 福德宮 — 天倉 (이마 위 좌우).
-  Palace.fortune: ['node:glabella', 'upperFaceRatio', 'browEyeDistance'],
-  // 父母宮 — 日角·月角 (이마 위 좌우).
-  Palace.parents: ['upperFaceRatio', 'foreheadWidth'],
-};
-
 /// level 경계. |zMean| ≥ 0.2 → strong/weak, 그 외 balanced.
 /// 다중 metric 평균은 std ≈ 0.85/√n 로 좁다. 0.2 면 palace 당 strong ~55%,
 /// weak ~35% 까지 fire — pair-matcher subScore spread 확보 + faceTemplates
@@ -70,22 +29,83 @@ const Map<Palace, Map<String, double>> _palaceMetricSign = {
   },
 };
 
-double _lookup(String key, Map<String, double> zMap, Map<String, double> nodeZ) {
-  if (key.startsWith('node:')) {
-    return nodeZ[key.substring(5)] ?? 0.0;
-  }
-  return zMap[key] ?? 0.0;
-}
+/// 궁별 관여 metric/node id. zMean 과 absZMax 계산 대상.
+/// `node:` 접두는 nodeZ 조회, 접두 없으면 zMap 조회.
+const Map<Palace, List<String>> _palaceSignals = {
+  // 命宮 — 印堂 (미간): glabella 노드 중심.
+  Palace.life: ['node:glabella', 'intercanthalRatio'],
+  // 財帛宮 — 코 전체.
+  Palace.wealth: [
+    'node:nose',
+    'nasalWidthRatio',
+    'nasalHeightRatio',
+  ],
+  // 兄弟宮 — 눈썹.
+  Palace.sibling: ['node:eyebrow', 'eyebrowThickness', 'browEyeDistance'],
+  // 田宅宮 — 눈과 눈썹 사이·상안검.
+  Palace.property: ['browEyeDistance', 'eyeFissureRatio'],
+  // 男女宮 — 눈 아래 애교살(와잠). eye node + canthal tilt.
+  Palace.children: [
+    'node:eye',
+    'eyeFissureRatio',
+    'eyeCanthalTilt',
+  ],
+  // 奴僕宮 — 地閣 兩側 (턱 양옆) chin node.
+  Palace.slave: [
+    'node:chin',
+    'lowerFaceRatio',
+    'lowerFaceFullness',
+  ],
+  // 妻妾宮 — 魚尾 (눈꼬리 옆) eyeCanthalTilt·browEyeDistance(외각).
+  Palace.spouse: ['eyeCanthalTilt', 'browEyeDistance'],
+  // 疾厄宮 — 山根 (콧대뿌리) lateral nasofrontalAngle + intercanthalRatio.
+  Palace.illness: ['nasofrontalAngle', 'dorsalConvexity', 'intercanthalRatio'],
+  // 遷移宮 — 驛馬 (이마 옆 끝). forehead node + faceAspectRatio.
+  Palace.migration: ['node:forehead', 'faceAspectRatio'],
+  // 官祿宮 — 중정 (이마 중앙).
+  Palace.career: ['node:forehead', 'upperFaceRatio', 'foreheadWidth'],
+  // 福德宮 — 天倉 (이마 위 좌우).
+  Palace.fortune: ['node:glabella', 'upperFaceRatio', 'browEyeDistance'],
+  // 父母宮 — 日角·月角 (이마 위 좌우).
+  Palace.parents: ['upperFaceRatio', 'foreheadWidth'],
+};
 
-double _signedLookup(
-  Palace palace,
-  String key,
-  Map<String, double> zMap,
-  Map<String, double> nodeZ,
-) {
-  final v = _lookup(key, zMap, nodeZ);
-  final sign = _palaceMetricSign[palace]?[key] ?? 1.0;
-  return v * sign;
+/// 12 궁 state 전부 계산.
+Map<Palace, PalaceState> computePalaceStates({
+  required Map<String, double> zMap,
+  required Map<String, double> nodeZ,
+  required AgeGroup ageGroup,
+  required Map<String, bool> lateralFlags,
+}) {
+  final out = <Palace, PalaceState>{};
+  for (final p in Palace.values) {
+    final signals = _palaceSignals[p]!;
+    double sum = 0.0;
+    double absMax = 0.0;
+    int count = 0;
+    for (final s in signals) {
+      final v = _signedLookup(p, s, zMap, nodeZ);
+      sum += v;
+      if (v.abs() > absMax) absMax = v.abs();
+      count++;
+    }
+    final zMean = count == 0 ? 0.0 : sum / count;
+    final flags = _computeFlags(
+      palace: p,
+      zMap: zMap,
+      nodeZ: nodeZ,
+      lateralFlags: lateralFlags,
+      ageGroup: ageGroup,
+    );
+    out[p] = PalaceState(
+      palace: p,
+      level: _classifyLevel(zMean),
+      zMean: zMean,
+      absZMax: absMax,
+      flags: flags,
+    );
+  }
+  return out;
 }
 
 PalaceLevel _classifyLevel(double zMean) {
@@ -170,40 +190,20 @@ Set<PalaceFlag> _computeFlags({
   return flags;
 }
 
-/// 12 궁 state 전부 계산.
-Map<Palace, PalaceState> computePalaceStates({
-  required Map<String, double> zMap,
-  required Map<String, double> nodeZ,
-  required AgeGroup ageGroup,
-  required Map<String, bool> lateralFlags,
-}) {
-  final out = <Palace, PalaceState>{};
-  for (final p in Palace.values) {
-    final signals = _palaceSignals[p]!;
-    double sum = 0.0;
-    double absMax = 0.0;
-    int count = 0;
-    for (final s in signals) {
-      final v = _signedLookup(p, s, zMap, nodeZ);
-      sum += v;
-      if (v.abs() > absMax) absMax = v.abs();
-      count++;
-    }
-    final zMean = count == 0 ? 0.0 : sum / count;
-    final flags = _computeFlags(
-      palace: p,
-      zMap: zMap,
-      nodeZ: nodeZ,
-      lateralFlags: lateralFlags,
-      ageGroup: ageGroup,
-    );
-    out[p] = PalaceState(
-      palace: p,
-      level: _classifyLevel(zMean),
-      zMean: zMean,
-      absZMax: absMax,
-      flags: flags,
-    );
+double _lookup(String key, Map<String, double> zMap, Map<String, double> nodeZ) {
+  if (key.startsWith('node:')) {
+    return nodeZ[key.substring(5)] ?? 0.0;
   }
-  return out;
+  return zMap[key] ?? 0.0;
+}
+
+double _signedLookup(
+  Palace palace,
+  String key,
+  Map<String, double> zMap,
+  Map<String, double> nodeZ,
+) {
+  final v = _lookup(key, zMap, nodeZ);
+  final sign = _palaceMetricSign[palace]?[key] ?? 1.0;
+  return v * sign;
 }

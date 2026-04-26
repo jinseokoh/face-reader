@@ -7,6 +7,23 @@
 /// 설계 SSOT: `docs/compat/FRAMEWORK.md` §3.
 library;
 
+/// 결혼 중요도 weight — PalacePair aggregator 에서 delta 에 곱해진다.
+/// 합 = 1.00. FRAMEWORK §3.1.
+const Map<Palace, double> palaceMarriageWeight = {
+  Palace.spouse: 0.28,
+  Palace.children: 0.22,
+  Palace.life: 0.15,
+  Palace.property: 0.13,
+  Palace.fortune: 0.12,
+  Palace.wealth: 0.05,
+  Palace.slave: 0.03,
+  Palace.illness: 0.01,
+  Palace.sibling: 0.003,
+  Palace.career: 0.003,
+  Palace.migration: 0.002,
+  Palace.parents: 0.002,
+};
+
 /// 十二宮. 전통 배치대로 1=命 ~ 12=父母.
 enum Palace {
   /// 命宮 — 印堂 (미간). 일생의 根幹·기개.
@@ -21,7 +38,7 @@ enum Palace {
   /// 田宅宮 — 눈과 눈썹 사이·상안검. 주거·가정 안정.
   property,
 
-  /// 男女宮 — 누당·눈 아래 와잠. 자녀·성적 매력.
+  /// 男女宮 — 눈 아래 애교살 (와잠). 자녀·성적 매력.
   children,
 
   /// 奴僕宮 — 地閣 兩側 (턱 옆). 부하·인맥.
@@ -46,7 +63,132 @@ enum Palace {
   parents,
 }
 
+/// 전통 서술에서 이름이 붙은 sub-feature. PP rule 의 필요 조건으로 쓰인다.
+enum PalaceFlag {
+  /// 印堂明潤 — 미간이 넓고 밝음. 命宮 strong 보강.
+  glabellaBright,
+
+  /// 印堂緊結 — 미간이 좁고 어두움. 命宮 weak 보강.
+  glabellaTight,
+
+  /// 準頭豊肉 — 코끝이 복스럽게 볼룸. 財帛 strong 보강.
+  bulbousTip,
+
+  /// 매부리코. 財帛 강하나 독단 경향.
+  hookedNose,
+
+  /// 細樑 — 가늘고 예리한 콧대. 財帛 weak 보강.
+  thinBridge,
+
+  /// 淚堂飽滿 — 눈 아래 애교살 (와잠)이 통통. 男女宮 strong 보강.
+  plumpLowerEyelid,
+
+  /// 淚堂陷 — 눈 아래 애교살 (와잠) 함몰. 男女宮 weak 보강.
+  hollowLowerEyelid,
+
+  /// 魚尾清潤 — 눈꼬리 매끈 (주름 없음). 妻妾宮 strong 보강.
+  smoothFishTail,
+
+  /// 魚尾紋 — 눈꼬리 잔주름. 妻妾宮 weak 보강 (age 30+ gate).
+  fishTailWrinkle,
+
+  /// 山根高 — 산근이 높음. 疾厄 strong.
+  sanGenHigh,
+
+  /// 山根陷 — 산근 함몰. 疾厄 weak.
+  sanGenLow,
+
+  /// 이마 밝고 평탄. 福德 strong.
+  cloudlessForehead,
+
+  /// 天倉 함몰. 福德 weak.
+  dentedTemple,
+}
+
+/// 3 단계 state — 각 궁의 우세/위축 강도.
+enum PalaceLevel { weak, balanced, strong }
+
+/// PP rule 발동 기록 — narrative 와 invariant 검사에 사용.
+class PalacePairEvidence {
+  final String ruleId;
+  final Palace palace;
+  final double delta;
+  final String verdict;
+
+  const PalacePairEvidence({
+    required this.ruleId,
+    required this.palace,
+    required this.delta,
+    required this.verdict,
+  });
+}
+
+/// L2 최종 산출 — sub-score + 발동 rule 리스트.
+class PalacePairResult {
+  /// 0~100 normalize (clamp 5~99). §3.4 formula.
+  final double subScore;
+  final List<PalacePairEvidence> evidence;
+
+  const PalacePairResult({required this.subScore, required this.evidence});
+}
+
+/// 한 사람의 한 궁 state — level + 수치 요약 + sub-flag 집합.
+class PalaceState {
+  final Palace palace;
+  final PalaceLevel level;
+
+  /// 해당 궁 관여 metric/node 의 평균 z.
+  final double zMean;
+
+  /// 가장 극단 metric 의 |z|.
+  final double absZMax;
+
+  final Set<PalaceFlag> flags;
+
+  const PalaceState({
+    required this.palace,
+    required this.level,
+    required this.zMean,
+    required this.absZMax,
+    required this.flags,
+  });
+
+  bool get isStrong => level == PalaceLevel.strong;
+  bool get isWeak => level == PalaceLevel.weak;
+  bool hasFlag(PalaceFlag f) => flags.contains(f);
+}
+
 extension PalaceLabel on Palace {
+  /// 그 궁이 맡은 삶의 영역. 해설 본문에서 "무엇을 보는 궁인지" 안내에 쓴다.
+  String get domainKo {
+    switch (this) {
+      case Palace.life:
+        return '일상의 기개와 결단';
+      case Palace.wealth:
+        return '재물과 축적';
+      case Palace.sibling:
+        return '형제·동료와의 정';
+      case Palace.property:
+        return '주거와 가정의 안정';
+      case Palace.children:
+        return '자녀와 친밀함';
+      case Palace.slave:
+        return '주변 사람·인맥';
+      case Palace.spouse:
+        return '배우자와의 인연';
+      case Palace.illness:
+        return '건강과 체력';
+      case Palace.migration:
+        return '이주와 객지 활동';
+      case Palace.career:
+        return '직업과 사회적 지위';
+      case Palace.fortune:
+        return '복과 여유';
+      case Palace.parents:
+        return '부모와의 인연';
+    }
+  }
+
   /// 한자 4자 고전 표기 (옛 문헌 인용 또는 괄호 보조용).
   String get hanja {
     switch (this) {
@@ -119,7 +261,7 @@ extension PalaceLabel on Palace {
       case Palace.property:
         return '눈과 눈썹 사이';
       case Palace.children:
-        return '눈 아래 와잠 부근';
+        return '눈 아래 애교살 부근';
       case Palace.slave:
         return '턱 옆면';
       case Palace.spouse:
@@ -136,146 +278,4 @@ extension PalaceLabel on Palace {
         return '이마 윗부분 좌우';
     }
   }
-
-  /// 그 궁이 맡은 삶의 영역. 해설 본문에서 "무엇을 보는 궁인지" 안내에 쓴다.
-  String get domainKo {
-    switch (this) {
-      case Palace.life:
-        return '일상의 기개와 결단';
-      case Palace.wealth:
-        return '재물과 축적';
-      case Palace.sibling:
-        return '형제·동료와의 정';
-      case Palace.property:
-        return '주거와 가정의 안정';
-      case Palace.children:
-        return '자녀와 친밀함';
-      case Palace.slave:
-        return '주변 사람·인맥';
-      case Palace.spouse:
-        return '배우자와의 인연';
-      case Palace.illness:
-        return '건강과 체력';
-      case Palace.migration:
-        return '이주와 바깥 활동';
-      case Palace.career:
-        return '직업과 사회적 지위';
-      case Palace.fortune:
-        return '복과 여유';
-      case Palace.parents:
-        return '부모와의 인연';
-    }
-  }
-}
-
-/// 결혼 중요도 weight — PalacePair aggregator 에서 delta 에 곱해진다.
-/// 합 = 1.00. FRAMEWORK §3.1.
-const Map<Palace, double> palaceMarriageWeight = {
-  Palace.spouse: 0.28,
-  Palace.children: 0.22,
-  Palace.life: 0.15,
-  Palace.property: 0.13,
-  Palace.fortune: 0.12,
-  Palace.wealth: 0.05,
-  Palace.slave: 0.03,
-  Palace.illness: 0.01,
-  Palace.sibling: 0.003,
-  Palace.career: 0.003,
-  Palace.migration: 0.002,
-  Palace.parents: 0.002,
-};
-
-/// 3 단계 state — 각 궁의 우세/위축 강도.
-enum PalaceLevel { weak, balanced, strong }
-
-/// 전통 서술에서 이름이 붙은 sub-feature. PP rule 의 필요 조건으로 쓰인다.
-enum PalaceFlag {
-  /// 印堂明潤 — 미간이 넓고 밝음. 命宮 strong 보강.
-  glabellaBright,
-
-  /// 印堂緊結 — 미간이 좁고 어두움. 命宮 weak 보강.
-  glabellaTight,
-
-  /// 準頭豊肉 — 코끝이 복스럽게 볼룸. 財帛 strong 보강.
-  bulbousTip,
-
-  /// 매부리코. 財帛 강하나 독단 경향.
-  hookedNose,
-
-  /// 細樑 — 가늘고 예리한 콧대. 財帛 weak 보강.
-  thinBridge,
-
-  /// 淚堂飽滿 — 와잠이 통통. 男女宮 strong 보강.
-  plumpLowerEyelid,
-
-  /// 淚堂陷 — 와잠 함몰. 男女宮 weak 보강.
-  hollowLowerEyelid,
-
-  /// 魚尾清潤 — 눈꼬리 매끈 (주름 없음). 妻妾宮 strong 보강.
-  smoothFishTail,
-
-  /// 魚尾紋 — 눈꼬리 잔주름. 妻妾宮 weak 보강 (age 30+ gate).
-  fishTailWrinkle,
-
-  /// 山根高 — 산근이 높음. 疾厄 strong.
-  sanGenHigh,
-
-  /// 山根陷 — 산근 함몰. 疾厄 weak.
-  sanGenLow,
-
-  /// 이마 밝고 평탄. 福德 strong.
-  cloudlessForehead,
-
-  /// 天倉 함몰. 福德 weak.
-  dentedTemple,
-}
-
-/// 한 사람의 한 궁 state — level + 수치 요약 + sub-flag 집합.
-class PalaceState {
-  final Palace palace;
-  final PalaceLevel level;
-
-  /// 해당 궁 관여 metric/node 의 평균 z.
-  final double zMean;
-
-  /// 가장 극단 metric 의 |z|.
-  final double absZMax;
-
-  final Set<PalaceFlag> flags;
-
-  const PalaceState({
-    required this.palace,
-    required this.level,
-    required this.zMean,
-    required this.absZMax,
-    required this.flags,
-  });
-
-  bool hasFlag(PalaceFlag f) => flags.contains(f);
-  bool get isStrong => level == PalaceLevel.strong;
-  bool get isWeak => level == PalaceLevel.weak;
-}
-
-/// PP rule 발동 기록 — narrative 와 invariant 검사에 사용.
-class PalacePairEvidence {
-  final String ruleId;
-  final Palace palace;
-  final double delta;
-  final String verdict;
-
-  const PalacePairEvidence({
-    required this.ruleId,
-    required this.palace,
-    required this.delta,
-    required this.verdict,
-  });
-}
-
-/// L2 최종 산출 — sub-score + 발동 rule 리스트.
-class PalacePairResult {
-  /// 0~100 normalize (clamp 5~99). §3.4 formula.
-  final double subScore;
-  final List<PalacePairEvidence> evidence;
-
-  const PalacePairResult({required this.subScore, required this.evidence});
 }

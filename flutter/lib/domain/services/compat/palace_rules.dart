@@ -10,38 +10,6 @@ library;
 
 import 'palace.dart';
 
-/// 발동 함수. 두 PalaceState 를 받아 match 여부 반환.
-typedef PalaceMatcher = bool Function(PalaceState my, PalaceState album);
-
-class PalaceRule {
-  final String id;
-  final Palace palace;
-  final PalaceMatcher matcher;
-  final double delta;
-  final String verdict;
-
-  const PalaceRule({
-    required this.id,
-    required this.palace,
-    required this.matcher,
-    required this.delta,
-    required this.verdict,
-  });
-}
-
-// ────────── matcher helpers ──────────
-
-bool _bothStrong(PalaceState a, PalaceState b) => a.isStrong && b.isStrong;
-bool _bothWeak(PalaceState a, PalaceState b) => a.isWeak && b.isWeak;
-bool _oneStrongOneWeak(PalaceState a, PalaceState b) =>
-    (a.isStrong && b.isWeak) || (a.isWeak && b.isStrong);
-bool _bothHaveFlag(PalaceState a, PalaceState b, PalaceFlag f) =>
-    a.hasFlag(f) && b.hasFlag(f);
-bool _eitherHasFlag(PalaceState a, PalaceState b, PalaceFlag f) =>
-    a.hasFlag(f) || b.hasFlag(f);
-
-// ────────── rule catalog ──────────
-
 /// 전체 PP rule. 순서는 가독성 위주 (palace 묶음). matcher 상호 배타.
 const List<PalaceRule> palaceRules = [
   // ──── 妻妾宮 (spouse) — 최핵심 weight 0.28 ─────────────────────────
@@ -87,7 +55,7 @@ const List<PalaceRule> palaceRules = [
     palace: Palace.children,
     matcher: _ppChStrongPlump,
     delta: 22,
-    verdict: '두 분 모두 남녀궁(男女宮, 눈 아래 와잠)이 통통히 살아 있어 자녀나 가까운 사람에게 쏟는 정이 서로 겹칩니다. 전통 관상학은 이 자리를 혈육의 경사가 기대되는 상으로 봅니다.',
+    verdict: '두 분 모두 남녀궁(男女宮, 눈 아래 애교살)이 통통히 살아 있어 자녀나 가까운 사람에게 쏟는 정이 서로 겹칩니다. 전통 관상학은 이 자리를 혈육의 경사가 기대되는 상으로 봅니다.',
   ),
   PalaceRule(
     id: 'PP-CH-STRONG-NOFLAG',
@@ -108,7 +76,7 @@ const List<PalaceRule> palaceRules = [
     palace: Palace.children,
     matcher: _ppChWeakHollow,
     delta: -22,
-    verdict: '두 분 모두 와잠이 얇거나 꺼진 상입니다. 가정의 따뜻함이 자연스레 우러나오기 어려워 의식적으로 정을 쌓아야 합니다.',
+    verdict: '두 분 모두 눈 아래 애교살이 얇거나 꺼진 상입니다. 가정의 따뜻함이 자연스레 우러나오기 어려워 의식적으로 정을 쌓아야 합니다.',
   ),
   PalaceRule(
     id: 'PP-CH-WEAK-NOFLAG',
@@ -335,6 +303,57 @@ const List<PalaceRule> palaceRules = [
   ),
 ];
 
+bool _bothHaveFlag(PalaceState a, PalaceState b, PalaceFlag f) =>
+    a.hasFlag(f) && b.hasFlag(f);
+
+// ────────── matcher helpers ──────────
+
+bool _bothStrong(PalaceState a, PalaceState b) => a.isStrong && b.isStrong;
+bool _bothWeak(PalaceState a, PalaceState b) => a.isWeak && b.isWeak;
+bool _eitherHasFlag(PalaceState a, PalaceState b, PalaceFlag f) =>
+    a.hasFlag(f) || b.hasFlag(f);
+bool _oneStrongOneWeak(PalaceState a, PalaceState b) =>
+    (a.isStrong && b.isWeak) || (a.isWeak && b.isStrong);
+bool _ppChCross(PalaceState a, PalaceState b) => _oneStrongOneWeak(a, b);
+
+// ────────── rule catalog ──────────
+
+bool _ppChStrongNoflag(PalaceState a, PalaceState b) =>
+    _bothStrong(a, b) && !_bothHaveFlag(a, b, PalaceFlag.plumpLowerEyelid);
+
+bool _ppChStrongPlump(PalaceState a, PalaceState b) =>
+    _bothStrong(a, b) && _bothHaveFlag(a, b, PalaceFlag.plumpLowerEyelid);
+bool _ppChWeakHollow(PalaceState a, PalaceState b) =>
+    _bothWeak(a, b) && _eitherHasFlag(a, b, PalaceFlag.hollowLowerEyelid);
+bool _ppChWeakNoflag(PalaceState a, PalaceState b) =>
+    _bothWeak(a, b) && !_eitherHasFlag(a, b, PalaceFlag.hollowLowerEyelid);
+bool _ppFtCloudless(PalaceState a, PalaceState b) =>
+    _bothStrong(a, b) && _bothHaveFlag(a, b, PalaceFlag.cloudlessForehead);
+bool _ppFtDented(PalaceState a, PalaceState b) =>
+    _bothWeak(a, b) && _eitherHasFlag(a, b, PalaceFlag.dentedTemple);
+
+bool _ppFtStrongNoflag(PalaceState a, PalaceState b) =>
+    _bothStrong(a, b) && !_bothHaveFlag(a, b, PalaceFlag.cloudlessForehead);
+bool _ppFtWeakNoflag(PalaceState a, PalaceState b) =>
+    _bothWeak(a, b) && !_eitherHasFlag(a, b, PalaceFlag.dentedTemple);
+bool _ppIlSangenHigh(PalaceState a, PalaceState b) =>
+    _bothStrong(a, b) && _eitherHasFlag(a, b, PalaceFlag.sanGenHigh);
+bool _ppIlSangenLow(PalaceState a, PalaceState b) =>
+    _bothWeak(a, b) && _eitherHasFlag(a, b, PalaceFlag.sanGenLow);
+bool _ppLfBrightBoth(PalaceState a, PalaceState b) =>
+    _bothStrong(a, b) && _bothHaveFlag(a, b, PalaceFlag.glabellaBright);
+
+bool _ppLfCross(PalaceState a, PalaceState b) => _oneStrongOneWeak(a, b);
+bool _ppLfStrongNoflag(PalaceState a, PalaceState b) =>
+    _bothStrong(a, b) && !_bothHaveFlag(a, b, PalaceFlag.glabellaBright);
+bool _ppLfTightBoth(PalaceState a, PalaceState b) =>
+    _bothWeak(a, b) && _eitherHasFlag(a, b, PalaceFlag.glabellaTight);
+bool _ppLfWeakNoflag(PalaceState a, PalaceState b) =>
+    _bothWeak(a, b) && !_eitherHasFlag(a, b, PalaceFlag.glabellaTight);
+bool _ppSpCross(PalaceState a, PalaceState b) => _oneStrongOneWeak(a, b);
+
+bool _ppSpStrongNoflag(PalaceState a, PalaceState b) =>
+    _bothStrong(a, b) && !_bothHaveFlag(a, b, PalaceFlag.smoothFishTail);
 // ────────── top-level matchers (const 로 참조 가능) ──────────
 //
 // Dart const constructor 가 instance-method 참조를 허용하지 않으므로 모든
@@ -342,42 +361,10 @@ const List<PalaceRule> palaceRules = [
 
 bool _ppSpStrongSmooth(PalaceState a, PalaceState b) =>
     _bothStrong(a, b) && _bothHaveFlag(a, b, PalaceFlag.smoothFishTail);
-bool _ppSpStrongNoflag(PalaceState a, PalaceState b) =>
-    _bothStrong(a, b) && !_bothHaveFlag(a, b, PalaceFlag.smoothFishTail);
-bool _ppSpCross(PalaceState a, PalaceState b) => _oneStrongOneWeak(a, b);
-bool _ppSpWeakWrinkle(PalaceState a, PalaceState b) =>
-    _bothWeak(a, b) && _eitherHasFlag(a, b, PalaceFlag.fishTailWrinkle);
 bool _ppSpWeakNoflag(PalaceState a, PalaceState b) =>
     _bothWeak(a, b) && !_eitherHasFlag(a, b, PalaceFlag.fishTailWrinkle);
-
-bool _ppChStrongPlump(PalaceState a, PalaceState b) =>
-    _bothStrong(a, b) && _bothHaveFlag(a, b, PalaceFlag.plumpLowerEyelid);
-bool _ppChStrongNoflag(PalaceState a, PalaceState b) =>
-    _bothStrong(a, b) && !_bothHaveFlag(a, b, PalaceFlag.plumpLowerEyelid);
-bool _ppChCross(PalaceState a, PalaceState b) => _oneStrongOneWeak(a, b);
-bool _ppChWeakHollow(PalaceState a, PalaceState b) =>
-    _bothWeak(a, b) && _eitherHasFlag(a, b, PalaceFlag.hollowLowerEyelid);
-bool _ppChWeakNoflag(PalaceState a, PalaceState b) =>
-    _bothWeak(a, b) && !_eitherHasFlag(a, b, PalaceFlag.hollowLowerEyelid);
-
-bool _ppLfBrightBoth(PalaceState a, PalaceState b) =>
-    _bothStrong(a, b) && _bothHaveFlag(a, b, PalaceFlag.glabellaBright);
-bool _ppLfStrongNoflag(PalaceState a, PalaceState b) =>
-    _bothStrong(a, b) && !_bothHaveFlag(a, b, PalaceFlag.glabellaBright);
-bool _ppLfCross(PalaceState a, PalaceState b) => _oneStrongOneWeak(a, b);
-bool _ppLfTightBoth(PalaceState a, PalaceState b) =>
-    _bothWeak(a, b) && _eitherHasFlag(a, b, PalaceFlag.glabellaTight);
-bool _ppLfWeakNoflag(PalaceState a, PalaceState b) =>
-    _bothWeak(a, b) && !_eitherHasFlag(a, b, PalaceFlag.glabellaTight);
-
-bool _ppFtCloudless(PalaceState a, PalaceState b) =>
-    _bothStrong(a, b) && _bothHaveFlag(a, b, PalaceFlag.cloudlessForehead);
-bool _ppFtStrongNoflag(PalaceState a, PalaceState b) =>
-    _bothStrong(a, b) && !_bothHaveFlag(a, b, PalaceFlag.cloudlessForehead);
-bool _ppFtDented(PalaceState a, PalaceState b) =>
-    _bothWeak(a, b) && _eitherHasFlag(a, b, PalaceFlag.dentedTemple);
-bool _ppFtWeakNoflag(PalaceState a, PalaceState b) =>
-    _bothWeak(a, b) && !_eitherHasFlag(a, b, PalaceFlag.dentedTemple);
+bool _ppSpWeakWrinkle(PalaceState a, PalaceState b) =>
+    _bothWeak(a, b) && _eitherHasFlag(a, b, PalaceFlag.fishTailWrinkle);
 
 bool _ppWeBulbBoth(PalaceState a, PalaceState b) =>
     _bothStrong(a, b) &&
@@ -394,7 +381,20 @@ bool _ppWeThinBoth(PalaceState a, PalaceState b) =>
 bool _ppWeWeakNoflag(PalaceState a, PalaceState b) =>
     _bothWeak(a, b) && !_bothHaveFlag(a, b, PalaceFlag.thinBridge);
 
-bool _ppIlSangenLow(PalaceState a, PalaceState b) =>
-    _bothWeak(a, b) && _eitherHasFlag(a, b, PalaceFlag.sanGenLow);
-bool _ppIlSangenHigh(PalaceState a, PalaceState b) =>
-    _bothStrong(a, b) && _eitherHasFlag(a, b, PalaceFlag.sanGenHigh);
+/// 발동 함수. 두 PalaceState 를 받아 match 여부 반환.
+typedef PalaceMatcher = bool Function(PalaceState my, PalaceState album);
+class PalaceRule {
+  final String id;
+  final Palace palace;
+  final PalaceMatcher matcher;
+  final double delta;
+  final String verdict;
+
+  const PalaceRule({
+    required this.id,
+    required this.palace,
+    required this.matcher,
+    required this.delta,
+    required this.verdict,
+  });
+}
