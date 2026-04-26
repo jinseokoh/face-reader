@@ -26,7 +26,7 @@ const _archetypeLabels = <Attribute, String>{
   Attribute.stability: '현자형',
   Attribute.sensuality: '연예인형',
   Attribute.trustworthiness: '신의형',
-  Attribute.attractiveness: '미인형',
+  Attribute.attractiveness: '호감형',
   Attribute.libido: '정열형',
 };
 
