@@ -312,7 +312,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final wantLateral = await _askAttachLateral();
     _AlbumPhoto? lateral;
     if (wantLateral == true) {
-      _showTopMessage('두눈은 보이지만, 한쪽 귀가 살짝 안보이는 측면(3/4)사진을 올려주세요.');
+      _showTopMessage('두 눈은 보이지만 한쪽 귀가 살짝 안 보이는 측면 사진을 올려주세요.');
       final lateralPick = await picker.pickImage(
         source: ImageSource.gallery,
         maxWidth: 1024,
@@ -353,7 +353,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('측면 사진 첨부'),
         content: const Text(
-            '코 모양 분석을 위해 3/4 측면 사진을 추가하시겠습니까?\n'
+            '코 모양 분석을 위해 측면 사진을 추가하시겠습니까?\n'
             '추가하지 않으면 코는 "정상 범주"로 처리됩니다.'),
         actions: [
           TextButton(

@@ -80,12 +80,12 @@ flutter_native_splash:
 
   color: '#FFFFFF'
   color_dark: '#FFFFFF'
-  image: 'assets/images/face-reader.png'
+  image: 'assets/images/splash.png'
 
   android_12:
     color: '#FFFFFF'
     color_dark: '#FFFFFF'
-    image: 'assets/images/face-reader.png'
+    image: 'assets/images/splash.png'
 
 flutter:
   uses-material-design: true

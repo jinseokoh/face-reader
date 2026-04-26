@@ -65,7 +65,7 @@ class CompatibilityScreen extends ConsumerWidget {
     if (myFace == null) {
       return _guide(
         '내 얼굴이 설정되어 있지 않습니다.',
-        '관상 (카메라) 탭에서 내 얼굴을 선택한 뒤 여기로 돌아오세요.',
+        '관상 (카메라) 탭에서 내 얼굴을 먼저 선택 하세요.',
       );
     }
     if (others.isEmpty) {

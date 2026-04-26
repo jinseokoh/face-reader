@@ -28,7 +28,7 @@ class AlbumPreviewPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isFrontal = phase == AlbumPreviewPhase.frontal;
-    final title = isFrontal ? '정면 사진' : '측면(3/4)사진';
+    final title = isFrontal ? '정면 사진' : '측면 사진';
     final description = isFrontal
         ? '지금은 정면의 윤곽을 파악하는 과정입니다.'
         : '지금은 측면의 윤곽을 파악하는 과정입니다.';

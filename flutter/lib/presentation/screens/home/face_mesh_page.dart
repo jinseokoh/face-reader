@@ -85,7 +85,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
             automaticallyImplyLeading: false,
             centerTitle: true,
             title: Text(
-              _phase == _CapturePhase.frontal ? '얼굴 정면' : '얼굴 측면 (3/4뷰)',
+              _phase == _CapturePhase.frontal ? '얼굴 정면' : '얼굴 측면',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 18,
@@ -260,19 +260,32 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
                       key: ValueKey(_phaseTitle),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 32, vertical: 18),
+                            horizontal: 32, vertical: 24),
                         decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.75),
-                          borderRadius: BorderRadius.circular(20),
+                          color: Colors.black.withValues(alpha: 0.78),
+                          borderRadius: BorderRadius.circular(24),
                         ),
-                        child: Text(
-                          _phaseTitle!,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 32,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 4,
-                          ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (_phaseMeshAsset(_phaseTitle!) != null) ...[
+                              Image.asset(
+                                _phaseMeshAsset(_phaseTitle!)!,
+                                height: 200,
+                                fit: BoxFit.contain,
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+                            Text(
+                              _phaseTitle!,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 28,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 3,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -507,7 +520,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
         _phase = _CapturePhase.lateral;
         _capturedFrames.clear();
       });
-      _showPhaseTitle('얼굴 측면 (3/4뷰)');
+      _showPhaseTitle('얼굴 측면');
       return;
     }
 
@@ -756,6 +769,14 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
     });
   }
 
+  /// Asset path for the mesh-guide image that accompanies a phase title.
+  /// Returns null when the title doesn't match a known phase.
+  String? _phaseMeshAsset(String title) {
+    if (title.contains('정면')) return 'assets/images/mesh-front.png';
+    if (title.contains('측면')) return 'assets/images/mesh-side.png';
+    return null;
+  }
+
   /// Flash a full-screen phase-title overlay (e.g. "정면 사진" / "측면 사진")
   /// that flips in, holds briefly, then fades out. Non-blocking — multiple
   /// calls supersede each other via a token.
@@ -990,7 +1011,7 @@ class _YawProgressIndicator extends StatelessWidget {
             ),
             const Spacer(),
             Text(
-              'yaw ${yaw.abs().toStringAsFixed(2)}',
+              '회전각 ${yaw.abs().toStringAsFixed(2)}',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.6),
                 fontSize: 11,
