@@ -89,8 +89,6 @@ Map<String, dynamic> _composeShareOutput(FaceReadingReport report) {
     'shadowLine': shadowLine,
     'chips': chips,
     'top3': topRanks,
-    'portraitUrl':
-        'https://jicaenyzunjdlcxcdbfb.supabase.co/storage/v1/object/public/images/archetypes/${report.gender.name}.${arch.primary.name}.png',
   };
 }
 
@@ -123,16 +121,12 @@ Map<String, dynamic> _composeCompatOutput(
       'primaryAttribute': a.archetype.primary.name,
       'primaryLabel': a.archetype.primaryLabel,
       'fiveElement': report.myElement.primary.name,
-      'portraitUrl':
-          'https://jicaenyzunjdlcxcdbfb.supabase.co/storage/v1/object/public/images/archetypes/${a.gender.name}.${a.archetype.primary.name}.png',
     },
     'b': {
       'gender': b.gender.name,
       'primaryAttribute': b.archetype.primary.name,
       'primaryLabel': b.archetype.primaryLabel,
       'fiveElement': report.albumElement.primary.name,
-      'portraitUrl':
-          'https://jicaenyzunjdlcxcdbfb.supabase.co/storage/v1/object/public/images/archetypes/${b.gender.name}.${b.archetype.primary.name}.png',
     },
   };
 }

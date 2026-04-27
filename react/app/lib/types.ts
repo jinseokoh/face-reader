@@ -41,7 +41,6 @@ export interface EngineOutput {
   shadowLine: string;
   chips: ShareChip[];
   top3: ShareTopRank[];
-  portraitUrl: string;
 }
 
 export interface CompatPersonOutput {
@@ -49,7 +48,6 @@ export interface CompatPersonOutput {
   primaryAttribute: string;
   primaryLabel: string;
   fiveElement: string;
-  portraitUrl: string;
 }
 
 export interface CompatOutput {

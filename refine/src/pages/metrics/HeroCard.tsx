@@ -13,7 +13,7 @@ export function SoloHeroCard({ eng }: { eng: EngineOutput }) {
             <span className="hero-special">{eng.specialArchetype}</span>
           )}
         </header>
-        <img className="hero-portrait" src={eng.portraitUrl} alt="" />
+        <img className="hero-portrait" src={portraitFor(eng.gender)} alt="" />
       </div>
 
       {eng.catchphrase && (
@@ -92,7 +92,7 @@ export function CompatHeroCard({ compat }: { compat: CompatOutput }) {
 function CompatFace({ person }: { person: CompatOutput["a"] }) {
   return (
     <div className="compat-face">
-      <img className="compat-face-img" src={person.portraitUrl} alt="" />
+      <img className="compat-face-img" src={portraitFor(person.gender)} alt="" />
       <p className="compat-face-label">{person.primaryLabel}</p>
       <p className="compat-face-element">{elementKo(person.fiveElement)}</p>
     </div>
@@ -106,6 +106,10 @@ function SubScore({ label, value }: { label: string; value: number }) {
       <p className="compat-sub-value">{value.toFixed(1)}</p>
     </div>
   );
+}
+
+function portraitFor(gender: string): string {
+  return gender === "female" ? "/female.png" : "/male.png";
 }
 
 function elementKo(e: string): string {
