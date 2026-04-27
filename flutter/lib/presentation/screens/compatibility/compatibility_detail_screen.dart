@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:face_reader/core/theme.dart';
-import 'package:face_reader/data/constants/compat_hashtags.dart';
+import 'package:face_engine/data/constants/compat_hashtags.dart';
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';

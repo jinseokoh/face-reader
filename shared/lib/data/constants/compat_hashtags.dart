@@ -94,13 +94,16 @@ List<CompatChip> chipsForCompat(CompatibilityReport r) {
     gateOff: !r.intimacy.gateActive,
   );
 
-  final dataChips = <CompatChip>[
-    _relationChip(r.elementRelation.kind),
-    ?_subChip(el, '#오행상생', '#오행충돌'),
-    ?_subChip(pa, '#궁위찰떡', '#궁위어긋남'),
-    ?_subChip(qi, '#기질찰떡', '#기질충돌'),
-    ?_subChip(it, '#친밀로맨틱', '#친밀과제'),
-  ];
+  final dataChips = <CompatChip>[];
+  dataChips.add(_relationChip(r.elementRelation.kind));
+  final cEl = _subChip(el, '#오행상생', '#오행충돌');
+  if (cEl != null) dataChips.add(cEl);
+  final cPa = _subChip(pa, '#궁위찰떡', '#궁위어긋남');
+  if (cPa != null) dataChips.add(cPa);
+  final cQi = _subChip(qi, '#기질찰떡', '#기질충돌');
+  if (cQi != null) dataChips.add(cQi);
+  final cIt = _subChip(it, '#친밀로맨틱', '#친밀과제');
+  if (cIt != null) dataChips.add(cIt);
   for (final c in dataChips) {
     if (c.tone == CompatChipTone.warm) {
       warmList.add(c);

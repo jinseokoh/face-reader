@@ -1,4 +1,9 @@
-import type { CompatOutput, EngineOutput, RenderedShare } from "../lib/types";
+import type {
+  CompatOutput,
+  CompatPersonOutput,
+  EngineOutput,
+  RenderedShare,
+} from "../lib/types";
 
 export function ShareCard({ data }: { data: RenderedShare }) {
   if (data.compat) return <CompatHeroCard compat={data.compat} />;
@@ -18,7 +23,7 @@ function SoloHeroCard({ eng }: { eng: EngineOutput }) {
             <span className="hero-special">{eng.specialArchetype}</span>
           )}
         </header>
-        <img className="hero-portrait" src={portraitFor(eng.gender)} alt="" />
+        <img className="hero-portrait" src={eng.portraitUrl} alt="" />
       </div>
 
       {eng.catchphrase && (
@@ -59,69 +64,47 @@ function SoloHeroCard({ eng }: { eng: EngineOutput }) {
 }
 
 function CompatHeroCard({ compat }: { compat: CompatOutput }) {
-  const score = Math.round(compat.total);
   return (
-    <article className="hero">
-      <header className="hero-head">
-        <p className="hero-eyebrow">AI 관상가 — 궁합 분석</p>
-        <h1 className="hero-title">
-          {compat.labelKo} <span className="hero-title-score">{score}</span>
-        </h1>
-        <p className="hero-subtitle">{compat.labelHanja}</p>
-      </header>
+    <article className="hero hero--compat">
+      <p className="hero-eyebrow">AI 관상가 궁합평가</p>
 
-      <div className="compat-portraits">
-        <CompatFace person={compat.a} />
+      <h1 className="compat-title">
+        {compat.labelKo}
+        <span className="compat-title-hanja">({compat.labelHanja})</span>
+      </h1>
+      <p className="compat-tagline">{compat.labelTagline}</p>
+
+      <div className="compat-pair">
+        <CompatSide person={compat.a} alias="나" />
         <span className="compat-x">×</span>
-        <CompatFace person={compat.b} />
+        <CompatSide person={compat.b} alias="상대" />
       </div>
 
-      {compat.summary && (
-        <blockquote className="hero-catchphrase">{compat.summary}</blockquote>
-      )}
+      <ul className="hero-chips compat-chips">
+        {compat.chips.map((c, i) => (
+          <li key={i} className={`hero-chip hero-chip--${c.tone}`}>
+            <span className="hero-chip-icon">{c.tone === "warm" ? "👍" : "👎"}</span>
+            <span className="hero-chip-label">{c.label}</span>
+          </li>
+        ))}
+      </ul>
 
-      <div className="compat-subscores">
-        <SubScore label="五行 (요소)" value={compat.subScores.element} />
-        <SubScore label="十二宮 (궁)" value={compat.subScores.palace} />
-        <SubScore label="氣 (기)" value={compat.subScores.qi} />
-        <SubScore label="性情 (정)" value={compat.subScores.intimacy} />
-      </div>
+      <p className="compat-relation">{compat.relation}</p>
     </article>
   );
 }
 
-function CompatFace({ person }: { person: CompatOutput["a"] }) {
+function CompatSide({ person, alias }: { person: CompatPersonOutput; alias: string }) {
   return (
-    <div className="compat-face">
-      <img className="compat-face-img" src={portraitFor(person.gender)} alt="" />
-      <p className="compat-face-label">{person.primaryLabel}</p>
-      <p className="compat-face-element">{elementKo(person.fiveElement)}</p>
+    <div className="compat-side">
+      <img
+        className="compat-side-thumb"
+        src={person.gender === "female" ? "/female.png" : "/male.png"}
+        alt=""
+      />
+      <p className="compat-side-alias">{alias}</p>
+      <p className="compat-side-demo">{person.demographic}</p>
     </div>
-  );
-}
-
-function SubScore({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="compat-sub">
-      <p className="compat-sub-label">{label}</p>
-      <p className="compat-sub-value">{value.toFixed(1)}</p>
-    </div>
-  );
-}
-
-function portraitFor(gender: string): string {
-  return gender === "female" ? "/female.png" : "/male.png";
-}
-
-function elementKo(e: string): string {
-  return (
-    {
-      wood: "木 (목)",
-      fire: "火 (화)",
-      earth: "土 (토)",
-      metal: "金 (금)",
-      water: "水 (수)",
-    }[e] ?? e
   );
 }
 

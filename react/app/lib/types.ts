@@ -41,13 +41,18 @@ export interface EngineOutput {
   shadowLine: string;
   chips: ShareChip[];
   top3: ShareTopRank[];
+  portraitUrl: string;
 }
 
 export interface CompatPersonOutput {
   gender: string;
-  primaryAttribute: string;
-  primaryLabel: string;
+  genderKo: string;
+  ageGroupKo: string;
+  faceShapeKo: string;
   fiveElement: string;
+  fiveElementKo: string;
+  demographic: string;
+  primaryLabel: string;
 }
 
 export interface CompatOutput {
@@ -55,6 +60,7 @@ export interface CompatOutput {
   label: string;
   labelKo: string;
   labelHanja: string;
+  labelTagline: string;
   summary: string;
   scoreReason: string;
   subScores: {
@@ -64,6 +70,8 @@ export interface CompatOutput {
     intimacy: number;
   };
   elementRelationKind: string;
+  relation: string;
+  chips: ShareChip[];
   a: CompatPersonOutput;
   b: CompatPersonOutput;
 }

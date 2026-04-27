@@ -12,7 +12,7 @@
 ///   globalThis.runCompat(metricsJsonA, B)    → compat share card payload
 ///
 /// Both functions return JSON strings carrying the same fields the Flutter
-/// "AI 관상가 평가" / "궁합 분석" 카드가 렌더하는 것 (line-by-line copy).
+/// hero card 가 렌더하는 것 (line-by-line copy).
 /// 친밀 챕터 / 갈등 시나리오 본문은 ⛔룰 #3 위반 — 외부 노출 금지.
 library face_engine;
 
@@ -20,7 +20,11 @@ import 'dart:convert';
 import 'dart:js_interop';
 
 import 'package:face_engine/data/constants/archetype_catchphrase.dart';
+import 'package:face_engine/data/constants/compat_hashtags.dart';
+import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/attribute.dart';
+import 'package:face_engine/data/enums/face_shape.dart';
+import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/services/compat/compat_adapter.dart';
 import 'package:face_engine/domain/services/compat/compat_label.dart';
@@ -89,6 +93,9 @@ Map<String, dynamic> _composeShareOutput(FaceReadingReport report) {
     'shadowLine': shadowLine,
     'chips': chips,
     'top3': topRanks,
+    // archetype 별 supabase storage portrait — Flutter 와 동일 URL.
+    'portraitUrl':
+        'https://jicaenyzunjdlcxcdbfb.supabase.co/storage/v1/object/public/images/archetypes/${report.gender.name}.${arch.primary.name}.png',
   };
 }
 
@@ -99,14 +106,27 @@ Map<String, dynamic> _composeCompatOutput(
 ) {
   final report = bundle.report;
   final narrative = bundle.narrative;
+  final label = report.label;
+
+  final relation = '${report.myElement.primary.korean} × '
+      '${report.albumElement.primary.korean}  ·  '
+      '${_relationKindKo(report.elementRelation.kind)}';
+
+  final chips = chipsForCompat(report)
+      .map((c) => {
+            'label': c.label,
+            'tone': c.tone == CompatChipTone.warm ? 'warm' : 'cool',
+          })
+      .toList();
 
   return {
     // ⛔룰 #3: conflictScenarios·intimacyChapter·strategy·corePoints 본문은
     // share host 응답에 포함하지 않는다. summary + scoreReason 만 share-safe.
     'total': report.total,
-    'label': report.label.name,
-    'labelKo': report.label.korean,
-    'labelHanja': report.label.hanja,
+    'label': label.name,
+    'labelKo': label.korean,
+    'labelHanja': label.hanja,
+    'labelTagline': _labelTagline(label),
     'summary': narrative.summary,
     'scoreReason': narrative.scoreReason,
     'subScores': {
@@ -116,17 +136,38 @@ Map<String, dynamic> _composeCompatOutput(
       'intimacy': report.sub.intimacyScore,
     },
     'elementRelationKind': report.elementRelation.kind.name,
-    'a': {
-      'gender': a.gender.name,
-      'primaryAttribute': a.archetype.primary.name,
-      'primaryLabel': a.archetype.primaryLabel,
-      'fiveElement': report.myElement.primary.name,
-    },
-    'b': {
-      'gender': b.gender.name,
-      'primaryAttribute': b.archetype.primary.name,
-      'primaryLabel': b.archetype.primaryLabel,
-      'fiveElement': report.albumElement.primary.name,
-    },
+    'relation': relation,
+    'chips': chips,
+    'a': _personSummary(a, report.myElement.primary),
+    'b': _personSummary(b, report.albumElement.primary),
   };
 }
+
+Map<String, dynamic> _personSummary(FaceReadingReport r, FiveElement el) {
+  return {
+    'gender': r.gender.name,
+    'genderKo': r.gender.labelKo,
+    'ageGroupKo': r.ageGroup.labelKo,
+    'faceShapeKo': r.faceShape.korean,
+    'fiveElement': el.name,
+    'fiveElementKo': el.korean,
+    'demographic':
+        '${r.gender.labelKo} · ${r.ageGroup.labelKo} · ${r.faceShape.korean}',
+    'primaryLabel': r.archetype.primaryLabel,
+  };
+}
+
+String _labelTagline(CompatLabel l) => switch (l) {
+      CompatLabel.cheonjakjihap => '하늘이 맺어 준 드문 자리',
+      CompatLabel.sangkyeongyeobin => '예를 지키며 오래가는 자리',
+      CompatLabel.mahapgaseong => '다듬으며 이루어 가는 자리',
+      CompatLabel.hyeonggeuknanjo => '서로를 조심히 지켜 줘야 하는 자리',
+    };
+
+String _relationKindKo(ElementRelationKind k) => switch (k) {
+      ElementRelationKind.identity => '비슷한 결끼리 만나는 구도',
+      ElementRelationKind.generating => '내가 상대를 살리는 상생',
+      ElementRelationKind.generated => '상대가 나를 받쳐 주는 상생',
+      ElementRelationKind.overcoming => '내가 상대를 다스리는 상극',
+      ElementRelationKind.overcome => '상대가 나를 누르는 상극',
+    };
