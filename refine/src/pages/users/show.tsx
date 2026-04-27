@@ -353,7 +353,7 @@ function BonusGrantButton({
   const handleSubmit = async (values: BonusGrantValues) => {
     setSubmitting(true);
     try {
-      const { data, error } = await adminClient.rpc("grant_bonus", {
+      const { data, error } = await adminClient.rpc("grant_coins", {
         p_user_id: userId,
         p_amount: values.amount,
         p_description: values.description?.trim() || null,
