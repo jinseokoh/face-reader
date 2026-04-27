@@ -3,6 +3,7 @@ import 'package:face_reader/core/hive/hive_setup.dart';
 import 'package:face_reader/data/services/analytics_service.dart';
 import 'package:face_reader/data/services/auth_service.dart';
 import 'package:face_reader/data/services/coin_service.dart';
+import 'package:face_reader/data/services/deep_link_service.dart';
 import 'package:face_reader/data/services/face_shape_classifier.dart';
 import 'package:face_reader/core/theme.dart';
 import 'package:face_reader/firebase_options.dart';
@@ -40,6 +41,9 @@ void main() async {
     // intentionally swallowed — see classifier load() for logging
   }
   await AnalyticsService.instance.logAppOpen();
+  // face.kr universal/app link → ReportPage 라우팅. cold start + warm 양쪽.
+  // 라우팅 wire-up 은 share host 의 /api/decode 추가 후 마무리.
+  await DeepLinkService.instance.initialize();
   runApp(const ProviderScope(child: MyApp()));
 }
 

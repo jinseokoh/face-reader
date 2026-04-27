@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -15,14 +14,13 @@ import 'package:face_reader/data/services/supabase_service.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/models/physiognomy_tree.dart';
 import 'package:face_reader/domain/services/report_assembler.dart';
+import 'package:face_reader/domain/services/share/share_publisher.dart';
 import 'package:face_engine/domain/services/yin_yang.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart' hide Gender;
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 
 class ReportPage extends ConsumerStatefulWidget {
@@ -1335,17 +1333,10 @@ class _ReportPageState extends ConsumerState<ReportPage> {
         throw Exception('failed to encode png');
       }
       final bytes = byteData.buffer.asUint8List();
-      final dir = await getTemporaryDirectory();
-      final file = File(
-          '${dir.path}/face_archetype_${DateTime.now().millisecondsSinceEpoch}.png');
-      await file.writeAsBytes(bytes);
-      final arch = report.archetype;
-      final catchphrase = archetypeCatchphrase[arch.primary] ?? '';
-      await SharePlus.instance.share(
-        ShareParams(
-          files: [XFile(file.path)],
-          text: '${arch.primaryLabel} · $catchphrase',
-        ),
+      // SharePublisher 가 supabaseId 보장 + face.kr/api/share 호출 + share_plus 합성.
+      await SharePublisher.instance.publishSolo(
+        report: report,
+        pngBytes: bytes,
       );
       if (sheetContext.mounted) Navigator.of(sheetContext).pop();
     } catch (e, st) {

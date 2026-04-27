@@ -7,6 +7,7 @@ import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_reader/data/services/supabase_service.dart';
+import 'package:face_reader/domain/services/share/share_publisher.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/services/compat/compat_adapter.dart';
 import 'package:face_engine/domain/services/compat/compat_label.dart';
@@ -18,8 +19,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart' hide Gender;
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 // ─────────────────────────────────────────────────────────────
 // Shared helpers
@@ -127,19 +126,12 @@ class _CompatibilityDetailScreenState
         throw Exception('failed to encode png');
       }
       final bytes = byteData.buffer.asUint8List();
-      final dir = await getTemporaryDirectory();
-      final file = File(
-          '${dir.path}/face_compat_${DateTime.now().millisecondsSinceEpoch}.png');
-      await file.writeAsBytes(bytes);
-      final r = _bundle.report;
-      final myAlias = widget.my.alias ?? '나';
-      final albumAlias = widget.album.alias ?? '상대';
-      await SharePlus.instance.share(
-        ShareParams(
-          files: [XFile(file.path)],
-          text:
-              '$myAlias × $albumAlias — ${r.label.korean} ${r.total.toStringAsFixed(0)}/100',
-        ),
+      // SharePublisher 가 양쪽 supabaseId 보장 + face.kr/api/share 호출 +
+      // share_plus 합성 (text = https://face.kr/r/{shortId}, files = [PNG]).
+      await SharePublisher.instance.publishCompat(
+        my: widget.my,
+        album: widget.album,
+        pngBytes: bytes,
       );
       if (sheetContext.mounted) Navigator.of(sheetContext).pop();
     } catch (e, st) {
