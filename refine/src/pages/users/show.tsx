@@ -17,6 +17,7 @@ import {
   Tag,
   Typography,
   message,
+  notification,
 } from "antd";
 import { GiftOutlined } from "@ant-design/icons";
 import { useState } from "react";
@@ -352,22 +353,69 @@ function BonusGrantButton({
 
   const handleSubmit = async (values: BonusGrantValues) => {
     setSubmitting(true);
-    try {
-      const { data, error } = await adminClient.rpc("grant_coins", {
-        p_user_id: userId,
-        p_amount: values.amount,
-        p_description: values.description?.trim() || null,
-      });
-      if (error) throw error;
-      message.success(`보너스 ${values.amount} 코인 지급 완료. 새 잔액: ${data}`);
-      setOpen(false);
-      form.resetFields();
-      onGranted();
-    } catch (e) {
-      message.error(`지급 실패: ${e instanceof Error ? e.message : String(e)}`);
-    } finally {
-      setSubmitting(false);
+    const description = values.description?.trim() || null;
+    // grant_coins 의 실 시그니처가 프로젝트마다 다를 수 있어 4 가지 후보를 순차 시도.
+    // 첫 성공 응답이면 그 호출만으로 끝, 모두 실패면 마지막 error 를 surface.
+    const candidates: Array<Record<string, unknown>> = [
+      { p_user_id: userId, p_amount: values.amount, p_description: description },
+      { p_user_id: userId, p_amount: values.amount, p_kind: "bonus", p_description: description },
+      { user_id: userId, amount: values.amount, description },
+      { user_id: userId, amount: values.amount, kind: "bonus", description },
+    ];
+
+    let lastError: { message?: string; details?: string; hint?: string; code?: string } | null = null;
+    let result: unknown = null;
+
+    for (const params of candidates) {
+      const { data, error } = await adminClient.rpc("grant_coins", params);
+      if (!error) {
+        result = data;
+        lastError = null;
+        break;
+      }
+      // PGRST202 = function not found with that signature → try next candidate.
+      // 다른 에러 (잔액·constraint 등) 면 즉시 break — 사용자에게 정확한 사유 보임.
+      lastError = error;
+      if (error.code !== "PGRST202") break;
     }
+
+    setSubmitting(false);
+    if (lastError) {
+      console.error("[grant_coins] failed", lastError);
+      notification.error({
+        message: "보너스 지급 실패",
+        description: (
+          <div>
+            <div>
+              <b>{lastError.message ?? "(no message)"}</b>
+            </div>
+            {lastError.details && <div style={{ marginTop: 4, fontSize: 12 }}>{lastError.details}</div>}
+            {lastError.hint && <div style={{ marginTop: 4, fontSize: 12, color: "#888" }}>{lastError.hint}</div>}
+            {lastError.code && (
+              <div style={{ marginTop: 4, fontSize: 11, color: "#888" }}>
+                code: {lastError.code}
+              </div>
+            )}
+            <div style={{ marginTop: 8, fontSize: 11, color: "#888" }}>
+              supabase 의 grant_coins 시그니처 확인:
+              <pre style={{ fontSize: 10, background: "#f5f5f5", padding: 6, marginTop: 4 }}>
+{`select pg_get_function_arguments(oid), pg_get_function_result(oid)
+  from pg_proc where proname = 'grant_coins';`}
+              </pre>
+            </div>
+          </div>
+        ),
+        duration: 0,
+      });
+      return;
+    }
+
+    message.success(
+      `보너스 ${values.amount} 코인 지급 완료${result != null ? ` · 새 잔액: ${result}` : ""}`,
+    );
+    setOpen(false);
+    form.resetFields();
+    onGranted();
   };
 
   return (
