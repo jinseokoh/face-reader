@@ -1,21 +1,4 @@
-export type FiveElement = "wood" | "fire" | "earth" | "metal" | "water";
-
-export interface RawMetrics {
-  schemaVersion: number;
-  ethnicity: string;
-  gender: string;
-  ageGroup: string;
-  source: string;
-  metrics: Record<string, number>;
-  lateralMetrics?: Record<string, number>;
-  faceShapeLabel?: string;
-  faceShape: string;
-}
-
-export interface MetricsRow {
-  id: string;
-  raw: RawMetrics;
-}
+import "./shared/face_engine.js";
 
 export type ChipTone = "warm" | "cool";
 
@@ -70,18 +53,20 @@ export interface CompatOutput {
   b: CompatPersonOutput;
 }
 
-export type ShareKind = "solo" | "compat";
+function ensureLoaded() {
+  if (typeof globalThis.runEngine !== "function" || typeof globalThis.runCompat !== "function") {
+    throw new Error(
+      "face_engine.js not loaded. Run `pnpm build:shared` to compile /shared/lib/face_engine.dart.",
+    );
+  }
+}
 
-export interface RenderedShare {
-  type: ShareKind;
-  shortId: string;
-  ogTitle: string;
-  ogDescription: string;
-  ogImage: string;
-  canonicalUrl: string;
-  appLinkBase: string;
-  appStoreUrl: string;
-  playStoreUrl: string;
-  solo?: EngineOutput;
-  compat?: CompatOutput;
+export function runEngine(metricsJson: string): EngineOutput {
+  ensureLoaded();
+  return JSON.parse(globalThis.runEngine(metricsJson)) as EngineOutput;
+}
+
+export function runCompat(metricsJsonA: string, metricsJsonB: string): CompatOutput {
+  ensureLoaded();
+  return JSON.parse(globalThis.runCompat(metricsJsonA, metricsJsonB)) as CompatOutput;
 }

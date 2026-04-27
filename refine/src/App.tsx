@@ -30,8 +30,8 @@ import { Header } from "./components/header";
 import { ColorModeContextProvider } from "./contexts/color-mode";
 import { CoinList } from "./pages/coins";
 import { DashboardPage } from "./pages/dashboard";
-import { MetricList } from "./pages/metrics";
-import { UnlockList } from "./pages/unlocks";
+import { MetricList, MetricShow } from "./pages/metrics";
+import { UnlockList, UnlockShow } from "./pages/unlocks";
 import { UserList, UserShow } from "./pages/users";
 import authProvider from "./providers/auth";
 import { dataProvider } from "./providers/data";
@@ -65,6 +65,7 @@ function App() {
                   {
                     name: "metrics",
                     list: "/metrics",
+                    show: "/metrics/show/:id",
                     meta: { label: "관상 업로드", icon: <ScanOutlined /> },
                   },
                   {
@@ -75,6 +76,7 @@ function App() {
                   {
                     name: "unlocks",
                     list: "/unlocks",
+                    show: "/unlocks/show/:id",
                     meta: { label: "궁합 unlock", icon: <UnlockOutlined /> },
                   },
                 ]}
@@ -106,9 +108,15 @@ function App() {
                       <Route index element={<UserList />} />
                       <Route path="show/:id" element={<UserShow />} />
                     </Route>
-                    <Route path="/metrics" element={<MetricList />} />
+                    <Route path="/metrics">
+                      <Route index element={<MetricList />} />
+                      <Route path="show/:id" element={<MetricShow />} />
+                    </Route>
                     <Route path="/coins" element={<CoinList />} />
-                    <Route path="/unlocks" element={<UnlockList />} />
+                    <Route path="/unlocks">
+                      <Route index element={<UnlockList />} />
+                      <Route path="show/:id" element={<UnlockShow />} />
+                    </Route>
                     <Route path="*" element={<ErrorComponent />} />
                   </Route>
                   <Route

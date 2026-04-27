@@ -1,9 +1,23 @@
-import { DateField, List, useTable } from "@refinedev/antd";
+import { DateField, List, ShowButton, useTable } from "@refinedev/antd";
 import { useMany } from "@refinedev/core";
-import { Avatar, Space, Table, Typography } from "antd";
+import { Avatar, Space, Table, Tag, Tooltip, Typography } from "antd";
 import type { AppUser, Unlock } from "../../types";
 
 const { Text } = Typography;
+
+function scoreColor(s: number): string {
+  if (s >= 90) return "magenta"; // 천작지합
+  if (s >= 78) return "geekblue"; // 상경여빈
+  if (s >= 56) return "green"; // 마합가성
+  return "default"; // 형극난조
+}
+
+function scoreLabel(s: number): string {
+  if (s >= 90) return "천작지합";
+  if (s >= 78) return "상경여빈";
+  if (s >= 56) return "마합가성";
+  return "형극난조";
+}
 
 export const UnlockList = () => {
   const { tableProps, result } = useTable<Unlock>({
@@ -27,7 +41,12 @@ export const UnlockList = () => {
 
   return (
     <List title="궁합 unlock 내역">
-      <Table {...tableProps} rowKey={(r) => `${r.user_id}::${r.pair_key}`} size="middle">
+      <Table
+        {...tableProps}
+        rowKey={(r) => `${r.user_id}::${r.pair_key}`}
+        size="middle"
+        scroll={{ x: 1100 }}
+      >
         <Table.Column<Unlock>
           title="사용자"
           dataIndex="user_id"
@@ -50,6 +69,20 @@ export const UnlockList = () => {
           }}
         />
         <Table.Column<Unlock>
+          title="점수"
+          dataIndex="total_score"
+          sorter
+          render={(v: number | null) => {
+            if (v == null) return <Text type="secondary">-</Text>;
+            const s = Number(v);
+            return (
+              <Tooltip title={scoreLabel(s)}>
+                <Tag color={scoreColor(s)}>{s.toFixed(1)}</Tag>
+              </Tooltip>
+            );
+          }}
+        />
+        <Table.Column<Unlock>
           title="pair_key (my::album)"
           dataIndex="pair_key"
           render={(v: string) => (
@@ -65,6 +98,14 @@ export const UnlockList = () => {
           defaultSortOrder="descend"
           render={(v: string) => (
             <DateField value={v} format="YYYY-MM-DD HH:mm" />
+          )}
+        />
+        <Table.Column<Unlock>
+          title="해석"
+          dataIndex="pair_key"
+          fixed="right"
+          render={(pairKey: string) => (
+            <ShowButton hideText size="small" recordItemId={pairKey} />
           )}
         />
       </Table>

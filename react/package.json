@@ -9,7 +9,7 @@
     "preview": "wrangler dev",
     "typecheck": "react-router typegen && tsc -b",
     "cf-typegen": "wrangler types",
-    "build:shared": "cd ../shared && dart compile js -O2 lib/face_engine.dart -o ../react/app/lib/shared/face_engine.js"
+    "build:shared": "cd ../shared && dart compile js -O1 lib/face_engine.dart -o ../react/app/lib/shared/face_engine.js"
   },
   "dependencies": {
     "isbot": "^5.1.17",

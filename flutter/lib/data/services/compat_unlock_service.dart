@@ -33,9 +33,10 @@ class CompatUnlockService {
   ///
   /// RPC 자체가 실패하면 [Exception] 을 그대로 throw — 호출부에서 try/catch
   /// 로 감싸 사용자 피드백을 띄울 것.
-  Future<int> unlock(String pairKey) async {
+  Future<int> unlock(String pairKey, {double? totalScore}) async {
     final result = await _client.rpc('unlock_compat', params: {
       'p_pair_key': pairKey,
+      if (totalScore != null) 'p_total_score': totalScore,
     });
     debugPrint(
         '[CompatUnlock] unlock $pairKey → $result (${result.runtimeType})');

@@ -1,12 +1,7 @@
-import type { CompatOutput, EngineOutput, RenderedShare } from "../lib/types";
+import type { CompatOutput, EngineOutput } from "../../lib/share-engine";
+import "./hero-card.css";
 
-export function ShareCard({ data }: { data: RenderedShare }) {
-  if (data.compat) return <CompatHeroCard compat={data.compat} />;
-  if (data.solo) return <SoloHeroCard eng={data.solo} />;
-  return null;
-}
-
-function SoloHeroCard({ eng }: { eng: EngineOutput }) {
+export function SoloHeroCard({ eng }: { eng: EngineOutput }) {
   return (
     <article className="hero">
       <div className="hero-head-row">
@@ -58,7 +53,7 @@ function SoloHeroCard({ eng }: { eng: EngineOutput }) {
   );
 }
 
-function CompatHeroCard({ compat }: { compat: CompatOutput }) {
+export function CompatHeroCard({ compat }: { compat: CompatOutput }) {
   const score = Math.round(compat.total);
   return (
     <article className="hero">
@@ -86,6 +81,10 @@ function CompatHeroCard({ compat }: { compat: CompatOutput }) {
         <SubScore label="氣 (기)" value={compat.subScores.qi} />
         <SubScore label="性情 (정)" value={compat.subScores.intimacy} />
       </div>
+
+      {compat.scoreReason && (
+        <p className="hero-score-reason">{compat.scoreReason}</p>
+      )}
     </article>
   );
 }

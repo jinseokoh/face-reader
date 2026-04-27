@@ -42,5 +42,6 @@ export type MetricEntry = {
 export type Unlock = {
   user_id: string;
   pair_key: string;
+  total_score: number | null;
   created_at: string;
 };

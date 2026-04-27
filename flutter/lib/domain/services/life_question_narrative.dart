@@ -2,7 +2,7 @@ import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/attribute.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
-import 'package:face_reader/domain/services/yin_yang.dart';
+import 'package:face_engine/domain/services/yin_yang.dart';
 
 const _nodeDominantPalaceKo = <String, String>{
   'forehead': '관록궁',

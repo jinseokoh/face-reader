@@ -13,6 +13,11 @@ dist
 dist-ssr
 *.local
 
+# build:shared 산출물 — /shared/ 의 dart compile js 결과
+src/lib/shared/face_engine.js
+src/lib/shared/face_engine.js.map
+src/lib/shared/face_engine.js.deps
+
 # Environment variables
 .env
 .env.local

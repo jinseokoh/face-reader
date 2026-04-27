@@ -8,12 +8,12 @@ import 'package:face_reader/data/services/analytics_service.dart';
 import 'package:face_reader/data/services/compat_unlock_service.dart';
 import 'package:face_reader/data/services/supabase_service.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
-import 'package:face_reader/domain/services/compat/compat_adapter.dart';
-import 'package:face_reader/domain/services/compat/compat_label.dart';
-import 'package:face_reader/domain/services/compat/compat_pair_key.dart';
-import 'package:face_reader/domain/services/compat/compat_pipeline.dart';
-import 'package:face_reader/domain/services/compat/compat_sub_display.dart';
-import 'package:face_reader/domain/services/compat/five_element.dart';
+import 'package:face_engine/domain/services/compat/compat_adapter.dart';
+import 'package:face_engine/domain/services/compat/compat_label.dart';
+import 'package:face_engine/domain/services/compat/compat_pair_key.dart';
+import 'package:face_engine/domain/services/compat/compat_pipeline.dart';
+import 'package:face_engine/domain/services/compat/compat_sub_display.dart';
+import 'package:face_engine/domain/services/compat/five_element.dart';
 import 'package:face_reader/presentation/providers/auth_provider.dart';
 import 'package:face_reader/presentation/providers/compat_unlock_provider.dart';
 import 'package:face_reader/presentation/providers/history_provider.dart';
@@ -225,10 +225,15 @@ class CompatibilityScreen extends ConsumerWidget {
     );
     if (confirm != true) return;
 
-    // 5. RPC.
+    // 5. RPC. unlock 직전에 분석을 실행해 total_score 를 함께 기록 — admin 콘솔
+    // (refine) 에서 점수별 정렬·필터 가능하도록.
+    final preBundle = analyzeCompatibilityFromReports(my: my, album: album);
     final int newBalance;
     try {
-      newBalance = await CompatUnlockService().unlock(key);
+      newBalance = await CompatUnlockService().unlock(
+        key,
+        totalScore: preBundle.report.total,
+      );
     } catch (e, st) {
       debugPrint('[CompatUnlock] unlock failed: $e\n$st');
       if (!context.mounted) return;

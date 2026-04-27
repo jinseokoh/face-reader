@@ -12,9 +12,13 @@ pnpm build:shared
 내부적으로:
 
 ```bash
-cd shared && dart compile js -O2 lib/face_engine.dart \
+cd shared && dart compile js -O1 lib/face_engine.dart \
   -o ../react/app/lib/shared/face_engine.js
 ```
+
+**`-O2` 금지** — `-O2` 의 type elimination + class minification 이 vite/rollup ESM
+번들 + workerd 실행 단계에서 RTI subtype check 깨뜨린다 (`'minified:z2' is not a
+subtype of 'minified:z'` 런타임 에러). `-O1` (default, WPO + inlining 포함) 만 안전.
 
 ## 의존
 

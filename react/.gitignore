@@ -5,6 +5,7 @@ build
 dist
 app/lib/shared/face_engine.js
 app/lib/shared/face_engine.js.map
+app/lib/shared/face_engine.js.deps
 .dev.vars
 .env*.local
 *.log

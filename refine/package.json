@@ -38,7 +38,8 @@
     "dev": "refine dev",
     "build": "tsc && refine build",
     "start": "refine start",
-    "refine": "refine"
+    "refine": "refine",
+    "build:shared": "cd ../shared && dart compile js -O1 lib/face_engine.dart -o ../refine/src/lib/shared/face_engine.js"
   },
   "browserslist": {
     "production": [

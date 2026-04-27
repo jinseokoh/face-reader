@@ -1,8 +1,8 @@
 import 'dart:math';
 
-import 'package:face_reader/domain/services/compat/compat_pipeline.dart';
-import 'package:face_reader/domain/services/compat/compat_sub_display.dart';
-import 'package:face_reader/domain/services/compat/five_element.dart';
+import 'package:face_engine/domain/services/compat/compat_pipeline.dart';
+import 'package:face_engine/domain/services/compat/compat_sub_display.dart';
+import 'package:face_engine/domain/services/compat/five_element.dart';
 
 /// 공유 카드 chip 톤. warm = 장점, cool = 단점.
 enum CompatChipTone { warm, cool }

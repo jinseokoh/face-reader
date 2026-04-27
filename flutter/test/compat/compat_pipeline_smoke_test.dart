@@ -16,7 +16,7 @@ import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/services/archetype.dart';
-import 'package:face_reader/domain/services/compat/compat_adapter.dart';
+import 'package:face_engine/domain/services/compat/compat_adapter.dart';
 import 'package:face_reader/domain/services/mc_fixtures.dart';
 import 'package:face_engine/domain/services/physiognomy_scoring.dart';
 

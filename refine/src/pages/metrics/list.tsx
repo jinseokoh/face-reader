@@ -1,4 +1,4 @@
-import { DateField, List, useTable } from "@refinedev/antd";
+import { DateField, List, ShowButton, useTable } from "@refinedev/antd";
 import { useMany } from "@refinedev/core";
 import { Avatar, Space, Table, Tag, Tooltip, Typography } from "antd";
 import type { AppUser, MetricEntry } from "../../types";
@@ -142,6 +142,14 @@ export const MetricList = () => {
             <Text code copyable={{ text: v }} style={{ fontSize: 11 }}>
               {v.slice(0, 8)}…
             </Text>
+          )}
+        />
+        <Table.Column<MetricEntry>
+          title="해석"
+          dataIndex="id"
+          fixed="right"
+          render={(id: string) => (
+            <ShowButton hideText size="small" recordItemId={id} />
           )}
         />
       </Table>

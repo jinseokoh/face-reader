@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:face_reader/core/theme.dart';
-import 'package:face_reader/data/constants/archetype_catchphrase.dart';
+import 'package:face_engine/data/constants/archetype_catchphrase.dart';
 import 'package:face_engine/data/constants/face_reference_data.dart';
 import 'package:face_reader/data/constants/metric_text_blocks.dart';
 import 'package:face_reader/data/constants/node_text_blocks.dart';
@@ -15,7 +15,7 @@ import 'package:face_reader/data/services/supabase_service.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/models/physiognomy_tree.dart';
 import 'package:face_reader/domain/services/report_assembler.dart';
-import 'package:face_reader/domain/services/yin_yang.dart';
+import 'package:face_engine/domain/services/yin_yang.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
