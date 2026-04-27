@@ -354,55 +354,45 @@ function BonusGrantButton({
   const handleSubmit = async (values: BonusGrantValues) => {
     setSubmitting(true);
     const description = values.description?.trim() || null;
-    // grant_coins 의 실 시그니처가 프로젝트마다 다를 수 있어 4 가지 후보를 순차 시도.
-    // 첫 성공 응답이면 그 호출만으로 끝, 모두 실패면 마지막 error 를 surface.
-    const candidates: Array<Record<string, unknown>> = [
-      { p_user_id: userId, p_amount: values.amount, p_description: description },
-      { p_user_id: userId, p_amount: values.amount, p_kind: "bonus", p_description: description },
-      { user_id: userId, amount: values.amount, description },
-      { user_id: userId, amount: values.amount, kind: "bonus", description },
-    ];
 
-    let lastError: { message?: string; details?: string; hint?: string; code?: string } | null = null;
-    let result: unknown = null;
-
-    for (const params of candidates) {
-      const { data, error } = await adminClient.rpc("grant_coins", params);
-      if (!error) {
-        result = data;
-        lastError = null;
-        break;
-      }
-      // PGRST202 = function not found with that signature → try next candidate.
-      // 다른 에러 (잔액·constraint 등) 면 즉시 break — 사용자에게 정확한 사유 보임.
-      lastError = error;
-      if (error.code !== "PGRST202") break;
-    }
+    // admin 전용 RPC. 기존 grant_coins 는 auth.uid() 기반이라 caller 본인에게만
+    // 지급 가능 → admin 이 임의 user 에게 지급할 수 없다. admin_grant_coins 는
+    // p_user_id 를 직접 받고 service_role 만 grant 받음.
+    const { data, error } = await adminClient.rpc("admin_grant_coins", {
+      p_user_id: userId,
+      p_amount: values.amount,
+      p_description: description,
+    });
 
     setSubmitting(false);
-    if (lastError) {
-      console.error("[grant_coins] failed", lastError);
+    if (error) {
+      console.error("[admin_grant_coins] failed", error);
       notification.error({
         message: "보너스 지급 실패",
         description: (
           <div>
             <div>
-              <b>{lastError.message ?? "(no message)"}</b>
+              <b>{error.message ?? "(no message)"}</b>
             </div>
-            {lastError.details && <div style={{ marginTop: 4, fontSize: 12 }}>{lastError.details}</div>}
-            {lastError.hint && <div style={{ marginTop: 4, fontSize: 12, color: "#888" }}>{lastError.hint}</div>}
-            {lastError.code && (
-              <div style={{ marginTop: 4, fontSize: 11, color: "#888" }}>
-                code: {lastError.code}
+            {error.details && (
+              <div style={{ marginTop: 4, fontSize: 12 }}>{error.details}</div>
+            )}
+            {error.hint && (
+              <div style={{ marginTop: 4, fontSize: 12, color: "#888" }}>
+                {error.hint}
               </div>
             )}
-            <div style={{ marginTop: 8, fontSize: 11, color: "#888" }}>
-              supabase 의 grant_coins 시그니처 확인:
-              <pre style={{ fontSize: 10, background: "#f5f5f5", padding: 6, marginTop: 4 }}>
-{`select pg_get_function_arguments(oid), pg_get_function_result(oid)
-  from pg_proc where proname = 'grant_coins';`}
-              </pre>
-            </div>
+            {error.code && (
+              <div style={{ marginTop: 4, fontSize: 11, color: "#888" }}>
+                code: {error.code}
+              </div>
+            )}
+            {error.code === "PGRST202" && (
+              <div style={{ marginTop: 8, fontSize: 11, color: "#888" }}>
+                admin_grant_coins RPC 가 supabase 에 깔려있지 않습니다.
+                CLAUDE 가 알려준 SQL 한 번 실행하세요.
+              </div>
+            )}
           </div>
         ),
         duration: 0,
@@ -411,7 +401,7 @@ function BonusGrantButton({
     }
 
     message.success(
-      `보너스 ${values.amount} 코인 지급 완료${result != null ? ` · 새 잔액: ${result}` : ""}`,
+      `보너스 ${values.amount} 코인 지급 완료${data != null ? ` · 새 잔액: ${data}` : ""}`,
     );
     setOpen(false);
     form.resetFields();
