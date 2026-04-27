@@ -41,16 +41,34 @@ class AdService {
 
   SupabaseClient get _client => Supabase.instance.client;
 
-  /// 활성화된 광고 1건 (가장 최근).
-  /// 사용자에게 노출할 때마다 호출 — daily cap·cooldown 은 RPC 가 검증.
+  /// 활성 광고 1건 — 24h 안에 본 적 없는 광고 중 random pick.
+  /// 본 광고만 남았거나 active 광고가 0이면 null.
   Future<Ad?> nextAd() async {
-    final rows = await _client
+    final uid = _client.auth.currentUser?.id;
+    final excluded = <String>{};
+    if (uid != null) {
+      final since =
+          DateTime.now().toUtc().subtract(const Duration(hours: 24)).toIso8601String();
+      final views = await _client
+          .from('ad_views')
+          .select('ad_id')
+          .eq('user_id', uid)
+          .gte('created_at', since);
+      for (final v in views) {
+        excluded.add(v['ad_id'] as String);
+      }
+    }
+
+    var query = _client
         .from('ads')
         .select('id,title,storage_path,duration_sec,reward_coins')
-        .eq('active', true)
-        .order('created_at', ascending: false)
-        .limit(1);
+        .eq('active', true);
+    if (excluded.isNotEmpty) {
+      query = query.not('id', 'in', '(${excluded.join(",")})');
+    }
+    final rows = await query.limit(50);
     if (rows.isEmpty) return null;
+    rows.shuffle();
     return Ad.fromRow(rows.first);
   }
 

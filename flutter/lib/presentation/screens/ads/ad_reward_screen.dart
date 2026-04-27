@@ -27,6 +27,8 @@ class _AdRewardScreenState extends ConsumerState<AdRewardScreen> {
   bool _claimed = false;
   String? _error;
   bool _claiming = false;
+  // forward seek 차단용 — 정상 재생은 tick 당 ~16ms, 1초 이상 점프면 seek 으로 간주.
+  Duration _lastPos = Duration.zero;
 
   @override
   void initState() {
@@ -62,6 +64,14 @@ class _AdRewardScreenState extends ConsumerState<AdRewardScreen> {
     final pos = c.value.position;
     final dur = c.value.duration;
     if (dur == Duration.zero) return;
+
+    // forward seek 차단 — 1초 이상 앞으로 점프했으면 마지막 정상 position 으로 되돌림.
+    if (pos - _lastPos > const Duration(seconds: 1)) {
+      c.seekTo(_lastPos);
+      return;
+    }
+    _lastPos = pos;
+
     if (pos >= dur - const Duration(milliseconds: 250)) {
       _claimed = true;
       _claim(ad.id);
