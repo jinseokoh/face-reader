@@ -14,7 +14,6 @@ import 'package:face_reader/presentation/providers/auth_provider.dart';
 import 'package:face_reader/presentation/providers/history_provider.dart';
 import 'package:face_reader/presentation/providers/wallet_provider.dart';
 import 'package:face_reader/presentation/widgets/login_bottom_sheet.dart';
-import 'package:face_reader/presentation/widgets/purchase_sheet.dart';
 
 const _txDescriptionLabels = {
   'compat-unlock': '궁합 보기',
@@ -38,7 +37,27 @@ class WalletPage extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(title: const Text('지갑')),
+      appBar: AppBar(
+        title: const Text('지갑'),
+        actions: [
+          if (user != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Row(
+                children: [
+                  Icon(Icons.toll_outlined,
+                      color: AppTheme.textPrimary, size: 18),
+                  const SizedBox(width: 6),
+                  Text('${user.coins}개',
+                      style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+        ],
+      ),
       body: user == null
           ? _LoggedOutView(onLogin: () => showLoginBottomSheet(context, ref))
           : RefreshIndicator(
@@ -51,14 +70,6 @@ class WalletPage extends ConsumerWidget {
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(16),
                 children: [
-                  _BalanceCard(
-                    coins: user.coins,
-                    onCharge: () => PurchaseSheet.show(
-                      context,
-                      onPurchased: () => ref.invalidate(walletHistoryProvider),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     child: Text('거래 내역',
@@ -93,70 +104,6 @@ class WalletPage extends ConsumerWidget {
                 ],
               ),
             ),
-    );
-  }
-}
-
-class _BalanceCard extends StatelessWidget {
-  final int coins;
-  final VoidCallback onCharge;
-  const _BalanceCard({required this.coins, required this.onCharge});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('보유 코인',
-              style: TextStyle(color: AppTheme.textHint, fontSize: 13)),
-          const SizedBox(height: 6),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Icon(Icons.toll_outlined,
-                  color: AppTheme.textSecondary, size: 28),
-              const SizedBox(width: 8),
-              Text('$coins',
-                  style: TextStyle(
-                      color: AppTheme.textPrimary,
-                      fontSize: 32,
-                      fontWeight: FontWeight.w700,
-                      height: 1.0)),
-              const SizedBox(width: 4),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text('개',
-                    style: TextStyle(
-                        color: AppTheme.textSecondary, fontSize: 15)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton(
-              onPressed: onCharge,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.textPrimary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text('충전하기',
-                  style:
-                      TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
