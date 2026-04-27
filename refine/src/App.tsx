@@ -14,6 +14,7 @@ import "@refinedev/antd/dist/reset.css";
 import {
   AppstoreOutlined,
   DollarOutlined,
+  PlaySquareOutlined,
   ScanOutlined,
   TeamOutlined,
   UnlockOutlined,
@@ -28,6 +29,7 @@ import { App as AntdApp } from "antd";
 import { BrowserRouter, Outlet, Route, Routes } from "react-router";
 import { Header } from "./components/header";
 import { ColorModeContextProvider } from "./contexts/color-mode";
+import { AdCreate, AdList } from "./pages/ads";
 import { CoinList } from "./pages/coins";
 import { DashboardPage } from "./pages/dashboard";
 import { MetricList, MetricShow } from "./pages/metrics";
@@ -79,6 +81,12 @@ function App() {
                     show: "/unlocks/show/:id",
                     meta: { label: "궁합 unlock", icon: <UnlockOutlined /> },
                   },
+                  {
+                    name: "ads",
+                    list: "/ads",
+                    create: "/ads/create",
+                    meta: { label: "광고", icon: <PlaySquareOutlined /> },
+                  },
                 ]}
                 options={{
                   syncWithLocation: true,
@@ -116,6 +124,10 @@ function App() {
                     <Route path="/unlocks">
                       <Route index element={<UnlockList />} />
                       <Route path="show/:id" element={<UnlockShow />} />
+                    </Route>
+                    <Route path="/ads">
+                      <Route index element={<AdList />} />
+                      <Route path="create" element={<AdCreate />} />
                     </Route>
                     <Route path="*" element={<ErrorComponent />} />
                   </Route>

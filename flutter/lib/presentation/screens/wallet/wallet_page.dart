@@ -13,6 +13,7 @@ import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_reader/presentation/providers/auth_provider.dart';
 import 'package:face_reader/presentation/providers/history_provider.dart';
 import 'package:face_reader/presentation/providers/wallet_provider.dart';
+import 'package:face_reader/presentation/screens/ads/ad_reward_screen.dart';
 import 'package:face_reader/presentation/widgets/login_bottom_sheet.dart';
 
 const _txDescriptionLabels = {
@@ -40,7 +41,21 @@ class WalletPage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('지갑'),
         actions: [
-          if (user != null)
+          if (user != null) ...[
+            IconButton(
+              tooltip: '광고 보고 코인 받기',
+              icon: const Icon(Icons.play_circle_outline),
+              onPressed: () async {
+                final granted = await Navigator.of(context).push<bool>(
+                  MaterialPageRoute(
+                    builder: (_) => const AdRewardScreen(),
+                  ),
+                );
+                if (granted == true) {
+                  ref.invalidate(walletHistoryProvider);
+                }
+              },
+            ),
             Padding(
               padding: const EdgeInsets.only(right: 16),
               child: Row(
@@ -56,6 +71,7 @@ class WalletPage extends ConsumerWidget {
                 ],
               ),
             ),
+          ],
         ],
       ),
       body: user == null

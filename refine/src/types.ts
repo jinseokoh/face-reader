@@ -39,6 +39,16 @@ export type MetricEntry = {
   created_at: string;
 };
 
+export type Ad = {
+  id: string;
+  title: string;
+  storage_path: string;
+  duration_sec: number | null;
+  reward_coins: number;
+  active: boolean;
+  created_at: string;
+};
+
 export type Unlock = {
   user_id: string;
   pair_key: string;
