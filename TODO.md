@@ -14,6 +14,8 @@ face.kr share host + Flutter app + refine admin 의 prod 배포까지 남은 작
 
 - [ ] `admin_grant_coins(p_user_id, p_amount, p_description)` RPC — refine 보너스 지급용
 - [ ] `unlock_compat` 의 `app_users` → `users` 교체 (현재 42P01 에러로 unlock 실패)
+- [ ] 옛 `unlock_compat(p_pair_key text)` 시그니처 (단일 인자) 제거 — 새 (text, numeric) 1개만 남기기:
+      `drop function public.unlock_compat(text);`
 - [ ] `ads` + `ad_views` 테이블 + `claim_ad_reward(p_ad_id)` RPC + storage 'ads' bucket·policy
 - [ ] `metrics` RLS — `revoke select on metrics from anon` + column-level grant `(id, metrics_json, expires_at)` + 만료 정책
 - [ ] (옛 share_payload 마이그레이션 적용 흔적 있으면 같이 정리 — 위 SQL 의 마지막 블록)
