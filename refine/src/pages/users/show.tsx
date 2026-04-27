@@ -2,16 +2,25 @@ import { DateField, NumberField, Show } from "@refinedev/antd";
 import { useList, useShow } from "@refinedev/core";
 import {
   Avatar,
+  Button,
   Card,
   Col,
   Descriptions,
   Empty,
+  Form,
+  Input,
+  InputNumber,
+  Modal,
   Row,
   Statistic,
   Table,
   Tag,
   Typography,
+  message,
 } from "antd";
+import { GiftOutlined } from "@ant-design/icons";
+import { useState } from "react";
+import { adminClient } from "../../providers/data";
 import type { AppUser, CoinEntry, MetricEntry, Unlock } from "../../types";
 
 const { Title, Text } = Typography;
@@ -33,7 +42,7 @@ const KIND_LABEL: Record<CoinEntry["kind"], string> = {
 export const UserShow = () => {
   const {
     result: user,
-    query: { isLoading },
+    query: { isLoading, refetch: refetchUser },
   } = useShow<AppUser>();
 
   const userId = user?.id;
@@ -46,13 +55,14 @@ export const UserShow = () => {
     queryOptions: { enabled: !!userId },
   });
 
-  const { result: coinsResult } = useList<CoinEntry>({
-    resource: "coins",
-    filters: userId ? [{ field: "user_id", operator: "eq", value: userId }] : [],
-    sorters: [{ field: "created_at", order: "desc" }],
-    pagination: { pageSize: 100 },
-    queryOptions: { enabled: !!userId },
-  });
+  const { result: coinsResult, query: { refetch: refetchCoins } } =
+    useList<CoinEntry>({
+      resource: "coins",
+      filters: userId ? [{ field: "user_id", operator: "eq", value: userId }] : [],
+      sorters: [{ field: "created_at", order: "desc" }],
+      pagination: { pageSize: 100 },
+      queryOptions: { enabled: !!userId },
+    });
 
   const { result: unlocksResult } = useList<Unlock>({
     resource: "unlocks",
@@ -127,6 +137,16 @@ export const UserShow = () => {
             <Col xs={12} md={6}>
               <Card>
                 <Statistic title="현재 잔액" value={user?.coins ?? 0} suffix="🪙" />
+                {userId && (
+                  <BonusGrantButton
+                    userId={userId}
+                    nickname={user?.nickname ?? null}
+                    onGranted={() => {
+                      refetchUser();
+                      refetchCoins();
+                    }}
+                  />
+                )}
               </Card>
             </Col>
             <Col xs={12} md={6}>
@@ -311,3 +331,103 @@ export const UserShow = () => {
     </Show>
   );
 };
+
+interface BonusGrantValues {
+  amount: number;
+  description?: string;
+}
+
+function BonusGrantButton({
+  userId,
+  nickname,
+  onGranted,
+}: {
+  userId: string;
+  nickname: string | null;
+  onGranted: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [form] = Form.useForm<BonusGrantValues>();
+
+  const handleSubmit = async (values: BonusGrantValues) => {
+    setSubmitting(true);
+    try {
+      const { data, error } = await adminClient.rpc("grant_bonus", {
+        p_user_id: userId,
+        p_amount: values.amount,
+        p_description: values.description?.trim() || null,
+      });
+      if (error) throw error;
+      message.success(`보너스 ${values.amount} 코인 지급 완료. 새 잔액: ${data}`);
+      setOpen(false);
+      form.resetFields();
+      onGranted();
+    } catch (e) {
+      message.error(`지급 실패: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <>
+      <Button
+        type="primary"
+        icon={<GiftOutlined />}
+        size="small"
+        block
+        style={{ marginTop: 12 }}
+        onClick={() => setOpen(true)}
+      >
+        보너스 지급
+      </Button>
+      <Modal
+        title={`${nickname ?? "사용자"} 에게 보너스 지급`}
+        open={open}
+        confirmLoading={submitting}
+        okText="지급"
+        cancelText="취소"
+        onOk={() => form.submit()}
+        onCancel={() => {
+          setOpen(false);
+          form.resetFields();
+        }}
+        destroyOnHidden
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleSubmit}
+          initialValues={{ amount: 1 }}
+        >
+          <Form.Item
+            name="amount"
+            label="금액 (코인)"
+            rules={[
+              { required: true, message: "금액을 입력하세요" },
+              {
+                type: "integer",
+                min: 1,
+                max: 1000,
+                message: "1 ~ 1000 사이 정수",
+              },
+            ]}
+          >
+            <InputNumber min={1} max={1000} step={1} style={{ width: "100%" }} />
+          </Form.Item>
+          <Form.Item
+            name="description"
+            label="사유 (ledger 의 description 컬럼)"
+            rules={[{ max: 200, message: "200자 이내" }]}
+          >
+            <Input.TextArea
+              rows={2}
+              placeholder="예: 초기 사용자 보너스 / 환불 보상 / 친구 초대"
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </>
+  );
+}
