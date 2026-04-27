@@ -18,10 +18,10 @@ import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:face_reader/data/constants/face_reference_data.dart';
-import 'package:face_reader/data/enums/age_group.dart';
-import 'package:face_reader/data/enums/face_shape.dart';
-import 'package:face_reader/data/enums/gender.dart';
+import 'package:face_engine/data/constants/face_reference_data.dart';
+import 'package:face_engine/data/enums/age_group.dart';
+import 'package:face_engine/data/enums/face_shape.dart';
+import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_reader/domain/services/compat/compat_aggregator.dart';
 import 'package:face_reader/domain/services/compat/compat_label.dart';
 import 'package:face_reader/domain/services/compat/compat_pipeline.dart';
@@ -29,7 +29,7 @@ import 'package:face_reader/domain/services/compat/element_classifier.dart';
 import 'package:face_reader/domain/services/compat/element_matrix.dart';
 import 'package:face_reader/domain/services/compat/five_element.dart';
 import 'package:face_reader/domain/services/mc_fixtures.dart';
-import 'package:face_reader/domain/services/physiognomy_scoring.dart';
+import 'package:face_engine/domain/services/physiognomy_scoring.dart';
 
 double _normal(Random rng) {
   double u1, u2;

@@ -55,16 +55,18 @@ code {
   margin-bottom: 24px;
 }
 
-.card-image {
-  width: 100%;
-  display: block;
-  aspect-ratio: 1200 / 630;
-  object-fit: cover;
-  background: #eee;
+.card-header {
+  padding: 28px 20px 20px;
+  text-align: center;
 }
 
-.card-summary {
-  padding: 20px;
+.card-logo {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  object-fit: contain;
+  margin: 0 auto 16px;
+  display: block;
 }
 
 .card-label {

@@ -1,6 +1,7 @@
+SHARE_TOKEN_SECRET=replace-with-32-bytes-random-base64
 SUPABASE_URL=
 SUPABASE_ANON_KEY=
-APP_LINK_BASE=https://share.face.app/r/
+APP_LINK_BASE=https://face.kr/r/
 APP_STORE_URL=https://apps.apple.com/app/idXXXXXXXXX
 PLAY_STORE_URL=https://play.google.com/store/apps/details?id=com.example.face
 APP_BUNDLE_ID_IOS=com.example.face

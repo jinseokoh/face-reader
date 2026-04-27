@@ -1,0 +1,13 @@
+name: face_engine
+description: Shared physiognomy engine consumed by Flutter (refine) and React (share host) via dart compile js.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  meta: ^1.10.0
+
+dev_dependencies:
+  test: ^1.24.0

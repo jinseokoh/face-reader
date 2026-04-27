@@ -15,9 +15,9 @@
 /// Monte Carlo through the real pipeline. Re-run after any weight/rule change.
 library;
 
-import 'package:face_reader/data/enums/attribute.dart';
-import 'package:face_reader/data/enums/face_shape.dart';
-import 'package:face_reader/data/enums/gender.dart';
+import 'package:face_engine/data/enums/attribute.dart';
+import 'package:face_engine/data/enums/face_shape.dart';
+import 'package:face_engine/data/enums/gender.dart';
 
 // ──────────────────── Quantile Tables — shape-agnostic fallback ────────────
 //

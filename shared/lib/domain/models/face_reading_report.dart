@@ -1,18 +1,18 @@
 import 'dart:convert';
 import 'dart:developer' as dev;
 
-import 'package:face_reader/data/constants/face_reference_data.dart';
-import 'package:face_reader/data/enums/age_group.dart';
-import 'package:face_reader/data/enums/attribute.dart';
-import 'package:face_reader/data/enums/ethnicity.dart';
-import 'package:face_reader/data/enums/face_shape.dart';
-import 'package:face_reader/data/enums/gender.dart';
-import 'package:face_reader/domain/services/age_adjustment.dart';
-import 'package:face_reader/domain/services/archetype.dart';
-import 'package:face_reader/domain/services/attribute_derivation.dart';
-import 'package:face_reader/domain/services/attribute_normalize.dart';
-import 'package:face_reader/domain/services/metric_score.dart';
-import 'package:face_reader/domain/services/physiognomy_scoring.dart';
+import 'package:face_engine/data/constants/face_reference_data.dart';
+import 'package:face_engine/data/enums/age_group.dart';
+import 'package:face_engine/data/enums/attribute.dart';
+import 'package:face_engine/data/enums/ethnicity.dart';
+import 'package:face_engine/data/enums/face_shape.dart';
+import 'package:face_engine/data/enums/gender.dart';
+import 'package:face_engine/domain/services/age_adjustment.dart';
+import 'package:face_engine/domain/services/archetype.dart';
+import 'package:face_engine/domain/services/attribute_derivation.dart';
+import 'package:face_engine/domain/services/attribute_normalize.dart';
+import 'package:face_engine/domain/services/metric_score.dart';
+import 'package:face_engine/domain/services/physiognomy_scoring.dart';
 
 // ────────────────────────── Primitives ──────────────────────────
 

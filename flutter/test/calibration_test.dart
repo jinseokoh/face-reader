@@ -6,8 +6,8 @@
 //      drop-in for `_attrQuantilesByShape`. Shape-conditional bias 근본 제거.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:face_reader/data/enums/gender.dart';
-import 'package:face_reader/domain/services/score_calibration.dart';
+import 'package:face_engine/data/enums/gender.dart';
+import 'package:face_engine/domain/services/score_calibration.dart';
 
 void main() {
   test('attribute calibration (Monte Carlo)', () {

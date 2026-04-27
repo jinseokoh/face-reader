@@ -1,4 +1,4 @@
-import 'package:face_reader/data/enums/metric_type.dart';
+import 'package:face_engine/data/enums/metric_type.dart';
 
 /// z-score → Metric Score (S) 변환 (정수, rule trigger 용도)
 /// ratio: 7단계 (-3 ~ +3), angle: 5단계 (-2 ~ +2), shape: 3단계 (-2 ~ +2)

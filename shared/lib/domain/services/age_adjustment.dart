@@ -1,4 +1,4 @@
-import 'package:face_reader/data/enums/gender.dart';
+import 'package:face_engine/data/enums/gender.dart';
 
 class _AgeOffset {
   final double male;

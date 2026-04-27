@@ -4,7 +4,7 @@
 /// 파일로 분리. 테스트·UI 양쪽에서 동일 adapter 사용.
 library;
 
-import '../../models/face_reading_report.dart';
+import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'compat_narrative.dart';
 import 'compat_pipeline.dart';
 

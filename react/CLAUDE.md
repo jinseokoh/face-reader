@@ -1,8 +1,8 @@
 # face-share-host — Claude Code 오리엔테이션
 
-Flutter 앱의 공유 link host. 카톡 등에서 받은 `/r/{shortId}` link 의 미리보기·랜딩·deep link 라우팅을 담당. **Cloudflare Workers + React Router v7 SSR**.
+Flutter 앱의 공유 link host. 카톡 등에서 받은 `/r/{token}` link 의 미리보기·랜딩·deep link 라우팅을 담당. **Cloudflare Workers + React Router v7 SSR. Storage 0, KV 0, DB 는 Flutter 가 이미 쓰고 있는 Supabase `metrics` 테이블 그대로. archetype·점수·highlights 는 Dart 엔진을 `/shared/` 패키지로 추출해 `build:shared` 가 dart compile js 로 컴파일 → React 가 그 산출물을 import 해서 raw `metrics_json` 위에 직접 돌린다. **Flutter (refine) 와 React 가 같은 엔진을 공유, schema drift 0.****
 
-마지막 업데이트: 2026-04-26 (initial scaffold)
+마지막 업데이트: 2026-04-27 (token-based architecture)
 
 세부 아키텍처·Flutter 계약·대안 stack: [DEEPLINK.md](./DEEPLINK.md) SSOT.
 
@@ -10,12 +10,14 @@ Flutter 앱의 공유 link host. 카톡 등에서 받은 `/r/{shortId}` link 의
 
 ## ⛔ 절대 룰
 
-1. **OG meta 는 반드시 server-side.** route 의 `meta` export 만 사용. client-only `<head>` 조작 금지 — 카톡 크롤러는 JS 실행 안 함, 동적 OG 가 안 보이면 share host 의 존재 의미가 없다.
-2. **Vercel 배포 금지.** 비용 안전성이 stack 결정 이유. Cloudflare Workers 외 deployment target 추가 금지.
-3. **친밀 챕터·갈등 시나리오 본문 노출 금지.** Supabase 에 저장하지 않고, 페이지에도 렌더하지 않는다. 30~50 ageGate 콘텐츠 + 카톡 단톡 leak 위험.
-4. **사용자 식별 정보 (이름·생년월일·얼굴 이미지) 노출 금지.** 공유 카드 페이지는 anonymous 접근 가능해야 한다.
-5. **expires_at 무시 금지.** loader 에서 `expires_at < now()` 면 410 처리. 무기한 공개 link 방지.
-6. **flutter/CLAUDE.md 의 SongMyung 폰트 룰 적용 X.** 외부 host 페이지라 system default 가 더 자연스러움. 카톡 미리보기에서 폰트 로딩 늦으면 카드 깨짐.
+1. **OG meta 는 반드시 server-side.** route 의 `meta` export 만 사용. client-only `<head>` 조작 금지 — 카톡 크롤러는 JS 실행 안 함.
+2. **Vercel 배포 금지.** Cloudflare Workers 외 deployment target 추가 금지.
+3. **친밀 챕터·갈등 시나리오 본문 노출 금지.** 응답에 절대 포함 금지. teaser·점수·archetype label 만 server 가 generate.
+4. **사용자 식별 정보 (이름·생년월일·얼굴 이미지) 노출 금지.** URL 에는 uuid base64url + sig 만. 본문 응답에도 마스킹된 값만.
+5. **R2/Storage 도입 금지.** 이미지·파일 host 0. 카드 PNG 는 Flutter 가 카톡 attach 로 직접 발송 (1회성). OG image 는 `/logo.png` static 1장.
+6. **친밀·갈등 본문 DB 저장 금지.** `metrics_json` 에는 rawValue + demographic 만 (Flutter 의 `FaceReadingReport.toJsonString()` v3 capture-only). archetype·rule·node·attribute 같은 derived 출력은 절대 DB 에 저장 금지 — 엔진이 load 시점 재계산.
+7. **engine 재이식 금지.** archetype·score 룰을 React 쪽에 손으로 다시 짜지 마라. Dart 엔진을 `/shared/` 로 추출 → `build:shared` 로 컴파일 → React import. 양쪽 룰 분기 절대 금지.
+7. **flutter/CLAUDE.md 의 SongMyung 폰트 룰 적용 X.** system default 가 카톡 미리보기에 자연스럽다.
 
 ---
 
@@ -23,50 +25,100 @@ Flutter 앱의 공유 link host. 카톡 등에서 받은 `/r/{shortId}` link 의
 
 | 경로 | 역할 |
 |---|---|
-| `workers/app.ts` | Cloudflare Worker fetch handler. RR7 `createRequestHandler` 으로 SSR 위임 |
-| `app/routes.ts` | RR7 라우트 정의 (file-based 안 씀, 명시적) |
-| `app/routes/share.tsx` | `/r/:shortId` 의 loader + meta + 컴포넌트. 핵심 파일 |
-| `app/components/ShareCard.tsx` | 카드 이미지 + 요약 + highlights (3 항목) |
-| `app/components/CTA.tsx` | useEffect 로 universal link 시도, 1.5s 후 store fallback |
-| `app/lib/supabase.ts` | `fetchShareCard(env, shortId)` — env 는 AppLoadContext.cloudflare.env |
-| `app/lib/types.ts` | `ShareCardData` 타입 SSOT (Flutter publish 와 1:1 매핑) |
-| `wrangler.jsonc` | 환경 변수·assets binding·compatibility flags |
+| `workers/app.ts` | Cloudflare Worker fetch handler |
+| `app/entry.server.tsx` | RR7 Cloudflare 런타임 entry (custom; `@react-router/node` 안 씀) |
+| `app/routes.ts` | 명시적 라우트 정의 |
+| `app/routes/_index.tsx` | landing — 데모 token 두 개 발행해 표시 |
+| `app/routes/share.tsx` | `/r/:shortId` loader (token decode → faces fetch → render) + meta + 컴포넌트 |
+| `app/routes/api.share.ts` | `POST /api/share` (sign-only 발행 endpoint, body: `{type, userA, userB?}` → `{shortId}`) |
+| `app/lib/codec.ts` | uuid ↔ bytes ↔ base64url helpers |
+| `app/lib/share-id.ts` | encode/decode + HMAC-SHA256 sig4 verify |
+| `app/lib/supabase.ts` | `fetchMetrics(env, ids)` — REST `/rest/v1/metrics?select=id,metrics_json,expires_at` 직접 호출, rawValue + demographic 만 받아옴 |
+| `app/lib/traits.ts` | `renderSolo` / `renderCompat` — `/shared/` 의 컴파일된 엔진 (`runEngine(raw)`) 호출 후 RenderedShare 합성. 현재는 stub. |
+| `app/lib/shared/face_engine.js` | `pnpm build:shared` 가 `/shared/lib/face_engine.dart` → dart compile js 로 만든 산출물. **commit 금지 (생성 산출물)**. |
+| `app/lib/types.ts` | `FaceRow`, `RenderedShare` SSOT |
+| `app/components/ShareCard.tsx` | 카드 UI (logo + 점수 + tagline + highlights[3]) |
+| `app/components/CTA.tsx` | universal link 시도 + 1.5s 후 store fallback |
+| `public/logo.png` | OG image (1장 static, `og:image` 로 사용) |
+| `wrangler.jsonc` | env vars + assets binding |
 | `public/.well-known/*` | AASA · assetlinks (prod 전 실값 교체 필수) |
 
 ---
 
-## 환경 변수 (Worker bindings)
+## 환경 변수
 
+`wrangler.jsonc` 의 `vars` (public, source-controlled OK):
 | key | 용도 |
 |---|---|
-| `SUPABASE_URL` | secret. share_card 조회 |
-| `SUPABASE_ANON_KEY` | secret. RLS 가 read-only 보장 전제 |
-| `APP_LINK_BASE` | `https://share.face.app/r/` — universal link prefix |
+| `APP_LINK_BASE` | universal link prefix (`https://face.kr/r/`) |
 | `APP_STORE_URL` | iOS App Store URL |
 | `PLAY_STORE_URL` | Google Play URL |
 | `APP_BUNDLE_ID_IOS` | AASA 검증 reference |
 | `APP_BUNDLE_ID_ANDROID` | assetlinks 검증 reference |
 
+Secrets (`wrangler secret put`, **절대 commit 금지**):
+| key | 용도 |
+|---|---|
+| `SHARE_TOKEN_SECRET` | HMAC-SHA256 secret (32 bytes random). token 위조 방지의 유일한 보호막 |
+| `SUPABASE_URL` | `faces` 테이블 read |
+| `SUPABASE_ANON_KEY` | RLS 가 read-only 보장 전제 |
+
 Local: `.dev.vars` (gitignored, `.dev.vars.example` 참고).
-Prod: `wrangler secret put` + `wrangler.jsonc` 의 `vars`.
+Prod: `wrangler secret put SHARE_TOKEN_SECRET` 등.
+
+---
+
+## URL & Token 구조
+
+```
+URL:   https://face.kr/r/{body}.{sig4}
+
+body  = base64url(uuid bytes), no padding
+       solo:    16 bytes → 22자
+       compat:  32 bytes (uuidA‖uuidB) → 43자
+sig4  = base64url( HMAC-SHA256(body_bytes, SHARE_TOKEN_SECRET).slice(0, 3) ) → 4자
+```
+
+URL 길이: solo 27자, compat 50자. carrying capacity:
+- 위조 막음 (24bit HMAC, brute force 1.6 × 10⁷ 시도)
+- expires/revoke 는 `secret rotation` 으로 일괄 (개별 revoke 는 supabase row 삭제 → 404)
 
 ---
 
 ## Flutter 쪽과의 계약
 
-[DEEPLINK.md](./DEEPLINK.md) 의 "계약" section 이 SSOT.
+`SharePublisher` (P0, Flutter):
+1. 사용자 [공유] 탭
+2. `RepaintBoundary` → 1200×630 PNG 합성 (in-memory, **storage 업로드 0**)
+3. `POST https://face.kr/api/share { type, userA, userB? }` → `{ shortId }` 받음
+4. `Share.shareXFiles([XFile.fromData(pngBytes, ...)], text: 'https://face.kr/r/$shortId')` 으로 카톡·OS share sheet 발송
 
-요약:
+실제 테이블은 Flutter 가 이미 쓰고 있는 `metrics` (id, user_id, metrics_json, source, ethnicity, gender, age_group, expires_at, alias).
 
-| 항목 | Flutter 책임 | 이 앱 책임 |
-|---|---|---|
-| `shortId` | nanoid 8자리 base62 생성 | 그대로 받음 |
-| 카드 PNG | `RepaintBoundary` → 1200×630 PNG → R2/Storage | URL 만 받아 렌더 |
-| Supabase insert | `share_card` row + 이미지 storage | row read only |
-| URL 발송 | `share_plus` 의 text 에 URL 첨부 | OS sniff 기반 fallback |
-| Deep link 라우팅 | `app_links` 패키지로 `/r/:shortId` 수신 | universal link attempt |
+**Schema 변경 0**. `metrics` 테이블 그대로. anon 이 raw `metrics_json` 을 읽을 수 있도록 RLS policy 한 줄만 추가:
 
-**계약 변경 시 양쪽 동시 PR 필수.** Flutter 의 share publish 함수와 이 앱의 `fetchShareCard` schema 가 한 쌍.
+```sql
+create policy "anon read non-expired" on metrics
+  for select to anon
+  using (expires_at > now());
+```
+
+`metrics_json` 안에는 PII 0 — rawValue (17 frontal + 8 lateral 의 ratio/angle 숫자) + demographic (ethnicity/gender/ageGroup) + faceShape 만. 이름·생년월일·얼굴 이미지·landmark 좌표 모두 안 들어감. anon 노출 안전.
+
+archetype·score 는 React 쪽에서 `/shared/` 의 컴파일된 엔진을 호출해 즉석 계산.
+
+`share_payload` jsonb shape (Flutter 가 `saveMetrics` 시점에 함께 채움):
+```json
+{
+  "score": 78,
+  "archetype": "온화한 학자형",
+  "five_element": "earth",                  // wood|fire|earth|metal|water
+  "short_summary": "균형 잡힌 흐름이 보이는 얼굴.",
+  "highlights": [{"title": "面相 — 균형", "detail": "이마·코·턱 비율이 안정적"}, ...]
+}
+```
+
+**share_payload 에 절대 넣지 말 것**: 친밀 챕터 본문, 갈등 시나리오, 이름, 생년월일, 얼굴 이미지, raw landmark, z-score map, archetype 외 personalized 본문. `metrics_json` 의 그 어떤 부분도 옮겨 담지 말 것 — share_payload 는 anon 이 view 통해 읽으므로 rendering 에 필요한 minimal subset 만.
 
 ---
 
@@ -74,15 +126,15 @@ Prod: `wrangler secret put` + `wrangler.jsonc` 의 `vars`.
 
 | 우선 | 작업 | 재개 지시 |
 |---|---|---|
-| P0 | Supabase `share_card` 테이블 마이그레이션 | `"DEEPLINK.md §schema 의 SQL 을 supabase/migrations/ 에 마이그레이션으로 추가, RLS 는 select-only public"` |
-| P0 | Flutter `SharePublisher` 작성 | `"flutter/lib/domain/services/share/share_publisher.dart 에 publish(report) → shortId. nanoid+supabase insert+R2 upload+share_plus 호출"` |
-| P0 | AASA / assetlinks 실값 교체 | `"public/.well-known/ 두 파일에 실제 TEAMID + Play Console SHA256 박기. flutter/ios/Runner/Runner.entitlements 에 associated-domains 추가"` |
-| P0 | Flutter `app_links` 라우팅 | `"flutter/lib/main.dart 에서 app_links 초기화 + /r/:shortId path → ReportPage 로 라우팅. cold start + warm 양쪽"` |
-| P1 | OG image 동적 생성 (`/og/:shortId.png` route) | `"app/routes/og.\$shortId.tsx 추가. satori + @resvg/resvg-js 로 PNG 합성. og_image 가 비어있으면 이 endpoint 로 fallback"` |
-| P1 | expires_at 만료 케이스 UI | `"loader 에서 throw new Response('Expired', { status: 410 }). root.tsx ErrorBoundary 의 410 케이스 다듬기"` |
-| P2 | KakaoLink Feed Template (옵션) | `"flutter/lib/domain/services/share/kakao_share.dart — KakaoLink SDK Feed template 으로 카드 카드디자인·복수 버튼 직접 제어"` |
-| P2 | 카톡 in-app browser fallback | `"CTA.tsx 에 카톡 in-app browser UA 감지 → intent:// (Android) 또는 외부 브라우저 강제 open"` |
-| P3 | Analytics (link clicked → app opened → install funnel) | `"Cloudflare Analytics Engine 또는 Plausible 으로 클릭·체류·conversion 이벤트 측정"` |
+| P0 | Supabase RLS policy — anon 이 만료 안 된 metrics row select 가능 | `"supabase/migrations/ 에 create policy 'anon read non-expired' on metrics for select to anon using (expires_at > now())"` |
+| P0 | `/shared/` Dart 패키지 작성 + 엔진 추출 | `"flutter/lib/domain/services/{physiognomy_scoring,attribute_derivation,attribute_normalize,score_calibration,archetype}.dart + face_metrics + reference_data 를 /shared/lib/ 로 옮기고 face_engine.dart 라는 단일 entry 에서 runEngine(rawJson) → ShareOutput 노출. flutter/pubspec.yaml 은 path: ../shared 로 의존, react/package.json 에 build:shared 스크립트 (dart compile js)"` |
+| P0 | React 가 컴파일 산출물 import | `"app/lib/traits.ts 의 runEngineStub 을 /shared/dist/face_engine.js (또는 react/app/lib/shared/face_engine.js) 로 import 교체. build:shared 산출물은 .gitignore"` |
+| P0 | Flutter `SharePublisher` 작성 | `"flutter/lib/domain/services/share/share_publisher.dart 에 publish({uuidA, uuidB?, pngBytes}). POST /api/share → shortId → share_plus shareXFiles 첨부"` |
+| P0 | `SHARE_TOKEN_SECRET` 발행·등록 | `"openssl rand -base64 32 → wrangler secret put SHARE_TOKEN_SECRET"` |
+| P0 | AASA / assetlinks 실값 교체 | `"public/.well-known/ 두 파일에 실제 TEAMID + Play Console SHA256. flutter/ios/Runner/Runner.entitlements 에 associated-domains"` |
+| P0 | Flutter `app_links` 라우팅 | `"flutter/lib/main.dart 에서 app_links 초기화 + /r/:token path → ReportPage 라우팅. cold start + warm 양쪽"` |
+| P1 | 카톡 in-app browser fallback | `"CTA.tsx 에 카톡 in-app browser UA 감지 → intent:// (Android) 또는 외부 브라우저 강제 open"` |
+| P2 | Analytics (link clicked → app opened → install funnel) | `"Cloudflare Analytics Engine 또는 Plausible 으로 클릭·체류·conversion"` |
 
 ---
 
@@ -91,18 +143,20 @@ Prod: `wrangler secret put` + `wrangler.jsonc` 의 `vars`.
 ```bash
 cd react
 pnpm install
-pnpm dev          # http://localhost:5173
+pnpm dev          # http://localhost:5173 (또는 5174/5175)
 pnpm typecheck
 pnpm build
 pnpm preview      # wrangler dev (production worker simulation)
 pnpm deploy       # Cloudflare 배포
 ```
 
+Demo: dev server 띄우고 `/` 가면 데모 solo / 데모 compat 카드 token link 두 개 자동 발행. uuid `00000000-0000-0000-0000-XXXXXXXXXXXX` 패턴은 supabase 안 거치고 inline demo data 로 응답 (dev 만, supabase 미설정 환경에서도 동작).
+
 ---
 
 ## 디자인 룰
 
-- **system font** 만 사용. SongMyung 등 web font 도입 금지 (카톡 미리보기에서 FOIT 로 카드 깨짐).
+- **system font** 만 사용. SongMyung 등 web font 도입 금지.
 - **5단 hierarchy**: 24/16/14/13/12 px. 그 외 size 추가 금지.
 - **컬러 4개**: `#1a1a1a` (text), `#666` (caption), `#c44` (accent — 점수 강조 only), `#f7f7f8` (bg).
-- 카드 이미지는 **1200×630** OG 표준 ratio. ratio 깨지면 카톡·페북 미리보기에서 crop 됨.
+- OG image 는 `public/logo.png` static 1장. 1200×630 ratio 권장 (현재 logo.png 가 ratio 안 맞으면 카톡 미리보기에서 letterbox/crop 됨 — 디자이너에게 확인 필요).

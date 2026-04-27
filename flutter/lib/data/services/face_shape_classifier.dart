@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:tflite_flutter/tflite_flutter.dart';
 
-import 'package:face_reader/data/enums/face_shape.dart';
+import 'package:face_engine/data/enums/face_shape.dart';
 
 /// 28-feature face-shape classifier (MLP, TFLite FP16, ~12 KB).
 ///

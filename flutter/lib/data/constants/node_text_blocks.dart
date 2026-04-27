@@ -14,7 +14,7 @@
 /// 충분. `resolveNodeBody(block, gender)` 가 male/female 우선 선택, 없으면 shared.
 library;
 
-import 'package:face_reader/data/enums/gender.dart';
+import 'package:face_engine/data/enums/gender.dart';
 
 /// 한 band 의 본문. 성별 분기는 선택적 — male/female 이 null 이면 shared 로 폴백.
 class NodeTextBlock {

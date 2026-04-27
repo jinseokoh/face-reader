@@ -1,4 +1,4 @@
-import 'package:face_reader/data/enums/gender.dart';
+import 'package:face_engine/data/enums/gender.dart';
 
 /// 나이대별 마무리 텍스트 (true: 50세 이상, false: 50세 미만)
 const Map<bool, String> ageClosings = {

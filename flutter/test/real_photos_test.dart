@@ -12,12 +12,12 @@
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:face_reader/data/constants/face_reference_data.dart';
-import 'package:face_reader/data/enums/attribute.dart';
-import 'package:face_reader/data/enums/gender.dart';
-import 'package:face_reader/domain/services/attribute_derivation.dart';
-import 'package:face_reader/domain/services/attribute_normalize.dart';
-import 'package:face_reader/domain/services/physiognomy_scoring.dart';
+import 'package:face_engine/data/constants/face_reference_data.dart';
+import 'package:face_engine/data/enums/attribute.dart';
+import 'package:face_engine/data/enums/gender.dart';
+import 'package:face_engine/domain/services/attribute_derivation.dart';
+import 'package:face_engine/domain/services/attribute_normalize.dart';
+import 'package:face_engine/domain/services/physiognomy_scoring.dart';
 
 // z-scores extracted via /tmp/extract_face_metrics.py against the
 // MediaPipe-calibrated eastAsian female reference (face_reference_data.dart).

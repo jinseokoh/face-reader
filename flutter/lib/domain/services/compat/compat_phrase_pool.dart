@@ -5,7 +5,7 @@
 /// 본문 text 에는 한자를 쓰지 않는다.
 library;
 
-import '../../../data/enums/gender.dart';
+import 'package:face_engine/data/enums/gender.dart';
 import 'compat_label.dart';
 import 'five_element.dart';
 import 'yinyang_matcher.dart';

@@ -1,17 +1,16 @@
-import type { ShareCardData } from "../lib/types";
+import type { RenderedShare } from "../lib/types";
 
-export function ShareCard({ data }: { data: ShareCardData }) {
-  const scoreLabel = data.kind === "compat" ? "둘의 궁합" : "관상 점수";
+export function ShareCard({ data }: { data: RenderedShare }) {
   return (
     <article className="card">
-      <img className="card-image" src={data.cardImageUrl} alt="공유 카드" />
-      <div className="card-summary">
+      <header className="card-header">
+        <img className="card-logo" src="/logo.png" alt="AI 관상가" />
         <p className="card-label">{data.label}</p>
         <h1 className="card-score">
-          {scoreLabel} <strong>{data.totalScore}점</strong>
+          <strong>{data.score}점</strong>
         </h1>
-        <p className="card-tagline">{data.tagline}</p>
-      </div>
+        <p className="card-tagline">{data.summary}</p>
+      </header>
       {data.highlights.length > 0 && (
         <ul className="card-highlights">
           {data.highlights.map((h) => (

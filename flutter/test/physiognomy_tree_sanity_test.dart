@@ -1,9 +1,9 @@
-import 'package:face_reader/data/constants/face_reference_data.dart';
-import 'package:face_reader/data/enums/attribute.dart';
-import 'package:face_reader/data/enums/ethnicity.dart';
-import 'package:face_reader/data/enums/gender.dart';
-import 'package:face_reader/domain/models/physiognomy_tree.dart';
-import 'package:face_reader/domain/services/attribute_derivation.dart';
+import 'package:face_engine/data/constants/face_reference_data.dart';
+import 'package:face_engine/data/enums/attribute.dart';
+import 'package:face_engine/data/enums/ethnicity.dart';
+import 'package:face_engine/data/enums/gender.dart';
+import 'package:face_engine/domain/models/physiognomy_tree.dart';
+import 'package:face_engine/domain/services/attribute_derivation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

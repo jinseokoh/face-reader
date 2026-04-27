@@ -1,6 +1,6 @@
-import 'package:face_reader/data/enums/ethnicity.dart';
-import 'package:face_reader/data/enums/gender.dart';
-import 'package:face_reader/data/enums/metric_type.dart';
+import 'package:face_engine/data/enums/ethnicity.dart';
+import 'package:face_engine/data/enums/gender.dart';
+import 'package:face_engine/data/enums/metric_type.dart';
 
 const metricInfoList = [
   // FACE (3)

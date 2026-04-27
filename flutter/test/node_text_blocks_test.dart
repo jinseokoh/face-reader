@@ -10,8 +10,8 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:face_reader/data/constants/node_text_blocks.dart';
-import 'package:face_reader/data/enums/gender.dart';
-import 'package:face_reader/domain/models/physiognomy_tree.dart';
+import 'package:face_engine/data/enums/gender.dart';
+import 'package:face_engine/domain/models/physiognomy_tree.dart';
 
 void main() {
   const genderSplitNodes = {'eye', 'nose', 'mouth', 'cheekbone'};

@@ -1,90 +1,93 @@
-import { createClient } from "@supabase/supabase-js";
-import type { ShareCardData } from "./types";
+import type { MetricsRow, RawMetrics } from "./types";
 
-export async function fetchShareCard(
-  env: Env,
-  shortId: string,
-): Promise<ShareCardData | null> {
-  // demo fallback so /r/demo 가 supabase 없이도 동작.
-  if (shortId === "demo") return demoCard(env);
+const SELECT = "id,metrics_json,expires_at";
+
+export async function fetchMetrics(env: Env, ids: string[]): Promise<MetricsRow[]> {
+  const demoOnly = ids.every((id) => id.startsWith("00000000-0000-0000-0000-"));
+  if (demoOnly) return ids.map(demoRow);
 
   if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) {
     console.warn("[share-host] SUPABASE_* env 미설정");
-    return null;
+    return [];
   }
 
-  const sb = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
-    auth: { persistSession: false },
+  const url =
+    `${env.SUPABASE_URL}/rest/v1/metrics` +
+    `?id=in.(${ids.map(encodeURIComponent).join(",")})&select=${SELECT}`;
+  const res = await fetch(url, {
+    headers: {
+      apikey: env.SUPABASE_ANON_KEY,
+      authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
+    },
   });
-
-  const { data, error } = await sb
-    .from("share_card")
-    .select(
-      "id, kind, card_image_url, label, total_score, tagline, highlights, og_title, og_description, og_image, expires_at",
-    )
-    .eq("id", shortId)
-    .maybeSingle();
-
-  if (error) {
-    console.error("[share-host] supabase error", error);
-    return null;
+  if (!res.ok) {
+    console.error("[share-host] supabase status", res.status, await res.text());
+    return [];
   }
-  if (!data) return null;
-  return mapRow(data, env);
+  const rows = (await res.json()) as Array<{
+    id: string;
+    metrics_json: string | null;
+    expires_at: string | null;
+  }>;
+
+  const now = Date.now();
+  const map = new Map<string, MetricsRow>();
+  for (const r of rows) {
+    if (!r.metrics_json) continue;
+    if (r.expires_at && new Date(r.expires_at).getTime() <= now) continue;
+    try {
+      const raw = JSON.parse(r.metrics_json) as RawMetrics;
+      map.set(r.id, { id: r.id, raw });
+    } catch (e) {
+      console.error("[share-host] metrics_json parse fail", r.id, e);
+    }
+  }
+  return ids.map((id) => map.get(id)).filter((r): r is MetricsRow => Boolean(r));
 }
 
-interface Row {
-  id: string;
-  kind: ShareCardData["kind"];
-  card_image_url: string;
-  label: string;
-  total_score: number;
-  tagline: string;
-  highlights: ShareCardData["highlights"] | null;
-  og_title: string;
-  og_description: string;
-  og_image: string | null;
-  expires_at: string | null;
-}
-
-function mapRow(row: Row, env: Env): ShareCardData {
+function demoRow(id: string): MetricsRow {
   return {
-    shortId: row.id,
-    kind: row.kind,
-    cardImageUrl: row.card_image_url,
-    label: row.label,
-    totalScore: row.total_score,
-    tagline: row.tagline,
-    highlights: row.highlights ?? [],
-    ogTitle: row.og_title,
-    ogDescription: row.og_description,
-    ogImage: row.og_image ?? row.card_image_url,
-    expiresAt: row.expires_at,
-    appLinkBase: env.APP_LINK_BASE,
-    appStoreUrl: env.APP_STORE_URL,
-    playStoreUrl: env.PLAY_STORE_URL,
+    id,
+    raw: {
+      schemaVersion: 1,
+      ethnicity: "eastAsian",
+      gender: "female",
+      ageGroup: "thirties",
+      timestamp: "2026-04-27T00:00:00.000Z",
+      source: "album",
+      metrics: DEMO_RAW_METRICS,
+      faceShape: "oval",
+    } as unknown as RawMetrics,
   };
 }
 
-function demoCard(env: Env): ShareCardData {
-  return {
-    shortId: "demo",
-    kind: "compat",
-    cardImageUrl: "https://picsum.photos/seed/face-demo/1200/630",
-    label: "잘 맞는 흐름",
-    totalScore: 87,
-    tagline: "끌림이 자연스럽게 이어지는 관계입니다.",
-    highlights: [
-      { title: "五行 — 相生", detail: "기운이 서로를 살리는 자리" },
-      { title: "妻妾宮", detail: "관계 시작에 방어가 적은 얼굴" },
-      { title: "性情 — 친밀", detail: "분위기보다 솔직함이 통하는 조합" },
-    ],
-    ogTitle: "둘의 궁합 87점 — AI 관상가",
-    ogDescription: "끌림이 자연스럽게 이어지는 관계입니다.",
-    ogImage: "https://picsum.photos/seed/face-demo/1200/630",
-    expiresAt: null,
-    appLinkBase: env.APP_LINK_BASE,
-    appStoreUrl: env.APP_STORE_URL,
-    playStoreUrl: env.PLAY_STORE_URL,
-  };
-}
+// 17 frontal rawValue + extra calibration metrics (eyebrowLength, chinAngle 등).
+// 데모 페이지·smoke test 용 — 실 프로덕션 row 는 Flutter 가 mediapipe 로 채운다.
+const DEMO_RAW_METRICS: Record<string, number> = {
+  faceAspectRatio: 1.30,
+  upperFaceRatio: 0.33,
+  midFaceRatio: 0.32,
+  lowerFaceRatio: 0.35,
+  faceTaperRatio: 0.78,
+  lowerFaceFullness: 0.60,
+  gonialAngle: 122.0,
+  intercanthalRatio: 0.30,
+  eyeFissureRatio: 0.31,
+  eyeCanthalTilt: 8.0,
+  eyebrowThickness: 0.018,
+  browEyeDistance: 0.045,
+  nasalWidthRatio: 0.28,
+  nasalHeightRatio: 0.42,
+  mouthWidthRatio: 0.42,
+  mouthCornerAngle: 5.0,
+  lipFullnessRatio: 0.38,
+  philtrumLength: 0.10,
+  foreheadWidth: 0.78,
+  cheekboneWidth: 0.93,
+  chinAngle: 130.0,
+  eyeAspect: 0.32,
+  eyebrowCurvature: 0.06,
+  eyebrowTiltDirection: 1.0,
+  upperVsLowerLipRatio: 0.55,
+  browSpacing: 0.18,
+};

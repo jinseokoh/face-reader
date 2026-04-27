@@ -8,17 +8,17 @@ import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:face_reader/data/constants/face_reference_data.dart';
-import 'package:face_reader/data/enums/age_group.dart';
-import 'package:face_reader/data/enums/attribute.dart';
-import 'package:face_reader/data/enums/ethnicity.dart';
-import 'package:face_reader/data/enums/face_shape.dart';
-import 'package:face_reader/data/enums/gender.dart';
-import 'package:face_reader/domain/models/face_reading_report.dart';
-import 'package:face_reader/domain/services/archetype.dart';
+import 'package:face_engine/data/constants/face_reference_data.dart';
+import 'package:face_engine/data/enums/age_group.dart';
+import 'package:face_engine/data/enums/attribute.dart';
+import 'package:face_engine/data/enums/ethnicity.dart';
+import 'package:face_engine/data/enums/face_shape.dart';
+import 'package:face_engine/data/enums/gender.dart';
+import 'package:face_engine/domain/models/face_reading_report.dart';
+import 'package:face_engine/domain/services/archetype.dart';
 import 'package:face_reader/domain/services/compat/compat_adapter.dart';
 import 'package:face_reader/domain/services/mc_fixtures.dart';
-import 'package:face_reader/domain/services/physiognomy_scoring.dart';
+import 'package:face_engine/domain/services/physiognomy_scoring.dart';
 
 double _normal(Random rng) {
   double u1, u2;

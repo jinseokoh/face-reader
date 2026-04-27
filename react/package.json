@@ -1,5 +1,5 @@
 {
-  "name": "face-share-host",
+  "name": "face-kr",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,10 +8,10 @@
     "deploy": "wrangler deploy",
     "preview": "wrangler dev",
     "typecheck": "react-router typegen && tsc -b",
-    "cf-typegen": "wrangler types"
+    "cf-typegen": "wrangler types",
+    "build:shared": "cd ../shared && dart compile js -O2 lib/face_engine.dart -o ../react/app/lib/shared/face_engine.js"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.45.4",
     "isbot": "^5.1.17",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -26,6 +26,6 @@
     "typescript": "^5.6.0",
     "vite": "^6.0.0",
     "vite-tsconfig-paths": "^5.1.0",
-    "wrangler": "^3.85.0"
+    "wrangler": "^4.85.0"
   }
 }

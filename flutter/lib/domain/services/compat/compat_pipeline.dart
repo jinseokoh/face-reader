@@ -4,9 +4,9 @@
 /// 이 파이프라인으로 매번 재계산. 엔진 버전 업은 Hive drop 없이 이루어진다.
 library;
 
-import '../../../data/enums/age_group.dart';
-import '../../../data/enums/face_shape.dart';
-import '../../../data/enums/gender.dart';
+import 'package:face_engine/data/enums/age_group.dart';
+import 'package:face_engine/data/enums/face_shape.dart';
+import 'package:face_engine/data/enums/gender.dart';
 import '../yin_yang.dart';
 import 'compat_aggregator.dart';
 import 'compat_label.dart';

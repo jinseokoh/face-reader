@@ -1,13 +1,13 @@
 import 'dart:io';
 
 import 'package:face_reader/core/theme.dart';
-import 'package:face_reader/data/enums/age_group.dart';
-import 'package:face_reader/data/enums/face_shape.dart';
-import 'package:face_reader/data/enums/gender.dart';
+import 'package:face_engine/data/enums/age_group.dart';
+import 'package:face_engine/data/enums/face_shape.dart';
+import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_reader/data/services/analytics_service.dart';
 import 'package:face_reader/data/services/compat_unlock_service.dart';
 import 'package:face_reader/data/services/supabase_service.dart';
-import 'package:face_reader/domain/models/face_reading_report.dart';
+import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_reader/domain/services/compat/compat_adapter.dart';
 import 'package:face_reader/domain/services/compat/compat_label.dart';
 import 'package:face_reader/domain/services/compat/compat_pair_key.dart';

@@ -1,23 +1,42 @@
-export type ShareCardKind = "physiognomy" | "compat";
+export type FiveElement = "wood" | "fire" | "earth" | "metal" | "water";
 
 export interface Highlight {
   title: string;
   detail: string;
 }
 
-export interface ShareCardData {
-  shortId: string;
-  kind: ShareCardKind;
-  cardImageUrl: string;
+export interface RawMetrics {
+  schemaVersion: number;
+  ethnicity: string;
+  gender: string;
+  ageGroup: string;
+  source: string;
+  metrics: Record<string, number>;
+  lateralMetrics?: Record<string, number>;
+  faceShapeLabel?: string;
+  faceShape: string;
+}
+
+export interface MetricsRow {
+  id: string;
+  raw: RawMetrics;
+}
+
+export type ShareKind = "solo" | "compat";
+
+export interface RenderedShare {
+  type: ShareKind;
+  title: string;
   label: string;
-  totalScore: number;
-  tagline: string;
+  score: number;
+  summary: string;
   highlights: Highlight[];
   ogTitle: string;
   ogDescription: string;
   ogImage: string;
-  expiresAt: string | null;
+  canonicalUrl: string;
   appLinkBase: string;
   appStoreUrl: string;
   playStoreUrl: string;
+  shortId: string;
 }

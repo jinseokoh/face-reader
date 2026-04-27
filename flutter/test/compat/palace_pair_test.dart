@@ -13,14 +13,14 @@ import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:face_reader/data/constants/face_reference_data.dart';
-import 'package:face_reader/data/enums/age_group.dart';
+import 'package:face_engine/data/constants/face_reference_data.dart';
+import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_reader/domain/services/compat/palace.dart';
 import 'package:face_reader/domain/services/compat/palace_pair_matcher.dart';
 import 'package:face_reader/domain/services/compat/palace_rules.dart';
 import 'package:face_reader/domain/services/compat/palace_state.dart';
 import 'package:face_reader/domain/services/mc_fixtures.dart';
-import 'package:face_reader/domain/services/physiognomy_scoring.dart';
+import 'package:face_engine/domain/services/physiognomy_scoring.dart';
 
 double _normal(Random rng) {
   double u1, u2;

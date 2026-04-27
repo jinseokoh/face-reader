@@ -55,6 +55,10 @@ dependencies:
   firebase_core: ^4.7.0
   firebase_analytics: ^12.3.0
 
+  # Shared physiognomy engine (also consumed by react/ via dart compile js).
+  face_engine:
+    path: ../shared
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

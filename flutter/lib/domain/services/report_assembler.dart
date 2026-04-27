@@ -1,7 +1,7 @@
 import 'package:face_reader/data/constants/archetype_text_blocks.dart';
 import 'package:face_reader/data/constants/rule_text_blocks.dart';
-import 'package:face_reader/data/enums/age_group.dart';
-import 'package:face_reader/domain/models/face_reading_report.dart';
+import 'package:face_engine/data/enums/age_group.dart';
+import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_reader/domain/services/life_question_narrative.dart';
 
 /// 조립된 본문 + 원본 rule block 참조.

@@ -9,7 +9,7 @@
 /// 출력된 state 는 palace_pair_matcher 의 입력.
 library;
 
-import 'package:face_reader/data/enums/age_group.dart';
+import 'package:face_engine/data/enums/age_group.dart';
 
 import 'palace.dart';
 

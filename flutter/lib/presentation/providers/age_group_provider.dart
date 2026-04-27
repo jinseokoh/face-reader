@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 import 'package:face_reader/core/hive/hive_setup.dart';
-import 'package:face_reader/data/enums/age_group.dart';
+import 'package:face_engine/data/enums/age_group.dart';
 
 const _key = 'ageGroup';
 

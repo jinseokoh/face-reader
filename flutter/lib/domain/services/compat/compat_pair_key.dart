@@ -5,7 +5,7 @@
 /// 지불이 유효하게 유지된다. Hive local timestamp 기반 key 는 사용하지 않음.
 library;
 
-import '../../models/face_reading_report.dart';
+import 'package:face_engine/domain/models/face_reading_report.dart';
 
 /// 두 report 모두 supabaseId 가 있으면 pair_key 반환, 하나라도 null 이면 null.
 String? tryPairKey(FaceReadingReport my, FaceReadingReport album) {

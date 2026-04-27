@@ -14,13 +14,13 @@
 ///   5. age A-## (50+) + lateral L-## (3/4-view) + gender delta
 library;
 
-import 'package:flutter/foundation.dart' show visibleForTesting;
+import 'package:meta/meta.dart';
 
-import 'package:face_reader/data/enums/attribute.dart';
-import 'package:face_reader/data/enums/face_shape.dart';
-import 'package:face_reader/data/enums/gender.dart';
-import 'package:face_reader/domain/models/physiognomy_tree.dart';
-import 'package:face_reader/domain/services/physiognomy_scoring.dart';
+import 'package:face_engine/data/enums/attribute.dart';
+import 'package:face_engine/data/enums/face_shape.dart';
+import 'package:face_engine/data/enums/gender.dart';
+import 'package:face_engine/domain/models/physiognomy_tree.dart';
+import 'package:face_engine/domain/services/physiognomy_scoring.dart';
 
 // ───────────────────────── Types ─────────────────────────
 

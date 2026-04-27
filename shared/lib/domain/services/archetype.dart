@@ -1,5 +1,5 @@
-import 'package:face_reader/data/enums/attribute.dart';
-import 'package:face_reader/data/enums/face_shape.dart';
+import 'package:face_engine/data/enums/attribute.dart';
+import 'package:face_engine/data/enums/face_shape.dart';
 
 class ArchetypeResult {
   final Attribute primary;

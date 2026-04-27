@@ -18,12 +18,12 @@ library;
 
 import 'dart:math';
 
-import 'package:face_reader/data/constants/face_reference_data.dart';
-import 'package:face_reader/data/enums/attribute.dart';
-import 'package:face_reader/data/enums/face_shape.dart';
-import 'package:face_reader/data/enums/gender.dart';
-import 'package:face_reader/domain/services/attribute_derivation.dart';
-import 'package:face_reader/domain/services/physiognomy_scoring.dart';
+import 'package:face_engine/data/constants/face_reference_data.dart';
+import 'package:face_engine/data/enums/attribute.dart';
+import 'package:face_engine/data/enums/face_shape.dart';
+import 'package:face_engine/data/enums/gender.dart';
+import 'package:face_engine/domain/services/attribute_derivation.dart';
+import 'package:face_engine/domain/services/physiognomy_scoring.dart';
 
 /// 21-point quantile array per attribute (p0, p5, …, p100).
 Map<Attribute, List<double>> calibrateQuantiles({

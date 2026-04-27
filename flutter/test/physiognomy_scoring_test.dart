@@ -1,4 +1,4 @@
-import 'package:face_reader/domain/services/physiognomy_scoring.dart';
+import 'package:face_engine/domain/services/physiognomy_scoring.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

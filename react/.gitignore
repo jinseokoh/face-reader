@@ -3,6 +3,8 @@ node_modules
 .wrangler
 build
 dist
+app/lib/shared/face_engine.js
+app/lib/shared/face_engine.js.map
 .dev.vars
 .env*.local
 *.log

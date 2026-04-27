@@ -1,7 +1,7 @@
-import 'package:face_reader/data/enums/age_group.dart';
-import 'package:face_reader/data/enums/attribute.dart';
-import 'package:face_reader/data/enums/gender.dart';
-import 'package:face_reader/domain/models/face_reading_report.dart';
+import 'package:face_engine/data/enums/age_group.dart';
+import 'package:face_engine/data/enums/attribute.dart';
+import 'package:face_engine/data/enums/gender.dart';
+import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_reader/domain/services/yin_yang.dart';
 
 const _nodeDominantPalaceKo = <String, String>{

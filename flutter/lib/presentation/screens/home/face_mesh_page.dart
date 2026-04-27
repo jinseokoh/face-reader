@@ -5,7 +5,7 @@ import 'dart:math';
 import 'package:camera/camera.dart';
 import 'package:face_reader/data/services/supabase_service.dart';
 import 'package:face_reader/domain/models/face_analysis.dart';
-import 'package:face_reader/domain/models/face_reading_report.dart';
+import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_reader/domain/services/face_metrics_lateral.dart';
 import 'package:face_reader/presentation/providers/age_group_provider.dart';
 import 'package:face_reader/presentation/providers/ethnicity_provider.dart';

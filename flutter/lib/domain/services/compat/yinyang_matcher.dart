@@ -9,7 +9,7 @@
 /// - 성별 정합 (남陽 / 여陰 기대) 어긋남 → -4 (낙인 아닌 현대적 교차)
 library;
 
-import '../../../data/enums/gender.dart';
+import 'package:face_engine/data/enums/gender.dart';
 import '../yin_yang.dart';
 
 enum YinYangPatternKind {

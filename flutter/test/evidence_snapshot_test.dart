@@ -8,11 +8,11 @@
 // 실행 후 failing snapshot 의 actual 을 expected 에 복사. 재보정/룰 추가는
 // 이 파일의 goldenSnapshot 교체를 항상 동반한다.
 
-import 'package:face_reader/data/enums/attribute.dart';
-import 'package:face_reader/data/enums/gender.dart';
-import 'package:face_reader/domain/services/attribute_derivation.dart';
-import 'package:face_reader/domain/services/attribute_normalize.dart';
-import 'package:face_reader/domain/services/physiognomy_scoring.dart';
+import 'package:face_engine/data/enums/attribute.dart';
+import 'package:face_engine/data/enums/gender.dart';
+import 'package:face_engine/domain/services/attribute_derivation.dart';
+import 'package:face_engine/domain/services/attribute_normalize.dart';
+import 'package:face_engine/domain/services/physiognomy_scoring.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// "재물·권력 중정 강세" 프로파일.

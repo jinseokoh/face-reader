@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
-import 'package:face_reader/domain/models/face_reading_report.dart';
+import 'package:face_engine/domain/models/face_reading_report.dart';
 
 class SupabaseService {
   static final SupabaseService _instance = SupabaseService._();

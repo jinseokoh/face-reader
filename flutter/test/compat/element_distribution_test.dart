@@ -14,8 +14,8 @@ import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:face_reader/data/constants/face_reference_data.dart';
-import 'package:face_reader/data/enums/face_shape.dart';
+import 'package:face_engine/data/constants/face_reference_data.dart';
+import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_reader/domain/services/compat/element_classifier.dart';
 import 'package:face_reader/domain/services/compat/element_matrix.dart';
 import 'package:face_reader/domain/services/compat/five_element.dart';

@@ -2,14 +2,14 @@
 // 첫 load → 재serialize → 다시 load 가 동일한 결과를 내야 한다. pull-to-refresh
 // 를 여러 번 해도 분석기록이 사라지지 않음을 보증.
 
-import 'package:face_reader/data/constants/face_reference_data.dart';
-import 'package:face_reader/data/enums/age_group.dart';
-import 'package:face_reader/data/enums/ethnicity.dart';
-import 'package:face_reader/data/enums/face_shape.dart';
-import 'package:face_reader/data/enums/gender.dart';
-import 'package:face_reader/domain/models/face_reading_report.dart';
-import 'package:face_reader/domain/services/archetype.dart';
-import 'package:face_reader/data/enums/attribute.dart';
+import 'package:face_engine/data/constants/face_reference_data.dart';
+import 'package:face_engine/data/enums/age_group.dart';
+import 'package:face_engine/data/enums/ethnicity.dart';
+import 'package:face_engine/data/enums/face_shape.dart';
+import 'package:face_engine/data/enums/gender.dart';
+import 'package:face_engine/domain/models/face_reading_report.dart';
+import 'package:face_engine/domain/services/archetype.dart';
+import 'package:face_engine/data/enums/attribute.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

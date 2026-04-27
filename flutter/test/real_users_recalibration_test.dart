@@ -16,15 +16,15 @@ import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:face_reader/data/constants/face_reference_data.dart';
-import 'package:face_reader/data/enums/attribute.dart';
-import 'package:face_reader/data/enums/ethnicity.dart';
-import 'package:face_reader/data/enums/face_shape.dart';
-import 'package:face_reader/data/enums/gender.dart';
-import 'package:face_reader/domain/services/archetype.dart';
-import 'package:face_reader/domain/services/attribute_derivation.dart';
-import 'package:face_reader/domain/services/attribute_normalize.dart';
-import 'package:face_reader/domain/services/physiognomy_scoring.dart';
+import 'package:face_engine/data/constants/face_reference_data.dart';
+import 'package:face_engine/data/enums/attribute.dart';
+import 'package:face_engine/data/enums/ethnicity.dart';
+import 'package:face_engine/data/enums/face_shape.dart';
+import 'package:face_engine/data/enums/gender.dart';
+import 'package:face_engine/domain/services/archetype.dart';
+import 'package:face_engine/domain/services/attribute_derivation.dart';
+import 'package:face_engine/domain/services/attribute_normalize.dart';
+import 'package:face_engine/domain/services/physiognomy_scoring.dart';
 
 // 원본 fixture 는 old broken reference 로 계산된 z-score. 4 개 critical metric
 // reference 가 수정됐으므로 raw 로 환원 후 현재 reference 로 재-z 해야 정확.

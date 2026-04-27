@@ -5,11 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 import 'package:face_reader/core/theme.dart';
-import 'package:face_reader/data/enums/face_shape.dart';
-import 'package:face_reader/data/enums/gender.dart';
-import 'package:face_reader/data/enums/age_group.dart';
+import 'package:face_engine/data/enums/face_shape.dart';
+import 'package:face_engine/data/enums/gender.dart';
+import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_reader/domain/models/coin_transaction.dart';
-import 'package:face_reader/domain/models/face_reading_report.dart';
+import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_reader/presentation/providers/auth_provider.dart';
 import 'package:face_reader/presentation/providers/history_provider.dart';
 import 'package:face_reader/presentation/providers/wallet_provider.dart';

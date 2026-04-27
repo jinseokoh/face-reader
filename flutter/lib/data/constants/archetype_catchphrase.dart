@@ -1,4 +1,4 @@
-import 'package:face_reader/data/enums/attribute.dart';
+import 'package:face_engine/data/enums/attribute.dart';
 
 /// Archetype × 한 줄 catchphrase. hero 카드 / 공유 카드 / TL;DR 표지.
 ///

@@ -7,7 +7,7 @@
 /// Phase 3 에서 per-metric weight 도입 시 확장 지점을 여기에 둔다.
 library;
 
-import 'package:face_reader/domain/models/physiognomy_tree.dart';
+import 'package:face_engine/domain/models/physiognomy_tree.dart';
 
 /// 한 노드의 점수 스냅샷. 불변.
 class NodeScore {

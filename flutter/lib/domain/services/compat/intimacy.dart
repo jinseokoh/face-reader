@@ -8,8 +8,8 @@
 /// - eye charisma (eyeCanthalTilt + yinYang skew)
 library;
 
-import '../../../data/enums/age_group.dart';
-import '../../../data/enums/gender.dart';
+import 'package:face_engine/data/enums/age_group.dart';
+import 'package:face_engine/data/enums/gender.dart';
 import 'palace.dart';
 
 class IntimacyComponent {
