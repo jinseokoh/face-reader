@@ -352,17 +352,30 @@ function BonusGrantButton({
   const [form] = Form.useForm<BonusGrantValues>();
 
   const handleSubmit = async (values: BonusGrantValues) => {
+    console.log("[bonus-grant] handleSubmit fired", { userId, values });
     setSubmitting(true);
     const description = values.description?.trim() || null;
-
-    // admin 전용 RPC. 기존 grant_coins 는 auth.uid() 기반이라 caller 본인에게만
-    // 지급 가능 → admin 이 임의 user 에게 지급할 수 없다. admin_grant_coins 는
-    // p_user_id 를 직접 받고 service_role 만 grant 받음.
-    const { data, error } = await adminClient.rpc("admin_grant_coins", {
+    const params = {
       p_user_id: userId,
       p_amount: values.amount,
       p_description: description,
-    });
+    };
+
+    console.log("[bonus-grant] calling adminClient.rpc('admin_grant_coins', ...)", params);
+    let data: unknown;
+    let error: { message?: string; details?: string; hint?: string; code?: string } | null = null;
+    try {
+      const res = await adminClient.rpc("admin_grant_coins", params);
+      data = res.data;
+      error = res.error;
+      console.log("[bonus-grant] RPC response", { data, error });
+    } catch (e) {
+      console.error("[bonus-grant] RPC threw", e);
+      error = {
+        message: e instanceof Error ? e.message : String(e),
+        code: "EXCEPTION",
+      };
+    }
 
     setSubmitting(false);
     if (error) {
@@ -400,6 +413,7 @@ function BonusGrantButton({
       return;
     }
 
+    console.log("[bonus-grant] success — new balance:", data);
     message.success(
       `보너스 ${values.amount} 코인 지급 완료${data != null ? ` · 새 잔액: ${data}` : ""}`,
     );
@@ -426,7 +440,10 @@ function BonusGrantButton({
         confirmLoading={submitting}
         okText="지급"
         cancelText="취소"
-        onOk={() => form.submit()}
+        onOk={() => {
+          console.log("[bonus-grant] modal onOk → form.submit()");
+          form.submit();
+        }}
         onCancel={() => {
           setOpen(false);
           form.resetFields();
