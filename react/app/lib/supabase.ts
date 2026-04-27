@@ -55,7 +55,7 @@ function demoRow(id: string): MetricsRow {
       schemaVersion: 1,
       ethnicity: "eastAsian",
       gender: isB ? "male" : "female",
-      ageGroup: isB ? "forties" : "thirties",
+      ageGroup: "thirties",
       timestamp: "2026-04-27T00:00:00.000Z",
       source: "album",
       metrics: DEMO_RAW_METRICS,
