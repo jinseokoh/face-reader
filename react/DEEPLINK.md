@@ -163,7 +163,8 @@ alter table metrics drop column if exists share_payload;
 
 revoke select on metrics from anon;
 grant select (id, metrics_json, expires_at) on metrics to anon;
-create policy if not exists "anon read non-expired" on metrics
+drop policy if exists "anon read non-expired" on metrics;
+create policy "anon read non-expired" on metrics
   for select to anon
   using (expires_at > now());
 ```
