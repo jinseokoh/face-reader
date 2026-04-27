@@ -46,17 +46,20 @@ export async function fetchMetrics(env: Env, ids: string[]): Promise<MetricsRow[
 }
 
 function demoRow(id: string): MetricsRow {
+  // 마지막 글자로 demo persona 분기 — '1' 은 여성/30대/계란형, '2' 는 남성/40대/긴얼굴.
+  // 솔로 데모는 A (id 끝 1), compat 데모는 A × B (남녀 페어) 로 보이도록.
+  const isB = id.endsWith("2");
   return {
     id,
     raw: {
       schemaVersion: 1,
       ethnicity: "eastAsian",
-      gender: "female",
-      ageGroup: "thirties",
+      gender: isB ? "male" : "female",
+      ageGroup: isB ? "forties" : "thirties",
       timestamp: "2026-04-27T00:00:00.000Z",
       source: "album",
       metrics: DEMO_RAW_METRICS,
-      faceShape: "oval",
+      faceShape: isB ? "oblong" : "oval",
     } as unknown as RawMetrics,
   };
 }
