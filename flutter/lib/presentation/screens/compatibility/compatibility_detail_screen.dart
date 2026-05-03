@@ -1,13 +1,10 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 
-import 'package:face_reader/core/theme.dart';
 import 'package:face_engine/data/constants/compat_hashtags.dart';
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
-import 'package:face_reader/data/services/supabase_service.dart';
-import 'package:face_reader/domain/services/share/share_publisher.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/services/compat/compat_adapter.dart';
 import 'package:face_engine/domain/services/compat/compat_label.dart';
@@ -15,6 +12,9 @@ import 'package:face_engine/domain/services/compat/compat_narrative.dart';
 import 'package:face_engine/domain/services/compat/compat_pipeline.dart';
 import 'package:face_engine/domain/services/compat/compat_sub_display.dart';
 import 'package:face_engine/domain/services/compat/five_element.dart';
+import 'package:face_reader/core/theme.dart';
+import 'package:face_reader/data/services/supabase_service.dart';
+import 'package:face_reader/domain/services/share/share_publisher.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -152,7 +152,7 @@ class _CompatibilityDetailScreenState
         uuid = await SupabaseService().saveMetrics(widget.my);
         widget.my.supabaseId = uuid;
       }
-      final link = 'https://face.whatsupkorea.com/report/$uuid';
+      final link = 'https://facely.kr/r/$uuid';
       final r = _bundle.report;
       final myAlias = widget.my.alias ?? '나';
       final albumAlias = widget.album.alias ?? '상대';
@@ -164,7 +164,7 @@ class _CompatibilityDetailScreenState
           title: '궁합 분석 결과',
           description: desc,
           imageUrl: Uri.parse(
-              'https://jicaenyzunjdlcxcdbfb.supabase.co/storage/v1/object/public/assets/share-thumbnail.png'),
+              'https://cdn.facely.kr/assets/share-thumbnail.png'),
           link: Link(
             webUrl: Uri.parse(link),
             mobileWebUrl: Uri.parse(link),
