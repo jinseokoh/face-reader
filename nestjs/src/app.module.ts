@@ -1,11 +1,16 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { OpenAiModule } from './openai/openai.module';
 import { AnalysisModule } from './analysis/analysis.module';
 
 @Module({
-  imports: [OpenAiModule, AnalysisModule],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    OpenAiModule,
+    AnalysisModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
