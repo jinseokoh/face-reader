@@ -16,6 +16,30 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
+// 화면-국지 팔레트 — DESIGN.md §2.4 (file-local 격리).
+// AppColors 에 이미 있는 gold / goldDim / goldSoft 는 직접 참조하고,
+// 이 화면에서만 쓰는 다크 hero / 알약 / 뱃지 / placeholder 톤만 여기 둔다.
+const _kHeroBgTop = Color(0xFF2A2418);
+const _kHeroBgBottom = Color(0xFF1F1812);
+const _kBtnFgIdle = Color(0xFF5C4A26);
+const _kBtnBgActive = Color(0xFFE8D7B0);
+const _kBtnFgActive = Color(0xFF3D2F18);
+const _kRecBadgeBg = Color(0xFFB8956A);
+const _kAvatarFill = Color(0xFF1A1410);
+const _kAvatarIcon = Color(0xFF6E6354);
+
+String _faceShapeLabelKo(String? mlLabel) {
+  const labelMap = {
+    'Heart': '하트형',
+    'Oblong': '세로로 긴 얼굴형',
+    'Oval': '계란형',
+    'Round': '둥근 얼굴형',
+    'Square': '각진 얼굴형',
+  };
+  if (mlLabel == null) return '내 얼굴';
+  return labelMap[mlLabel] ?? mlLabel;
+}
+
 class PhysiognomyScreen extends ConsumerStatefulWidget {
   const PhysiognomyScreen({super.key});
 
@@ -27,132 +51,151 @@ class _PhysiognomyItem extends ConsumerWidget {
   final FaceReadingReport report;
   final int index;
   final AnalysisSource source;
+  final bool isTopRecommended;
 
-  const _PhysiognomyItem({required this.report, required this.index, required this.source});
+  const _PhysiognomyItem({
+    required this.report,
+    required this.index,
+    required this.source,
+    this.isTopRecommended = false,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final displayName = report.alias ?? _faceShape();
 
-    final actions = <Widget>[];
-    if (source == AnalysisSource.camera) {
-      actions.add(_slidableAction(
-        icon: Icons.face,
-        label: '내 관상',
-        bg: Colors.green.shade600,
-        onPressed: () => _setMyFace(context, ref),
-      ));
-    }
-    actions.add(_slidableAction(
-      icon: Icons.delete,
-      label: '삭제',
-      bg: Colors.red.shade600,
-      onPressed: () => _delete(context, ref),
-    ));
-
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Slidable(
         key: ValueKey(report.supabaseId ?? index),
         endActionPane: ActionPane(
           motion: const DrawerMotion(),
-          children: actions,
+          children: [
+            _slidableAction(
+              icon: Icons.delete,
+              label: '삭제',
+              bg: Colors.red.shade600,
+              onPressed: () => _delete(context, ref),
+            ),
+          ],
         ),
         child: Stack(
           children: [
             Material(
-              color: AppTheme.surface,
-              borderRadius: BorderRadius.circular(14),
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
               child: InkWell(
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => ReportPage(report: report),
                   ),
                 ),
-                onLongPress: () => _showBottomMenu(context, ref),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(AppRadius.lg),
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(AppSpacing.md),
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildLeadingIcon(),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: AppSpacing.md),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: () => _showAliasDialog(
-                                        context, ref, displayName),
-                                    child: Text(
-                                      displayName,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                          color: AppTheme.textPrimary,
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w600),
-                                    ),
-                                  ),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.only(
-                                      left: 8, right: 10),
-                                  child: Text(
-                                      timeago.format(report.timestamp,
-                                          locale: 'ko'),
-                                      style: TextStyle(
-                                          color: AppTheme.textHint,
-                                          fontSize: 13)),
-                                ),
-                              ],
+                            GestureDetector(
+                              onTap: () => _showAliasDialog(
+                                  context, ref, displayName),
+                              child: Text(
+                                displayName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppText.sectionTitle
+                                    .copyWith(fontWeight: FontWeight.w700),
+                              ),
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: AppSpacing.xs),
                             Text(
-                                '${report.ethnicity.labelKo} · ${report.ageGroup.labelKo} ${report.gender.labelKo}',
-                                style: TextStyle(
-                                    color: AppTheme.textHint,
-                                    fontSize: 13)),
-                            const SizedBox(height: 6),
+                              '${report.ethnicity.labelKo} · '
+                              '${report.ageGroup.labelKo} ${report.gender.labelKo}',
+                              style: AppText.caption.copyWith(
+                                color: AppColors.textHint,
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
                             _buildArchetypeBadges(),
                           ],
                         ),
                       ),
-                      Icon(Icons.chevron_right, color: AppTheme.textHint),
+                      const SizedBox(width: AppSpacing.sm),
+                      _buildRightColumn(context, ref, displayName),
                     ],
                   ),
                 ),
               ),
             ),
-            if (report.isMyFace)
+            if (isTopRecommended)
               Positioned(
                 left: 0,
                 top: 0,
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade600,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(14),
-                      bottomRight: Radius.circular(10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.xs,
+                  ),
+                  decoration: const BoxDecoration(
+                    color: _kRecBadgeBg,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(AppRadius.lg),
+                      bottomRight: Radius.circular(AppRadius.md),
                     ),
                   ),
-                  child: const Text('내 관상',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600)),
+                  child: Text(
+                    '추천',
+                    style: AppText.hint.copyWith(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildRightColumn(
+      BuildContext context, WidgetRef ref, String displayName) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              timeago.format(report.timestamp, locale: 'ko'),
+              style: AppText.hint,
+            ),
+            InkWell(
+              onTap: () => _showAliasDialog(context, ref, displayName),
+              customBorder: const CircleBorder(),
+              child: const Padding(
+                padding: EdgeInsets.all(AppSpacing.xs),
+                child: Icon(Icons.more_vert,
+                    size: 18, color: AppColors.textHint),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        _ProfileSetButton(
+          isActive: report.isMyFace,
+          onTap: report.isMyFace ? null : () => _setMyFace(context, ref),
+        ),
+      ],
     );
   }
 
@@ -165,28 +208,34 @@ class _PhysiognomyItem extends ConsumerWidget {
 
     Widget chip(String text, {required Color bg, required Color fg}) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
         decoration: BoxDecoration(
           color: bg,
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(AppRadius.sm),
         ),
         child: Text(
           text,
-          style: TextStyle(
-              color: fg, fontSize: 11, fontWeight: FontWeight.w600),
+          style: AppText.hint.copyWith(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: fg,
+          ),
         ),
       );
     }
 
     return Wrap(
-      spacing: 4,
-      runSpacing: 4,
+      spacing: AppSpacing.xs,
+      runSpacing: AppSpacing.xs,
       children: [
         chip(primary,
-            bg: AppTheme.textPrimary.withValues(alpha: 0.08),
-            fg: AppTheme.textPrimary),
+            bg: AppColors.textPrimary.withValues(alpha: 0.08),
+            fg: AppColors.textPrimary),
         chip('· $secondary',
-            bg: Colors.transparent, fg: AppTheme.textSecondary),
+            bg: Colors.transparent, fg: AppColors.textSecondary),
         if (special != null)
           chip(special,
               bg: Colors.indigo.shade50, fg: Colors.indigo.shade700),
@@ -199,22 +248,30 @@ class _PhysiognomyItem extends ConsumerWidget {
       final file = File(report.thumbnailPath!);
       if (file.existsSync()) {
         return ClipRRect(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppRadius.md),
           child: Image.file(
             file,
-            width: 40,
-            height: 40,
+            width: 56,
+            height: 56,
             fit: BoxFit.cover,
           ),
         );
       }
     }
-    return Icon(
-      report.source == AnalysisSource.camera
-          ? (report.gender == Gender.female ? Icons.face_3 : Icons.face_6)
-          : Icons.photo_library,
-      color: AppTheme.textSecondary,
-      size: 36,
+    return Container(
+      width: 56,
+      height: 56,
+      decoration: BoxDecoration(
+        color: AppColors.border,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: Icon(
+        report.source == AnalysisSource.camera
+            ? (report.gender == Gender.female ? Icons.face_3 : Icons.face_6)
+            : Icons.photo_library,
+        color: AppColors.textSecondary,
+        size: 32,
+      ),
     );
   }
 
@@ -238,14 +295,7 @@ class _PhysiognomyItem extends ConsumerWidget {
     // Preferred path: ML classifier output stamped at analysis time.
     final mlLabel = report.faceShapeLabel;
     if (mlLabel != null) {
-      const labelMap = {
-        'Heart': '하트형',
-        'Oblong': '세로로 긴 얼굴형',
-        'Oval': '계란형',
-        'Round': '둥근 얼굴형',
-        'Square': '각진 얼굴형',
-      };
-      final korean = labelMap[mlLabel] ?? mlLabel;
+      final korean = _faceShapeLabelKo(mlLabel);
       final conf = report.faceShapeConfidence;
       debugPrint('══════════ [FACE SHAPE — ML] ══════════');
       debugPrint('  label=$mlLabel ($korean) '
@@ -336,20 +386,22 @@ class _PhysiognomyItem extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('이름 변경'),
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+        ),
+        title: const Text('이름 변경', style: AppText.modalTitle),
         content: TextField(
           controller: controller,
           maxLength: 64,
           autofocus: true,
-          decoration: const InputDecoration(
-            hintText: '이름을 입력하세요',
-          ),
+          decoration: const InputDecoration(hintText: '이름을 입력하세요'),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('취소',
-                style: TextStyle(color: AppTheme.textHint)),
+            child: const Text('취소',
+                style: TextStyle(color: AppColors.textHint)),
           ),
           TextButton(
             onPressed: () {
@@ -358,43 +410,10 @@ class _PhysiognomyItem extends ConsumerWidget {
                   .updateAlias(index, controller.text.trim());
               Navigator.pop(ctx);
             },
-            child: Text('저장',
-                style: TextStyle(color: AppTheme.textPrimary)),
+            child: const Text('저장',
+                style: TextStyle(color: AppColors.textPrimary)),
           ),
         ],
-      ),
-    );
-  }
-
-  void _showBottomMenu(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (source == AnalysisSource.camera)
-              ListTile(
-                leading: Icon(Icons.face, color: Colors.green.shade600),
-                title: const Text('내 관상'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _setMyFace(context, ref);
-                },
-              ),
-            ListTile(
-              leading: Icon(Icons.delete, color: Colors.red.shade600),
-              title: const Text('삭제'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _delete(context, ref);
-              },
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -409,14 +428,236 @@ class _PhysiognomyItem extends ConsumerWidget {
       onPressed: (_) => onPressed(),
       backgroundColor: bg,
       foregroundColor: Colors.white,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(AppRadius.lg),
       padding: EdgeInsets.zero,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon),
-          const SizedBox(height: 4),
-          Text(label, style: const TextStyle(fontSize: 12)),
+          const SizedBox(height: AppSpacing.xs),
+          Text(label, style: AppText.hint.copyWith(color: Colors.white)),
+        ],
+      ),
+    );
+  }
+}
+
+/// 알약 형태의 명시적 "내 프로필로 설정" / "내 프로필" tappable label.
+/// Material+InkWell 조합으로, 버튼 위젯 family 가 아닌 surface element.
+class _ProfileSetButton extends StatelessWidget {
+  final bool isActive;
+  final VoidCallback? onTap;
+
+  const _ProfileSetButton({required this.isActive, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = isActive ? _kBtnBgActive : AppColors.goldSoft;
+    final fg = isActive ? _kBtnFgActive : _kBtnFgIdle;
+    return Material(
+      color: bg,
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isActive) ...[
+                Icon(Icons.check, size: 14, color: fg),
+                const SizedBox(width: AppSpacing.xs),
+              ],
+              Text(
+                isActive ? '내 프로필' : '내 프로필로\n설정',
+                textAlign: TextAlign.center,
+                style: AppText.hint.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: fg,
+                  height: 1.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MyProfileHeroCard extends StatelessWidget {
+  final FaceReadingReport? myFace;
+
+  const _MyProfileHeroCard({required this.myFace});
+
+  @override
+  Widget build(BuildContext context) {
+    final mf = myFace;
+    final isSet = mf != null;
+    // State B 타이틀: "30대 여성 동아시아인" — 나이대 · 성별 · 인종 순.
+    // 분류된 얼굴형(또는 사용자 별칭)은 subtitle 로 한 단계 내림.
+    final titleText = isSet
+        ? '${mf.ageGroup.labelKo} ${mf.gender.labelKo} '
+            '${mf.ethnicity.labelKo}'
+        : '나의 얼굴을 아래 리스트에서\n선택해 주세요.';
+    final captionText = isSet
+        ? (mf.alias ?? _faceShapeLabelKo(mf.faceShapeLabel))
+        : '선택해야 다른 사람과의 궁합을 볼 수 있어요';
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [_kHeroBgTop, _kHeroBgBottom],
+        ),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+      ),
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '내 관상 프로필 ✨',
+                  style: AppText.caption.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.gold,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  titleText,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.modalTitle.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    height: 1.25,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  captionText,
+                  style: AppText.hint.copyWith(color: AppColors.goldDim),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          _HeroAvatar(myFace: myFace),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroAvatar extends StatelessWidget {
+  final FaceReadingReport? myFace;
+
+  const _HeroAvatar({required this.myFace});
+
+  @override
+  Widget build(BuildContext context) {
+    const size = 84.0;
+    Widget inner = const _HeroAvatarPlaceholder();
+    final thumb = myFace?.thumbnailPath;
+    if (thumb != null) {
+      final file = File(thumb);
+      if (file.existsSync()) {
+        inner = Image.file(file, width: size, height: size, fit: BoxFit.cover);
+      }
+    }
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.gold, width: 1.5),
+      ),
+      child: ClipOval(child: inner),
+    );
+  }
+}
+
+class _HeroAvatarPlaceholder extends StatelessWidget {
+  const _HeroAvatarPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: _kAvatarFill,
+      child: const Center(
+        child: Icon(Icons.person, size: 48, color: _kAvatarIcon),
+      ),
+    );
+  }
+}
+
+class _RecentListHeader extends StatelessWidget {
+  const _RecentListHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          '최근 분석한 사진',
+          style: AppText.sectionTitle.copyWith(fontWeight: FontWeight.w700),
+        ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '최신순',
+              style: AppText.caption.copyWith(color: AppColors.textHint),
+            ),
+            const Icon(Icons.keyboard_arrow_down,
+                size: 16, color: AppColors.textHint),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _ProfileHintCard extends StatelessWidget {
+  const _ProfileHintCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Icon(Icons.lightbulb_outline, color: AppColors.gold, size: 22),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Text(
+              '내 프로필을 설정하면 다른 사진들과의\n궁합, 관계 분석을 볼 수 있어요',
+              style: AppText.caption.copyWith(
+                fontWeight: FontWeight.w500,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Text('💕', style: AppText.hint.copyWith(fontSize: 22)),
         ],
       ),
     );
@@ -450,9 +691,9 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
         ],
         bottom: TabBar(
           controller: _tabController,
-          labelColor: AppTheme.textPrimary,
-          unselectedLabelColor: AppTheme.textHint,
-          indicatorColor: AppTheme.textPrimary,
+          labelColor: AppColors.textPrimary,
+          unselectedLabelColor: AppColors.textHint,
+          indicatorColor: AppColors.textPrimary,
           tabs: const [
             Tab(text: '카메라'),
             Tab(text: '앨범'),
@@ -483,7 +724,7 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
       vsync: this,
       initialIndex: ref.read(historyTabProvider),
     );
-    // Sync user swipes back into the provider so external updates
+    // Sync tab changes back into the provider so external updates
     // (e.g. alias rename rebuild) don't reset the tab.
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging &&
@@ -500,50 +741,93 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
     for (var i = 0; i < history.length; i++) {
       if (history[i].source == source) filtered.add((i, history[i]));
     }
+    // myFace 는 source 와 무관한 single-pick — 두 탭의 hero 카드 모두에 동일 반영.
+    FaceReadingReport? myFace;
+    for (final r in history) {
+      if (r.isMyFace) {
+        myFace = r;
+        break;
+      }
+    }
+    final hasMyFace = myFace != null;
 
-    final child = filtered.isEmpty
-        ? LayoutBuilder(
-            builder: (ctx, constraints) => SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+    return RefreshIndicator(
+      onRefresh: _handleRefresh,
+      color: AppColors.textPrimary,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 0),
+            sliver:
+                SliverToBoxAdapter(child: _MyProfileHeroCard(myFace: myFace)),
+          ),
+          if (filtered.isEmpty)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.huge),
                 child: Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.history, color: AppTheme.border, size: 64),
-                      const SizedBox(height: 16),
-                      Text('분석 기록이 없습니다',
-                          style: TextStyle(
-                              color: AppTheme.textHint, fontSize: 16)),
-                      const SizedBox(height: 8),
-                      Text('아래로 당겨 새 공식으로 재계산',
-                          style: TextStyle(
-                              color: AppTheme.textHint, fontSize: 12)),
+                      const Icon(Icons.history,
+                          color: AppColors.border, size: 64),
+                      const SizedBox(height: AppSpacing.lg),
+                      Text(
+                        '분석 기록이 없습니다',
+                        style: AppText.sectionTitle.copyWith(
+                          fontWeight: FontWeight.w400,
+                          color: AppColors.textHint,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      const Text(
+                        '아래로 당겨 새 공식으로 재계산',
+                        style: AppText.hint,
+                      ),
                     ],
                   ),
                 ),
               ),
+            )
+          else ...[
+            const SliverPadding(
+              padding: EdgeInsets.fromLTRB(
+                  AppSpacing.lg, AppSpacing.xxl, AppSpacing.lg, AppSpacing.md),
+              sliver: SliverToBoxAdapter(child: _RecentListHeader()),
             ),
-          )
-        : ListView.builder(
-            padding: const EdgeInsets.all(16),
-            physics: const AlwaysScrollableScrollPhysics(),
-            itemCount: filtered.length,
-            itemBuilder: (context, index) {
-              final (originalIndex, report) = filtered[index];
-              return _PhysiognomyItem(
-                report: report,
-                index: originalIndex,
-                source: source,
-              );
-            },
-          );
-
-    return RefreshIndicator(
-      onRefresh: () => _handleRefresh(),
-      color: AppTheme.textPrimary,
-      child: child,
+            SliverPadding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              sliver: SliverList.builder(
+                itemCount: filtered.length,
+                itemBuilder: (ctx, i) {
+                  final (origIdx, report) = filtered[i];
+                  return _PhysiognomyItem(
+                    report: report,
+                    index: origIdx,
+                    source: source,
+                    isTopRecommended: i == 0,
+                  );
+                },
+              ),
+            ),
+            if (!hasMyFace)
+              const SliverPadding(
+                padding: EdgeInsets.fromLTRB(
+                    AppSpacing.lg, AppSpacing.xs, AppSpacing.lg, AppSpacing.xxl),
+                sliver: SliverToBoxAdapter(child: _ProfileHintCard()),
+              )
+            else
+              const SliverPadding(
+                padding: EdgeInsets.only(bottom: AppSpacing.lg),
+                sliver: SliverToBoxAdapter(child: SizedBox.shrink()),
+              ),
+          ],
+        ],
+      ),
     );
   }
 

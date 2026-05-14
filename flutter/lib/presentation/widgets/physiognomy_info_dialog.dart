@@ -46,7 +46,6 @@ class _PhysiognomyInfoDialogState extends State<PhysiognomyInfoDialog>
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: const Text('관상 분석에 대하여',
           style: TextStyle(
-              fontFamily: 'SongMyung',
               fontSize: 18,
               fontWeight: FontWeight.w600)),
       content: SizedBox(
@@ -67,7 +66,6 @@ class _PhysiognomyInfoDialogState extends State<PhysiognomyInfoDialog>
                       child: Text(
                         _paragraphs[i],
                         style: const TextStyle(
-                          fontFamily: 'SongMyung',
                           fontSize: 15,
                           height: 1.8,
                           color: AppTheme.textSecondary,

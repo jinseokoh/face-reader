@@ -204,7 +204,6 @@ class CompatibilityScreen extends ConsumerWidget {
         backgroundColor: AppTheme.surface,
         title: const Text('궁합 해제',
             style: TextStyle(
-                fontFamily: 'SongMyung',
                 fontSize: 17,
                 color: AppTheme.textPrimary)),
         content: Text(
@@ -267,7 +266,6 @@ class CompatibilityScreen extends ConsumerWidget {
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('궁합 분석에 대하여',
             style: TextStyle(
-                fontFamily: 'SongMyung',
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
                 color: AppTheme.textPrimary)),
@@ -279,7 +277,6 @@ class CompatibilityScreen extends ConsumerWidget {
               Text(
                 '두 사람의 관상학적 특징을 네 갈래로 분석해 얼마나 잘 어울릴 수 있는지를 등급으로 나눕니다.',
                 style: TextStyle(
-                  fontFamily: 'SongMyung',
                   fontSize: 15,
                   fontWeight: FontWeight.w400,
                   color: AppTheme.textSecondary,
@@ -306,7 +303,6 @@ class CompatibilityScreen extends ConsumerWidget {
               SizedBox(height: 20),
               Text('등급',
                   style: TextStyle(
-                      fontFamily: 'SongMyung',
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                       color: AppTheme.textPrimary)),
@@ -405,7 +401,6 @@ class _CompatListCard extends StatelessWidget {
                           child: Text(
                             '${r.label.korean} (${r.label.hanja})',
                             style: TextStyle(
-                                fontFamily: 'SongMyung',
                                 fontSize: 13,
                                 color: labelColor,
                                 letterSpacing: 1),
@@ -599,7 +594,6 @@ class _InfoRow extends StatelessWidget {
             width: 44,
             child: Text(title,
                 style: const TextStyle(
-                    fontFamily: 'SongMyung',
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: AppTheme.textPrimary)),
@@ -608,7 +602,6 @@ class _InfoRow extends StatelessWidget {
             width: 48,
             child: Text(weight,
                 style: const TextStyle(
-                    fontFamily: 'SongMyung',
                     fontSize: 12,
                     fontWeight: FontWeight.w400,
                     color: AppTheme.textHint)),
@@ -616,7 +609,6 @@ class _InfoRow extends StatelessWidget {
           Expanded(
             child: Text(body,
                 style: const TextStyle(
-                    fontFamily: 'SongMyung',
                     fontSize: 13,
                     fontWeight: FontWeight.w400,
                     color: AppTheme.textSecondary,
@@ -656,7 +648,6 @@ class _LabelRow extends StatelessWidget {
                 RichText(
                   text: TextSpan(
                     style: const TextStyle(
-                        fontFamily: 'SongMyung',
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: AppTheme.textPrimary),
@@ -666,7 +657,6 @@ class _LabelRow extends StatelessWidget {
                       TextSpan(
                         text: label.hanja,
                         style: const TextStyle(
-                            fontFamily: 'SongMyung',
                             fontSize: 12,
                             fontWeight: FontWeight.w400,
                             color: AppTheme.textHint),
@@ -677,7 +667,6 @@ class _LabelRow extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(pair.headline,
                     style: const TextStyle(
-                        fontFamily: 'SongMyung',
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: AppTheme.textPrimary,
@@ -685,7 +674,6 @@ class _LabelRow extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(pair.detail,
                     style: const TextStyle(
-                        fontFamily: 'SongMyung',
                         fontSize: 13,
                         fontWeight: FontWeight.w400,
                         color: AppTheme.textSecondary,
@@ -739,7 +727,6 @@ class _MiniBar extends StatelessWidget {
             Text(
               entry.korean,
               style: TextStyle(
-                  fontFamily: 'SongMyung',
                   fontSize: 11,
                   color: labelColor,
                   letterSpacing: 0.5),

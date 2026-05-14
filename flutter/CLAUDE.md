@@ -2,48 +2,23 @@
 
 ## ⛔ 0. UI 통일감 — 절대 1순위 (이 규칙 위반 시 즉시 폐기·재작업)
 
-**대부님은 화면 간·요소 간 디자인 불일치를 못 견디는 사람이다.** 폰트 패밀리·크기·웨이트가 화면마다 다르면 그 자체로 결함이다. 모든 신규/수정 UI 는 아래 토큰 외 값을 절대 쓰지 않는다.
+**대부님은 화면 간·요소 간 디자인 불일치를 못 견디는 사람이다.** 폰트 패밀리·크기·웨이트가 화면마다 다르면 그 자체로 결함이다.
 
-### 0.1 폰트 — 본문은 SongMyung, 버튼은 system default
+### 0.1 SSOT — `flutter/DESIGN.md`
 
-- **본문/제목/라벨**: SongMyung 단일 패밀리. (Pretendard·기타 sans 금지. material default 금지 — `fontFamily: 'SongMyung'` 명시.)
-- **버튼 라벨 (TextButton/ElevatedButton/OutlinedButton/FilledButton/IconButton/CupertinoButton/MaterialButton 의 child Text, AppBar action, 다이얼로그 actions, BottomSheet CTA)**: fontFamily 자체를 명시하지 않는다 (system default 사용). 위반은 `.claude/hooks/block-button-songmyung.py` PreToolUse hook 이 자동 차단한다.
-- 영문/숫자만 단독으로 나오는 메타 캡션은 예외 가능. 한국어와 함께 나오는 본문 줄은 무조건 SongMyung.
+디자인 토큰·테마 운영 규칙·컴포넌트 표준은 전부 `flutter/DESIGN.md` 가 SSOT. 본 CLAUDE.md §0 는 그 인덱스 + 절대 위반 금지 사항만 기록한다. 위젯 작성 시 항상 `DESIGN.md` 를 참조하고, 토큰 추가/이름 변경은 `DESIGN.md` 와 `lib/core/theme.dart` 를 동시에 업데이트한다.
 
-### 0.2 텍스트 hierarchy — 6 단 token 만 허용
+### 0.2 절대 금지 (`DESIGN.md` 의 핵심 발췌)
 
-| token | size | weight | color | 용도 |
-|---|---|---|---|---|
-| display | 28 | bold | textPrimary | 화면 최상단 타이틀 (예: "AI 관상가") |
-| modalTitle | 18 | w600 | textPrimary | AlertDialog/모달 제목 |
-| sectionTitle | 16 | w600 | textPrimary | 섹션 헤딩 (리포트 내 큰 구획) |
-| subTitle | 14 | w600 | textPrimary | InfoRow / LabelRow / 카드 헤더 |
-| body | 15 | w400 | textSecondary | 모달·리포트 본문 단락 (height 1.7~1.8) |
-| caption | 13 | w400 | textSecondary | 보조 설명·tagline (height 1.5~1.6) |
-| hint | 12 | w400 | textHint | 한자·메타라벨·percent |
+1. **SongMyung 은 display 토큰 한정** — `AppText.display` (28pt, 화면 최상위 inline 타이틀) 과 `AppText.appBarTitle` (20pt, AppBar 자동 적용) 두 토큰만 SongMyung family. 그 외 위젯 코드에 `fontFamily: 'SongMyung'` 을 직접 쓰지 않는다.
+2. **inline 매직 넘버 금지** — `TextStyle(fontSize: 15, fontWeight: w600 …)` 직접 작성 금지. `AppText.X` 토큰 또는 `AppText.X.copyWith(color: …)` 만.
+3. **컬러 매직 넘버 금지** — `Color(0xFF…)` 를 위젯 코드에 직접 박지 않는다. `AppColors.X` (`flutter/lib/core/theme.dart`) 또는 화면-국지 `_kFoo` 상수만.
+4. **Spacing·Radius 스케일 준수** — `AppSpacing` (4/8/12/16/20/24/32) 과 `AppRadius` (6/10/14/16) 외 값 금지. 임의 7·11·18 px 금지.
+5. **chip/pill 단일톤** — 하나의 chip/pill 안에서 색·크기 분리 금지. priority 차이는 줄 분리 또는 background tint 로만.
+6. **가운데점(`·`) 남발 금지** — 한 줄에 두 의미 우겨넣지 않는다. 줄 바꿈으로 분리.
+7. **같은 역할 = 같은 위젯** — 역할이 같은 두 modal/카드/리스트 아이템은 동일 base widget 을 공유. 새로 만들기 전에 기존 컴포넌트 재사용을 본다.
 
-**금지:** 같은 modal 안에서 두 가지 fontWeight 가 섞여 있는데 한쪽만 명시(나머지 default w400) 되는 패턴. 모든 Text 위젯은 fontFamily/size/weight/color 를 명시하거나 위 token 의 helper 를 통해서만 만든다.
-
-### 0.3 모달·다이얼로그 표준
-- background: `Colors.white`
-- shape: `RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))`
-- title: modalTitle token (18 / w600 / SongMyung / textPrimary)
-- content body: body token (15 / w400 / SongMyung / textSecondary / height 1.8)
-- 닫기 버튼: TextButton, fontSize 15 / w600 / textPrimary, **fontFamily 미지정 (system default)** — §0.1 의 버튼 룰 적용
-
-### 0.4 pill / chip / row label 안 텍스트 단일톤
-하나의 pill/chip/single-line label 안에서 색·크기를 분리하지 않는다. priority 차이는 줄 분리 또는 background tint 로만.
-
-### 0.5 가운데점(`·`) 남발 금지
-한 줄에 두 개 이상의 의미를 우겨넣을 때 `·` 로 잇지 않는다. 줄 바꿈으로 분리한다. 예:
-```
-✗  얼굴로 읽으면 흔치 않게 잘 맞는 자리 · 좋은 점 압도
-✓  좋은 점 압도
-   얼굴로 읽으면 흔치 않게 잘 맞는 자리.
-```
-
-### 0.6 같은 역할이면 같은 위젯
-"관상 분석에 대하여" / "궁합 분석에 대하여" 처럼 역할이 같은 두 modal 은 동일한 base widget(또는 동일한 style 토큰 set)을 공유해야 한다. 따로 만들면 반드시 어긋난다.
+자세한 컴포넌트 레시피 (Dialog / Card / pill / hero / hint), 마이그레이션 가이드, "핫한 theme 유지 기법" (MD3 textTheme 슬롯, ThemeExtension, file-local 팔레트 격리) 은 `DESIGN.md` 본문 참조.
 
 ---
 

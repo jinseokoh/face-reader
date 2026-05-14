@@ -470,7 +470,6 @@ class _NarrativeCard extends StatelessWidget {
         children: [
           Text(title,
               style: const TextStyle(
-                  fontFamily: 'SongMyung',
                   fontSize: 16,
                   color: AppTheme.textPrimary,
                   letterSpacing: 3)),
@@ -568,7 +567,6 @@ class _SubBar extends StatelessWidget {
             width: 64,
             child: Text(row.label,
                 style: const TextStyle(
-                    fontFamily: 'SongMyung',
                     fontSize: 13,
                     color: AppTheme.textPrimary)),
           ),

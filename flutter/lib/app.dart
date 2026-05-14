@@ -52,7 +52,6 @@ class _MainAppState extends ConsumerState<MainApp> {
         title: const Text(
           '가입 보너스 안내',
           style: TextStyle(
-            fontFamily: 'SongMyung',
             fontSize: 18,
             fontWeight: FontWeight.w600,
             color: AppTheme.textPrimary,
@@ -61,7 +60,6 @@ class _MainAppState extends ConsumerState<MainApp> {
         content: const Text(
           '보너스 코인은 이미 지급했었기 때문에 더이상 지급되지 않습니다.',
           style: TextStyle(
-            fontFamily: 'SongMyung',
             fontSize: 15,
             fontWeight: FontWeight.w400,
             color: AppTheme.textSecondary,

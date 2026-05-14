@@ -83,7 +83,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             const SizedBox(height: 8),
             Text(
               '인상에 담긴 그 운명을 냉정히 풀어 드립니다.',
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 16, fontFamily: 'SongMyung'),
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 16),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
