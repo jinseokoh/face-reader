@@ -1,0 +1,19 @@
+services:
+  face-meta:
+    build: .
+    image: face-meta:latest
+    container_name: face-meta
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - LOG_LEVEL=INFO
+      - MAX_DOWNLOAD_MB=10
+      - DOWNLOAD_TIMEOUT_SEC=15
+      - DETECTOR_BACKEND=opencv
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s

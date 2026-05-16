@@ -1,13 +1,9 @@
 import 'dart:io';
 
-import 'package:face_reader/core/theme.dart';
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
-import 'package:face_reader/data/services/analytics_service.dart';
-import 'package:face_reader/data/services/compat_unlock_service.dart';
-import 'package:face_reader/data/services/supabase_service.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/services/compat/compat_adapter.dart';
 import 'package:face_engine/domain/services/compat/compat_label.dart';
@@ -15,13 +11,17 @@ import 'package:face_engine/domain/services/compat/compat_pair_key.dart';
 import 'package:face_engine/domain/services/compat/compat_pipeline.dart';
 import 'package:face_engine/domain/services/compat/compat_sub_display.dart';
 import 'package:face_engine/domain/services/compat/five_element.dart';
+import 'package:face_reader/core/theme.dart';
+import 'package:face_reader/data/services/analytics_service.dart';
+import 'package:face_reader/data/services/compat_unlock_service.dart';
+import 'package:face_reader/data/services/supabase_service.dart';
 import 'package:face_reader/presentation/providers/auth_provider.dart';
 import 'package:face_reader/presentation/providers/compat_unlock_provider.dart';
 import 'package:face_reader/presentation/providers/history_provider.dart';
 import 'package:face_reader/presentation/screens/compatibility/compatibility_detail_screen.dart';
 import 'package:face_reader/presentation/widgets/login_bottom_sheet.dart';
-import 'package:face_reader/presentation/widgets/source_badge.dart';
 import 'package:face_reader/presentation/widgets/purchase_sheet.dart';
+import 'package:face_reader/presentation/widgets/source_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -582,8 +582,8 @@ class _CompatLockedCard extends ConsumerWidget {
           const SizedBox(height: 12),
           Text(
             isLoggedIn
-                ? '궁합 결과는 1 코인으로 열어볼 수 있습니다.'
-                : '카카오 로그인하면 가입 보너스 3 코인으로 바로 열어볼 수 있어요.',
+                ? '궁합 결과는 1 코인 지불 후 열어볼 수 있습니다.'
+                : '최초 로그인하면 가입 보너스 3 코인을 지급해 드립니다.',
             style: const TextStyle(
                 fontSize: 12, color: AppTheme.textSecondary, height: 1.5),
           ),
