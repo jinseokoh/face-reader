@@ -7,6 +7,10 @@ python-json-logger==2.0.7
 # DeepFace pulls in tensorflow-cpu, opencv-python-headless, mtcnn, retina-face, etc.
 # CPU-only stack — no GPU wheels.
 deepface==0.0.93
-tensorflow-cpu==2.16.1
+tensorflow-cpu==2.16.2
+# TF 2.16+ 에서 내장 tf.keras 가 Keras 3 로 교체됨. DeepFace/retinaface 는
+# 여전히 Keras 2 API 사용 → 별도 호환 패키지 필요.
+# TF_USE_LEGACY_KERAS=1 (Dockerfile 에 set) 와 짝.
+tf-keras==2.16.0
 opencv-python-headless==4.10.0.84
 numpy==1.26.4

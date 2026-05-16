@@ -242,6 +242,13 @@ which python   # → /path/to/face/python/.venv/bin/python 가 나와야 정상
 ### 첫 요청이 30 초 이상 걸린다
 모델 가중치를 처음 받아오는 중. 본 서비스는 시작할 때 한 번 워밍업 호출을 자동으로 돌리므로, 컨테이너 기동 후 **30 초 정도 기다린 뒤** 트래픽을 보내야 한다.
 
+### "You have tensorflow ... and this requires tf-keras package"
+TF 2.16+ 부터 내장 `tf.keras` 가 Keras 3 로 바뀌면서 DeepFace/retinaface 가 동작 안 함. 본 프로젝트는 이미 `tf-keras==2.16.0` 을 `requirements.txt` 에 넣고 `TF_USE_LEGACY_KERAS=1` env 를 Dockerfile 에 설정해 둠. 직접 설치 시 빠뜨렸다면:
+```bash
+pip install tf-keras==2.16.0
+export TF_USE_LEGACY_KERAS=1
+```
+
 ### "Face could not be detected" 가 계속 뜬다
 - 기본 detector `opencv` 는 빠르지만 측면/저조도에 약하다. 환경변수로 바꿔 보기:
   ```bash

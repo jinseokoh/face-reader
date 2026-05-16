@@ -6,8 +6,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     # DeepFace caches downloaded weights here. Pre-create it so we can warm
     # the image at build time without polluting /root.
     DEEPFACE_HOME=/app/.deepface \
-    # tensorflow-cpu noise reduction.
-    TF_CPP_MIN_LOG_LEVEL=2
+    # tensorflow-cpu noise reduction (suppress info + warning + error stubs).
+    TF_CPP_MIN_LOG_LEVEL=3 \
+    # TF 2.16+ moved to Keras 3. DeepFace/retinaface still need Keras 2 API.
+    # This env tells TF to alias tf.keras → tf_keras (installed via pip).
+    TF_USE_LEGACY_KERAS=1
 
 # OpenCV headless still needs the dynamic linker to see libGL etc.
 # These are the minimum apt deps for opencv-python-headless + DeepFace on
