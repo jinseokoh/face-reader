@@ -73,14 +73,7 @@ class SettingsScreen extends ConsumerWidget {
                         ),
                       ),
                       GestureDetector(
-                        onTap: () async {
-                          await ref.read(authProvider.notifier).logout();
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('로그아웃되었습니다')),
-                            );
-                          }
-                        },
+                        onTap: () => _confirmLogout(context, ref),
                         child: Text('로그아웃',
                             style: TextStyle(
                                 color: AppTheme.textHint, fontSize: 13)),
@@ -250,5 +243,42 @@ class SettingsScreen extends ConsumerWidget {
 
   void _showPurchaseSheet(BuildContext context, WidgetRef ref) {
     PurchaseSheet.show(context);
+  }
+
+  void _confirmLogout(BuildContext context, WidgetRef ref) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+        ),
+        title: const Text('로그아웃 하시겠습니까?', style: AppText.modalTitle),
+        content: const Text(
+          '로그아웃하면 코인 잔액과 개인 정보에 접근할 수 없습니다.',
+          style: AppText.body,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('취소',
+                style: TextStyle(color: AppColors.textHint)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await ref.read(authProvider.notifier).logout();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('로그아웃되었습니다')),
+                );
+              }
+            },
+            child: const Text('로그아웃',
+                style: TextStyle(color: AppColors.danger)),
+          ),
+        ],
+      ),
+    );
   }
 }

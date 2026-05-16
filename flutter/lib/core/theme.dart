@@ -70,6 +70,16 @@ class AppText {
     color: AppColors.textPrimary,
   );
 
+  /// **displaySubtitle** — 16 w400 SongMyung. [display] 바로 아래에 붙는 sub-title.
+  /// 홈 화면 hero 영역에서 display 와 시각적으로 한 쌍을 이루는 보조 문구.
+  static const TextStyle displaySubtitle = TextStyle(
+    fontFamily: _kDisplayFont,
+    fontSize: 16,
+    fontWeight: FontWeight.w400,
+    color: AppColors.textSecondary,
+    height: 1.5,
+  );
+
   /// **modalTitle** — 18 w600. AlertDialog title, bottomSheet header.
   static const TextStyle modalTitle = TextStyle(
     fontSize: 18,

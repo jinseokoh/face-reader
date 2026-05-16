@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:face_reader/core/theme.dart';
 import 'package:face_engine/data/enums/age_group.dart';
+import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_reader/data/services/analytics_service.dart';
@@ -19,6 +20,7 @@ import 'package:face_reader/presentation/providers/compat_unlock_provider.dart';
 import 'package:face_reader/presentation/providers/history_provider.dart';
 import 'package:face_reader/presentation/screens/compatibility/compatibility_detail_screen.dart';
 import 'package:face_reader/presentation/widgets/login_bottom_sheet.dart';
+import 'package:face_reader/presentation/widgets/source_badge.dart';
 import 'package:face_reader/presentation/widgets/purchase_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -284,6 +286,18 @@ class CompatibilityScreen extends ConsumerWidget {
                 ),
               ),
               SizedBox(height: 18),
+              // 등급 블록 — 4 갈래 breakdown 보다 먼저.
+              Text('등급',
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimary)),
+              SizedBox(height: 10),
+              _LabelRow(label: CompatLabel.cheonjakjihap),
+              _LabelRow(label: CompatLabel.sangkyeongyeobin),
+              _LabelRow(label: CompatLabel.mahapgaseong),
+              _LabelRow(label: CompatLabel.hyeonggeuknanjo),
+              SizedBox(height: 20),
               _InfoRow(
                   title: '오행',
                   weight: '20%',
@@ -300,17 +314,6 @@ class CompatibilityScreen extends ConsumerWidget {
                   title: '친밀',
                   weight: '15%',
                   body: '이성 친밀도. 30~50대 이성 사이에서만 출력.'),
-              SizedBox(height: 20),
-              Text('등급',
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textPrimary)),
-              SizedBox(height: 10),
-              _LabelRow(label: CompatLabel.cheonjakjihap),
-              _LabelRow(label: CompatLabel.sangkyeongyeobin),
-              _LabelRow(label: CompatLabel.mahapgaseong),
-              _LabelRow(label: CompatLabel.hyeonggeuknanjo),
             ],
           ),
         ),
@@ -349,8 +352,11 @@ class _CompatListCard extends StatelessWidget {
     final r = bundle.report;
     final labelColor = _labelColor(r.label);
     final alias = album.alias;
-    final demographic =
-        '${album.gender.labelKo} · ${album.ageGroup.labelKo} · ${album.faceShape.korean}';
+    // 관상 list 와 동일 포맷 — DESIGN.md §0.0.1 통일성.
+    final demographic = '${album.ageGroup.labelKo} '
+        '${album.gender.labelKo} '
+        '${album.ethnicity.labelKo}';
+    final subtitle = alias ?? album.faceShape.korean;
 
     return Material(
       color: AppTheme.surface,
@@ -370,27 +376,40 @@ class _CompatListCard extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  _Thumb(path: album.thumbnailPath, size: 56),
-                  const SizedBox(width: 12),
+                  // 관상 list item 과 동일 사이즈·token (DESIGN.md §0.0.1).
+                  _Thumb(path: album.thumbnailPath, size: 42),
+                  const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(alias ?? demographic,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: AppTheme.textPrimary)),
-                        if (alias != null) ...[
-                          const SizedBox(height: 2),
-                          Text(demographic,
-                              style: const TextStyle(
-                                  fontSize: 11,
-                                  color: AppTheme.textSecondary)),
-                        ],
-                        const SizedBox(height: 8),
+                        Text(
+                          demographic,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppText.sectionTitle.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SourceBadge(source: album.source),
+                            const SizedBox(width: AppSpacing.xs),
+                            Flexible(
+                              child: Text(
+                                subtitle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppText.caption.copyWith(
+                                  color: AppColors.textHint,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 5),
@@ -453,7 +472,7 @@ class _CompatListCard extends StatelessWidget {
       case CompatLabel.sangkyeongyeobin:
         return const Color(0xFF4A7BA8); // 2순위 — 파랑
       case CompatLabel.mahapgaseong:
-        return const Color(0xFF7B5FA0); // 3순위 — 보라
+        return const Color(0xFFC58448); // 3순위 — 오렌지 (가운데 / 노력 필요)
       case CompatLabel.hyeonggeuknanjo:
         return const Color(0xFFB05858); // 4순위 — 빨강
     }
@@ -489,14 +508,19 @@ class _CompatLockedCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isLoggedIn = ref.watch(authProvider) != null;
-    final coins = ref.watch(authProvider)?.coins ?? 0;
+    final auth = ref.watch(authProvider);
+    final isLoggedIn = auth != null;
+    final coins = auth?.coins ?? 0;
     final alias = album.alias;
-    final demographic =
-        '${album.gender.labelKo} · ${album.ageGroup.labelKo} · ${album.faceShape.korean}';
+    // 관상 list 와 동일 포맷 (DESIGN.md §0.0.1 — 같은 정보 같은 포맷):
+    //   "연령대 성별 인종" 공백 구분, 가운데점 X.
+    final demographic = '${album.ageGroup.labelKo} '
+        '${album.gender.labelKo} '
+        '${album.ethnicity.labelKo}';
+    final subtitle = alias ?? album.faceShape.korean;
 
     final cta = isLoggedIn
-        ? '1 코인으로 해제 · 잔액 $coins'
+        ? '궁합 보기 ($coins코인 보유)'
         : '카카오 로그인하고 3 코인 받기';
 
     return Container(
@@ -512,25 +536,40 @@ class _CompatLockedCard extends ConsumerWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              _Thumb(path: album.thumbnailPath, size: 56),
-              const SizedBox(width: 12),
+              // 관상 list item 과 동일 thumb 사이즈 (42) + 동일 title/subtitle
+              // 토큰·간격 (DESIGN.md §0.0.1 통일성).
+              _Thumb(path: album.thumbnailPath, size: 42),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(alias ?? demographic,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.textPrimary)),
-                    if (alias != null) ...[
-                      const SizedBox(height: 2),
-                      Text(demographic,
-                          style: const TextStyle(
-                              fontSize: 11, color: AppTheme.textSecondary)),
-                    ],
+                    Text(
+                      demographic,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.sectionTitle.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SourceBadge(source: album.source),
+                        const SizedBox(width: AppSpacing.xs),
+                        Flexible(
+                          child: Text(
+                            subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppText.caption.copyWith(
+                              color: AppColors.textHint,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -647,12 +686,13 @@ class _LabelRow extends StatelessWidget {
               children: [
                 RichText(
                   text: TextSpan(
-                    style: const TextStyle(
+                    // 등급명은 accent 컬러로 — 사용자가 좋고 나쁨을 즉시 인지.
+                    style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimary),
+                        color: accent),
                     children: [
-                      TextSpan(text: label.korean),
+                      TextSpan(text: '${_emoji(label)} ${label.korean}'),
                       const TextSpan(text: '  '),
                       TextSpan(
                         text: label.hanja,
@@ -686,15 +726,28 @@ class _LabelRow extends StatelessWidget {
     );
   }
 
+  static String _emoji(CompatLabel l) {
+    switch (l) {
+      case CompatLabel.cheonjakjihap:
+        return '🟢';
+      case CompatLabel.sangkyeongyeobin:
+        return '🔵';
+      case CompatLabel.mahapgaseong:
+        return '🟠';
+      case CompatLabel.hyeonggeuknanjo:
+        return '🔴';
+    }
+  }
+
   static _TaglinePair _tagline(CompatLabel l) {
     switch (l) {
       case CompatLabel.cheonjakjihap:
         return const _TaglinePair(
-            headline: '좋은 점 압도',
-            detail: '얼굴로 읽으면 흔치 않게 잘 맞는 자리.');
+            headline: '천생연분의 기운이 우세',
+            detail: '얼굴상이 흔치않게 잘 맞는 자리.');
       case CompatLabel.sangkyeongyeobin:
         return const _TaglinePair(
-            headline: '좋은 점 우세',
+            headline: '상생의 좋은 점 우세',
             detail: '예를 지키며 오래 가는 자리.');
       case CompatLabel.mahapgaseong:
         return const _TaglinePair(
@@ -852,3 +905,4 @@ class _Thumb extends StatelessWidget {
     );
   }
 }
+

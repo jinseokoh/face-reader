@@ -10,6 +10,7 @@ import 'package:face_reader/presentation/providers/tab_provider.dart';
 import 'package:face_reader/presentation/screens/home/report_page.dart';
 import 'package:face_reader/presentation/widgets/compact_snack_bar.dart';
 import 'package:face_reader/presentation/widgets/physiognomy_info_dialog.dart';
+import 'package:face_reader/presentation/widgets/source_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timeago/timeago.dart' as timeago;
@@ -103,7 +104,7 @@ class _MyProfileHeader extends StatelessWidget {
         : '내 관상을 설정해주세요.';
     final captionText = isSet
         ? (mf.alias ?? _faceShapeLabelKo(mf.faceShapeLabel))
-        : '내 관상을 설정하면 궁합을 볼 수 있어요';
+        : '더보기 메뉴를 통해 설정 가능합니다.';
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.background,
@@ -254,14 +255,23 @@ class _PhysiognomyItem extends ConsumerWidget {
                               ],
                             ),
                             const SizedBox(height: AppSpacing.xs),
-                            // 헤더 caption 자리: 별칭 또는 분류 얼굴형.
-                            Text(
-                              displayName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppText.caption.copyWith(
-                                color: AppColors.textHint,
-                              ),
+                            // 헤더 caption 자리: source badge + 별칭/얼굴형.
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SourceBadge(source: report.source),
+                                const SizedBox(width: AppSpacing.xs),
+                                Flexible(
+                                  child: Text(
+                                    displayName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AppText.caption.copyWith(
+                                      color: AppColors.textHint,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                             const SizedBox(height: AppSpacing.sm),
                             const Divider(
@@ -316,7 +326,7 @@ class _PhysiognomyItem extends ConsumerWidget {
                   } else if (value == 'clearMyFace') {
                     _clearMyFace(context, ref);
                   } else if (value == 'delete') {
-                    _confirmDelete(context, ref, displayName);
+                    _confirmDelete(context, ref);
                   }
                 },
                 itemBuilder: (ctx) => [
@@ -432,8 +442,10 @@ class _PhysiognomyItem extends ConsumerWidget {
     );
   }
 
-  void _confirmDelete(
-      BuildContext context, WidgetRef ref, String displayName) {
+  void _confirmDelete(BuildContext context, WidgetRef ref) {
+    final demographic = '${report.ageGroup.labelKo} '
+        '${report.gender.labelKo} '
+        '${report.ethnicity.labelKo}';
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -441,9 +453,10 @@ class _PhysiognomyItem extends ConsumerWidget {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.xl),
         ),
-        title: const Text('삭제하시겠습니까?', style: AppText.modalTitle),
-        content: Text(
-          '"$displayName" 기록이 영구 삭제됩니다.',
+        title: Text('$demographic 기록을 삭제할까요?',
+            style: AppText.modalTitle),
+        content: const Text(
+          '이 작업은 되돌릴 수 없습니다.',
           style: AppText.body,
         ),
         actions: [
