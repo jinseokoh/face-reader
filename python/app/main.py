@@ -11,12 +11,13 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 
 from app.schemas import AnalyzeRequest, AnalyzeResponse, ErrorResponse
 from app.services.downloader import DownloadError, cleanup, download_image
 from app.services.inference import NoFaceError, analyze_image, warm_up
+from app.utils.auth import verify_face_token
 from app.utils.config import get_settings
 from app.utils.logging_config import configure_logging
 
@@ -75,10 +76,12 @@ async def health() -> dict[str, str]:
     response_model=AnalyzeResponse,
     responses={
         400: {"model": ErrorResponse},
+        401: {"model": ErrorResponse},
         422: {"model": ErrorResponse},
         502: {"model": ErrorResponse},
     },
     tags=["inference"],
+    dependencies=[Depends(verify_face_token)],
 )
 async def analyze(req: AnalyzeRequest) -> AnalyzeResponse:
     url = str(req.image_url)

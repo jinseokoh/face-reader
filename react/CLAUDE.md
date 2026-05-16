@@ -10,7 +10,8 @@
 1. **OG meta 는 route `meta` export 만.** client-only `<head>` 조작 금지 (카톡 크롤러 JS 실행 안 함).
 2. **Vercel 등 다른 deploy target 추가 금지.** Cloudflare Workers only.
 3. **친밀·갈등 본문, PII (이름·생년월일·얼굴 이미지) 응답 0.**
-4. **R2 / KV / Storage 도입 금지.** 카드 PNG 는 카톡 attachment 1회성.
+4. **R2 / KV / Storage 직접 저장 금지.** Worker 가 직접 객체를 put/get/list 하지 않는다. 카드 PNG 는 카톡 attachment 1회성.
+   * **예외 — R2 presign URL 발급은 허용.** 모바일 앱의 DeepFace analyze 파이프라인용. Worker 는 signing 만; 이미지 자체는 모바일 ↔ R2 직접 PUT. presign 응답엔 HMAC 단기 토큰을 함께 발행해 `/analyze` 호출 인증으로 사용. 라우트: `app/routes/api.r2.presign.ts`.
 5. **`metrics_json` 외 derived 데이터 (archetype·rule·score) DB 저장 금지** — 엔진이 load 시점 재계산.
 6. **engine 재이식 금지.** 룰은 `/shared/` 한 곳. `pnpm build:shared` 로 양쪽 반영.
 7. **flutter 의 SongMyung 폰트 룰 적용 X.** system default 만.
