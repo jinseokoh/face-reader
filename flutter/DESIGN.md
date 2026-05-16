@@ -187,6 +187,31 @@ AlertDialog(
    얼굴로 읽으면 흔치 않게 잘 맞는 자리.
 ```
 
+### 3.7 Integrated sliver header — 옅은 톤 profile/identity slot
+
+§3.4 의 다크 hero 카드와 짝을 이루는 **반대편 패턴**. 동일한 "프로필/정체성" 정보라도 그것이 화면 chrome (AppBar 의 연장선) 안에 상시 노출되는 sliver header 라면 다크 카드 대신 본 톤을 쓴다.
+
+**언제 §3.4 다크 hero vs §3.7 옅은 sliver header**:
+- §3.4 다크 hero — **promo · 일회성 강조**. 한 화면 안에서 한 번 등장하고 그 자체로 시선을 끌어야 하는 카드 (예: 분석 결과 리포트 상단의 archetype hero, 결제 유도 promo).
+- §3.7 옅은 sliver header — **persistent identity · 화면 chrome**. AppBar 바로 아래에서 상시 노출되어 그 화면의 "당신은 누구" 를 알려주는 정체성 슬롯. 다크 반전이 화면 위계를 깨뜨리고 도드라지는 인상을 준다.
+
+**같은 정체성 정보를 두 톤으로 동시에 쓰지 않는다.** 같은 화면에서 §3.4 와 §3.7 이 둘 다 등장하면 위계 충돌. 어느 한 쪽으로 통일.
+
+규칙:
+
+- background: `AppColors.background` (white) — **카드 chrome 제거**. AppBar 와 시각적으로 연속.
+- bottom separator: `Border(bottom: BorderSide(color: AppColors.border, width: 0.5))` — list 와의 경계만 가는 1px 선으로.
+- borderRadius: **0** (모서리 둥글기 없음 — sliver 폭 전체에 spread). 카드처럼 떠 있는 게 아니라 chrome 의 일부.
+- padding: `EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.md)` — 다크 hero (`AppSpacing.xl`) 보다 한 단 압축.
+- avatar: §3.4 의 84px 절반 수준인 **42px**. 동일한 gold 1.5px border 유지.
+- eyebrow text: `AppText.caption.copyWith(fontWeight: w600, color: AppColors.gold)` — 다크 hero 와 동일한 gold 강조 유지.
+- title text: `AppText.subTitle.copyWith(fontWeight: w700)` — **textPrimary 다크 글자** (white 가 아님).
+- sub-caption text: `AppText.hint` — textHint 회색.
+
+예: `physiognomy_screen.dart::_MyProfileHeader`.
+
+**SliverAppBar 임베딩 (expand/collapse 동작)**: 본 헤더를 `SliverAppBar.flexibleSpace`(FlexibleSpaceBar.background) 안에 넣으면, fully expanded 일 때 avatar + personal 내용이 모두 보이고 스크롤하면 background 가 자동 fade 되어 condensed 상태에서는 SliverAppBar.title (예: "관상") 만 남는다. `expandedHeight` = kToolbarHeight + 헤더 내용 높이 (대략 132~140), `pinned: true` 로 title·TabBar 유지, `TabBar` 는 `SliverAppBar.bottom` 슬롯. TabBarView 와 결합 시 `NestedScrollView` 의 `headerSliverBuilder` 에 두고 각 탭의 `CustomScrollView` 첫 sliver 는 `SliverOverlapInjector` — 인너 스크롤이 헤더 collapse 를 정상 트리거.
+
 ---
 
 ## 4. 마이그레이션 가이드
