@@ -1,10 +1,10 @@
 import 'dart:io';
 
-import 'package:face_reader/core/theme.dart';
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
+import 'package:face_reader/core/theme.dart';
 import 'package:face_reader/presentation/providers/history_provider.dart';
 import 'package:face_reader/presentation/providers/tab_provider.dart';
 import 'package:face_reader/presentation/screens/home/report_page.dart';
@@ -37,6 +37,138 @@ class PhysiognomyScreen extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<PhysiognomyScreen> createState() => _PhysiognomyScreenState();
+}
+
+class _HeaderAvatar extends StatelessWidget {
+  final FaceReadingReport? myFace;
+
+  const _HeaderAvatar({required this.myFace});
+
+  @override
+  Widget build(BuildContext context) {
+    // §3.7 — 다크 hero 의 84px 절반.
+    const size = 42.0;
+    Widget inner = const _HeaderAvatarPlaceholder();
+    final thumb = myFace?.thumbnailPath;
+    if (thumb != null) {
+      final file = File(thumb);
+      if (file.existsSync()) {
+        inner = Image.file(file, width: size, height: size, fit: BoxFit.cover);
+      }
+    }
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.gold, width: 1.5),
+      ),
+      child: ClipOval(child: inner),
+    );
+  }
+}
+
+class _HeaderAvatarPlaceholder extends StatelessWidget {
+  const _HeaderAvatarPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.surface,
+      child: const Center(
+        child: Icon(Icons.person, size: 22, color: AppColors.textHint),
+      ),
+    );
+  }
+}
+
+/// 내 관상 프로필 — sliver header integrated 형태.
+/// DESIGN.md §3.7 (Integrated sliver header — 옅은 톤) 준수:
+///   - background: AppColors.background (white) + bottom 1px border
+///   - borderRadius: 0 (chrome 의 일부, 카드 chrome 없음)
+///   - avatar: 42px (§3.4 다크 hero 의 84px 절반)
+///   - eyebrow: gold / title: textPrimary / caption: textHint
+class _MyProfileHeader extends StatelessWidget {
+  final FaceReadingReport? myFace;
+
+  const _MyProfileHeader({required this.myFace});
+
+  @override
+  Widget build(BuildContext context) {
+    final mf = myFace;
+    final isSet = mf != null;
+    final titleText = isSet
+        ? '${mf.ageGroup.labelKo} ${mf.gender.labelKo} '
+            '${mf.ethnicity.labelKo}'
+        : '내 관상을 설정해주세요.';
+    final captionText = isSet
+        ? (mf.alias ?? _faceShapeLabelKo(mf.faceShapeLabel))
+        : '내 관상을 설정하면 궁합을 볼 수 있어요';
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.background,
+        border: Border(
+          bottom: BorderSide(color: AppColors.border, width: 0.5),
+        ),
+      ),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.lg,
+        AppSpacing.md,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          _HeaderAvatar(myFace: myFace),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.check_circle,
+                      size: 14,
+                      color: AppColors.gold,
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Text(
+                      '내 관상',
+                      style: AppText.caption.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.gold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  titleText,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.sectionTitle.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                // §0.0.1 title↔subtitle gap = AppSpacing.xs (list item 과 동일).
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  captionText,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.caption.copyWith(color: AppColors.textHint),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _PhysiognomyItem extends ConsumerWidget {
@@ -92,7 +224,10 @@ class _PhysiognomyItem extends ConsumerWidget {
                               children: [
                                 Flexible(
                                   child: Text(
-                                    displayName,
+                                    // 헤더 §3.7 과 동일 포맷: 연령대 성별 인종 (가운데점 X).
+                                    '${report.ageGroup.labelKo} '
+                                    '${report.gender.labelKo} '
+                                    '${report.ethnicity.labelKo}',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: AppText.sectionTitle.copyWith(
@@ -107,35 +242,55 @@ class _PhysiognomyItem extends ConsumerWidget {
                                     size: 14,
                                     color: AppColors.gold,
                                   ),
+                                  const SizedBox(width: AppSpacing.xs),
+                                  Text(
+                                    '내 관상',
+                                    style: AppText.caption.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.gold,
+                                    ),
+                                  ),
                                 ],
                               ],
                             ),
                             const SizedBox(height: AppSpacing.xs),
+                            // 헤더 caption 자리: 별칭 또는 분류 얼굴형.
                             Text(
-                              '${report.ethnicity.labelKo} · '
-                              '${report.ageGroup.labelKo} ${report.gender.labelKo}',
+                              displayName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: AppText.caption.copyWith(
                                 color: AppColors.textHint,
                               ),
                             ),
                             const SizedBox(height: AppSpacing.sm),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Expanded(child: _buildArchetypeBadges()),
-                                const SizedBox(width: AppSpacing.sm),
-                                Text(
-                                  timeago.format(report.timestamp,
-                                      locale: 'ko'),
-                                  style: AppText.hint,
-                                ),
-                              ],
+                            const Divider(
+                              height: 1,
+                              thickness: 0.5,
+                              color: AppColors.border,
                             ),
+                            const SizedBox(height: AppSpacing.sm),
+                            _buildArchetypeBadges(),
                           ],
                         ),
                       ),
                     ],
                   ),
+                ),
+              ),
+            ),
+            // 좌하단 absolute-positioned timestamp — avatar 아래 caption 자리.
+            Positioned(
+              bottom: 0,
+              left: 0,
+              child: Padding(
+                padding: const EdgeInsets.only(
+                  bottom: AppSpacing.sm,
+                  left: AppSpacing.md,
+                ),
+                child: Text(
+                  timeago.format(report.timestamp, locale: 'ko'),
+                  style: AppText.hint,
                 ),
               ),
             ),
@@ -158,14 +313,19 @@ class _PhysiognomyItem extends ConsumerWidget {
                     _showAliasDialog(context, ref, displayName);
                   } else if (value == 'setMyFace') {
                     _setMyFace(context, ref);
+                  } else if (value == 'clearMyFace') {
+                    _clearMyFace(context, ref);
                   } else if (value == 'delete') {
                     _confirmDelete(context, ref, displayName);
                   }
                 },
                 itemBuilder: (ctx) => [
-                  const PopupMenuItem<String>(
-                    value: 'setMyFace',
-                    child: Text('내 프로필로 설정', style: AppText.body),
+                  PopupMenuItem<String>(
+                    value: isMyFace ? 'clearMyFace' : 'setMyFace',
+                    child: Text(
+                      isMyFace ? '내 관상으로 설정 취소' : '내 관상으로 설정',
+                      style: AppText.body,
+                    ),
                   ),
                   const PopupMenuItem<String>(
                     value: 'rename',
@@ -221,7 +381,7 @@ class _PhysiognomyItem extends ConsumerWidget {
         chip(primary,
             bg: AppColors.textPrimary.withValues(alpha: 0.08),
             fg: AppColors.textPrimary),
-        chip('· $secondary',
+        chip('$secondary 기질',
             bg: Colors.transparent, fg: AppColors.textSecondary),
         if (special != null)
           chip(special,
@@ -261,6 +421,14 @@ class _PhysiognomyItem extends ConsumerWidget {
         color: AppColors.textSecondary,
         size: 22,
       ),
+    );
+  }
+
+  void _clearMyFace(BuildContext context, WidgetRef ref) {
+    ref.read(historyProvider.notifier).clearMyFace();
+    showTopSnackBar(
+      Overlay.of(context),
+      CompactSnackBar.success(message: '내 관상 지정을 취소했습니다'),
     );
   }
 
@@ -438,217 +606,6 @@ class _PhysiognomyItem extends ConsumerWidget {
 
 }
 
-/// 내 관상 프로필 — sliver header integrated 형태.
-/// DESIGN.md §3.7 (Integrated sliver header — 옅은 톤) 준수:
-///   - background: AppColors.background (white) + bottom 1px border
-///   - borderRadius: 0 (chrome 의 일부, 카드 chrome 없음)
-///   - avatar: 42px (§3.4 다크 hero 의 84px 절반)
-///   - eyebrow: gold / title: textPrimary / caption: textHint
-class _MyProfileHeader extends StatelessWidget {
-  final FaceReadingReport? myFace;
-
-  const _MyProfileHeader({required this.myFace});
-
-  @override
-  Widget build(BuildContext context) {
-    final mf = myFace;
-    final isSet = mf != null;
-    final titleText = isSet
-        ? '${mf.ageGroup.labelKo} ${mf.gender.labelKo} '
-            '${mf.ethnicity.labelKo}'
-        : '나의 얼굴을 아래 리스트에서 선택해 주세요';
-    final captionText = isSet
-        ? (mf.alias ?? _faceShapeLabelKo(mf.faceShapeLabel))
-        : '선택해야 다른 사람과의 궁합을 볼 수 있어요';
-
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.background,
-        border: Border(
-          bottom: BorderSide(color: AppColors.border, width: 0.5),
-        ),
-      ),
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        AppSpacing.md,
-        AppSpacing.lg,
-        AppSpacing.md,
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          _HeaderAvatar(myFace: myFace),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '내 관상 프로필',
-                  style: AppText.caption.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.gold,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  titleText,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppText.subTitle.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                Text(
-                  captionText,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppText.hint,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeaderAvatar extends StatelessWidget {
-  final FaceReadingReport? myFace;
-
-  const _HeaderAvatar({required this.myFace});
-
-  @override
-  Widget build(BuildContext context) {
-    // §3.7 — 다크 hero 의 84px 절반.
-    const size = 42.0;
-    Widget inner = const _HeaderAvatarPlaceholder();
-    final thumb = myFace?.thumbnailPath;
-    if (thumb != null) {
-      final file = File(thumb);
-      if (file.existsSync()) {
-        inner = Image.file(file, width: size, height: size, fit: BoxFit.cover);
-      }
-    }
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: AppColors.gold, width: 1.5),
-      ),
-      child: ClipOval(child: inner),
-    );
-  }
-}
-
-class _HeaderAvatarPlaceholder extends StatelessWidget {
-  const _HeaderAvatarPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.surface,
-      child: const Center(
-        child: Icon(Icons.person, size: 22, color: AppColors.textHint),
-      ),
-    );
-  }
-}
-
-enum _SortOrder {
-  newest('최신순'),
-  oldest('오래된순');
-
-  const _SortOrder(this.label);
-  final String label;
-}
-
-class _RecentListHeader extends StatelessWidget {
-  final _SortOrder order;
-  final ValueChanged<_SortOrder> onChanged;
-
-  const _RecentListHeader({required this.order, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Text(
-          '최근 분석한 사진',
-          style: AppText.sectionTitle.copyWith(fontWeight: FontWeight.w700),
-        ),
-        PopupMenuButton<_SortOrder>(
-          tooltip: '정렬',
-          initialValue: order,
-          padding: EdgeInsets.zero,
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.md),
-          ),
-          onSelected: onChanged,
-          itemBuilder: (ctx) => _SortOrder.values
-              .map(
-                (o) => PopupMenuItem<_SortOrder>(
-                  value: o,
-                  child: Text(o.label, style: AppText.body),
-                ),
-              )
-              .toList(),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                order.label,
-                style: AppText.caption.copyWith(color: AppColors.textHint),
-              ),
-              const Icon(Icons.keyboard_arrow_down,
-                  size: 16, color: AppColors.textHint),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ProfileHintCard extends StatelessWidget {
-  const _ProfileHintCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-      ),
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          const Icon(Icons.lightbulb_outline, color: AppColors.gold, size: 22),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Text(
-              '내 프로필을 설정하면 다른 사진들과의\n궁합, 관계 분석을 볼 수 있어요',
-              style: AppText.caption.copyWith(
-                fontWeight: FontWeight.w500,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Text('💕', style: AppText.hint.copyWith(fontSize: 22)),
-        ],
-      ),
-    );
-  }
-}
-
 class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
@@ -688,7 +645,7 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
               // flexibleSpace + bottom(TabBar) 모두 포함. 따라서 프로필 영역만이
               // 아니라 TabBar 높이(kTextTabBarHeight=46)까지 더해야 한다.
               // 안 그러면 background 가 TabBar 아래로 클리핑되어 label 끼리 겹침.
-              expandedHeight: kToolbarHeight + 92 + kTextTabBarHeight,
+              expandedHeight: kToolbarHeight + 94 + kTextTabBarHeight,
               title: const Text('관상'),
               actions: [
                 IconButton(
@@ -826,6 +783,7 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
                   child: _RecentListHeader(
                     order: _sortOrder,
                     onChanged: (v) => setState(() => _sortOrder = v),
+                    source: source,
                   ),
                 ),
               ),
@@ -872,13 +830,10 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
     // ignore: avoid_print
     print('[PhysiognomyScreen] pull-to-refresh reloadFromHive returned: '
         'state before=$before → after=$after');
-    // 시각적 feedback 을 위해 최소 latency 유지.
+    // 사용자 명시: snackbar 의미가 모호 — console log 로만 대체.
     await Future<void>.delayed(const Duration(milliseconds: 400));
-    if (!mounted) return;
-    showTopSnackBar(
-      Overlay.of(context),
-      CompactSnackBar.success(message: '새 공식으로 재계산 완료'),
-    );
+    // ignore: avoid_print
+    print('[PhysiognomyScreen] reloadFromHive → 재계산 완료');
   }
 
   void _showInfoDialog(BuildContext context) {
@@ -908,4 +863,105 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
       },
     );
   }
+}
+
+class _ProfileHintCard extends StatelessWidget {
+  const _ProfileHintCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Icon(Icons.lightbulb_outline, color: AppColors.gold, size: 22),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Text(
+              '내 관상을 설정하면 다른 사람과\n나와의 궁합을 분석해 볼 수 있어요',
+              style: AppText.caption.copyWith(
+                fontWeight: FontWeight.w500,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Text('💕', style: AppText.hint.copyWith(fontSize: 22)),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecentListHeader extends StatelessWidget {
+  final _SortOrder order;
+  final ValueChanged<_SortOrder> onChanged;
+  final AnalysisSource source;
+
+  const _RecentListHeader({
+    required this.order,
+    required this.onChanged,
+    required this.source,
+  });
+
+  String get _label => switch (source) {
+        AnalysisSource.camera => '카메라로 분석한 관상',
+        AnalysisSource.album => '앨범사진으로 분석한 관상',
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          _label,
+          style: AppText.sectionTitle.copyWith(fontWeight: FontWeight.w700),
+        ),
+        PopupMenuButton<_SortOrder>(
+          tooltip: '정렬',
+          initialValue: order,
+          padding: EdgeInsets.zero,
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+          onSelected: onChanged,
+          itemBuilder: (ctx) => _SortOrder.values
+              .map(
+                (o) => PopupMenuItem<_SortOrder>(
+                  value: o,
+                  child: Text(o.label, style: AppText.body),
+                ),
+              )
+              .toList(),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                order.label,
+                style: AppText.caption.copyWith(color: AppColors.textHint),
+              ),
+              const Icon(Icons.keyboard_arrow_down,
+                  size: 16, color: AppColors.textHint),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+enum _SortOrder {
+  newest('최신순'),
+  oldest('오래된순');
+
+  final String label;
+  const _SortOrder(this.label);
 }

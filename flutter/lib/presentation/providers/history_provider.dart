@@ -61,6 +61,16 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
     await _saveToHive();
   }
 
+  Future<void> clearMyFace() async {
+    final updated = <FaceReadingReport>[];
+    for (final r in state) {
+      r.isMyFace = false;
+      updated.add(r);
+    }
+    state = [...updated];
+    await _saveToHive();
+  }
+
   Future<void> updateAlias(int index, String alias) async {
     final report = state[index];
     report.alias = alias.isEmpty ? null : alias;

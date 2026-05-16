@@ -5,7 +5,48 @@
 > `flutter/lib/core/theme.dart` 의 `AppText` / `AppColors` / `AppSpacing` / `AppRadius`
 > 토큰 클래스를 통해서만 사용한다.
 
-마지막 업데이트: 2026-05-14 (송명체 display-only 정책 + 토큰 SSOT 분리)
+마지막 업데이트: 2026-05-16 (§0.0 통일성 절대 1순위 warning + 검증 protocol)
+
+---
+
+## ⛔ 0.0 통일성 — 모든 토큰·포맷 결정의 최상위 원칙
+
+> **이 문서의 다른 모든 규칙보다 우선한다.** 같은 역할(role)을 표현하는 두 컨테이너가 다른 스타일·다른 포맷으로 보이면 그 자체로 결함이다. 발견 즉시 폐기·재작업 — debate 금지. 우리는 같은 정보를 두 가지 모습으로 보여주는 앱이 아니다.
+
+### 0.0.1 통일성의 3 dimension
+
+같은 화면 내·다른 화면 간에 아래 3개 차원이 모두 일치해야 한다:
+
+1. **같은 역할 = 같은 token** — 같은 의미(예: "정체성 title", "메타 caption", "강조 eyebrow")의 두 컨테이너는 동일 `AppText.X` / `AppColors.X` / `AppSpacing.X` 를 공유한다. fontSize 가 1 step 이라도 다르면 위반.
+2. **같은 정보 = 같은 포맷** — 같은 데이터(예: 연령대·성별·인종 3-tuple)는 모든 컨테이너에서 **동일 문자열 포맷·동일 순서·동일 구분자**(또는 무구분). 한 곳은 `"30대 여성 동아시아인"` 공백 구분, 다른 곳은 `"동아시아인 · 30대 여성"` 가운데점 + 역순 — 절대 금지.
+3. **같은 위계 = 같은 사이즈** — 두 컨테이너가 위계상 동등하다면 (둘 다 정체성 chrome / 둘 다 list item 등), 그 둘의 title fontSize 는 동일 token. "주된 컨테이너 > 부수 컨테이너" 같은 위계 차이는 본 문서 어딘가에 명시되어야 하며, 명시 없이 사이즈를 다르게 잡지 않는다.
+
+### 0.0.2 실제 위반 사례 (regression 차단용)
+
+❌ **2026-05-16 발견**: SliverAppBar 헤더의 정체성 title 이 `AppText.subTitle` (14), 같은 화면 list item 의 title 이 `AppText.sectionTitle` (16). 정체성 표시라는 같은 역할인데 한 step 차이. **재작업: 둘 다 sectionTitle 로 통일.**
+
+❌ **2026-05-16 발견**: 헤더 demographic 은 `"${ageGroup} ${gender} ${ethnicity}"` 공백 구분 + 연령순, list item 은 `"${ethnicity} · ${ageGroup} ${gender}"` 가운데점 + 인종순. 같은 데이터의 두 포맷. **재작업: 둘 다 헤더 포맷으로 통일.**
+
+❌ **2026-05-16 발견**: 헤더 sub-caption 자리에 별칭/얼굴형 표시, list item 은 별칭/얼굴형이 title 자리에 표시. 같은 정보의 시각 위계가 두 컨테이너에서 반대. **재작업: 별칭/얼굴형은 두 곳 모두 caption 위계로 통일.**
+
+❌ **2026-05-16 발견**: 같은 화면 안에서 동일 역할이 두 다른 token 으로 분기:
+ - "isMyFace 라벨" — 헤더에서는 `AppText.caption (13) w600 gold`, list item 에서는 `AppText.hint (12) w600 gold`. 한 step 차이.
+ - "별칭/얼굴형 subtitle" — 헤더에서는 `AppText.hint (12)`, list item 에서는 `AppText.caption (13)`. 한 step 차이 + 헤더만 color override 누락.
+
+ **재작업: subtitle 두 곳 모두 `AppText.caption.copyWith(color: textHint)`, isMyFace 라벨 두 곳 모두 `AppText.caption.copyWith(w600, gold)` 로 통일.** 작은 step 차이가 가장 안 잡힌다 — fontSize 12 vs 13 은 그래픽 검증보다 코드 grep 으로 잡는다.
+
+### 0.0.3 새 위젯·새 컨테이너 추가 시 의무 체크리스트
+
+위젯을 작성하기 **전에** 본 체크리스트를 통과해야 한다:
+
+- [ ] **선행 탐색**: 이 위젯이 표현하는 데이터·역할이 다른 화면에 이미 등장하는가? Y → 그 화면의 token·포맷·순서를 **그대로** 가져와 시작한다. 토큰을 새로 만들기 전에 기존 사용처를 한 번 더 본다.
+- [ ] **token diff = 0**: 비교 대상 컨테이너와 fontSize·fontWeight·color·spacing·radius 가 한 step 이라도 다른가? Y → 한쪽을 맞춰서 통일한다. "조금만 더 작게/크게" 는 위반의 시작.
+- [ ] **포맷 diff = 0**: 같은 데이터를 두 곳에서 다른 순서·다른 구분자·다른 단위로 포맷팅하는가? Y → 한쪽을 맞춰서 통일한다.
+- [ ] **위계 명시**: 의도적으로 사이즈/색을 다르게 잡았다면, 그 위계 차이가 본 문서에 명시되어 있는가? 명시 없는 차이는 위반.
+
+### 0.0.4 review·QA gate
+
+PR 리뷰에서 본 절을 만족하지 못한 변경은 즉시 reject. 코드 자체 동작이 멀쩡해도 통일성 위반은 그 자체로 reject 사유 — 변경된 라인 옆에서 다른 컨테이너를 1분만 비교하면 잡힌다.
 
 ---
 
