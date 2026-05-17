@@ -10,6 +10,7 @@ import 'package:face_reader/domain/models/capture_result.dart';
 import 'package:face_reader/domain/models/face_metadata.dart';
 import 'package:face_reader/domain/services/face_metrics_lateral.dart';
 import 'package:face_reader/presentation/providers/auth_provider.dart';
+import 'package:face_reader/presentation/widgets/home_illustration.dart';
 import 'package:face_reader/presentation/widgets/login_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -59,25 +60,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            const Spacer(),
+            const SizedBox(height: 24),
+            // 손그림 line illustration — 관상 분석 분위기 (CustomPainter, asset 0).
+            const HomeIllustration(size: 280),
+            const SizedBox(height: 28),
             Text(
               '관상은 과학이다.',
-              style: TextStyle(
-                fontFamily: 'SongMyung',
-                color: AppTheme.textPrimary,
-                fontSize: 48,
-                fontWeight: FontWeight.bold,
+              style: AppText.display.copyWith(
+                fontSize: 36,
+                fontWeight: FontWeight.w700,
                 height: 1.15,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 14),
-            const Text(
-              'Facely, 안면 계측 데이터 기반 인공지능 관상앱.',
-              style: AppText.displaySubtitle,
+            const SizedBox(height: 10),
+            Text(
+              '카메라로 찍거나, 앨범에서 사진을 골라\n관상 분석을 시작해 보세요.',
+              style: AppText.body.copyWith(
+                color: AppTheme.textSecondary,
+                height: 1.5,
+              ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 56),
+            const Spacer(),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 32),
               child: Column(
@@ -98,16 +103,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Text(
-                '얼굴 사진을 올리면 나이·성별·인종을 자동으로 추정하고\n관상 분석 전에 한 번 더 확인할 수 있습니다.',
-                style: AppText.body.copyWith(color: AppTheme.textSecondary),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            const Spacer(),
+            const SizedBox(height: 32),
           ],
         ),
       ),
