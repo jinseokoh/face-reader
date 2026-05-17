@@ -15,6 +15,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 
 from app.schemas import AnalyzeRequest, AnalyzeResponse, ErrorResponse
+from app.services.deleter import delete_temp_object
 from app.services.downloader import DownloadError, cleanup, download_image
 from app.services.inference import NoFaceError, analyze_image, warm_up
 from app.utils.auth import verify_face_token
@@ -81,11 +82,19 @@ async def health() -> dict[str, str]:
         502: {"model": ErrorResponse},
     },
     tags=["inference"],
-    dependencies=[Depends(verify_face_token)],
 )
-async def analyze(req: AnalyzeRequest) -> AnalyzeResponse:
+async def analyze(
+    req: AnalyzeRequest,
+    key: str = Depends(verify_face_token),
+) -> AnalyzeResponse:
+    """Analyze + immediately DELETE temp/{uuid}.jpg from R2.
+
+    `key` is the verified R2 object key from `X-Face-Key` (e.g.
+    "temp/abc.jpg"). After successful analysis (or no-face) we fire-and-forget
+    the DELETE — failure is logged only, with the 1-day R2 lifecycle as safety net.
+    """
     url = str(req.image_url)
-    logger.info("analyze request", extra={"image_url": url})
+    logger.info("analyze request", extra={"image_url": url, "key": key})
 
     try:
         image = await download_image(url)
@@ -103,6 +112,8 @@ async def analyze(req: AnalyzeRequest) -> AnalyzeResponse:
         result = await analyze_image(image.path)
     except NoFaceError as exc:
         logger.info("no face detected", extra={"image_url": url, "reason": str(exc)})
+        # 분석 실패해도 R2 객체는 정리. lifecycle 룰이 백업이긴 하나 즉시 삭제 선호.
+        await delete_temp_object(key)
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={
@@ -113,7 +124,10 @@ async def analyze(req: AnalyzeRequest) -> AnalyzeResponse:
     finally:
         cleanup(image.path)
 
-    logger.info("analyze ok", extra={"image_url": url, **result})
+    # 성공 케이스도 동일하게 즉시 정리. delete_temp_object 는 never-raises.
+    await delete_temp_object(key)
+
+    logger.info("analyze ok", extra={"image_url": url, "key": key, **result})
     return AnalyzeResponse(**result)
 
 

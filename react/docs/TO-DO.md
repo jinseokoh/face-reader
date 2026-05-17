@@ -28,29 +28,18 @@
 ### Python 서비스
 
 - [x] `/analyze` HMAC 인증 dependency (이미 구현)
-- [ ] **⚠️ 임시 secret-as-token bypass** — `python/app/utils/auth.py` 의 verify_face_token 첫 줄에 `if hmac.compare_digest(token, secret): return True` 분기 + WARN 로그. 추가 env·secret 없음 (기존 `FACE_API_SECRET` 재사용). dev/postman 에서 X-Face-Token 헤더에 secret 그대로 박으면 통과. 자세한 sunset 기준은 HOW-IT-WORKS §6.1.1.
-- [ ] **🗓️ SUNSET: secret-as-token bypass 제거** — 외부 베타 시작 또는 Flutter HMAC client 안정화 시점에 (a) auth.py 의 compare_digest 분기 + (b) HOW-IT-WORKS §6.1.1 + (c) 본 task 모두 동시 삭제. **GA 전 마지노선.**
-- [ ] **`/analyze` 응답 = DeepFace raw 그대로** — `{age:int, gender:"Man"|"Woman", race:string}` 만 반환. decade 라벨링·소문자·enum 매핑 등 가공 0. (소비자 Flutter 가 알아서 함.)
-- [ ] **즉시 R2 DELETE 구현** — `python/app/services/deleter.py` (신규):
-  ```python
-  async def delete_temp_object(key: str) -> None:
-      # SigV4 signed DELETE via httpx
-      # endpoint: https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com/{R2_BUCKET_NAME}/{key}
-  ```
-  의존성: `httpx` (이미 있음) + 가벼운 SigV4 signer (직접 구현 25줄 또는 `aioboto3` 도입).
-- [ ] **`/analyze` 끝에 `await delete_temp_object(key)`** (try/except — 실패해도 응답엔 영향 X, 로그만). `key` 는 헤더 `X-Face-Key` 로 이미 들어옴.
-- [ ] **docker-compose env** 에 `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` (Worker secret 과 동일 값), `R2_ACCOUNT_ID`, `R2_BUCKET_NAME` 추가
-- [ ] 같은 `FACE_API_SECRET` 값을 Worker secret 과 동일하게 셸 env 또는 `.env` 로 주입
+- [x] **⚠️ 임시 secret-as-token bypass** — `_verify()` 첫 줄에 `hmac.compare_digest(token, secret)` 분기 + WARN 로그. 추가 env 0. 자세한 sunset 기준은 HOW-IT-WORKS §6.1.1.
+- [ ] **🗓️ SUNSET: secret-as-token bypass 제거** — 외부 베타 시작 또는 Flutter HMAC client 안정화 시점에 (a) auth.py `_verify()` 의 compare_digest 분기 + (b) HOW-IT-WORKS §6.1.1 + (c) 본 task 모두 동시 삭제. **GA 전 마지노선.**
+- [x] **`/analyze` 응답 = DeepFace raw 그대로** — AnalyzeResponse 가 `age:int / gender:str / race:str` 그대로. inference.py 가 dominant_gender/race argmax 만 (양해된 raw-shape 정규화).
+- [x] **즉시 R2 DELETE 구현** — `python/app/services/deleter.py` (신규). 하드롤 SigV4 (httpx + hashlib/hmac, 추가 deps 0). `temp/` prefix 만 허용, fail-soft, 404 도 success 로 취급. env 미설정 시 skip + WARN.
+- [x] **`/analyze` 끝에 `await delete_temp_object(key)`** — 성공·no-face 양쪽에서 호출. `key` 는 `Depends(verify_face_token)` 가 반환 (X-Face-Key 검증값). delete 는 never-raises.
+- [x] **docker-compose env** 에 `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ACCOUNT_ID`, `R2_BUCKET_NAME` 추가 + `.env` 값 (Worker secret 동일) 채워짐
+- [x] **`FACE_API_SECRET` 동일 값 주입** — python/.env 에 Worker secret 동일 값 박혀 있음
 
 ### Supabase 스키마
 
 - [x] **`metrics` 테이블** — 이미 존재 (id / metrics_json / expires_at). 별도 `share_card` 신설 X.
-- [ ] **`react/db/migrations/2026-05-17_metrics_views_inactivity.sql` 실행** — Supabase 대시보드 → SQL Editor 에 파일 내용 통째로 붙여넣고 RUN. 한 파일에 다 묶여 있음:
-  - `views int default 0` + `updated_at timestamptz default now()` 컬럼 추가 + `metrics_updated_at_idx` 인덱스
-  - `touch_metrics_updated_at` trigger 함수 + `metrics_touch` trigger
-  - `increment_metrics_views(card_id uuid)` stored function (security definer, anon/authenticated grant execute)
-  - RLS 활성 + 4 정책 (read_anon / insert_anon with PII check / update_none / delete_none)
-  - 끝에 smoke test (주석) — 필요 시 활성해서 검증
+- [x] **`react/db/migrations/2026-05-17_metrics_views_inactivity.sql` 실행 완료** — Supabase SQL Editor 에서 RUN. 컬럼·trigger·RPC·RLS 모두 적용.
 - [ ] **metrics_json schemaVersion v2 bump** — Flutter 의 `RawMetrics` 모델에 `thumbnailKey`, `deepfaceAge?`, `deepfaceGender?`, `deepfaceRace?` 필드 추가하고 v2 로 표시. DeepFace raw 는 Flutter 가 보존할지 버릴지 자유. **`kind`/`partnerUuid`/`expires_at` 같은 관계형·만료 필드는 추가 금지**.
 - [ ] **Daily inactivity cron** (별도 단계, 위 SQL 파일의 (A)·(B) 주석 블록 참조):
   - Supabase Database → Extensions → `pg_cron` 활성

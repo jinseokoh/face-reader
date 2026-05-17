@@ -50,6 +50,15 @@ def _secret() -> bytes:
 
 def _verify(token: str, key: str) -> None:
     """Raise HTTPException on failure, return None on success."""
+    secret_bytes = _secret()
+
+    # ⚠️ TEMPORARY (DEV ONLY — GA 전 제거): secret 자체를 token 으로 받으면 bypass.
+    # HOW-IT-WORKS §6.1.1 + TO-DO 의 SUNSET task 참조. 매 사용마다 WARN 로그
+    # 남겨 남용 감지.
+    if hmac.compare_digest(token.encode("utf-8"), secret_bytes):
+        logger.warning("FACE_TOKEN_BYPASS used (secret-as-token)", extra={"key": key})
+        return
+
     try:
         raw = _b64url_decode(token)
     except (binascii.Error, ValueError) as exc:
@@ -77,7 +86,7 @@ def _verify(token: str, key: str) -> None:
         )
 
     expected = hmac.new(
-        _secret(),
+        secret_bytes,
         ts_bytes + key.encode("utf-8"),
         hashlib.sha256,
     ).digest()
@@ -92,8 +101,13 @@ def _verify(token: str, key: str) -> None:
 async def verify_face_token(
     x_face_token: Optional[str] = Header(default=None, alias="X-Face-Token"),
     x_face_key: Optional[str] = Header(default=None, alias="X-Face-Key"),
-) -> None:
-    """FastAPI dependency — drop into Depends() on protected routes."""
+) -> str:
+    """FastAPI dependency — verify token + return the verified `key`.
+
+    Routes can grab the R2 object key for downstream cleanup:
+
+        async def analyze(..., key: str = Depends(verify_face_token)): ...
+    """
     if not x_face_token or not x_face_key:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -103,3 +117,4 @@ async def verify_face_token(
             },
         )
     _verify(x_face_token, x_face_key)
+    return x_face_key
