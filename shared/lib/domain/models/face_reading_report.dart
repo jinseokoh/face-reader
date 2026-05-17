@@ -449,7 +449,8 @@ class FaceReadingReport {
     final normalizedScores =
         normalizeAllScores(breakdown.total, gender, shape: faceShape);
     _trace('normalizeAllScores OK');
-    final archetype = classifyArchetype(normalizedScores, shape: faceShape);
+    final archetype =
+        classifyArchetype(normalizedScores, gender, shape: faceShape);
     _trace('classifyArchetype OK → ${archetype.runtimeType}');
 
     final nodeScores = _rehydrateNodeScores(tree);

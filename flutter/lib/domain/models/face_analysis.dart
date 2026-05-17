@@ -293,7 +293,8 @@ FaceReadingReport analyzeFaceReading({
       normalizeAllScores(rawScores, gender, shape: faceShape);
 
   // Step 8: Archetype classification (shape-gated overlay 포함)
-  final archetype = classifyArchetype(normalizedScores, shape: faceShape);
+  final archetype =
+      classifyArchetype(normalizedScores, gender, shape: faceShape);
 
   // Build metric results
   final metricResults = <String, MetricResult>{};

@@ -1303,7 +1303,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
         zMap[m.id] = m.zScore;
       }
     }
-    return computeYinYang(zMap);
+    return computeYinYang(zMap, report.gender);
   }
 
   Future<void> _shareViaKakao(BuildContext context) async {

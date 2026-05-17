@@ -55,7 +55,7 @@ void main() {
         hasLateral: false,
       );
       final normalized = normalizeAllScores(raws, gender);
-      final archetype = classifyArchetype(normalized);
+      final archetype = classifyArchetype(normalized, gender);
       counts[archetype.primary] = counts[archetype.primary]! + 1;
     }
 

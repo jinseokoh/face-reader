@@ -1691,7 +1691,7 @@ _Features _extractFeatures(FaceReadingReport r) {
       zMap[m.id] = m.zScore;
     }
   }
-  final yinYang = computeYinYang(zMap);
+  final yinYang = computeYinYang(zMap, r.gender);
 
   return _Features(
     top: top,

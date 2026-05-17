@@ -203,11 +203,13 @@ void main() {
       for (int i = 0; i < n; i++) {
         final a = _sample(rng);
         final b = _sample(rng);
+        final myGender = _sampleGender(rng);
+        final albumGender = _sampleGender(rng);
         final m = matchYinYang(
-          my: computeYinYang(a.zMap),
-          album: computeYinYang(b.zMap),
-          myGender: _sampleGender(rng),
-          albumGender: _sampleGender(rng),
+          my: computeYinYang(a.zMap, myGender),
+          album: computeYinYang(b.zMap, albumGender),
+          myGender: myGender,
+          albumGender: albumGender,
         );
         counts[m.kind] = (counts[m.kind] ?? 0) + 1;
       }
@@ -242,11 +244,13 @@ void main() {
           my: computeZoneStates(a.zMap),
           album: computeZoneStates(b.zMap),
         );
+        final myGender = _sampleGender(rng);
+        final albumGender = _sampleGender(rng);
         final yy = matchYinYang(
-          my: computeYinYang(a.zMap),
-          album: computeYinYang(b.zMap),
-          myGender: _sampleGender(rng),
-          albumGender: _sampleGender(rng),
+          my: computeYinYang(a.zMap, myGender),
+          album: computeYinYang(b.zMap, albumGender),
+          myGender: myGender,
+          albumGender: albumGender,
         );
         final qi = computeQiScore(organ: op, zone: zh, yinYang: yy);
         expect(qi.subScore, inInclusiveRange(5.0, 99.0));

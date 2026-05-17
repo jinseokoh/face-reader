@@ -149,8 +149,8 @@ CompatibilityReport analyzeCompatibility({
     album: computeZoneStates(album.zMap),
   );
   final yy = matchYinYang(
-    my: computeYinYang(my.zMap),
-    album: computeYinYang(album.zMap),
+    my: computeYinYang(my.zMap, my.gender),
+    album: computeYinYang(album.zMap, album.gender),
     myGender: my.gender,
     albumGender: album.gender,
   );

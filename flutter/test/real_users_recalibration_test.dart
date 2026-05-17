@@ -148,7 +148,7 @@ void main() {
           .key;
       counts[top] = counts[top]! + 1;
 
-      final arc = classifyArchetype(normalized, shape: shape);
+      final arc = classifyArchetype(normalized, Gender.female, shape: shape);
       primaries.add('${f['id']}: ${arc.primary.name} + ${arc.secondary.name}');
     }
 

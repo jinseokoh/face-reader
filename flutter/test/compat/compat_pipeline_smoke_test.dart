@@ -121,7 +121,7 @@ FaceReadingReport _fakeReport(
       ),
   };
   final flat = {for (final a in Attribute.values) a: 7.5};
-  final archetype = classifyArchetype(flat, shape: FaceShape.oval);
+  final archetype = classifyArchetype(flat, gender, shape: FaceShape.oval);
 
   final report = FaceReadingReport(
     ethnicity: Ethnicity.eastAsian,

@@ -6,13 +6,22 @@
 ///   −  = 음기 우세 (부드러움·수분감·풍성·내향·수용성)
 ///   ≈0 = 음양 조화 (중용의 상)
 ///
+/// 麻衣相法 卷三 음양총론 — 남=양 base / 여=음 base. raw skew 에서 gender
+/// baseline 을 빼서 "예상 baseline 대비 얼마나 벗어났는가" 를 표시한다. 평균
+/// 남성 → skew ≈ 0 (양 baseline 정상), 평균 여성 → skew ≈ 0 (음 baseline
+/// 정상). 양·음 쏠림 신호는 사용자가 *자기 gender 기준* 에서 벗어났을 때만 부각.
+///
 /// 근거:
 /// - 양기 증강: 이마 넓음·턱 각도·광대 돌출·눈썹 두꺼움·코 높이·콧대 돌출.
 /// - 음기 증강: 도톰한 입술·하정 풍성·큰 눈(수기)·긴 인중·부드러운 입꼬리.
+/// - gender baseline: 麻衣相法 卷三 + 神相全編 命婦 chapter — 남=양 / 여=음 의
+///   "정상 baseline" 명시.
 ///
 /// 출처: 麻衣相法·柳莊相法 에서 남·여 기본 음양 해석 + 현대 관상 교재의
 /// 통용 기준. 수치 weight 는 관상 전통 상대 중요도 + 현실 얼굴 분산 고려.
 library;
+
+import 'package:face_engine/data/enums/gender.dart';
 
 enum YinYangTone {
   strongYang,   // skew ≥ +1.0
@@ -23,10 +32,12 @@ enum YinYangTone {
 }
 
 class YinYangBalance {
-  /// 양기(+) — 음기(−) 축 위의 쏠림 정도. 보통 [-2.5, +2.5] 범위.
+  /// 양기(+) — 음기(−) 축 위의 쏠림 정도, gender baseline 제거 후.
+  /// 보통 [-2.5, +2.5] 범위. 평균 남성·평균 여성 모두 ≈ 0.
   final double skew;
 
   /// 음양 둘 다 더한 총 "강도" — 존재감의 크기. 얼굴이 얼마나 특징적인지.
+  /// gender baseline 영향 없음 (절대 magnitude).
   final double magnitude;
 
   const YinYangBalance({required this.skew, required this.magnitude});
@@ -79,16 +90,27 @@ const Map<String, double> _yyWeights = {
   'lowerLipEline': -0.05,      // lateral
 };
 
-/// z-map(metric id → z-score) 으로 음양 balance 계산.
+/// Gender baseline — raw skew 에서 빼는 값. 남=+양 / 여=−음 의 canonical
+/// expectation. 평균 남성 raw skew ≈ +0.3 → adjusted skew ≈ 0 (정상). 평균
+/// 여성 raw skew ≈ −0.3 → adjusted skew ≈ 0 (정상). 평균에서 벗어날 때만
+/// strongYang/leaningYin 등 tone 이 활성.
+const Map<Gender, double> _yyGenderBaseline = {
+  Gender.male: 0.30,
+  Gender.female: -0.30,
+};
+
+/// z-map(metric id → z-score) + gender 으로 음양 balance 계산.
 /// frontal 17 + lateral 8 모두 혼재 가능. 없는 metric 은 0 으로 간주.
-YinYangBalance computeYinYang(Map<String, double> zMap) {
-  double skew = 0;
+/// gender baseline 을 빼서 "성별 expectation 대비 deviation" 을 표시한다.
+YinYangBalance computeYinYang(Map<String, double> zMap, Gender gender) {
+  double rawSkew = 0;
   double mag = 0;
   _yyWeights.forEach((metricId, weight) {
     final z = zMap[metricId] ?? 0.0;
     final contrib = weight * z;
-    skew += contrib;
+    rawSkew += contrib;
     mag += contrib.abs();
   });
-  return YinYangBalance(skew: skew, magnitude: mag);
+  final baseline = _yyGenderBaseline[gender] ?? 0.0;
+  return YinYangBalance(skew: rawSkew - baseline, magnitude: mag);
 }

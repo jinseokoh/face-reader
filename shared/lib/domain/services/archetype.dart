@@ -1,5 +1,6 @@
 import 'package:face_engine/data/enums/attribute.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
+import 'package:face_engine/data/enums/gender.dart';
 
 class ArchetypeResult {
   final Attribute primary;
@@ -30,13 +31,68 @@ const _archetypeLabels = <Attribute, String>{
   Attribute.libido: '정열형',
 };
 
+class _GenderPrior {
+  final double male;
+  final double female;
+  const _GenderPrior(this.male, this.female);
+}
+
+/// Archetype 별 gender prior — 麻衣相法 canon 의 archetype 본래 gender 함의를
+/// 분류 단계에 반영한다. 정규화된 attribute score (5~10) 에 곱해 *분류 ranking
+/// 용* 만으로 사용 — 원 score (attributes[].normalizedScore) 는 건드리지 않는다.
+///
+/// 값 범위 0.90 ~ 1.10. neutral = 1.00. 분류 swap 위험 최소화 (top-1 ↔ top-2
+/// 격차가 ~5% 이내일 때만 swap 가능).
+///
+/// 근거:
+/// - 麻衣相法·神相全編 archetype 의 gender 본 매핑 (將軍·王相·君子 vs 桃花·美人·賢妻)
+/// - 우리 archetype 라벨 본문이 이미 gender 분기되어 있다는 점 (의도적 redundancy)
+const _genderPriors = <Attribute, _GenderPrior>{
+  // 사업가형 — 鼻=재백궁, 약한 male-lean (transactional canon)
+  Attribute.wealth: _GenderPrior(1.05, 0.95),
+  // 리더형 — 將軍·王相 강한 male canon
+  Attribute.leadership: _GenderPrior(1.10, 0.90),
+  // 학자형 — 學士·君子 약한 male-lean (modern soft)
+  Attribute.intelligence: _GenderPrior(1.05, 0.95),
+  // 외교형 — gender-neutral
+  Attribute.sociability: _GenderPrior(1.00, 1.00),
+  // 예술가형 — 才子·才女 양면. neutral
+  Attribute.emotionality: _GenderPrior(1.00, 1.00),
+  // 현자형 — 君子·賢者 약한 male-lean
+  Attribute.stability: _GenderPrior(1.05, 0.95),
+  // 연예인형 — 桃花·美色 강한 female-lean
+  Attribute.sensuality: _GenderPrior(0.90, 1.10),
+  // 신의형 — gender-neutral
+  Attribute.trustworthiness: _GenderPrior(1.00, 1.00),
+  // 호감형 — 美人 약한 female-lean
+  Attribute.attractiveness: _GenderPrior(0.95, 1.05),
+  // 정열형 — 의지·정력 약한 male-lean (sexual dimorphism canon)
+  Attribute.libido: _GenderPrior(1.05, 0.95),
+};
+
+double _priorOf(Attribute attr, Gender gender) {
+  final p = _genderPriors[attr];
+  if (p == null) return 1.0;
+  return gender == Gender.male ? p.male : p.female;
+}
+
 /// scores → top-2 + special + shape-gated overlay.
+///
+/// [gender] 는 archetype 라벨의 canon-natural 매칭을 위한 prior 가중에 사용
+/// (分類 ranking only). attribute 본 score 는 건드리지 않는다.
+///
 /// shape overlay 는 _checkSpecial 보다 우선 — shape 특수 상에 걸리면 그걸 반환.
 ArchetypeResult classifyArchetype(
-  Map<Attribute, double> scores, {
+  Map<Attribute, double> scores,
+  Gender gender, {
   FaceShape shape = FaceShape.unknown,
 }) {
-  final sorted = scores.entries.toList()
+  // Gender-adjusted view of scores — ranking·special-check 용 한정.
+  final adjusted = <Attribute, double>{
+    for (final e in scores.entries) e.key: e.value * _priorOf(e.key, gender),
+  };
+
+  final sorted = adjusted.entries.toList()
     ..sort((a, b) => b.value.compareTo(a.value));
 
   final primary = sorted[0].key;
@@ -49,7 +105,7 @@ ArchetypeResult classifyArchetype(
     primaryLabel: _archetypeLabels[primary]!,
     secondaryLabel: _archetypeLabels[secondary]!,
     specialArchetype:
-        _checkShapeSpecial(shape, scores, topSet) ?? _checkSpecial(scores),
+        _checkShapeSpecial(shape, adjusted, topSet) ?? _checkSpecial(adjusted),
   );
 }
 
