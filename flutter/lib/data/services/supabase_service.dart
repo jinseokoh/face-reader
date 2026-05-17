@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
+import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 
 class SupabaseService {
@@ -31,7 +32,7 @@ class SupabaseService {
       'source': report.source.name,
       'ethnicity': report.ethnicity.name,
       'gender': report.gender.name,
-      'age_group': report.ageGroup.name,
+      'age_group': report.ageGroup.jsonValue,
       'expires_at': report.expiresAt.toUtc().toIso8601String(),
     };
 
@@ -74,7 +75,7 @@ class SupabaseService {
       'source': report.source.name,
       'ethnicity': report.ethnicity.name,
       'gender': report.gender.name,
-      'age_group': report.ageGroup.name,
+      'age_group': report.ageGroup.jsonValue,
       'expires_at': report.expiresAt.toUtc().toIso8601String(),
     });
     debugPrint('[Supabase] upserted metrics id=$id');

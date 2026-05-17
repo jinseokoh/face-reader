@@ -4,7 +4,7 @@
 <dict>
     <key>com.apple.developer.associated-domains</key>
     <array>
-        <string>applinks:face.kr</string>
+        <string>applinks:facely.kr</string>
     </array>
 </dict>
 </plist>

@@ -66,32 +66,13 @@
 ### Flutter 측
 
 - [x] R2Uploader / FaceMetadataClient / ImageResizer (이미 구현)
-- [ ] **`AgeGroup` JSON 직렬화 변경** — `shared/lib/data/enums/age_group.dart` 에 `jsonValue` extension 추가 (`teens→"10s", twenties→"20s", ..., nineties→"90s"`). RawMetrics toJson 에서 `name` 대신 `jsonValue` 사용. fromJson 은 v1 호환 위해 두 포맷 모두 accept (`"twenties"` 도 받음, 신규는 `"20s"` 로 쓰기).
-- [ ] **`FaceMetadata` 모델 확장** — DeepFace raw 응답 3 필드 (`age:int`, `gender:"Man"|"Woman"`, `race:string`) 를 `deepfaceAge/Gender/Race` 로 보존. app demographic enum 으로의 매핑은 Flutter 가 자체 책임 (사용자 보정 UI 가 최종).
-- [ ] **`share_publisher.dart`** 재작성 — 1인 metrics 직접 UPSERT (Worker 미경유):
-  1. analyze pipeline 완료 후 thumbnail 256px 까지 R2 PUT (presign + PUT)
-  2. metrics_json 페이로드 조립 — **1인 측정 데이터만** (schemaVersion=2, thumbnailKey, deepface\*?, 기존 rawMetrics, ageGroup="20s" 포맷). `kind`/`partnerUuid`/`expires_at` 같은 필드 추가 금지.
-  3. Supabase REST `POST /rest/v1/metrics?on_conflict=id` (anon key, header `Prefer: resolution=merge-duplicates`) 로 UPSERT — 항상 1행, `expires_at` 은 null 그대로
-  4. **관상 공유**: `https://facely.kr/r/{uuid}` 를 `share_plus`
-  5. **궁합 공유**: 두 사람 metrics 가 이미 둘 다 publish 되어 있다는 전제 (정상 case). `share_plus("https://facely.kr/r/${uuidA}${PAIR_SEP}${uuidB}")` — 추가 Supabase write 0회. `PAIR_SEP` 상수는 shared 패키지에 두고 Worker 의 `share-id.ts` 와 동일 값 유지.
+- [x] **`AgeGroup` JSON 직렬화 변경** — `shared/lib/data/enums/age_group.dart` 에 `jsonValue` extension (`teens→"10s"..nineties→"90s"`) + `AgeGroupParser.fromJsonValue` (양 포맷 accept) 추가. `FaceReadingReport.toJsonString/fromJsonString` + `SupabaseService.saveMetrics/upsertMetricsJson` 모두 새 직렬화로 전환.
+- [x] **`FaceMetadata` 모델** — 이미 `age:int / gender:"Man"|"Woman" / race:string` 으로 DeepFace raw 그대로 보존하고 있음. uuid + thumbnailUrl 도 포함. (`deepface*` prefix 는 metrics_json 에 들어갈 때의 키이름이며, Flutter 모델은 그대로 OK)
+- [x] **`share_publisher.dart`** 재작성 — Worker `/api/share` 호출 완전 제거. publishSolo → SupabaseService.saveMetrics + `share_plus('$_hostBase/r/$uuid')`. publishCompat → 두 metrics ensureSupabaseId 후 `share_plus('$_hostBase/r/${myId}${PAIR_SEP}${albumId}')`. `PAIR_SEP = "~"` 상수 (Worker 의 share-id.ts 와 동일 값).
 - [ ] **인스타용 카드 이미지 생성** — `RepaintBoundary` 로 1080×1350 PNG → `share_plus(files: [bytes])` Instagram 인텐트
-- [ ] **deep link 수신** — `app_links` 패키지 + main.dart 에서 `getInitialAppLink()` + stream 구독 → `/r/{id}` path 추출 → `PAIR_SEP` split → 1개면 `ReportPage(uuid)` navigate, 2개면 `CompatReportPage(uuidA, uuidB)` navigate
-- [ ] **iOS entitlements** (`ios/Runner/Runner.entitlements`):
-  ```xml
-  <key>com.apple.developer.associated-domains</key>
-  <array>
-    <string>applinks:facely.kr</string>
-  </array>
-  ```
-- [ ] **Android manifest** (`android/app/src/main/AndroidManifest.xml`):
-  ```xml
-  <intent-filter android:autoVerify="true">
-    <action android:name="android.intent.action.VIEW"/>
-    <category android:name="android.intent.category.DEFAULT"/>
-    <category android:name="android.intent.category.BROWSABLE"/>
-    <data android:scheme="https" android:host="facely.kr" android:pathPrefix="/r/"/>
-  </intent-filter>
-  ```
+- [x] **deep link 수신 기본 wiring** — `DeepLinkService` 가 `app_links` 의 `getInitialLink` + `uriLinkStream` 양쪽 listen. host=`facely.kr` 검증, path `/r/{id}` 파싱, `PAIR_SEP("~")` split, UUID regex validation. `Stream<ShareLink>` (sealed `SoloShareLink` / `CompatShareLink`) 로 emit. **남은 작업**: app.dart 의 MainApp 이 stream 구독해서 실제 navigate (ReportPage / CompatReportPage 의 fetch+render 가 별도 P0 sub-task).
+- [x] **iOS entitlements** — `ios/Runner/Runner.entitlements` 에 `applinks:facely.kr` 박힘 (구 `face.kr` 오타 정정).
+- [x] **Android manifest** — `AndroidManifest.xml` 의 share host intent-filter host=`facely.kr` 로 정정 (구 `face.kr` 오타). autoVerify=true + scheme=https + pathPrefix=/r/ 그대로.
 
 ### Well-known 파일
 

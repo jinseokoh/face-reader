@@ -1,25 +1,31 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_reader/data/services/supabase_service.dart';
 
-/// `react/` share host (facely.kr) 와 1:1 계약.
+/// `react/` share host (facely.kr) 와 1:1 계약 — UUID 기반, Worker 미경유.
 ///
-/// publishSolo / publishCompat 가 호출되면:
-///   1) 해당 report 의 supabaseId 보장 (없으면 saveMetrics 로 생성)
-///   2) POST {WEBAPP_BASE}/api/share { type, userA, userB? } → shortId
-///   3) PNG bytes 를 임시 파일로 저장
-///   4) share_plus 로 OS share sheet — text 에 https://{host}/r/{shortId}, 첨부에 PNG
+/// publishSolo / publishCompat:
+///   1) 해당 report 의 supabaseId 보장 (없으면 SupabaseService.saveMetrics 로 생성)
+///   2) PNG bytes 를 임시 파일로 저장
+///   3) share_plus 로 OS share sheet 호출 — text 에 https://{host}/r/{uuid}
+///      또는 https://{host}/r/{uuidA}~{uuidB}, 첨부에 PNG
+///
+/// 폐기됨: 구 `POST /api/share` 호출. Worker 가 `/api/share` 라우트를 의도적
+/// 미구현. 받는 사람의 link 해석은 Worker SSR (`GET /r/:id`) 가 PAIR_SEP("~")
+/// split 으로 1·2 UUID 케이스 모두 처리 (HOW-IT-WORKS §3.4 / §4.1).
 class SharePublisher {
   SharePublisher._();
   static final SharePublisher instance = SharePublisher._();
+
+  /// 궁합 URL 의 두 UUID 를 묶는 separator — Worker `app/lib/share-id.ts`
+  /// 의 `PAIR_SEP` 와 동일 값 유지. 변경 시 양쪽 동시 PR.
+  static const String pairSep = '~';
 
   /// `.env` 의 WEBAPP_BASE — Worker 의 WEBAPP_BASE 와 동일 값. fallback 'https://facely.kr'.
   String get _hostBase =>
@@ -31,10 +37,9 @@ class SharePublisher {
     required Uint8List pngBytes,
   }) async {
     final uuid = await _ensureSupabaseId(report);
-    final shortId = await _requestShortId(type: 'solo', userA: uuid);
     await _shareFile(
       pngBytes: pngBytes,
-      url: '$_hostBase/r/$shortId',
+      url: '$_hostBase/r/$uuid',
       tag: 'solo',
     );
   }
@@ -46,14 +51,9 @@ class SharePublisher {
   }) async {
     final myId = await _ensureSupabaseId(my);
     final albumId = await _ensureSupabaseId(album);
-    final shortId = await _requestShortId(
-      type: 'compat',
-      userA: myId,
-      userB: albumId,
-    );
     await _shareFile(
       pngBytes: pngBytes,
-      url: '$_hostBase/r/$shortId',
+      url: '$_hostBase/r/$myId$pairSep$albumId',
       tag: 'compat',
     );
   }
@@ -66,32 +66,6 @@ class SharePublisher {
     return newId;
   }
 
-  Future<String> _requestShortId({
-    required String type,
-    required String userA,
-    String? userB,
-  }) async {
-    final res = await http.post(
-      Uri.parse('$_hostBase/api/share'),
-      headers: {'content-type': 'application/json'},
-      body: jsonEncode({
-        'type': type,
-        'userA': userA,
-        if (userB != null) 'userB': userB,
-      }),
-    );
-    if (res.statusCode != 200) {
-      throw Exception('share host ${res.statusCode}: ${res.body}');
-    }
-    final body = jsonDecode(res.body) as Map<String, dynamic>;
-    final shortId = body['shortId'] as String?;
-    if (shortId == null || shortId.isEmpty) {
-      throw Exception('share host returned empty shortId: ${res.body}');
-    }
-    debugPrint('[SharePublisher] $type shortId=$shortId');
-    return shortId;
-  }
-
   Future<void> _shareFile({
     required Uint8List pngBytes,
     required String url,
@@ -101,6 +75,7 @@ class SharePublisher {
     final file = File(
         '${dir.path}/face_${tag}_${DateTime.now().millisecondsSinceEpoch}.png');
     await file.writeAsBytes(pngBytes);
+    debugPrint('[SharePublisher] $tag url=$url');
     await SharePlus.instance.share(
       ShareParams(
         files: [XFile(file.path)],

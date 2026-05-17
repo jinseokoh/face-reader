@@ -273,7 +273,7 @@ class FaceReadingReport {
         'schemaVersion': schemaVersion,
         'ethnicity': ethnicity.name,
         'gender': gender.name,
-        'ageGroup': ageGroup.name,
+        'ageGroup': ageGroup.jsonValue,
         'timestamp': timestamp.toIso8601String(),
         'source': source.name,
         'supabaseId': supabaseId,
@@ -317,7 +317,7 @@ class FaceReadingReport {
         'ageGroup=${j['ageGroup']} source=${j['source']}');
     final ethnicity = Ethnicity.values.byName(j['ethnicity'] as String);
     final gender = Gender.values.byName(j['gender'] as String);
-    final ageGroup = AgeGroup.values.byName(j['ageGroup'] as String);
+    final ageGroup = AgeGroupParser.fromJsonValue(j['ageGroup'] as String);
     final isOver50 = ageGroup.isOver50;
     _trace('enums OK: $ethnicity/$gender/$ageGroup isOver50=$isOver50');
     final rawMetrics = _extractRawMap(j['metrics']);
