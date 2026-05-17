@@ -121,33 +121,10 @@ create policy "metrics_delete_none"
 -- end$$;
 
 -- ============================================================================
--- 별도 단계 (이 파일에 포함 X)
+-- 별도 단계 (이 파일에 포함 X) — Dormant cleanup cron
 -- ============================================================================
 --
--- (A) Dormant cleanup cron — pg_cron extension 필요.
---     Supabase 대시보드 → Database → Extensions → pg_cron 활성.
---     활성 후 별도 SQL:
---
---        select cron.schedule(
---          'metrics-inactivity-cleanup',
---          '0 18 * * *',  -- 03:00 KST = 18:00 UTC prev day
---          $$
---            delete from public.metrics
---             where updated_at < now() - interval '3 months'
---             returning id;
---          $$
---        );
---
---     `returning id` 결과는 pg_cron 자체에선 못 받음. R2 thumbnail 까지 같이
---     정리하려면 Cloudflare Worker Cron Trigger 가 동일 시각에 select →
---     R2 DELETE → Supabase DELETE 순서로 처리 (HOW-IT-WORKS §12.2).
---
--- (B) Worker Cron Trigger — `react/wrangler.jsonc` 에 cron 추가:
---
---        "triggers": { "crons": ["0 18 * * *"] }
---
---     + `react/workers/app.ts` 또는 신규 `workers/cron.ts` 에 scheduled
---     handler 구현.
---
--- 본 .sql 은 schema 자체만 적용. (A)·(B) 는 별도 task (TO-DO P0 의 dormant
--- cron 항목).
+-- 본 .sql 은 schema 만 적용. dormant 행 정리는 **Cloudflare Worker Cron
+-- Trigger** 가 일일 1회 수행 (Supabase 측 cron 의존 회피). 자세한 흐름은
+-- HOW-IT-WORKS §12.2 의 "Cron 구현" 블록. 후순위 task — TO-DO 의 ⏳ 마지막
+-- 섹션 참조.

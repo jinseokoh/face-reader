@@ -31,6 +31,12 @@ class DeepLinkService {
 
   Stream<ShareLink> get shareLinkStream => _shareLinkController.stream;
 
+  /// cold-start 시 MainApp 이 build 되기 전에 받은 link 를 버리지 않게 caching.
+  /// MainApp 의 initState 가 subscription 등록 직후 [consumePending] 으로 회수.
+  ShareLink? _pending;
+  ShareLink? get pendingLink => _pending;
+  void consumePending() => _pending = null;
+
   StreamSubscription<Uri>? _sub;
 
   Future<void> initialize() async {
@@ -67,6 +73,7 @@ class DeepLinkService {
         ? CompatShareLink(uuidA: parts[0], uuidB: parts[1])
         : SoloShareLink(uuid: parts[0]);
     debugPrint('[DeepLink] emit $link');
+    _pending = link;
     _shareLinkController.add(link);
   }
 

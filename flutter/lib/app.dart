@@ -3,11 +3,16 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_reader/core/theme.dart';
 import 'package:face_reader/data/services/auth_service.dart';
+import 'package:face_reader/data/services/deep_link_service.dart';
+import 'package:face_reader/data/services/supabase_service.dart';
 import 'package:face_reader/presentation/providers/tab_provider.dart';
-import 'package:face_reader/presentation/screens/home/home_screen.dart';
+import 'package:face_reader/presentation/screens/compatibility/compatibility_detail_screen.dart';
 import 'package:face_reader/presentation/screens/compatibility/compatibility_screen.dart';
+import 'package:face_reader/presentation/screens/home/home_screen.dart';
+import 'package:face_reader/presentation/screens/home/report_page.dart';
 import 'package:face_reader/presentation/screens/physiognomy/physiognomy_screen.dart';
 import 'package:face_reader/presentation/screens/settings/settings_screen.dart';
 
@@ -20,6 +25,7 @@ class MainApp extends ConsumerStatefulWidget {
 
 class _MainAppState extends ConsumerState<MainApp> {
   StreamSubscription<void>? _bonusSkippedSub;
+  StreamSubscription<ShareLink>? _shareLinkSub;
 
   @override
   void initState() {
@@ -29,12 +35,80 @@ class _MainAppState extends ConsumerState<MainApp> {
       if (!mounted) return;
       _showBonusSkippedDialog();
     });
+    _shareLinkSub = DeepLinkService.instance.shareLinkStream.listen((link) {
+      if (!mounted) return;
+      _handleShareLink(link);
+    });
+    // cold-start 시 DeepLinkService 가 MainApp build 이전에 이미 emit 했을 수 있음.
+    final pending = DeepLinkService.instance.pendingLink;
+    if (pending != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        DeepLinkService.instance.consumePending();
+        _handleShareLink(pending);
+      });
+    }
   }
 
   @override
   void dispose() {
     _bonusSkippedSub?.cancel();
+    _shareLinkSub?.cancel();
     super.dispose();
+  }
+
+  Future<void> _handleShareLink(ShareLink link) async {
+    debugPrint('[ShareLink] handling $link');
+    switch (link) {
+      case SoloShareLink(:final uuid):
+        final report = await _fetchReport(uuid);
+        if (report == null || !mounted) return;
+        await Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => ReportPage(report: report)),
+        );
+      case CompatShareLink(:final uuidA, :final uuidB):
+        final both = await Future.wait([
+          _fetchReport(uuidA),
+          _fetchReport(uuidB),
+        ]);
+        final my = both[0];
+        final album = both[1];
+        if (my == null || album == null || !mounted) return;
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => CompatibilityDetailScreen(my: my, album: album),
+          ),
+        );
+    }
+  }
+
+  Future<FaceReadingReport?> _fetchReport(String uuid) async {
+    try {
+      final row = await SupabaseService().getMetrics(uuid);
+      if (row == null) {
+        _showSnack('카드를 찾을 수 없어요');
+        return null;
+      }
+      final raw = row['metrics_json'];
+      // jsonb / text 어느 쪽으로 돌아와도 fromJsonString 이 string 만 받으므로 정규화.
+      final jsonStr = raw is String ? raw : raw?.toString();
+      if (jsonStr == null || jsonStr.isEmpty) {
+        _showSnack('카드 데이터가 비어있어요');
+        return null;
+      }
+      return FaceReadingReport.fromJsonString(jsonStr);
+    } catch (e, st) {
+      debugPrint('[ShareLink] fetch fail uuid=$uuid: $e\n$st');
+      _showSnack('카드를 불러오지 못했어요');
+      return null;
+    }
+  }
+
+  void _showSnack(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg)),
+    );
   }
 
   Future<void> _showBonusSkippedDialog() async {

@@ -115,17 +115,11 @@ CREATE POLICY "metrics_owner_update" ON metrics FOR UPDATE USING (user_id = auth
 CREATE POLICY "metrics_owner_delete" ON metrics FOR DELETE USING (user_id = auth.uid());
 ```
 
-#### 만료 자동 정리 (optional, pg_cron)
+#### 만료 자동 정리
 
-```sql
-CREATE EXTENSION IF NOT EXISTS pg_cron;
+만료 정책은 **inactivity-based** 로 전환됨 (활성 카드는 영구). 자세한 schema/RPC/RLS 는 `react/db/migrations/2026-05-17_metrics_views_inactivity.sql` + `react/docs/HOW-IT-WORKS.md` §5.2 / §12.2 SSOT.
 
-SELECT cron.schedule(
-  'cleanup-expired-metrics',
-  '0 3 * * *',
-  $$DELETE FROM metrics WHERE expires_at < now()$$
-);
-```
+dormant 행 정리 cron 은 **Cloudflare Worker Cron Trigger** 로 일일 1회 (Supabase 측 pg_cron 등 의존 X) — 본 작업은 후순위 backlog (`react/docs/TO-DO.md` ⏳ 섹션).
 
 ### `unlocks` — 궁합 카드 해제 내역
 
