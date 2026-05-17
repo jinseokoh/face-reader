@@ -17,6 +17,7 @@ library;
 import 'package:meta/meta.dart';
 
 import 'package:face_engine/data/constants/ethnicity_factors.dart';
+import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/attribute.dart';
 import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
@@ -838,9 +839,45 @@ final _palaceRules = <_TreeRule>[
       const {Attribute.attractiveness: 0.3}),
 ];
 
-// ──────────────────── Stage 5 — Age (50+) Rules ────────────────────
+// ──────────────────── Stage 5 — Age-banded Rules ────────────────────
+//
+// 연령대별 발동 rule. AgeBand (young / mid / late) 기준으로 분리.
+//   young (10대~20대) — 잠재·매력·민감성 정점
+//   mid   (30대~40대) — 정점·축적·확장
+//   late  (50대 이상)  — 회수·전수·후반 안정성
 
-final _ageRules = <_TreeRule>[
+// young (10대~20대): 외형 매력·관능·민감성이 가장 또렷한 시기
+final _youngAgeRules = <_TreeRule>[
+  // Y-01: 입·눈 결이 좋으면 → 관능·매력 정점 (cap 0.5)
+  _TreeRule('A-Y01', (t) => _leafZ(t, 'mouth') >= 0.5,
+      const {Attribute.sensuality: 0.3, Attribute.attractiveness: 0.3}),
+
+  // Y-02: 이마 영역 결이 좋으면 → 학습 흡수력 정점 (cap 0.5)
+  _TreeRule('A-Y02', (t) => _zoneSignedZ(t, 'upper') >= 0.5,
+      const {Attribute.intelligence: 0.4, Attribute.sociability: 0.2}),
+
+  // Y-03: 전체적으로 평균 이상 → 신선함의 매력 (cap 0.5)
+  _TreeRule('A-Y03', (t) => (t.rollUpMeanZ ?? 0.0) >= 0.5,
+      const {Attribute.attractiveness: 0.3, Attribute.emotionality: 0.2}),
+];
+
+// mid (30대~40대): 코·광대 발복기, 책임·대표성·신뢰의 정점
+final _midAgeRules = <_TreeRule>[
+  // M-01: 코 결이 좋으면 → 중년 재물 발복 (cap 0.5)
+  _TreeRule('A-M01', (t) => _leafZ(t, 'nose') >= 0.5,
+      const {Attribute.wealth: 0.5, Attribute.leadership: 0.25}),
+
+  // M-02: 광대 결이 좋으면 → 대표성·리더십 (cap 0.5)
+  _TreeRule('A-M02', (t) => _leafZ(t, 'cheekbone') >= 0.5,
+      const {Attribute.leadership: 0.4, Attribute.sociability: 0.2}),
+
+  // M-03: 전체적 안정 → 중년 신뢰의 무게 (cap 0.5)
+  _TreeRule('A-M03', (t) => (t.rollUpMeanZ ?? 0.0) >= 0.3,
+      const {Attribute.trustworthiness: 0.3, Attribute.stability: 0.2}),
+];
+
+// late (50대 이상): 기존 4 rule — 회수·전수, 외형 노화·내공 깊이의 교차
+final _lateAgeRules = <_TreeRule>[
   // v2.6 cap: libido -1.0→-0.5, sens -0.5→-0.25.
   _TreeRule('A-01', (t) => _zoneSignedZ(t, 'lower') <= -1.0,
       const {Attribute.libido: -0.5, Attribute.sensuality: -0.25}),
@@ -857,6 +894,18 @@ final _ageRules = <_TreeRule>[
   _TreeRule('A-04', (t) => (t.rollUpMeanZ ?? 0.0) <= -1.0,
       const {Attribute.emotionality: 0.25, Attribute.attractiveness: -0.5}),
 ];
+
+/// AgeBand → rule list dispatcher.
+List<_TreeRule> _ageRulesFor(AgeBand band) {
+  switch (band) {
+    case AgeBand.young:
+      return _youngAgeRules;
+    case AgeBand.mid:
+      return _midAgeRules;
+    case AgeBand.late:
+      return _lateAgeRules;
+  }
+}
 
 // ──────────────────── Stage 5 — Lateral Flag Rules ────────────────────
 
@@ -887,7 +936,7 @@ Map<Attribute, double> deriveAttributeScores({
   required NodeScore tree,
   required Gender gender,
   required Ethnicity ethnicity,
-  required bool isOver50,
+  required AgeGroup ageGroup,
   required bool hasLateral,
   Map<String, bool> lateralFlags = const {},
   FaceShape faceShape = FaceShape.unknown,
@@ -897,7 +946,7 @@ Map<Attribute, double> deriveAttributeScores({
     tree: tree,
     gender: gender,
     ethnicity: ethnicity,
-    isOver50: isOver50,
+    ageGroup: ageGroup,
     hasLateral: hasLateral,
     lateralFlags: lateralFlags,
     faceShape: faceShape,
@@ -909,7 +958,7 @@ AttributeBreakdown deriveAttributeScoresDetailed({
   required NodeScore tree,
   required Gender gender,
   required Ethnicity ethnicity,
-  required bool isOver50,
+  required AgeGroup ageGroup,
   required bool hasLateral,
   Map<String, bool> lateralFlags = const {},
   FaceShape faceShape = FaceShape.unknown,
@@ -926,9 +975,8 @@ AttributeBreakdown deriveAttributeScoresDetailed({
   final organTriggered = _scaleRules(_evalRules(tree, _organRules), canonScale);
   final palaceTriggered =
       _scaleRules(_evalRules(tree, _palaceRules), canonScale);
-  final ageTriggered = isOver50
-      ? _scaleRules(_evalRules(tree, _ageRules), canonScale)
-      : const <TriggeredRule>[];
+  final ageTriggered =
+      _scaleRules(_evalRules(tree, _ageRulesFor(ageGroup.band)), canonScale);
   final lateralTriggered = hasLateral
       ? _scaleRules(_evalLateralFlagRules(tree, lateralFlags), canonScale)
       : const <TriggeredRule>[];

@@ -19,6 +19,7 @@ library;
 import 'dart:math';
 
 import 'package:face_engine/data/constants/face_reference_data.dart';
+import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/attribute.dart';
 import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
@@ -26,9 +27,11 @@ import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/services/attribute_derivation.dart';
 import 'package:face_engine/domain/services/physiognomy_scoring.dart';
 
-/// MC baseline demographic — eastAsian per CLAUDE.md §다음 작업 P0 (N=14
-/// empirical recalibration). 타 인종 empirical N 누적 시 per-ethnicity 분화.
+/// MC baseline demographic — eastAsian + 30대 per CLAUDE.md §다음 작업 P0
+/// (N=14 empirical recalibration cohort = 동아 30대 여성). 타 인종·연령
+/// empirical N 누적 시 분화.
 const _kMcEthnicity = Ethnicity.eastAsian;
+const _kMcAgeGroup = AgeGroup.thirties;
 
 /// 21-point quantile array per attribute (p0, p5, …, p100).
 Map<Attribute, List<double>> calibrateQuantiles({
@@ -237,7 +240,7 @@ Map<Attribute, List<double>> _simulateRaws({
       tree: tree,
       gender: gender,
       ethnicity: _kMcEthnicity,
-      isOver50: false,
+      ageGroup: _kMcAgeGroup,
       hasLateral: false,
       faceShape: shape,
       shapeConfidence: shape == FaceShape.unknown ? 0.0 : 0.8,

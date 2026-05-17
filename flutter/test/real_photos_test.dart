@@ -13,6 +13,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:face_engine/data/constants/face_reference_data.dart';
+import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/attribute.dart';
 import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/gender.dart';
@@ -135,7 +136,7 @@ void main() {
         tree: scoreTree(z),
         gender: gender,
         ethnicity: Ethnicity.eastAsian,
-        isOver50: false,
+        ageGroup: AgeGroup.thirties,
         hasLateral: false,
       );
       final normalized = normalizeAllScores(raws, gender);

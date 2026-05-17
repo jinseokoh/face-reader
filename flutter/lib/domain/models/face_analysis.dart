@@ -278,7 +278,7 @@ FaceReadingReport analyzeFaceReading({
     tree: tree,
     gender: gender,
     ethnicity: ethnicity,
-    isOver50: isOver50,
+    ageGroup: ageGroup,
     hasLateral: lateralLandmarks != null,
     lateralFlags: lateralFlags ?? const {},
     faceShape: faceShape,

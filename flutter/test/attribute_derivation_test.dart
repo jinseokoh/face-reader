@@ -1,3 +1,4 @@
+import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/attribute.dart';
 import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
@@ -10,7 +11,7 @@ AttributeBreakdown _run(
   Map<String, double> z, {
   Gender gender = Gender.male,
   Ethnicity ethnicity = Ethnicity.eastAsian,
-  bool isOver50 = false,
+  AgeGroup ageGroup = AgeGroup.thirties,
   bool hasLateral = false,
   Map<String, bool> flags = const {},
   FaceShape shape = FaceShape.unknown,
@@ -20,7 +21,7 @@ AttributeBreakdown _run(
     tree: scoreTree(z),
     gender: gender,
     ethnicity: ethnicity,
-    isOver50: isOver50,
+    ageGroup: ageGroup,
     hasLateral: hasLateral,
     lateralFlags: flags,
     faceShape: shape,
@@ -338,22 +339,22 @@ void main() {
       expect(b.ageRules, isEmpty);
     });
 
-    test('A-01 fires when isOver50 and lower zone weak', () {
+    test('A-01 fires when 50대 이상 + lower zone weak', () {
       final b = _run({
         'gonialAngle': -1.5,
         'lowerFaceRatio': -1.5,
         'chinAngle': -1.5,
         'philtrumLength': -1.5,
         'mouthWidthRatio': -1.5,
-      }, isOver50: true);
+      }, ageGroup: AgeGroup.fifties);
       expect(b.ageRules.map((r) => r.id), contains('A-01'));
     });
 
-    test('A-02 upper preserved bonus when isOver50', () {
+    test('A-02 upper preserved bonus when 50대 이상', () {
       final b = _run({
         'upperFaceRatio': 1.0,
         'foreheadWidth': 1.0,
-      }, isOver50: true);
+      }, ageGroup: AgeGroup.fifties);
       expect(b.ageRules.map((r) => r.id), contains('A-02'));
     });
   });
@@ -425,14 +426,14 @@ void main() {
         tree: tree,
         gender: Gender.male,
         ethnicity: Ethnicity.eastAsian,
-        isOver50: false,
+        ageGroup: AgeGroup.thirties,
         hasLateral: false,
       );
       final detailed = deriveAttributeScoresDetailed(
         tree: tree,
         gender: Gender.male,
         ethnicity: Ethnicity.eastAsian,
-        isOver50: false,
+        ageGroup: AgeGroup.thirties,
         hasLateral: false,
       );
       for (final attr in Attribute.values) {

@@ -8,6 +8,7 @@
 // 실행 후 failing snapshot 의 actual 을 expected 에 복사. 재보정/룰 추가는
 // 이 파일의 goldenSnapshot 교체를 항상 동반한다.
 
+import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/attribute.dart';
 import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/gender.dart';
@@ -46,7 +47,7 @@ String _summarize() {
     tree: tree,
     gender: Gender.male,
     ethnicity: Ethnicity.eastAsian,
-    isOver50: false,
+    ageGroup: AgeGroup.thirties,
     hasLateral: false,
   );
 
@@ -97,24 +98,27 @@ void main() {
     // 동기화. 본 스냅샷은 shape 인자 미전달(= FaceShape.unknown) 경로를 타므로
     // agnostic 테이블만 탄다. Rule set / contributor 는 동일, normalize 만 shift.
     // ignore: prefer_const_declarations
+    // P2-7 (2026-05-17): Stage 5 age-banded rules 도입 — 30대 기본 (mid band)
+    // 사용 시 A-M01·M02·M03 발동. wealth/sociability/trustworthiness ↑,
+    // sensuality/attractiveness ↓ shift.
     final goldenSnapshot = '''
 == rules (sorted) ==
-O:O-CH, O:O-CK, O:O-CKC, O:O-CKE, O:O-EB1, O:O-EM, O:O-EM2, O:O-PH1, P:P-03, P:P-05, P:P-09, P:P-MJ, Z:Z-11, Z:Z-12, Z:Z-FH, Z:Z-LFR
+A:A-M01, A:A-M02, A:A-M03, O:O-CH, O:O-CK, O:O-CKC, O:O-CKE, O:O-EB1, O:O-EM, O:O-EM2, O:O-PH1, P:P-03, P:P-05, P:P-09, P:P-MJ, Z:Z-11, Z:Z-12, Z:Z-FH, Z:Z-LFR
 
 == normalized scores ==
-wealth           8.7
-leadership       8.5
+wealth           9.3
+leadership       8.7
 intelligence     8.0
-sociability      9.8
+sociability      10.0
 emotionality     9.5
-stability        9.3
-sensuality       8.9
-trustworthiness  8.3
-attractiveness   9.1
-libido           10.0
+stability        9.1
+sensuality       8.3
+trustworthiness  8.9
+attractiveness   8.5
+libido           9.8
 
 == wealth top-3 contributors ==
-Z-11=0.50, P-09=0.50, O-CK=0.19
+Z-11=0.50, P-09=0.50, A-M01=0.50
 
 == leadership top-3 contributors ==
 O-EB1=0.50, O-CK=0.50, O-CKC=0.50

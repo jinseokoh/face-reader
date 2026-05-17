@@ -57,7 +57,7 @@ FaceReadingReport _buildReport({
     tree: tree,
     gender: gender,
     ethnicity: Ethnicity.eastAsian,
-    isOver50: age.isOver50,
+    ageGroup: age,
     hasLateral: false,
   );
   final normalized = normalizeAllScores(detail.total, gender);

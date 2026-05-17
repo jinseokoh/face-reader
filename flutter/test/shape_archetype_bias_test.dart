@@ -13,6 +13,7 @@ import 'dart:math';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:face_engine/data/constants/face_reference_data.dart';
+import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/attribute.dart';
 import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
@@ -106,7 +107,7 @@ void main() {
           tree: tree,
           gender: gender,
           ethnicity: Ethnicity.eastAsian,
-          isOver50: false,
+          ageGroup: AgeGroup.thirties,
           hasLateral: false,
           faceShape: shape,
           shapeConfidence: 0.8,

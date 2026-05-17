@@ -439,7 +439,7 @@ class FaceReadingReport {
       tree: tree,
       gender: gender,
       ethnicity: ethnicity,
-      isOver50: ageGroup.isOver50,
+      ageGroup: ageGroup,
       hasLateral: lateralMetrics != null,
       lateralFlags: lateralFlags ?? const {},
       faceShape: faceShape,
