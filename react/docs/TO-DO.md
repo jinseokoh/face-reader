@@ -34,7 +34,7 @@
 - [ ] **Privacy policy 페이지** — Worker SSR `app/routes/privacy.tsx` (또는 정적 markdown). 처리목적 / 보유기간 ("이용 종료 시까지 + 본인 명시 삭제 시 즉시") / 제3자 제공 없음 / 국외이전 (R2 글로벌·Supabase Seoul) / 이용자 권리 / 고충처리 / 근거법령.
 - [ ] **권한 사유 문구** — iOS `Info.plist` 의 `NSCameraUsageDescription` / `NSPhotoLibraryUsageDescription`, Android `AndroidManifest.xml` 의 `<uses-permission>` 옆 설명. 한국어 자연스러운 문장으로.
 - [ ] **연령 확인** — 첫 진입 시 "14세 이상입니까?" 체크. 14세 미만 차단 (PIPA 22조의2 법정대리인 동의 회피).
-- [ ] **`cdn.facely.kr` 검색엔진 차단** — R2 객체 응답에 `X-Robots-Tag: noindex` 헤더, 또는 R2 root 에 `robots.txt` (Disallow: /).
+- [x] **`cdn.facely.kr` 검색엔진 차단** — R2 root 에 `robots.txt` (`User-agent: * / Disallow: /`) 업로드 완료. Cloudflare 의 Managed AI 봇 차단 preamble (Applebot-Extended / Bytespider / CCBot / ClaudeBot / GPTBot 등) 도 자동 prepend 되어 함께 적용. 사본은 `react/r2-assets/robots.txt` (재업로드 reproducible). X-Robots-Tag 헤더는 별도 Transform Rule 로 P1 보강 가능.
 
 ---
 

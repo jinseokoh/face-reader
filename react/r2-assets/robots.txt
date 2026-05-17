@@ -1,0 +1,4 @@
+# cdn.facely.kr — PII (256² face thumbnails) 검색엔진 indexing 일괄 차단.
+# X-Robots-Tag 백업은 Cloudflare Transform Rule 로 추후 추가 (TO-DO).
+User-agent: *
+Disallow: /
