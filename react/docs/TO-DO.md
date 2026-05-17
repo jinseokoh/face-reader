@@ -45,13 +45,17 @@
 ### Supabase 스키마
 
 - [x] **`metrics` 테이블** — 이미 존재 (id / metrics_json / expires_at). 별도 `share_card` 신설 X.
-- [ ] **`views` + `updated_at` 컬럼 추가** + `touch_metrics_updated_at` trigger + `metrics_updated_at_idx` 인덱스 (HOW-IT-WORKS §5.2 SQL 그대로). `expires_at` 컬럼은 더 이상 사용 안 함 (drop 또는 ignore).
-- [ ] **RPC `increment_metrics_views(card_id uuid)`** stored function — anon 에 execute 권한 grant. Worker SSR 과 Flutter app 양쪽이 `/r/:id` fetch 시 동일 호출.
+- [ ] **`react/db/migrations/2026-05-17_metrics_views_inactivity.sql` 실행** — Supabase 대시보드 → SQL Editor 에 파일 내용 통째로 붙여넣고 RUN. 한 파일에 다 묶여 있음:
+  - `views int default 0` + `updated_at timestamptz default now()` 컬럼 추가 + `metrics_updated_at_idx` 인덱스
+  - `touch_metrics_updated_at` trigger 함수 + `metrics_touch` trigger
+  - `increment_metrics_views(card_id uuid)` stored function (security definer, anon/authenticated grant execute)
+  - RLS 활성 + 4 정책 (read_anon / insert_anon with PII check / update_none / delete_none)
+  - 끝에 smoke test (주석) — 필요 시 활성해서 검증
 - [ ] **metrics_json schemaVersion v2 bump** — Flutter 의 `RawMetrics` 모델에 `thumbnailKey`, `deepfaceAge?`, `deepfaceGender?`, `deepfaceRace?` 필드 추가하고 v2 로 표시. DeepFace raw 는 Flutter 가 보존할지 버릴지 자유. **`kind`/`partnerUuid`/`expires_at` 같은 관계형·만료 필드는 추가 금지**.
-- [ ] **RLS 정책** (HOW-IT-WORKS §5.3 SQL 그대로) — `select` 전체 허용, `insert` anon 에 허용하되 PII 키 (`username/alias/birthday/landmarks`) 가 metrics_json 에 있으면 reject, `update`/`delete` 는 service-role 만 (cron 정리·명시 삭제용).
-- [ ] **Daily inactivity cron**:
-  - Supabase pg_cron: 매일 03:00 KST `select id from metrics where updated_at < now() - interval '3 months'` → list 를 Worker cron 이 받음
-  - 또는 Cloudflare Worker Cron Trigger 가 동일 SQL 후 R2 thumbnail DELETE → Supabase 행 DELETE (R2 먼저 → DB 나중 순서)
+- [ ] **Daily inactivity cron** (별도 단계, 위 SQL 파일의 (A)·(B) 주석 블록 참조):
+  - Supabase Database → Extensions → `pg_cron` 활성
+  - `select cron.schedule('metrics-inactivity-cleanup', '0 18 * * *', $$ ... $$)` 실행 (03:00 KST = 18:00 UTC prev day)
+  - 또는 Cloudflare Worker Cron Trigger 가 매일 select → R2 thumbnail DELETE → Supabase 행 DELETE 순서 처리 (R2 먼저 — 실패해도 재시도 가능)
   - 한 번 dry-run 후 production 배포 (첫 cleanup 카드 수 확인)
 - [ ] **`POST /api/erase` Worker endpoint** (명시 삭제용, P1 의 prerequisite) — HMAC 인증 + uuid 받아 R2 + Supabase 동시 DELETE. Flutter "내 공유 link 관리" UI 가 호출.
 
