@@ -127,61 +127,61 @@ String? _checkShapeSpecial(
     case FaceShape.oval:
       // 달걀형 — 조화·복덕
       if (hit(Attribute.attractiveness, Attribute.sociability)) {
-        return '행운상 (幸運相)';
+        return '행운형';
       }
       if (hit(Attribute.trustworthiness, Attribute.attractiveness)) {
-        return '귀인상 (貴人相)';
+        return '귀인형';
       }
       if (hit(Attribute.wealth, Attribute.stability)) {
-        return '복록상 (福祿相)';
+        return '복덕형';
       }
       break;
     case FaceShape.oblong:
       // 세로로 긴 얼굴형 — 이지·감성
       if (hit(Attribute.intelligence, Attribute.trustworthiness)) {
-        return '대학자상 (大學者相)';
+        return '큰 학자형';
       }
       if (hit(Attribute.intelligence, Attribute.emotionality)) {
-        return '문인상 (文人相)';
+        return '문인형';
       }
       if (hit(Attribute.emotionality, Attribute.trustworthiness)) {
-        return '군자상 (君子相)';
+        return '군자형';
       }
       break;
     case FaceShape.round:
       // 둥근 얼굴형 — 식복·원만
       if (hit(Attribute.wealth, Attribute.sociability)) {
-        return '복덕상 (福德相)';
+        return '복 많은 형';
       }
       if (hit(Attribute.wealth, Attribute.stability)) {
-        return '부자상 (富者相)';
+        return '부자형';
       }
       if (hit(Attribute.sociability, Attribute.emotionality)) {
-        return '온화상 (溫和相)';
+        return '온화한 형';
       }
       break;
     case FaceShape.square:
       // 각진 얼굴형 — 우직·실행
       if (hit(Attribute.leadership, Attribute.stability)) {
-        return '대들보상 (棟樑相)';
+        return '대들보형';
       }
       if (hit(Attribute.stability, Attribute.trustworthiness)) {
-        return '반석상 (盤石相)';
+        return '반석형';
       }
       if (hit(Attribute.leadership, Attribute.wealth)) {
-        return '장수상 (將帥相)';
+        return '장군형';
       }
       break;
     case FaceShape.heart:
       // 하트형 — 총명·예술
       if (hit(Attribute.intelligence, Attribute.emotionality)) {
-        return '예인상 (藝人相)';
+        return '예인형';
       }
       if (hit(Attribute.attractiveness, Attribute.sensuality)) {
-        return '매혹상 (魅惑相)';
+        return '매혹형';
       }
       if (hit(Attribute.intelligence, Attribute.attractiveness)) {
-        return '재자상 (才子相)';
+        return '재능형';
       }
       break;
     case FaceShape.unknown:
@@ -191,47 +191,47 @@ String? _checkShapeSpecial(
 }
 
 String? _checkSpecial(Map<Attribute, double> s) {
-  // SP-1: 제왕상
+  // SP-1: 제왕형 — 재물·리더십 둘 다 높음
   if (s[Attribute.wealth]! >= 7.5 && s[Attribute.leadership]! >= 7.0) {
-    return '제왕상 (帝王相)';
+    return '제왕형';
   }
-  // SP-2: 도화상
+  // SP-2: 매력형 — 관능·매력 둘 다 매우 높음
   if (s[Attribute.sensuality]! >= 7.5 && s[Attribute.attractiveness]! >= 7.5) {
-    return '도화상 (桃花相)';
+    return '매력형';
   }
-  // SP-3: 군사상
+  // SP-3: 책사형 — 통찰·안정 둘 다 높음
   if (s[Attribute.intelligence]! >= 7.5 && s[Attribute.stability]! >= 7.0) {
-    return '군사상 (軍師相)';
+    return '책사형';
   }
-  // SP-4: 연예인상
+  // SP-4: 스타형 — 사교·매력 둘 다 높음
   if (s[Attribute.sociability]! >= 7.5 && s[Attribute.attractiveness]! >= 7.0) {
-    return '연예인상 (演藝人相)';
+    return '스타형';
   }
-  // SP-5: 복덕상
+  // SP-5: 복덕형 — 재물·신뢰 둘 다 높음
   if (s[Attribute.wealth]! >= 7.0 && s[Attribute.trustworthiness]! >= 7.0) {
-    return '복덕상 (福德相)';
+    return '복덕형';
   }
-  // SP-6: 대인상
+  // SP-6: 큰그릇형 — 리더십·안정·신뢰 셋 다 높음
   if (s[Attribute.leadership]! >= 7.0 &&
       s[Attribute.stability]! >= 7.0 &&
       s[Attribute.trustworthiness]! >= 7.0) {
-    return '대인상 (大人相)';
+    return '큰그릇형';
   }
-  // SP-7: 풍류상
+  // SP-7: 풍류형 — 정열·관능 둘 다 높음
   if (s[Attribute.libido]! >= 7.5 && s[Attribute.sensuality]! >= 7.0) {
-    return '풍류상 (風流相)';
+    return '풍류형';
   }
-  // SP-8: 천재상
+  // SP-8: 천재형 — 통찰·감성 둘 다 높음
   if (s[Attribute.intelligence]! >= 7.0 && s[Attribute.emotionality]! >= 7.0) {
-    return '천재상 (天才相)';
+    return '천재형';
   }
-  // SP-9: 광인상
+  // SP-9: 광인형 — 안정 낮고 감성 매우 높음
   if (s[Attribute.stability]! <= 3.0 && s[Attribute.emotionality]! >= 7.5) {
-    return '광인상 (狂人相)';
+    return '광인형';
   }
-  // SP-10: 사기상
+  // SP-10: 사기꾼형 — 신뢰 낮고 사교 높음
   if (s[Attribute.trustworthiness]! <= 3.0 && s[Attribute.sociability]! >= 7.0) {
-    return '사기상 (詐欺相)';
+    return '사기꾼형';
   }
   return null;
 }
