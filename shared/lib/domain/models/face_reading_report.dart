@@ -178,7 +178,10 @@ class AttributeEvidence {
 /// 엔진(weight matrix · rule · calibration) 변경은 이 버전을 건드리지 않는다 —
 /// 해석은 Hive 에 저장하지 않고 load 시 현재 엔진으로 재계산되므로 자동으로
 /// 최신 값이 반영된다.
-const int kReportSchemaVersion = 1;
+///
+/// v2 (2026-05-17): thumbnailKey + deepface{Age,Gender,Race} 추가. 모두 optional —
+///   v1 payload 도 그대로 load 됨 (forward-compat only). 새 fields 누락은 null.
+const int kReportSchemaVersion = 2;
 
 /// fromJsonString 의 각 rehydrate 단계를 trace — parse 실패 시 마지막 로그의
 /// 다음 단계가 범인. `print` 는 rate-limit 없어 반드시 찍힘.
@@ -200,6 +203,17 @@ class FaceReadingReport {
   bool isMyFace;
   String? thumbnailPath;
   final DateTime expiresAt;
+
+  /// v2 — R2 thumbnail 객체 key (`thumbnails/YYYYMM/{uuid}.jpg`). publish 시점에
+  /// 채워짐. Worker SSR 의 `og:image` 가 `${R2_CDN_BASE}/${thumbnailKey}` 로 조립.
+  String? thumbnailKey;
+
+  /// v2 — DeepFace raw 응답 보존 (정확도 측정 audit trail). app 의 정제값
+  /// (gender/race enum) 과 의도적으로 페어로 저장 — HOW-IT-WORKS §5.2.
+  /// **둘 다 살려둔 redundancy 는 의도적. "정리" 금지.**
+  int? deepfaceAge;
+  String? deepfaceGender; // "Man" | "Woman" raw
+  String? deepfaceRace; // "asian" | "white" | ... raw 6-class
 
   /// 17 frontal metric results.
   final Map<String, MetricResult> metrics;
@@ -245,6 +259,10 @@ class FaceReadingReport {
     this.isMyFace = false,
     this.thumbnailPath,
     DateTime? expiresAt,
+    this.thumbnailKey,
+    this.deepfaceAge,
+    this.deepfaceGender,
+    this.deepfaceRace,
     required this.metrics,
     this.lateralMetrics,
     this.lateralFlags,
@@ -281,6 +299,11 @@ class FaceReadingReport {
         'isMyFace': isMyFace,
         'thumbnailPath': thumbnailPath,
         'expiresAt': expiresAt.toIso8601String(),
+        // v2 — R2 thumbnail 포인터 + DeepFace raw audit trail.
+        if (thumbnailKey != null) 'thumbnailKey': thumbnailKey,
+        if (deepfaceAge != null) 'deepfaceAge': deepfaceAge,
+        if (deepfaceGender != null) 'deepfaceGender': deepfaceGender,
+        if (deepfaceRace != null) 'deepfaceRace': deepfaceRace,
         // rawValue 만 저장 — id → double. 현재 ref 에 의존하는 z/zAdjusted/
         // metricScore 는 절대 저장 금지 (저장하면 ref 변경이 기존 리포트에
         // 반영되지 않는 stale-z 버그 발생).
@@ -306,10 +329,16 @@ class FaceReadingReport {
     final j = jsonDecode(jsonStr) as Map<String, dynamic>;
     _trace('jsonDecode OK keys=${j.keys.toList()}');
     final version = (j['schemaVersion'] as num?)?.toInt() ?? 0;
-    _trace('schemaVersion=$version (expected $kReportSchemaVersion)');
-    if (version != kReportSchemaVersion) {
+    _trace('schemaVersion=$version (expected ≤$kReportSchemaVersion)');
+    // forward-compat only — v1 payload 가 v2 reader 로 들어오면 새 필드 결측
+    // 으로 처리 (null). 미래 버전(>) 은 거부.
+    if (version > kReportSchemaVersion) {
       throw FormatException(
-          'FaceReadingReport schemaVersion mismatch: $version != $kReportSchemaVersion');
+          'FaceReadingReport schemaVersion too new: $version > $kReportSchemaVersion');
+    }
+    if (version < 1) {
+      throw FormatException(
+          'FaceReadingReport schemaVersion too old: $version');
     }
 
     // ─── capture 필드 파싱 ───
@@ -451,6 +480,11 @@ class FaceReadingReport {
       expiresAt: j['expiresAt'] != null
           ? DateTime.parse(j['expiresAt'] as String)
           : null,
+      // v2 optional fields — v1 payload 에선 missing, null 그대로.
+      thumbnailKey: j['thumbnailKey'] as String?,
+      deepfaceAge: (j['deepfaceAge'] as num?)?.toInt(),
+      deepfaceGender: j['deepfaceGender'] as String?,
+      deepfaceRace: j['deepfaceRace'] as String?,
       metrics: metrics,
       lateralMetrics: lateralMetrics,
       lateralFlags: lateralFlags,
@@ -461,7 +495,7 @@ class FaceReadingReport {
       faceShapeLabel: faceShapeLabel,
       faceShapeConfidence: faceShapeConfidence,
       faceShape: faceShape,
-      schemaVersion: version,
+      schemaVersion: kReportSchemaVersion, // 항상 최신으로 normalize
     );
   }
 }
