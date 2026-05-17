@@ -72,17 +72,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           children: [
             const SizedBox(height: 40),
             Text(
-              'AI 관상가',
+              '관상은 과학이다.',
               style: TextStyle(
                 fontFamily: 'SongMyung',
                 color: AppTheme.textPrimary,
-                fontSize: 28,
+                fontSize: 48,
                 fontWeight: FontWeight.bold,
+                height: 1.15,
               ),
+              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 14),
             const Text(
-              '인상에 담긴 그 운명을 냉정히 풀어 드립니다.',
+              'Facely, 안면 계측 데이터 기반 인공지능 관상앱.',
               style: AppText.displaySubtitle,
               textAlign: TextAlign.center,
             ),

@@ -36,8 +36,33 @@ code {
   font-size: 0.9em;
 }
 
-.landing { text-align: center; padding-top: 64px; }
-.landing h1 { font-size: 24px; margin: 0 0 12px; }
+.landing {
+  text-align: center;
+  min-height: 100dvh;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+.landing-hero {
+  /* 디자인 5단 size (24/16/14/13/12) 의 hero 예외. Flutter home 의 SongMyung 48px
+     과 시각적으로 균형 맞추는 단일 hero size — 본 landing 한 곳에서만 사용. */
+  font-size: 48px;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  margin: 0;
+  color: var(--ink);
+}
+.landing-sub {
+  font-size: 16px;
+  color: var(--caption);
+  margin: 0;
+  max-width: 32ch;
+  line-height: 1.55;
+}
 
 .error h1 { color: var(--accent); }
 
