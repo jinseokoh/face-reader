@@ -1,11 +1,8 @@
-# Supabase — Face Reader 현재 스키마 SSOT
+# Supabase — operational notes
 
-**마지막 업데이트**: 2026-04-26
+본 문서는 **운영 안내** 만 다룬다 (접속·검증·dev reset). **schema/RPC/RLS DDL 의 SSOT 는** `react/db/migrations/0001_baseline.sql` 한 파일. 아키텍처 설명은 `react/docs/HOW-IT-WORKS.md` §5 / §6 / §12.
+
 **프로젝트 ref**: `jicaenyzunjdlcxcdbfb`
-
-이 문서는 현재 Supabase DB 의 **실제 상태**를 그대로 기록한다. 마이그레이션 내역이 아니라 "지금 대시보드에 있는 것 그대로". 스키마를 바꿀 때는 이 파일을 함께 갱신한다.
-
-Drop-recreate 를 두려워하지 말 것 — Flutter 측 Hive 는 schema 변경 시 clear 가 기본 정책이고, Supabase metrics 는 TTL 로 자동 만료된다.
 
 ---
 
@@ -13,11 +10,11 @@ Drop-recreate 를 두려워하지 말 것 — Flutter 측 Hive 는 schema 변경
 
 ### Option 1 · Supabase Dashboard
 - https://supabase.com/dashboard/project/jicaenyzunjdlcxcdbfb → **SQL Editor**
-- 가장 간편. DDL 적용에 권장.
+- DDL 적용·smoke test 에 가장 간편.
 
 ### Option 2 · psql
 ```bash
-psql "postgresql://postgres.jicaenyzunjdlcxcdbfb:[password]@aws-0-[region].pooler.supabase.com:6543/postgres"
+psql "postgresql://postgres.jicaenyzunjdlcxcdbfb:[password]@aws-0-ap-northeast-2.pooler.supabase.com:6543/postgres"
 ```
 
 ### Option 3 · GUI (Postico / TablePlus / DBeaver)
@@ -28,395 +25,82 @@ psql "postgresql://postgres.jicaenyzunjdlcxcdbfb:[password]@aws-0-[region].poole
 
 ---
 
-## Tables
+## clean-slate 복구 / 새 환경 부트스트랩
 
-### `users` — 프로필 + 코인 잔액 (SoT)
+1. 빈 Supabase 프로젝트 생성 (또는 기존 프로젝트 reset).
+2. `react/db/migrations/0001_baseline.sql` 전체를 SQL Editor 에 붙여넣고 RUN.
+3. 본 파일의 「검증 스모크」 블록으로 확인.
+4. `ads` / `ad_views` / `claim_ad_reward` 가 운영에 필요하면 baseline 의 §11 TODO 블록을 채우거나 별도 `pg_dump` 결과 append.
 
-`auth.users` 와 1:1. 가입 시 트리거로 자동 생성. `coins` 컬럼이 잔액 SoT — ledger(`public.coins`) 와 동기화는 `grant_coins`/`spend_coins` RPC 가 보장. `signup_bonus_skipped` 는 같은 email/kakao_id 가 과거 보너스를 받은 적 있어 dedup 으로 보너스가 차단된 계정 표시 — 클라이언트가 1회 안내 다이얼로그를 띄우는 근거.
-
-```sql
-CREATE TABLE users (
-  id                   UUID        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  kakao_user_id        TEXT,
-  nickname             TEXT,
-  profile_image_url    TEXT,
-  coins                INT         NOT NULL DEFAULT 0,
-  signup_bonus_skipped BOOLEAN     NOT NULL DEFAULT FALSE,
-  created_at           TIMESTAMPTZ DEFAULT now()
-);
-
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "users_self_read"   ON users FOR SELECT USING (id = auth.uid());
-CREATE POLICY "users_self_update" ON users FOR UPDATE USING (id = auth.uid()) WITH CHECK (id = auth.uid());
--- INSERT 는 handle_new_user 트리거 (SECURITY DEFINER) 만.
-```
-
-### `coins` — 코인 거래 ledger
-
-`kind` 값:
-- `purchase` — RevenueCat 결제
-- `bonus`    — 가입 보너스 / 프로모션
-- `refund`   — 환불 보정
-- `spend`    — 기능 사용 차감 (`amount` 는 음수 저장)
-
-`store_transaction_id` unique index 로 RevenueCat 영수증 중복 방지. `reference_id` 는 spend 시 무엇을 샀는지 (예: compat `pair_key`).
-
-```sql
-CREATE TABLE coins (
-  id                   UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id              UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  kind                 TEXT        NOT NULL CHECK (kind IN ('purchase','spend','bonus','refund')),
-  amount               INT         NOT NULL,
-  balance_after        INT         NOT NULL,
-  product_id           TEXT,
-  store_transaction_id TEXT,
-  reference_id         TEXT,
-  description          TEXT,
-  metadata             JSONB,
-  created_at           TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE INDEX        idx_coin_user_created ON coins (user_id, created_at DESC);
-CREATE UNIQUE INDEX idx_coin_store_tx     ON coins (store_transaction_id)
-  WHERE store_transaction_id IS NOT NULL;
-
-ALTER TABLE coins ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "coins_self_read" ON coins FOR SELECT USING (user_id = auth.uid());
--- INSERT/UPDATE/DELETE 정책 없음 — RPC 만 (SECURITY DEFINER) 경유.
-```
-
-### `metrics` — 관상 원본 + 공유 링크용 저장소
-
-딥링크 공유를 위해 **SELECT 는 anon 공개** (UUID 를 가진 자만 열람), write 는 소유자만.
-
-```sql
-CREATE TABLE metrics (
-  id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id      UUID        REFERENCES auth.users(id) ON DELETE SET NULL,
-  metrics_json TEXT        NOT NULL,
-  source       TEXT        NOT NULL CHECK (source IN ('camera','album')),
-  ethnicity    TEXT        NOT NULL,
-  gender       TEXT        NOT NULL,
-  age_group    TEXT        NOT NULL,
-  alias        TEXT,
-  expires_at   TIMESTAMPTZ NOT NULL,
-  created_at   TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE INDEX idx_metrics_expires_at ON metrics (expires_at);
-
-ALTER TABLE metrics ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "metrics_public_read"  ON metrics FOR SELECT USING (true);
-CREATE POLICY "metrics_owner_insert" ON metrics FOR INSERT WITH CHECK (user_id = auth.uid() OR user_id IS NULL);
-CREATE POLICY "metrics_owner_update" ON metrics FOR UPDATE USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
-CREATE POLICY "metrics_owner_delete" ON metrics FOR DELETE USING (user_id = auth.uid());
-```
-
-#### 만료 자동 정리
-
-만료 정책은 **inactivity-based** 로 전환됨 (활성 카드는 영구). 본 문서는 historical context. **clean-slate baseline SSOT** 는 `react/db/migrations/0001_baseline.sql` (시스템 이전·재해복구용 단일 파일). 아키텍처 설명은 `react/docs/HOW-IT-WORKS.md` §5.2 / §12.2.
-
-dormant 행 정리 cron 은 **Cloudflare Worker Cron Trigger** 로 일일 1회 (Supabase 측 pg_cron 등 의존 X) — 본 작업은 후순위 backlog (`react/docs/TO-DO.md` ⏳ 섹션).
-
-### `unlocks` — 궁합 카드 해제 내역
-
-리스트의 각 (my × album) 페어는 기본 **lock**. `unlock_compat` RPC 가 코인 1 개 차감 + 이 테이블에 row insert 를 한 트랜잭션으로 수행. client 는 이 테이블을 읽어 "어떤 페어가 unlock 인지" 판정.
-
-```sql
-CREATE TABLE unlocks (
-  user_id    UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  pair_key   TEXT        NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  PRIMARY KEY (user_id, pair_key)
-);
-
-ALTER TABLE unlocks ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "unlocks_self_read" ON unlocks
-  FOR SELECT USING (user_id = auth.uid());
--- INSERT/DELETE 정책 없음 — unlock_compat RPC 만.
-```
-
-**pair_key 규칙** (client 가 생성): `${my.supabaseId}::${album.supabaseId}` — 비대칭 (나 × 상대), 순서 고정. 두 report 모두 `supabaseId` 가 할당된 뒤에만 unlock 시도.
-
-### `bonus_recipients` — 회원가입 보너스 수령 이력 (영구)
-
-같은 사용자가 계정을 지웠다 다시 만들거나 다른 provider 로 재가입하더라도 보너스 3 코인이 이중 발급되지 않도록 email + kakao_user_id 단위로 영구 기록한다. `handle_new_user` 트리거가 가입 시점에 이 테이블을 조회해 dedup 판정.
-
-```sql
-CREATE TABLE bonus_recipients (
-  id            BIGSERIAL   PRIMARY KEY,
-  email         TEXT,
-  kakao_user_id TEXT,
-  granted_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-  CHECK (email IS NOT NULL OR kakao_user_id IS NOT NULL)
-);
-
-CREATE INDEX bonus_recipients_email_idx
-  ON bonus_recipients (email)
-  WHERE email IS NOT NULL;
-
-CREATE INDEX bonus_recipients_kakao_idx
-  ON bonus_recipients (kakao_user_id)
-  WHERE kakao_user_id IS NOT NULL;
-
-ALTER TABLE bonus_recipients ENABLE ROW LEVEL SECURITY;
-
--- 일반 클라이언트는 SELECT/INSERT/UPDATE/DELETE 모두 차단.
--- 트리거 (SECURITY DEFINER) 만 접근.
-CREATE POLICY "bonus_recipients_no_access"
-  ON bonus_recipients
-  FOR ALL TO authenticated, anon
-  USING (false) WITH CHECK (false);
-```
+baseline 은 모두 idempotent (drop if exists + create / create if not exists / create or replace). 이미 채워진 DB 에 재실행해도 안전.
 
 ---
 
-## Triggers
+## 운영 prod schema 의 진짜 dump 가져오기
 
-### `handle_new_user` — 가입 시 프로필 + 보너스 3 코인
+baseline.sql 의 누락·drift 가 의심되면 prod 와 직접 비교:
 
-`auth.users` 에 insert 가 일어날 때 `public.users` 행 자동 생성. Kakao 로그인 메타데이터(`name`, `nickname`, `avatar_url`, `picture`, `provider_id`) 를 유연하게 수용.
+```bash
+pg_dump --schema=public --no-owner --no-privileges \
+  "postgresql://postgres.jicaenyzunjdlcxcdbfb:[PASSWORD]@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres" \
+  > /tmp/prod_dump.sql
 
-같은 email 또는 kakao_user_id 가 과거에 보너스를 받은 적 있으면(`bonus_recipients` 조회) 보너스를 발급하지 않고 `signup_bonus_skipped = TRUE` 로 표시한다. 클라이언트는 이 flag 가 true 인 사용자에게 1회 안내 다이얼로그를 띄운다 ("보너스 코인은 이미 지급했었기 때문에 더이상 지급되지 않습니다").
-
-```sql
-CREATE OR REPLACE FUNCTION handle_new_user()
-RETURNS TRIGGER
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
-AS $$
-DECLARE
-  v_nickname        TEXT;
-  v_avatar          TEXT;
-  v_kakao_id        TEXT;
-  v_email           TEXT := lower(NEW.email);
-  v_already_bonused BOOLEAN;
-BEGIN
-  v_nickname := COALESCE(
-    NEW.raw_user_meta_data->>'name',
-    NEW.raw_user_meta_data->>'nickname',
-    split_part(NEW.email, '@', 1)
-  );
-  v_avatar := COALESCE(
-    NEW.raw_user_meta_data->>'avatar_url',
-    NEW.raw_user_meta_data->>'picture'
-  );
-  v_kakao_id := NEW.raw_user_meta_data->>'provider_id';
-
-  SELECT EXISTS (
-    SELECT 1 FROM public.bonus_recipients
-    WHERE (v_email    IS NOT NULL AND email         = v_email)
-       OR (v_kakao_id IS NOT NULL AND kakao_user_id = v_kakao_id)
-  ) INTO v_already_bonused;
-
-  IF v_already_bonused THEN
-    INSERT INTO public.users
-      (id, kakao_user_id, nickname, profile_image_url, coins, signup_bonus_skipped)
-    VALUES
-      (NEW.id, v_kakao_id, v_nickname, v_avatar, 0, TRUE);
-  ELSE
-    INSERT INTO public.users
-      (id, kakao_user_id, nickname, profile_image_url, coins, signup_bonus_skipped)
-    VALUES
-      (NEW.id, v_kakao_id, v_nickname, v_avatar, 3, FALSE);
-
-    INSERT INTO public.coins (user_id, kind, amount, balance_after, description)
-    VALUES (NEW.id, 'bonus', 3, 3, '회원가입 보너스');
-
-    -- 식별자가 하나라도 있어야만 dedup ledger 에 기록 (CHECK 제약 보호).
-    -- 둘 다 NULL 인 케이스는 dedup 자체가 불가능하므로 그냥 skip.
-    IF v_email IS NOT NULL OR v_kakao_id IS NOT NULL THEN
-      INSERT INTO public.bonus_recipients (email, kakao_user_id)
-      VALUES (v_email, v_kakao_id);
-    END IF;
-  END IF;
-
-  RETURN NEW;
-END; $$;
-
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+diff <(grep -E '^(CREATE TABLE|CREATE FUNCTION|CREATE POLICY|CREATE INDEX|CREATE TRIGGER)' /tmp/prod_dump.sql | sort) \
+     <(grep -iE '^(create table|create or replace function|create policy|create.* index|create trigger)' \
+        ../react/db/migrations/0001_baseline.sql | sort)
 ```
 
----
-
-## RPCs
-
-모든 RPC 는 `auth.uid()` 를 세션의 진실로 삼는다. `p_user_id` 같은 파라미터 **없음** — 타인 계정 조작 차단. `SECURITY DEFINER` 로 RLS 우회해 내부 insert 를 수행한다.
-
-### `grant_coins` — 코인 적립
-
-RevenueCat 결제 · 보너스 · 환불 보정에 사용. `store_transaction_id` 가 주어지면 해당 거래가 이미 기록됐는지 먼저 확인해 **영수증 중복 방지**.
-
-```sql
-CREATE OR REPLACE FUNCTION grant_coins(
-  p_amount               INT,
-  p_kind                 TEXT,
-  p_product_id           TEXT DEFAULT NULL,
-  p_store_transaction_id TEXT DEFAULT NULL,
-  p_description          TEXT DEFAULT NULL
-) RETURNS INT
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
-AS $$
-DECLARE
-  v_uid     UUID := auth.uid();
-  v_balance INT;
-BEGIN
-  IF v_uid IS NULL      THEN RAISE EXCEPTION 'not authenticated'; END IF;
-  IF p_amount <= 0      THEN RAISE EXCEPTION 'amount must be positive'; END IF;
-  IF p_kind NOT IN ('purchase','bonus','refund') THEN
-    RAISE EXCEPTION 'invalid kind: %', p_kind;
-  END IF;
-
-  IF p_store_transaction_id IS NOT NULL THEN
-    SELECT balance_after INTO v_balance
-      FROM coins
-      WHERE store_transaction_id = p_store_transaction_id AND user_id = v_uid
-      LIMIT 1;
-    IF v_balance IS NOT NULL THEN RETURN v_balance; END IF;
-  END IF;
-
-  UPDATE users SET coins = coins + p_amount
-    WHERE id = v_uid
-    RETURNING coins INTO v_balance;
-  IF v_balance IS NULL THEN RAISE EXCEPTION 'profile missing'; END IF;
-
-  INSERT INTO coins
-    (user_id, kind, amount, balance_after, product_id, store_transaction_id, description)
-    VALUES (v_uid, p_kind, p_amount, v_balance, p_product_id, p_store_transaction_id, p_description);
-  RETURN v_balance;
-END; $$;
-```
-
-### `spend_coins` — 코인 차감 (범용)
-
-반환값: 성공 시 새 잔액, 잔액 부족 시 `-1`.
-
-```sql
-CREATE OR REPLACE FUNCTION spend_coins(
-  p_amount       INT,
-  p_reference_id TEXT DEFAULT NULL,
-  p_description  TEXT DEFAULT NULL
-) RETURNS INT
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
-AS $$
-DECLARE
-  v_uid     UUID := auth.uid();
-  v_balance INT;
-BEGIN
-  IF v_uid IS NULL THEN RAISE EXCEPTION 'not authenticated'; END IF;
-  IF p_amount <= 0 THEN RAISE EXCEPTION 'amount must be positive'; END IF;
-
-  UPDATE users SET coins = coins - p_amount
-    WHERE id = v_uid AND coins >= p_amount
-    RETURNING coins INTO v_balance;
-  IF v_balance IS NULL THEN RETURN -1; END IF;
-
-  INSERT INTO coins (user_id, kind, amount, balance_after, reference_id, description)
-    VALUES (v_uid, 'spend', -p_amount, v_balance, p_reference_id, p_description);
-  RETURN v_balance;
-END; $$;
-```
-
-### `unlock_compat` — 궁합 카드 해제 (코인 1 차감)
-
-원자 단위로: ①이미 해제됐는지 확인 → 그러면 잔액만 반환 (idempotent), ②잔액 1 이상이면 차감, ③`unlocks` insert, ④`coins` ledger 에 `spend` 기록.
-
-반환값: 성공·기해제 시 새 잔액, 잔액 부족 시 `-1`.
-
-```sql
-CREATE OR REPLACE FUNCTION unlock_compat(p_pair_key TEXT)
-RETURNS INT
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
-AS $$
-DECLARE
-  v_uid     UUID := auth.uid();
-  v_balance INT;
-  v_already BOOLEAN;
-BEGIN
-  IF v_uid IS NULL THEN RAISE EXCEPTION 'not authenticated'; END IF;
-  IF p_pair_key IS NULL OR length(p_pair_key) = 0 THEN
-    RAISE EXCEPTION 'pair_key required';
-  END IF;
-
-  SELECT EXISTS(
-    SELECT 1 FROM unlocks
-    WHERE user_id = v_uid AND pair_key = p_pair_key
-  ) INTO v_already;
-
-  IF v_already THEN
-    SELECT coins INTO v_balance FROM users WHERE id = v_uid;
-    RETURN v_balance;
-  END IF;
-
-  UPDATE users SET coins = coins - 1
-    WHERE id = v_uid AND coins >= 1
-    RETURNING coins INTO v_balance;
-  IF v_balance IS NULL THEN RETURN -1; END IF;
-
-  INSERT INTO unlocks (user_id, pair_key) VALUES (v_uid, p_pair_key);
-
-  INSERT INTO coins (user_id, kind, amount, balance_after, reference_id, description)
-    VALUES (v_uid, 'spend', -1, v_balance, p_pair_key, 'compat-unlock');
-
-  RETURN v_balance;
-END; $$;
-```
-
-### 권한
-
-RPC 는 로그인 사용자에게만 허용.
-
-```sql
-REVOKE EXECUTE ON FUNCTION grant_coins(INT, TEXT, TEXT, TEXT, TEXT) FROM PUBLIC, anon;
-REVOKE EXECUTE ON FUNCTION spend_coins(INT, TEXT, TEXT)             FROM PUBLIC, anon;
-REVOKE EXECUTE ON FUNCTION unlock_compat(TEXT)                      FROM PUBLIC, anon;
-
-GRANT  EXECUTE ON FUNCTION grant_coins(INT, TEXT, TEXT, TEXT, TEXT) TO authenticated;
-GRANT  EXECUTE ON FUNCTION spend_coins(INT, TEXT, TEXT)             TO authenticated;
-GRANT  EXECUTE ON FUNCTION unlock_compat(TEXT)                      TO authenticated;
-```
+빠진 게 있으면 baseline 에 직접 채울 것.
 
 ---
 
 ## 검증 스모크
 
+Supabase SQL Editor 는 service-role 로 실행 → RLS bypass. 일반 사용자 체험으로 확인하려면 "Run as authenticated" 체크 후 실행.
+
 ```sql
--- 로그인된 세션에서 (Dashboard SQL Editor 는 'Run as authenticated' 체크)
-SELECT coins FROM users WHERE id = auth.uid();
-SELECT * FROM coins WHERE user_id = auth.uid() ORDER BY created_at DESC LIMIT 10;
-SELECT * FROM unlocks WHERE user_id = auth.uid();
+-- 1) public.users / public.coins / public.unlocks read self
+select coins from users   where id = auth.uid();
+select * from coins       where user_id = auth.uid() order by created_at desc limit 10;
+select * from unlocks     where user_id = auth.uid();
 
--- 잔액 부족 시 -1 확인
-SELECT spend_coins(9999, 'test', 'smoke');
+-- 2) metrics: anon insert → views++ RPC → updated_at 변화 → delete
+do $$
+declare sid uuid := gen_random_uuid(); v integer;
+begin
+  insert into public.metrics
+    (id, metrics_json, source, ethnicity, gender, age_group, expires_at)
+  values
+    (sid, '{}', 'album', 'eastAsian', 'male', '20s', now() + interval '90 days');
+  perform public.increment_metrics_views(sid);
+  select views into v from public.metrics where id = sid;
+  raise notice 'views after rpc = %', v;  -- 1
+  delete from public.metrics where id = sid;
+end$$;
 
--- unlock 중복 호출 idempotent 확인
-SELECT unlock_compat('test-pair-key');  -- 차감
-SELECT unlock_compat('test-pair-key');  -- 잔액 그대로 (재차감 없음)
+-- 3) 잔액 부족 시 -1
+select spend_coins(9999, 'test', 'smoke');
+
+-- 4) unlock 중복 호출 idempotent
+select unlock_compat('test-pair-key');  -- 차감
+select unlock_compat('test-pair-key');  -- 잔액 그대로
+
+-- 5) PII 키 INSERT 거부 (RLS check) — 실패해야 정상
+do $$
+begin
+  insert into public.metrics
+    (id, metrics_json, source, ethnicity, gender, age_group, expires_at)
+  values
+    (gen_random_uuid(), '{"username":"hacker"}', 'album', 'eastAsian',
+     'male', '20s', now() + interval '90 days');
+  raise exception 'PII guard 실패 — 보안 hole';
+exception when others then
+  raise notice 'PII guard OK: %', sqlerrm;
+end$$;
 ```
 
 ---
 
-## 리셋 (dev only)
+## DEV ONLY — reset
 
-```sql
--- WARNING: 데이터 전부 날아감. prod 금지.
-DROP TABLE IF EXISTS unlocks CASCADE;
-DROP TABLE IF EXISTS coins          CASCADE;
-DROP TABLE IF EXISTS metrics        CASCADE;
-DROP TABLE IF EXISTS users          CASCADE;
-
-DROP FUNCTION IF EXISTS unlock_compat(TEXT);
-DROP FUNCTION IF EXISTS spend_coins(INT, TEXT, TEXT);
-DROP FUNCTION IF EXISTS grant_coins(INT, TEXT, TEXT, TEXT, TEXT);
-DROP FUNCTION IF EXISTS handle_new_user();
-
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-```
-
-Dashboard → Authentication → Users 의 기존 테스트 계정은 **수동 삭제** (auth.users 는 CASCADE 로도 안 지워짐).
+baseline.sql 의 §「DEV ONLY — reset」 주석 블록 사용. 본 reset 블록은 `auth.users` 의 트리거만 떼지 않고 public 측 테이블·함수만 정리하므로, 기존 테스트 계정은 Dashboard → Authentication → Users 에서 수동 삭제 필요.

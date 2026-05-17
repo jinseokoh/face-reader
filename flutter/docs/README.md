@@ -62,7 +62,7 @@ metric 원격 저장 + 향후 로그인/유료화.
 | 문서 | 내용 |
 |---|---|
 | [supabase/PLAN.md](supabase/PLAN.md) | 연동 계획: Phase 1 (Flutter + metrics 테이블) ~ Phase 3 (카카오 로그인 + 유료 기능) |
-| [supabase/SQL.md](supabase/SQL.md) | SQL 스키마: metrics 테이블, RLS 정책, Phase 3 users 테이블 (cron 은 Worker Cron Trigger — react/docs/HOW-IT-WORKS.md §12.2) |
+| [supabase/SQL.md](supabase/SQL.md) | Supabase 운영 가이드 — 접속·검증 스모크·dev reset. DDL SSOT 는 `react/db/migrations/0001_baseline.sql` |
 
 ---
 
