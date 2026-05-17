@@ -16,14 +16,6 @@
 
 - [ ] **`POST /api/erase` Worker endpoint** (명시 삭제용, P1 의 prerequisite) — HMAC 인증 + uuid 받아 R2 + Supabase 동시 DELETE. Flutter "내 공유 link 관리" UI 가 호출.
 
-### Worker 라우트
-
-(P0 Worker 라우트 모두 완료)
-
-### Flutter 측
-
-(P0 Flutter 모두 완료 — 잔여 폴리시 P1 으로)
-
 ### Well-known 파일
 
 - [ ] **AASA 실값** — `react/public/.well-known/apple-app-site-association`
@@ -43,7 +35,6 @@
 - [ ] **권한 사유 문구** — iOS `Info.plist` 의 `NSCameraUsageDescription` / `NSPhotoLibraryUsageDescription`, Android `AndroidManifest.xml` 의 `<uses-permission>` 옆 설명. 한국어 자연스러운 문장으로.
 - [ ] **연령 확인** — 첫 진입 시 "14세 이상입니까?" 체크. 14세 미만 차단 (PIPA 22조의2 법정대리인 동의 회피).
 - [ ] **`cdn.facely.kr` 검색엔진 차단** — R2 객체 응답에 `X-Robots-Tag: noindex` 헤더, 또는 R2 root 에 `robots.txt` (Disallow: /).
-- [ ] **Supabase region 확인** — `ap-northeast-2` (Seoul) 인지 대시보드 확인. 다른 region 이면 마이그레이션 검토 (privacy policy 의 국외이전 명시와 일치).
 
 ---
 
@@ -107,6 +98,7 @@
 **채택 방식**: Cloudflare Worker `triggers.crons` (HOW-IT-WORKS §12.2). Supabase 측 pg_cron 등의 cron 확장 의존 회피 — 우리 stack 안의 Cloudflare 만 사용. R2 SigV4 DELETE + Supabase REST DELETE 가 같은 Worker 안에서 처리.
 
 **실행 시 해야 할 것**:
+
 - `react/wrangler.jsonc` 에 `"triggers": { "crons": ["0 18 * * *"] }` (03:00 KST)
 - `react/workers/app.ts` 에 `scheduled(event, env, ctx)` 핸들러 + `cleanupDormant` 호출 (또는 `workers/cron.ts` 로 분리)
 - `react/app/lib/cleanup.ts` (신규) — Supabase REST select dormant → R2 aws4fetch DELETE → Supabase REST DELETE (R2 먼저 → DB 나중)
