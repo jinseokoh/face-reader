@@ -3,22 +3,14 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:camera/camera.dart';
-import 'package:face_reader/data/services/supabase_service.dart';
-import 'package:face_reader/domain/models/face_analysis.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
+import 'package:face_reader/domain/models/capture_result.dart';
+import 'package:face_reader/domain/models/face_analysis.dart';
 import 'package:face_reader/domain/services/face_metrics_lateral.dart';
-import 'package:face_reader/presentation/providers/age_group_provider.dart';
-import 'package:face_reader/presentation/providers/ethnicity_provider.dart';
-import 'package:face_reader/presentation/providers/gender_provider.dart';
-import 'package:face_reader/presentation/providers/history_provider.dart';
-import 'package:face_reader/presentation/providers/tab_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mediapipe_face_mesh/mediapipe_face_mesh.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:uuid/uuid.dart';
 
 import 'face_mesh_painter.dart';
 
@@ -707,66 +699,29 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
     }
   }
 
-  /// Final analysis + persistence step. Uses [_frontalLandmarks] as the primary
-  /// input and optionally adds [lateralLandmarks] when available.
+  /// 캡처 완료 후 caller (HomeScreen) 에 raw 데이터만 돌려준다. demographic
+  /// 확인·분석·저장은 DemographicConfirmScreen 이 담당.
   Future<void> _runAnalysis({List<FaceMeshLandmark>? lateralLandmarks}) async {
     final frontal = _frontalLandmarks;
     if (frontal == null) return;
-    final ethnicity = ref.read(ethnicityProvider)!;
-    final gender = ref.read(genderProvider)!;
-    final ageGroup = ref.read(ageGroupProvider)!;
-    debugPrint('[Camera] analysis frontalW=$_frontalImageWidth '
+    debugPrint('[Camera] capture complete frontalW=$_frontalImageWidth '
         'H=$_frontalImageHeight lateral=${lateralLandmarks != null}');
-    final report = analyzeFaceReading(
-      landmarks: frontal,
-      ethnicity: ethnicity,
-      gender: gender,
-      ageGroup: ageGroup,
-      source: AnalysisSource.camera,
-      imageWidth: _frontalImageWidth ?? 1,
-      imageHeight: _frontalImageHeight ?? 1,
-      lateralLandmarks: lateralLandmarks,
-    );
 
-    // Generate UUID upfront — used by both Hive and Supabase and also as the
-    // thumbnail filename so they stay in lockstep.
-    final id = const Uuid().v4();
-    report.supabaseId = id;
-
-    // Compress the still image captured in _startCapture() to a 128px WebP
-    // thumbnail, same pipeline used by the album flow.
     final stillBytes = _captureStillBytes;
     _captureStillBytes = null;
-    if (stillBytes != null) {
-      try {
-        final compressed = await FlutterImageCompress.compressWithList(
-          stillBytes,
-          minWidth: 128,
-          minHeight: 128,
-          quality: 80,
-          format: CompressFormat.webp,
-        );
-        final dir = await getApplicationDocumentsDirectory();
-        final file = File('${dir.path}/$id.webp');
-        await file.writeAsBytes(compressed);
-        report.thumbnailPath = file.path;
-      } catch (e) {
-        debugPrint('[Thumbnail] save error: $e');
-      }
-    }
+
+    final result = CaptureResult(
+      frontalLandmarks: frontal,
+      lateralLandmarks: lateralLandmarks,
+      imageWidth: _frontalImageWidth ?? 1,
+      imageHeight: _frontalImageHeight ?? 1,
+      stillBytes: stillBytes,
+      source: AnalysisSource.camera,
+    );
 
     if (!mounted) return;
     setState(() => _isCapturing = false);
-    ref.read(historyProvider.notifier).add(report);
-    // 카메라로 분석한 직후엔 관상 탭 → 카메라 sub-tab을 기본으로 보여준다.
-    ref.read(historyTabProvider.notifier).selectTab(0);
-    ref.read(selectedTabProvider.notifier).selectTab(1);
-    Navigator.of(context).pop();
-    // Save to Supabase in background using the pre-assigned UUID
-    SupabaseService().saveMetrics(report).catchError((e) {
-      debugPrint('[Supabase] save error: $e');
-      return '';
-    });
+    Navigator.of(context).pop(result);
   }
 
   /// Asset path for the mesh-guide image that accompanies a phase title.
