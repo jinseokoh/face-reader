@@ -45,6 +45,38 @@ export async function fetchMetrics(env: Env, ids: string[]): Promise<MetricsRow[
   return ids.map((id) => map.get(id)).filter((r): r is MetricsRow => Boolean(r));
 }
 
+/**
+ * `/r/{id}` SSR fetch 마다 호출 — views++ + updated_at 자동 갱신 (trigger).
+ * inactivity cron 의 active 신호 (HOW-IT-WORKS §5.2 / §12.2).
+ *
+ * fire-and-forget 으로 `context.cloudflare.ctx.waitUntil(...)` 안에서 호출
+ * 권장 — fetch latency 에 더하지 않게.
+ */
+export async function incrementMetricsViews(env: Env, id: string): Promise<void> {
+  if (id.startsWith("00000000-0000-0000-0000-")) return; // demo id 는 skip
+  if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) return;
+
+  try {
+    const res = await fetch(
+      `${env.SUPABASE_URL}/rest/v1/rpc/increment_metrics_views`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          apikey: env.SUPABASE_ANON_KEY,
+          authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ card_id: id }),
+      },
+    );
+    if (!res.ok) {
+      console.warn("[share-host] views++ rpc fail", id, res.status, await res.text());
+    }
+  } catch (e) {
+    console.warn("[share-host] views++ rpc threw", id, e);
+  }
+}
+
 function demoRow(id: string): MetricsRow {
   // 마지막 글자로 demo persona 분기 — '1' 은 여성/30대/계란형, '2' 는 남성/40대/긴얼굴.
   // 솔로 데모는 A (id 끝 1), compat 데모는 A × B (남녀 페어) 로 보이도록.

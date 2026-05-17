@@ -12,19 +12,18 @@
 
 ### Cloudflare 측
 
-- [ ] **R2 bucket `facely` 생성** (Cloudflare 대시보드 → R2)
-- [ ] **Lifecycle rule** — `Prefix = temp/` / `Expiration = 1 day` (Python 즉시 삭제의 백업). `thumbnails/` 는 룰 0 (영구).
-- [ ] **Custom domain `cdn.facely.kr`** → bucket public read 매핑 (또는 R2 dev URL 사용)
-- [ ] **R2 API token #1 (Worker용)** — Object Read & Write, bucket=facely 한정. **Access Key ID / Secret Access Key / Endpoint URL** 확보 (`dash.cloudflare.com/<account-id>/r2/api-tokens` 경로 — 일반 `/profile/api-tokens` 아님)
-- [x] **R2 token 2 개 분리 plan 폐기** — R2 dashboard 의 token UI 가 prefix scoping·DELETE-only tier 미지원. ROI 안 나오므로 한 토큰 공유 (§HOW-IT-WORKS 6.2). 위 `R2 API token #1` 한 개만 발급, Worker secret + Python env 양쪽에 동일 값 주입.
-- [ ] **Worker secrets 등록**
+- [x] **R2 bucket `facely` 생성** (Cloudflare 대시보드 → R2)
+- [x] **Lifecycle rule** — `Prefix = temp/` / `Expiration = 1 day` (Python 즉시 삭제의 백업). `thumbnails/` 는 룰 0 (영구).
+- [x] **Custom domain `cdn.facely.kr`** → bucket public read 매핑 (또는 R2 dev URL 사용)
+- [x] **R2 API token #1 (Worker용)** — Object Read & Write, bucket=facely 한정. **Access Key ID / Secret Access Key / Endpoint URL** 확보 (`dash.cloudflare.com/<account-id>/r2/api-tokens` 경로 — 일반 `/profile/api-tokens` 아님)
+- [x] **Worker secrets 등록**
   - `pnpm wrangler secret put R2_ACCESS_KEY_ID`
   - `pnpm wrangler secret put R2_SECRET_ACCESS_KEY`
   - `pnpm wrangler secret put FACE_API_SECRET` (32-byte hex, `openssl rand -hex 32`)
-- [ ] **`pnpm cf-typegen`** → `worker-configuration.d.ts` 에 secret 들이 보이는지 확인. 보이면 `app/types/env.d.ts` 삭제 가능.
-- [ ] **`wrangler.jsonc` 의 `R2_ACCOUNT_ID` placeholder** → 실제 account ID 로 교체 (대시보드 우상단).
+- [x] **`pnpm cf-typegen`** → secret 들이 `worker-configuration.d.ts` 에 자동 등재 확인됨. `app/types/env.d.ts` (수동 augmentation) + 빈 `app/types/` 폴더 삭제 완료.
+- [x] **`wrangler.jsonc` 의 `R2_ACCOUNT_ID` placeholder** → 실제 account ID 로 교체 (대시보드 우상단).
 - [x] **`wrangler.jsonc` routes** — facely.kr / www.facely.kr 바인딩 (`custom_domain: true`).
-- [ ] **DNS 정리**: 기존 tunnel 레코드 `facely.kr` / `www` 삭제 → Worker 가 자동으로 custom_domain 으로 다시 만듦. `meta` tunnel 추가 (Python 호스트). `cdn` R2 매핑 활성.
+- [x] **DNS 정리**: 기존 tunnel 레코드 `facely.kr` / `www` 삭제 → Worker 가 자동으로 custom_domain 으로 다시 만듦. `meta` tunnel 추가 (Python 호스트). `cdn` R2 매핑 활성.
 
 ### Python 서비스
 
@@ -60,19 +59,15 @@
 
 - [x] **`POST /api/r2/presign`** — 이미 구현 (`app/routes/api.r2.presign.ts`)
 - [x] **publish endpoint 없음** — `/api/share` 같은 라우트 의도적 미구현. Flutter ↔ Supabase 직통 UPSERT. (큰 payload 왕복 방지 + Worker write 권한 제거.) 기존 `app/routes/api.share.ts` 가 있다면 삭제.
-- [ ] **`GET /r/:id`** 재작성 (`app/routes/share.tsx`) — 한 라우트가 관상·궁합 모두 처리:
-  - `app/routes.ts` 의 path 를 `/r/:shortId` → `/r/:id` 로 변경
-  - `app/lib/share-id.ts` 에 `PAIR_SEP = "~"` + `parsePairId(id): string[]` 헬퍼 (1 또는 2 UUID 반환)
-  - `fetchMetrics(env, ids)` 호출 (1행 또는 2행) — 행 누락이면 404. (시간 만료 분기 없음)
-  - **fetch 성공 후 비동기로 `rpc/increment_metrics_views(id)` 호출** (각 id 별, fire-and-forget) — views++ + updated_at 자동 갱신. fetch latency 에 더하지 않음 (Worker waitUntil).
-  - 1 행 → `shared/face_engine.js` 의 `runEngine` 호출 (관상)
-  - 2 행 → `runCompat` 호출 (궁합 score + 친밀/갈등 chips)
-  - `<head>` meta:
-    - og:title — 관상은 archetype, 궁합은 "A × B 의 궁합"
-    - og:image — 관상은 `${R2_CDN_BASE}/${thumbnailKey}`, 궁합은 1차 단계에선 A 의 것 (P1 에서 합성 PNG)
-    - og:url — 원본 그대로
-    - robots — `noindex,nofollow` (PII 검색엔진 차단)
-  - 본문 + CTA (CTA 의 deep link target = 같은 URL)
+- [x] **`GET /r/:id`** 재작성 완료 (`app/routes/share.tsx`):
+  - routes.ts `:shortId` → `:id` 변경
+  - `app/lib/share-id.ts` 폐기된 HMAC codec 제거 → `PAIR_SEP="~"` + `parsePairId` 헬퍼
+  - `fetchMetrics(env, ids)` 1 또는 2 행 fetch, 누락 시 404
+  - `context.cloudflare.ctx.waitUntil(incrementMetricsViews(env, id))` × ids.length (fire-and-forget)
+  - ids.length === 1 → `runEngine`, 2 → `runCompat`
+  - meta 에 `robots: noindex,nofollow` 추가
+  - `appLinkBase = ${WEBAPP_BASE}/r/` 로 CTA 에 전달
+  - 잔여: og:image 가 아직 `/logo.png` fallback (traits.ts 가 `${origin}/logo.png` 사용). 실제 cdn.facely.kr thumbnailKey 연동은 별도 (RawMetrics 가 v2 schema 로 bump 된 후).
 - [ ] **루트 페이지 `/`** — 간단한 랜딩 + 스토어 CTA (현 `_index.tsx` 의 dev 데모 토큰 발행 로직 제거)
 
 ### Flutter 측
@@ -82,7 +77,7 @@
 - [ ] **`FaceMetadata` 모델 확장** — DeepFace raw 응답 3 필드 (`age:int`, `gender:"Man"|"Woman"`, `race:string`) 를 `deepfaceAge/Gender/Race` 로 보존. app demographic enum 으로의 매핑은 Flutter 가 자체 책임 (사용자 보정 UI 가 최종).
 - [ ] **`share_publisher.dart`** 재작성 — 1인 metrics 직접 UPSERT (Worker 미경유):
   1. analyze pipeline 완료 후 thumbnail 256px 까지 R2 PUT (presign + PUT)
-  2. metrics_json 페이로드 조립 — **1인 측정 데이터만** (schemaVersion=2, thumbnailKey, deepface*?, 기존 rawMetrics, ageGroup="20s" 포맷). `kind`/`partnerUuid`/`expires_at` 같은 필드 추가 금지.
+  2. metrics_json 페이로드 조립 — **1인 측정 데이터만** (schemaVersion=2, thumbnailKey, deepface\*?, 기존 rawMetrics, ageGroup="20s" 포맷). `kind`/`partnerUuid`/`expires_at` 같은 필드 추가 금지.
   3. Supabase REST `POST /rest/v1/metrics?on_conflict=id` (anon key, header `Prefer: resolution=merge-duplicates`) 로 UPSERT — 항상 1행, `expires_at` 은 null 그대로
   4. **관상 공유**: `https://facely.kr/r/{uuid}` 를 `share_plus`
   5. **궁합 공유**: 두 사람 metrics 가 이미 둘 다 publish 되어 있다는 전제 (정상 case). `share_plus("https://facely.kr/r/${uuidA}${PAIR_SEP}${uuidB}")` — 추가 Supabase write 0회. `PAIR_SEP` 상수는 shared 패키지에 두고 Worker 의 `share-id.ts` 와 동일 값 유지.
