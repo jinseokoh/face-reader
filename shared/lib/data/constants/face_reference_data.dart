@@ -757,14 +757,162 @@ const lateralFlagIds = [
 /// Lateral reference data: [Ethnicity][Gender][metricId] → MetricReference.
 /// Currently only East Asian has empirical values; other ethnicities reuse
 /// the same baselines.
+/// Lateral reference data per (Ethnicity × Gender) — 8 metric.
+///
+/// ─── Calibration philosophy ───────────────────────────────────────────────
+/// EastAsian baseline 은 우리 2D MediaPipe proxy 측정 frame 에서 empirical
+/// 재보정된 값 (2026-04-14). 타 5 인종 mean 은 clinical anthropometry 의
+/// "EA 대비 delta" 를 proxy frame 에 보수적으로 적용했다. sd 는 empirical N
+/// 누적 전까지 동아시아 baseline 그대로 — 일률 widening 보다는 conservative
+/// 유지가 안전.
+///
+/// References (인종간 delta 출처):
+///   - Farkas LG et al. (2005) *International Anthropometric Study of Facial
+///     Morphology* J Craniofac Surg 16(4):615-646 — nasofrontal/nasolabial
+///     angles per population.
+///   - Sforza C et al. (2009) *Soft-tissue facial planes and masculine-feminine
+///     differences* — gender × ancestry dimorphism in lateral profile.
+///   - Mommaerts MY et al. (2014) facial harmony references — lip projection
+///     (E-line), mentolabial angle population variation.
+///   - Naini FB et al. (2017) PMC5292106 — mentolabial angle ethnic subgroups.
+///
+/// ─── 영향 ────────────────────────────────────────────────────────────────
+/// 이 표 도입 전 모든 인종이 동아 baseline 으로 z-score → caucasian male 의
+/// dorsalConvexity 가 거의 항상 z≥3 → spurious `aquilineNose` flag → L-AQ rule
+/// 로 leadership +1.5 시스템 편향. 표 도입 후 인종별 baseline 대비 *진짜로*
+/// aquiline 한 사람만 flag 발동.
 const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>>
     lateralReferenceData = {
   Ethnicity.eastAsian: _eastAsianLateral,
-  Ethnicity.caucasian: _eastAsianLateral,
-  Ethnicity.african: _eastAsianLateral,
-  Ethnicity.southeastAsian: _eastAsianLateral,
-  Ethnicity.hispanic: _eastAsianLateral,
-  Ethnicity.middleEastern: _eastAsianLateral,
+  Ethnicity.caucasian: _caucasianLateral,
+  Ethnicity.african: _africanLateral,
+  Ethnicity.southeastAsian: _southeastAsianLateral,
+  Ethnicity.hispanic: _hispanicLateral,
+  Ethnicity.middleEastern: _middleEasternLateral,
+};
+
+// ─── Caucasian — strong dorsal convexity (aquiline tendency), retrusive lips,
+//     more projected tip, more acute nasofrontal/mentolabial angles ────────
+const Map<Gender, Map<String, MetricReference>> _caucasianLateral = {
+  Gender.male: {
+    'nasofrontalAngle': MetricReference(121.0, 9.0),
+    'nasolabialAngle': MetricReference(128.0, 12.0),
+    'facialConvexity': MetricReference(4.5, 3.9),
+    'upperLipEline': MetricReference(-0.010, 0.007),
+    'lowerLipEline': MetricReference(-0.005, 0.007),
+    'mentolabialAngle': MetricReference(124.0, 3.8),
+    'noseTipProjection': MetricReference(0.35, 0.04),
+    'dorsalConvexity': MetricReference(0.020, 0.008),
+  },
+  Gender.female: {
+    'nasofrontalAngle': MetricReference(131.0, 10.0),
+    'nasolabialAngle': MetricReference(130.0, 12.0),
+    'facialConvexity': MetricReference(5.0, 3.9),
+    'upperLipEline': MetricReference(-0.010, 0.007),
+    'lowerLipEline': MetricReference(-0.003, 0.007),
+    'mentolabialAngle': MetricReference(124.0, 3.3),
+    'noseTipProjection': MetricReference(0.34, 0.04),
+    'dorsalConvexity': MetricReference(0.015, 0.008),
+  },
+};
+
+// ─── African — prognathic profile, protrusive lips, flatter (less projected)
+//     nose tip, wider nasofrontal, no aquiline tendency ────────────────────
+const Map<Gender, Map<String, MetricReference>> _africanLateral = {
+  Gender.male: {
+    'nasofrontalAngle': MetricReference(137.0, 9.0),
+    'nasolabialAngle': MetricReference(132.0, 12.0),
+    'facialConvexity': MetricReference(11.0, 3.9),
+    'upperLipEline': MetricReference(0.005, 0.007),
+    'lowerLipEline': MetricReference(0.008, 0.007),
+    'mentolabialAngle': MetricReference(130.0, 3.8),
+    'noseTipProjection': MetricReference(0.25, 0.04),
+    'dorsalConvexity': MetricReference(0.000, 0.008),
+  },
+  Gender.female: {
+    'nasofrontalAngle': MetricReference(144.0, 10.0),
+    'nasolabialAngle': MetricReference(134.0, 12.0),
+    'facialConvexity': MetricReference(11.5, 3.9),
+    'upperLipEline': MetricReference(0.005, 0.007),
+    'lowerLipEline': MetricReference(0.008, 0.007),
+    'mentolabialAngle': MetricReference(130.0, 3.3),
+    'noseTipProjection': MetricReference(0.25, 0.04),
+    'dorsalConvexity': MetricReference(0.000, 0.008),
+  },
+};
+
+// ─── Southeast Asian — close to East Asian; slightly fuller lips, slightly
+//     less projected tip, marginally more facial convexity ─────────────────
+const Map<Gender, Map<String, MetricReference>> _southeastAsianLateral = {
+  Gender.male: {
+    'nasofrontalAngle': MetricReference(130.0, 9.0),
+    'nasolabialAngle': MetricReference(132.0, 12.0),
+    'facialConvexity': MetricReference(9.0, 3.9),
+    'upperLipEline': MetricReference(-0.001, 0.007),
+    'lowerLipEline': MetricReference(0.005, 0.007),
+    'mentolabialAngle': MetricReference(132.0, 3.8),
+    'noseTipProjection': MetricReference(0.28, 0.04),
+    'dorsalConvexity': MetricReference(0.005, 0.008),
+  },
+  Gender.female: {
+    'nasofrontalAngle': MetricReference(138.0, 10.0),
+    'nasolabialAngle': MetricReference(132.0, 12.0),
+    'facialConvexity': MetricReference(9.0, 3.9),
+    'upperLipEline': MetricReference(-0.001, 0.007),
+    'lowerLipEline': MetricReference(0.005, 0.007),
+    'mentolabialAngle': MetricReference(130.0, 3.3),
+    'noseTipProjection': MetricReference(0.27, 0.04),
+    'dorsalConvexity': MetricReference(0.005, 0.008),
+  },
+};
+
+// ─── Hispanic — intermediate between Caucasian and Southeast Asian ───────
+const Map<Gender, Map<String, MetricReference>> _hispanicLateral = {
+  Gender.male: {
+    'nasofrontalAngle': MetricReference(125.0, 9.0),
+    'nasolabialAngle': MetricReference(130.0, 12.0),
+    'facialConvexity': MetricReference(6.0, 3.9),
+    'upperLipEline': MetricReference(-0.005, 0.007),
+    'lowerLipEline': MetricReference(0.000, 0.007),
+    'mentolabialAngle': MetricReference(126.0, 3.8),
+    'noseTipProjection': MetricReference(0.32, 0.04),
+    'dorsalConvexity': MetricReference(0.012, 0.008),
+  },
+  Gender.female: {
+    'nasofrontalAngle': MetricReference(132.0, 10.0),
+    'nasolabialAngle': MetricReference(130.0, 12.0),
+    'facialConvexity': MetricReference(6.5, 3.9),
+    'upperLipEline': MetricReference(-0.005, 0.007),
+    'lowerLipEline': MetricReference(0.000, 0.007),
+    'mentolabialAngle': MetricReference(126.0, 3.3),
+    'noseTipProjection': MetricReference(0.31, 0.04),
+    'dorsalConvexity': MetricReference(0.010, 0.008),
+  },
+};
+
+// ─── Middle Eastern — strongest aquiline + high projection + retrusive lips
+//     + acute mentolabial. Persian/Arab/Turkish aggregated. ───────────────
+const Map<Gender, Map<String, MetricReference>> _middleEasternLateral = {
+  Gender.male: {
+    'nasofrontalAngle': MetricReference(122.0, 9.0),
+    'nasolabialAngle': MetricReference(127.0, 12.0),
+    'facialConvexity': MetricReference(5.0, 3.9),
+    'upperLipEline': MetricReference(-0.010, 0.007),
+    'lowerLipEline': MetricReference(-0.003, 0.007),
+    'mentolabialAngle': MetricReference(124.0, 3.8),
+    'noseTipProjection': MetricReference(0.34, 0.04),
+    'dorsalConvexity': MetricReference(0.022, 0.008),
+  },
+  Gender.female: {
+    'nasofrontalAngle': MetricReference(130.0, 10.0),
+    'nasolabialAngle': MetricReference(128.0, 12.0),
+    'facialConvexity': MetricReference(5.5, 3.9),
+    'upperLipEline': MetricReference(-0.010, 0.007),
+    'lowerLipEline': MetricReference(-0.003, 0.007),
+    'mentolabialAngle': MetricReference(124.0, 3.3),
+    'noseTipProjection': MetricReference(0.33, 0.04),
+    'dorsalConvexity': MetricReference(0.018, 0.008),
+  },
 };
 
 const Map<Gender, Map<String, MetricReference>> _eastAsianLateral = {

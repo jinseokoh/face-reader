@@ -16,7 +16,9 @@ library;
 
 import 'package:meta/meta.dart';
 
+import 'package:face_engine/data/constants/ethnicity_factors.dart';
 import 'package:face_engine/data/enums/attribute.dart';
+import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/physiognomy_tree.dart';
@@ -306,10 +308,15 @@ const _genderDelta = <Attribute, Map<String, _GenderDelta>>{
   },
 };
 
-double _effectiveWeight(_NodeWeight w, Attribute attr, Gender gender) {
+double _effectiveWeight(
+    _NodeWeight w, Attribute attr, Gender gender, Ethnicity ethnicity) {
   final delta = _genderDelta[attr]?[w.nodeId];
   if (delta == null) return w.weight;
-  return w.weight + (gender == Gender.male ? delta.male : delta.female);
+  final raw = gender == Gender.male ? delta.male : delta.female;
+  // dimorphismScale: Kleisner 2021 — 남녀 face shape 거리가 인종별 다름.
+  // 동아시아 0.7, 아프리카 0.6, 그 외 1.0 base.
+  final scale = dimorphismScale[ethnicity] ?? 1.0;
+  return w.weight + raw * scale;
 }
 
 // ──────────────────── Shape Overlay — RETIRED FROM SCORE PIPELINE ────────────────────
@@ -356,7 +363,7 @@ NodeScore? _nodeByWeight(NodeScore tree, _NodeWeight w) =>
 // ──────────────────── Stage 1 — base linear (per node) ────────────────────
 
 Map<Attribute, Map<String, double>> _stage1BasePerNode(
-    NodeScore tree, Gender gender) {
+    NodeScore tree, Gender gender, Ethnicity ethnicity) {
   final out = <Attribute, Map<String, double>>{
     for (final a in Attribute.values) a: <String, double>{},
   };
@@ -365,7 +372,7 @@ Map<Attribute, Map<String, double>> _stage1BasePerNode(
       final node = _nodeByWeight(tree, w);
       if (node == null) continue;
       final s = _nodeSignedZ(node);
-      final ew = _effectiveWeight(w, attr, gender);
+      final ew = _effectiveWeight(w, attr, gender, ethnicity);
       out[attr]![w.nodeId] = s * ew * w.polarity;
     }
   }
@@ -879,6 +886,7 @@ final _lateralFlagRules = <_LateralFlagRule>[
 Map<Attribute, double> deriveAttributeScores({
   required NodeScore tree,
   required Gender gender,
+  required Ethnicity ethnicity,
   required bool isOver50,
   required bool hasLateral,
   Map<String, bool> lateralFlags = const {},
@@ -888,6 +896,7 @@ Map<Attribute, double> deriveAttributeScores({
   return deriveAttributeScoresDetailed(
     tree: tree,
     gender: gender,
+    ethnicity: ethnicity,
     isOver50: isOver50,
     hasLateral: hasLateral,
     lateralFlags: lateralFlags,
@@ -899,22 +908,29 @@ Map<Attribute, double> deriveAttributeScores({
 AttributeBreakdown deriveAttributeScoresDetailed({
   required NodeScore tree,
   required Gender gender,
+  required Ethnicity ethnicity,
   required bool isOver50,
   required bool hasLateral,
   Map<String, bool> lateralFlags = const {},
   FaceShape faceShape = FaceShape.unknown,
   double shapeConfidence = 0.0,
 }) {
-  final basePerNode = _stage1BasePerNode(tree, gender);
+  final basePerNode = _stage1BasePerNode(tree, gender, ethnicity);
   final distinct = _stage1bDistinctiveness(tree);
 
-  final zoneTriggered = _evalRules(tree, _zoneRules);
-  final organTriggered = _evalRules(tree, _organRules);
-  final palaceTriggered = _evalRules(tree, _palaceRules);
-  final ageTriggered =
-      isOver50 ? _evalRules(tree, _ageRules) : const <TriggeredRule>[];
+  // physiognomyCanonScale: 麻衣相法·神相全編 rule magnitude 의 cultural-domain
+  // dampening. 동아시아 1.0, 동남아시아 0.9, 그 외 0.7.
+  final canonScale = physiognomyCanonScale[ethnicity] ?? 1.0;
+
+  final zoneTriggered = _scaleRules(_evalRules(tree, _zoneRules), canonScale);
+  final organTriggered = _scaleRules(_evalRules(tree, _organRules), canonScale);
+  final palaceTriggered =
+      _scaleRules(_evalRules(tree, _palaceRules), canonScale);
+  final ageTriggered = isOver50
+      ? _scaleRules(_evalRules(tree, _ageRules), canonScale)
+      : const <TriggeredRule>[];
   final lateralTriggered = hasLateral
-      ? _evalLateralFlagRules(tree, lateralFlags)
+      ? _scaleRules(_evalLateralFlagRules(tree, lateralFlags), canonScale)
       : const <TriggeredRule>[];
 
   final total = <Attribute, double>{for (final a in Attribute.values) a: 0.0};
@@ -977,6 +993,18 @@ List<TriggeredRule> _evalLateralFlagRules(
     if (r.condition(tree, flags)) out.add(TriggeredRule(r.id, r.effects));
   }
   return out;
+}
+
+/// Apply ethnicity canon scale to triggered rule effects. UI contributor 표시
+/// 와 total 합산 양쪽이 같은 scaled 값을 보도록 effects 자체를 곱해 둔다.
+List<TriggeredRule> _scaleRules(List<TriggeredRule> rules, double scale) {
+  if (scale == 1.0 || rules.isEmpty) return rules;
+  return [
+    for (final r in rules)
+      TriggeredRule(r.id, {
+        for (final e in r.effects.entries) e.key: e.value * scale,
+      }),
+  ];
 }
 
 // ──────────────────── Sanity helpers (testing) ────────────────────

@@ -14,7 +14,7 @@ import 'package:uuid/uuid.dart';
 /// 흐름:
 ///   1) UUID v4 한 번 발급 — 이후 temp/thumbnails/metrics/share link 전부 같은 값
 ///   2) Flutter 가 원본을 720px 로 리사이즈 → R2 temp/{uuid}.jpg 로 PUT
-///   3) Python /analyze 호출 → {age, gender, race}
+///   3) Python /analyze 호출 → {age, gender, ethnicity}
 ///   4) **분석 성공한 경우에만** 256 리사이즈 → R2 thumbnails/{YYYYMM}/{uuid}.jpg 로 PUT
 ///   5) FaceMetadata 반환 (uuid + thumbnailUrl 포함)
 ///

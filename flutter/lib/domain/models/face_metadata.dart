@@ -1,4 +1,4 @@
-/// Result of the DeepFace age/gender/race inference pipeline.
+/// Result of the DeepFace age/gender/ethnicity inference pipeline.
 ///
 /// `uuid` is the **single capture id** generated once at analyze time and
 /// reused across the entire face lifecycle:
@@ -19,15 +19,20 @@
 class FaceMetadata {
   final String uuid;
   final int age;
-  final String gender; // "Man" | "Woman" (직접 enum 으로 매핑하지 않음 — API SSOT 그대로)
-  final String race; // "asian" | "white" | "black" | "indian" | "middle eastern" | "latino hispanic"
+  // "male" | "female" — Python /analyze 응답에서 Flutter Gender enum name 으로
+  // 정규화된 값. 그대로 `Gender.values.byName(...)` 로 매핑 가능.
+  final String gender;
+  // "eastAsian" | "caucasian" | "african" | "southeastAsian" | "hispanic" |
+  // "middleEastern" — Python /analyze 응답에서 Flutter Ethnicity enum name 으로
+  // 정규화된 값. 그대로 `Ethnicity.values.byName(...)` 로 매핑 가능.
+  final String ethnicity;
   final String? thumbnailUrl;
 
   const FaceMetadata({
     required this.uuid,
     required this.age,
     required this.gender,
-    required this.race,
+    required this.ethnicity,
     this.thumbnailUrl,
   });
 
@@ -35,7 +40,7 @@ class FaceMetadata {
         uuid: uuid,
         age: age,
         gender: gender,
-        race: race,
+        ethnicity: ethnicity,
         thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
       );
 
@@ -49,14 +54,14 @@ class FaceMetadata {
         uuid: uuid,
         age: (j['age'] as num).toInt(),
         gender: j['gender'] as String,
-        race: j['race'] as String,
+        ethnicity: j['ethnicity'] as String,
       );
 
   Map<String, dynamic> toJson() => {
         'uuid': uuid,
         'age': age,
         'gender': gender,
-        'race': race,
+        'ethnicity': ethnicity,
         if (thumbnailUrl != null) 'thumbnail_url': thumbnailUrl,
       };
 }

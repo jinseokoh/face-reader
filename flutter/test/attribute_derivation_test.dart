@@ -1,4 +1,5 @@
 import 'package:face_engine/data/enums/attribute.dart';
+import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/services/attribute_derivation.dart';
@@ -8,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 AttributeBreakdown _run(
   Map<String, double> z, {
   Gender gender = Gender.male,
+  Ethnicity ethnicity = Ethnicity.eastAsian,
   bool isOver50 = false,
   bool hasLateral = false,
   Map<String, bool> flags = const {},
@@ -17,6 +19,7 @@ AttributeBreakdown _run(
   return deriveAttributeScoresDetailed(
     tree: scoreTree(z),
     gender: gender,
+    ethnicity: ethnicity,
     isOver50: isOver50,
     hasLateral: hasLateral,
     lateralFlags: flags,
@@ -51,19 +54,21 @@ void main() {
       // ownMeanZ = sum / count_of_PRESENT metrics = 2.0 / 1.
       final b = _run({'nasalHeightRatio': 2.0});
       final wealth = b.basePerNode[Attribute.wealth]!;
-      // wealth.nose weight = 0.20, male delta +0.05 → 0.25 (v2.7 decorrelated).
-      expect(wealth['nose'], closeTo(2.0 * 0.25, 1e-9));
+      // wealth.nose weight = 0.20, male delta +0.05 × dimorphismScale.
+      // eastAsian dimorphismScale = 0.7 (Kleisner 2021) → 0.20 + 0.035 = 0.235.
+      expect(wealth['nose'], closeTo(2.0 * 0.235, 1e-9));
     });
 
     test('gender delta changes effective weight', () {
       const z = {'nasalHeightRatio': 1.0};
       final male = _run(z, gender: Gender.male);
       final female = _run(z, gender: Gender.female);
-      // wealth.nose: 0.20 + male +0.05 / female -0.05 (v2.7 decorrelated).
+      // wealth.nose: 0.20 + delta(±0.05) × dimorphismScale.
+      // eastAsian dimorphismScale = 0.7 → male 0.235 / female 0.165.
       expect(male.basePerNode[Attribute.wealth]!['nose'],
-          closeTo(1.0 * 0.25, 1e-9));
+          closeTo(1.0 * 0.235, 1e-9));
       expect(female.basePerNode[Attribute.wealth]!['nose'],
-          closeTo(1.0 * 0.15, 1e-9));
+          closeTo(1.0 * 0.165, 1e-9));
     });
 
     test('face root node 는 weight matrix 에서 제외', () {
@@ -419,12 +424,14 @@ void main() {
       final flat = deriveAttributeScores(
         tree: tree,
         gender: Gender.male,
+        ethnicity: Ethnicity.eastAsian,
         isOver50: false,
         hasLateral: false,
       );
       final detailed = deriveAttributeScoresDetailed(
         tree: tree,
         gender: Gender.male,
+        ethnicity: Ethnicity.eastAsian,
         isOver50: false,
         hasLateral: false,
       );

@@ -56,6 +56,7 @@ FaceReadingReport _buildReport({
   final detail = deriveAttributeScoresDetailed(
     tree: tree,
     gender: gender,
+    ethnicity: Ethnicity.eastAsian,
     isOver50: age.isOver50,
     hasLateral: false,
   );

@@ -136,6 +136,7 @@ void main() {
       final raws = deriveAttributeScores(
         tree: tree,
         gender: Gender.female,
+        ethnicity: Ethnicity.eastAsian,
         isOver50: false,
         hasLateral: false,
         faceShape: shape,

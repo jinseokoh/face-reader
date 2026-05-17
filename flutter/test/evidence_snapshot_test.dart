@@ -9,6 +9,7 @@
 // 이 파일의 goldenSnapshot 교체를 항상 동반한다.
 
 import 'package:face_engine/data/enums/attribute.dart';
+import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/services/attribute_derivation.dart';
 import 'package:face_engine/domain/services/attribute_normalize.dart';
@@ -44,6 +45,7 @@ String _summarize() {
   final detail = deriveAttributeScoresDetailed(
     tree: tree,
     gender: Gender.male,
+    ethnicity: Ethnicity.eastAsian,
     isOver50: false,
     hasLateral: false,
   );

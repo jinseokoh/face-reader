@@ -20,10 +20,15 @@ import 'dart:math';
 
 import 'package:face_engine/data/constants/face_reference_data.dart';
 import 'package:face_engine/data/enums/attribute.dart';
+import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/services/attribute_derivation.dart';
 import 'package:face_engine/domain/services/physiognomy_scoring.dart';
+
+/// MC baseline demographic — eastAsian per CLAUDE.md §다음 작업 P0 (N=14
+/// empirical recalibration). 타 인종 empirical N 누적 시 per-ethnicity 분화.
+const _kMcEthnicity = Ethnicity.eastAsian;
 
 /// 21-point quantile array per attribute (p0, p5, …, p100).
 Map<Attribute, List<double>> calibrateQuantiles({
@@ -231,6 +236,7 @@ Map<Attribute, List<double>> _simulateRaws({
     final scores = deriveAttributeScores(
       tree: tree,
       gender: gender,
+      ethnicity: _kMcEthnicity,
       isOver50: false,
       hasLateral: false,
       faceShape: shape,

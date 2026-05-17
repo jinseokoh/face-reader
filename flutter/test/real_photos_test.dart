@@ -14,6 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:face_engine/data/constants/face_reference_data.dart';
 import 'package:face_engine/data/enums/attribute.dart';
+import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/services/attribute_derivation.dart';
 import 'package:face_engine/domain/services/attribute_normalize.dart';
@@ -133,6 +134,7 @@ void main() {
       final raws = deriveAttributeScores(
         tree: scoreTree(z),
         gender: gender,
+        ethnicity: Ethnicity.eastAsian,
         isOver50: false,
         hasLateral: false,
       );

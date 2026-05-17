@@ -102,7 +102,7 @@ FaceReadingReport analyzeFaceReading({
   final zAdjusted = <String, double>{};
   for (final entry in zScores.entries) {
     zAdjusted[entry.key] =
-        adjustForAge(entry.key, entry.value, gender, isOver50);
+        adjustForAge(entry.key, entry.value, gender, ethnicity, isOver50);
   }
 
   // Step 4: Z-adjusted → integer Metric Score (rules + UI display).
@@ -174,9 +174,18 @@ FaceReadingReport analyzeFaceReading({
     final nasoFrontRaw = lateralMeasured['nasofrontalAngle'] ?? 0;
     final tipProjScore = scores['noseTipProjection'] ?? 0;
 
+    // Lateral flag raw-° cutoffs — gender-conditional.
+    // 남녀 nasolabial angle baseline 이 약 5° 차이 (Sforza 2009 soft-tissue
+    // facial planes). 동일 raw cutoff 를 두면 여성에서 droopingTip 이
+    // 과대진단, 남성에서 snubNose 가 과대진단되는 sign-asymmetric bias 발생.
+    // z-score check 가 baseline shift 는 흡수하므로 raw cutoff 는 "코의 절대
+    // 형태" 가 충분히 극단인지 확인하는 sanity gate 역할만.
+    final isMale = gender == Gender.male;
+    final snubRawCutoff = isMale ? 113.0 : 118.0;
+    final droopRawCutoff = isMale ? 110.0 : 115.0;
     final aquiline = dorsalScore >= 3;
-    final snub = nasoLabScore >= 2 && nasoLabRaw >= 115.0;
-    final droopingTip = nasoLabScore <= -2 && nasoLabRaw <= 112.0;
+    final snub = nasoLabScore >= 2 && nasoLabRaw >= snubRawCutoff;
+    final droopingTip = nasoLabScore <= -2 && nasoLabRaw <= droopRawCutoff;
     final saddleNose = dorsalScore <= -3;
     final flatNose = tipProjScore <= -3;
     // Frontal-only nose types. Thresholds moderated to catch genuinely
@@ -268,6 +277,7 @@ FaceReadingReport analyzeFaceReading({
   final breakdown = deriveAttributeScoresDetailed(
     tree: tree,
     gender: gender,
+    ethnicity: ethnicity,
     isOver50: isOver50,
     hasLateral: lateralLandmarks != null,
     lateralFlags: lateralFlags ?? const {},

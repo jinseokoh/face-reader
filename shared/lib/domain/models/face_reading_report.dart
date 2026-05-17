@@ -202,12 +202,15 @@ class FaceReadingReport {
   /// 채워짐. Worker SSR 의 `og:image` 가 `${R2_CDN_BASE}/${thumbnailKey}` 로 조립.
   String? thumbnailKey;
 
-  /// DeepFace raw 응답 보존 (정확도 측정 audit trail). app 의 정제값
-  /// (gender/race enum) 과 의도적으로 페어로 저장 — HOW-IT-WORKS §5.2.
-  /// **둘 다 살려둔 redundancy 는 의도적. "정리" 금지.**
+  /// DeepFace 추정값 보존 (사용자 picker 와의 일치도 audit trail). app 의
+  /// 사용자 선택 (gender/ethnicity enum) 과 의도적으로 페어로 저장 —
+  /// HOW-IT-WORKS §5.2. **둘 다 살려둔 redundancy 는 의도적. "정리" 금지.**
+  ///
+  /// 값은 Python /analyze 가 Flutter enum name 으로 정규화한 후 그대로 보존
+  /// ("male"/"female", "eastAsian"/"caucasian"/…).
   int? deepfaceAge;
-  String? deepfaceGender; // "Man" | "Woman" raw
-  String? deepfaceRace; // "asian" | "white" | ... raw 6-class
+  String? deepfaceGender; // "male" | "female" — Gender enum name
+  String? deepfaceEthnicity; // Ethnicity enum name 6종 중 하나
 
   /// 17 frontal metric results.
   final Map<String, MetricResult> metrics;
@@ -256,7 +259,7 @@ class FaceReadingReport {
     this.thumbnailKey,
     this.deepfaceAge,
     this.deepfaceGender,
-    this.deepfaceRace,
+    this.deepfaceEthnicity,
     required this.metrics,
     this.lateralMetrics,
     this.lateralFlags,
@@ -297,7 +300,7 @@ class FaceReadingReport {
         if (thumbnailKey != null) 'thumbnailKey': thumbnailKey,
         if (deepfaceAge != null) 'deepfaceAge': deepfaceAge,
         if (deepfaceGender != null) 'deepfaceGender': deepfaceGender,
-        if (deepfaceRace != null) 'deepfaceRace': deepfaceRace,
+        if (deepfaceEthnicity != null) 'deepfaceEthnicity': deepfaceEthnicity,
         // rawValue 만 저장 — id → double. 현재 ref 에 의존하는 z/zAdjusted/
         // metricScore 는 절대 저장 금지 (저장하면 ref 변경이 기존 리포트에
         // 반영되지 않는 stale-z 버그 발생).
@@ -370,7 +373,7 @@ class FaceReadingReport {
       }
       final ref = frontalRefs[info.id]!;
       final z = (raw - ref.mean) / ref.sd;
-      final zAdj = adjustForAge(info.id, z, gender, isOver50);
+      final zAdj = adjustForAge(info.id, z, gender, ethnicity, isOver50);
       zAdjustedMap[info.id] = zAdj;
       metrics[info.id] = MetricResult(
         id: info.id,
@@ -435,6 +438,7 @@ class FaceReadingReport {
     final breakdown = deriveAttributeScoresDetailed(
       tree: tree,
       gender: gender,
+      ethnicity: ethnicity,
       isOver50: ageGroup.isOver50,
       hasLateral: lateralMetrics != null,
       lateralFlags: lateralFlags ?? const {},
@@ -471,7 +475,7 @@ class FaceReadingReport {
       thumbnailKey: j['thumbnailKey'] as String?,
       deepfaceAge: (j['deepfaceAge'] as num?)?.toInt(),
       deepfaceGender: j['deepfaceGender'] as String?,
-      deepfaceRace: j['deepfaceRace'] as String?,
+      deepfaceEthnicity: j['deepfaceEthnicity'] as String?,
       metrics: metrics,
       lateralMetrics: lateralMetrics,
       lateralFlags: lateralFlags,

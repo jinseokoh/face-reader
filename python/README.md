@@ -20,10 +20,11 @@
                                        DeepFace.analyze 실행
                                               │
                                               ▼
-                               { age, gender, race } JSON 응답
+                               { age, gender, ethnicity } JSON 응답
 ```
 
-- DeepFace 라는 오픈소스 얼굴분석 라이브러리를 사용. age/gender/race **세 가지만** 추론하도록 잘라 두었다.
+- DeepFace 라는 오픈소스 얼굴분석 라이브러리를 사용. age/gender/ethnicity **세 가지만** 추론하도록 잘라 두었다.
+- 응답의 `gender` 와 `ethnicity` 는 Flutter SSOT enum name 으로 정규화되어 내려간다 (`"male"/"female"`, `"eastAsian"/"caucasian"/"african"/"southeastAsian"/"hispanic"/"middleEastern"`). DeepFace 의 원본 라벨("Man"/"Woman"/"asian"/"white" 등) 은 서비스 내부 매핑 후 폐기.
 - detector 는 `opencv` (가장 가볍고 CPU 친화).
 - 첫 요청 때 모델 가중치(weights, ~80MB) 가 자동 다운로드된다. 본 서비스는 **시작할 때 한 번 미리 워밍업** 해서 첫 사용자 요청이 느려지지 않도록 설계되었다.
 
@@ -89,7 +90,7 @@ curl -s http://localhost:8000/health
 curl -s -X POST http://localhost:8000/analyze \
   -H 'Content-Type: application/json' \
   -d '{"image_url":"https://images.example.com/face.jpg"}'
-# → {"age":28,"gender":"Man","race":"asian"}
+# → {"age":28,"gender":"male","ethnicity":"eastAsian"}
 ```
 
 ### 2-5. 멈추기 / 재시작
@@ -180,12 +181,28 @@ curl -s http://localhost:8000/health
 
 성공 (200):
 ```json
-{ "age": 28, "gender": "Man", "race": "asian" }
+{ "age": 28, "gender": "male", "ethnicity": "eastAsian" }
 ```
 
 - `age`: 정수 (DeepFace 의 float 추정치를 반올림)
-- `gender`: `"Man"` 또는 `"Woman"`
-- `race`: `"asian"` / `"indian"` / `"black"` / `"white"` / `"middle eastern"` / `"latino hispanic"` 중 하나
+- `gender`: `"male"` 또는 `"female"` (Flutter `Gender` enum name)
+- `ethnicity`: Flutter `Ethnicity` enum name 6종 중 하나 — `"eastAsian"` / `"caucasian"` / `"african"` / `"southeastAsian"` / `"hispanic"` / `"middleEastern"`
+
+DeepFace 원본 라벨 ↔ 응답 라벨 매핑:
+
+| DeepFace `dominant_gender` | 응답 `gender` |
+|---|---|
+| `Man` | `male` |
+| `Woman` | `female` |
+
+| DeepFace `dominant_race` | 응답 `ethnicity` |
+|---|---|
+| `asian` | `eastAsian` |
+| `white` | `caucasian` |
+| `black` | `african` |
+| `indian` | `southeastAsian` |
+| `middle eastern` | `middleEastern` |
+| `latino hispanic` | `hispanic` |
 
 실패 응답은 모두 동일한 구조:
 ```json

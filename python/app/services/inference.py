@@ -1,9 +1,18 @@
-"""DeepFace wrapper — age / gender / race only, CPU-tuned.
+"""DeepFace wrapper — age / gender / ethnicity only, CPU-tuned.
 
 DeepFace.analyze is blocking (numpy + tensorflow). We call it via
 asyncio.to_thread so a slow inference doesn't park the event loop. Model
 weights download on first call; the startup warm-up forces that to happen
 before the first real request lands.
+
+Response normalization — Flutter SSOT 인 enum name 으로 통일:
+  gender:    "Man"/"Woman"            → "male"/"female"   (Gender enum)
+  ethnicity: DeepFace 6-class (asian, → Flutter Ethnicity enum 6종
+             white, black, indian,       (eastAsian, caucasian, african,
+             middle eastern,             southeastAsian, hispanic,
+             latino hispanic)            middleEastern)
+
+원본 DeepFace 라벨은 영구 보존이 필요하면 caller 측 audit log 에서.
 """
 from __future__ import annotations
 
@@ -18,7 +27,33 @@ from app.utils.config import get_settings
 
 logger = logging.getLogger(__name__)
 
+# DeepFace 의 `race` action 은 그대로 유지 (모델 internal name) — 응답 키만
+# 재명명한다.
 _ACTIONS = ["age", "gender", "race"]
+
+# DeepFace gender → Flutter Gender enum name.
+_GENDER_MAP: dict[str, str] = {
+    "Man": "male",
+    "Woman": "female",
+    # 안전 fallback (lowercase variants)
+    "man": "male",
+    "woman": "female",
+    "male": "male",
+    "female": "female",
+}
+
+# DeepFace race head → Flutter Ethnicity enum name.
+# DeepFace 의 "asian" 학습 데이터는 한·중·일이 다수라 eastAsian 으로 매핑.
+# "indian" 은 남아시아권 → 앱의 southeastAsian 라벨에 통폐합 (앱 enum 의
+# 원 결정과 일치).
+_ETHNICITY_MAP: dict[str, str] = {
+    "asian": "eastAsian",
+    "white": "caucasian",
+    "black": "african",
+    "indian": "southeastAsian",
+    "middle eastern": "middleEastern",
+    "latino hispanic": "hispanic",
+}
 
 
 class NoFaceError(Exception):
@@ -52,7 +87,7 @@ def _analyze_blocking(image_path: str, detector_backend: str) -> dict[str, Any]:
 async def analyze_image(image_path: str) -> dict[str, Any]:
     """Run DeepFace.analyze off the event loop and shape the output.
 
-    Returns a dict with keys: age (int), gender (str), race (str).
+    Returns a dict with keys: age (int), gender (str), ethnicity (str).
     Raises NoFaceError if no face is detected.
     """
     settings = get_settings()
@@ -67,16 +102,20 @@ async def analyze_image(image_path: str) -> dict[str, Any]:
     if age_raw is None or gender is None or race is None:
         raise NoFaceError("DeepFace result missing required fields")
 
-    # gender may be a dict of confidences in old payloads — pick argmax.
+    # gender/race may be a dict of confidences in old payloads — pick argmax.
     if isinstance(gender, dict):
         gender = max(gender, key=gender.get)
     if isinstance(race, dict):
         race = max(race, key=race.get)
 
+    gender_norm = _GENDER_MAP.get(str(gender), str(gender))
+    race_key = str(race).strip().lower()
+    ethnicity_norm = _ETHNICITY_MAP.get(race_key, race_key)
+
     return {
         "age": int(round(float(age_raw))),
-        "gender": str(gender),
-        "race": str(race),
+        "gender": gender_norm,
+        "ethnicity": ethnicity_norm,
     }
 
 

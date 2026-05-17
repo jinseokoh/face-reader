@@ -46,7 +46,7 @@ app = FastAPI(
     title="Face Metadata Inference",
     description=(
         "CPU-only DeepFace service. POST an image URL, get back age / gender "
-        "/ race. Images are streamed from the supplied URL — never uploaded."
+        "/ ethnicity. Images are streamed from the supplied URL — never uploaded."
     ),
     version="0.1.0",
     lifespan=lifespan,

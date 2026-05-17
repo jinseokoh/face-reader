@@ -10,8 +10,12 @@ class AnalyzeRequest(BaseModel):
 
 class AnalyzeResponse(BaseModel):
     age: int
+    # "male" | "female" — Flutter Gender enum name.
     gender: str
-    race: str
+    # Flutter Ethnicity enum name 6종 중 하나:
+    #   "eastAsian" | "caucasian" | "african" |
+    #   "southeastAsian" | "hispanic" | "middleEastern"
+    ethnicity: str
 
 
 class ErrorResponse(BaseModel):
