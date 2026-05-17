@@ -1,3 +1,7 @@
+import 'package:face_engine/data/enums/age_group.dart';
+import 'package:face_engine/data/enums/ethnicity.dart';
+import 'package:face_engine/data/enums/gender.dart';
+
 /// Result of the DeepFace age/gender/ethnicity inference pipeline.
 ///
 /// `uuid` is the **single capture id** generated once at analyze time and
@@ -64,4 +68,36 @@ class FaceMetadata {
         'ethnicity': ethnicity,
         if (thumbnailUrl != null) 'thumbnail_url': thumbnailUrl,
       };
+
+  /// DeepFace `gender` 문자열을 [Gender] enum 으로. 알 수 없으면 null.
+  Gender? get genderEnum {
+    try {
+      return Gender.values.byName(gender);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// DeepFace `ethnicity` 문자열을 [Ethnicity] enum 으로. 알 수 없으면 null.
+  Ethnicity? get ethnicityEnum {
+    try {
+      return Ethnicity.values.byName(ethnicity);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// DeepFace `age` (int) 를 decade-banded [AgeGroup] 으로 매핑.
+  /// 0~9 → teens, 10~19 → teens, 20~29 → twenties, … 90+ → nineties.
+  AgeGroup get ageGroupEnum {
+    if (age < 20) return AgeGroup.teens;
+    if (age < 30) return AgeGroup.twenties;
+    if (age < 40) return AgeGroup.thirties;
+    if (age < 50) return AgeGroup.forties;
+    if (age < 60) return AgeGroup.fifties;
+    if (age < 70) return AgeGroup.sixties;
+    if (age < 80) return AgeGroup.seventies;
+    if (age < 90) return AgeGroup.eighties;
+    return AgeGroup.nineties;
+  }
 }

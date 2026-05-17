@@ -4,13 +4,16 @@ import 'dart:math';
 
 import 'package:camera/camera.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
+import 'package:face_reader/data/services/face_metadata_client.dart';
 import 'package:face_reader/domain/models/capture_result.dart';
 import 'package:face_reader/domain/models/face_analysis.dart';
+import 'package:face_reader/domain/models/face_metadata.dart';
 import 'package:face_reader/domain/services/face_metrics_lateral.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mediapipe_face_mesh/mediapipe_face_mesh.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'face_mesh_painter.dart';
 
@@ -40,6 +43,10 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
   // analyze button. Used to produce a 128px WebP thumbnail attached to the
   // FaceReadingReport — same pipeline as the album flow.
   Uint8List? _captureStillBytes;
+  // DeepFace `/analyze` 가 frontal still 확보 직후 background 로 kickoff 되어
+  // 측면 캡처·picker UI 시간 동안 병렬 진행. 실패해도 null 로 완료 → caller
+  // 가 default 로 fallback. 한 capture 세션당 한 번만 발사.
+  Future<FaceMetadata?>? _metadataFuture;
 
   // Two-stage capture: first the frontal selfie, then a 3/4-yaw lateral shot
   // for nose-bridge / chin-profile / lip-protrusion metrics. Lateral is
@@ -57,6 +64,13 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
   // fades out as a context cue when the capture phase changes.
   String? _phaseTitle;
   int _phaseTitleToken = 0;
+  // false 면 tap-to-dismiss modal — frontal→lateral 전환 시 사용자가
+  // "측면 시작" 누를 때까지 instructional overlay 가 유지된다.
+  bool _phaseTitleDismissible = true;
+  // phase title 이 modal 로 떠 있는 동안에는 lateral camera 가 background 에서
+  // 흐르고 있어도 yaw-driven auto-countdown 이 발동하면 안 된다.
+  bool get _phaseTitleBlocking =>
+      _phaseTitle != null && !_phaseTitleDismissible;
 
   // Actual camera frame dimensions (may differ from previewSize on iOS)
   Size? _frameSize;
@@ -64,6 +78,11 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
   List<FaceMeshLandmark>? _prevLandmarks;
   Color _overlayColor = Colors.redAccent;
   int _rotationCompensation = 0;
+
+  // overlay 가 green 으로 안정되면 자동 카운트다운 (3→2→1→캡처). green 이
+  // 깨지면 즉시 reset. 사용자가 button 을 누를 필요 없음.
+  Timer? _countdownTimer;
+  int? _countdownRemaining;
 
   @override
   Widget build(BuildContext context) {
@@ -113,6 +132,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _countdownTimer?.cancel();
     _cameraController?.dispose();
     _meshProcessor?.close();
     super.dispose();
@@ -219,10 +239,58 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
             ),
           ),
         ),
+        // Auto-countdown big number (3→2→1) — fires when overlay is stably
+        // green. Cancelled if green is broken.
+        if (_countdownRemaining != null)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Center(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  switchInCurve: Curves.easeOutBack,
+                  switchOutCurve: Curves.easeInCubic,
+                  transitionBuilder: (child, anim) {
+                    final scale = Tween<double>(begin: 0.6, end: 1.0)
+                        .animate(anim);
+                    return FadeTransition(
+                      opacity: anim,
+                      child: ScaleTransition(scale: scale, child: child),
+                    );
+                  },
+                  child: Container(
+                    key: ValueKey(_countdownRemaining),
+                    width: 160,
+                    height: 160,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.black.withValues(alpha: 0.55),
+                      border: Border.all(
+                        color: Colors.greenAccent.withValues(alpha: 0.85),
+                        width: 4,
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '$_countdownRemaining',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 88,
+                          fontWeight: FontWeight.w800,
+                          height: 1.0,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
         // Transient phase-title overlay (fires at page open and at
-        // frontal→lateral transition) — card-flip animation.
+        // frontal→lateral transition) — card-flip animation. modal 일 땐
+        // "측면 시작" 버튼 받게 IgnorePointer 비활성.
         Positioned.fill(
           child: IgnorePointer(
+            ignoring: _phaseTitle == null || _phaseTitleDismissible,
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 500),
               switchInCurve: Curves.easeOutCubic,
@@ -254,7 +322,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
                         padding: const EdgeInsets.symmetric(
                             horizontal: 32, vertical: 24),
                         decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.78),
+                          color: Colors.black.withValues(alpha: 0.85),
                           borderRadius: BorderRadius.circular(24),
                         ),
                         child: Column(
@@ -277,6 +345,41 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
                                 letterSpacing: 3,
                               ),
                             ),
+                            if (!_phaseTitleDismissible) ...[
+                              const SizedBox(height: 14),
+                              const Text(
+                                '한쪽 귀가 살짝 안 보일 때까지\n고개를 천천히 옆으로 돌려주세요.',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                  height: 1.5,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 18),
+                              SizedBox(
+                                height: 44,
+                                child: ElevatedButton(
+                                  onPressed: _dismissPhaseTitle,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.white,
+                                    foregroundColor: const Color(0xFF333333),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 28),
+                                  ),
+                                  child: const Text(
+                                    '측면 시작',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -512,13 +615,93 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
         _phase = _CapturePhase.lateral;
         _capturedFrames.clear();
       });
-      _showPhaseTitle('얼굴 측면');
+      // 측면 안내는 tap-to-proceed modal — 자동 dismiss 안 됨. 사용자가
+      // "측면 시작" 누르기 전까지 background camera 의 auto-countdown 도 차단.
+      _showPhaseTitle('얼굴 측면', autoDismiss: false);
       return;
     }
 
     // Phase 2: Lateral capture done — run full analysis with both.
     await _runAnalysis(lateralLandmarks: averaged);
     _capturedFrames.clear();
+  }
+
+  /// overlay 색이 바뀔 때마다 호출. green & idle 상태면 카운트다운 시작,
+  /// red 로 깨지면 즉시 reset. 한 frame 의 색 정보만 보고 동작.
+  /// modal phase title 이 떠 있는 동안엔 background camera 가 흐르고 있어도
+  /// 카운트다운을 발동시키지 않는다 (사용자가 안내 안 봤을 수도 있음).
+  void _evaluateAutoCountdown(Color overlayColor) {
+    final isGreen = overlayColor == Colors.greenAccent;
+    final inProgress = _countdownRemaining != null;
+
+    if (_phaseTitleBlocking) {
+      if (inProgress) _cancelCountdown();
+      return;
+    }
+
+    if (isGreen && !_isCapturing && !inProgress) {
+      _startCountdown();
+    } else if (!isGreen && inProgress) {
+      _cancelCountdown();
+    }
+  }
+
+  void _startCountdown() {
+    _countdownTimer?.cancel();
+    setState(() => _countdownRemaining = 3);
+    _countdownTimer =
+        Timer.periodic(const Duration(milliseconds: 800), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      final r = _countdownRemaining;
+      if (r == null) {
+        timer.cancel();
+        return;
+      }
+      if (r <= 1) {
+        timer.cancel();
+        setState(() => _countdownRemaining = null);
+        // green 유지 확인 후 캡처. _startCapture 가 _isCapturing 체크함.
+        if (_overlayColor == Colors.greenAccent && !_isCapturing) {
+          _startCapture();
+        }
+        return;
+      }
+      setState(() => _countdownRemaining = r - 1);
+    });
+  }
+
+  void _cancelCountdown() {
+    _countdownTimer?.cancel();
+    _countdownTimer = null;
+    if (_countdownRemaining != null) {
+      setState(() => _countdownRemaining = null);
+    }
+  }
+
+  /// DeepFace `/analyze` 호출 wrapper. PNG bytes → 임시 파일 → R2 PUT + analyze.
+  /// 실패 시 null 반환 (분석 자체는 진행). 임시 파일은 호출 후 정리.
+  Future<FaceMetadata?> _analyzeMetadata(Uint8List bytes) async {
+    File? tempFile;
+    try {
+      final dir = await getTemporaryDirectory();
+      tempFile = File(
+          '${dir.path}/face_analyze_${DateTime.now().millisecondsSinceEpoch}.png');
+      await tempFile.writeAsBytes(bytes);
+      final meta = await FaceMetadataClient().analyze(tempFile);
+      debugPrint('[FaceMesh] DeepFace ok age=${meta.age} '
+          'gender=${meta.gender} ethnicity=${meta.ethnicity}');
+      return meta;
+    } catch (e) {
+      debugPrint('[FaceMesh] DeepFace failed (non-fatal): $e');
+      return null;
+    } finally {
+      try {
+        await tempFile?.delete();
+      } catch (_) {}
+    }
   }
 
   Future<void> _initialize() async {
@@ -615,6 +798,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
           _rotationCompensation = 0;
         });
         _prevLandmarks = List.of(result.landmarks);
+        _evaluateAutoCountdown(color);
         if (_isCapturing && result.landmarks.isNotEmpty) {
           _capturedFrames.add(List.of(result.landmarks));
           debugPrint(
@@ -717,6 +901,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
       imageHeight: _frontalImageHeight ?? 1,
       stillBytes: stillBytes,
       source: AnalysisSource.camera,
+      metadataFuture: _metadataFuture,
     );
 
     if (!mounted) return;
@@ -733,14 +918,27 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
   }
 
   /// Flash a full-screen phase-title overlay (e.g. "정면 사진" / "측면 사진")
-  /// that flips in, holds briefly, then fades out. Non-blocking — multiple
-  /// calls supersede each other via a token.
-  void _showPhaseTitle(String title) {
+  /// that flips in. [autoDismiss] true 면 1.8초 후 fade out, false 면 사용자
+  /// 탭이나 [_dismissPhaseTitle] 호출 시까지 유지 (modal instructional).
+  void _showPhaseTitle(String title, {bool autoDismiss = true}) {
     final token = ++_phaseTitleToken;
-    setState(() => _phaseTitle = title);
-    Future.delayed(const Duration(milliseconds: 1800), () {
-      if (!mounted || _phaseTitleToken != token) return;
-      setState(() => _phaseTitle = null);
+    setState(() {
+      _phaseTitle = title;
+      _phaseTitleDismissible = autoDismiss;
+    });
+    if (autoDismiss) {
+      Future.delayed(const Duration(milliseconds: 1800), () {
+        if (!mounted || _phaseTitleToken != token) return;
+        setState(() => _phaseTitle = null);
+      });
+    }
+  }
+
+  void _dismissPhaseTitle() {
+    if (!mounted) return;
+    setState(() {
+      _phaseTitle = null;
+      _phaseTitleDismissible = true;
     });
   }
 
@@ -787,6 +985,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
     // requires stopping the image stream, so we only pay that cost once.
     if (_phase == _CapturePhase.frontal) {
       _captureStillBytes = null;
+      _metadataFuture = null;
       try {
         if (controller.value.isStreamingImages) {
           await controller.stopImageStream();
@@ -803,6 +1002,13 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
         } catch (e) {
           debugPrint('[Camera] restart stream failed: $e');
         }
+      }
+
+      // frontal still 확보 시점에 DeepFace 분석 background kickoff. 측면 캡처
+      // + picker UI 시간 동안 병렬 진행.
+      final bytes = _captureStillBytes;
+      if (bytes != null) {
+        _metadataFuture = _analyzeMetadata(bytes);
       }
     }
 

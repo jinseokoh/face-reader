@@ -5,7 +5,9 @@ import 'dart:ui' as ui;
 import 'package:face_reader/core/theme.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_reader/data/services/analytics_service.dart';
+import 'package:face_reader/data/services/face_metadata_client.dart';
 import 'package:face_reader/domain/models/capture_result.dart';
+import 'package:face_reader/domain/models/face_metadata.dart';
 import 'package:face_reader/domain/services/face_metrics_lateral.dart';
 import 'package:face_reader/presentation/providers/auth_provider.dart';
 import 'package:face_reader/presentation/widgets/login_bottom_sheet.dart';
@@ -46,6 +48,9 @@ class _AlbumPhoto {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _isProcessing = false;
   OverlayEntry? _topMessageEntry;
+  // Album flow 의 DeepFace 분석은 frontal pick 직후 background kickoff →
+  // 측면 첨부 dialog + lateral pick + preview confirm 시간 동안 병렬 진행.
+  Future<FaceMetadata?>? _albumMetadataFuture;
 
   @override
   Widget build(BuildContext context) {
@@ -156,6 +161,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (!mounted) return;
     setState(() => _isProcessing = false);
 
+    // frontal 확정 직후 DeepFace background kickoff. 측면 첨부 여부 dialog +
+    // lateral pick + preview confirm 시간 동안 병렬 진행.
+    _albumMetadataFuture = _analyzeMetadata(File(frontalPick.path));
+
     // Preview must not show the top snackbar.
     _dismissTopMessage();
     // Show frontal preview; user taps "정면 분석" to continue to lateral step.
@@ -243,7 +252,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Future<void> _pushDemographicConfirm(CaptureResult result) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => DemographicConfirmScreen(capture: result),
+        builder: (_) => DemographicConfirmScreen(
+          capture: result,
+          metadataFuture: result.metadataFuture,
+        ),
       ),
     );
   }
@@ -346,9 +358,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       imageHeight: frontal.height,
       stillBytes: frontal.pngBytes,
       source: AnalysisSource.album,
+      metadataFuture: _albumMetadataFuture,
     );
+    // 사용 후 reset — 다음 album session 이 깨끗하게 시작되도록.
+    _albumMetadataFuture = null;
     if (!mounted) return;
     await _pushDemographicConfirm(result);
+  }
+
+  /// DeepFace `/analyze` 호출 wrapper. R2 PUT + analyze 까지 실행. 실패 시
+  /// null 로 완료 (분석 자체는 진행, picker default 로 fallback).
+  Future<FaceMetadata?> _analyzeMetadata(File file) async {
+    try {
+      final meta = await FaceMetadataClient().analyze(file);
+      debugPrint('[Home] DeepFace ok age=${meta.age} '
+          'gender=${meta.gender} ethnicity=${meta.ethnicity}');
+      return meta;
+    } catch (e) {
+      debugPrint('[Home] DeepFace failed (non-fatal): $e');
+      return null;
+    }
   }
 
   void _showError(String msg) {

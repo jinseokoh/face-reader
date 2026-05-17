@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:mediapipe_face_mesh/mediapipe_face_mesh.dart';
 
 import 'package:face_engine/domain/models/face_reading_report.dart';
+import 'package:face_reader/domain/models/face_metadata.dart';
 
 /// 캡처 단계 (camera / album) 가 끝났을 때 분석 단계로 전달되는 raw 데이터.
 ///
@@ -26,6 +27,12 @@ class CaptureResult {
   /// 분석 진입 경로 (Hive 저장 시 audit 용).
   final AnalysisSource source;
 
+  /// DeepFace `/analyze` 의 background 호출 결과. 정면 still 확보 직후 즉시
+  /// kickoff 되어 측면 캡처·picker UI 시간 동안 병렬 진행된다. null 이면
+  /// kickoff 안 됨 (still 부재 등), Future 가 null 로 완료되면 분석 실패 →
+  /// DemographicConfirmScreen 은 default 로 fallback.
+  final Future<FaceMetadata?>? metadataFuture;
+
   const CaptureResult({
     required this.frontalLandmarks,
     this.lateralLandmarks,
@@ -33,5 +40,6 @@ class CaptureResult {
     required this.imageHeight,
     this.stillBytes,
     required this.source,
+    this.metadataFuture,
   });
 }

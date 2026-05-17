@@ -8,6 +8,7 @@ import 'package:face_reader/core/theme.dart';
 import 'package:face_reader/data/services/supabase_service.dart';
 import 'package:face_reader/domain/models/capture_result.dart';
 import 'package:face_reader/domain/models/face_analysis.dart';
+import 'package:face_reader/domain/models/face_metadata.dart';
 import 'package:face_reader/presentation/providers/history_provider.dart';
 import 'package:face_reader/presentation/providers/tab_provider.dart';
 import 'package:flutter/cupertino.dart';
@@ -30,6 +31,9 @@ class DemographicConfirmScreen extends ConsumerStatefulWidget {
   final Ethnicity initialEthnicity;
   final Gender initialGender;
   final AgeGroup initialAgeGroup;
+  // DeepFace background 결과. resolve 되면 사용자가 picker 를 만지지 않은 한
+  // 자동으로 prefill. null 이면 default 그대로 유지.
+  final Future<FaceMetadata?>? metadataFuture;
 
   const DemographicConfirmScreen({
     super.key,
@@ -37,6 +41,7 @@ class DemographicConfirmScreen extends ConsumerStatefulWidget {
     this.initialEthnicity = Ethnicity.eastAsian,
     this.initialGender = Gender.female,
     this.initialAgeGroup = AgeGroup.thirties,
+    this.metadataFuture,
   });
 
   @override
@@ -50,6 +55,13 @@ class _DemographicConfirmScreenState
   late Gender _gender;
   late AgeGroup _ageGroup;
   bool _isAnalyzing = false;
+  // DeepFace background 진행 중 표시. future 가 resolve 되면 false.
+  bool _inferring = false;
+  // 사용자가 picker 하나라도 만진 적 있는가. 만졌으면 DeepFace 결과로 덮지
+  // 않음 — 사용자가 명시적으로 수정한 값을 존중.
+  bool _userTouched = false;
+  // 마지막에 자동 prefill 된 값 (UI 에 "AI 가 추정: …" 보조 라인용).
+  FaceMetadata? _inferred;
 
   @override
   void initState() {
@@ -57,6 +69,41 @@ class _DemographicConfirmScreenState
     _ethnicity = widget.initialEthnicity;
     _gender = widget.initialGender;
     _ageGroup = widget.initialAgeGroup;
+
+    final f = widget.metadataFuture;
+    if (f != null) {
+      _inferring = true;
+      f.then((meta) {
+        if (!mounted) return;
+        setState(() {
+          _inferring = false;
+          _inferred = meta;
+          if (meta == null || _userTouched) return;
+          // 사용자가 picker 만지지 않은 경우에만 prefill.
+          final e = meta.ethnicityEnum;
+          final g = meta.genderEnum;
+          if (e != null) _ethnicity = e;
+          if (g != null) _gender = g;
+          _ageGroup = meta.ageGroupEnum;
+        });
+      });
+    }
+  }
+
+  /// picker 한 항목이 바뀌면 userTouched flag 켜고 setState 로 값 반영.
+  void _touchAndSet(VoidCallback updater) {
+    setState(() {
+      _userTouched = true;
+      updater();
+    });
+  }
+
+  String _subtitle() {
+    if (_inferring) return '얼굴에서 정보를 추정하는 중...';
+    if (_inferred != null && !_userTouched) {
+      return 'AI 추정 결과가 채워졌어요. 잘못된 항목은 직접 수정해 주세요.';
+    }
+    return '잘못된 항목은 직접 수정해 주세요.';
   }
 
   @override
@@ -88,7 +135,7 @@ class _DemographicConfirmScreenState
               ),
               const SizedBox(height: 8),
               Text(
-                '잘못된 항목은 직접 수정해 주세요.',
+                _subtitle(),
                 style: AppText.body.copyWith(color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),
@@ -101,7 +148,7 @@ class _DemographicConfirmScreenState
                   values: Ethnicity.values,
                   current: _ethnicity,
                   labelOf: (e) => e.labelKo,
-                  onConfirm: (e) => setState(() => _ethnicity = e),
+                  onConfirm: (e) => _touchAndSet(() => _ethnicity = e),
                 ),
               ),
               const SizedBox(height: 12),
@@ -113,7 +160,7 @@ class _DemographicConfirmScreenState
                   values: Gender.values,
                   current: _gender,
                   labelOf: (e) => e.labelKo,
-                  onConfirm: (e) => setState(() => _gender = e),
+                  onConfirm: (e) => _touchAndSet(() => _gender = e),
                 ),
               ),
               const SizedBox(height: 12),
@@ -127,7 +174,7 @@ class _DemographicConfirmScreenState
                       .toList(),
                   current: _ageGroup,
                   labelOf: (e) => e.labelKo,
-                  onConfirm: (e) => setState(() => _ageGroup = e),
+                  onConfirm: (e) => _touchAndSet(() => _ageGroup = e),
                 ),
               ),
               const Spacer(),
