@@ -70,11 +70,14 @@ class FaceMetadataClient {
       key: tempUpload.key,
     );
 
-    // ── 3) 분석 성공 → 256 thumbnail 업로드 (실패해도 metadata 는 반환) ────
+    // ── 3) 분석 성공 → 256×256 얼굴 중심 square crop thumbnail 업로드 ────
+    // (실패해도 metadata 는 반환 — orphan-zero 정책: 실패 시 thumbnail null)
     String? thumbnailUrl;
     try {
-      final small =
-          await ImageResizer.resizeToWidth(originalBytes, width: 256);
+      final small = await ImageResizer.faceCenterSquareCrop(
+        originalImage,
+        outSize: 256,
+      );
       final thumbUpload = await _uploader.upload(
         prefix: 'thumbnails',
         uuid: uuid,

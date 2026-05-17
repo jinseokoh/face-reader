@@ -58,7 +58,6 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
   // Live yaw class updated from the mesh stream — drives the lateral
   // capture-ready indicator.
   YawClass _currentYawClass = YawClass.frontal;
-  double _currentYaw = 0;
 
   // Transient phase-title overlay ("정면 사진" / "측면 사진") — flips in and
   // fades out as a context cue when the capture phase changes.
@@ -232,10 +231,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
             ),
           );
         }),
-        // Bottom buttons: lateral 만 표시 (skip + 캡처). frontal 은
-        // auto-countdown 으로 처리되어 button 자체가 필요 없음.
-        if (_isInitialized && _phase == _CapturePhase.lateral)
-          _buildCaptureControls(),
+        // 정면·측면 둘 다 auto-countdown 으로만 캡처 — button 없음.
         // Instruction banner (on top of camera) — switches text in lateral phase.
         // modal 안내 떠 있는 동안에는 함께 숨김 (popup 단독 노출).
         if (!_phaseTitleBlocking) Positioned(
@@ -418,78 +414,6 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildCaptureControls() {
-    final bottom = MediaQuery.of(context).padding.bottom + 24;
-    // lateral 전용. frontal 은 auto-countdown 으로 처리되어 호출 경로 없음.
-    final ready = _currentYawClass == YawClass.threeQuarter && !_isCapturing;
-    return Positioned(
-      left: 20,
-      right: 20,
-      bottom: bottom,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Skip — frontal-only fallback
-          SizedBox(
-            height: 52,
-            child: TextButton(
-              onPressed: _isCapturing ? null : _skipLateral,
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.white,
-                backgroundColor: Colors.black.withValues(alpha: 0.5),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              child: const Text('건너뛰기',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-            ),
-          ),
-          const SizedBox(width: 12),
-          // Capture (gated on yaw)
-          SizedBox(
-            width: 180,
-            height: 52,
-            child: ElevatedButton.icon(
-              onPressed: ready ? _startCapture : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _isCapturing
-                    ? const Color(0xFFFF9800)
-                    : (ready
-                        ? Colors.white.withValues(alpha: 0.95)
-                        : Colors.white.withValues(alpha: 0.5)),
-                foregroundColor:
-                    _isCapturing ? Colors.white : const Color(0xFF333333),
-                disabledBackgroundColor: Colors.white.withValues(alpha: 0.3),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              icon: _isCapturing
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.camera_alt, size: 20),
-              label: Text(
-                _isCapturing
-                    ? '${_capturedFrames.length}/5'
-                    : (ready ? '측면 캡처' : '고개 회전 중...'),
-                style: const TextStyle(
-                    fontSize: 15, fontWeight: FontWeight.w600),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -716,7 +640,6 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
         setState(() {
           _meshResult = result;
           _overlayColor = color;
-          _currentYaw = yaw;
           _currentYawClass = yawClass;
           // Processor already applied rotation via rotationDegrees,
           // so landmarks are in screen-upright space — no painter rotation needed.
@@ -871,12 +794,6 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
         setState(() => _phaseTitle = null);
       });
     }
-  }
-
-  /// Skip the lateral capture and analyze frontal-only.
-  Future<void> _skipLateral() async {
-    if (_frontalLandmarks == null) return;
-    await _runAnalysis(lateralLandmarks: null);
   }
 
   Future<void> _startCamera() async {
