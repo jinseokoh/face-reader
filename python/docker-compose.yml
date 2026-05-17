@@ -5,7 +5,7 @@ services:
     container_name: face-meta
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - '8000:8000'
     environment:
       - LOG_LEVEL=INFO
       - MAX_DOWNLOAD_MB=10
@@ -13,9 +13,9 @@ services:
       - DETECTOR_BACKEND=opencv
       # HMAC shared secret — 반드시 Cloudflare Worker FACE_API_SECRET 와 동일.
       # 운영에선 .env 또는 docker secret 로 주입 (이 파일에 직접 박지 말 것).
-      - FACE_API_SECRET=${FACE_API_SECRET:?FACE_API_SECRET must be set}
+      - FACE_API_SECRET=${FACE_API_SECRET}
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      test: ['CMD', 'curl', '-fsS', 'http://localhost:8000/health']
       interval: 30s
       timeout: 5s
       retries: 3

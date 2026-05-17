@@ -4,7 +4,7 @@
 
 각 항목에 **(파일/명령/책임)** 표기. 체크박스 켜진 건 완료, 빈 건 미완.
 
-마지막 업데이트: 2026-05-17 (v3) — `metrics` 행은 **1인 측정 데이터만**. `kind`·`partnerUuid` 같은 compat 관계형 필드 폐기. 궁합은 두 metrics UUID 를 SEP(`~`) 으로 묶은 URL `https://facely.kr/r/{A}~{B}` 로만 표현 — Supabase write 0회. `/c/*` 별도 route 폐기, `/r/:id` 한 라우트가 두 케이스 split 처리.
+마지막 업데이트: 2026-05-17 (v7) — **inactivity-based 자동 정리 도입**. metrics 에 `views` + `updated_at` 컬럼 추가, `/r/:id` fetch 마다 RPC `increment_metrics_views` 로 views++ + updated_at 자동 갱신. 3 개월 정체 시 daily cron 으로 metrics 행 + R2 thumbnail 동시 삭제. 활성 카드(누가 보고 있는) 는 영구. user_id 컬럼 추가 거부 (anonymous schema 유지 — PII 면 늘리지 않음). views 는 보너스 product analytics index. 명시 삭제 UI 는 P1 유지.
 
 ---
 
@@ -13,7 +13,7 @@
 ### Cloudflare 측
 
 - [ ] **R2 bucket `facely` 생성** (Cloudflare 대시보드 → R2)
-- [ ] **Lifecycle rule** 추가: `Prefix = temp/` / `Expiration = 1 day` (Python 즉시 삭제의 백업)
+- [ ] **Lifecycle rule** — `Prefix = temp/` / `Expiration = 1 day` (Python 즉시 삭제의 백업). `thumbnails/` 는 룰 0 (영구).
 - [ ] **Custom domain `cdn.facely.kr`** → bucket public read 매핑 (또는 R2 dev URL 사용)
 - [ ] **R2 API token #1 (Worker용)** — Object Read & Write, bucket=facely 한정. **Access Key ID / Secret Access Key / Endpoint URL** 확보 (`dash.cloudflare.com/<account-id>/r2/api-tokens` 경로 — 일반 `/profile/api-tokens` 아님)
 - [ ] **R2 API token #2 (Python용)** — Object Read & Delete, bucket=facely + prefix=temp/ 한정
@@ -29,6 +29,8 @@
 ### Python 서비스
 
 - [x] `/analyze` HMAC 인증 dependency (이미 구현)
+- [ ] **⚠️ 임시 secret-as-token bypass** — `python/app/utils/auth.py` 의 verify_face_token 첫 줄에 `if hmac.compare_digest(token, secret): return True` 분기 + WARN 로그. 추가 env·secret 없음 (기존 `FACE_API_SECRET` 재사용). dev/postman 에서 X-Face-Token 헤더에 secret 그대로 박으면 통과. 자세한 sunset 기준은 HOW-IT-WORKS §6.1.1.
+- [ ] **🗓️ SUNSET: secret-as-token bypass 제거** — 외부 베타 시작 또는 Flutter HMAC client 안정화 시점에 (a) auth.py 의 compare_digest 분기 + (b) HOW-IT-WORKS §6.1.1 + (c) 본 task 모두 동시 삭제. **GA 전 마지노선.**
 - [ ] **`/analyze` 응답 = DeepFace raw 그대로** — `{age:int, gender:"Man"|"Woman", race:string}` 만 반환. decade 라벨링·소문자·enum 매핑 등 가공 0. (소비자 Flutter 가 알아서 함.)
 - [ ] **즉시 R2 DELETE 구현** — `python/app/services/deleter.py` (신규):
   ```python
@@ -44,9 +46,15 @@
 ### Supabase 스키마
 
 - [x] **`metrics` 테이블** — 이미 존재 (id / metrics_json / expires_at). 별도 `share_card` 신설 X.
-- [ ] **metrics_json schemaVersion v2 bump** — Flutter 의 `RawMetrics` 모델에 `thumbnailKey`, `deepfaceAge?`, `deepfaceGender?`, `deepfaceRace?` 필드 추가하고 v2 로 표시. DeepFace raw 는 Flutter 가 보존할지 버릴지 자유. **`kind`/`partnerUuid` 같은 compat 관계형 필드는 추가 금지** — 페어링은 URL 이 표현.
-- [ ] **RLS 정책** (HOW-IT-WORKS §5.3 SQL 그대로) — `select` 전체 허용, `insert` anon 에 허용하되 PII 키 (`username/alias/birthday/landmarks`) 가 metrics_json 에 있으면 reject, `update`/`delete` 차단. Flutter 가 anon key 로 직접 UPSERT.
-- [ ] **만료 정리 cron** — `expires_at < now()` 행 삭제. Supabase pg_cron 또는 별도 Worker cron trigger.
+- [ ] **`views` + `updated_at` 컬럼 추가** + `touch_metrics_updated_at` trigger + `metrics_updated_at_idx` 인덱스 (HOW-IT-WORKS §5.2 SQL 그대로). `expires_at` 컬럼은 더 이상 사용 안 함 (drop 또는 ignore).
+- [ ] **RPC `increment_metrics_views(card_id uuid)`** stored function — anon 에 execute 권한 grant. Worker SSR 과 Flutter app 양쪽이 `/r/:id` fetch 시 동일 호출.
+- [ ] **metrics_json schemaVersion v2 bump** — Flutter 의 `RawMetrics` 모델에 `thumbnailKey`, `deepfaceAge?`, `deepfaceGender?`, `deepfaceRace?` 필드 추가하고 v2 로 표시. DeepFace raw 는 Flutter 가 보존할지 버릴지 자유. **`kind`/`partnerUuid`/`expires_at` 같은 관계형·만료 필드는 추가 금지**.
+- [ ] **RLS 정책** (HOW-IT-WORKS §5.3 SQL 그대로) — `select` 전체 허용, `insert` anon 에 허용하되 PII 키 (`username/alias/birthday/landmarks`) 가 metrics_json 에 있으면 reject, `update`/`delete` 는 service-role 만 (cron 정리·명시 삭제용).
+- [ ] **Daily inactivity cron**:
+  - Supabase pg_cron: 매일 03:00 KST `select id from metrics where updated_at < now() - interval '3 months'` → list 를 Worker cron 이 받음
+  - 또는 Cloudflare Worker Cron Trigger 가 동일 SQL 후 R2 thumbnail DELETE → Supabase 행 DELETE (R2 먼저 → DB 나중 순서)
+  - 한 번 dry-run 후 production 배포 (첫 cleanup 카드 수 확인)
+- [ ] **`POST /api/erase` Worker endpoint** (명시 삭제용, P1 의 prerequisite) — HMAC 인증 + uuid 받아 R2 + Supabase 동시 DELETE. Flutter "내 공유 link 관리" UI 가 호출.
 
 ### Worker 신규/변경 라우트
 
@@ -55,13 +63,15 @@
 - [ ] **`GET /r/:id`** 재작성 (`app/routes/share.tsx`) — 한 라우트가 관상·궁합 모두 처리:
   - `app/routes.ts` 의 path 를 `/r/:shortId` → `/r/:id` 로 변경
   - `app/lib/share-id.ts` 에 `PAIR_SEP = "~"` + `parsePairId(id): string[]` 헬퍼 (1 또는 2 UUID 반환)
-  - `fetchMetrics(env, ids)` 호출 (1행 또는 2행) — 행 누락이면 404 / 하나라도 `expires_at` 지났으면 410
+  - `fetchMetrics(env, ids)` 호출 (1행 또는 2행) — 행 누락이면 404. (시간 만료 분기 없음)
+  - **fetch 성공 후 비동기로 `rpc/increment_metrics_views(id)` 호출** (각 id 별, fire-and-forget) — views++ + updated_at 자동 갱신. fetch latency 에 더하지 않음 (Worker waitUntil).
   - 1 행 → `shared/face_engine.js` 의 `runEngine` 호출 (관상)
   - 2 행 → `runCompat` 호출 (궁합 score + 친밀/갈등 chips)
   - `<head>` meta:
     - og:title — 관상은 archetype, 궁합은 "A × B 의 궁합"
     - og:image — 관상은 `${R2_CDN_BASE}/${thumbnailKey}`, 궁합은 1차 단계에선 A 의 것 (P1 에서 합성 PNG)
     - og:url — 원본 그대로
+    - robots — `noindex,nofollow` (PII 검색엔진 차단)
   - 본문 + CTA (CTA 의 deep link target = 같은 URL)
 - [ ] **루트 페이지 `/`** — 간단한 랜딩 + 스토어 CTA (현 `_index.tsx` 의 dev 데모 토큰 발행 로직 제거)
 
@@ -72,8 +82,8 @@
 - [ ] **`FaceMetadata` 모델 확장** — DeepFace raw 응답 3 필드 (`age:int`, `gender:"Man"|"Woman"`, `race:string`) 를 `deepfaceAge/Gender/Race` 로 보존. app demographic enum 으로의 매핑은 Flutter 가 자체 책임 (사용자 보정 UI 가 최종).
 - [ ] **`share_publisher.dart`** 재작성 — 1인 metrics 직접 UPSERT (Worker 미경유):
   1. analyze pipeline 완료 후 thumbnail 256px 까지 R2 PUT (presign + PUT)
-  2. metrics_json 페이로드 조립 — **1인 측정 데이터만** (schemaVersion=2, thumbnailKey, deepface*?, 기존 rawMetrics, ageGroup="20s" 포맷). `kind`/`partnerUuid` 같은 compat 필드 추가 금지.
-  3. Supabase REST `POST /rest/v1/metrics?on_conflict=id` (anon key, header `Prefer: resolution=merge-duplicates`) 로 UPSERT — 항상 1행
+  2. metrics_json 페이로드 조립 — **1인 측정 데이터만** (schemaVersion=2, thumbnailKey, deepface*?, 기존 rawMetrics, ageGroup="20s" 포맷). `kind`/`partnerUuid`/`expires_at` 같은 필드 추가 금지.
+  3. Supabase REST `POST /rest/v1/metrics?on_conflict=id` (anon key, header `Prefer: resolution=merge-duplicates`) 로 UPSERT — 항상 1행, `expires_at` 은 null 그대로
   4. **관상 공유**: `https://facely.kr/r/{uuid}` 를 `share_plus`
   5. **궁합 공유**: 두 사람 metrics 가 이미 둘 다 publish 되어 있다는 전제 (정상 case). `share_plus("https://facely.kr/r/${uuidA}${PAIR_SEP}${uuidB}")` — 추가 Supabase write 0회. `PAIR_SEP` 상수는 shared 패키지에 두고 Worker 의 `share-id.ts` 와 동일 값 유지.
 - [ ] **인스타용 카드 이미지 생성** — `RepaintBoundary` 로 1080×1350 PNG → `share_plus(files: [bytes])` Instagram 인텐트
@@ -105,6 +115,18 @@
   - `sha256_cert_fingerprints`: release keystore SHA256 (Play Console → Setup → App integrity → App signing key)
 - [ ] **MIME 타입 확인** — Cloudflare Workers assets 가 두 파일 모두 `application/json` 으로 응답하는지 (특히 AASA 는 확장자 없음에 주의)
 
+### Privacy 의무 (PII = thumbnail)
+
+256² thumbnail 은 PII. 출시 전 법적 의무 정리 — 자세한 frame 은 HOW-IT-WORKS §12.
+
+- [ ] **분석 동의 화면** — Flutter 첫 분석 진입 전 모달. 이미지가 R2 + Python DeepFace 로 전송됨, thumbnail 이 공유 시 R2 보관됨을 명시. `[동의 후 계속]` 버튼.
+- [ ] **Privacy policy 페이지** — Worker SSR `app/routes/privacy.tsx` (또는 정적 markdown). 처리목적 / 보유기간 ("이용 종료 시까지 + 본인 명시 삭제 시 즉시") / 제3자 제공 없음 / 국외이전 (R2 글로벌·Supabase Seoul) / 이용자 권리 / 고충처리 / 근거법령.
+- [ ] **권한 사유 문구** — iOS `Info.plist` 의 `NSCameraUsageDescription` / `NSPhotoLibraryUsageDescription`, Android `AndroidManifest.xml` 의 `<uses-permission>` 옆 설명. 한국어 자연스러운 문장으로.
+- [ ] **연령 확인** — 첫 진입 시 "14세 이상입니까?" 체크. 14세 미만 차단 (PIPA 22조의2 법정대리인 동의 회피).
+- [ ] **`/r/*` noindex** — `share.tsx` 의 `meta` export 에 `{ name: "robots", content: "noindex,nofollow" }` 추가.
+- [ ] **`cdn.facely.kr` 검색엔진 차단** — R2 객체 응답에 `X-Robots-Tag: noindex` 헤더, 또는 R2 root 에 `robots.txt` (Disallow: /).
+- [ ] **Supabase region 확인** — `ap-northeast-2` (Seoul) 인지 대시보드 확인. 다른 region 이면 마이그레이션 검토 (privacy policy 의 국외이전 명시와 일치).
+
 ---
 
 ## P1 — 다음 (배포 후 안정화)
@@ -114,7 +136,7 @@
 - [ ] **OG 카드 디자인** — 256×256 thumbnail + archetype 타이틀. `ShareCard.tsx` UI 정돈.
 - [ ] **인스타 1080×1350 카드 디자인** — Flutter 측 `RepaintBoundary` 위젯. archetype·점수·간단 chip 3개 + 워터마크 "facely.kr".
 - [ ] **CTA 카피** — 미설치 사용자가 facely.kr 에 도착했을 때 "앱에서 더 보기" / "내 관상 보기" 두 버튼.
-- [ ] **만료(410) 페이지** — `metrics.expires_at` 지난 카드 접근 시 친절한 페이지 + 신규 분석 CTA.
+- [ ] **404 페이지** — 잘못된 UUID 또는 inactivity cron 으로 사라진 카드 접근 시 친절한 페이지 + 신규 분석 CTA. (시간 만료/410 분기 없음 — 404 한 케이스로 통합)
 
 ### Worker SSR
 
@@ -133,6 +155,7 @@
 - [ ] **공유 entry 통합** — 이미지 공유 / 카톡 공유 두 entry → 단일 `[공유]` 버튼. modal sheet 안에서 "인스타에 이미지 / 카톡에 링크" 선택.
 - [ ] **share publish 실패 처리** — Supabase 응답 5xx 시 사용자에게 재시도 안내.
 - [ ] **deep link cold-start** — 앱이 죽어있는 상태에서 link 받은 경우 `ReportPage` 가 즉시 데이터 로드 (Hive 없으면 Supabase fetch).
+- [ ] **★ 명시 삭제 UI (PII right-to-erasure)** — "설정 → 내 공유 link 관리" 화면. 본인 Hive history 의 uuid 와 metrics 행 매칭하여 list, 개별 [삭제] 버튼이 R2 thumbnail + Supabase 행을 동시 삭제. service-role 호출은 Worker 의 신규 endpoint `POST /api/erase` (HMAC 인증) 또는 Supabase Edge Function 으로. **법적 의무 (GDPR Art 17 / PIPA 36조)** — P1 내 출시 마지노선.
 
 ---
 
@@ -192,6 +215,10 @@ iOS entitlements / Android manifest ──────┘
 
 ## 변경 기록
 
+- 2026-05-17 (v7): **inactivity-based 자동 정리 도입**. v5 의 영구 정책 부분 수정 — 모든 카드 영구 보존 → "활성 카드만 영구, dormant 자동 정리". metrics 에 `views (int)` + `updated_at (timestamptz)` 컬럼 + trigger 추가. `/r/:id` fetch 마다 `rpc/increment_metrics_views` 로 views++ → updated_at 자동 갱신. daily cron 이 `updated_at < now() - 3 months` 행 + R2 thumbnail 동시 삭제. user_id 컬럼 추가 거부 (anonymous schema 유지). `views` 자체가 무료 product analytics index 보너스.
+- 2026-05-17 (v6): **PII 정정**. R2 `thumbnails/` 의 256² 얼굴 = PII 인정 (GDPR Art 4·Art 9 / PIPA). 그동안 "Supabase 엔 PII 없음" 표현이 시스템 전체 PII 부재로 오해 유도하던 점 정정. HOW-IT-WORKS §12 Privacy 섹션 신설 — PII 분류표·보유기간 정책·동의·noindex·region·access control 의 실체. P0 에 privacy policy / 분석 동의 화면 / 권한 사유 문구 / 연령 확인 / noindex 추가. P1 마지노선으로 명시 삭제 UI (right-to-erasure).
+- 2026-05-17 (v5): **v4 의 만료 정책 자체 폐기**. 공유 카드 영구 보존으로 전환. 이유: R2↔Supabase 짝지움·min() 분기·만료 cron·410 페이지 등 operational complexity 비용이, 6개월 후 자동 사라짐의 UX 이득보다 컸음. 비용 산정 결과 100만 카드도 R2 $0.15/월 + Supabase Pro tier 수준이라 영구 보존이 더 합리적. 장기 누적 압박 시점에 batch script 한 번으로 정리 가능 (그땐 expires_at 컬럼이 hook).
+- 2026-05-17 (v4): (폐기됨) 공유 카드 만료 정책 도입 plan. R2 `thumbnails/` 객체에 lifecycle 180일 + Supabase `metrics.expires_at = now() + 180 days` 짝. v5 에서 영구로 회귀.
 - 2026-05-17 (v3): `metrics` 행은 **1인 측정 데이터만**. `metrics_json` 에서 `kind`, `partnerUuid` 같은 compat 관계형 필드 전부 폐기 — 같은 metrics 행이 N 개 페어에 그대로 참여. 궁합 URL 표현법 결정: `/r/{A}~{B}` 단일 path segment, separator `~` (RFC 3986 unreserved, percent-encode 0). `/c/*` 별도 route 폐기 → `/r/:id` 한 라우트가 split 처리. compat publish 시 Supabase write 0회.
 - 2026-05-17 (v2): Worker `/api/share` publish endpoint 도입 plan 폐기 — Flutter 가 Supabase metrics 에 anon key 로 **직접 UPSERT** 한다 (RLS 가 PII 키 reject). Worker 는 read-only SSR 만. metrics_json payload 가 Worker 를 왕복하지 않음 → 1.5–3 KB JSON 의 두 번 흐름 제거. Python `/analyze` 응답은 DeepFace raw 그대로 (`{age, gender, race}`) — decade 라벨링·소문자 변환·race↔Ethnicity 매핑 모두 Flutter 책임. `deepfaceAge/Gender/Race` 슬롯에 raw 보존 가능.
 - 2026-05-17 (v1): `share_card` 테이블 plan 폐기 → 기존 `metrics` 한 테이블로 통합 (`thumbnailKey/kind/partnerUuid/deepface*` 를 `metrics_json` JSONB 에). `ageGroup` 값을 `"20s"` decade 라벨로 (Flutter 직렬화 layer). PII 정책 명확화 — thumbnail 본체는 R2 only, Supabase 엔 thumbnailKey 포인터만.

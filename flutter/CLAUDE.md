@@ -93,7 +93,7 @@
   → POST /api/r2/presign {prefix:"thumbnails", uuid}
   → PUT (presigned) → R2 thumbnails/{YYYYMM}/{uuid}.jpg
   → Supabase REST UPSERT /rest/v1/metrics (anon key, Prefer: resolution=merge-duplicates)
-        body: { id:"<uuid>", metrics_json:{ … thumbnailKey 포함 … }, expires_at }
+        body: { id:"<uuid>", metrics_json:{ … thumbnailKey 포함 … } }  // expires_at null (영구 보존)
         (Worker 미경유 — 큰 payload 두 번 흐름 방지)
   → share_plus 로 https://facely.kr/r/{uuid} 발송
         ↓
@@ -106,7 +106,7 @@
 Flutter 쪽 책임:
 - **분석**: `lib/data/services/face_metadata_client.dart` 가 720 PUT → POST /analyze → DeepFace 결과({age, ageGroup="20s"포맷, gender, ethnicity}) 머지
 - **publish**: `lib/domain/services/share/share_publisher.dart` (P0 신규) — UUID + RepaintBoundary 256 PNG + R2Uploader (presign+PUT) + Supabase REST upsert (anon key, Worker 미경유) + share_plus
-- **inbound**: `lib/main.dart` — `app_links` 패키지로 `/r/:id` 수신 → PAIR_SEP("~") split → 1 UUID 면 ReportPage, 2 UUID 면 CompatReportPage 라우팅
+- **inbound**: `lib/main.dart` — `app_links` 패키지로 `/r/:id` 수신 → PAIR_SEP("~") split → 1 UUID 면 ReportPage, 2 UUID 면 CompatReportPage 라우팅. fetch 시 Supabase `rpc/increment_metrics_views` 비동기 호출 (views++ → updated_at 자동 갱신; inactivity cleanup 의 active 신호).
 - **iOS associated-domains**: `ios/Runner/Runner.entitlements` 에 `applinks:facely.kr`
 - **Android intent-filter**: `AndroidManifest.xml` 에 `autoVerify="true"` + `https://facely.kr/r/`
 - **AgeGroup serialize**: enum JSON 값을 `"10s".."90s"` decade 라벨로. legacy `"twenties"` 등은 read 호환만.
