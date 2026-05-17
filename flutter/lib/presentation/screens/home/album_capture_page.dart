@@ -39,30 +39,6 @@ class AlbumCapturePage extends ConsumerStatefulWidget {
   ConsumerState<AlbumCapturePage> createState() => _AlbumCapturePageState();
 }
 
-enum _AlbumStep {
-  ready,
-  processingFrontal,
-  previewFrontal,
-  processingLateral,
-  previewLateral,
-}
-
-class _AlbumPhoto {
-  final Uint8List pngBytes;
-  final FaceMeshResult meshResult;
-  final int width;
-  final int height;
-  final double yaw;
-
-  _AlbumPhoto({
-    required this.pngBytes,
-    required this.meshResult,
-    required this.width,
-    required this.height,
-    required this.yaw,
-  });
-}
-
 class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
   final _picker = ImagePicker();
   _AlbumStep _step = _AlbumStep.ready;
@@ -74,13 +50,6 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
   bool get _isLateralPhase =>
       _step == _AlbumStep.processingLateral ||
       _step == _AlbumStep.previewLateral;
-
-  @override
-  void initState() {
-    super.initState();
-    // 진입 직후 frontal picker 자동 호출.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _pickFrontal());
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -114,6 +83,134 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
     );
   }
 
+  @override
+  void initState() {
+    super.initState();
+    // 진입 직후 frontal picker 자동 호출.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _pickFrontal());
+  }
+
+  Future<void> _afterFrontalConfirm() async {
+    // 카메라 path 의 측면 instructional modal 과 동일한 스타일 — lateral.png
+    // illustration + "얼굴 측면" 타이틀 + 안내 + [건너뛰기 TextButton] +
+    // [측면사진 선택 검정 ElevatedButton].
+    final wantLateral = await showDialog<bool>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.55),
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Container(
+          padding:
+              const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset(
+                'assets/images/lateral.png',
+                height: 200,
+                fit: BoxFit.contain,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                '얼굴 측면',
+                style: TextStyle(
+                  color: Color(0xFF1F1F1F),
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                '코 모양 판단을 위해 한쪽 귀가 안보이는 '
+                ' 측면 사진을 올려주세요. 패스하면, 특징이 없는 평범한 코 모양으로 판단합니다.',
+                style: TextStyle(
+                  color: Color(0xFF555555),
+                  fontSize: 14,
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 48,
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFF555555),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          '패스',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 2,
+                    child: SizedBox(
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1F1F1F),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          '측면사진 선택',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (!mounted) return;
+    if (wantLateral == true) {
+      await _pickLateral();
+    } else {
+      _runAnalysis();
+    }
+  }
+
+  Future<FaceMetadata?> _analyzeMetadata(File file) async {
+    try {
+      final meta = await FaceMetadataClient().analyze(file);
+      debugPrint('[Album] DeepFace ok age=${meta.age} '
+          'gender=${meta.gender} ethnicity=${meta.ethnicity}');
+      return meta;
+    } catch (e) {
+      debugPrint('[Album] DeepFace failed (non-fatal): $e');
+      return null;
+    }
+  }
+
   Widget _buildBody() {
     if (_error != null) {
       return Center(
@@ -143,8 +240,8 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
 
   Widget _buildPreview(_AlbumPhoto photo, {required bool isLateralPhase}) {
     final description = isLateralPhase
-        ? '측면 윤곽을 확인 후 분석을 시작하세요.'
-        : '정면 윤곽을 확인 후 분석을 시작하세요.';
+        ? '버튼을 클릭하면, 측면 사진을 분석합니다.'
+        : '버튼을 클릭하면, 정면 사진을 분석합니다.';
     final buttonLabel = isLateralPhase ? '측면 분석' : '정면 분석';
     final onConfirm = isLateralPhase ? _runAnalysis : _afterFrontalConfirm;
 
@@ -251,34 +348,6 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
     }
   }
 
-  Future<void> _afterFrontalConfirm() async {
-    final wantLateral = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('측면 사진 첨부'),
-        content: const Text(
-            '코 모양 분석을 위해 측면 사진을 추가하시겠습니까?\n'
-            '추가하지 않으면 코는 "정상 범주"로 처리됩니다.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('건너뛰기'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('측면 추가'),
-          ),
-        ],
-      ),
-    );
-    if (!mounted) return;
-    if (wantLateral == true) {
-      await _pickLateral();
-    } else {
-      _runAnalysis();
-    }
-  }
-
   Future<void> _pickLateral() async {
     final pick = await _picker.pickImage(
       source: ImageSource.gallery,
@@ -302,32 +371,6 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = e.toString());
-    }
-  }
-
-  void _runAnalysis() {
-    if (!mounted || _frontal == null) return;
-    final result = CaptureResult(
-      frontalLandmarks: _frontal!.meshResult.landmarks,
-      lateralLandmarks: _lateral?.meshResult.landmarks,
-      imageWidth: _frontal!.width,
-      imageHeight: _frontal!.height,
-      stillBytes: _frontal!.pngBytes,
-      source: AnalysisSource.album,
-      metadataFuture: _metadataFuture,
-    );
-    Navigator.of(context).pop(result);
-  }
-
-  Future<FaceMetadata?> _analyzeMetadata(File file) async {
-    try {
-      final meta = await FaceMetadataClient().analyze(file);
-      debugPrint('[Album] DeepFace ok age=${meta.age} '
-          'gender=${meta.gender} ethnicity=${meta.ethnicity}');
-      return meta;
-    } catch (e) {
-      debugPrint('[Album] DeepFace failed (non-fatal): $e');
-      return null;
     }
   }
 
@@ -411,4 +454,42 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
       yaw: yaw,
     );
   }
+
+  void _runAnalysis() {
+    if (!mounted || _frontal == null) return;
+    final result = CaptureResult(
+      frontalLandmarks: _frontal!.meshResult.landmarks,
+      lateralLandmarks: _lateral?.meshResult.landmarks,
+      imageWidth: _frontal!.width,
+      imageHeight: _frontal!.height,
+      stillBytes: _frontal!.pngBytes,
+      source: AnalysisSource.album,
+      metadataFuture: _metadataFuture,
+    );
+    Navigator.of(context).pop(result);
+  }
+}
+
+class _AlbumPhoto {
+  final Uint8List pngBytes;
+  final FaceMeshResult meshResult;
+  final int width;
+  final int height;
+  final double yaw;
+
+  _AlbumPhoto({
+    required this.pngBytes,
+    required this.meshResult,
+    required this.width,
+    required this.height,
+    required this.yaw,
+  });
+}
+
+enum _AlbumStep {
+  ready,
+  processingFrontal,
+  previewFrontal,
+  processingLateral,
+  previewLateral,
 }
