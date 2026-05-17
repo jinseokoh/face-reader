@@ -117,7 +117,7 @@ CREATE POLICY "metrics_owner_delete" ON metrics FOR DELETE USING (user_id = auth
 
 #### 만료 자동 정리
 
-만료 정책은 **inactivity-based** 로 전환됨 (활성 카드는 영구). 자세한 schema/RPC/RLS 는 `react/db/migrations/2026-05-17_metrics_views_inactivity.sql` + `react/docs/HOW-IT-WORKS.md` §5.2 / §12.2 SSOT.
+만료 정책은 **inactivity-based** 로 전환됨 (활성 카드는 영구). 본 문서는 historical context. **clean-slate baseline SSOT** 는 `react/db/migrations/0001_baseline.sql` (시스템 이전·재해복구용 단일 파일). 아키텍처 설명은 `react/docs/HOW-IT-WORKS.md` §5.2 / §12.2.
 
 dormant 행 정리 cron 은 **Cloudflare Worker Cron Trigger** 로 일일 1회 (Supabase 측 pg_cron 등 의존 X) — 본 작업은 후순위 backlog (`react/docs/TO-DO.md` ⏳ 섹션).
 
