@@ -16,7 +16,7 @@
 - [ ] **Lifecycle rule** — `Prefix = temp/` / `Expiration = 1 day` (Python 즉시 삭제의 백업). `thumbnails/` 는 룰 0 (영구).
 - [ ] **Custom domain `cdn.facely.kr`** → bucket public read 매핑 (또는 R2 dev URL 사용)
 - [ ] **R2 API token #1 (Worker용)** — Object Read & Write, bucket=facely 한정. **Access Key ID / Secret Access Key / Endpoint URL** 확보 (`dash.cloudflare.com/<account-id>/r2/api-tokens` 경로 — 일반 `/profile/api-tokens` 아님)
-- [ ] **R2 API token #2 (Python용)** — Object Read & Delete, bucket=facely + prefix=temp/ 한정
+- [x] **R2 token 2 개 분리 plan 폐기** — R2 dashboard 의 token UI 가 prefix scoping·DELETE-only tier 미지원. ROI 안 나오므로 한 토큰 공유 (§HOW-IT-WORKS 6.2). 위 `R2 API token #1` 한 개만 발급, Worker secret + Python env 양쪽에 동일 값 주입.
 - [ ] **Worker secrets 등록**
   - `pnpm wrangler secret put R2_ACCESS_KEY_ID`
   - `pnpm wrangler secret put R2_SECRET_ACCESS_KEY`
@@ -40,7 +40,7 @@
   ```
   의존성: `httpx` (이미 있음) + 가벼운 SigV4 signer (직접 구현 25줄 또는 `aioboto3` 도입).
 - [ ] **`/analyze` 끝에 `await delete_temp_object(key)`** (try/except — 실패해도 응답엔 영향 X, 로그만). `key` 는 헤더 `X-Face-Key` 로 이미 들어옴.
-- [ ] **docker-compose env** 에 `R2_DELETE_ACCESS_KEY_ID`, `R2_DELETE_SECRET_ACCESS_KEY`, `R2_ACCOUNT_ID`, `R2_BUCKET_NAME` 추가
+- [ ] **docker-compose env** 에 `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` (Worker secret 과 동일 값), `R2_ACCOUNT_ID`, `R2_BUCKET_NAME` 추가
 - [ ] 같은 `FACE_API_SECRET` 값을 Worker secret 과 동일하게 셸 env 또는 `.env` 로 주입
 
 ### Supabase 스키마

@@ -17,7 +17,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   const ctx = {
     shortId: params.shortId,
     origin: new URL(request.url).origin,
-    appLinkBase: env.APP_LINK_BASE,
+    appLinkBase: `${env.WEBAPP_BASE}/r/`,
     appStoreUrl: env.APP_STORE_URL,
     playStoreUrl: env.PLAY_STORE_URL,
   };

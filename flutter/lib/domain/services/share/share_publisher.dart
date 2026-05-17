@@ -10,21 +10,21 @@ import 'package:share_plus/share_plus.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_reader/data/services/supabase_service.dart';
 
-/// `react/` share host (face.kr) 와 1:1 계약.
+/// `react/` share host (facely.kr) 와 1:1 계약.
 ///
 /// publishSolo / publishCompat 가 호출되면:
 ///   1) 해당 report 의 supabaseId 보장 (없으면 saveMetrics 로 생성)
-///   2) POST {SHARE_HOST_BASE}/api/share { type, userA, userB? } → shortId
+///   2) POST {WEBAPP_BASE}/api/share { type, userA, userB? } → shortId
 ///   3) PNG bytes 를 임시 파일로 저장
 ///   4) share_plus 로 OS share sheet — text 에 https://{host}/r/{shortId}, 첨부에 PNG
 class SharePublisher {
   SharePublisher._();
   static final SharePublisher instance = SharePublisher._();
 
-  /// `.env` 의 SHARE_HOST_BASE — fallback 'https://face.kr'.
+  /// `.env` 의 WEBAPP_BASE — Worker 의 WEBAPP_BASE 와 동일 값. fallback 'https://facely.kr'.
   String get _hostBase =>
-      dotenv.env['SHARE_HOST_BASE']?.trim().replaceAll(RegExp(r'/$'), '') ??
-      'https://face.kr';
+      dotenv.env['WEBAPP_BASE']?.trim().replaceAll(RegExp(r'/$'), '') ??
+      'https://facely.kr';
 
   Future<void> publishSolo({
     required FaceReadingReport report,

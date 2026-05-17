@@ -14,7 +14,7 @@ declare namespace Cloudflare {
 		SHARE_TOKEN_SECRET: string;
 		SUPABASE_URL: string;
 		SUPABASE_ANON_KEY: string;
-		APP_LINK_BASE: string;
+		WEBAPP_BASE: string;
 		APP_STORE_URL: string;
 		PLAY_STORE_URL: string;
 		APP_BUNDLE_ID_IOS: string;
@@ -26,7 +26,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "R2_ACCOUNT_ID" | "R2_BUCKET_NAME" | "R2_CDN_BASE" | "FACE_TOKEN_TTL_SEC" | "SHARE_TOKEN_SECRET" | "SUPABASE_URL" | "SUPABASE_ANON_KEY" | "APP_LINK_BASE" | "APP_STORE_URL" | "PLAY_STORE_URL" | "APP_BUNDLE_ID_IOS" | "APP_BUNDLE_ID_ANDROID">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "R2_ACCOUNT_ID" | "R2_BUCKET_NAME" | "R2_CDN_BASE" | "FACE_TOKEN_TTL_SEC" | "SHARE_TOKEN_SECRET" | "SUPABASE_URL" | "SUPABASE_ANON_KEY" | "WEBAPP_BASE" | "APP_STORE_URL" | "PLAY_STORE_URL" | "APP_BUNDLE_ID_IOS" | "APP_BUNDLE_ID_ANDROID">> {}
 }
 
 // Begin runtime types

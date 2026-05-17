@@ -20,7 +20,7 @@
     }
   ],
   "vars": {
-    "APP_LINK_BASE": "https://facely.kr/r/",
+    "WEBAPP_BASE": "https://facely.kr",
     "APP_STORE_URL": "https://apps.apple.com/app/idXXXXXXXXX",
     "PLAY_STORE_URL": "https://play.google.com/store/apps/details?id=com.scienceintegration.facely",
     "APP_BUNDLE_ID_IOS": "com.scienceintegration.facely",

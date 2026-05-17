@@ -491,18 +491,20 @@ def verify_face_token(token: str, key: str, secret: str) -> bool:
 - **반드시 GA 전 제거** — auth.py 의 `compare_digest` 분기 + 본 문서 §6.1.1 + TO-DO 의 sunset task 모두 동시 삭제. sunset 트리거: (a) 첫 외부 사용자 베타 시작 또는 (b) Flutter HMAC 클라이언트가 stable 판정.
 - **secret 노출 위험은 그대로** — 누군가 `FACE_API_SECRET` 을 손에 넣으면 정상 HMAC 도 위조 가능 + 이 bypass 로 직접 호출도 가능. 추가 손실은 사실상 0 (HMAC 깨진 시점에 모든 게 깨짐). 하지만 bypass 가 살아있는 동안엔 "직접 호출" 의 evidence/timestamp 가 더 명확하지 않아 incident response 가 약간 어려움.
 
-### 6.2 R2 credentials 분리
+### 6.2 R2 credentials
 
 | 서비스  | R2 권한                                      | 사용                       |
 | ------- | -------------------------------------------- | -------------------------- |
-| Worker  | (없음) — S3 API key 로 presign signing only  | 객체 자체엔 손 안 댐       |
-| Python  | bucket=facely, prefix=temp/, **DELETE only** | `/analyze` 후 즉시 cleanup |
+| Worker  | Object Read & Write on bucket `facely` (presign signing 용) | 객체 자체엔 손 안 댐. SigV4 서명만 |
+| Python  | **동일 토큰 공유** — Object Read & Write on bucket `facely` | `/analyze` 후 temp/ 즉시 DELETE |
 | Flutter | (없음) — presigned URL 만 받아서 PUT         | secret 단말기에 없음       |
 
-R2 API token 두 개 발급:
+**한 토큰 공유**: Cloudflare R2 의 dashboard token UI 는 prefix scoping·DELETE-only tier 가 없다 (Object R&W / R only / Admin R&W / Admin R only 의 4 단계가 끝, scope 는 bucket 단위). 별도 토큰 만들어도 권한 자체는 동일하니 identity 분리만 위한 운영 비용은 ROI 안 나옴 — 한 토큰 공유가 합리적.
 
-1. **Worker용** — Object Read & Write on bucket facely (presign 만들 권한)
-2. **Python용** — Object Delete on prefix temp/ (cleanup 만)
+수용된 trade-off: Python 호스트가 뚫리면 thumbnail 까지 read/write/delete 가능. 그 위험은 (a) Python 호스트 hardening, (b) `FACE_API_SECRET` 로 외부 호출 차단, (c) secret rotation 으로 완화. 더 강한 격리가 필요해지면 Cloudflare API 로 custom policy token 발급(programmatic) 으로 전환 가능 — 현재는 over-engineering.
+
+R2 API token 1 개:
+- **`facely-r2-rw`** — Object Read & Write on bucket facely. Worker secret + Python env 에 동일 값 주입.
 
 ### 6.3 Rate-limiting
 
@@ -583,7 +585,7 @@ Flutter 측은 `pubspec.yaml` 에 `path: ../shared` 의존으로 들고 옴 — 
 
 | 이름                                          | 종류   | 용도                                                                     |
 | --------------------------------------------- | ------ | ------------------------------------------------------------------------ |
-| `APP_LINK_BASE`                               | var    | 받는 사람 카드 안 link                                                   |
+| `WEBAPP_BASE`                                 | var    | `https://facely.kr` (canonical host). 자기 자신 reference·OG url·CTA deep link 조립 모두 이 값 기반. **Flutter `.env` 의 동일 변수와 같은 값**. |
 | `APP_STORE_URL` / `PLAY_STORE_URL`            | var    | 스토어 fallback                                                          |
 | `APP_BUNDLE_ID_IOS` / `APP_BUNDLE_ID_ANDROID` | var    | 메타에 반영                                                              |
 | `R2_ACCOUNT_ID`                               | var    | SigV4 endpoint host                                                      |
@@ -597,18 +599,18 @@ Flutter 측은 `pubspec.yaml` 에 `path: ../shared` 의존으로 들고 옴 — 
 
 ### Python (`python/docker-compose.yml` env)
 
-| 이름                                                      | 용도                   |
-| --------------------------------------------------------- | ---------------------- |
-| `FACE_API_SECRET`                                         | Worker 와 동일 HMAC    |
-| `R2_DELETE_ACCESS_KEY_ID` / `R2_DELETE_SECRET_ACCESS_KEY` | 즉시 삭제용 별도 token |
-| `R2_ACCOUNT_ID` / `R2_BUCKET_NAME`                        | DELETE URL 조립        |
-| `DETECTOR_BACKEND` / `MAX_DOWNLOAD_MB` / 등               | 기존                   |
+| 이름                                          | 용도                                                              |
+| --------------------------------------------- | ----------------------------------------------------------------- |
+| `FACE_API_SECRET`                             | Worker 와 동일 HMAC                                               |
+| `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY`   | Worker 와 **동일한 한 토큰** 공유 (§6.2). temp/ 즉시 DELETE 용    |
+| `R2_ACCOUNT_ID` / `R2_BUCKET_NAME`            | DELETE URL 조립                                                   |
+| `DETECTOR_BACKEND` / `MAX_DOWNLOAD_MB` / 등   | 기존                                                              |
 
 ### Flutter (`flutter/.env`)
 
 | 이름                               | 용도                                                            |
 | ---------------------------------- | --------------------------------------------------------------- |
-| `SHARE_HOST_BASE`                  | `https://facely.kr` (presign + share publish + share link host) |
+| `WEBAPP_BASE`                      | `https://facely.kr` (Worker `WEBAPP_BASE` 와 동일 값). presign API · share URL 조립 양쪽에 사용 |
 | `FACE_META_API_BASE`               | `https://meta.facely.kr` (DeepFace)                             |
 | 기존 SUPABASE / KAKAO / REVENUECAT | 그대로                                                          |
 

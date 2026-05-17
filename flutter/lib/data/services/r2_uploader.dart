@@ -24,11 +24,11 @@ class PresignedUpload {
 }
 
 /// Cloudflare R2 업로더 — Flutter 가 R2 secret 을 직접 들고 있지 않도록,
-/// 서버(SHARE_HOST_BASE) 의 presign 엔드포인트를 호출해 단기 PUT URL 을 받은 뒤
+/// 서버(WEBAPP_BASE) 의 presign 엔드포인트를 호출해 단기 PUT URL 을 받은 뒤
 /// 그 URL 로 binary PUT.
 ///
 /// 서버측 contract (별도 구현 필요):
-///   POST {SHARE_HOST_BASE}/api/r2/presign
+///   POST {WEBAPP_BASE}/api/r2/presign
 ///   body: { "prefix": "temp" | "thumbnails", "uuid": "...", "ext": "jpg",
 ///           "contentType": "image/jpeg" }
 ///   resp: { "uploadUrl": "[short-lived signed PUT]",
@@ -42,8 +42,8 @@ class R2Uploader {
   static const _kPathPresign = '/api/r2/presign';
 
   static String get _hostBase =>
-      dotenv.env['SHARE_HOST_BASE']?.trim().replaceAll(RegExp(r'/$'), '') ??
-      'https://face.kr';
+      dotenv.env['WEBAPP_BASE']?.trim().replaceAll(RegExp(r'/$'), '') ??
+      'https://facely.kr';
 
   final http.Client _client;
 
