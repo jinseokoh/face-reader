@@ -1,15 +1,30 @@
 /// Result of the DeepFace age/gender/race inference pipeline.
 ///
+/// `uuid` is the **single capture id** generated once at analyze time and
+/// reused across the entire face lifecycle:
+///   - `temp/{uuid}.jpg`              (analyze 입력, 즉시 삭제)
+///   - `thumbnails/{YYYYMM}/{uuid}.jpg` (영구 256 PNG)
+///   - `FaceReadingReport.supabaseId`  (caller 가 즉시 assign)
+///   - `metrics.id` (Supabase row PK)
+///   - `https://facely.kr/r/{uuid}`    (share link)
+///
+/// 즉 "한 얼굴 캡처 = 한 UUID". 로그 grep + incident response 시 단일 trace id
+/// 로 묶기 위함. Caller 는 [analyze] 가 반환한 객체의 `uuid` 를 반드시
+/// `report.supabaseId` 에 흘려넣어야 한다 (saveMetrics 의 fallback v4 가
+/// 발동하는 경로는 analyze 미경유 케이스 한정).
+///
 /// `thumbnailUrl` is null until the post-analyze 256×256 thumbnail upload
 /// completes (orphan-zero strategy: thumbnail is only uploaded if analysis
 /// succeeds, so until then the UI must show a gender-based fallback).
 class FaceMetadata {
+  final String uuid;
   final int age;
   final String gender; // "Man" | "Woman" (직접 enum 으로 매핑하지 않음 — API SSOT 그대로)
   final String race; // "asian" | "white" | "black" | "indian" | "middle eastern" | "latino hispanic"
   final String? thumbnailUrl;
 
   const FaceMetadata({
+    required this.uuid,
     required this.age,
     required this.gender,
     required this.race,
@@ -17,19 +32,28 @@ class FaceMetadata {
   });
 
   FaceMetadata copyWith({String? thumbnailUrl}) => FaceMetadata(
+        uuid: uuid,
         age: age,
         gender: gender,
         race: race,
         thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
       );
 
-  factory FaceMetadata.fromJson(Map<String, dynamic> j) => FaceMetadata(
+  /// Python `/analyze` 응답엔 uuid 가 없다 (서버는 모름). 호출자가 client-side
+  /// 에서 발급한 uuid 를 그대로 주입해야 한다.
+  factory FaceMetadata.fromJson(
+    Map<String, dynamic> j, {
+    required String uuid,
+  }) =>
+      FaceMetadata(
+        uuid: uuid,
         age: (j['age'] as num).toInt(),
         gender: j['gender'] as String,
         race: j['race'] as String,
       );
 
   Map<String, dynamic> toJson() => {
+        'uuid': uuid,
         'age': age,
         'gender': gender,
         'race': race,

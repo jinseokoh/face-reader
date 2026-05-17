@@ -13,8 +13,14 @@ class SupabaseService {
   static const _uuid = Uuid();
 
   /// Insert a face reading report into the metrics table.
-  /// Uses the report's existing supabaseId if set (UUID-first architecture),
-  /// otherwise generates a new one. Returns the UUID either way.
+  ///
+  /// UUID 정책 — "1 face capture = 1 UUID":
+  ///   * 정상 경로: analyze 시점에 [FaceMetadataClient] 가 발급한 uuid 가 이미
+  ///     report.supabaseId 로 흘러들어와 있어야 한다 (temp/·thumbnails/·
+  ///     metrics.id·/r/{uuid} 가 동일 trace id 로 묶임).
+  ///   * fallback v4: analyze 미경유 케이스 한정 — 라이브 mesh-only 캡처
+  ///     (R2 업로드 없이 메타만), legacy entry, compat 페어링의 보조 슬롯 등.
+  /// 결과 UUID 를 반환.
   Future<String> saveMetrics(FaceReadingReport report) async {
     final id = report.supabaseId ?? _uuid.v4();
 
