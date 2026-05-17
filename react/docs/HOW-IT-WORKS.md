@@ -224,6 +224,104 @@ Worker SSR (app/routes/share.tsx)
 
 **카톡 크롤러 분기**: 같은 SSR 결과를 반환하면 됨 — crawler 가 head 의 OG 만 읽고 본문은 무시. JS 실행 안 함 → CTA 의 1.5s 자동 deep-link 도 영향 X.
 
+### 3.5 데모그래픽 orchestration — age × gender × ethnicity 가 파이프라인에 미치는 영향
+
+10 attribute score 와 narrative 출력은 **landmark geometry 단독으로 결정되지 않는다**. 사용자가 고른 (또는 DeepFace 가 추정한) `ageGroup·gender·ethnicity` 세 demographic 이 파이프라인의 여러 stage 에 끼어들어 같은 얼굴이라도 demographic 별로 다른 해석을 만든다. 어디서 어떻게 들어가는지 stage-by-stage 로 정리.
+
+```
+MediaPipe 468 landmarks
+        │
+        ▼
+17 frontal + 8 lateral raw metric
+        │
+        │  ← (1) referenceData[ethnicity][gender][metricId]
+        ▼     · Farkas 1994 / 2005 anthropometry baseline
+z-score        · 6 ethnicity × 2 gender 표 (frontal + lateral 모두 분화)
+        │
+        │  ← (2) adjustForAge(metricId, z, gender, ethnicity, isOver50)
+        ▼     · 50+ 만 발동, gender × ethnicity 별 다른 강도
+z-adjusted     · ethnicity scale (Vashi 2016): EA/SEA 0.6, AF 0.5, 그 외 1.0
+        │
+        ▼
+14-node tree (scoreTree)
+        │
+        ▼
+5-stage attribute pipeline
+   Stage 1  base linear per-node × gender × ethnicity
+              │
+              │  ← (3) _effectiveWeight + dimorphismScale[ethnicity]
+              │     · gender delta (±0.05) × scale
+              │     · 동아 0.7, 아프리카 0.6, 그 외 1.0
+              │
+   Stage 1b distinctiveness (demographics-blind)
+              │
+   Stage 2-5  Zone / Organ / Palace / Age / Lateral rules
+              │
+              │  ← (4) physiognomyCanonScale[ethnicity]
+              │     · 동아 1.0, 동남아 0.9, 그 외 0.7
+              │     · 모든 rule effect magnitude 에 곱함
+              │
+              ├─ Stage 5 Age rules:
+              │       ageGroup.band 으로 dispatch
+              │     · young (10~20대): A-Y01/Y02/Y03 (매력·학습·신선함)
+              │     · mid   (30~40대): A-M01/M02/M03 (재물·대표성·신뢰)
+              │     · late  (50+):     A-01~A-04    (회수·전수·노화)
+              │
+              └─ Stage 5 Lateral flag rules:
+                    aquilineNose 등 raw ° cutoff 가 gender-conditional
+                    · snub: 남 ≥113° / 여 ≥118°
+                    · droopTip: 남 ≤110° / 여 ≤115°
+        │
+        ▼
+10 raw attribute
+        │
+        │  ← (5) normalizeAllScores(rawScores, gender, shape)
+        ▼     · gender × shape 별 21-point quantile table
+10 normalized attribute (5.0~10.0)
+        │
+        │  ← (6) classifyArchetype(scores, gender, shape)
+        ▼     · gender prior (장군형·도화형 등 archetype 별 ±10%)
+ArchetypeResult
+        │
+        │  ← (7) computeYinYang(zMap, gender)
+        ▼     · gender baseline (남 +0.30 / 여 −0.30) 제거
+YinYangBalance — 성별 expectation 대비 deviation 표시
+        │
+        ▼
+life_question_narrative
+   · gender 분기: 연애·관능 섹션은 male/female pool 완전 분리
+   · age 분기: 7 인생 질문 Advice 의 fragment pool 이
+                young/mid/late 별 다른 fragment 활성화
+   · 관능도 섹션은 30+ 에서만 출력 (under 30 은 hidden)
+```
+
+**한눈 요약표**: 각 demographic 이 끼어드는 stage·SSOT·근거
+
+| 단계 | demographic | 적용 위치 (코드) | 데이터 SSOT | 학술 근거 |
+|---|---|---|---|---|
+| (1) z-score baseline | ethnicity × gender | `face_analysis.dart:64` | `face_reference_data.dart::referenceData` (frontal 17 × 6 인종 × 2 성별), `lateralReferenceData` (lateral 8 × 6 × 2) | Farkas 1994/2005, Sforza 2009, Mommaerts 2014, Naini 2017 |
+| (2) age adjustment 50+ | gender × ethnicity | `age_adjustment.dart::adjustForAge` | `ethnicity_factors.dart::agingTrajectoryScale` | Vashi 2016, Rawlings 2006 (인종별 노화 ~10년 shift) |
+| (3) gender delta 크기 | ethnicity | `attribute_derivation.dart::_effectiveWeight` | `ethnicity_factors.dart::dimorphismScale` | Kleisner 2021, Weinberg 2016, Flis review (인종별 남녀 dimorphism 강도) |
+| (4) rule magnitude cap | ethnicity | `attribute_derivation.dart::_scaleRules` (Stage 2-5 전체) | `ethnicity_factors.dart::physiognomyCanonScale` | 한국 관상 전통 = 동아 canon (동남아 0.9 / 그 외 0.7 로 dampen) |
+| (4-age) age-banded rules | ageGroup | `attribute_derivation.dart::_ageRulesFor(band)` | `_youngAgeRules` / `_midAgeRules` / `_lateAgeRules` | 연령별 발복·노화 변곡점 (관상 전통 + 일반 commonsense) |
+| (4-lateral) flag cutoff | gender | `face_analysis.dart:177` 근방 | `_snubRawCutoff`, `_droopRawCutoff` inline | Sforza 2009 (남녀 nasolabial baseline ~5° gap) |
+| (5) normalize quantile | gender × shape | `attribute_normalize.dart` | `_attrQuantilesByShape` (MC 생성) | MC baseline: eastAsian × 30대 (CLAUDE.md N=14 cohort) |
+| (6) archetype classifier | gender | `archetype.dart::classifyArchetype` | `_genderPriors` | 한국 관상 전통 archetype 의 gender 함의 (장군·미인 등) |
+| (7) yin-yang balance | gender | `yin_yang.dart::computeYinYang` | `_yyGenderBaseline` | 한국 관상 전통: 남=양 base, 여=음 base |
+| (narrative) | gender | `life_question_narrative.dart` | `_romanceBeatsMale/Female` 등 pool | UX 자연스러움 |
+| (narrative) | ageGroup | `_isYoung/_isMid/_isLate` predicate + Advice pool 의 age-stratified fragment | inline content | UX 적합성 |
+| (narrative) | ageGroup gate | `_concludeStage` + 관능도 섹션 30+ gate | inline | UX 적합성 |
+
+**중요 invariant**:
+- demographic 정보는 **rule trigger condition** 에 들어가지 않는다 (얼굴 geometry z-score 만 trigger). 영향은 항상 *rule 발동 강도·임계·해석 톤* 의 modulation 형태.
+- 단 한 곳의 예외: Stage 5 age rules — band 별 *다른 rule set* 이 dispatch 된다 (조건이 아니라 rule 자체가 갈림).
+- demographic 입력이 분석 단계와 narrative 단계에서 **동일 값** 사용 — Hive `prefs` box 에 persist 된 사용자 선택이 SSOT. DeepFace 추정값 (`deepfaceAge`/`deepfaceGender`/`deepfaceEthnicity`) 은 audit 용으로만 보존 (engine 미경유).
+
+**연구 누적 시 분화 예정 (보류 항목)**:
+- Stage 1 quantile normalize 의 ethnicity 분화 (현재 MC = eastAsian 30대 단일 cohort, 5 ethnicity × 5 shape × 2 gender = 60-table 확장 필요)
+- frontal Phase 1B metric (foreheadWidth·cheekboneWidth·chinAngle·eyeAspect·eyebrowCurvature·eyebrowTiltDirection·upperVsLowerLipRatio·browSpacing) 8개 + lateral 8개의 ethnicity 별 mean/sd empirical 측정 (현재는 EA-extrapolated)
+- 실사용자 N 확장: 동아 30대 여성 14명 외 male/caucasian/40s 등 데이터 누적 → per-demographic recalibration
+
 ---
 
 ## 4. URL & deep linking
