@@ -101,7 +101,7 @@ create policy "coins_self_read"
 -- 3. public.metrics — 관상 원본 + 공유 link payload
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 1 face capture = 1 metrics row (1 UUID = trace id, HOW-IT-WORKS §3.1).
--- metrics_json (text) 안에 v2 schema (HOW-IT-WORKS §5.2) — thumbnailKey,
+-- metrics_json (text) 안에 schema (HOW-IT-WORKS §5.2) — thumbnailKey,
 -- deepface*, rawValue, demographic 카테고리 등.
 -- SELECT 는 anon 공개 (UUID 모르면 fetch 불가하므로 link-share 모델).
 -- INSERT 는 anon 도 허용 (publish 직통 UPSERT) — PII 키 RLS check 로 차단.

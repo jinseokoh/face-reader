@@ -16,9 +16,8 @@ import 'package:face_reader/data/services/supabase_service.dart';
 ///   3) share_plus 로 OS share sheet 호출 — text 에 https://{host}/r/{uuid}
 ///      또는 https://{host}/r/{uuidA}~{uuidB}, 첨부에 PNG
 ///
-/// 폐기됨: 구 `POST /api/share` 호출. Worker 가 `/api/share` 라우트를 의도적
-/// 미구현. 받는 사람의 link 해석은 Worker SSR (`GET /r/:id`) 가 PAIR_SEP("~")
-/// split 으로 1·2 UUID 케이스 모두 처리 (HOW-IT-WORKS §3.4 / §4.1).
+/// 받는 사람의 link 해석은 Worker SSR (`GET /r/:id`) 가 PAIR_SEP("~") split
+/// 으로 1·2 UUID 케이스 모두 처리 (HOW-IT-WORKS §3.4 / §4.1).
 class SharePublisher {
   SharePublisher._();
   static final SharePublisher instance = SharePublisher._();

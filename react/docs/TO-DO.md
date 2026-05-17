@@ -50,7 +50,7 @@
 ### Worker SSR
 
 - [ ] **shared engine 통합** — `app/lib/traits.ts` 가 `app/lib/shared/face_engine.js` 호출. `pnpm build:shared` 명령 작동 확인. CI 에 해당 단계 추가.
-- [ ] **og:image 실 thumbnailKey 연동** — 현재 `${origin}/logo.png` fallback. `metrics_json.thumbnailKey` (v2 schema bump 후) 가 채워지면 `${R2_CDN_BASE}/${thumbnailKey}` 로 전환.
+- [ ] **og:image 실 thumbnailKey 연동** — 현재 `${origin}/logo.png` fallback. `metrics_json.thumbnailKey` 가 채워지면 `${R2_CDN_BASE}/${thumbnailKey}` 로 전환.
 - [ ] **fetch 실패 graceful** — Supabase 다운 / 5xx 시 retry-with-jitter 1회, 그래도 실패면 503 페이지.
 
 ### 운영

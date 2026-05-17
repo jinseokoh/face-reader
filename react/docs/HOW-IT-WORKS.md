@@ -58,7 +58,7 @@
 - **Worker 가 R2 객체를 read/write 하지 않음** — presign 발급만 (`/api/r2/presign`).
 - **시스템 안 PII 의 실질 보관소는 R2 `thumbnails/` 한 곳** (256² 얼굴 = PII). UUID-as-unguessable-URL access control. Supabase 행은 비-PII (정규화 카테고리·rawValue·thumbnailKey 포인터). 즉 "Supabase 엔 PII 없음" 은 사실이지만 **시스템 전체에 PII 없음 ≠ 사실** — §12 Privacy 참조. landmark 좌표·alias·사용자 이름·생년월일은 어떤 store 에도 안 들어감.
 - **해석 엔진은 `shared/` 한 곳** — Flutter 와 Worker SSR 이 같은 Dart 코드를 컴파일된 JS 로 공유. 룰 변경 시 양쪽 동시 반영.
-- **별도 `share_card` 테이블 없음.** 공유·재계산·OG 모두 기존 `metrics` 테이블의 `metrics_json` 한 곳을 source-of-truth 로 사용 (이전 plan 의 share_card 는 metrics 와 중복이라 폐기).
+- **공유·재계산·OG 모두 `metrics` 테이블의 `metrics_json` 한 곳을 SSOT 로 사용.** 별도 `share_card` 같은 행 단위 압축 metadata 테이블 도입 금지.
 - **1 face capture = 1 UUID.** Flutter 가 analyze 시점에 v4 한 번 발급 → 그 uuid 가 `temp/{uuid}.jpg` → `thumbnails/{YYYYMM}/{uuid}.jpg` → `metrics.id` → `https://facely.kr/r/{uuid}` 까지 그대로 흐름. 단일 trace id 로 incident response·log grep 한 번에 끝. publish 단계에서 새 uuid 발급 금지.
 
 ---
@@ -249,29 +249,6 @@ Worker SSR (app/routes/share.tsx)
 - **시간 기반 만료 없음, inactivity 자동 정리** — `/r/{id}` fetch 마다 views++ + updated_at 갱신. updated_at 이 3 개월 이상 정체한 행만 daily cron 으로 정리 (§5.2). 활성 카드는 영구. 친구·본인 누구든 보면 자동 보호.
 - **separator 는 한 곳에서만 정의** — `app/lib/share-id.ts` 의 `PAIR_SEP = "~"` 상수. 향후 변경되면 그 한 곳만 수정.
 
-> **참고 — 폐기된 이전 방식 (HMAC body+sig 토큰)**
->
-> 초기 plan 은 URL 자체에 share payload 를 통째로 박는 stateless 스킴이었다:
->
-> ```
-> shortId = base64url( payload_json || HMAC_SHA256(SHARE_TOKEN_SECRET, payload_json) )
->          ↳ payload = {type:"solo", userA:"uuid"}  또는 {type:"compat", userA, userB}
->          ↳ sig 가 뒤에 붙어서 위·변조 차단
-> URL    = https://facely.kr/r/{shortId}   ← 60+ 글자
-> ```
->
-> Worker SSR 이 shortId 를 decode → HMAC 검증 → payload 추출 → Supabase metrics fetch. DB 에 share 행을 미리 만들 필요 X (stateless).
->
-> **왜 폐기?**
->
-> 1. **데이터 중복** — payload 가 이미 `metrics` 행에 다 있는데 URL 안에 한 번 더 박는 셈. UUID 만 박으면 끝.
-> 2. **URL 길이** — 60+ 자 vs 36 자(단일 UUID) / 73 자(궁합 두 UUID + SEP). 카톡 미리보기 글자수에 영향.
-> 3. **무효화 유연성** — stateless 라 토큰 한 개를 강제로 무효화하려면 `SHARE_TOKEN_SECRET` 자체를 rotate 해야 — 발급된 모든 URL 동시 사망. UUID 방식은 행 단위 삭제만으로 그 카드만 사라짐 (다른 카드 영향 0).
-> 4. **secret 1 개 더** — `SHARE_TOKEN_SECRET` 운영 부담. UUID 전환 후 secret 불필요.
-> 5. **궁합 표현 어색** — payload 안에 `userA/userB` 필드를 따로 둬야 했음. 지금은 URL 의 SEP 하나면 됨.
->
-> 현 `react/app/routes/api.share.ts`, `react/app/lib/share-id.ts`, `wrangler.jsonc` 의 `SHARE_TOKEN_SECRET` 등은 모두 이 폐기된 스킴의 잔재 — P0 단계에서 정리 예정 (TO-DO §Worker 라우트).
-
 ### 4.2 Universal / App Links
 
 `public/.well-known/apple-app-site-association` (AASA):
@@ -391,7 +368,7 @@ create index if not exists metrics_updated_at_idx on metrics(updated_at);
 
 ```jsonc
 {
-  "schemaVersion": 2,           // v1 → v2 bump: deepface* / thumbnailKey 추가
+  "schemaVersion": 1,           // 배포 전 고정 — install base 생긴 후에 bump
   "source": "camera",            // "camera" | "album"
   "timestamp": "2026-05-17T...",
 
