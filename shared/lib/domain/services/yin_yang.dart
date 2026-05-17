@@ -6,19 +6,20 @@
 ///   −  = 음기 우세 (부드러움·수분감·풍성·내향·수용성)
 ///   ≈0 = 음양 조화 (중용의 상)
 ///
-/// 麻衣相法 卷三 음양총론 — 남=양 base / 여=음 base. raw skew 에서 gender
-/// baseline 을 빼서 "예상 baseline 대비 얼마나 벗어났는가" 를 표시한다. 평균
-/// 남성 → skew ≈ 0 (양 baseline 정상), 평균 여성 → skew ≈ 0 (음 baseline
-/// 정상). 양·음 쏠림 신호는 사용자가 *자기 gender 기준* 에서 벗어났을 때만 부각.
+/// 한국 관상학 음양 전통 — 남성은 양(陽) baseline, 여성은 음(陰) baseline.
+/// raw skew 에서 gender baseline 을 빼서 "예상 baseline 대비 얼마나 벗어
+/// 났는가" 를 표시한다. 평균 남성 → skew ≈ 0 (양 baseline 정상), 평균
+/// 여성 → skew ≈ 0 (음 baseline 정상). 양·음 쏠림 신호는 사용자가
+/// *자기 gender 기준* 에서 벗어났을 때만 부각.
 ///
 /// 근거:
 /// - 양기 증강: 이마 넓음·턱 각도·광대 돌출·눈썹 두꺼움·코 높이·콧대 돌출.
 /// - 음기 증강: 도톰한 입술·하정 풍성·큰 눈(수기)·긴 인중·부드러운 입꼬리.
-/// - gender baseline: 麻衣相法 卷三 + 神相全編 命婦 chapter — 남=양 / 여=음 의
-///   "정상 baseline" 명시.
+/// - gender baseline: 한국 관상 전통의 음양 분류 — 남성=양, 여성=음 의
+///   "정상 baseline" 위에서 deviation 측정.
 ///
-/// 출처: 麻衣相法·柳莊相法 에서 남·여 기본 음양 해석 + 현대 관상 교재의
-/// 통용 기준. 수치 weight 는 관상 전통 상대 중요도 + 현실 얼굴 분산 고려.
+/// 출처: 한국 관상학 전통의 음양 해석 + 현대 관상 교재 통용 기준. 수치
+/// weight 는 관상 전통 상대 중요도 + 현실 얼굴 분산 고려.
 library;
 
 import 'package:face_engine/data/enums/gender.dart';

@@ -37,34 +37,36 @@ class _GenderPrior {
   const _GenderPrior(this.male, this.female);
 }
 
-/// Archetype 별 gender prior — 麻衣相法 canon 의 archetype 본래 gender 함의를
-/// 분류 단계에 반영한다. 정규화된 attribute score (5~10) 에 곱해 *분류 ranking
-/// 용* 만으로 사용 — 원 score (attributes[].normalizedScore) 는 건드리지 않는다.
+/// Archetype 별 gender prior — 한국 관상학 canon 의 archetype 본래 gender
+/// 함의를 분류 단계에 반영한다. 정규화된 attribute score (5~10) 에 곱해
+/// *분류 ranking 용* 만으로 사용 — 원 score (attributes[].normalizedScore) 는
+/// 건드리지 않는다.
 ///
 /// 값 범위 0.90 ~ 1.10. neutral = 1.00. 분류 swap 위험 최소화 (top-1 ↔ top-2
 /// 격차가 ~5% 이내일 때만 swap 가능).
 ///
 /// 근거:
-/// - 麻衣相法·神相全編 archetype 의 gender 본 매핑 (將軍·王相·君子 vs 桃花·美人·賢妻)
+/// - 한국 관상 전통 archetype 의 gender 본 매핑 (장군·왕상·군자 등 → 남성,
+///   도화·미인·현처 등 → 여성)
 /// - 우리 archetype 라벨 본문이 이미 gender 분기되어 있다는 점 (의도적 redundancy)
 const _genderPriors = <Attribute, _GenderPrior>{
-  // 사업가형 — 鼻=재백궁, 약한 male-lean (transactional canon)
+  // 사업가형 — 재백궁(코) 약한 male-lean (transactional canon)
   Attribute.wealth: _GenderPrior(1.05, 0.95),
-  // 리더형 — 將軍·王相 강한 male canon
+  // 리더형 — 장군·왕상 강한 male canon
   Attribute.leadership: _GenderPrior(1.10, 0.90),
-  // 학자형 — 學士·君子 약한 male-lean (modern soft)
+  // 학자형 — 학사·군자 약한 male-lean (modern soft)
   Attribute.intelligence: _GenderPrior(1.05, 0.95),
   // 외교형 — gender-neutral
   Attribute.sociability: _GenderPrior(1.00, 1.00),
-  // 예술가형 — 才子·才女 양면. neutral
+  // 예술가형 — 재인 양면. neutral
   Attribute.emotionality: _GenderPrior(1.00, 1.00),
-  // 현자형 — 君子·賢者 약한 male-lean
+  // 현자형 — 군자·현자 약한 male-lean
   Attribute.stability: _GenderPrior(1.05, 0.95),
-  // 연예인형 — 桃花·美色 강한 female-lean
+  // 연예인형 — 도화·미색 강한 female-lean
   Attribute.sensuality: _GenderPrior(0.90, 1.10),
   // 신의형 — gender-neutral
   Attribute.trustworthiness: _GenderPrior(1.00, 1.00),
-  // 호감형 — 美人 약한 female-lean
+  // 호감형 — 미인 약한 female-lean
   Attribute.attractiveness: _GenderPrior(0.95, 1.05),
   // 정열형 — 의지·정력 약한 male-lean (sexual dimorphism canon)
   Attribute.libido: _GenderPrior(1.05, 0.95),
@@ -79,7 +81,7 @@ double _priorOf(Attribute attr, Gender gender) {
 /// scores → top-2 + special + shape-gated overlay.
 ///
 /// [gender] 는 archetype 라벨의 canon-natural 매칭을 위한 prior 가중에 사용
-/// (分類 ranking only). attribute 본 score 는 건드리지 않는다.
+/// (분류 ranking only). attribute 본 score 는 건드리지 않는다.
 ///
 /// shape overlay 는 _checkSpecial 보다 우선 — shape 특수 상에 걸리면 그걸 반환.
 ArchetypeResult classifyArchetype(

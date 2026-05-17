@@ -8,7 +8,7 @@ import 'package:face_engine/data/enums/ethnicity.dart';
 ///
 /// 1. [agingTrajectoryScale]  — 노화 보정 강도 (50+ 만 발동)
 /// 2. [dimorphismScale]       — 성별 weight delta 크기
-/// 3. [physiognomyCanonScale] — 麻衣相法 rule 의 cultural-domain dampening
+/// 3. [physiognomyCanonScale] — 한국 관상학 rule 의 cultural-domain dampening
 ///
 /// 값은 보수적으로 잡음 — empirical 검증이 누적되면 미세조정. 모든 lookup 은
 /// `?? 1.0` fallback 으로 안전 (enum 확장 시 baseline 동작).
@@ -65,24 +65,24 @@ const Map<Ethnicity, double> dimorphismScale = {
   Ethnicity.african: 0.6,
 };
 
-/// East-Asian physiognomy canon scale per ethnicity.
+/// 동아시아 관상학 canon scale per ethnicity.
 ///
 /// Stage 2-5 rule effect magnitude 에 곱해진다 (Zone/Organ/Palace/Age/Lateral).
-/// z-score baseline 으로 anatomical 차이는 흡수되지만, 麻衣相法·神相全編·
-/// 유장상법의 *해석 rule* 자체는 漢族·朝鮮 얼굴 canon 에서 calibrate 됨.
-/// 비-동아시아 얼굴에 같은 magnitude 로 발동하면 invalid 일반화.
+/// z-score baseline 으로 anatomical 차이는 흡수되지만, 한국·중국 관상 전통의
+/// *해석 rule* 자체는 동아시아 얼굴 canon 에서 calibrate 됨. 비-동아시아
+/// 얼굴에 같은 magnitude 로 발동하면 invalid 일반화.
 ///
 /// 근거 (도메인 구조적 + cross-cultural):
-///   - 麻衣相法 卷一 五官總論 — 鼻 (재백궁), 印堂, 산근 임계가 漢族 평균 비율
-///     기준으로 fixed. magnitude 가 그 canon 안에서 calibrate 됨.
-///   - 神相全編 卷四 十二宮 — 천창·지각·간문·처첩궁의 cutoff 가 동아시아 얼굴
-///     분포 기반.
+///   - 한국 관상 전통의 코·이마·산근 임계가 동아시아 평균 비율 기준으로
+///     fixed. magnitude 가 그 canon 안에서 calibrate 됨.
+///   - 십이궁 (천창·지각·간문·처첩궁 등) 의 cutoff 가 동아시아 얼굴 분포
+///     기반.
 ///   - Coetzee V et al. (2014) PLOS ONE PMC4079334 — cross-cultural
 ///     attractiveness universal floor 는 유지되나 own-race bias 가 비-EA
 ///     해석의 신뢰도 하락 시사.
 ///
-/// 동남아시아 (베트남·태국·필리핀): 麻衣相法 의 漢字 문화권 전파 역사로
-/// 명목 1.0 에 근접 (0.9). 그 외 인종: 외부 cultural domain (0.7) — 완전
+/// 동남아시아 (베트남·태국·필리핀): 한자 문화권 전파 역사로 동아시아
+/// canon 에 명목 근접 (0.9). 그 외 인종: 외부 cultural domain (0.7) — 완전
 /// 차단이 아니라 universal anatomy signal 은 흘리되 rule 의 *동아시아 특수
 /// 해석* 강도만 낮춤.
 const Map<Ethnicity, double> physiognomyCanonScale = {
