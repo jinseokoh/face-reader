@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -392,20 +393,59 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
     final bytes = await File(path).readAsBytes();
     final codec = await ui.instantiateImageCodec(bytes);
     final frame = await codec.getNextFrame();
-    final image = frame.image;
+    final original = frame.image;
+
+    // ── Square-pad before MediaPipe ─────────────────────────────────────
+    // MediaPipe Face Mesh 가 non-square input 에서 landmark Y 좌표를
+    // distortion 시킨다 (내부 192×192 fit 시 non-uniform scale). 9:20 핸드폰
+    // 화면 캡쳐 같은 tall portrait 가 들어오면 faceAspectRatio z 가 +3 이상으로
+    // 폭발해서 oval 도 oblong 으로 분류된다.
+    // → 짧은 축을 흰색으로 padding 해서 square 로 만든 후 MediaPipe 에 넘긴다.
+    // ML Kit bbox 도 같은 offset 으로 shift.
+    final origW = original.width;
+    final origH = original.height;
+    final ui.Image squareImage;
+    final double padOffsetX;
+    final double padOffsetY;
+    if (origW == origH) {
+      squareImage = original;
+      padOffsetX = 0;
+      padOffsetY = 0;
+    } else {
+      final maxDim = math.max(origW, origH);
+      padOffsetX = (maxDim - origW) / 2.0;
+      padOffsetY = (maxDim - origH) / 2.0;
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder);
+      canvas.drawRect(
+        Rect.fromLTWH(0, 0, maxDim.toDouble(), maxDim.toDouble()),
+        Paint()..color = const Color(0xFFFFFFFF),
+      );
+      canvas.drawImage(original, Offset(padOffsetX, padOffsetY), Paint());
+      final picture = recorder.endRecording();
+      squareImage = await picture.toImage(maxDim, maxDim);
+      original.dispose();
+    }
+
     final byteData =
-        await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+        await squareImage.toByteData(format: ui.ImageByteFormat.rawRgba);
     if (byteData == null) throw Exception('이미지를 디코딩할 수 없습니다');
     final rgba = Uint8List.sublistView(byteData.buffer.asUint8List());
 
+    final imgW = squareImage.width.toDouble();
+    final imgH = squareImage.height.toDouble();
     final bbox = faces.first.boundingBox;
-    final imgW = image.width.toDouble();
-    final imgH = image.height.toDouble();
+    final shifted = Rect.fromLTRB(
+      bbox.left + padOffsetX,
+      bbox.top + padOffsetY,
+      bbox.right + padOffsetX,
+      bbox.bottom + padOffsetY,
+    );
     final clamped = Rect.fromLTRB(
-      bbox.left.clamp(0.0, imgW),
-      bbox.top.clamp(0.0, imgH),
-      bbox.right.clamp(0.0, imgW),
-      bbox.bottom.clamp(0.0, imgH),
+      shifted.left.clamp(0.0, imgW),
+      shifted.top.clamp(0.0, imgH),
+      shifted.right.clamp(0.0, imgW),
+      shifted.bottom.clamp(0.0, imgH),
     );
     final box = FaceMeshBox.fromLTWH(
       left: clamped.left,
@@ -422,8 +462,8 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
     );
     final meshImage = FaceMeshImage(
       pixels: rgba,
-      width: image.width,
-      height: image.height,
+      width: squareImage.width,
+      height: squareImage.height,
     );
     final result = processor.process(
       meshImage,
@@ -438,19 +478,21 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
       throw Exception('얼굴 랜드마크를 추출할 수 없습니다.\n다른 사진을 선택해 주세요.');
     }
 
-    final pngData = await image.toByteData(format: ui.ImageByteFormat.png);
+    final pngData =
+        await squareImage.toByteData(format: ui.ImageByteFormat.png);
     if (pngData == null) throw Exception('이미지 인코딩 실패');
     final pngBytes = Uint8List.sublistView(pngData.buffer.asUint8List());
 
     final yaw = estimateYaw(result.landmarks);
-    debugPrint('[Album] processed image=${image.width}x${image.height} '
+    debugPrint('[Album] processed image=${squareImage.width}x${squareImage.height} '
+        '(orig=${origW}x$origH padOffset=${padOffsetX.toStringAsFixed(0)},${padOffsetY.toStringAsFixed(0)}) '
         'yaw=${yaw.toStringAsFixed(3)} class=${classifyYaw(yaw)}');
 
     return _AlbumPhoto(
       pngBytes: pngBytes,
       meshResult: result,
-      width: image.width,
-      height: image.height,
+      width: squareImage.width,
+      height: squareImage.height,
       yaw: yaw,
     );
   }

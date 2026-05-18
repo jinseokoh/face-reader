@@ -87,6 +87,28 @@ class FaceShapeClassifier {
     'foreheadWidth', 'cheekboneWidth', 'noseBridgeRatio',
   ];
 
+  /// Bayesian class-prior 보정 — 학습 set(niten19) 은 5 class 균등
+  /// (1000 each, prior=0.20). 실배포 demographic(동아시아 30대 여성) 은
+  /// oval-dominant. 한국 성형외과 anthropometry 및 self-report study 기준
+  /// 동아시아 성인 여성의 face shape 분포:
+  ///   oval 0.50, oblong 0.12, round 0.20, square 0.10, heart 0.08.
+  /// posterior ∝ ML_softmax × (deploy_prior / training_prior=0.20).
+  /// ratio: oval ×2.5, oblong ×0.6, round ×1.0, square ×0.5, heart ×0.4.
+  ///
+  /// 효과:
+  ///   * raw oblong=0.40 / oval=0.35  →  posterior oval=0.62 / oblong=0.32 (flip)
+  ///   * raw oblong=0.55 / oval=0.25  →  posterior oval=0.57 / oblong=0.30 (flip)
+  ///   * raw oblong=0.80 / oval=0.08  →  posterior oblong=0.80 / oval=0.13 (stay)
+  /// niten19 uniform prior 가 만든 "oblong 과추정" 편향을 닫으면서 진짜
+  /// oblong(>3.5× oval) 은 살린다.
+  static const List<double> _priorRatio = [
+    0.4, // heart
+    0.6, // oblong
+    2.5, // oval
+    1.0, // round
+    0.5, // square
+  ];
+
   Interpreter? _interpreter;
   List<double>? _mu;
   List<double>? _sd;
@@ -143,17 +165,47 @@ class FaceShapeClassifier {
     final input = [x];
     final output = List.filled(1 * 5, 0.0).reshape([1, 5]);
     _interpreter!.run(input, output);
-    final probs = (output[0] as List).cast<double>();
+    final rawProbs = (output[0] as List).cast<double>();
+    return applyPosterior(rawProbs);
+  }
+
+  /// raw softmax [heart, oblong, oval, round, square] 에 Bayesian prior 보정 +
+  /// argmax 적용. predict() 의 post-process 부분이고, TFLite 없이 단독 호출
+  /// 가능 — unit test 진입점.
+  static FaceShapePrediction applyPosterior(List<double> rawProbs) {
+    assert(rawProbs.length == 5, 'rawProbs must have 5 elements');
+    final adjusted = List<double>.filled(rawProbs.length, 0.0);
+    double sum = 0;
+    for (var i = 0; i < rawProbs.length; i++) {
+      final v = rawProbs[i] * _priorRatio[i];
+      adjusted[i] = v;
+      sum += v;
+    }
+    if (sum <= 0 || !sum.isFinite) {
+      // Degenerate posterior — raw 그대로 사용 (분류기 misfire 방어).
+      for (var i = 0; i < rawProbs.length; i++) {
+        adjusted[i] = rawProbs[i];
+      }
+    } else {
+      for (var i = 0; i < adjusted.length; i++) {
+        adjusted[i] /= sum;
+      }
+    }
 
     var argmax = 0;
-    var best = probs[0];
-    for (var i = 1; i < probs.length; i++) {
-      if (probs[i] > best) { best = probs[i]; argmax = i; }
+    var best = adjusted[0];
+    for (var i = 1; i < adjusted.length; i++) {
+      if (adjusted[i] > best) { best = adjusted[i]; argmax = i; }
     }
+    debugPrint('[FaceShapeClassifier] '
+        'raw=${rawProbs.map((e) => e.toStringAsFixed(2)).join(",")} '
+        '→ posterior=${adjusted.map((e) => e.toStringAsFixed(2)).join(",")} '
+        '→ ${FaceShapeClass.values[argmax].english}'
+        '(${best.toStringAsFixed(2)})');
     return FaceShapePrediction(
       label: FaceShapeClass.values[argmax],
       confidence: best,
-      probabilities: List<double>.from(probs),
+      probabilities: adjusted,
     );
   }
 

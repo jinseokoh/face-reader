@@ -57,25 +57,55 @@ class ImageResizer {
     double padding = 0.25,
     int quality = _kJpegQuality,
   }) async {
+    final bytes = await file.readAsBytes();
+    return faceCenterSquareCropFromBytes(
+      bytes,
+      mlKitInput: InputImage.fromFilePath(file.path),
+      outSize: outSize,
+      padding: padding,
+      quality: quality,
+    );
+  }
+
+  /// bytes 입력 버전. ML Kit FaceDetector 는 InputImage 가 필요해서
+  /// [mlKitInput] 을 받음. file path 가 있으면 `InputImage.fromFilePath` 로
+  /// 넘기고, 없으면 임시 file 로 write 후 사용.
+  static Future<Uint8List> faceCenterSquareCropFromBytes(
+    Uint8List bytes, {
+    InputImage? mlKitInput,
+    int outSize = 256,
+    double padding = 0.25,
+    int quality = _kJpegQuality,
+  }) async {
     // 1) bbox 검출 — 실패해도 throw 안 함, fallback 으로 image-center 사용.
     Rect? faceBox;
+    InputImage? detectInput = mlKitInput;
+    File? tempFile;
+    if (detectInput == null) {
+      // bytes 만 받았을 때: 임시 file 로 dump 한 후 ML Kit 사용.
+      final dir = Directory.systemTemp;
+      tempFile = File('${dir.path}/face_crop_${DateTime.now().microsecondsSinceEpoch}.png');
+      await tempFile.writeAsBytes(bytes);
+      detectInput = InputImage.fromFilePath(tempFile.path);
+    }
     final detector = FaceDetector(
       options: FaceDetectorOptions(
         performanceMode: FaceDetectorMode.accurate,
       ),
     );
     try {
-      final faces = await detector
-          .processImage(InputImage.fromFilePath(file.path));
+      final faces = await detector.processImage(detectInput);
       if (faces.isNotEmpty) faceBox = faces.first.boundingBox;
     } catch (_) {
       // detector 실패 — fallback path 로.
     } finally {
       await detector.close();
+      if (tempFile != null) {
+        try { await tempFile.delete(); } catch (_) {}
+      }
     }
 
     // 2) image 디코드.
-    final bytes = await file.readAsBytes();
     final codec = await ui.instantiateImageCodec(bytes);
     final frame = await codec.getNextFrame();
     final image = frame.image;

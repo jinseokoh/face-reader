@@ -5,6 +5,7 @@ import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_reader/core/theme.dart';
+import 'package:face_reader/data/services/image_resizer.dart';
 import 'package:face_reader/data/services/supabase_service.dart';
 import 'package:face_reader/domain/models/capture_result.dart';
 import 'package:face_reader/domain/models/face_analysis.dart';
@@ -13,7 +14,6 @@ import 'package:face_reader/presentation/providers/history_provider.dart';
 import 'package:face_reader/presentation/providers/tab_provider.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
@@ -232,20 +232,21 @@ class _DemographicConfirmScreenState
     final id = const Uuid().v4();
     report.supabaseId = id;
 
-    // 썸네일 생성 (있을 때만)
+    // 썸네일 생성 — ML Kit bbox 기반 face-centered 256 square crop.
+    // 단순 비례 축소 (FlutterImageCompress) 만 하면 album path 의 square-padded
+    // 1024×1024 이미지가 그대로 작아지면서 face 가 가운데 점처럼 보이는 문제 발생.
+    // faceCenterSquareCrop 가 ML Kit 으로 face 위치를 찾아 padding 25% 둘러
+    // 256×256 으로 출력 → 사용자가 보는 thumbnail 은 항상 얼굴 중심.
     final still = c.stillBytes;
     if (still != null) {
       try {
-        final compressed = await FlutterImageCompress.compressWithList(
+        final cropped = await ImageResizer.faceCenterSquareCropFromBytes(
           still,
-          minWidth: 128,
-          minHeight: 128,
-          quality: 80,
-          format: CompressFormat.webp,
+          outSize: 256,
         );
         final dir = await getApplicationDocumentsDirectory();
-        final file = File('${dir.path}/$id.webp');
-        await file.writeAsBytes(compressed);
+        final file = File('${dir.path}/$id.jpg');
+        await file.writeAsBytes(cropped);
         report.thumbnailPath = file.path;
       } catch (e) {
         debugPrint('[Thumbnail] save error: $e');
