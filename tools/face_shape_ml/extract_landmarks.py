@@ -29,7 +29,12 @@ from mediapipe.tasks import python as mp_python
 from mediapipe.tasks.python import vision as mp_vision
 
 TOOLS = Path(__file__).resolve().parent.parent
-DATASET = TOOLS / "datasets/kaggle_cache/datasets/niten19/face-shape-dataset/versions/2/FaceShape Dataset"
+# Try kagglehub cache (current path) and the in-repo path (legacy) — first existing.
+_CANDIDATES = [
+    Path.home() / ".cache/kagglehub/datasets/niten19/face-shape-dataset/versions/2/FaceShape Dataset",
+    TOOLS / "datasets/kaggle_cache/datasets/niten19/face-shape-dataset/versions/2/FaceShape Dataset",
+]
+DATASET = next((p for p in _CANDIDATES if p.is_dir()), _CANDIDATES[0])
 MODEL_PATH = str(TOOLS / "face_landmarker.task")
 OUT = Path(__file__).resolve().parent / "out"
 OUT.mkdir(parents=True, exist_ok=True)

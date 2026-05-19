@@ -87,26 +87,18 @@ class FaceShapeClassifier {
     'foreheadWidth', 'cheekboneWidth', 'noseBridgeRatio',
   ];
 
-  /// Bayesian class-prior 보정 — 학습 set(niten19) 은 5 class 균등
-  /// (1000 each, prior=0.20). 실배포 demographic(동아시아 30대 여성) 은
-  /// oval-dominant. 한국 성형외과 anthropometry 및 self-report study 기준
-  /// 동아시아 성인 여성의 face shape 분포:
-  ///   oval 0.50, oblong 0.12, round 0.20, square 0.10, heart 0.08.
-  /// posterior ∝ ML_softmax × (deploy_prior / training_prior=0.20).
-  /// ratio: oval ×2.5, oblong ×0.6, round ×1.0, square ×0.5, heart ×0.4.
-  ///
-  /// 효과:
-  ///   * raw oblong=0.40 / oval=0.35  →  posterior oval=0.62 / oblong=0.32 (flip)
-  ///   * raw oblong=0.55 / oval=0.25  →  posterior oval=0.57 / oblong=0.30 (flip)
-  ///   * raw oblong=0.80 / oval=0.08  →  posterior oblong=0.80 / oval=0.13 (stay)
-  /// niten19 uniform prior 가 만든 "oblong 과추정" 편향을 닫으면서 진짜
-  /// oblong(>3.5× oval) 은 살린다.
+  /// Class-prior 보정 — 현재 모델(`face_shape_ratios.tflite`)은 niten19 4000 +
+  /// 57 East Asian sample 으로 직접 학습됐다. 즉 학습 단에서 이미 deploy
+  /// distribution 으로 보정 완료 → 추가 prior 적용은 이중 보정으로 정확도
+  /// 하락을 부른다 (측정: prior [0.4,0.6,2.5,1.0,0.5] → 64.9% vs uniform → 75.4%).
+  /// 따라서 uniform 유지. 향후 분포 시프트 데이터가 누적되면 batch retrain
+  /// 으로 model weight 자체를 갱신 (prior 가 아니라).
   static const List<double> _priorRatio = [
-    0.4, // heart
-    0.6, // oblong
-    2.5, // oval
+    1.0, // heart
+    1.0, // oblong
+    1.0, // oval
     1.0, // round
-    0.5, // square
+    1.0, // square
   ];
 
   Interpreter? _interpreter;
