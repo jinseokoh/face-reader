@@ -198,30 +198,102 @@ class CompatibilityScreen extends ConsumerWidget {
       return;
     }
 
-    // 4. 확인 다이얼로그.
+    // 4. 확인 다이얼로그 — 카메라 path 의 frontal/lateral instructional modal 과
+    //    동일한 스타일 (compatibility.png + 타이틀 + 안내 + [취소] [궁합보기]).
     if (!context.mounted) return;
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.surface,
-        title: const Text('궁합 해제',
-            style: TextStyle(
-                fontSize: 17,
-                color: AppTheme.textPrimary)),
-        content: Text(
-          '1 코인을 사용해 이 궁합을 해제할까요?\n잔액 $balance → ${balance - 1}',
-          style: const TextStyle(color: AppTheme.textSecondary, height: 1.5),
+      barrierColor: Colors.black.withValues(alpha: 0.55),
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset(
+                'assets/images/compatibility.png',
+                height: 200,
+                fit: BoxFit.contain,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                '궁합 보기',
+                style: TextStyle(
+                  color: Color(0xFF1F1F1F),
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                '궁합을 보려면 1코인이 필요합니다.\n궁합을 보시겠습니까?',
+                style: TextStyle(
+                  color: Color(0xFF555555),
+                  fontSize: 14,
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 48,
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFF555555),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          '취소',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 2,
+                    child: SizedBox(
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1F1F1F),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          '궁합보기',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('취소'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('해제'),
-          ),
-        ],
       ),
     );
     if (confirm != true) return;
@@ -417,12 +489,21 @@ class _CompatListCard extends StatelessWidget {
                             color: labelColor.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: Text(
-                            '${r.label.korean} (${r.label.hanja})',
-                            style: TextStyle(
-                                fontSize: 13,
-                                color: labelColor,
-                                letterSpacing: 1),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _GradeStepper(label: r.label),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  '${r.label.korean} (${r.label.hanja})',
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      color: labelColor,
+                                      letterSpacing: 1),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -684,25 +765,33 @@ class _LabelRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                RichText(
-                  text: TextSpan(
-                    // 등급명은 accent 컬러로 — 사용자가 좋고 나쁨을 즉시 인지.
-                    style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: accent),
-                    children: [
-                      TextSpan(text: '${_emoji(label)} ${label.korean}'),
-                      const TextSpan(text: '  '),
-                      TextSpan(
-                        text: label.hanja,
-                        style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
-                            color: AppTheme.textHint),
+                Row(
+                  children: [
+                    _GradeStepper(label: label),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: RichText(
+                        text: TextSpan(
+                          // 등급명은 accent 컬러로 — 사용자가 좋고 나쁨을 즉시 인지.
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: accent),
+                          children: [
+                            TextSpan(text: label.korean),
+                            const TextSpan(text: '  '),
+                            TextSpan(
+                              text: label.hanja,
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w400,
+                                  color: AppTheme.textHint),
+                            ),
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 4),
                 Text(pair.headline,
@@ -724,19 +813,6 @@ class _LabelRow extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  static String _emoji(CompatLabel l) {
-    switch (l) {
-      case CompatLabel.cheonjakjihap:
-        return '🟢';
-      case CompatLabel.sangkyeongyeobin:
-        return '🔵';
-      case CompatLabel.mahapgaseong:
-        return '🟠';
-      case CompatLabel.hyeonggeuknanjo:
-        return '🔴';
-    }
   }
 
   static _TaglinePair _tagline(CompatLabel l) {
@@ -902,6 +978,64 @@ class _Thumb extends StatelessWidget {
               color: AppTheme.textHint, size: 20),
         ),
       ),
+    );
+  }
+}
+
+/// 4 단계 stepper — cheonjakjihap(녹) → sangkyeongyeobin(파) → mahapgaseong(주) → hyeonggeuknanjo(빨).
+/// 활성 dot 만 해당 등급 vivid 컬러 채움 (이모지 🟢🔵🟠🔴 톤). 비활성 dot 과 dash 는 border 톤.
+class _GradeStepper extends StatelessWidget {
+  final CompatLabel label;
+  const _GradeStepper({required this.label});
+
+  static const _order = [
+    CompatLabel.cheonjakjihap,
+    CompatLabel.sangkyeongyeobin,
+    CompatLabel.mahapgaseong,
+    CompatLabel.hyeonggeuknanjo,
+  ];
+
+  // 이모지 🟢🔵🟠🔴 톤 — chip 의 muted accent 와 분리된 stepper 전용 vivid 컬러.
+  static Color _stepColor(CompatLabel l) {
+    switch (l) {
+      case CompatLabel.cheonjakjihap:
+        return const Color(0xFF22C55E); // green-500
+      case CompatLabel.sangkyeongyeobin:
+        return const Color(0xFF3B82F6); // blue-500
+      case CompatLabel.mahapgaseong:
+        return const Color(0xFFF97316); // orange-500
+      case CompatLabel.hyeonggeuknanjo:
+        return const Color(0xFFEF4444); // red-500
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final activeIdx = _order.indexOf(label);
+    final activeColor = _stepColor(label);
+    final dots = <Widget>[];
+    for (var i = 0; i < _order.length; i++) {
+      final isActive = i == activeIdx;
+      dots.add(Container(
+        width: isActive ? 9 : 6,
+        height: isActive ? 9 : 6,
+        decoration: BoxDecoration(
+          color: isActive ? activeColor : AppTheme.border,
+          shape: BoxShape.circle,
+        ),
+      ));
+      if (i < _order.length - 1) {
+        dots.add(Container(
+          width: 6,
+          height: 1.5,
+          color: AppTheme.border,
+        ));
+      }
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: dots,
     );
   }
 }

@@ -5,6 +5,7 @@ import 'package:face_reader/presentation/providers/auth_provider.dart';
 import 'package:face_reader/presentation/widgets/login_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'album_capture_page.dart';
 import 'demographic_confirm_screen.dart';
@@ -52,25 +53,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
             const Spacer(),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _HomeActionButton(
-                    label: '카메라로 촬영',
-                    icon: Icons.camera_alt_outlined,
-                    onPressed: _openCamera,
-                  ),
-                  const SizedBox(height: 12),
-                  _HomeActionButton(
-                    label: '앨범에서 선택',
-                    icon: Icons.photo_library_outlined,
-                    onPressed: _openAlbum,
-                  ),
-                ],
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
+              child: Container(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(AppRadius.xl),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _HomeActionCard(
+                        label: '카메라로 촬영',
+                        icon: FontAwesomeIcons.camera,
+                        onPressed: _openCamera,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: _HomeActionCard(
+                        label: '앨범에서 선택',
+                        icon: FontAwesomeIcons.image,
+                        onPressed: _openAlbum,
+                        reverse: true,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: AppSpacing.huge),
           ],
         ),
       ),
@@ -135,40 +147,78 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 }
 
-class _HomeActionButton extends StatelessWidget {
+class _HomeActionCard extends StatefulWidget {
   final String label;
   final IconData icon;
   final VoidCallback? onPressed;
+  final bool reverse;
 
-  const _HomeActionButton({
+  const _HomeActionCard({
     required this.label,
     required this.icon,
     required this.onPressed,
+    this.reverse = false,
   });
 
   @override
+  State<_HomeActionCard> createState() => _HomeActionCardState();
+}
+
+class _HomeActionCardState extends State<_HomeActionCard>
+    with SingleTickerProviderStateMixin {
+  static const _swingAmplitude = 0.05; // ≈ 2.9°
+  late final AnimationController _controller;
+  late final Animation<double> _rotation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2600),
+    )..repeat(reverse: true);
+    final begin = widget.reverse ? _swingAmplitude : -_swingAmplitude;
+    final end = widget.reverse ? -_swingAmplitude : _swingAmplitude;
+    _rotation = Tween<double>(begin: begin, end: end)
+        .chain(CurveTween(curve: Curves.easeInOut))
+        .animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppTheme.textPrimary,
-        foregroundColor: Colors.white,
-        disabledBackgroundColor: AppTheme.surface,
-        padding: const EdgeInsets.symmetric(vertical: 18),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+    return AspectRatio(
+      aspectRatio: 1,
+      child: AnimatedBuilder(
+        animation: _rotation,
+        builder: (_, child) => Transform.rotate(
+          angle: _rotation.value,
+          child: child,
         ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 22),
-          const SizedBox(width: 10),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        child: Material(
+          color: AppColors.textPrimary,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: widget.onPressed,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                FaIcon(widget.icon, size: 28, color: Colors.white),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  widget.label,
+                  style: AppText.subTitle.copyWith(color: Colors.white),
+                ),
+              ],
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
