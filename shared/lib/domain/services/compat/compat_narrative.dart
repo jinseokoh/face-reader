@@ -8,8 +8,9 @@
 ///   5. 궁합 점수 + 이유
 ///
 /// 원칙:
-///   - 본문 text 에 한자 쓰지 않는다 (용어는 괄호 안에 보조로만).
-///   - 추상 표현("기운이 흐른다") 금지. 실제 행동·상황으로 설명.
+///   - 본문 text 에 한자 쓰지 않는다. 모던 한국어만.
+///   - 추상 표현 금지. 실제 행동·상황으로 설명.
+///   - "사실 → 영향 → 조언" 3 sentence 구조.
 ///   - 분석가 톤, 직설적으로, 감성팔이 금지.
 library;
 
@@ -50,17 +51,17 @@ int computePairSeed(String myReportId, String albumReportId) {
   return (h(myReportId) * 31 + h(albumReportId)) & 0x7fffffff;
 }
 
-/// axis id → 본문 header. 한자는 괄호 풀이로만 허용.
+/// axis id → 본문 header. 모던 한국어로 표기.
 String _axisLabel(String axisId) {
   switch (axisId) {
     case 'mwGong':
-      return '남녀궁 — 눈 아래 애교살';
+      return '눈 아래 애교살 — 다정함의 온도';
     case 'spouse':
-      return '부부궁 — 눈꼬리 바깥';
+      return '눈꼬리 바깥 — 관계의 깊이';
     case 'lip':
-      return '입 — 입술과 입꼬리';
+      return '입술과 입꼬리 — 표현의 감각';
     case 'eye':
-      return '눈 — 시선의 결';
+      return '눈과 시선 — 끌림의 방향';
     default:
       return axisId;
   }
@@ -70,7 +71,7 @@ String _axisLabel(String axisId) {
 //
 // 3부 구조로 농후함 확보:
 //   (1) 섹션 도입 — label 별 갈등 전반 성격
-//   (2) 각 시나리오 — 관상 근거 + 실제 궤적 + 폭발 지점(domain pool)
+//   (2) 각 시나리오 — 근거 + 실제 궤적 + 확대 양상(domain pool)
 //   (3) 섹션 마무리 — 세 갈등의 공통분모
 
 String _conflictSection(
@@ -81,9 +82,9 @@ String _conflictSection(
 
   if (pick.isEmpty) {
     return '두 분 사이에서 눈에 띄게 터질 지점은 읽히지 않습니다. '
-        '어른의 관계는 갈등이 없는 게 아니라 예측 가능한 쪽에 속하므로, '
+        '어른의 관계에서 갈등이 없다는 건 불가능하지만, 이 조합은 예측 가능한 범위 안에 있어요. '
         '평소 기본 관리만 해 주시면 크게 흔들릴 일이 드문 조합입니다. '
-        '단, 예측 가능해 보이는 평온을 권태로 읽는 순간부터 숨은 마찰이 튀어나오니 그 경계를 놓치지 마시기 바랍니다.';
+        '단, 예측 가능해 보이는 평온을 권태로 읽는 순간부터 숨은 마찰이 튀어나오니 그 경계를 놓치지 마세요.';
   }
 
   final buf = StringBuffer();
@@ -96,16 +97,16 @@ String _conflictSection(
     buf.writeln();
   }
 
-  // (2) 각 시나리오 — 근거·궤적·폭발.
+  // (2) 각 시나리오 — 근거·궤적·확대 양상.
   for (int i = 0; i < pick.length; i++) {
     final f = pick[i];
     buf.writeln('시나리오 ${i + 1} — ${f.title} (${f.domain})');
-    buf.writeln('관상 근거: ${f.meaning}');
-    buf.writeln('실제 궤적: ${f.scenario!}');
+    buf.writeln('근거: ${f.meaning}');
+    buf.writeln('실제로 나타나는 모습: ${f.scenario!}');
     final escPool = conflictEscalationByDomain[f.domain] ??
         conflictEscalationByDomain['_default']!;
     final esc = _pickVariant(escPool, pairSeed + f.id.hashCode + i);
-    buf.writeln('폭발 지점: $esc');
+    buf.writeln('확대 양상: $esc');
     if (i != pick.length - 1) buf.writeln();
   }
 
@@ -125,7 +126,9 @@ String _conflictSection(
 String _coreSection(List<CompatFinding> findings) {
   final top = findings.take(3).toList();
   if (top.isEmpty) {
-    return '특별히 도드라지는 패턴이 없습니다. 일상이 큰 기복 없이 평탄하게 흘러갈 조합입니다.';
+    return '특별히 도드라지는 특징이 없습니다. '
+        '일상이 큰 기복 없이 평탄하게 흘러갈 조합이에요. '
+        '다만 평탄함이 지루함으로 바뀌지 않도록, 작은 변화를 의식적으로 만들어 가세요.';
   }
 
   final buf = StringBuffer();
@@ -155,10 +158,10 @@ List<CompatFinding> _gatherFindings(CompatibilityReport r) {
   for (final e in r.zoneHarmony.evidence) {
     list.add(CompatFinding.fromZone(e));
   }
-  // yinyang 은 단일 pattern.
+  // 에너지 균형은 단일 pattern.
   list.add(CompatFinding.fromYinYang(r.yinYangMatch));
 
-  // 오행 관계는 방향성 자체가 관계의 본질이라 반드시 포함.
+  // 가치관(얼굴형) 관계는 방향성 자체가 관계의 본질이라 반드시 포함.
   list.add(CompatFinding.fromElement(r.myElement, r.albumElement, r.elementRelation));
 
   // 중요도 = |delta| * priority.
@@ -168,13 +171,13 @@ List<CompatFinding> _gatherFindings(CompatibilityReport r) {
 
 // ─────────────── intimacy chapter (30~50 이성 gate) ───────────────
 //
-// 성숙한 연령의 이성 관계를 관상학적 근거·실생활 관찰·bucket 별 조언의
+// 성숙한 연령의 이성 관계를 얼굴 근거·실생활 관찰·bucket 별 조언의
 // 3부 구조로 다루는 optional 섹션. intimacy.gateActive == false 면 null.
 //
 // bucket 분류:
-//   - high (≥ 65): 기회 인식·관리 권유
+//   - high (65 이상): 기회 인식·관리 권유
 //   - mid  (45~65): 실험·조율
-//   - low  (< 45):  경계·속도 조절
+//   - low  (45 미만):  경계·속도 조절
 //
 // pair-seed 로 deterministic 하게 variant 선택. axis 문단은 cause →
 // observation → bucket별 advice 3 문장으로 구성돼 근거와 농후함을 확보.
@@ -297,15 +300,15 @@ String _pickVariant(List<String> variants, int seed) {
 String _relationShort(ElementRelationKind k) {
   switch (k) {
     case ElementRelationKind.generating:
-      return '내가 상대를 북돋우는';
+      return '내가 상대에게 활력을 주는';
     case ElementRelationKind.generated:
       return '상대가 나를 받쳐 주는';
     case ElementRelationKind.overcoming:
-      return '내가 상대를 누르는';
+      return '내가 상대의 페이스를 잡아 주는';
     case ElementRelationKind.overcome:
-      return '상대가 나를 누르는';
+      return '상대가 나를 단련시키는';
     case ElementRelationKind.identity:
-      return '비슷한 결끼리 만나는';
+      return '닮은꼴 케미의';
   }
 }
 
@@ -333,18 +336,18 @@ String _scoreSection(CompatibilityReport r) {
   buf.writeln('종합 점수: $total점 / 100점 만점 기준');
   buf.writeln();
   buf.writeln('세부 점수:');
-  buf.writeln('- 오행(얼굴형 기본 성향): $el점');
-  buf.writeln('- 궁위(결혼·가족·재물 등 12개 영역): $pa점');
-  buf.writeln('- 기질(눈·코·입·삼정·음양의 짝): $qi점');
+  buf.writeln('- 가치관(얼굴형 기본 성향): $el점');
+  buf.writeln('- 관심사(결혼·가족·재물 등 12개 영역): $pa점');
+  buf.writeln('- 소통 스타일(눈·코·입·얼굴 3 구역·에너지 균형의 짝): $qi점');
   if (it != null) {
-    buf.writeln('- 친밀(부부·친밀감 영역, 30~50대 이성 기준): $it점');
+    buf.writeln('- 로맨스(밀착도·끌림 영역, 30~50대 이성 기준): $it점');
   } else {
-    buf.writeln('- 친밀: 이번 조합에서는 따로 계산하지 않음');
+    buf.writeln('- 로맨스: 이번 조합에서는 따로 계산하지 않음');
   }
   buf.writeln();
   buf.writeln('이 점수가 나온 이유:');
-  buf.writeln('- 가장 강한 축은 "$strongest" 영역이라, 여기가 이 관계를 지탱합니다.');
-  buf.writeln('- 가장 약한 축은 "$weakest" 영역이라, 갈등은 여기서 먼저 터집니다.');
+  buf.writeln('- 가장 강한 축은 "$strongest" 영역이에요. 여기가 이 관계를 지탱합니다.');
+  buf.writeln('- 가장 약한 축은 "$weakest" 영역이에요. 갈등은 여기서 먼저 터집니다.');
   buf.write('- 등급상 네 단계 중 ${_labelTier(r.label)}번째(${r.label.korean})로, ${_labelHeadline(r.label)}에 해당합니다.');
   return buf.toString();
 }
@@ -358,7 +361,9 @@ String _strategySection(
     case CompatLabel.cheonjakjihap:
       items.add(const _StrategyItem(
         action:
-            '궁합이 좋다고 방심하지 말 것. 일상적인 연락·기념일·생활습관 같은 기본기를 놓치는 순간 우위가 빠르게 줄어듭니다.',
+            '궁합이 좋다고 방심하지 마세요. '
+            '일상적인 연락·기념일·생활습관 같은 기본기를 놓치는 순간 우위가 빠르게 줄어듭니다. '
+            '좋은 관계일수록 유지에 정성을 쏟아야 합니다.',
         domain: null,
         rationale: '이 관계는 이미 유리한 기본값을 갖고 있어, 전략의 핵심은 "유지"입니다.',
       ));
@@ -366,25 +371,31 @@ String _strategySection(
     case CompatLabel.sangkyeongyeobin:
       items.add(const _StrategyItem(
         action:
-            '예의를 지키다 오히려 벽이 생기기 쉬운 관계이니, 한 달에 한 번 정도는 형식을 깨는 솔직한 대화나 둘만의 여행을 의도적으로 만들어 두시기 바랍니다.',
+            '예의를 지키다 오히려 벽이 생기기 쉬운 관계입니다. '
+            '한 달에 한 번 정도는 형식을 깨는 솔직한 대화나 둘만의 여행을 의도적으로 만들어 두세요. '
+            '격을 유지하면서도 숨 쉴 틈을 만드는 것이 핵심입니다.',
         domain: null,
-        rationale: '격과 신뢰가 살아 있는 페어는 "언제 격을 내릴지" 합의가 관계 온도를 결정합니다.',
+        rationale: '격과 신뢰가 살아 있는 조합은 "언제 격을 내릴지" 합의가 관계 온도를 결정합니다.',
       ));
       break;
     case CompatLabel.mahapgaseong:
       items.add(const _StrategyItem(
         action:
-            '서로 맞춰 가는 단계를 초반 1~2년으로 잡고, 그 사이에는 "누가 옳은가"보다 "어떻게 맞춰 갈 것인가"를 대화의 기준으로 삼아야 합니다.',
+            '서로 맞춰 가는 단계를 초반 1~2년으로 잡으세요. '
+            '그 사이에는 "누가 옳은가"보다 "어떻게 맞춰 갈 것인가"를 대화의 기준으로 삼아야 합니다. '
+            '결론보다 과정에 집중하면 갈등이 줄어듭니다.',
         domain: null,
-        rationale: '속도 차이가 기본값인 페어는 결론 프레임을 과정 프레임으로 바꿔야 갈등이 줄어듭니다.',
+        rationale: '속도 차이가 기본값인 조합은 결론보다 과정에 집중해야 갈등이 줄어듭니다.',
       ));
       break;
     case CompatLabel.hyeonggeuknanjo:
       items.add(const _StrategyItem(
         action:
-            '감정으로 풀려 하지 말고, 돈·가사·시간 사용처럼 갈등이 잦은 영역은 규칙을 종이에 적어 두고 주기적으로 점검하는 구조로 바꿔야 합니다.',
+            '감정으로 풀려 하지 말고, 돈·가사·시간 사용처럼 갈등이 잦은 영역은 규칙을 종이에 적어 두고 주기적으로 점검하는 구조로 바꾸세요. '
+            '감정 처리를 규칙화하는 게 핵심입니다. '
+            '합의된 규칙 하나가 감정 폭발 열 번을 막아 줍니다.',
         domain: null,
-        rationale: '충돌이 기본값인 페어는 개별 대화보다 합의된 규칙이 관계를 지탱합니다.',
+        rationale: '충돌이 기본값인 조합은 개별 대화보다 합의된 규칙이 관계를 지탱합니다.',
       ));
       break;
   }
@@ -439,8 +450,8 @@ String _strategySection(
 
     buf.writeln('${i + 1}. ${item.action}');
     buf.writeln('   근거: ${item.rationale}');
-    buf.writeln('   실행 디테일: $how');
-    buf.writeln('   실패 패턴: $fail');
+    buf.writeln('   실행 방법: $how');
+    buf.writeln('   실패하는 경우: $fail');
     if (i != items.length - 1) buf.writeln();
   }
 
@@ -463,15 +474,15 @@ String _strongestLayer(CompatibilityReport r) {
 
 List<MapEntry<String, double>> _subDisplayPairs(CompatibilityReport r) {
   return [
-    MapEntry('오행(기본 성향)',
+    MapEntry('가치관(기본 성향)',
         subScoreToDisplay(CompatSubKind.element, r.sub.elementScore)!),
-    MapEntry('궁위(12개 생활 영역)',
+    MapEntry('관심사(12개 생활 영역)',
         subScoreToDisplay(CompatSubKind.palace, r.sub.palaceScore)!),
-    MapEntry('기질(얼굴 세부 짝)',
+    MapEntry('소통 스타일(얼굴 세부 짝)',
         subScoreToDisplay(CompatSubKind.qi, r.sub.qiScore)!),
     if (r.intimacy.gateActive)
       MapEntry(
-          '끌림(밀착도·텐션 영역)',
+          '로맨스(밀착도·끌림 영역)',
           subScoreToDisplay(CompatSubKind.intimacy, r.sub.intimacyScore)!),
   ];
 }
@@ -488,7 +499,8 @@ String _summarySection(CompatibilityReport r, List<CompatFinding> findings) {
 
   return '$headline입니다. '
       '$total점으로 ${r.label.korean}(네 등급 중 ${_labelTier(r.label)}번째)에 해당하고, '
-      '얼굴 전체의 기본 성향은 $myEl과 $alEl이 만나 $dir 구도를 이룹니다.';
+      '얼굴 전체의 기본 성향은 $myEl과 $alEl이 만나 $dir 구도를 이룹니다. '
+      '이 조합이 일상에서 어떤 모습으로 나타나는지 아래에서 구체적으로 살펴보겠습니다.';
 }
 
 String _weakestLayer(CompatibilityReport r) {
@@ -540,4 +552,3 @@ class _StrategyItem {
     required this.rationale,
   });
 }
-

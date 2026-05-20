@@ -12,6 +12,7 @@ import 'package:face_engine/domain/services/compat/compat_narrative.dart';
 import 'package:face_engine/domain/services/compat/compat_pipeline.dart';
 import 'package:face_engine/domain/services/compat/compat_sub_display.dart';
 import 'package:face_engine/domain/services/compat/five_element.dart';
+import 'package:face_engine/domain/services/compat/modern_vocab.dart';
 import 'package:face_reader/core/theme.dart';
 import 'package:face_reader/data/services/supabase_service.dart';
 import 'package:face_reader/domain/services/share/share_publisher.dart';
@@ -24,20 +25,7 @@ import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart' hide Gender;
 // Shared helpers
 // ─────────────────────────────────────────────────────────────
 
-String _relationKindKo(ElementRelationKind k) {
-  switch (k) {
-    case ElementRelationKind.identity:
-      return '같은 결의 공명';
-    case ElementRelationKind.generating:
-      return '내가 상대를 살리는 상생';
-    case ElementRelationKind.generated:
-      return '상대가 나를 받쳐 주는 상생';
-    case ElementRelationKind.overcoming:
-      return '내가 상대를 다스리는 상극';
-    case ElementRelationKind.overcome:
-      return '상대가 나를 누르는 상극';
-  }
-}
+String _relationKindKo(ElementRelationKind k) => k.modernKo;
 
 /// 궁합 상세 — 한 쌍(나 × 앨범) 의 전체 해석.
 /// 리스트 카드(`compatibility_screen.dart`) 에서 push 로 진입.
@@ -96,7 +84,7 @@ class _CompatibilityDetailScreenState
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 48),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
         children: [
           _TotalHeader(
             my: widget.my,
@@ -595,12 +583,29 @@ class _SubBar extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           SizedBox(
-            width: 48,
-            child: Text(
-              '${row.value.toStringAsFixed(0)} · ${(row.weight * 100).toInt()}%',
-              textAlign: TextAlign.right,
-              style:
-                  const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+            width: 56,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  row.value.toStringAsFixed(0),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textPrimary,
+                    height: 1.1,
+                  ),
+                ),
+                const Text(
+                  '/ 100',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: AppTheme.textHint,
+                    height: 1.3,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -612,8 +617,7 @@ class _SubBar extends StatelessWidget {
 class _SubRow {
   final String label;
   final double value;
-  final double weight;
-  _SubRow(this.label, this.value, this.weight);
+  _SubRow(this.label, this.value);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -627,22 +631,19 @@ class _SubScorePanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rows = <_SubRow>[
-      _SubRow('오행',
-          subScoreToDisplay(CompatSubKind.element, report.sub.elementScore)!,
-          0.20),
-      _SubRow('궁위',
-          subScoreToDisplay(CompatSubKind.palace, report.sub.palaceScore)!,
-          0.40),
-      _SubRow(
-          '기질', subScoreToDisplay(CompatSubKind.qi, report.sub.qiScore)!, 0.25),
-      // 친밀: 30~50대 이성 페어 등 intimacy gate 통과 시에만 노출. gate off 면 row 자체를 숨김.
+      _SubRow(CompatSubKind.element.modernKo,
+          subScoreToDisplay(CompatSubKind.element, report.sub.elementScore)!),
+      _SubRow(CompatSubKind.palace.modernKo,
+          subScoreToDisplay(CompatSubKind.palace, report.sub.palaceScore)!),
+      _SubRow(CompatSubKind.qi.modernKo,
+          subScoreToDisplay(CompatSubKind.qi, report.sub.qiScore)!),
+      // 로맨스: 30~50 대 이성 페어 등 intimacy gate 통과 시에만 노출.
       if (report.intimacy.gateActive)
         _SubRow(
-          '친밀',
+          CompatSubKind.intimacy.modernKo,
           subScoreToDisplay(
                   CompatSubKind.intimacy, report.sub.intimacyScore) ??
               0.0,
-          0.15,
         ),
     ];
     return Column(

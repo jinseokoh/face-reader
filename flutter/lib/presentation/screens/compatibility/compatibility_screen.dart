@@ -11,6 +11,7 @@ import 'package:face_engine/domain/services/compat/compat_pair_key.dart';
 import 'package:face_engine/domain/services/compat/compat_pipeline.dart';
 import 'package:face_engine/domain/services/compat/compat_sub_display.dart';
 import 'package:face_engine/domain/services/compat/five_element.dart';
+import 'package:face_engine/domain/services/compat/modern_vocab.dart';
 import 'package:face_reader/core/theme.dart';
 import 'package:face_reader/data/services/analytics_service.dart';
 import 'package:face_reader/data/services/compat_unlock_service.dart';
@@ -78,7 +79,7 @@ class CompatibilityScreen extends ConsumerWidget {
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       itemCount: others.length,
       separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (ctx, i) {
@@ -347,9 +348,9 @@ class CompatibilityScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
-            children: const [
-              Text(
-                '두 사람의 관상학적 특징을 네 갈래로 분석해 얼마나 잘 어울릴 수 있는지를 등급으로 나눕니다.',
+            children: [
+              const Text(
+                '두 사람의 얼굴이 만드는 네 갈래 신호를 종합해 얼마나 잘 어울릴 수 있는지를 등급으로 나눕니다.',
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w400,
@@ -357,35 +358,25 @@ class CompatibilityScreen extends ConsumerWidget {
                   height: 1.7,
                 ),
               ),
-              SizedBox(height: 18),
+              const SizedBox(height: 18),
               // 등급 블록 — 4 갈래 breakdown 보다 먼저.
-              Text('등급',
+              const Text('등급',
                   style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                       color: AppTheme.textPrimary)),
-              SizedBox(height: 10),
-              _LabelRow(label: CompatLabel.cheonjakjihap),
-              _LabelRow(label: CompatLabel.sangkyeongyeobin),
-              _LabelRow(label: CompatLabel.mahapgaseong),
-              _LabelRow(label: CompatLabel.hyeonggeuknanjo),
-              SizedBox(height: 20),
-              _InfoRow(
-                  title: '오행',
-                  weight: '20%',
-                  body: '얼굴형 기본 성향. 木 火 土 金 水 의 생극 관계.'),
-              _InfoRow(
-                  title: '궁위',
-                  weight: '40%',
-                  body: '결혼 가족 재물 자녀 등 12개 영역의 짝.'),
-              _InfoRow(
-                  title: '기질',
-                  weight: '25%',
-                  body: '눈 코 입 삼정 음양의 짝. 성격 합.'),
-              _InfoRow(
-                  title: '친밀',
-                  weight: '15%',
-                  body: '이성 친밀도. 30~50대 이성 사이에서만 출력.'),
+              const SizedBox(height: 10),
+              const _LabelRow(label: CompatLabel.cheonjakjihap),
+              const _LabelRow(label: CompatLabel.sangkyeongyeobin),
+              const _LabelRow(label: CompatLabel.mahapgaseong),
+              const _LabelRow(label: CompatLabel.hyeonggeuknanjo),
+              const SizedBox(height: 20),
+              for (final kind in CompatSubKind.values)
+                _InfoRow(
+                  title: kind.displayLabel,
+                  weight: kind.weightLabel,
+                  body: kind.descriptionKo,
+                ),
             ],
           ),
         ),
@@ -484,23 +475,33 @@ class _CompatListCard extends StatelessWidget {
                         const SizedBox(height: AppSpacing.sm),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 5),
+                              horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
                             color: labelColor.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: Row(
+                          child: Column(
                             mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _GradeStepper(label: r.label),
-                              const SizedBox(width: 8),
-                              Flexible(
-                                child: Text(
-                                  '${r.label.korean} (${r.label.hanja})',
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      color: labelColor,
-                                      letterSpacing: 1),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${r.label.korean} (${r.label.hanja})',
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    color: labelColor,
+                                    letterSpacing: 1,
+                                    height: 1.2),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                r.label.modernKo,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppTheme.textPrimary,
+                                  height: 1.2,
                                 ),
                               ),
                             ],
@@ -559,20 +560,7 @@ class _CompatListCard extends StatelessWidget {
     }
   }
 
-  static String _relationKindKo(ElementRelationKind k) {
-    switch (k) {
-      case ElementRelationKind.identity:
-        return '같은 결의 공명';
-      case ElementRelationKind.generating:
-        return '내가 상대를 살리는 상생';
-      case ElementRelationKind.generated:
-        return '상대가 나를 받쳐 주는 상생';
-      case ElementRelationKind.overcoming:
-        return '내가 상대를 다스리는 상극';
-      case ElementRelationKind.overcome:
-        return '상대가 나를 누르는 상극';
-    }
-  }
+  static String _relationKindKo(ElementRelationKind k) => k.modernKo;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -693,6 +681,64 @@ class _CompatLockedCard extends ConsumerWidget {
   }
 }
 
+/// 4 단계 stepper — cheonjakjihap(녹) → sangkyeongyeobin(파) → mahapgaseong(주) → hyeonggeuknanjo(빨).
+/// 활성 dot 만 해당 등급 vivid 컬러 채움 (이모지 🟢🔵🟠🔴 톤). 비활성 dot 과 dash 는 border 톤.
+class _GradeStepper extends StatelessWidget {
+  static const _order = [
+    CompatLabel.cheonjakjihap,
+    CompatLabel.sangkyeongyeobin,
+    CompatLabel.mahapgaseong,
+    CompatLabel.hyeonggeuknanjo,
+  ];
+  final CompatLabel label;
+
+  const _GradeStepper({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final activeIdx = _order.indexOf(label);
+    final activeColor = _stepColor(label);
+    final dots = <Widget>[];
+    for (var i = 0; i < _order.length; i++) {
+      final isActive = i == activeIdx;
+      dots.add(Container(
+        width: isActive ? 9 : 6,
+        height: isActive ? 9 : 6,
+        decoration: BoxDecoration(
+          color: isActive ? activeColor : AppTheme.textHint,
+          shape: BoxShape.circle,
+        ),
+      ));
+      if (i < _order.length - 1) {
+        dots.add(Container(
+          width: 6,
+          height: 1.5,
+          color: AppTheme.textHint,
+        ));
+      }
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: dots,
+    );
+  }
+
+  // 이모지 🟢🔵🟠🔴 톤 — chip 의 muted accent 와 분리된 stepper 전용 vivid 컬러.
+  static Color _stepColor(CompatLabel l) {
+    switch (l) {
+      case CompatLabel.cheonjakjihap:
+        return const Color(0xFF22C55E); // green-500
+      case CompatLabel.sangkyeongyeobin:
+        return const Color(0xFF3B82F6); // blue-500
+      case CompatLabel.mahapgaseong:
+        return const Color(0xFFF97316); // orange-500
+      case CompatLabel.hyeonggeuknanjo:
+        return const Color(0xFFEF4444); // red-500
+    }
+  }
+}
+
 // ─────────────────────────────────────────────────────────────
 // Info dialog helpers
 // ─────────────────────────────────────────────────────────────
@@ -706,34 +752,35 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 44,
-            child: Text(title,
-                style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary)),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Expanded(
+                child: Text(title,
+                    style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimary)),
+              ),
+              Text(weight,
+                  style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w400,
+                      color: AppTheme.textHint)),
+            ],
           ),
-          SizedBox(
-            width: 48,
-            child: Text(weight,
-                style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w400,
-                    color: AppTheme.textHint)),
-          ),
-          Expanded(
-            child: Text(body,
-                style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w400,
-                    color: AppTheme.textSecondary,
-                    height: 1.6)),
-          ),
+          const SizedBox(height: 4),
+          Text(body,
+              style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400,
+                  color: AppTheme.textSecondary,
+                  height: 1.6)),
         ],
       ),
     );
@@ -766,13 +813,14 @@ class _LabelRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     _GradeStepper(label: label),
                     const SizedBox(width: 8),
-                    Expanded(
+                    // 전통 한글 + 한자 — 근거로서의 자료 보존.
+                    Flexible(
                       child: RichText(
                         text: TextSpan(
-                          // 등급명은 accent 컬러로 — 사용자가 좋고 나쁨을 즉시 인지.
                           style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
@@ -783,11 +831,29 @@ class _LabelRow extends StatelessWidget {
                             TextSpan(
                               text: label.hanja,
                               style: const TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w400,
                                   color: AppTheme.textHint),
                             ),
                           ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // 모던 보조 chip — 사용자가 즉시 의미를 잡도록 다른 색 작은 라벨.
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surface,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        label.modernKo,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: AppTheme.textPrimary,
                         ),
                       ),
                     ),
@@ -819,20 +885,24 @@ class _LabelRow extends StatelessWidget {
     switch (l) {
       case CompatLabel.cheonjakjihap:
         return const _TaglinePair(
-            headline: '천생연분의 기운이 우세',
-            detail: '얼굴상이 흔치않게 잘 맞는 자리.');
+            headline: '굳이 맞추지 않아도 흐름이 맞는 사이',
+            detail:
+                '얼굴이 보여주는 결이 너무나 잘 통합니다. 같이 있을수록 편해지고 다툼의 자리가 거의 생기지 않습니다.');
       case CompatLabel.sangkyeongyeobin:
         return const _TaglinePair(
-            headline: '상생의 좋은 점 우세',
-            detail: '예를 지키며 오래 가는 자리.');
+            headline: '서로의 거리를 지키며 오래 가는 사이',
+            detail:
+                '같은 방향을 보지만 너무 가까이 붙지 않을 때 가장 잘 됩니다. 예의를 지키는 만큼 깊어집니다.');
       case CompatLabel.mahapgaseong:
         return const _TaglinePair(
-            headline: '좋은 점과 우려가 균형',
-            detail: '다듬으며 이루어 가는 자리.');
+            headline: '시간을 들이면 좋은 짝이 되는 사이',
+            detail:
+                '처음엔 어색하고 박자가 어긋날 수 있습니다. 다만 서로 다듬어 가다 보면 단단한 관계가 됩니다.');
       case CompatLabel.hyeonggeuknanjo:
         return const _TaglinePair(
-            headline: '우려되는 점 우세',
-            detail: '서로 조심히 지켜 줘야 하는 자리.');
+            headline: '결이 달라 부딪힘이 잦은 사이',
+            detail:
+                '비슷한 점보다 다른 점이 먼저 보입니다. 한 번에 풀려고 하지 말고 천천히 거리감을 조절해야 합니다.');
     }
   }
 }
@@ -853,13 +923,18 @@ class _MiniBar extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              entry.korean,
-              style: TextStyle(
-                  fontSize: 11,
-                  color: labelColor,
-                  letterSpacing: 0.5),
+            Flexible(
+              child: Text(
+                entry.korean,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontSize: 10,
+                    color: labelColor,
+                    letterSpacing: 0),
+              ),
             ),
+            const SizedBox(width: 4),
             Text(entry.muted ? '—' : entry.value.toStringAsFixed(0),
                 style: TextStyle(
                     fontSize: 11,
@@ -902,16 +977,16 @@ class _MiniBars extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final entries = <_MiniEntry>[
-      _MiniEntry('오행',
+      _MiniEntry(CompatSubKind.element.modernKo,
           subScoreToDisplay(CompatSubKind.element, report.sub.elementScore)!,
           false),
-      _MiniEntry('궁위',
+      _MiniEntry(CompatSubKind.palace.modernKo,
           subScoreToDisplay(CompatSubKind.palace, report.sub.palaceScore)!,
           false),
+      _MiniEntry(CompatSubKind.qi.modernKo,
+          subScoreToDisplay(CompatSubKind.qi, report.sub.qiScore)!, false),
       _MiniEntry(
-          '기질', subScoreToDisplay(CompatSubKind.qi, report.sub.qiScore)!, false),
-      _MiniEntry(
-        '친밀',
+        CompatSubKind.intimacy.modernKo,
         subScoreToDisplay(
               CompatSubKind.intimacy,
               report.sub.intimacyScore,
@@ -978,64 +1053,6 @@ class _Thumb extends StatelessWidget {
               color: AppTheme.textHint, size: 20),
         ),
       ),
-    );
-  }
-}
-
-/// 4 단계 stepper — cheonjakjihap(녹) → sangkyeongyeobin(파) → mahapgaseong(주) → hyeonggeuknanjo(빨).
-/// 활성 dot 만 해당 등급 vivid 컬러 채움 (이모지 🟢🔵🟠🔴 톤). 비활성 dot 과 dash 는 border 톤.
-class _GradeStepper extends StatelessWidget {
-  final CompatLabel label;
-  const _GradeStepper({required this.label});
-
-  static const _order = [
-    CompatLabel.cheonjakjihap,
-    CompatLabel.sangkyeongyeobin,
-    CompatLabel.mahapgaseong,
-    CompatLabel.hyeonggeuknanjo,
-  ];
-
-  // 이모지 🟢🔵🟠🔴 톤 — chip 의 muted accent 와 분리된 stepper 전용 vivid 컬러.
-  static Color _stepColor(CompatLabel l) {
-    switch (l) {
-      case CompatLabel.cheonjakjihap:
-        return const Color(0xFF22C55E); // green-500
-      case CompatLabel.sangkyeongyeobin:
-        return const Color(0xFF3B82F6); // blue-500
-      case CompatLabel.mahapgaseong:
-        return const Color(0xFFF97316); // orange-500
-      case CompatLabel.hyeonggeuknanjo:
-        return const Color(0xFFEF4444); // red-500
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final activeIdx = _order.indexOf(label);
-    final activeColor = _stepColor(label);
-    final dots = <Widget>[];
-    for (var i = 0; i < _order.length; i++) {
-      final isActive = i == activeIdx;
-      dots.add(Container(
-        width: isActive ? 9 : 6,
-        height: isActive ? 9 : 6,
-        decoration: BoxDecoration(
-          color: isActive ? activeColor : AppTheme.border,
-          shape: BoxShape.circle,
-        ),
-      ));
-      if (i < _order.length - 1) {
-        dots.add(Container(
-          width: 6,
-          height: 1.5,
-          color: AppTheme.border,
-        ));
-      }
-    }
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: dots,
     );
   }
 }

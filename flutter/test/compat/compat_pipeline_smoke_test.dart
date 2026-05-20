@@ -202,7 +202,7 @@ void main() {
     expect(bundle.report.sub.intimacyScore, 50.0);
     // same-sex 여도 narrative 는 5 섹션 모두 출력 (scoreReason 에 친밀 미계산 명시).
     expect(bundle.narrative.sectionsInOrder.length, 5);
-    expect(bundle.narrative.scoreReason.contains('친밀'), true);
+    expect(bundle.narrative.scoreReason.contains('로맨스'), true);
   });
 
   test('attribute/archetype 재사용 없음 — compat engine 순수성', () {

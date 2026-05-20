@@ -61,7 +61,7 @@ const Map<String, List<String>> _slotPools = {
   'person_m': ['남자', '사내', '한 사람', '대범한 이', '듬직한 이'],
   'person_f': ['여자', '여인', '한 사람', '단아한 이', '품격 있는 이'],
   'rare': [
-    '드물게도', '남달리', '유난히', '보기 드물게', '특별히', '귀하게',
+    '매우 드물게도', '남달리', '유난히', '보기 드물게', '특별히', '귀하게',
     '흔치 않게', '각별히', '남들과 달리', '격이 다르게',
   ],
   'observe': [
@@ -1653,28 +1653,8 @@ _Band _band(double s) {
   return _Band.low;
 }
 
-// ─── Soft band weights ──────────────────────────────────────────────────
-// 5.0~10.0 정규화 점수에 대해 high/mid/low band 소속도를 연속 [0, 1] 로
-// 반환. hard cutoff (8.0 / 6.5) 근처의 plateau/cliff 를 제거하기 위함.
-// _hi 는 [6.5, 8.0] 구간에서 선형 상승, _lo 는 [5.0, 6.5] 구간에서 하강,
-// _mi 는 나머지. boundary 에서 양측 fragment 가 섞여 뽑히도록 설계.
-
-double _hi(double s) {
-  if (s >= 8.0) return 1.0;
-  if (s <= 6.5) return 0.0;
-  return (s - 6.5) / 1.5;
-}
-
-double _lo(double s) {
-  if (s <= 5.0) return 1.0;
-  if (s >= 6.5) return 0.0;
-  return (6.5 - s) / 1.5;
-}
-
-double _mi(double s) {
-  final rest = 1.0 - _hi(s) - _lo(s);
-  return rest < 0 ? 0.0 : rest;
-}
+_WeightFn _bandPair(Attribute a, _Band ba, Attribute b, _Band bb) =>
+    (f) => _bandWeight(f.scoreOf(a), ba) * _bandWeight(f.scoreOf(b), bb);
 
 double _bandWeight(double s, _Band b) {
   switch (b) {
@@ -1686,26 +1666,6 @@ double _bandWeight(double s, _Band b) {
       return _lo(s);
   }
 }
-
-/// z-score 용 ramp. |z| 기준 0.5 에서 정점 가까이 가고 0 에서 0.
-/// metric / node 단위 예전 hard `>= 0.5` 임계에 대응.
-double _softHiZ(double z) {
-  if (z >= 1.0) return 1.0;
-  if (z <= 0.0) return 0.0;
-  return z;
-}
-
-double _softLoZ(double z) => _softHiZ(-z);
-
-double _softMidZ(double z) {
-  final a = z.abs();
-  if (a <= 0.2) return 1.0;
-  if (a >= 1.0) return 0.0;
-  return (1.0 - a) / 0.8;
-}
-
-_WeightFn _bandPair(Attribute a, _Band ba, Attribute b, _Band bb) =>
-    (f) => _bandWeight(f.scoreOf(a), ba) * _bandWeight(f.scoreOf(b), bb);
 
 String _buildSection(_Features f, List<_BeatPool> beats, int sectionSalt) {
   final buf = StringBuffer();
@@ -1842,6 +1802,18 @@ String _genderedKey(String key, _Features f) {
   return key;
 }
 
+// ─── Soft band weights ──────────────────────────────────────────────────
+// 5.0~10.0 정규화 점수에 대해 high/mid/low band 소속도를 연속 [0, 1] 로
+// 반환. hard cutoff (8.0 / 6.5) 근처의 plateau/cliff 를 제거하기 위함.
+// _hi 는 [6.5, 8.0] 구간에서 선형 상승, _lo 는 [5.0, 6.5] 구간에서 하강,
+// _mi 는 나머지. boundary 에서 양측 fragment 가 섞여 뽑히도록 설계.
+
+double _hi(double s) {
+  if (s >= 8.0) return 1.0;
+  if (s <= 6.5) return 0.0;
+  return (s - 6.5) / 1.5;
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // 섹션별 beat pool — 각 beat 는 feature-activated fragment 리스트.
 // 마지막 fragment 는 항상 fallback (applies = (_) => true).
@@ -1854,6 +1826,22 @@ _WeightFn _highOf(Attribute a) => (f) => _hi(f.scoreOf(a));
 _WeightFn _highPair(Attribute a, Attribute b) =>
     (f) => _hi(f.scoreOf(a)) * _hi(f.scoreOf(b));
 
+bool _isLate(_Features f) => f.age.isOver50;
+
+bool _isMid(_Features f) => f.age.isOver30 && !f.age.isOver50;
+
+// 연령대 hard predicate — 한국 관상학 연령 분포 grounded.
+//   young (10s~20s):  20대 들머리 — 잠재·탐색·기반 형성기
+//   mid (30s~40s):    중년 절정기 — 운이 크게 열리고 정점에 닿는 실행기
+//   late (50s+):      후반기 — 회수·전수·노년 풍요를 누리는 시기
+bool _isYoung(_Features f) => !f.age.isOver30;
+
+double _lo(double s) {
+  if (s <= 5.0) return 1.0;
+  if (s >= 6.5) return 0.0;
+  return (6.5 - s) / 1.5;
+}
+
 _WeightFn _lowOf(Attribute a) => (f) => _lo(f.scoreOf(a));
 
 _WeightFn _lowPair(Attribute a, Attribute b) =>
@@ -1864,6 +1852,11 @@ _WeightFn _metHi(String id) => (f) => _softHiZ(f.mz(id));
 _WeightFn _metLo(String id) => (f) => _softLoZ(f.mz(id));
 
 _WeightFn _metMid(String id) => (f) => _softMidZ(f.mz(id));
+
+double _mi(double s) {
+  final rest = 1.0 - _hi(s) - _lo(s);
+  return rest < 0 ? 0.0 : rest;
+}
 
 _WeightFn _midOf(Attribute a) => (f) => _mi(f.scoreOf(a));
 
@@ -1927,13 +1920,20 @@ String _resolveText(String text, _Features f, int seed) {
   return t;
 }
 
-// 연령대 hard predicate — 한국 관상학 연령 분포 grounded.
-//   young (10s~20s):  20대 들머리 — 잠재·탐색·기반 형성기
-//   mid (30s~40s):    중년 절정기 — 운이 크게 열리고 정점에 닿는 실행기
-//   late (50s+):      후반기 — 회수·전수·노년 풍요를 누리는 시기
-bool _isYoung(_Features f) => !f.age.isOver30;
-bool _isMid(_Features f) => f.age.isOver30 && !f.age.isOver50;
-bool _isLate(_Features f) => f.age.isOver50;
+/// z-score 용 ramp. |z| 기준 0.5 에서 정점 가까이 가고 0 에서 0.
+/// metric / node 단위 예전 hard `>= 0.5` 임계에 대응.
+double _softHiZ(double z) {
+  if (z >= 1.0) return 1.0;
+  if (z <= 0.0) return 0.0;
+  return z;
+}
+double _softLoZ(double z) => _softHiZ(-z);
+double _softMidZ(double z) {
+  final a = z.abs();
+  if (a <= 0.2) return 1.0;
+  if (a >= 1.0) return 0.0;
+  return (1.0 - a) / 0.8;
+}
 
 bool _yangLean(_Features f) =>
     f.yinYang.tone == YinYangTone.strongYang ||
@@ -1951,6 +1951,10 @@ bool _yinStrong(_Features f) => f.yinYang.tone == YinYangTone.strongYin;
 bool _yyHarmony(_Features f) => f.yinYang.tone == YinYangTone.harmony;
 
 typedef _BeatPool = List<_Frag>;
+
+// ─── Fragment + Picker ──────────────────────────────────────────────────
+
+typedef _WeightFn = double Function(_Features);
 
 // ─── Features ────────────────────────────────────────────────────────────
 
@@ -2009,10 +2013,6 @@ class _Features {
   double nodeZ(String id) => nodeOwnZ[id] ?? 0.0;
   double scoreOf(Attribute a) => scores[a] ?? 7.0;
 }
-
-// ─── Fragment + Picker ──────────────────────────────────────────────────
-
-typedef _WeightFn = double Function(_Features);
 
 class _Frag {
   /// 프래그먼트가 얼마만큼 "이 얼굴에 어울리는가" — [0.0, 1.0].

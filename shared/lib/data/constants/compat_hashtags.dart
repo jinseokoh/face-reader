@@ -29,7 +29,7 @@ class CompatChip {
 
 const _generalWarm = <String>[
   '#케미폭발',
-  '#찰떡호흡',
+  '#호흡척척',
   '#편안한사이',
   '#대화잘통함',
   '#든든함',
@@ -96,13 +96,13 @@ List<CompatChip> chipsForCompat(CompatibilityReport r) {
 
   final dataChips = <CompatChip>[];
   dataChips.add(_relationChip(r.elementRelation.kind));
-  final cEl = _subChip(el, '#오행상생', '#오행충돌');
+  final cEl = _subChip(el, '#가치관케미', '#가치관차이');
   if (cEl != null) dataChips.add(cEl);
-  final cPa = _subChip(pa, '#궁위찰떡', '#궁위어긋남');
+  final cPa = _subChip(pa, '#관심사일치', '#관심사어긋남');
   if (cPa != null) dataChips.add(cPa);
-  final cQi = _subChip(qi, '#기질찰떡', '#기질충돌');
+  final cQi = _subChip(qi, '#소통원활', '#소통어긋남');
   if (cQi != null) dataChips.add(cQi);
-  final cIt = _subChip(it, '#친밀로맨틱', '#친밀과제');
+  final cIt = _subChip(it, '#로맨스가득', '#로맨스과제');
   if (cIt != null) dataChips.add(cIt);
   for (final c in dataChips) {
     if (c.tone == CompatChipTone.warm) {

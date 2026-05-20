@@ -127,7 +127,7 @@ void main() {
       expect(r.intimacy.gateActive, false);
       final n = buildCompatNarrative(report: r, pairSeed: 42);
       expect(n.sectionsInOrder.length, 5);
-      expect(n.scoreReason.contains('친밀'), true);
+      expect(n.scoreReason.contains('로맨스'), true);
     });
   });
 }

@@ -19,7 +19,6 @@ import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/services/compat/intimacy.dart';
 import 'package:face_engine/domain/services/compat/organ_pair_rules.dart';
-import 'package:face_engine/domain/services/compat/palace.dart';
 import 'package:face_engine/domain/services/compat/palace_state.dart';
 import 'package:face_engine/domain/services/compat/qi_score.dart';
 import 'package:face_engine/domain/services/compat/yinyang_matcher.dart';
@@ -66,16 +65,6 @@ double _normal(Random rng) {
     'snubNose': rng.nextDouble() < 0.08,
   };
   return (zMap: z, nodeZ: nodeZ, flags: flags);
-}
-
-AgeGroup _sampleAge(Random rng) {
-  const ages = [
-    AgeGroup.twenties,
-    AgeGroup.thirties,
-    AgeGroup.forties,
-    AgeGroup.fifties,
-  ];
-  return ages[rng.nextInt(ages.length)];
 }
 
 Gender _sampleGender(Random rng) => rng.nextBool() ? Gender.male : Gender.female;

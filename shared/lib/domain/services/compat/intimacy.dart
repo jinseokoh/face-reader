@@ -173,8 +173,8 @@ IntimacyResult computeIntimacy({
     subScore: sub,
     gateActive: true,
     components: [
-      IntimacyComponent(id: 'mwGong', value: mw, note: '男女宮 pair'),
-      IntimacyComponent(id: 'spouse', value: sp, note: '妻妾宮 pair'),
+      IntimacyComponent(id: 'mwGong', value: mw, note: 'children palace pair'),
+      IntimacyComponent(id: 'spouse', value: sp, note: 'spouse palace pair'),
       IntimacyComponent(id: 'lip', value: lip, note: 'lip geometry'),
       IntimacyComponent(id: 'eye', value: eye, note: 'eye charisma'),
     ],
