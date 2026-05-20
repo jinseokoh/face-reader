@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/ethnicity.dart';
+import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_reader/core/theme.dart';
@@ -20,18 +21,6 @@ import 'package:top_snackbar_flutter/top_snack_bar.dart';
 // 본 화면은 AppColors 의 gold / goldDim / goldSoft / surface / border / textHint
 // 만으로 충분 — file-local 컬러 상수 없음. 프로필 헤더는 DESIGN.md §3.7
 // (Integrated sliver header) 에 따라 AppColors 만 사용.
-
-String _faceShapeLabelKo(String? mlLabel) {
-  const labelMap = {
-    'Heart': '하트형',
-    'Oblong': '세로로 긴 얼굴형',
-    'Oval': '계란형',
-    'Round': '둥근 얼굴형',
-    'Square': '각진 얼굴형',
-  };
-  if (mlLabel == null) return '내 얼굴';
-  return labelMap[mlLabel] ?? mlLabel;
-}
 
 class PhysiognomyScreen extends ConsumerStatefulWidget {
   const PhysiognomyScreen({super.key});
@@ -103,7 +92,7 @@ class _MyProfileHeader extends StatelessWidget {
             '${mf.ethnicity.labelKo}'
         : '내 관상을 설정해주세요.';
     final captionText = isSet
-        ? (mf.alias ?? _faceShapeLabelKo(mf.faceShapeLabel))
+        ? (mf.alias ?? mf.faceShape.korean)
         : '더보기 메뉴를 통해 설정 가능합니다.';
     return Container(
       decoration: const BoxDecoration(
@@ -185,7 +174,7 @@ class _PhysiognomyItem extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final displayName = report.alias ?? _faceShape();
+    final displayName = report.alias ?? report.faceShape.korean;
     final isMyFace = report.isMyFace;
 
     return Padding(
@@ -480,95 +469,6 @@ class _PhysiognomyItem extends ConsumerWidget {
         ],
       ),
     );
-  }
-
-  /// 얼굴형 분류 — 우선순위:
-  ///   1) TFLite 28-feature MLP (76.9% test acc, Kaggle niten19 N=5000)
-  ///      → report.faceShapeLabel ∈ {Heart, Oblong, Oval, Round, Square}
-  ///   2) 실패 시 legacy 2-stage LDA fallback (22장 학습, 3-class)
-  ///
-  /// Legacy LDA 주석 (fallback 경로):
-  ///   Stage 1: faceTaperRatio > 0.78 → 가로로 넓은 얼굴형
-  ///   Stage 2: LDA linear combination of aspect/gonial/upper → long vs standard
-  String _faceShape() {
-    // Preferred path: ML classifier output stamped at analysis time.
-    final mlLabel = report.faceShapeLabel;
-    if (mlLabel != null) {
-      final korean = _faceShapeLabelKo(mlLabel);
-      final conf = report.faceShapeConfidence;
-      debugPrint('══════════ [FACE SHAPE — ML] ══════════');
-      debugPrint('  label=$mlLabel ($korean) '
-          'confidence=${conf?.toStringAsFixed(3) ?? "n/a"}');
-      debugPrint('═══════════════════════════════════════');
-      return korean;
-    }
-    return _faceShapeLegacyLda();
-  }
-
-  /// Legacy 3-class LDA fallback. Used only when the ML classifier did not run
-  /// (old Hive reports, asset load failure, missing metric). Preserved as a
-  /// safety net during ML rollout.
-  String _faceShapeLegacyLda() {
-    // 구버전 Report(히스토리)는 새 메트릭이 없으므로 null-safe.
-    final aspect = report.metrics['faceAspectRatio'];
-    final taper = report.metrics['faceTaperRatio'];
-    final gonial = report.metrics['gonialAngle'];
-    final upper = report.metrics['upperFaceRatio'];
-
-    final aspectRaw = aspect?.rawValue ?? 0.0;
-    final taperRaw = taper?.rawValue ?? 0.0;
-    final gonialRaw = gonial?.rawValue ?? 0.0;
-    final upperRaw = upper?.rawValue ?? 0.0;
-
-    // Stage 1: wide 탐지 (학습셋 기반 single-threshold rule).
-    // Python 학습 threshold=0.7985 였으나, device single-frame 노이즈로
-    // 동일인 프레임 간 taper 편차 ±0.04 관측 → 0.78로 완화 (device 검증).
-    const double kWideTaperThreshold = 0.78;
-
-    // Stage 2: long vs standard (unstandardized LDA coefficients on raw values).
-    // 학습셋 분리: long range=[+1.28, +11.55], standard range=[-11.37, -1.19].
-    // Intercept -222.52(Python) → -245 (Flutter aspect 체계 편향 +0.13 보상,
-    // 150.88 × 0.13 ≈ 20 만큼 아래로 shift).
-    const double kS2AspectCoef = 150.8780;
-    const double kS2GonialCoef = -0.4313;
-    const double kS2UpperCoef = 309.9574;
-    const double kS2Intercept = -245.0;
-
-    final String label;
-    final String reason;
-    final double stage2 = kS2AspectCoef * aspectRaw +
-        kS2GonialCoef * gonialRaw +
-        kS2UpperCoef * upperRaw +
-        kS2Intercept;
-
-    if (taperRaw > kWideTaperThreshold) {
-      label = '가로로 넓은 얼굴형';
-      reason = 'faceTaperRatio=${taperRaw.toStringAsFixed(4)} > '
-          '$kWideTaperThreshold (stage 1)';
-    } else if (stage2 > 0) {
-      label = '세로로 긴 얼굴형';
-      reason = 'stage2=${stage2.toStringAsFixed(2)} > 0 (stage 2 — long)';
-    } else {
-      label = '표준 얼굴형';
-      reason = 'stage2=${stage2.toStringAsFixed(2)} ≤ 0 (stage 2 — standard)';
-    }
-
-    String rawStr(dynamic m, {int digits = 4}) =>
-        m == null ? '(missing)' : (m.rawValue as double).toStringAsFixed(digits);
-
-    debugPrint('══════════ [FACE SHAPE] ══════════');
-    debugPrint(
-        '  gender=${report.gender.name} ethnicity=${report.ethnicity.name}');
-    debugPrint('  faceAspectRatio:   raw=${rawStr(aspect)}');
-    debugPrint(
-        '  faceTaperRatio:    raw=${rawStr(taper)}  (stage1 threshold=$kWideTaperThreshold)');
-    debugPrint('  gonialAngle:       raw=${rawStr(gonial, digits: 2)}');
-    debugPrint('  upperFaceRatio:    raw=${rawStr(upper)}');
-    debugPrint('  stage2Score = ${stage2.toStringAsFixed(3)} '
-        '(+=long, −=standard; neutral if stage1 fires)');
-    debugPrint('  decision: $reason → "$label"');
-    debugPrint('═══════════════════════════════════');
-    return label;
   }
 
   void _setMyFace(BuildContext context, WidgetRef ref) {
