@@ -58,7 +58,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyBm3rNOht9COTg3zcpHsrNvVlQmfrkibt4',
-    appId: '1:298461981552:android:d5333fb0909678acecbdb5',
+    appId: '1:298461981552:android:e16595981db25336ecbdb5',
     messagingSenderId: '298461981552',
     projectId: 'ai-face-reader-1960a',
     storageBucket: 'ai-face-reader-1960a.firebasestorage.app',
@@ -66,11 +66,11 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyCrpf4lTiPzVAg044uG2lJ4ZNolCpjNiPA',
-    appId: '1:298461981552:ios:46ad2778bf836e11ecbdb5',
+    appId: '1:298461981552:ios:97b511c7dfdf2870ecbdb5',
     messagingSenderId: '298461981552',
     projectId: 'ai-face-reader-1960a',
     storageBucket: 'ai-face-reader-1960a.firebasestorage.app',
-    iosBundleId: 'com.scienceintegration.face',
+    iosBundleId: 'com.scienceintegration.facely',
   );
 
 }
