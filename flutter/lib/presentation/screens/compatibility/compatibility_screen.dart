@@ -494,17 +494,17 @@ class _CompatListCard extends StatelessWidget {
                                     letterSpacing: 1,
                                     height: 1.2),
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                r.label.modernKo,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                  color: AppTheme.textPrimary,
-                                  height: 1.2,
-                                ),
-                              ),
                             ],
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          r.label.modernKo,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
+                            color: AppTheme.textHint,
+                            height: 1.4,
                           ),
                         ),
                       ],
@@ -516,7 +516,7 @@ class _CompatListCard extends StatelessWidget {
                     children: [
                       Text(r.total.toStringAsFixed(0),
                           style: const TextStyle(
-                              fontSize: 36,
+                              fontSize: 28,
                               fontWeight: FontWeight.w300,
                               color: AppTheme.textPrimary,
                               height: 1)),
@@ -836,24 +836,6 @@ class _LabelRow extends StatelessWidget {
                                   color: AppTheme.textHint),
                             ),
                           ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // 모던 보조 chip — 사용자가 즉시 의미를 잡도록 다른 색 작은 라벨.
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppTheme.surface,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        label.modernKo,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: AppTheme.textPrimary,
                         ),
                       ),
                     ),

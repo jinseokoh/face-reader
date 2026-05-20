@@ -23,17 +23,18 @@ import 'palace.dart';
 // ─────────────────────── CompatLabel (4 등급) ───────────────────────────────
 
 extension CompatLabelModern on CompatLabel {
-  /// 일반 사용자가 즉시 이해할 수 있는 모던 부제. chip 옆 보조 라벨에 사용.
+  /// 일반 사용자가 즉시 이해할 수 있는 모던 부제. list 카드의 chip 아래
+  /// 흐린 caption 으로 노출. ≈ "한 문장 정도" 분량.
   String get modernKo {
     switch (this) {
       case CompatLabel.cheonjakjihap:
-        return '최고의 케미';
+        return '굳이 맞추지 않아도 손발이 맞는 사이';
       case CompatLabel.sangkyeongyeobin:
-        return '존중하는 사이';
+        return '서로 존중하며 오래가는 사이';
       case CompatLabel.mahapgaseong:
-        return '다듬으면 빛나는';
+        return '시간을 들이면 점점 빛나는 사이';
       case CompatLabel.hyeonggeuknanjo:
-        return '결이 다른 만남';
+        return '박자가 달라 부딪힘이 잦은 사이';
     }
   }
 
@@ -165,7 +166,7 @@ extension ElementRelationKindModern on ElementRelationKind {
       case ElementRelationKind.generated:
         return '든든하게 받쳐주는 사이';
       case ElementRelationKind.overcoming:
-        return '페이스를 잡아주는 사이';
+        return '내가 차분히 이끄는 사이';
       case ElementRelationKind.overcome:
         return '나를 단련시키는 사이';
     }

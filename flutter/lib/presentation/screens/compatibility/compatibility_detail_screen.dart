@@ -318,7 +318,7 @@ class _CompatShareCard extends StatelessWidget {
           children: [
             Align(
               alignment: Alignment.centerLeft,
-              child: Text('AI 관상가 궁합평가',
+              child: Text('Facely 궁합평가',
                   style: TextStyle(
                       color: _CompatPalette.sand,
                       fontSize: 12,
@@ -326,24 +326,32 @@ class _CompatShareCard extends StatelessWidget {
                       letterSpacing: 1)),
             ),
             const SizedBox(height: 10),
-            RichText(
-              text: TextSpan(
-                style: const TextStyle(
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  report.label.korean,
+                  style: const TextStyle(
+                    fontFamily: 'SongMyung',
                     color: Colors.white,
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
-                    height: 1.0),
-                children: [
-                  TextSpan(text: report.label.korean),
-                  TextSpan(
-                    text: '(${report.label.hanja})',
-                    style: TextStyle(
-                        color: _CompatPalette.sand,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w400),
+                    height: 1.0,
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '(${report.label.hanja})',
+                  style: TextStyle(
+                    fontFamily: 'SongMyung',
+                    color: _CompatPalette.sand,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w400,
+                    height: 1.0,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 6),
             Text(tagline,
@@ -366,7 +374,7 @@ class _CompatShareCard extends StatelessWidget {
                   child: Text('×',
                       style: TextStyle(
                           color: Colors.white,
-                          fontSize: 18,
+                          fontSize: 32,
                           fontWeight: FontWeight.w300)),
                 ),
                 Expanded(
@@ -552,12 +560,13 @@ class _SubBar extends StatelessWidget {
       child: Row(
         children: [
           SizedBox(
-            width: 64,
+            width: 76,
             child: Text(row.label,
                 style: const TextStyle(
                     fontSize: 13,
                     color: AppTheme.textPrimary)),
           ),
+          const SizedBox(width: 6),
           Expanded(
             child: Stack(
               children: [
@@ -581,28 +590,27 @@ class _SubBar extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 6),
           SizedBox(
             width: 56,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisSize: MainAxisSize.min,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
               children: [
                 Text(
                   row.value.toStringAsFixed(0),
                   style: const TextStyle(
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: AppTheme.textPrimary,
-                    height: 1.1,
                   ),
                 ),
                 const Text(
-                  '/ 100',
+                  ' / 100',
                   style: TextStyle(
                     fontSize: 10,
                     color: AppTheme.textHint,
-                    height: 1.3,
                   ),
                 ),
               ],
@@ -717,7 +725,7 @@ class _TotalHeader extends StatelessWidget {
         children: [
           Align(
             alignment: Alignment.centerLeft,
-            child: Text('AI 관상가 궁합평가',
+            child: Text('Facely 궁합평가',
                 style: TextStyle(
                     color: _CompatPalette.sand,
                     fontSize: 12,
@@ -725,31 +733,39 @@ class _TotalHeader extends StatelessWidget {
                     letterSpacing: 1)),
           ),
           const SizedBox(height: 10),
-          RichText(
-            text: TextSpan(
-              style: const TextStyle(
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                label.korean,
+                style: const TextStyle(
+                  fontFamily: 'SongMyung',
                   color: Colors.white,
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  height: 1.0),
-              children: [
-                TextSpan(text: label.korean),
-                TextSpan(
-                  text: '(${label.hanja})',
-                  style: TextStyle(
-                      color: _CompatPalette.sand,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w400),
+                  height: 1.0,
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '(${label.hanja})',
+                style: TextStyle(
+                  fontFamily: 'SongMyung',
+                  color: _CompatPalette.sand,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w400,
+                  height: 1.0,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 6),
           Text(_labelTagline(label),
               textAlign: TextAlign.center,
               style: TextStyle(
                   color: _CompatPalette.sand,
-                  fontSize: 12,
+                  fontSize: 13,
                   letterSpacing: 1)),
           const SizedBox(height: 18),
           Row(
@@ -765,7 +781,7 @@ class _TotalHeader extends StatelessWidget {
                 child: Text('×',
                     style: TextStyle(
                         color: Colors.white,
-                        fontSize: 18,
+                        fontSize: 32,
                         fontWeight: FontWeight.w300)),
               ),
               Expanded(
@@ -801,16 +817,5 @@ class _TotalHeader extends StatelessWidget {
     );
   }
 
-  static String _labelTagline(CompatLabel l) {
-    switch (l) {
-      case CompatLabel.cheonjakjihap:
-        return '하늘이 맺어 준 드문 자리';
-      case CompatLabel.sangkyeongyeobin:
-        return '예를 지키며 오래가는 자리';
-      case CompatLabel.mahapgaseong:
-        return '다듬으며 이루어 가는 자리';
-      case CompatLabel.hyeonggeuknanjo:
-        return '서로를 조심히 지켜 줘야 하는 자리';
-    }
-  }
+  static String _labelTagline(CompatLabel l) => l.tagline;
 }
