@@ -62,13 +62,14 @@ class CompatLabelThresholds {
   });
 }
 
-/// aggregator 의 `_remapToUserScale` 가 MC p30/p60/p90 을 56/78/90 에 정확히
-/// 꽂도록 설계되어 있어, 이 리터럴이 그대로 10/30/30/30 target 분포를 만든다.
-/// UX 기준: 한국 사용자 직관에 맞춰 50/75/90 근처 짝수 경계.
+/// MC 20k seed=42 측정의 p30/p60/p90 (61.56 / 81.42 / 90.50) 을 그대로 사용해
+/// 10/30/30/30 target 분포를 자연스럽게 만든다. intimacy 가 모든 페어에서
+/// 실제 계산되도록 변경되면서 user-scale 분포가 위로 시프트 — anchor 는 그대로
+/// 두고 label boundary 만 새 분포에 맞춤.
 const CompatLabelThresholds kCompatLabelThresholds = CompatLabelThresholds(
-  cheonjakjihap: 90.0,
-  sangkyeongyeobin: 78.0,
-  mahapgaseong: 56.0,
+  cheonjakjihap: 90.5,
+  sangkyeongyeobin: 81.5,
+  mahapgaseong: 61.5,
 );
 
 CompatLabel classifyLabel(double total,

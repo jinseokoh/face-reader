@@ -1,6 +1,11 @@
 /// 性情諧 (intimacy) sub-score — §9.
 ///
-/// Gate: 30~50 대 + opposite gender 만 fire. 그 외는 50 중립 + 섹션 숨김.
+/// 모든 페어에서 점수와 narrative 를 노출한다. tone 만 페어 조건으로 분기:
+///   - pure:      동성 페어 OR 한쪽이라도 10대/70대 이상 — 현재의 점잖은 산문체
+///   - newspaper: 이성 페어 + 한쪽 20대 또는 60대 (위 조건 미해당) — 짧고 미묘한 긴장
+///   - tabloid:   이성 페어 + 양쪽 모두 30~50 — 들키면 안 되는 분위기, 강한 punch line
+///
+/// score 공식은 항상 동일하게 작동 (50 + mwGong + spouse + lip + eye).
 ///
 /// 재료:
 /// - 男女宮 · 妻妾宮 state pair delta
@@ -11,6 +16,8 @@ library;
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'palace.dart';
+
+enum IntimacyTone { pure, newspaper, tabloid }
 
 class IntimacyComponent {
   final String id;
@@ -26,22 +33,40 @@ class IntimacyComponent {
 
 class IntimacyResult {
   final double subScore; // 5~99
-  final bool gateActive;
+  final IntimacyTone tone;
   final List<IntimacyComponent> components;
 
   const IntimacyResult({
     required this.subScore,
-    required this.gateActive,
+    required this.tone,
     required this.components,
   });
 }
 
-/// age gate: 30s~50s.
-bool _ageInGate(AgeGroup g) =>
+/// tabloid band: 양쪽 모두 30~50대.
+bool _ageInTabloidBand(AgeGroup g) =>
     g == AgeGroup.thirties || g == AgeGroup.forties || g == AgeGroup.fifties;
 
-/// gender gate: opposite.
-bool _genderOpposite(Gender a, Gender b) => a != b;
+/// pure band: 10대 또는 70대 이상.
+bool _ageInPureBand(AgeGroup g) =>
+    g == AgeGroup.teens ||
+    g == AgeGroup.seventies ||
+    g == AgeGroup.eighties ||
+    g == AgeGroup.nineties;
+
+IntimacyTone _resolveTone(
+  Gender myGender,
+  Gender albumGender,
+  AgeGroup myAge,
+  AgeGroup albumAge,
+) {
+  if (myGender == albumGender) return IntimacyTone.pure;
+  if (_ageInPureBand(myAge) || _ageInPureBand(albumAge)) return IntimacyTone.pure;
+  if (_ageInTabloidBand(myAge) && _ageInTabloidBand(albumAge)) {
+    return IntimacyTone.tabloid;
+  }
+  return IntimacyTone.newspaper;
+}
 
 double _clamp(double v, double lo, double hi) =>
     v < lo ? lo : (v > hi ? hi : v);
@@ -150,16 +175,7 @@ IntimacyResult computeIntimacy({
   required AgeGroup myAge,
   required AgeGroup albumAge,
 }) {
-  final gate =
-      _ageInGate(myAge) && _ageInGate(albumAge) && _genderOpposite(myGender, albumGender);
-
-  if (!gate) {
-    return const IntimacyResult(
-      subScore: 50.0,
-      gateActive: false,
-      components: [],
-    );
-  }
+  final tone = _resolveTone(myGender, albumGender, myAge, albumAge);
 
   final mw = _mwGongDelta(myPalaces[Palace.children], albumPalaces[Palace.children]);
   final sp = _spouseDelta(myPalaces[Palace.spouse], albumPalaces[Palace.spouse]);
@@ -171,7 +187,7 @@ IntimacyResult computeIntimacy({
 
   return IntimacyResult(
     subScore: sub,
-    gateActive: true,
+    tone: tone,
     components: [
       IntimacyComponent(id: 'mwGong', value: mw, note: 'children palace pair'),
       IntimacyComponent(id: 'spouse', value: sp, note: 'spouse palace pair'),

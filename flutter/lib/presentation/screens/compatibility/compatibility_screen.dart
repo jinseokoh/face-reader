@@ -969,13 +969,8 @@ class _MiniBars extends StatelessWidget {
           subScoreToDisplay(CompatSubKind.qi, report.sub.qiScore)!, false),
       _MiniEntry(
         CompatSubKind.intimacy.modernKo,
-        subScoreToDisplay(
-              CompatSubKind.intimacy,
-              report.sub.intimacyScore,
-              gateOff: !report.intimacy.gateActive,
-            ) ??
-            0.0,
-        !report.intimacy.gateActive,
+        subScoreToDisplay(CompatSubKind.intimacy, report.sub.intimacyScore)!,
+        false,
       ),
     ];
     return Row(

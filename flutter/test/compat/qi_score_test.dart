@@ -263,8 +263,8 @@ void main() {
     });
   });
 
-  group('L4 intimacy gate', () {
-    test('gate off (same-sex or age off) → 정확히 50', () {
+  group('L4 intimacy tone 분기', () {
+    test('동성 페어 → tone pure (score 는 실제 계산)', () {
       final rng = Random(5);
       final a = _sample(rng);
       final b = _sample(rng);
@@ -280,7 +280,6 @@ void main() {
         ageGroup: AgeGroup.thirties,
         lateralFlags: b.flags,
       );
-      // same sex
       final r1 = computeIntimacy(
         myZ: a.zMap,
         albumZ: b.zMap,
@@ -291,10 +290,27 @@ void main() {
         myAge: AgeGroup.thirties,
         albumAge: AgeGroup.thirties,
       );
-      expect(r1.gateActive, false);
-      expect(r1.subScore, 50.0);
-      // age off
-      final r2 = computeIntimacy(
+      expect(r1.tone, IntimacyTone.pure);
+      expect(r1.subScore, inInclusiveRange(5.0, 99.0));
+    });
+
+    test('이성 + 20대 포함 → tone newspaper', () {
+      final rng = Random(7);
+      final a = _sample(rng);
+      final b = _sample(rng);
+      final myPalaces = computePalaceStates(
+        zMap: a.zMap,
+        nodeZ: a.nodeZ,
+        ageGroup: AgeGroup.twenties,
+        lateralFlags: a.flags,
+      );
+      final albumPalaces = computePalaceStates(
+        zMap: b.zMap,
+        nodeZ: b.nodeZ,
+        ageGroup: AgeGroup.thirties,
+        lateralFlags: b.flags,
+      );
+      final r = computeIntimacy(
         myZ: a.zMap,
         albumZ: b.zMap,
         myPalaces: myPalaces,
@@ -304,15 +320,72 @@ void main() {
         myAge: AgeGroup.twenties,
         albumAge: AgeGroup.thirties,
       );
-      expect(r2.gateActive, false);
-      expect(r2.subScore, 50.0);
+      expect(r.tone, IntimacyTone.newspaper);
     });
 
-    test('gate active subScore 분포', () {
+    test('이성 + 10대 포함 → tone pure', () {
+      final rng = Random(9);
+      final a = _sample(rng);
+      final b = _sample(rng);
+      final myPalaces = computePalaceStates(
+        zMap: a.zMap,
+        nodeZ: a.nodeZ,
+        ageGroup: AgeGroup.teens,
+        lateralFlags: a.flags,
+      );
+      final albumPalaces = computePalaceStates(
+        zMap: b.zMap,
+        nodeZ: b.nodeZ,
+        ageGroup: AgeGroup.thirties,
+        lateralFlags: b.flags,
+      );
+      final r = computeIntimacy(
+        myZ: a.zMap,
+        albumZ: b.zMap,
+        myPalaces: myPalaces,
+        albumPalaces: albumPalaces,
+        myGender: Gender.male,
+        albumGender: Gender.female,
+        myAge: AgeGroup.teens,
+        albumAge: AgeGroup.thirties,
+      );
+      expect(r.tone, IntimacyTone.pure);
+    });
+
+    test('이성 + 70대 포함 → tone pure', () {
+      final rng = Random(11);
+      final a = _sample(rng);
+      final b = _sample(rng);
+      final myPalaces = computePalaceStates(
+        zMap: a.zMap,
+        nodeZ: a.nodeZ,
+        ageGroup: AgeGroup.seventies,
+        lateralFlags: a.flags,
+      );
+      final albumPalaces = computePalaceStates(
+        zMap: b.zMap,
+        nodeZ: b.nodeZ,
+        ageGroup: AgeGroup.forties,
+        lateralFlags: b.flags,
+      );
+      final r = computeIntimacy(
+        myZ: a.zMap,
+        albumZ: b.zMap,
+        myPalaces: myPalaces,
+        albumPalaces: albumPalaces,
+        myGender: Gender.female,
+        albumGender: Gender.male,
+        myAge: AgeGroup.seventies,
+        albumAge: AgeGroup.forties,
+      );
+      expect(r.tone, IntimacyTone.pure);
+    });
+
+    test('이성 + 양쪽 30~50대 → tone tabloid + subScore 분포', () {
       const n = 2000;
       final rng = Random(22);
       final scores = <double>[];
-      int activeCount = 0;
+      int tabloidCount = 0;
       for (int i = 0; i < n; i++) {
         final a = _sample(rng);
         final b = _sample(rng);
@@ -340,16 +413,16 @@ void main() {
           myAge: ageA,
           albumAge: ageB,
         );
-        if (r.gateActive) activeCount++;
+        if (r.tone == IntimacyTone.tabloid) tabloidCount++;
         scores.add(r.subScore);
       }
-      expect(activeCount, n); // 전부 게이트 활성 조건.
+      expect(tabloidCount, n); // 30~50 이성 전부 tabloid.
       scores.sort();
       final p10 = scores[(n * 0.1).floor()];
       final p90 = scores[(n * 0.9).floor()];
       final mean = scores.reduce((a, b) => a + b) / n;
       // ignore: avoid_print
-      print('\n========== intimacy subScore (n=$n gate on) ==========');
+      print('\n========== intimacy subScore (n=$n tabloid) ==========');
       // ignore: avoid_print
       print('p10=${p10.toStringAsFixed(2)} p90=${p90.toStringAsFixed(2)} '
           'mean=${mean.toStringAsFixed(2)} spread=${(p90 - p10).toStringAsFixed(2)}');

@@ -6,21 +6,13 @@
 /// 시각적 parity 확보. 내부 가중합 계산은 raw 값 그대로 돌아가므로 aggregator
 /// 와 총점 calibration 은 무변.
 ///
-/// 친밀(intimacy) 은 gate off 시 raw 50 에 대량 점결되어 percentile remap 이
-/// degenerate — gate on 인 경우만 자체 anchor (n=5,591, gate-on 분포 기준)
-/// 로 remap, gate off 는 null 반환 → UI 에서 "—" 표시.
+/// 친밀(intimacy) 도 모든 페어에서 raw score 가 계산되어 동일 anchor 로 remap.
 library;
 
 enum CompatSubKind { element, palace, qi, intimacy }
 
 /// raw sub-score → 0~100 display.
-/// [gateOff] 은 intimacy 에서만 의미 있음 — true 면 null 반환 (UI "—").
-double? subScoreToDisplay(
-  CompatSubKind kind,
-  double raw, {
-  bool gateOff = false,
-}) {
-  if (kind == CompatSubKind.intimacy && gateOff) return null;
+double? subScoreToDisplay(CompatSubKind kind, double raw) {
   return _piecewise(raw, _anchors[kind]!);
 }
 

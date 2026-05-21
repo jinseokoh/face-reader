@@ -14,12 +14,15 @@
 ///   - 분석가 톤, 직설적으로, 감성팔이 금지.
 library;
 
+import 'package:face_engine/data/enums/gender.dart';
+
 import 'compat_finding.dart';
 import 'compat_label.dart';
 import 'compat_phrase_pool.dart';
 import 'compat_pipeline.dart';
 import 'compat_sub_display.dart';
 import 'five_element.dart';
+import 'intimacy.dart';
 
 // ─────────────── top-level builder ───────────────
 
@@ -169,18 +172,17 @@ List<CompatFinding> _gatherFindings(CompatibilityReport r) {
   return list;
 }
 
-// ─────────────── intimacy chapter (30~50 이성 gate) ───────────────
+// ─────────────── intimacy chapter ───────────────
 //
-// 성숙한 연령의 이성 관계를 얼굴 근거·실생활 관찰·bucket 별 조언의
-// 3부 구조로 다루는 optional 섹션. intimacy.gateActive == false 면 null.
+// 모든 페어에서 노출되는 섹션. IntimacyTone 에 따라 형식이 달라진다:
+//   - pure:      opener + 4 axis 산문 + closer (현재의 점잖은 톤)
+//   - newspaper: opener + closer (짧고 미묘한 긴장, 인스타 릴스 자막 톤)
+//   - tabloid:   opener + closer (들키면 안 되는 분위기, SNS 공유 punch line)
 //
 // bucket 분류:
-//   - high (65 이상): 기회 인식·관리 권유
-//   - mid  (45~65): 실험·조율
-//   - low  (45 미만):  경계·속도 조절
-//
-// pair-seed 로 deterministic 하게 variant 선택. axis 문단은 cause →
-// observation → bucket별 advice 3 문장으로 구성돼 근거와 농후함을 확보.
+//   - high (65 이상): 강한 끌림
+//   - mid  (45~65):   잠재적·애매한 긴장
+//   - low  (45 미만): 어긋남
 
 String _intimacyBucket(double sub) {
   if (sub >= 65) return 'high';
@@ -188,19 +190,40 @@ String _intimacyBucket(double sub) {
   return 'low';
 }
 
-String? _intimacyChapter(CompatibilityReport r, int pairSeed) {
-  if (!r.intimacy.gateActive) return null;
+/// 톤별 opener pool 매핑.
+Map<Gender, Map<String, List<String>>> _openerPoolForTone(IntimacyTone tone) {
+  switch (tone) {
+    case IntimacyTone.pure:
+      return intimacyPureOpenerByBucketByGender;
+    case IntimacyTone.newspaper:
+      return intimacyNewspaperOpenerByBucketByGender;
+    case IntimacyTone.tabloid:
+      return intimacyTabloidOpenerByBucketByGender;
+  }
+}
 
+/// 톤별 closing pool 매핑.
+Map<Gender, Map<String, List<String>>> _closingPoolForTone(IntimacyTone tone) {
+  switch (tone) {
+    case IntimacyTone.pure:
+      return intimacyPureClosingByBucketByGender;
+    case IntimacyTone.newspaper:
+      return intimacyNewspaperClosingByBucketByGender;
+    case IntimacyTone.tabloid:
+      return intimacyTabloidClosingByBucketByGender;
+  }
+}
+
+String _intimacyChapter(CompatibilityReport r, int pairSeed) {
+  final tone = r.intimacy.tone;
   final bucket = _intimacyBucket(r.sub.intimacyScore);
   final subInt = r.sub.intimacyScore.round().toString();
 
-  // gender-별 pool 선택 — narrative 시점은 r.myGender (album 은 자동 반대성).
-  final openerByBucket = intimacyOpenerByBucketByGender[r.myGender] ??
+  // gender-별 pool 선택 — narrative 시점은 r.myGender.
+  final openerByBucket = _openerPoolForTone(tone)[r.myGender] ??
       const <String, List<String>>{};
-  final closingByBucket = intimacyClosingByBucketByGender[r.myGender] ??
+  final closingByBucket = _closingPoolForTone(tone)[r.myGender] ??
       const <String, List<String>>{};
-  final axisDetails = intimacyAxisDetailsByGender[r.myGender] ??
-      const <String, IntimacyAxisDetail>{};
 
   final buf = StringBuffer();
 
@@ -211,29 +234,34 @@ String? _intimacyChapter(CompatibilityReport r, int pairSeed) {
     buf.writeln(opener);
   }
 
-  // Axis 문단 — cause + observation + bucket별 advice 3 문장으로 농후.
-  for (final comp in r.intimacy.components) {
-    final sign = _intimacySign(comp.value);
-    final key = '${comp.id}-$sign';
-    final detail = axisDetails[key];
-    if (detail == null) continue;
+  // Axis 문단 — pure 톤에서만 4 axis 산문체로 출력.
+  // newspaper/tabloid 는 인스타 릴스 톤이라 axis 산문체 생략, opener+closer 만.
+  if (tone == IntimacyTone.pure) {
+    final axisDetails = intimacyAxisDetailsByGender[r.myGender] ??
+        const <String, IntimacyAxisDetail>{};
+    for (final comp in r.intimacy.components) {
+      final sign = _intimacySign(comp.value);
+      final key = '${comp.id}-$sign';
+      final detail = axisDetails[key];
+      if (detail == null) continue;
 
-    final advice = bucket == 'high'
-        ? detail.adviceHigh
-        : bucket == 'low'
-            ? detail.adviceLow
-            // mid bucket 은 high/low 조언 중 더 중립적인 쪽 선택 — pair-seed 로
-            // 분기시키되, 낮은 점수에서 들이대는 문제가 재발하지 않도록
-            // low 쪽에 약간 기울여 둔다 (seed even → low, odd → high).
-            : (((pairSeed + comp.id.hashCode) & 1) == 0
-                ? detail.adviceLow
-                : detail.adviceHigh);
+      final advice = bucket == 'high'
+          ? detail.adviceHigh
+          : bucket == 'low'
+              ? detail.adviceLow
+              // mid bucket 은 high/low 조언 중 더 중립적인 쪽 선택 — pair-seed 로
+              // 분기시키되, 낮은 점수에서 들이대는 문제가 재발하지 않도록
+              // low 쪽에 약간 기울여 둔다 (seed even → low, odd → high).
+              : (((pairSeed + comp.id.hashCode) & 1) == 0
+                  ? detail.adviceLow
+                  : detail.adviceHigh);
 
-    buf.writeln();
-    buf.writeln('[${_axisLabel(comp.id)}]');
-    buf.writeln(detail.cause);
-    buf.writeln(detail.observation);
-    buf.writeln(advice);
+      buf.writeln();
+      buf.writeln('[${_axisLabel(comp.id)}]');
+      buf.writeln(detail.cause);
+      buf.writeln(detail.observation);
+      buf.writeln(advice);
+    }
   }
 
   // Closing — bucket 별 pool.
@@ -322,12 +350,8 @@ String _scoreSection(CompatibilityReport r) {
       .toStringAsFixed(0);
   final qi = subScoreToDisplay(CompatSubKind.qi, r.sub.qiScore)!
       .toStringAsFixed(0);
-  final itDisplay = subScoreToDisplay(
-    CompatSubKind.intimacy,
-    r.sub.intimacyScore,
-    gateOff: !r.intimacy.gateActive,
-  );
-  final it = itDisplay?.toStringAsFixed(0);
+  final it = subScoreToDisplay(CompatSubKind.intimacy, r.sub.intimacyScore)!
+      .toStringAsFixed(0);
 
   final strongest = _strongestLayer(r);
   final weakest = _weakestLayer(r);
@@ -339,11 +363,7 @@ String _scoreSection(CompatibilityReport r) {
   buf.writeln('- 가치관(얼굴형 기본 성향): $el점');
   buf.writeln('- 관심사(결혼·가족·재물 등 12개 영역): $pa점');
   buf.writeln('- 소통 스타일(눈·코·입·얼굴 3 구역·에너지 균형의 짝): $qi점');
-  if (it != null) {
-    buf.writeln('- 로맨스(밀착도·끌림 영역, 30~50대 이성 기준): $it점');
-  } else {
-    buf.writeln('- 로맨스: 이번 조합에서는 따로 계산하지 않음');
-  }
+  buf.writeln('- 로맨스(밀착도·끌림 영역): $it점');
   buf.writeln();
   buf.writeln('이 점수가 나온 이유:');
   buf.writeln('- 가장 강한 축은 "$strongest" 영역이에요. 여기가 이 관계를 지탱합니다.');
@@ -480,10 +500,8 @@ List<MapEntry<String, double>> _subDisplayPairs(CompatibilityReport r) {
         subScoreToDisplay(CompatSubKind.palace, r.sub.palaceScore)!),
     MapEntry('소통 스타일(얼굴 세부 짝)',
         subScoreToDisplay(CompatSubKind.qi, r.sub.qiScore)!),
-    if (r.intimacy.gateActive)
-      MapEntry(
-          '로맨스(밀착도·끌림 영역)',
-          subScoreToDisplay(CompatSubKind.intimacy, r.sub.intimacyScore)!),
+    MapEntry('로맨스(밀착도·끌림 영역)',
+        subScoreToDisplay(CompatSubKind.intimacy, r.sub.intimacyScore)!),
   ];
 }
 
@@ -511,16 +529,17 @@ String _weakestLayer(CompatibilityReport r) {
 
 /// 5-섹션 최종 출력.
 ///
-/// `intimacyChapter` 는 30~50대 이성 페어 전용 optional 섹션. gate 미통과
-/// 시 null. 기본 `sectionsInOrder` 에는 포함시키지 않아 기존 구조(5 섹션)의
-/// 계약이 깨지지 않는다 — UI/export 쪽에서 별도로 렌더한다.
+/// `intimacyChapter` 는 모든 페어에서 출력되는 별도 섹션. tone 별로 분량과
+/// 톤이 달라진다 (pure: opener+4 axis+closer / newspaper·tabloid: opener+closer).
+/// 기본 `sectionsInOrder` 에는 포함시키지 않아 기존 구조(5 섹션)의 계약이 깨지지
+/// 않는다 — UI/export 쪽에서 별도로 렌더한다.
 class CompatNarrative {
   final String summary;
   final String corePoints;
   final String conflictScenarios;
   final String strategy;
   final String scoreReason;
-  final String? intimacyChapter;
+  final String intimacyChapter;
 
   const CompatNarrative({
     required this.summary,
@@ -528,7 +547,7 @@ class CompatNarrative {
     required this.conflictScenarios,
     required this.strategy,
     required this.scoreReason,
-    this.intimacyChapter,
+    required this.intimacyChapter,
   });
 
   List<String> get sectionsInOrder => [

@@ -17,6 +17,7 @@ import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/services/compat/compat_narrative.dart';
 import 'package:face_engine/domain/services/compat/compat_pipeline.dart';
+import 'package:face_engine/domain/services/compat/intimacy.dart';
 import 'package:face_reader/domain/services/mc_fixtures.dart';
 import 'package:face_engine/domain/services/physiognomy_scoring.dart';
 
@@ -119,15 +120,16 @@ void main() {
       }
     });
 
-    test('same-sex — intimacy 없이도 5 섹션 모두 출력', () {
+    test('same-sex — pure tone + 5 섹션 + intimacy chapter 출력', () {
       final rng = Random(8);
       final a = _sample(rng, gender: Gender.female, age: AgeGroup.thirties);
       final b = _sample(rng, gender: Gender.female, age: AgeGroup.thirties);
       final r = analyzeCompatibility(my: a, album: b);
-      expect(r.intimacy.gateActive, false);
+      expect(r.intimacy.tone, IntimacyTone.pure);
       final n = buildCompatNarrative(report: r, pairSeed: 42);
       expect(n.sectionsInOrder.length, 5);
       expect(n.scoreReason.contains('로맨스'), true);
+      expect(n.intimacyChapter.isNotEmpty, true);
     });
   });
 }

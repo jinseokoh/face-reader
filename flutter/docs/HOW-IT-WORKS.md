@@ -307,7 +307,7 @@ faceShapeLabel? · faceShapeConfidence? · faceShape (enum)
 | `elementScore` (L1) | 五形和 | 0.20 | 얼굴형 metric 7개 + faceShape preset → 五行 분류 + 5×5 상생상극 matrix |
 | `palaceScore` (L2) | 宮位調 | 0.40 | 17+8 metric ~22개 → 12 궁 state + ~40 PalacePair rule |
 | `qiScore` (L3) | 氣質合 | 0.25 | 五官 1:1 (0.55) + 三停 合刑 (0.25) + 陰陽 balance (0.20) |
-| `intimacyScore` (L4) | 性情諧 | 0.15 | 30~50 opposite-gender 게이트. 男女宮·妻妾宮·lip·philtrum |
+| `intimacyScore` (L4) | 性情諧 | 0.15 | 男女宮·妻妾宮·lip·eye. 모든 페어에서 항상 계산. narrative tone 만 분기. |
 
 총점:
 ```
@@ -315,13 +315,18 @@ rawTotal = 0.20·element + 0.40·palace + 0.25·qi + 0.15·intimacy
 total = clamp(50 + (rawTotal - 50) × 1.4, 5, 99)
 ```
 
+#### Intimacy tone 분기 (narrative 만)
+- `pure`: 동성 페어 OR 한쪽이라도 10대·70대 이상. 현재의 점잖은 산문체 (opener + 4 axis + closer).
+- `newspaper`: 이성 페어 + 한쪽 20대 또는 60대. 인스타 릴스 자막 톤 (opener + closer).
+- `tabloid`: 이성 페어 + 양쪽 모두 30~50대. 들키면 안 되는 분위기 punch line (opener + closer).
+
 ### 7.2 Label 4-tier
 
-MC p-percentile 보정:
-- `天作之合` (≥85)
-- `相敬如賓` (72~85)
-- `磨合可成` (58~72)
-- `刑剋難調` (<58)
+`kCompatLabelThresholds` (`compat_label.dart`) — MC 20k seed=42 의 p30/p60/p90 (61.56 / 81.42 / 90.50) 에 맞춰 10/30/30/30 분포 보장.
+- `天作之合` (≥90.5)
+- `相敬如賓` (81.5~90.5)
+- `磨合可成` (61.5~81.5)
+- `刑剋難調` (<61.5)
 
 상세 설계 SSOT (五行 weight 공식, 12궁 state, PalacePair rule 카탈로그) 는 코드 자체로 SSOT 화: `compat_pipeline.dart` + `palace_rules.dart` + `compat_phrase_pool.dart`. 본 문서 §7 은 high-level 요약만.
 

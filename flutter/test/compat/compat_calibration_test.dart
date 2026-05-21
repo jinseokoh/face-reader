@@ -113,7 +113,6 @@ void main() {
   final palaceScores = <double>[];
   final qiScores = <double>[];
   final intimacyScores = <double>[];
-  final intimacyGateOnScores = <double>[];
   final byRelation = <ElementRelationKind, _Agg>{
     for (final k in ElementRelationKind.values) k: _Agg(),
   };
@@ -127,7 +126,6 @@ void main() {
     palaceScores.add(r.sub.palaceScore);
     qiScores.add(r.sub.qiScore);
     intimacyScores.add(r.sub.intimacyScore);
-    if (r.intimacy.gateActive) intimacyGateOnScores.add(r.sub.intimacyScore);
     byRelation[r.elementRelation.kind]!.add(r.total);
   }
 
@@ -136,7 +134,6 @@ void main() {
   palaceScores.sort();
   qiScores.sort();
   intimacyScores.sort();
-  intimacyGateOnScores.sort();
 
   double pct(List<double> xs, double p) => xs[(xs.length * p).floor()];
   double meanOf(List<double> xs) => xs.reduce((a, b) => a + b) / xs.length;
@@ -177,8 +174,7 @@ void main() {
     'element': elementScores,
     'palace': palaceScores,
     'qi': qiScores,
-    'intimacy(all)': intimacyScores,
-    'intimacy(on)': intimacyGateOnScores,
+    'intimacy': intimacyScores,
   }.entries) {
     final xs = entry.value;
     if (xs.isEmpty) continue;

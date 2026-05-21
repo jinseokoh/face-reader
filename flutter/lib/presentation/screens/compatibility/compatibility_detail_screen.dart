@@ -508,12 +508,10 @@ class _NarrativeSections extends StatelessWidget {
       children: [
         for (int i = 0; i < bodies.length; i++)
           _NarrativeCard(title: _titles[i], body: bodies[i]),
-        // 성숙한 연령 이성 페어 전용 optional 섹션 — intimacy.gateActive 통과 시만 렌더.
-        if (narrative.intimacyChapter != null)
-          _NarrativeCard(
-            title: '이성적 끌림의 결',
-            body: narrative.intimacyChapter!,
-          ),
+        _NarrativeCard(
+          title: '이성적 끌림의 결',
+          body: narrative.intimacyChapter,
+        ),
       ],
     );
   }
@@ -645,14 +643,10 @@ class _SubScorePanel extends StatelessWidget {
           subScoreToDisplay(CompatSubKind.palace, report.sub.palaceScore)!),
       _SubRow(CompatSubKind.qi.modernKo,
           subScoreToDisplay(CompatSubKind.qi, report.sub.qiScore)!),
-      // 로맨스: 30~50 대 이성 페어 등 intimacy gate 통과 시에만 노출.
-      if (report.intimacy.gateActive)
-        _SubRow(
-          CompatSubKind.intimacy.modernKo,
-          subScoreToDisplay(
-                  CompatSubKind.intimacy, report.sub.intimacyScore) ??
-              0.0,
-        ),
+      _SubRow(
+        CompatSubKind.intimacy.modernKo,
+        subScoreToDisplay(CompatSubKind.intimacy, report.sub.intimacyScore)!,
+      ),
     ];
     return Column(
       children: [for (final r in rows) _SubBar(row: r)],

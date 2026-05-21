@@ -88,11 +88,7 @@ List<CompatChip> chipsForCompat(CompatibilityReport r) {
   final el = subScoreToDisplay(CompatSubKind.element, r.sub.elementScore);
   final pa = subScoreToDisplay(CompatSubKind.palace, r.sub.palaceScore);
   final qi = subScoreToDisplay(CompatSubKind.qi, r.sub.qiScore);
-  final it = subScoreToDisplay(
-    CompatSubKind.intimacy,
-    r.sub.intimacyScore,
-    gateOff: !r.intimacy.gateActive,
-  );
+  final it = subScoreToDisplay(CompatSubKind.intimacy, r.sub.intimacyScore);
 
   final dataChips = <CompatChip>[];
   dataChips.add(_relationChip(r.elementRelation.kind));

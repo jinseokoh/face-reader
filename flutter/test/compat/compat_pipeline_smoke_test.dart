@@ -17,6 +17,7 @@ import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/services/archetype.dart';
 import 'package:face_engine/domain/services/compat/compat_adapter.dart';
+import 'package:face_engine/domain/services/compat/intimacy.dart';
 import 'package:face_reader/domain/services/mc_fixtures.dart';
 import 'package:face_engine/domain/services/physiognomy_scoring.dart';
 
@@ -183,7 +184,7 @@ void main() {
     expect(b2.narrative.summary, bundle.narrative.summary);
   });
 
-  test('P7 smoke — same-sex 면 intimacy gate off', () {
+  test('P7 smoke — same-sex 면 intimacy tone == pure', () {
     final rng = Random(100);
     final a = _fakeReport(
       rng,
@@ -198,11 +199,10 @@ void main() {
       alias: 'b',
     );
     final bundle = analyzeCompatibilityFromReports(my: a, album: b);
-    expect(bundle.report.intimacy.gateActive, false);
-    expect(bundle.report.sub.intimacyScore, 50.0);
-    // same-sex 여도 narrative 는 5 섹션 모두 출력 (scoreReason 에 친밀 미계산 명시).
+    expect(bundle.report.intimacy.tone, IntimacyTone.pure);
     expect(bundle.narrative.sectionsInOrder.length, 5);
     expect(bundle.narrative.scoreReason.contains('로맨스'), true);
+    expect(bundle.narrative.intimacyChapter.isNotEmpty, true);
   });
 
   test('attribute/archetype 재사용 없음 — compat engine 순수성', () {
