@@ -112,6 +112,27 @@ AppRadius.lg   14  — list item card
 AppRadius.xl   16  — modal, hero card
 ```
 
+### 1.5 Icons — **오직 FontAwesome**
+
+**Material `Icons.*` / `CupertinoIcons.*` 사용 절대 금지.** 모든 아이콘은
+`font_awesome_flutter` 의 `FontAwesomeIcons.*` + `FaIcon` 위젯으로만 사용한다.
+이유: stroke weight·시각 무게·라이브러리 정체성이 한 가지로 통일되어야 화면 간
+일관성이 깨지지 않음. 새 위젯·화면 추가 시 Material/Cupertino 아이콘 import
+자체를 금지.
+
+```dart
+// ✅ 올바름
+FaIcon(FontAwesomeIcons.house, size: 22, color: AppColors.textPrimary)
+
+// ❌ 금지
+Icon(Icons.home)
+Icon(CupertinoIcons.chevron_down)
+```
+
+크기 가이드: FontAwesome 은 Material 보다 stroke 가 짙어 같은 픽셀에서 더 무겁게
+보임. Material 비례 대비 약 **75~85% size** 로 시작 (Material 24 → FA 18~20,
+Material 48 → FA 40~42, Material 56 → FA 48~50).
+
 ---
 
 ## 2. 핫한 theme 유지 기법 — 우리 프로젝트 적용판
@@ -216,7 +237,7 @@ AlertDialog(
 
 - background: `AppColors.surface`
 - borderRadius: `AppRadius.lg`
-- icon: `Icons.lightbulb_outline` 22 / `AppColors.gold`
+- icon: `FontAwesomeIcons.lightbulb` 18 / `AppColors.gold` (FaIcon)
 - text: `AppText.caption` 또는 `AppText.subTitle.copyWith(fontSize: 13, fontWeight: FontWeight.w500)`
 
 ### 3.6 가운데점 (`·`) 남발 금지

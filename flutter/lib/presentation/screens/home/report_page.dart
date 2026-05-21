@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:face_engine/data/constants/archetype_catchphrase.dart';
 import 'package:face_engine/data/constants/face_reference_data.dart';
 import 'package:face_engine/data/enums/age_group.dart';
@@ -184,12 +185,12 @@ class _ExpandableAttributeBarState extends State<_ExpandableAttributeBar> {
                         fontSize: 16,
                         fontWeight: FontWeight.w400)),
               ),
-              Icon(
+              FaIcon(
                 _expanded
-                    ? Icons.keyboard_arrow_up
-                    : Icons.keyboard_arrow_down,
+                    ? FontAwesomeIcons.chevronUp
+                    : FontAwesomeIcons.chevronDown,
                 color: _Palette.amber,
-                size: 18,
+                size: 12,
               ),
             ],
           ),
@@ -631,9 +632,9 @@ class _NodeBar extends StatelessWidget {
                     children: [
                       Padding(
                         padding: const EdgeInsets.only(top: 2, right: 8),
-                        child: Icon(
-                          Icons.auto_awesome,
-                          size: 16,
+                        child: FaIcon(
+                          FontAwesomeIcons.wandSparkles,
+                          size: 14,
                           color: _Palette.amber,
                         ),
                       ),
@@ -783,12 +784,12 @@ class _ReportPageState extends ConsumerState<ReportPage> {
         title: const Text('관상 분석'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.ios_share),
+            icon: const FaIcon(FontAwesomeIcons.arrowUpFromBracket, size: 18),
             tooltip: '카드 이미지 공유',
             onPressed: () => _showShareCardSheet(context),
           ),
           IconButton(
-            icon: const Icon(Icons.share),
+            icon: const FaIcon(FontAwesomeIcons.commentDots, size: 20),
             tooltip: '카카오 공유',
             onPressed: () => _shareViaKakao(context),
           ),
@@ -939,8 +940,8 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                         height: 130,
                         color: Colors.white.withValues(alpha: 0.12),
                         child: const Center(
-                          child: Icon(Icons.image_not_supported,
-                              color: Colors.white54, size: 32),
+                          child: FaIcon(FontAwesomeIcons.fileImage,
+                              color: Colors.white54, size: 28),
                         ),
                       ),
                     ),
@@ -1092,11 +1093,12 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                         fontSize: 18,
                         fontWeight: FontWeight.bold)),
                 const Spacer(),
-                Icon(
+                FaIcon(
                   _showNodeDetails
-                      ? Icons.keyboard_arrow_up
-                      : Icons.keyboard_arrow_down,
+                      ? FontAwesomeIcons.chevronUp
+                      : FontAwesomeIcons.chevronDown,
                   color: _Palette.warmBrown,
+                  size: 14,
                 ),
               ],
             ),
@@ -1396,7 +1398,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
                   onPressed: () => _captureAndShareCard(ctx),
-                  icon: const Icon(Icons.ios_share),
+                  icon: const FaIcon(FontAwesomeIcons.arrowUpFromBracket, size: 16),
                   label: const Text('이미지로 공유',
                       style: TextStyle(fontWeight: FontWeight.w600)),
                   style: ElevatedButton.styleFrom(
@@ -1702,8 +1704,8 @@ class _ShareCard extends StatelessWidget {
                         width: 110,
                         height: 130,
                         color: Colors.white.withValues(alpha: 0.12),
-                        child: const Icon(Icons.face,
-                            color: Colors.white54, size: 32),
+                        child: const FaIcon(FontAwesomeIcons.faceSmile,
+                            color: Colors.white54, size: 28),
                       ),
                     ),
                   ),

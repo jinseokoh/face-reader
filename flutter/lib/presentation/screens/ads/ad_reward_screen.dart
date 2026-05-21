@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:video_player/video_player.dart';
 
 import 'package:face_reader/core/theme.dart';
@@ -166,7 +167,7 @@ class _ErrorView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.error_outline, color: AppTheme.textHint, size: 48),
+          FaIcon(FontAwesomeIcons.circleExclamation, color: AppTheme.textHint, size: 40),
           const SizedBox(height: 12),
           Text(
             message,

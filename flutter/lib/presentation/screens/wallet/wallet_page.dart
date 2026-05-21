@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 import 'package:face_reader/core/theme.dart';
@@ -45,8 +46,8 @@ class WalletPage extends ConsumerWidget {
               padding: const EdgeInsets.only(right: 16),
               child: Row(
                 children: [
-                  Icon(Icons.toll_outlined,
-                      color: AppTheme.textPrimary, size: 18),
+                  FaIcon(FontAwesomeIcons.coins,
+                      color: AppTheme.textPrimary, size: 15),
                   const SizedBox(width: 6),
                   Text('${user.coins}개',
                       style: TextStyle(
@@ -232,15 +233,15 @@ Widget _txIconAvatar(CoinTransaction tx) {
   return CircleAvatar(
     radius: 18,
     backgroundColor: Colors.white,
-    child: Icon(
+    child: FaIcon(
       switch (tx.kind) {
-        CoinTxKind.purchase => Icons.add_shopping_cart_outlined,
-        CoinTxKind.bonus => Icons.card_giftcard_outlined,
-        CoinTxKind.refund => Icons.undo_outlined,
-        CoinTxKind.spend => Icons.remove_circle_outline,
+        CoinTxKind.purchase => FontAwesomeIcons.cartPlus,
+        CoinTxKind.bonus => FontAwesomeIcons.gift,
+        CoinTxKind.refund => FontAwesomeIcons.arrowRotateLeft,
+        CoinTxKind.spend => FontAwesomeIcons.circleMinus,
       },
       color: AppTheme.textSecondary,
-      size: 20,
+      size: 16,
     ),
   );
 }
@@ -272,8 +273,8 @@ class _LoggedOutView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.wallet_outlined,
-                color: AppTheme.textHint, size: 56),
+            FaIcon(FontAwesomeIcons.wallet,
+                color: AppTheme.textHint, size: 48),
             const SizedBox(height: 16),
             Text('로그인 후 지갑을 이용할 수 있습니다',
                 style: TextStyle(

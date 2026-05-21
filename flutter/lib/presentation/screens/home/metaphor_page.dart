@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'package:face_reader/core/theme.dart';
 
@@ -47,8 +48,8 @@ class MetaphorPage extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 child: Row(
                   children: [
-                    Icon(Icons.auto_stories,
-                        color: AppTheme.textSecondary, size: 22),
+                    FaIcon(FontAwesomeIcons.bookOpen,
+                        color: AppTheme.textSecondary, size: 18),
                     const SizedBox(width: 10),
                     Text(
                       '관상 해석',
@@ -60,7 +61,7 @@ class MetaphorPage extends StatelessWidget {
                     ),
                     const Spacer(),
                     IconButton(
-                      icon: Icon(Icons.close, color: AppTheme.textHint),
+                      icon: FaIcon(FontAwesomeIcons.xmark, color: AppTheme.textHint, size: 18),
                       onPressed: () => Navigator.pop(context),
                     ),
                   ],

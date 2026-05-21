@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
 import 'package:face_engine/data/constants/compat_hashtags.dart';
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
@@ -72,12 +74,12 @@ class _CompatibilityDetailScreenState
         title: Text(widget.album.alias ?? '궁합'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.ios_share),
+            icon: const FaIcon(FontAwesomeIcons.arrowUpFromBracket, size: 18),
             tooltip: '카드 이미지 공유',
             onPressed: () => _showShareCardSheet(context),
           ),
           IconButton(
-            icon: const Icon(Icons.share),
+            icon: const FaIcon(FontAwesomeIcons.commentDots, size: 20),
             tooltip: '카카오 공유',
             onPressed: () => _shareViaKakao(context),
           ),
@@ -239,7 +241,7 @@ class _CompatibilityDetailScreenState
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
                   onPressed: () => _captureAndShareCard(ctx),
-                  icon: const Icon(Icons.ios_share),
+                  icon: const FaIcon(FontAwesomeIcons.arrowUpFromBracket, size: 16),
                   label: const Text('이미지로 공유',
                       style: TextStyle(fontWeight: FontWeight.w600)),
                   style: ElevatedButton.styleFrom(
@@ -673,8 +675,8 @@ class _Thumb extends StatelessWidget {
             : null,
       ),
       child: file == null || !file.existsSync()
-          ? Icon(Icons.person,
-              color: AppTheme.textHint, size: (size * 0.5).clamp(20, 32))
+          ? FaIcon(FontAwesomeIcons.user,
+              color: AppTheme.textHint, size: (size * 0.5).clamp(16, 26))
           : null,
     );
   }

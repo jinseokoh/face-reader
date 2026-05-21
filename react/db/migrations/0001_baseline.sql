@@ -101,16 +101,16 @@ create policy "coins_self_read"
 -- 3. public.metrics — 관상 원본 + 공유 link payload
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 1 face capture = 1 metrics row (1 UUID = trace id, HOW-IT-WORKS §3.1).
--- metrics_json (text) 안에 schema (HOW-IT-WORKS §5.2) — thumbnailKey,
+-- body (text) 안에 schema (HOW-IT-WORKS §5.2) — thumbnailKey,
 -- deepface*, rawValue, demographic 카테고리 등.
 -- SELECT 는 anon 공개 (UUID 모르면 fetch 불가하므로 link-share 모델).
--- INSERT 는 anon 도 허용 (publish 직통 UPSERT) — PII 키 RLS check 로 차단.
+-- INSERT 는 anon 도 허용 (publish 직통 UPSERT) — PII 값 RLS check 로 차단.
 -- views++ 는 increment_metrics_views (SECURITY DEFINER) RPC 만.
 
 create table if not exists public.metrics (
   id           uuid        primary key default gen_random_uuid(),
   user_id      uuid        references auth.users(id) on delete set null,
-  metrics_json text        not null,
+  body         text        not null,
   source       text        not null check (source in ('camera','album')),
   ethnicity    text        not null,
   gender       text        not null,
@@ -140,15 +140,17 @@ drop policy if exists "metrics_read_anon"    on public.metrics;
 create policy "metrics_public_read"
   on public.metrics for select using (true);
 
--- anon publish 직통 UPSERT 허용 — 단 metrics_json 안에 PII 키 (username/alias/
--- birthday/landmarks) 있으면 reject. user_id 는 null (anon) 또는 본인 한정.
+-- anon publish 직통 UPSERT 허용 — body 안에 PII (username/alias/birthday)
+-- 의 실제 값이 들어있으면 reject. null 값 또는 key 자체가 없으면 통과.
+-- landmarks 는 key 존재 자체로 차단 (재구성 위험).
+-- user_id 는 null (anon) 또는 본인 한정.
 create policy "metrics_insert_anon"
   on public.metrics for insert with check (
         (user_id is null or user_id = auth.uid())
-    and not (metrics_json::jsonb ? 'username')
-    and not (metrics_json::jsonb ? 'alias')
-    and not (metrics_json::jsonb ? 'birthday')
-    and not (metrics_json::jsonb ? 'landmarks')
+    and (body::jsonb -> 'username') is null
+    and (body::jsonb -> 'alias')    is null
+    and (body::jsonb -> 'birthday') is null
+    and not (body::jsonb ? 'landmarks')
   );
 
 create policy "metrics_owner_update"
@@ -470,7 +472,7 @@ grant  execute on function public.unlock_compat(text)                           
 -- declare sid uuid := gen_random_uuid(); v integer;
 -- begin
 --   -- metrics: insert (anon 가능) → views++ RPC → updated_at 자동 변화 → 삭제
---   insert into public.metrics (id, metrics_json, source, ethnicity, gender, age_group, expires_at)
+--   insert into public.metrics (id, body, source, ethnicity, gender, age_group, expires_at)
 --   values (sid, '{}', 'album', 'eastAsian', 'male', '20s', now() + interval '90 days');
 --   perform public.increment_metrics_views(sid);
 --   select views into v from public.metrics where id = sid;

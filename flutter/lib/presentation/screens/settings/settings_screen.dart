@@ -5,6 +5,7 @@ import 'package:face_reader/presentation/widgets/login_bottom_sheet.dart';
 import 'package:face_reader/presentation/widgets/purchase_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -22,7 +23,7 @@ class SettingsScreen extends ConsumerWidget {
         actions: [
           IconButton(
             tooltip: '지갑',
-            icon: const Icon(Icons.account_balance_wallet_outlined),
+            icon: const FaIcon(FontAwesomeIcons.wallet, size: 20),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const WalletPage()),
             ),
@@ -52,7 +53,7 @@ class SettingsScreen extends ConsumerWidget {
                             ? NetworkImage(user.profileImageUrl!)
                             : null,
                         child: user.profileImageUrl == null
-                            ? Icon(Icons.person, color: AppTheme.textHint)
+                            ? FaIcon(FontAwesomeIcons.user, color: AppTheme.textHint, size: 22)
                             : null,
                       ),
                       const SizedBox(width: 12),
@@ -84,8 +85,8 @@ class SettingsScreen extends ConsumerWidget {
                   // Coin row
                   Row(
                     children: [
-                      Icon(Icons.toll_outlined,
-                          color: AppTheme.textSecondary, size: 28),
+                      FaIcon(FontAwesomeIcons.coins,
+                          color: AppTheme.textSecondary, size: 22),
                       const SizedBox(width: 12),
                       Text('남은 코인',
                           style: TextStyle(
@@ -144,18 +145,18 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 24),
 
           _menuItem(
-            icon: Icons.description_outlined,
+            icon: FontAwesomeIcons.fileLines,
             title: '이용약관 보기',
             onTap: () {},
           ),
           _menuItem(
-            icon: Icons.shield_outlined,
+            icon: FontAwesomeIcons.shieldHalved,
             title: '개인정보 약관 보기',
             onTap: () {},
           ),
           if (isLoggedIn) ...[
             _menuItem(
-              icon: Icons.person_remove_outlined,
+              icon: FontAwesomeIcons.userXmark,
               title: '회원 탈퇴',
               onTap: () {},
             ),
@@ -175,7 +176,7 @@ class SettingsScreen extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                     child: Row(
                       children: [
-                        Icon(Icons.info_outline, color: AppTheme.textSecondary, size: 24),
+                        FaIcon(FontAwesomeIcons.circleInfo, color: AppTheme.textSecondary, size: 20),
                         const SizedBox(width: 16),
                         Text('앱 정보',
                             style: TextStyle(
@@ -215,7 +216,7 @@ class SettingsScreen extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             child: Row(
               children: [
-                Icon(icon, color: AppTheme.textSecondary, size: 24),
+                FaIcon(icon, color: AppTheme.textSecondary, size: 20),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
@@ -232,7 +233,7 @@ class SettingsScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
-                Icon(Icons.chevron_right, color: AppTheme.textHint),
+                FaIcon(FontAwesomeIcons.chevronRight, color: AppTheme.textHint, size: 14),
               ],
             ),
           ),

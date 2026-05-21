@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class CompactSnackBar extends StatelessWidget {
   final String message;
@@ -6,16 +7,16 @@ class CompactSnackBar extends StatelessWidget {
   final IconData icon;
 
   factory CompactSnackBar.error({required String message}) =>
-      CompactSnackBar._(message: message, backgroundColor: const Color(0xFFE53935), icon: Icons.error_outline);
+      CompactSnackBar._(message: message, backgroundColor: const Color(0xFFE53935), icon: FontAwesomeIcons.circleExclamation);
 
   factory CompactSnackBar.info({required String message}) =>
-      CompactSnackBar._(message: message, backgroundColor: const Color(0xFF2196F3), icon: Icons.info_outline);
+      CompactSnackBar._(message: message, backgroundColor: const Color(0xFF2196F3), icon: FontAwesomeIcons.circleInfo);
 
   factory CompactSnackBar.success({required String message}) =>
-      CompactSnackBar._(message: message, backgroundColor: const Color(0xFF4CAF50), icon: Icons.check_circle_outline);
+      CompactSnackBar._(message: message, backgroundColor: const Color(0xFF4CAF50), icon: FontAwesomeIcons.circleCheck);
 
   factory CompactSnackBar.warning({required String message}) =>
-      CompactSnackBar._(message: message, backgroundColor: const Color(0xFFFF9800), icon: Icons.warning_amber_outlined);
+      CompactSnackBar._(message: message, backgroundColor: const Color(0xFFFF9800), icon: FontAwesomeIcons.triangleExclamation);
 
   const CompactSnackBar._({required this.message, required this.backgroundColor, required this.icon});
 
@@ -32,7 +33,7 @@ class CompactSnackBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icon, color: Colors.white, size: 18),
+          FaIcon(icon, color: Colors.white, size: 14),
           const SizedBox(width: 10),
           Expanded(
             child: Text(message,

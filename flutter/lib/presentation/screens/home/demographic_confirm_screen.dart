@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/gender.dart';
@@ -114,7 +116,7 @@ class _DemographicConfirmScreenState
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.close, color: AppColors.textPrimary),
+          icon: const FaIcon(FontAwesomeIcons.xmark, color: AppColors.textPrimary, size: 20),
           onPressed: _isAnalyzing ? null : () => Navigator.of(context).pop(),
         ),
         title: const Text('정보 확인'),
@@ -368,8 +370,8 @@ class _PickerRow extends StatelessWidget {
                     style: AppText.body
                         .copyWith(fontWeight: FontWeight.w600)),
                 const SizedBox(width: 6),
-                const Icon(CupertinoIcons.chevron_down,
-                    color: AppColors.textHint, size: 16),
+                const FaIcon(FontAwesomeIcons.chevronDown,
+                    color: AppColors.textHint, size: 12),
               ],
             ),
           ],

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:camera/camera.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_reader/data/services/face_metadata_client.dart';
 import 'package:face_reader/domain/models/capture_result.dart';
@@ -105,7 +106,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
             actions: [
               IconButton(
                 onPressed: _close,
-                icon: const Icon(Icons.close, color: Colors.white),
+                icon: const FaIcon(FontAwesomeIcons.xmark, color: Colors.white, size: 20),
               ),
             ],
           ),

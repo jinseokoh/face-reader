@@ -645,8 +645,8 @@ class _CompatLockedCard extends ConsumerWidget {
                   ],
                 ),
               ),
-              const Icon(Icons.lock_outline,
-                  color: AppTheme.textHint, size: 20),
+              const FaIcon(FontAwesomeIcons.lock,
+                  color: AppTheme.textHint, size: 18),
             ],
           ),
           const SizedBox(height: 14),
@@ -1016,7 +1016,7 @@ class _Thumb extends StatelessWidget {
       return CircleAvatar(
         radius: radius,
         backgroundColor: AppTheme.border,
-        child: const Icon(Icons.person, color: AppTheme.textHint, size: 28),
+        child: const FaIcon(FontAwesomeIcons.user, color: AppTheme.textHint, size: 22),
       );
     }
     final file = File(path!);
@@ -1029,8 +1029,8 @@ class _Thumb extends StatelessWidget {
         errorBuilder: (_, _, _) => CircleAvatar(
           radius: radius,
           backgroundColor: AppTheme.border,
-          child: const Icon(Icons.broken_image,
-              color: AppTheme.textHint, size: 20),
+          child: const FaIcon(FontAwesomeIcons.fileImage,
+              color: AppTheme.textHint, size: 18),
         ),
       ),
     );

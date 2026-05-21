@@ -122,9 +122,9 @@ class _MyProfileHeader extends StatelessWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
-                      Icons.check_circle,
-                      size: 14,
+                    const FaIcon(
+                      FontAwesomeIcons.circleCheck,
+                      size: 12,
                       color: AppColors.gold,
                     ),
                     const SizedBox(width: AppSpacing.xs),
@@ -229,9 +229,9 @@ class _PhysiognomyItem extends ConsumerWidget {
                                 ),
                                 if (isMyFace) ...[
                                   const SizedBox(width: AppSpacing.xs),
-                                  const Icon(
-                                    Icons.check_circle,
-                                    size: 14,
+                                  const FaIcon(
+                                    FontAwesomeIcons.circleCheck,
+                                    size: 12,
                                     color: AppColors.gold,
                                   ),
                                   const SizedBox(width: AppSpacing.xs),
@@ -303,8 +303,8 @@ class _PhysiognomyItem extends ConsumerWidget {
                 tooltip: '메뉴',
                 padding: EdgeInsets.zero,
                 iconSize: 18,
-                icon: const Icon(Icons.more_vert,
-                    color: AppColors.textHint),
+                icon: const FaIcon(FontAwesomeIcons.ellipsisVertical,
+                    color: AppColors.textHint, size: 16),
                 color: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppRadius.md),
@@ -415,12 +415,12 @@ class _PhysiognomyItem extends ConsumerWidget {
         color: AppColors.border,
         borderRadius: BorderRadius.circular(AppRadius.md),
       ),
-      child: Icon(
+      child: FaIcon(
         report.source == AnalysisSource.camera
-            ? (report.gender == Gender.female ? Icons.face_3 : Icons.face_6)
-            : Icons.photo_library,
+            ? FontAwesomeIcons.faceSmile
+            : FontAwesomeIcons.images,
         color: AppColors.textSecondary,
-        size: 22,
+        size: 18,
       ),
     );
   }
@@ -794,7 +794,7 @@ class _ProfileHintCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const Icon(Icons.lightbulb_outline, color: AppColors.gold, size: 22),
+          const FaIcon(FontAwesomeIcons.lightbulb, color: AppColors.gold, size: 18),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Text(
@@ -863,8 +863,8 @@ class _RecentListHeader extends StatelessWidget {
                 order.label,
                 style: AppText.caption.copyWith(color: AppColors.textHint),
               ),
-              const Icon(Icons.keyboard_arrow_down,
-                  size: 16, color: AppColors.textHint),
+              const FaIcon(FontAwesomeIcons.chevronDown,
+                  size: 12, color: AppColors.textHint),
             ],
           ),
         ),

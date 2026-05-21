@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:camera/camera.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_reader/data/services/face_metadata_client.dart';
 import 'package:face_reader/domain/models/capture_result.dart';
@@ -74,7 +75,7 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
             actions: [
               IconButton(
                 onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.close, color: Colors.white),
+                icon: const FaIcon(FontAwesomeIcons.xmark, color: Colors.white, size: 20),
               ),
             ],
           ),
@@ -307,7 +308,7 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                icon: const Icon(Icons.camera_alt, size: 20),
+                icon: const FaIcon(FontAwesomeIcons.camera, size: 18),
                 label: Text(
                   buttonLabel,
                   style: const TextStyle(
