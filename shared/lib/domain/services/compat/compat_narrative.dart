@@ -176,8 +176,8 @@ List<CompatFinding> _gatherFindings(CompatibilityReport r) {
 //
 // 모든 페어에서 노출되는 섹션. IntimacyTone 에 따라 형식이 달라진다:
 //   - pure:      opener + 4 axis 산문 + closer (현재의 점잖은 톤)
-//   - newspaper: opener + closer (짧고 미묘한 긴장, 인스타 릴스 자막 톤)
-//   - tabloid:   opener + closer (들키면 안 되는 분위기, SNS 공유 punch line)
+//   - flirty: opener + closer (짧고 미묘한 긴장, 인스타 릴스 자막 톤)
+//   - spicy:   opener + closer (들키면 안 되는 분위기, SNS 공유 punch line)
 //
 // bucket 분류:
 //   - high (65 이상): 강한 끌림
@@ -195,10 +195,10 @@ Map<Gender, Map<String, List<String>>> _openerPoolForTone(IntimacyTone tone) {
   switch (tone) {
     case IntimacyTone.pure:
       return intimacyPureOpenerByBucketByGender;
-    case IntimacyTone.newspaper:
-      return intimacyNewspaperOpenerByBucketByGender;
-    case IntimacyTone.tabloid:
-      return intimacyTabloidOpenerByBucketByGender;
+    case IntimacyTone.flirty:
+      return intimacyFlirtyOpenerByBucketByGender;
+    case IntimacyTone.spicy:
+      return intimacySpicyOpenerByBucketByGender;
   }
 }
 
@@ -207,10 +207,10 @@ Map<Gender, Map<String, List<String>>> _closingPoolForTone(IntimacyTone tone) {
   switch (tone) {
     case IntimacyTone.pure:
       return intimacyPureClosingByBucketByGender;
-    case IntimacyTone.newspaper:
-      return intimacyNewspaperClosingByBucketByGender;
-    case IntimacyTone.tabloid:
-      return intimacyTabloidClosingByBucketByGender;
+    case IntimacyTone.flirty:
+      return intimacyFlirtyClosingByBucketByGender;
+    case IntimacyTone.spicy:
+      return intimacySpicyClosingByBucketByGender;
   }
 }
 
@@ -235,7 +235,7 @@ String _intimacyChapter(CompatibilityReport r, int pairSeed) {
   }
 
   // Axis 문단 — pure 톤에서만 4 axis 산문체로 출력.
-  // newspaper/tabloid 는 인스타 릴스 톤이라 axis 산문체 생략, opener+closer 만.
+  // flirty/spicy 는 인스타 릴스 톤이라 axis 산문체 생략, opener+closer 만.
   if (tone == IntimacyTone.pure) {
     final axisDetails = intimacyAxisDetailsByGender[r.myGender] ??
         const <String, IntimacyAxisDetail>{};
@@ -530,7 +530,7 @@ String _weakestLayer(CompatibilityReport r) {
 /// 5-섹션 최종 출력.
 ///
 /// `intimacyChapter` 는 모든 페어에서 출력되는 별도 섹션. tone 별로 분량과
-/// 톤이 달라진다 (pure: opener+4 axis+closer / newspaper·tabloid: opener+closer).
+/// 톤이 달라진다 (pure: opener+4 axis+closer / flirty·spicy: opener+closer).
 /// 기본 `sectionsInOrder` 에는 포함시키지 않아 기존 구조(5 섹션)의 계약이 깨지지
 /// 않는다 — UI/export 쪽에서 별도로 렌더한다.
 class CompatNarrative {

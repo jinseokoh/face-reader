@@ -2,8 +2,8 @@
 ///
 /// 모든 페어에서 점수와 narrative 를 노출한다. tone 만 페어 조건으로 분기:
 ///   - pure:      동성 페어 OR 한쪽이라도 10대/70대 이상 — 현재의 점잖은 산문체
-///   - newspaper: 이성 페어 + 한쪽 20대 또는 60대 (위 조건 미해당) — 짧고 미묘한 긴장
-///   - tabloid:   이성 페어 + 양쪽 모두 30~50 — 들키면 안 되는 분위기, 강한 punch line
+///   - flirty: 이성 페어 + 한쪽 20대 또는 60대 (위 조건 미해당) — 짧고 미묘한 긴장
+///   - spicy:   이성 페어 + 양쪽 모두 30~50 — 들키면 안 되는 분위기, 강한 punch line
 ///
 /// score 공식은 항상 동일하게 작동 (50 + mwGong + spouse + lip + eye).
 ///
@@ -17,7 +17,7 @@ import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'palace.dart';
 
-enum IntimacyTone { pure, newspaper, tabloid }
+enum IntimacyTone { pure, flirty, spicy }
 
 class IntimacyComponent {
   final String id;
@@ -43,8 +43,8 @@ class IntimacyResult {
   });
 }
 
-/// tabloid band: 양쪽 모두 30~50대.
-bool _ageInTabloidBand(AgeGroup g) =>
+/// spicy band: 양쪽 모두 30~50대.
+bool _ageInSpicyBand(AgeGroup g) =>
     g == AgeGroup.thirties || g == AgeGroup.forties || g == AgeGroup.fifties;
 
 /// pure band: 10대 또는 70대 이상.
@@ -62,10 +62,10 @@ IntimacyTone _resolveTone(
 ) {
   if (myGender == albumGender) return IntimacyTone.pure;
   if (_ageInPureBand(myAge) || _ageInPureBand(albumAge)) return IntimacyTone.pure;
-  if (_ageInTabloidBand(myAge) && _ageInTabloidBand(albumAge)) {
-    return IntimacyTone.tabloid;
+  if (_ageInSpicyBand(myAge) && _ageInSpicyBand(albumAge)) {
+    return IntimacyTone.spicy;
   }
-  return IntimacyTone.newspaper;
+  return IntimacyTone.flirty;
 }
 
 double _clamp(double v, double lo, double hi) =>

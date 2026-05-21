@@ -476,13 +476,13 @@ const Map<Gender, Map<String, List<String>>> intimacyPureOpenerByBucketByGender 
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  로맨스 (intimacy) — Newspaper tone
+//  로맨스 (intimacy) — Flirty tone
 //  이성 페어 + 한쪽 20대 또는 60대 (10s/70+ 미포함). 인스타 릴스 자막 톤.
 // ═══════════════════════════════════════════════════════════════
 
-/// Newspaper opener — `{X}` 점수 치환. 2~3문장 + punch line.
+/// Flirty opener — `{X}` 점수 치환. 2~3문장 + punch line.
 const Map<Gender, Map<String, List<String>>>
-    intimacyNewspaperOpenerByBucketByGender = {
+    intimacyFlirtyOpenerByBucketByGender = {
   Gender.male: {
     'high': [
       '끌림 강도 {X}점. 다른 사람한테 답장하는 속도랑 그 사람한테 답장하는 속도가 명백히 다르다. 본인은 모르는데 옆에서는 다 본다.',
@@ -525,9 +525,9 @@ const Map<Gender, Map<String, List<String>>>
   },
 };
 
-/// Newspaper closing — punch line 위주.
+/// Flirty closing — punch line 위주.
 const Map<Gender, Map<String, List<String>>>
-    intimacyNewspaperClosingByBucketByGender = {
+    intimacyFlirtyClosingByBucketByGender = {
   Gender.male: {
     'high': [
       '이게 시작 아니면 뭘까.',
@@ -571,13 +571,13 @@ const Map<Gender, Map<String, List<String>>>
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  로맨스 (intimacy) — Tabloid tone
+//  로맨스 (intimacy) — Spicy tone
 //  이성 페어 + 양쪽 모두 30~50대. 들키면 안 되는 분위기, SNS 공유용 punch line.
 // ═══════════════════════════════════════════════════════════════
 
-/// Tabloid opener — `{X}` 점수 치환. 들키면 안 되는 분위기 환기.
+/// Spicy opener — `{X}` 점수 치환. 들키면 안 되는 분위기 환기.
 const Map<Gender, Map<String, List<String>>>
-    intimacyTabloidOpenerByBucketByGender = {
+    intimacySpicyOpenerByBucketByGender = {
   Gender.male: {
     'high': [
       '끌림 강도 {X}점. 이 사람 만날 약속 잡을 땐 무조건 평일 점심. 다른 약속이랑 캘린더에 다르게 적는다. 이유는 본인이 더 잘 알지.',
@@ -620,9 +620,9 @@ const Map<Gender, Map<String, List<String>>>
   },
 };
 
-/// Tabloid closing — 충격 punch line, SNS 공유 환기.
+/// Spicy closing — 충격 punch line, SNS 공유 환기.
 const Map<Gender, Map<String, List<String>>>
-    intimacyTabloidClosingByBucketByGender = {
+    intimacySpicyClosingByBucketByGender = {
   Gender.male: {
     'high': [
       '들키는 건 시간 문제다.',

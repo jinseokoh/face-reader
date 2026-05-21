@@ -294,7 +294,7 @@ void main() {
       expect(r1.subScore, inInclusiveRange(5.0, 99.0));
     });
 
-    test('이성 + 20대 포함 → tone newspaper', () {
+    test('이성 + 20대 포함 → tone flirty', () {
       final rng = Random(7);
       final a = _sample(rng);
       final b = _sample(rng);
@@ -320,7 +320,7 @@ void main() {
         myAge: AgeGroup.twenties,
         albumAge: AgeGroup.thirties,
       );
-      expect(r.tone, IntimacyTone.newspaper);
+      expect(r.tone, IntimacyTone.flirty);
     });
 
     test('이성 + 10대 포함 → tone pure', () {
@@ -381,11 +381,11 @@ void main() {
       expect(r.tone, IntimacyTone.pure);
     });
 
-    test('이성 + 양쪽 30~50대 → tone tabloid + subScore 분포', () {
+    test('이성 + 양쪽 30~50대 → tone spicy + subScore 분포', () {
       const n = 2000;
       final rng = Random(22);
       final scores = <double>[];
-      int tabloidCount = 0;
+      int spicyCount = 0;
       for (int i = 0; i < n; i++) {
         final a = _sample(rng);
         final b = _sample(rng);
@@ -413,16 +413,16 @@ void main() {
           myAge: ageA,
           albumAge: ageB,
         );
-        if (r.tone == IntimacyTone.tabloid) tabloidCount++;
+        if (r.tone == IntimacyTone.spicy) spicyCount++;
         scores.add(r.subScore);
       }
-      expect(tabloidCount, n); // 30~50 이성 전부 tabloid.
+      expect(spicyCount, n); // 30~50 이성 전부 spicy.
       scores.sort();
       final p10 = scores[(n * 0.1).floor()];
       final p90 = scores[(n * 0.9).floor()];
       final mean = scores.reduce((a, b) => a + b) / n;
       // ignore: avoid_print
-      print('\n========== intimacy subScore (n=$n tabloid) ==========');
+      print('\n========== intimacy subScore (n=$n spicy) ==========');
       // ignore: avoid_print
       print('p10=${p10.toStringAsFixed(2)} p90=${p90.toStringAsFixed(2)} '
           'mean=${mean.toStringAsFixed(2)} spread=${(p90 - p10).toStringAsFixed(2)}');
