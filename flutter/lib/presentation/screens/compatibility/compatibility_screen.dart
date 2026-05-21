@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
@@ -48,7 +50,7 @@ class CompatibilityScreen extends ConsumerWidget {
         title: const Text('궁합'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.info_outline),
+            icon: const FaIcon(FontAwesomeIcons.circleInfo, size: 20),
             tooltip: '궁합 분석에 대하여',
             onPressed: () => _showInfoDialog(context),
           ),
@@ -127,7 +129,8 @@ class CompatibilityScreen extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.auto_awesome, color: AppTheme.textHint, size: 56),
+              const FaIcon(FontAwesomeIcons.peoplePulling,
+                  color: AppTheme.textHint, size: 56),
               const SizedBox(height: 20),
               Text(title,
                   textAlign: TextAlign.center,

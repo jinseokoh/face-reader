@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
@@ -66,7 +68,7 @@ class _HeaderAvatarPlaceholder extends StatelessWidget {
     return Container(
       color: AppColors.surface,
       child: const Center(
-        child: Icon(Icons.person, size: 22, color: AppColors.textHint),
+        child: FaIcon(FontAwesomeIcons.userPlus, size: 18, color: AppColors.textHint),
       ),
     );
   }
@@ -562,7 +564,7 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
               title: const Text('관상'),
               actions: [
                 IconButton(
-                  icon: const Icon(Icons.info_outline),
+                  icon: const FaIcon(FontAwesomeIcons.circleInfo, size: 20),
                   onPressed: () => _showInfoDialog(context),
                 ),
               ],
@@ -668,8 +670,8 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.history,
-                            color: AppColors.border, size: 64),
+                        const FaIcon(FontAwesomeIcons.clockRotateLeft,
+                            color: AppColors.border, size: 56),
                         const SizedBox(height: AppSpacing.lg),
                         Text(
                           '분석 기록이 없습니다',
