@@ -16,13 +16,13 @@ export const MetricShow = () => {
   const row = query?.data?.data;
 
   const result = useMemo<{ eng?: EngineOutput; error?: string }>(() => {
-    if (!row?.metrics_json) return {};
+    if (!row?.body) return {};
     try {
-      return { eng: runEngine(row.metrics_json) };
+      return { eng: runEngine(row.body) };
     } catch (e) {
       return { error: e instanceof Error ? e.message : String(e) };
     }
-  }, [row?.metrics_json]);
+  }, [row?.body]);
 
   return (
     <Show isLoading={query.isLoading} title="관상 해석">
@@ -67,10 +67,10 @@ export const MetricShow = () => {
 
           {result.eng && <SoloHeroCard eng={result.eng} />}
 
-          {row.metrics_json && (
+          {row.body && (
             <details>
               <summary style={{ cursor: "pointer", fontWeight: 600 }}>
-                raw metrics_json
+                raw body
               </summary>
               <pre
                 style={{
@@ -82,7 +82,7 @@ export const MetricShow = () => {
                   maxHeight: 360,
                 }}
               >
-                {prettify(row.metrics_json)}
+                {prettify(row.body)}
               </pre>
             </details>
           )}

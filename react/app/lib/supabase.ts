@@ -1,6 +1,6 @@
 import type { MetricsRow, RawMetrics } from "./types";
 
-const SELECT = "id,metrics_json,expires_at";
+const SELECT = "id,body,expires_at";
 
 export async function fetchMetrics(env: Env, ids: string[]): Promise<MetricsRow[]> {
   const demoOnly = ids.every((id) => id.startsWith("00000000-0000-0000-0000-"));
@@ -26,20 +26,20 @@ export async function fetchMetrics(env: Env, ids: string[]): Promise<MetricsRow[
   }
   const rows = (await res.json()) as Array<{
     id: string;
-    metrics_json: string | null;
+    body: string | null;
     expires_at: string | null;
   }>;
 
   const now = Date.now();
   const map = new Map<string, MetricsRow>();
   for (const r of rows) {
-    if (!r.metrics_json) continue;
+    if (!r.body) continue;
     if (r.expires_at && new Date(r.expires_at).getTime() <= now) continue;
     try {
-      const raw = JSON.parse(r.metrics_json) as RawMetrics;
+      const raw = JSON.parse(r.body) as RawMetrics;
       map.set(r.id, { id: r.id, raw });
     } catch (e) {
-      console.error("[share-host] metrics_json parse fail", r.id, e);
+      console.error("[share-host] body parse fail", r.id, e);
     }
   }
   return ids.map((id) => map.get(id)).filter((r): r is MetricsRow => Boolean(r));

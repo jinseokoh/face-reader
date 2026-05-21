@@ -93,7 +93,7 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
   ///      reference·age adjustment·rule·quantile 로 완전 재계산.
   ///   2. parse 성공한 entry 만 slim capture (rawValue only) 로 Hive 덮어쓰기.
   ///      parse 실패 entry 는 raw 를 그대로 유지.
-  ///   3. Supabase 의 metrics_json 도 성공 entry 에 한해 upsert.
+  ///   3. Supabase 의 metrics.body 도 성공 entry 에 한해 upsert.
   Future<void> reloadFromHive() async {
     final parsed = <FaceReadingReport>[];
     final nextJson = <String>[];
@@ -158,7 +158,7 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
         'box.values.length=${_box.values.length}');
     for (final r in parsed) {
       if (r.supabaseId != null) {
-        SupabaseService().upsertMetricsJson(r).catchError((e) {
+        SupabaseService().upsertMetricsBody(r).catchError((e) {
           _log('supabase upsert error: $e');
         });
       }

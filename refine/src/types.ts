@@ -29,7 +29,7 @@ export type MetricSource = "camera" | "album";
 export type MetricEntry = {
   id: string;
   user_id: string | null;
-  metrics_json: string;
+  body: string;
   source: MetricSource;
   ethnicity: string;
   gender: string;

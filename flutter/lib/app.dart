@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_reader/core/theme.dart';
@@ -89,7 +90,7 @@ class _MainAppState extends ConsumerState<MainApp> {
         _showSnack('카드를 찾을 수 없어요');
         return null;
       }
-      final raw = row['metrics_json'];
+      final raw = row['body'];
       // jsonb / text 어느 쪽으로 돌아와도 fromJsonString 이 string 만 받으므로 정규화.
       final jsonStr = raw is String ? raw : raw?.toString();
       if (jsonStr == null || jsonStr.isEmpty) {
@@ -181,19 +182,19 @@ class _MainAppState extends ConsumerState<MainApp> {
         elevation: 8,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home),
+            icon: FaIcon(FontAwesomeIcons.house, size: 22),
             label: '홈',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.face_retouching_natural),
+            icon: FaIcon(FontAwesomeIcons.eye, size: 22),
             label: '관상',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.favorite),
+            icon: FaIcon(FontAwesomeIcons.handshake, size: 22),
             label: '궁합',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
+            icon: FaIcon(FontAwesomeIcons.userGear, size: 22),
             label: '설정',
           ),
         ],

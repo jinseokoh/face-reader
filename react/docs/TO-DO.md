@@ -50,7 +50,7 @@
 ### Worker SSR
 
 - [ ] **shared engine 통합** — `app/lib/traits.ts` 가 `app/lib/shared/face_engine.js` 호출. `pnpm build:shared` 명령 작동 확인. CI 에 해당 단계 추가.
-- [ ] **og:image 실 thumbnailKey 연동** — 현재 `${origin}/logo.png` fallback. `metrics_json.thumbnailKey` 가 채워지면 `${R2_CDN_BASE}/${thumbnailKey}` 로 전환.
+- [ ] **og:image 실 thumbnailKey 연동** — 현재 `${origin}/logo.png` fallback. `body.thumbnailKey` 가 채워지면 `${R2_CDN_BASE}/${thumbnailKey}` 로 전환.
 - [ ] **fetch 실패 graceful** — Supabase 다운 / 5xx 시 retry-with-jitter 1회, 그래도 실패면 503 페이지.
 
 ### 운영
@@ -84,7 +84,7 @@
 - [ ] **다국어 OG** — `Accept-Language` 헤더 detect → 한·영·일 분기.
 - [ ] **인스타 reel 친화 9:16 카드** — 별도 비율.
 - [ ] **shared engine 의 narrative 일부 (Beat-Fragment)** Worker SSR 에서도 보여줄지 결정. 현재는 archetype + 칩만; 본문은 앱 안만.
-- [ ] **metrics_json 압축** — `metrics_json.metrics` JSONB 가 크면 (~3KB) zstd 압축 슬롯 추가. 100k+ 누적 시점에 검토.
+- [ ] **body 압축** — `body.metrics` JSONB 가 크면 (~3KB) zstd 압축 슬롯 추가. 100k+ 누적 시점에 검토.
 - [ ] **궁합 OG 합성 PNG** — 두 사람 thumbnail 을 1080×566 (1.91:1) 캔버스에 합성.
 
 ---

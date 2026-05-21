@@ -28,7 +28,7 @@ class SupabaseService {
     final data = {
       'id': id,
       'user_id': _client.auth.currentUser?.id,
-      'metrics_json': report.toJsonString(),
+      'body': report.toJsonString(),
       'source': report.source.name,
       'ethnicity': report.ethnicity.name,
       'gender': report.gender.name,
@@ -65,13 +65,13 @@ class SupabaseService {
 
   /// Upsert metrics payload for an existing record. pull-to-refresh 후 slim
   /// capture JSON 을 서버에 동기화하는 용도.
-  Future<void> upsertMetricsJson(FaceReadingReport report) async {
+  Future<void> upsertMetricsBody(FaceReadingReport report) async {
     final id = report.supabaseId;
     if (id == null) return;
     await _client.from('metrics').upsert({
       'id': id,
       'user_id': _client.auth.currentUser?.id,
-      'metrics_json': report.toJsonString(),
+      'body': report.toJsonString(),
       'source': report.source.name,
       'ethnicity': report.ethnicity.name,
       'gender': report.gender.name,

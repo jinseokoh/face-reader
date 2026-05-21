@@ -28,13 +28,13 @@ export const UnlockShow = () => {
   const album = rows.find((r) => r.id === albumId);
 
   const compat = useMemo<{ out?: CompatOutput; error?: string }>(() => {
-    if (!my?.metrics_json || !album?.metrics_json) return {};
+    if (!my?.body || !album?.body) return {};
     try {
-      return { out: runCompat(my.metrics_json, album.metrics_json) };
+      return { out: runCompat(my.body, album.body) };
     } catch (e) {
       return { error: e instanceof Error ? e.message : String(e) };
     }
-  }, [my?.metrics_json, album?.metrics_json]);
+  }, [my?.body, album?.body]);
 
   const missing = !query.isLoading && (!my || !album);
 
