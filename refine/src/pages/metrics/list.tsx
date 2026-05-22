@@ -114,6 +114,24 @@ export const MetricList = () => {
           )}
         />
         <Table.Column<MetricEntry>
+          title="최종"
+          dataIndex="updated_at"
+          sorter
+          render={(v: string) => (
+            <DateField value={v} format="YYYY-MM-DD HH:mm" />
+          )}
+        />
+        <Table.Column<MetricEntry>
+          title="조회"
+          dataIndex="views"
+          sorter
+          render={(v: number) => (
+            <Text strong={v > 0} type={v > 0 ? undefined : "secondary"}>
+              {v}
+            </Text>
+          )}
+        />
+        <Table.Column<MetricEntry>
           title="만료"
           dataIndex="expires_at"
           sorter

@@ -36,6 +36,8 @@ export type MetricEntry = {
   age_group: string;
   alias: string | null;
   expires_at: string;
+  views: number;
+  updated_at: string;
   created_at: string;
 };
 

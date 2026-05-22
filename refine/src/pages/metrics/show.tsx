@@ -46,7 +46,9 @@ export const MetricShow = () => {
             <Descriptions.Item label="성별">{GENDER_LABEL[row.gender] ?? row.gender}</Descriptions.Item>
             <Descriptions.Item label="연령대">{row.age_group}</Descriptions.Item>
             <Descriptions.Item label="alias">{row.alias ?? "-"}</Descriptions.Item>
+            <Descriptions.Item label="조회수">{row.views}</Descriptions.Item>
             <Descriptions.Item label="created_at">{row.created_at}</Descriptions.Item>
+            <Descriptions.Item label="updated_at">{row.updated_at}</Descriptions.Item>
             <Descriptions.Item label="expires_at" span={2}>
               {row.expires_at}
             </Descriptions.Item>
