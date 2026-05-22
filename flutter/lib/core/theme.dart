@@ -42,6 +42,13 @@ class AppColors {
   static const gold = Color(0xFFC9A876);
   static const goldDim = Color(0xFFA89678);
   static const goldSoft = Color(0xFFF4E4C1);
+
+  // Warm beige palette — 관상 본문 카드 및 통일된 본문 컨테이너.
+  // 신규 본문 카드는 cream 배경 + shell border + darkBrown title + warmBrown secondary.
+  static const cream = Color(0xFFF5EFE0);
+  static const shell = Color(0xFFEDE5D5);
+  static const darkBrown = Color(0xFF5C4033);
+  static const warmBrown = Color(0xFF7B5B3A);
 }
 
 /// 6-단 텍스트 토큰 + AppBar 타이틀.

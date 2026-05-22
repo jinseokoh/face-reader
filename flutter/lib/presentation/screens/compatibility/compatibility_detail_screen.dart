@@ -427,26 +427,29 @@ class _NarrativeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 관상 detail `_buildReadingSection` 과 동일 디자인 (warm beige 카드).
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      margin: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+      padding: const EdgeInsets.all(AppSpacing.xl),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppTheme.border),
+        color: AppColors.cream,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        border: Border.all(color: AppColors.shell),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title,
               style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.textPrimary)),
-          const SizedBox(height: AppSpacing.sm),
+                  color: AppColors.darkBrown,
+                  fontSize: 19,
+                  fontWeight: FontWeight.bold)),
+          const SizedBox(height: AppSpacing.md),
           Text(body,
               style: const TextStyle(
-                  fontSize: 13, color: AppTheme.textPrimary, height: 1.7)),
+                  fontSize: 15,
+                  color: AppColors.darkBrown,
+                  height: 1.7)),
         ],
       ),
     );
