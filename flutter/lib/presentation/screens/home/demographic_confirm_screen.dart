@@ -1,7 +1,5 @@
 import 'dart:io';
 
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/gender.dart';
@@ -17,6 +15,7 @@ import 'package:face_reader/presentation/providers/tab_provider.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
@@ -64,49 +63,6 @@ class _DemographicConfirmScreenState
   bool _userTouched = false;
   // 마지막에 자동 prefill 된 값 (UI 에 "AI 가 추정: …" 보조 라인용).
   FaceMetadata? _inferred;
-
-  @override
-  void initState() {
-    super.initState();
-    _ethnicity = widget.initialEthnicity;
-    _gender = widget.initialGender;
-    _ageGroup = widget.initialAgeGroup;
-
-    final f = widget.metadataFuture;
-    if (f != null) {
-      _inferring = true;
-      f.then((meta) {
-        if (!mounted) return;
-        setState(() {
-          _inferring = false;
-          _inferred = meta;
-          if (meta == null || _userTouched) return;
-          // 사용자가 picker 만지지 않은 경우에만 prefill.
-          final e = meta.ethnicityEnum;
-          final g = meta.genderEnum;
-          if (e != null) _ethnicity = e;
-          if (g != null) _gender = g;
-          _ageGroup = meta.ageGroupEnum;
-        });
-      });
-    }
-  }
-
-  /// picker 한 항목이 바뀌면 userTouched flag 켜고 setState 로 값 반영.
-  void _touchAndSet(VoidCallback updater) {
-    setState(() {
-      _userTouched = true;
-      updater();
-    });
-  }
-
-  String _subtitle() {
-    if (_inferring) return '얼굴에서 정보를 추정하는 중...';
-    if (_inferred != null && !_userTouched) {
-      return 'AI 추정 결과가 채워졌어요. 잘못된 항목은 직접 수정해 주세요.';
-    }
-    return '잘못된 항목은 직접 수정해 주세요.';
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -215,9 +171,45 @@ class _DemographicConfirmScreenState
     );
   }
 
+  @override
+  void initState() {
+    super.initState();
+    _ethnicity = widget.initialEthnicity;
+    _gender = widget.initialGender;
+    _ageGroup = widget.initialAgeGroup;
+
+    final f = widget.metadataFuture;
+    if (f != null) {
+      _inferring = true;
+      f.then((meta) {
+        if (!mounted) return;
+        setState(() {
+          _inferring = false;
+          _inferred = meta;
+          if (meta == null || _userTouched) return;
+          // 사용자가 picker 만지지 않은 경우에만 prefill.
+          final e = meta.ethnicityEnum;
+          final g = meta.genderEnum;
+          if (e != null) _ethnicity = e;
+          if (g != null) _gender = g;
+          _ageGroup = meta.ageGroupEnum;
+        });
+      });
+    }
+  }
+
   /// 확인된 demographic 으로 full pipeline 실행.
   Future<void> _runFullAnalysis() async {
     setState(() => _isAnalyzing = true);
+
+    // background metadata pipeline (R2 thumbnail 업로드 포함) 이 아직 안 끝났
+    // 으면 기다림. 안 기다리면 _inferred 가 null 인 채로 report.thumbnailKey 가
+    // null 로 박혀서 카카오 공유 카드의 og:image 가 fallback 으로 떨어진다.
+    if (_inferring && widget.metadataFuture != null) {
+      final meta = await widget.metadataFuture;
+      if (!mounted) return;
+      if (meta != null) _inferred = meta;
+    }
 
     final c = widget.capture;
     final report = analyzeFaceReading(
@@ -343,6 +335,22 @@ class _DemographicConfirmScreenState
         ),
       ),
     );
+  }
+
+  String _subtitle() {
+    if (_inferring) return '얼굴에서 정보를 추정하는 중...';
+    if (_inferred != null && !_userTouched) {
+      return '잘못된 항목은 직접 수정해 주세요.';
+    }
+    return '잘못된 항목은 직접 수정해 주세요.';
+  }
+
+  /// picker 한 항목이 바뀌면 userTouched flag 켜고 setState 로 값 반영.
+  void _touchAndSet(VoidCallback updater) {
+    setState(() {
+      _userTouched = true;
+      updater();
+    });
   }
 }
 

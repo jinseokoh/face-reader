@@ -1,7 +1,5 @@
 import 'dart:io';
 
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
@@ -27,6 +25,7 @@ import 'package:face_reader/presentation/widgets/purchase_sheet.dart';
 import 'package:face_reader/presentation/widgets/source_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 /// 궁합 탭 — 내 얼굴이 아닌 다른 인물 리스트. 기본 lock, 1 코인 해제.
 class CompatibilityScreen extends ConsumerWidget {
@@ -69,13 +68,13 @@ class CompatibilityScreen extends ConsumerWidget {
   ) {
     if (myFace == null) {
       return _guide(
-        '내 관상이 설정되어 있지 않습니다.',
-        '궁합은 내 관상과 상대방 관상의 호환성을 분석합니다.',
+        '내 관상이 등록되지 않았습니다.',
+        '궁합을 보려면 내 관상 등록이 필요합니다.',
       );
     }
     if (others.isEmpty) {
       return _guide(
-        '궁합을 볼 수 있는 상대방 관상이 없습니다.',
+        '상대방의 관상을 등록하세요.',
         '카메라나 앨범으로 상대방의 관상을 추가하세요.',
       );
     }

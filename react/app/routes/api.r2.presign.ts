@@ -16,7 +16,7 @@ import type { Route } from "./+types/api.r2.presign";
  *
  *   * uploadUrl : 5분 TTL presigned PUT URL
  *   * publicUrl : 업로드 후 GET 가능한 CDN URL (R2_CDN_BASE/key)
- *   * key       : 실제 R2 object key. prefix=thumbnails 면 YYYYMM 자동 삽입.
+ *   * key       : 실제 R2 object key. prefix=thumbnails 면 YYYYMMDD 자동 삽입.
  *   * token     : prefix=temp 에 한해, Python /analyze 호출 인증용 HMAC 토큰
  *                 (X-Face-Token 헤더로 전달; X-Face-Key 도 함께 보내야 함).
  */
