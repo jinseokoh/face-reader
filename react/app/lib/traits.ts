@@ -14,6 +14,9 @@ export interface RenderInput {
   appLinkBase: string;
   appStoreUrl: string;
   playStoreUrl: string;
+  /// R2 CDN base — body 안의 `thumbnailKey` 와 결합해서 og:image 조립.
+  /// 없으면 fallback logo.png.
+  cdnBase?: string;
 }
 
 function ensureLoaded() {
@@ -36,6 +39,17 @@ function runCompatFor(a: MetricsRow, b: MetricsRow): CompatOutput {
   ) as CompatOutput;
 }
 
+function ogImageFor(row: MetricsRow, ctx: RenderInput): string {
+  // body 안에 thumbnailKey (R2 path) 가 있으면 cdn.facely.kr/{key} 사용.
+  // 없으면 fallback logo.png. PII (얼굴 thumbnail) 노출이므로 meta 에 robots
+  // noindex 동시에 박혀 있음 (share.tsx).
+  const key = (row.raw as unknown as Record<string, unknown>).thumbnailKey;
+  if (typeof key === "string" && key.length > 0 && ctx.cdnBase) {
+    return `${ctx.cdnBase.replace(/\/$/, "")}/${key}`;
+  }
+  return `${ctx.origin}/logo.png`;
+}
+
 export function renderSolo(row: MetricsRow, ctx: RenderInput): RenderedShare {
   const eng = runEngineFor(row);
   const ogTitle = eng.specialArchetype
@@ -47,7 +61,7 @@ export function renderSolo(row: MetricsRow, ctx: RenderInput): RenderedShare {
     shortId: ctx.shortId,
     ogTitle,
     ogDescription,
-    ogImage: `${ctx.origin}/logo.png`,
+    ogImage: ogImageFor(row, ctx),
     canonicalUrl: `${ctx.appLinkBase}${ctx.shortId}`,
     appLinkBase: ctx.appLinkBase,
     appStoreUrl: ctx.appStoreUrl,
@@ -66,7 +80,8 @@ export function renderCompat(a: MetricsRow, b: MetricsRow, ctx: RenderInput): Re
     shortId: ctx.shortId,
     ogTitle,
     ogDescription,
-    ogImage: `${ctx.origin}/logo.png`,
+    // 궁합은 my (=a) 의 thumbnail 만 og:image 로 노출 — 합성은 향후 확장.
+    ogImage: ogImageFor(a, ctx),
     canonicalUrl: `${ctx.appLinkBase}${ctx.shortId}`,
     appLinkBase: ctx.appLinkBase,
     appStoreUrl: ctx.appStoreUrl,

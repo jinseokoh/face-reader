@@ -34,6 +34,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     appLinkBase: `${env.WEBAPP_BASE}/r/`,
     appStoreUrl: env.APP_STORE_URL,
     playStoreUrl: env.PLAY_STORE_URL,
+    cdnBase: env.R2_CDN_BASE,
   };
   return ids.length === 2
     ? renderCompat(rows[0], rows[1], ctx)

@@ -15,13 +15,11 @@ import 'package:face_engine/domain/services/yin_yang.dart';
 import 'package:face_reader/core/theme.dart';
 import 'package:face_reader/data/constants/metric_text_blocks.dart';
 import 'package:face_reader/data/constants/node_text_blocks.dart';
-import 'package:face_reader/data/services/supabase_service.dart';
 import 'package:face_reader/domain/services/report_assembler.dart';
 import 'package:face_reader/domain/services/share/share_publisher.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart' hide Gender;
 
 
 const _nodeLabels = <String, String>{
@@ -1310,34 +1308,13 @@ class _ReportPageState extends ConsumerState<ReportPage> {
 
   Future<void> _shareViaKakao(BuildContext context) async {
     try {
-      String? uuid = widget.report.supabaseId;
-      if (uuid == null) {
-        uuid = await SupabaseService().saveMetrics(widget.report);
-        widget.report.supabaseId = uuid;
-      }
-      final link = 'https://facely.kr/r/$uuid';
-      final template = FeedTemplate(
-        content: Content(
-          title: '관상 분석 결과',
-          description: '나의 관상을 분석해 보세요!',
-          imageUrl: Uri.parse(
-              'https://cdn.facely.kr/assets/share-thumbnail.png'),
-          link: Link(
-            webUrl: Uri.parse(link),
-            mobileWebUrl: Uri.parse(link),
-          ),
-        ),
-        buttons: [
-          Button(
-            title: '결과 보기',
-            link: Link(
-              webUrl: Uri.parse(link),
-              mobileWebUrl: Uri.parse(link),
-            ),
-          ),
-        ],
+      final report = widget.report;
+      final archLabel = report.archetype.primaryLabel;
+      await SharePublisher.instance.publishSoloViaKakao(
+        report: report,
+        title: '$archLabel — AI 관상가',
+        description: '내 관상 분석 결과를 확인해 보세요',
       );
-      await ShareClient.instance.shareDefault(template: template);
     } catch (e, st) {
       debugPrint('[KakaoShare] error: $e\n$st');
       if (context.mounted) {

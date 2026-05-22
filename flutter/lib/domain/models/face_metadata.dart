@@ -6,8 +6,8 @@ import 'package:face_engine/data/enums/gender.dart';
 ///
 /// `uuid` is the **single capture id** generated once at analyze time and
 /// reused across the entire face lifecycle:
-///   - `temp/{uuid}.jpg`              (analyze 입력, 즉시 삭제)
-///   - `thumbnails/{YYYYMM}/{uuid}.jpg` (영구 256 PNG)
+///   - `temp/{uuid}.jpg`                (analyze 입력, 즉시 삭제)
+///   - `thumbnails/{YYYYMMDD}/{uuid}.jpg` (영구 256 PNG)
 ///   - `FaceReadingReport.supabaseId`  (caller 가 즉시 assign)
 ///   - `metrics.id` (Supabase row PK)
 ///   - `https://facely.kr/r/{uuid}`    (share link)
@@ -30,7 +30,12 @@ class FaceMetadata {
   // "middleEastern" — Python /analyze 응답에서 Flutter Ethnicity enum name 으로
   // 정규화된 값. 그대로 `Ethnicity.values.byName(...)` 로 매핑 가능.
   final String ethnicity;
+  /// R2 영구 CDN URL — `https://cdn.facely.kr/{thumbnailKey}`. 표시 fallback.
   final String? thumbnailUrl;
+  /// R2 object key — `thumbnails/{YYYYMMDD}/{uuid}.jpg`. Supabase body 및 Hive
+  /// `FaceReadingReport.thumbnailKey` 에 박힘. Worker SSR 의 og:image 가 이 값을
+  /// `${R2_CDN_BASE}/${thumbnailKey}` 로 조립.
+  final String? thumbnailKey;
 
   const FaceMetadata({
     required this.uuid,
@@ -38,14 +43,17 @@ class FaceMetadata {
     required this.gender,
     required this.ethnicity,
     this.thumbnailUrl,
+    this.thumbnailKey,
   });
 
-  FaceMetadata copyWith({String? thumbnailUrl}) => FaceMetadata(
+  FaceMetadata copyWith({String? thumbnailUrl, String? thumbnailKey}) =>
+      FaceMetadata(
         uuid: uuid,
         age: age,
         gender: gender,
         ethnicity: ethnicity,
         thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
+        thumbnailKey: thumbnailKey ?? this.thumbnailKey,
       );
 
   /// Python `/analyze` 응답엔 uuid 가 없다 (서버는 모름). 호출자가 client-side
@@ -67,6 +75,7 @@ class FaceMetadata {
         'gender': gender,
         'ethnicity': ethnicity,
         if (thumbnailUrl != null) 'thumbnail_url': thumbnailUrl,
+        if (thumbnailKey != null) 'thumbnail_key': thumbnailKey,
       };
 
   /// DeepFace `gender` 문자열을 [Gender] enum 으로. 알 수 없으면 null.

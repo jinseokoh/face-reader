@@ -73,6 +73,7 @@ class FaceMetadataClient {
     // ── 3) 분석 성공 → 256×256 얼굴 중심 square crop thumbnail 업로드 ────
     // (실패해도 metadata 는 반환 — orphan-zero 정책: 실패 시 thumbnail null)
     String? thumbnailUrl;
+    String? thumbnailKey;
     try {
       final small = await ImageResizer.faceCenterSquareCrop(
         originalImage,
@@ -84,12 +85,16 @@ class FaceMetadataClient {
         bytes: small,
       );
       thumbnailUrl = thumbUpload.publicUrl.toString();
+      thumbnailKey = thumbUpload.key;
     } catch (e) {
       // ignore: avoid_print
       print('[FaceMetadataClient] thumbnail upload failed (non-fatal): $e');
     }
 
-    return metadata.copyWith(thumbnailUrl: thumbnailUrl);
+    return metadata.copyWith(
+      thumbnailUrl: thumbnailUrl,
+      thumbnailKey: thumbnailKey,
+    );
   }
 
   Future<FaceMetadata> _callAnalyze(

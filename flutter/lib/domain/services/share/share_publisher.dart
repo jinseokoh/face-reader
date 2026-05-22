@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart' hide Gender;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -30,6 +31,15 @@ class SharePublisher {
   String get _hostBase =>
       dotenv.env['WEBAPP_BASE']?.trim().replaceAll(RegExp(r'/$'), '') ??
       'https://facely.kr';
+
+  /// R2 CDN base — KakaoLink Feed `imageUrl` 조립에 사용.
+  String get _cdnBase =>
+      dotenv.env['R2_CDN_BASE']?.trim().replaceAll(RegExp(r'/$'), '') ??
+      'https://cdn.facely.kr';
+
+  /// thumbnailKey 가 없을 때 KakaoLink 카드의 fallback 이미지.
+  static const String _fallbackImage =
+      'https://cdn.facely.kr/assets/share-thumbnail.png';
 
   Future<void> publishSolo({
     required FaceReadingReport report,
@@ -81,5 +91,81 @@ class SharePublisher {
         text: url,
       ),
     );
+  }
+
+  // ─── 카카오 공유 (KakaoLink Feed) ────────────────────────────────────────
+  //
+  // 이미지 첨부 share_plus 와 별개 경로. 카톡 안에서 풍부한 link preview 카드
+  // (제목·설명·이미지·CTA 버튼) 를 보여주려면 KakaoLink Feed template 필수.
+  // imageUrl 은 R2 영구 thumbnail (`cdn.facely.kr/{thumbnailKey}`) 또는 fallback.
+
+  /// Solo 공유 — 카카오톡 친구 또는 채팅방에 KakaoLink Feed 발송.
+  Future<void> publishSoloViaKakao({
+    required FaceReadingReport report,
+    required String title,
+    required String description,
+  }) async {
+    final uuid = await _ensureSupabaseId(report);
+    await _sendKakaoFeed(
+      title: title,
+      description: description,
+      imageUrl: _resolveImageUrl(report.thumbnailKey),
+      webUrl: '$_hostBase/r/$uuid',
+      tag: 'solo',
+    );
+  }
+
+  /// 궁합 공유 — `/r/{A}~{B}` 두 UUID 묶음. 양쪽 metrics row 가 publish 된 상태
+  /// 여야 Worker SSR 이 두 행 fetch 가능.
+  Future<void> publishCompatViaKakao({
+    required FaceReadingReport my,
+    required FaceReadingReport album,
+    required String title,
+    required String description,
+  }) async {
+    final myId = await _ensureSupabaseId(my);
+    final albumId = await _ensureSupabaseId(album);
+    await _sendKakaoFeed(
+      title: title,
+      description: description,
+      // og:image 는 Worker SSR 이 my thumbnail 을 사용. 카톡 안 카드 preview 도
+      // my thumbnail (R2 직통) — 두 사람 합성은 Worker 책임이고 KakaoLink 는 단일 이미지.
+      imageUrl: _resolveImageUrl(my.thumbnailKey),
+      webUrl: '$_hostBase/r/$myId$pairSep$albumId',
+      tag: 'compat',
+    );
+  }
+
+  String _resolveImageUrl(String? thumbnailKey) {
+    if (thumbnailKey != null && thumbnailKey.isNotEmpty) {
+      return '$_cdnBase/$thumbnailKey';
+    }
+    return _fallbackImage;
+  }
+
+  Future<void> _sendKakaoFeed({
+    required String title,
+    required String description,
+    required String imageUrl,
+    required String webUrl,
+    required String tag,
+  }) async {
+    final link = Link(
+      webUrl: Uri.parse(webUrl),
+      mobileWebUrl: Uri.parse(webUrl),
+    );
+    final template = FeedTemplate(
+      content: Content(
+        title: title,
+        description: description,
+        imageUrl: Uri.parse(imageUrl),
+        link: link,
+      ),
+      buttons: [
+        Button(title: '결과 보기', link: link),
+      ],
+    );
+    debugPrint('[SharePublisher.kakao] $tag url=$webUrl image=$imageUrl');
+    await ShareClient.instance.shareDefault(template: template);
   }
 }

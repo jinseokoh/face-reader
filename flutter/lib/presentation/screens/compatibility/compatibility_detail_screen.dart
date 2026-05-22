@@ -16,12 +16,10 @@ import 'package:face_engine/domain/services/compat/compat_sub_display.dart';
 import 'package:face_engine/domain/services/compat/five_element.dart';
 import 'package:face_engine/domain/services/compat/modern_vocab.dart';
 import 'package:face_reader/core/theme.dart';
-import 'package:face_reader/data/services/supabase_service.dart';
 import 'package:face_reader/domain/services/share/share_publisher.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart' hide Gender;
 
 // ─────────────────────────────────────────────────────────────
 // Shared helpers
@@ -135,43 +133,17 @@ class _CompatibilityDetailScreenState
 
   Future<void> _shareViaKakao(BuildContext context) async {
     try {
-      // 공유 link 는 my report 의 supabase URL 을 사용 — 받는 사람이 내 관상을
-      // 함께 볼 수 있게. 미저장 상태면 먼저 supabase 에 push.
-      String? uuid = widget.my.supabaseId;
-      if (uuid == null) {
-        uuid = await SupabaseService().saveMetrics(widget.my);
-        widget.my.supabaseId = uuid;
-      }
-      final link = 'https://facely.kr/r/$uuid';
       final r = _bundle.report;
       final myAlias = widget.my.alias ?? '나';
       final albumAlias = widget.album.alias ?? '상대';
       final desc =
           '$myAlias × $albumAlias — ${r.label.korean} ${r.total.toStringAsFixed(0)}/100';
-
-      final template = FeedTemplate(
-        content: Content(
-          title: '궁합 분석 결과',
-          description: desc,
-          imageUrl: Uri.parse(
-              'https://cdn.facely.kr/assets/share-thumbnail.png'),
-          link: Link(
-            webUrl: Uri.parse(link),
-            mobileWebUrl: Uri.parse(link),
-          ),
-        ),
-        buttons: [
-          Button(
-            title: '결과 보기',
-            link: Link(
-              webUrl: Uri.parse(link),
-              mobileWebUrl: Uri.parse(link),
-            ),
-          ),
-        ],
+      await SharePublisher.instance.publishCompatViaKakao(
+        my: widget.my,
+        album: widget.album,
+        title: '궁합 분석 결과',
+        description: desc,
       );
-
-      await ShareClient.instance.shareDefault(template: template);
     } catch (e, st) {
       debugPrint('[CompatKakaoShare] error: $e');
       debugPrint('[CompatKakaoShare] stackTrace: $st');

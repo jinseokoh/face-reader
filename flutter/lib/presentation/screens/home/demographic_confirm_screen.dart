@@ -231,8 +231,13 @@ class _DemographicConfirmScreenState
       lateralLandmarks: c.lateralLandmarks,
     );
 
-    final id = const Uuid().v4();
+    // metadata.uuid 가 있으면 그걸 supabaseId 로 그대로 사용 (R2 thumbnailKey 의
+    // uuid 부분과 매칭되어야 single trace id 유지). 없으면 fallback v4.
+    final id = _inferred?.uuid ?? const Uuid().v4();
     report.supabaseId = id;
+    // R2 영구 thumbnail 의 path key — analyze 시점에 이미 PUT 됨.
+    // Worker SSR 의 og:image 가 `cdn.facely.kr/${thumbnailKey}` 로 조립.
+    report.thumbnailKey = _inferred?.thumbnailKey;
 
     // 썸네일 생성 — ML Kit bbox 기반 face-centered 256 square crop.
     // 단순 비례 축소 (FlutterImageCompress) 만 하면 album path 의 square-padded

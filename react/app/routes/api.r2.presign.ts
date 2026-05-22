@@ -110,8 +110,10 @@ function readConfig(env: Env): Cfg | null {
 function buildKey(prefix: Prefix, uuid: string, ext: string): string {
   if (prefix === "temp") return `temp/${uuid}.${ext}`;
   const now = new Date();
-  const yyyymm = `${now.getUTCFullYear()}${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
-  return `thumbnails/${yyyymm}/${uuid}.${ext}`;
+  const yyyy = now.getUTCFullYear();
+  const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(now.getUTCDate()).padStart(2, "0");
+  return `thumbnails/${yyyy}${mm}${dd}/${uuid}.${ext}`;
 }
 
 // ─── R2 SigV4 presign ────────────────────────────────────────────────────
