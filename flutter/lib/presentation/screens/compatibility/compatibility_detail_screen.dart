@@ -67,7 +67,7 @@ class _CompatibilityDetailScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(widget.album.alias ?? '궁합'),
         actions: [
@@ -428,11 +428,11 @@ class _NarrativeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(color: AppTheme.border),
       ),
       child: Column(
@@ -441,12 +441,12 @@ class _NarrativeCard extends StatelessWidget {
           Text(title,
               style: const TextStyle(
                   fontSize: 16,
-                  color: AppTheme.textPrimary,
-                  letterSpacing: 3)),
-          const SizedBox(height: 10),
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary)),
+          const SizedBox(height: AppSpacing.sm),
           Text(body,
               style: const TextStyle(
-                  fontSize: 14, color: AppTheme.textPrimary, height: 1.7)),
+                  fontSize: 13, color: AppTheme.textPrimary, height: 1.7)),
         ],
       ),
     );
@@ -458,34 +458,24 @@ class _NarrativeCard extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────
 
 class _NarrativeSections extends StatelessWidget {
-  static const _titles = [
-    '한줄 요약',
-    '핵심 궁합 3가지',
-    '현실 갈등 시나리오',
-    '관계 운영 전략',
-    '궁합 점수와 이유',
-  ];
   final CompatNarrative narrative;
 
   const _NarrativeSections({required this.narrative});
 
   @override
   Widget build(BuildContext context) {
-    final bodies = <String>[
-      narrative.summary,
-      narrative.corePoints,
-      narrative.conflictScenarios,
-      narrative.strategy,
-      narrative.scoreReason,
+    final sections = <({String title, String body})>[
+      (title: '한줄 요약', body: narrative.summary),
+      (title: '핵심 궁합 3가지', body: narrative.corePoints),
+      (title: '현실 갈등 시나리오', body: narrative.conflictScenarios),
+      (title: '관계 운영 전략', body: narrative.strategy),
+      (title: '이성적 끌림의 결', body: narrative.intimacyChapter),
+      (title: '궁합 점수와 이유', body: narrative.scoreReason),
     ];
     return Column(
       children: [
-        for (int i = 0; i < bodies.length; i++)
-          _NarrativeCard(title: _titles[i], body: bodies[i]),
-        _NarrativeCard(
-          title: '이성적 끌림의 결',
-          body: narrative.intimacyChapter,
-        ),
+        for (final s in sections)
+          _NarrativeCard(title: s.title, body: s.body),
       ],
     );
   }

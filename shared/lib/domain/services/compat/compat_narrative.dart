@@ -174,10 +174,11 @@ List<CompatFinding> _gatherFindings(CompatibilityReport r) {
 
 // ─────────────── intimacy chapter ───────────────
 //
-// 모든 페어에서 노출되는 섹션. IntimacyTone 에 따라 형식이 달라진다:
-//   - pure:      opener + 4 axis 산문 + closer (현재의 점잖은 톤)
-//   - flirty: opener + closer (짧고 미묘한 긴장, 인스타 릴스 자막 톤)
-//   - spicy:   opener + closer (들키면 안 되는 분위기, SNS 공유 punch line)
+// 모든 페어에서 노출되는 섹션. 분량 = opener + 4 axis 산문체 + closer 로 통일.
+// tone 분기는 opener/closer 의 어휘만 결정 (axis 산문은 공통):
+//   - pure:    동성 페어·10대·70대 포함 → 점잖은 산문
+//   - flirty:  20대·60대 포함 이성 페어 → 미묘한 긴장
+//   - spicy:   양쪽 30~50 이성 페어 → 들킬 듯한 분위기
 //
 // bucket 분류:
 //   - high (65 이상): 강한 끌림
@@ -234,34 +235,33 @@ String _intimacyChapter(CompatibilityReport r, int pairSeed) {
     buf.writeln(opener);
   }
 
-  // Axis 문단 — pure 톤에서만 4 axis 산문체로 출력.
-  // flirty/spicy 는 인스타 릴스 톤이라 axis 산문체 생략, opener+closer 만.
-  if (tone == IntimacyTone.pure) {
-    final axisDetails = intimacyAxisDetailsByGender[r.myGender] ??
-        const <String, IntimacyAxisDetail>{};
-    for (final comp in r.intimacy.components) {
-      final sign = _intimacySign(comp.value);
-      final key = '${comp.id}-$sign';
-      final detail = axisDetails[key];
-      if (detail == null) continue;
+  // Axis 문단 — 모든 톤에서 4 axis 산문체로 출력 (cause + observation + advice).
+  // 톤 분기는 opener/closer 의 어휘만, axis 산문은 공통 — 얼굴 근거 설명이라
+  // 톤 변화 의미 작고 분량 풍부함 우선.
+  final axisDetails = intimacyAxisDetailsByGender[r.myGender] ??
+      const <String, IntimacyAxisDetail>{};
+  for (final comp in r.intimacy.components) {
+    final sign = _intimacySign(comp.value);
+    final key = '${comp.id}-$sign';
+    final detail = axisDetails[key];
+    if (detail == null) continue;
 
-      final advice = bucket == 'high'
-          ? detail.adviceHigh
-          : bucket == 'low'
-              ? detail.adviceLow
-              // mid bucket 은 high/low 조언 중 더 중립적인 쪽 선택 — pair-seed 로
-              // 분기시키되, 낮은 점수에서 들이대는 문제가 재발하지 않도록
-              // low 쪽에 약간 기울여 둔다 (seed even → low, odd → high).
-              : (((pairSeed + comp.id.hashCode) & 1) == 0
-                  ? detail.adviceLow
-                  : detail.adviceHigh);
+    final advice = bucket == 'high'
+        ? detail.adviceHigh
+        : bucket == 'low'
+            ? detail.adviceLow
+            // mid bucket 은 high/low 조언 중 더 중립적인 쪽 선택 — pair-seed 로
+            // 분기시키되, 낮은 점수에서 들이대는 문제가 재발하지 않도록
+            // low 쪽에 약간 기울여 둔다 (seed even → low, odd → high).
+            : (((pairSeed + comp.id.hashCode) & 1) == 0
+                ? detail.adviceLow
+                : detail.adviceHigh);
 
-      buf.writeln();
-      buf.writeln('[${_axisLabel(comp.id)}]');
-      buf.writeln(detail.cause);
-      buf.writeln(detail.observation);
-      buf.writeln(advice);
-    }
+    buf.writeln();
+    buf.writeln('[${_axisLabel(comp.id)}]');
+    buf.writeln(detail.cause);
+    buf.writeln(detail.observation);
+    buf.writeln(advice);
   }
 
   // Closing — bucket 별 pool.
