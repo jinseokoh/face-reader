@@ -7,14 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// OTP 시트의 결과. 부모(login_bottom_sheet)가 다음 행동을 정한다.
-///
-///   • verified — 인증 성공, 부모도 pop(true)
-///   • cancelled — 사용자가 취소, 부모는 그대로 유지
-///   • switchToLogin — "이미 가입한 계정이라면" 인지하고 로그인 모드로
-///     전환 요청. 부모는 segmented control 을 로그인으로 setState.
-enum OtpSheetResult { verified, cancelled, switchToLogin }
-
 /// 이메일 가입 후 발송된 6자리 OTP 를 사용자가 입력해 본인 인증을 마치는
 /// modal sheet.
 ///
@@ -48,6 +40,14 @@ Future<OtpSheetResult> showOtpVerificationSheet(
   return result ?? OtpSheetResult.cancelled;
 }
 
+/// OTP 시트의 결과. 부모(login_bottom_sheet)가 다음 행동을 정한다.
+///
+///   • verified — 인증 성공, 부모도 pop(true)
+///   • cancelled — 사용자가 취소, 부모는 그대로 유지
+///   • switchToLogin — "이미 가입한 계정이라면" 인지하고 로그인 모드로
+///     전환 요청. 부모는 segmented control 을 로그인으로 setState.
+enum OtpSheetResult { verified, cancelled, switchToLogin }
+
 class _OtpSheet extends ConsumerStatefulWidget {
   final String email;
   const _OtpSheet({required this.email});
@@ -57,98 +57,14 @@ class _OtpSheet extends ConsumerStatefulWidget {
 }
 
 class _OtpSheetState extends ConsumerState<_OtpSheet> {
+  static const _kOtpLength = 6; // Supabase 대시보드 OTP 길이와 동기.
   final _otpCtrl = TextEditingController();
   bool _isLoading = false;
+
   String? _error;
-
   Timer? _resendTimer;
+
   int _resendCooldownSec = 60;
-
-  @override
-  void initState() {
-    super.initState();
-    _startResendCooldown();
-  }
-
-  @override
-  void dispose() {
-    _otpCtrl.dispose();
-    _resendTimer?.cancel();
-    super.dispose();
-  }
-
-  void _startResendCooldown() {
-    setState(() => _resendCooldownSec = 60);
-    _resendTimer?.cancel();
-    _resendTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) {
-        t.cancel();
-        return;
-      }
-      setState(() {
-        _resendCooldownSec--;
-        if (_resendCooldownSec <= 0) {
-          t.cancel();
-          _resendCooldownSec = 0;
-        }
-      });
-    });
-  }
-
-  static const _kOtpLength = 8; // Supabase 대시보드 OTP 길이와 동기.
-
-  Future<void> _verify() async {
-    final token = _otpCtrl.text.trim();
-    debugPrint('[OtpSheet._verify] start email=${widget.email} '
-        'tokenLen=${token.length}');
-    if (token.length != _kOtpLength) {
-      debugPrint('[OtpSheet._verify] reject: token not $_kOtpLength digits');
-      setState(() => _error = '$_kOtpLength자리 코드를 입력하세요');
-      return;
-    }
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-    final res = await ref
-        .read(authProvider.notifier)
-        .verifyEmailOtp(widget.email, token);
-    debugPrint('[OtpSheet._verify] ok=${res.ok} msg=${res.message}');
-    if (!mounted) return;
-    if (res.ok) {
-      Navigator.of(context).pop(OtpSheetResult.verified);
-    } else {
-      setState(() {
-        _isLoading = false;
-        _error = res.message ?? '인증 실패';
-      });
-    }
-  }
-
-  Future<void> _resend() async {
-    debugPrint('[OtpSheet._resend] requested cooldown=$_resendCooldownSec '
-        'loading=$_isLoading');
-    if (_resendCooldownSec > 0 || _isLoading) {
-      debugPrint('[OtpSheet._resend] skipped (cooldown or loading)');
-      return;
-    }
-    setState(() => _isLoading = true);
-    final res =
-        await ref.read(authProvider.notifier).resendEmailOtp(widget.email);
-    debugPrint('[OtpSheet._resend] ok=${res.ok} msg=${res.message}');
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-    if (res.ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('이메일을 다시 발송했습니다')),
-      );
-      _startResendCooldown();
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(res.message ?? '재전송 실패')),
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -329,5 +245,89 @@ class _OtpSheetState extends ConsumerState<_OtpSheet> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _otpCtrl.dispose();
+    _resendTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _startResendCooldown();
+  }
+
+  Future<void> _resend() async {
+    debugPrint('[OtpSheet._resend] requested cooldown=$_resendCooldownSec '
+        'loading=$_isLoading');
+    if (_resendCooldownSec > 0 || _isLoading) {
+      debugPrint('[OtpSheet._resend] skipped (cooldown or loading)');
+      return;
+    }
+    setState(() => _isLoading = true);
+    final res =
+        await ref.read(authProvider.notifier).resendEmailOtp(widget.email);
+    debugPrint('[OtpSheet._resend] ok=${res.ok} msg=${res.message}');
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+    if (res.ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('이메일을 다시 발송했습니다')),
+      );
+      _startResendCooldown();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(res.message ?? '재전송 실패')),
+      );
+    }
+  }
+
+  void _startResendCooldown() {
+    setState(() => _resendCooldownSec = 60);
+    _resendTimer?.cancel();
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      setState(() {
+        _resendCooldownSec--;
+        if (_resendCooldownSec <= 0) {
+          t.cancel();
+          _resendCooldownSec = 0;
+        }
+      });
+    });
+  }
+
+  Future<void> _verify() async {
+    final token = _otpCtrl.text.trim();
+    debugPrint('[OtpSheet._verify] start email=${widget.email} '
+        'tokenLen=${token.length}');
+    if (token.length != _kOtpLength) {
+      debugPrint('[OtpSheet._verify] reject: token not $_kOtpLength digits');
+      setState(() => _error = '$_kOtpLength자리 코드를 입력하세요');
+      return;
+    }
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    final res = await ref
+        .read(authProvider.notifier)
+        .verifyEmailOtp(widget.email, token);
+    debugPrint('[OtpSheet._verify] ok=${res.ok} msg=${res.message}');
+    if (!mounted) return;
+    if (res.ok) {
+      Navigator.of(context).pop(OtpSheetResult.verified);
+    } else {
+      setState(() {
+        _isLoading = false;
+        _error = res.message ?? '인증 실패';
+      });
+    }
   }
 }
