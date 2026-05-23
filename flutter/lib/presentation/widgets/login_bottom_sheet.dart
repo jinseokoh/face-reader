@@ -1,5 +1,6 @@
 import 'package:face_reader/core/theme.dart';
 import 'package:face_reader/presentation/providers/auth_provider.dart';
+import 'package:face_reader/presentation/widgets/otp_verification_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -73,19 +74,33 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
         ? await notifier.signUpWithEmail(email, password)
         : await notifier.loginWithEmail(email, password);
     if (!mounted) return;
-    if (success) {
-      Navigator.of(context).pop(true);
-      if (_isSignUp) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('가입 확인 메일을 확인해주세요')),
-        );
-      }
-    } else {
+
+    if (!success) {
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(_isSignUp ? '가입 실패' : '로그인 실패')),
       );
+      return;
     }
+
+    if (_isSignUp) {
+      // 가입은 Supabase 에 됐고, 이제 OTP 인증 단계로. login sheet 위로
+      // OTP sheet 가 슬라이드. OTP 성공 시 onAuthStateChange 가 세션을
+      // 만들어 _loadProfile 자동 실행 → 우리는 login sheet 도 pop(true).
+      final verified =
+          await showOtpVerificationSheet(context, ref, email: email);
+      if (!mounted) return;
+      if (verified) {
+        Navigator.of(context).pop(true);
+      } else {
+        // 사용자가 OTP 취소 — login sheet 는 유지. 다시 시도 가능.
+        setState(() => _isLoading = false);
+      }
+      return;
+    }
+
+    // 로그인 (signin) 성공 — session 생성 완료.
+    Navigator.of(context).pop(true);
   }
 
   @override

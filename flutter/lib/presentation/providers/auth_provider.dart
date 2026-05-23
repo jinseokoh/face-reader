@@ -41,6 +41,14 @@ class AuthNotifier extends Notifier<AuthUser?> {
     return AuthService().signUpWithEmail(email, password);
   }
 
+  Future<bool> verifyEmailOtp(String email, String token) async {
+    return AuthService().verifyEmailOtp(email, token);
+  }
+
+  Future<bool> resendEmailOtp(String email) async {
+    return AuthService().resendEmailOtp(email);
+  }
+
   Future<void> logout() async {
     await AuthService().logout();
   }

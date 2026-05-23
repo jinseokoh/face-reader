@@ -160,6 +160,10 @@ class AuthService {
 
   /// Email + password sign up. Depending on "Confirm email" setting in the
   /// dashboard, user may receive a confirmation mail first.
+  ///
+  /// Supabase 이메일 템플릿이 OTP (`{{ .Token }}`) 를 포함하면 사용자가
+  /// 메일에서 6자리 코드를 받아 [verifyEmailOtp] 로 검증. emailRedirectTo
+  /// 는 link 방식 fallback 용 — OTP 만 쓸 거면 사용자가 link 안 눌러도 됨.
   Future<bool> signUpWithEmail(String email, String password) async {
     try {
       await _client.auth
@@ -167,6 +171,38 @@ class AuthService {
       return true;
     } catch (e) {
       debugPrint('[Auth] email signup error: $e');
+      return false;
+    }
+  }
+
+  /// 가입 후 발송된 6자리 OTP 를 검증. 성공 시 Supabase 가 자동으로 session
+  /// 을 만들고 onAuthStateChange 가 발화 → _loadProfile 이 실행됨.
+  Future<bool> verifyEmailOtp(String email, String token) async {
+    debugPrint('[Auth] verifyEmailOtp email=$email tokenLen=${token.length}');
+    try {
+      await _client.auth.verifyOTP(
+        type: OtpType.signup,
+        email: email,
+        token: token,
+      );
+      return true;
+    } catch (e, st) {
+      debugPrint('[Auth] verifyOtp error: $e\n$st');
+      return false;
+    }
+  }
+
+  /// 가입 OTP 이메일 재전송. cooldown 관리는 호출자 책임 (UI 의 60초 timer).
+  Future<bool> resendEmailOtp(String email) async {
+    debugPrint('[Auth] resendEmailOtp email=$email');
+    try {
+      await _client.auth.resend(
+        type: OtpType.signup,
+        email: email,
+      );
+      return true;
+    } catch (e) {
+      debugPrint('[Auth] resend error: $e');
       return false;
     }
   }
