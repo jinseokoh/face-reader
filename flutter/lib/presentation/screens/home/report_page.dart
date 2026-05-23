@@ -17,8 +17,10 @@ import 'package:face_reader/data/constants/metric_text_blocks.dart';
 import 'package:face_reader/data/constants/node_text_blocks.dart';
 import 'package:face_reader/domain/services/report_assembler.dart';
 import 'package:face_reader/domain/services/share/share_publisher.dart';
+import 'package:face_reader/presentation/providers/auth_provider.dart';
 import 'package:face_reader/presentation/providers/history_provider.dart';
 import 'package:face_reader/presentation/widgets/compact_snack_bar.dart';
+import 'package:face_reader/presentation/widgets/login_bottom_sheet.dart';
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -1316,7 +1318,18 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     return computeYinYang(zMap, report.gender);
   }
 
+  /// 로그인 가드 — 비로그인이면 home_screen 의 "앨범에서 선택" 과 동일한
+  /// login bottom sheet 띄움. true = 로그인 완료(또는 이미 로그인), false =
+  /// 사용자가 취소.
+  Future<bool> _ensureLoggedIn(BuildContext context) async {
+    if (ref.read(authProvider.notifier).isLoggedIn) return true;
+    final loggedIn = await showLoginBottomSheet(context, ref);
+    if (!mounted) return false;
+    return loggedIn;
+  }
+
   Future<void> _shareViaKakao(BuildContext context) async {
+    if (!await _ensureLoggedIn(context)) return;
     try {
       final report = widget.report;
       final archLabel = report.archetype.primaryLabel;
@@ -1339,8 +1352,10 @@ class _ReportPageState extends ConsumerState<ReportPage> {
   }
 
   // ─── Share card sheet (C) ───
-  void _showShareCardSheet(BuildContext context) {
-    showModalBottomSheet<void>(
+  Future<void> _showShareCardSheet(BuildContext context) async {
+    if (!await _ensureLoggedIn(context)) return;
+    if (!context.mounted) return;
+    await showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.white,
       isScrollControlled: true,

@@ -17,6 +17,8 @@ import 'package:face_engine/domain/services/compat/five_element.dart';
 import 'package:face_engine/domain/services/compat/modern_vocab.dart';
 import 'package:face_reader/core/theme.dart';
 import 'package:face_reader/domain/services/share/share_publisher.dart';
+import 'package:face_reader/presentation/providers/auth_provider.dart';
+import 'package:face_reader/presentation/widgets/login_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -131,7 +133,18 @@ class _CompatibilityDetailScreenState
     }
   }
 
+  /// 로그인 가드 — 비로그인이면 home_screen 의 "앨범에서 선택" 과 동일한
+  /// login bottom sheet 띄움. true = 로그인 완료(또는 이미 로그인), false =
+  /// 사용자가 취소.
+  Future<bool> _ensureLoggedIn(BuildContext context) async {
+    if (ref.read(authProvider.notifier).isLoggedIn) return true;
+    final loggedIn = await showLoginBottomSheet(context, ref);
+    if (!mounted) return false;
+    return loggedIn;
+  }
+
   Future<void> _shareViaKakao(BuildContext context) async {
+    if (!await _ensureLoggedIn(context)) return;
     try {
       final r = _bundle.report;
       final myAlias = widget.my.alias ?? '나';
@@ -163,8 +176,10 @@ class _CompatibilityDetailScreenState
   // ─────────────────────────────────────────────────────────────
 
   // ─── Share card sheet (이미지 1장 공유) ───
-  void _showShareCardSheet(BuildContext context) {
-    showModalBottomSheet<void>(
+  Future<void> _showShareCardSheet(BuildContext context) async {
+    if (!await _ensureLoggedIn(context)) return;
+    if (!context.mounted) return;
+    await showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.white,
       isScrollControlled: true,
