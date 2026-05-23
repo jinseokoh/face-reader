@@ -45,7 +45,7 @@ class AuthService {
   AuthService._();
 
   SupabaseClient get _client => Supabase.instance.client;
-  static const _redirectUrl = 'face-reader://auth-callback';
+  static const _redirectUrl = 'facely://auth-callback';
 
   AuthUser? _currentUser;
   AuthUser? get currentUser => _currentUser;

@@ -30,7 +30,7 @@ android:label="AI 관상가"
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="face-reader" android:host="auth-callback"/>
+                <data android:scheme="facely" android:host="auth-callback"/>
             </intent-filter>
             <!-- facely.kr share host universal link — /r/{uuid} 또는 /r/{uuidA}~{uuidB} 진입 -->
             <intent-filter android:autoVerify="true">
