@@ -191,6 +191,13 @@ class _OtpSheetState extends ConsumerState<_OtpSheet> {
                     color: AppTheme.textHint,
                     letterSpacing: 4,
                   ),
+                  // 48px 높이로 맞춰 아래 "인증하기" 버튼과 동일 비주얼
+                  // 가중치. default Material content padding (~16 vertical)
+                  // 이 56px+ 만들어 button(48) 보다 커보이던 문제 해소.
+                  isCollapsed: false,
+                  isDense: true,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
