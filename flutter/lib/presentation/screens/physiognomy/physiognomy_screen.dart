@@ -567,7 +567,11 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
               // flexibleSpace + bottom(TabBar) 모두 포함. 따라서 프로필 영역만이
               // 아니라 TabBar 높이(kTextTabBarHeight=46)까지 더해야 한다.
               // 안 그러면 background 가 TabBar 아래로 클리핑되어 label 끼리 겹침.
-              expandedHeight: kToolbarHeight + 94 + kTextTabBarHeight,
+              //
+              // 프로필 슬롯 102px — Android 는 94 로도 충분했으나 iPhone 의
+              // safe-area·FlexibleSpaceBar 계산 차이로 inner Column 이 2.5px
+              // overflow. 양 플랫폼 동일 layout 유지를 위해 8px 여유 추가.
+              expandedHeight: kToolbarHeight + 102 + kTextTabBarHeight,
               title: const Text('관상'),
               actions: [
                 IconButton(
