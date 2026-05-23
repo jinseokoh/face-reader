@@ -67,7 +67,13 @@ class SettingsScreen extends ConsumerWidget {
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600)),
                             const SizedBox(height: 2),
-                            Text('카카오 계정으로 로그인됨',
+                            Text(
+                                switch (user.provider) {
+                                  'kakao' => '카카오 계정으로 로그인됨',
+                                  'email' => '이메일 계정으로 로그인됨',
+                                  'google' => '구글 계정으로 로그인됨',
+                                  _ => '로그인됨',
+                                },
                                 style: TextStyle(
                                     color: AppTheme.textHint, fontSize: 13)),
                           ],

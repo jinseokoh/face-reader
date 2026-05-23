@@ -16,6 +16,9 @@ class AuthUser {
   /// 보너스 3 코인이 dedup 으로 차단된 계정. 클라이언트는 이 flag 로 1회
   /// 안내 다이얼로그를 띄운다.
   final bool signupBonusSkipped;
+  /// `auth.users.app_metadata.provider` — 'kakao' / 'email' 등. settings
+  /// 페이지에서 "카카오 계정으로 로그인됨" / "이메일로 로그인됨" 분기 표시.
+  final String? provider;
 
   const AuthUser({
     required this.id,
@@ -24,6 +27,7 @@ class AuthUser {
     this.nickname,
     this.profileImageUrl,
     this.signupBonusSkipped = false,
+    this.provider,
   });
 
   AuthUser copyWith({int? coins}) => AuthUser(
@@ -33,6 +37,7 @@ class AuthUser {
         profileImageUrl: profileImageUrl,
         coins: coins ?? this.coins,
         signupBonusSkipped: signupBonusSkipped,
+        provider: provider,
       );
 }
 
@@ -309,14 +314,21 @@ class AuthService {
     return balance;
   }
 
-  AuthUser _mapUser(Map<String, dynamic> row) => AuthUser(
-        id: row['id'] as String,
-        kakaoUserId: row['kakao_user_id'] as String?,
-        nickname: row['nickname'] as String?,
-        profileImageUrl: row['profile_image_url'] as String?,
-        coins: (row['coins'] as int?) ?? 0,
-        signupBonusSkipped: (row['signup_bonus_skipped'] as bool?) ?? false,
-      );
+  AuthUser _mapUser(Map<String, dynamic> row) {
+    // Supabase auth.users 의 app_metadata.provider 가 'kakao' / 'email' /
+    // 'google' 등. settings UI 에서 "어느 경로로 로그인됐는지" 표시 용도.
+    final providerRaw =
+        _client.auth.currentUser?.appMetadata['provider'] as String?;
+    return AuthUser(
+      id: row['id'] as String,
+      kakaoUserId: row['kakao_user_id'] as String?,
+      nickname: row['nickname'] as String?,
+      profileImageUrl: row['profile_image_url'] as String?,
+      coins: (row['coins'] as int?) ?? 0,
+      signupBonusSkipped: (row['signup_bonus_skipped'] as bool?) ?? false,
+      provider: providerRaw,
+    );
+  }
 
   void dispose() {
     _sub?.cancel();

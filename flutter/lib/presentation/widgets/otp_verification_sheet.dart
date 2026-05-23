@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:face_reader/core/theme.dart';
 import 'package:face_reader/presentation/providers/auth_provider.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -180,8 +181,7 @@ class _OtpSheetState extends ConsumerState<_OtpSheet> {
                           color: AppTheme.textPrimary,
                           fontWeight: FontWeight.w600),
                     ),
-                    const TextSpan(
-                        text: ' 으로 코드를 보냈습니다.\n메일을 확인해 코드를 입력해주세요.'),
+                    const TextSpan(text: ' 으로 코드를 보냈습니다.'),
                   ],
                 ),
                 textAlign: TextAlign.center,
@@ -289,20 +289,31 @@ class _OtpSheetState extends ConsumerState<_OtpSheet> {
               ),
               // Supabase user-enumeration 방어로 이미 가입된 이메일엔 OTP 가
               // 안 발송됨. 사용자가 막다른 길에 빠지지 않도록 명시 전환 경로.
-              TextButton(
-                onPressed: _isLoading
-                    ? null
-                    : () => Navigator.of(context)
-                        .pop(OtpSheetResult.switchToLogin),
-                child: Text(
-                  '이미 가입한 계정이라면 → 로그인으로 전환',
-                  textAlign: TextAlign.center,
+              // "이미 가입했나요?" 는 login sheet 의 "처음이신가요?" hint 와
+              // 동일 톤 (textHint·12px), "로그인으로 이동" 은 inline clickable.
+              const SizedBox(height: 8),
+              Text.rich(
+                TextSpan(
                   style: TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
+                      color: AppTheme.textHint, fontSize: 12, height: 1.5),
+                  children: [
+                    const TextSpan(text: '이미 가입했나요? '),
+                    TextSpan(
+                      text: '로그인으로 이동',
+                      style: TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontWeight: FontWeight.w600,
+                        decoration: TextDecoration.underline,
+                      ),
+                      recognizer: _isLoading
+                          ? null
+                          : (TapGestureRecognizer()
+                            ..onTap = () => Navigator.of(context)
+                                .pop(OtpSheetResult.switchToLogin)),
+                    ),
+                  ],
                 ),
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 4),
               Text(
