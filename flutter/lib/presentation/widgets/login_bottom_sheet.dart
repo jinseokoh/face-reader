@@ -45,6 +45,24 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
   final _passwordCtrl = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    // submit 버튼 enabled 상태는 두 필드 내용에 따라 결정 — 매 입력마다 rebuild.
+    _emailCtrl.addListener(_onFormChanged);
+    _passwordCtrl.addListener(_onFormChanged);
+  }
+
+  void _onFormChanged() {
+    if (mounted) setState(() {});
+  }
+
+  bool get _canSubmit {
+    final email = _emailCtrl.text.trim();
+    final password = _passwordCtrl.text;
+    return email.isNotEmpty && password.length >= 6;
+  }
+
+  @override
   void dispose() {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
@@ -258,10 +276,12 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
               SizedBox(
                 height: 48,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _emailSubmit,
+                  onPressed: (_isLoading || !_canSubmit) ? null : _emailSubmit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.textPrimary,
                     foregroundColor: Colors.white,
+                    disabledBackgroundColor: AppColors.surface,
+                    disabledForegroundColor: AppColors.textHint,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
