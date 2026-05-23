@@ -14,9 +14,13 @@ Future<bool> showLoginBottomSheet(BuildContext context, WidgetRef ref) async {
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
+    // viewInsetsOf 는 viewInsets 만 listen — MediaQuery.of 보다 selective.
+    // 키보드 애니메이션 중 매 frame rebuild 가 발생해도 다른 메트릭 변화
+    // 에는 반응 안 함. 모달의 const _LoginSheet 는 동일 instance 라
+    // 자식 element 트리는 보존, Padding 만 padding 재적용.
     builder: (ctx) => Padding(
       padding: EdgeInsets.only(
-        bottom: MediaQuery.of(ctx).viewInsets.bottom,
+        bottom: MediaQuery.viewInsetsOf(ctx).bottom,
       ),
       child: const _LoginSheet(),
     ),
@@ -173,41 +177,54 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
               ),
               const SizedBox(height: 16),
               // ── 이메일 form ──────────────────────────────────────────
-              TextField(
-                controller: _emailCtrl,
-                keyboardType: TextInputType.emailAddress,
-                autofillHints: const [AutofillHints.email],
-                decoration: InputDecoration(
-                  labelText: '이메일',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _passwordCtrl,
-                obscureText: _obscurePassword,
-                autofillHints: const [AutofillHints.password],
-                onSubmitted: _isLoading ? null : (_) => _emailSubmit(),
-                decoration: InputDecoration(
-                  labelText: '비밀번호 (6자 이상)',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  suffixIcon: IconButton(
-                    tooltip:
-                        _obscurePassword ? '비밀번호 보기' : '비밀번호 숨기기',
-                    icon: FaIcon(
-                      _obscurePassword
-                          ? FontAwesomeIcons.eye
-                          : FontAwesomeIcons.eyeSlash,
-                      size: 18,
-                      color: AppTheme.textSecondary,
+              // AutofillGroup 으로 두 필드 묶음 — iOS Keychain 조회를
+              // batch 처리해 첫 tap 시 응답성 개선. 묶이지 않으면 각
+              // TextField 가 개별 autofill query 를 trigger.
+              AutofillGroup(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: _emailCtrl,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      autofillHints: const [AutofillHints.email],
+                      decoration: InputDecoration(
+                        labelText: '이메일',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
                     ),
-                    onPressed: () => setState(
-                        () => _obscurePassword = !_obscurePassword),
-                  ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _passwordCtrl,
+                      obscureText: _obscurePassword,
+                      textInputAction: TextInputAction.done,
+                      autofillHints: const [AutofillHints.password],
+                      onSubmitted: _isLoading ? null : (_) => _emailSubmit(),
+                      decoration: InputDecoration(
+                        labelText: '비밀번호 (6자 이상)',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        suffixIcon: IconButton(
+                          tooltip: _obscurePassword
+                              ? '비밀번호 보기'
+                              : '비밀번호 숨기기',
+                          icon: FaIcon(
+                            _obscurePassword
+                                ? FontAwesomeIcons.eye
+                                : FontAwesomeIcons.eyeSlash,
+                            size: 18,
+                            color: AppTheme.textSecondary,
+                          ),
+                          onPressed: () => setState(
+                              () => _obscurePassword = !_obscurePassword),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 16),
