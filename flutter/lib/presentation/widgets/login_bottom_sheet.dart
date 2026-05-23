@@ -2,6 +2,7 @@ import 'package:face_reader/core/theme.dart';
 import 'package:face_reader/data/services/auth_service.dart' show SignUpOutcome;
 import 'package:face_reader/presentation/providers/auth_provider.dart';
 import 'package:face_reader/presentation/widgets/otp_verification_sheet.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -41,6 +42,7 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
   bool _isLoading = false;
   bool _isSignUp = false;
   bool _obscurePassword = true;
+  String? _errorMessage; // inline 표시 — snackbar 가 sheet 뒤로 가는 문제 회피.
 
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
@@ -85,7 +87,10 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
                 isSignUp: isSignUp,
                 onChanged: _isLoading
                     ? null
-                    : (v) => setState(() => _isSignUp = v),
+                    : (v) => setState(() {
+                          _isSignUp = v;
+                          _errorMessage = null;
+                        }),
               ),
               const SizedBox(height: 24),
               // ── 헤더 (모드별 문구) ───────────────────────────────────
@@ -231,16 +236,81 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
                         ),
                 ),
               ),
+              // 인라인 에러 — modal sheet 위 영역에 표시되므로 snackbar 처럼
+              // 가려질 일 없음. AppColors.danger 살짝 tint 한 box + icon.
+              if (_errorMessage != null) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.danger.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: AppColors.danger.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const FaIcon(
+                        FontAwesomeIcons.circleExclamation,
+                        size: 14,
+                        color: AppColors.danger,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _errorMessage!,
+                          style: TextStyle(
+                            color: AppColors.danger,
+                            fontSize: 13,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               // ── 하단 hint (mode 별) — 같은 톤(textHint·12px)으로 통일.
               // 가입 모드의 reward 가치는 emoji 로만 시각 차별.
-              Text(
-                isSignUp
-                    ? '🎁 첫 가입 시 3코인 지급'
-                    : '처음이신가요? 위에서 \'가입\' 을 선택하세요.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppTheme.textHint, fontSize: 12),
-              ),
+              // 로그인 모드에는 OTP sheet 와 동일 패턴 — "처음이신가요?" 평문 +
+              // "가입 페이지로 이동" inline clickable.
+              if (isSignUp)
+                Text(
+                  '🎁 첫 가입 시 3코인 지급',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      color: AppTheme.textHint, fontSize: 12, height: 1.5),
+                )
+              else
+                Text.rich(
+                  TextSpan(
+                    style: TextStyle(
+                        color: AppTheme.textHint, fontSize: 12, height: 1.5),
+                    children: [
+                      const TextSpan(text: '처음이신가요? '),
+                      TextSpan(
+                        text: '가입으로 이동',
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontWeight: FontWeight.w600,
+                          decoration: TextDecoration.underline,
+                        ),
+                        recognizer: _isLoading
+                            ? null
+                            : (TapGestureRecognizer()
+                              ..onTap = () => setState(() {
+                                    _isSignUp = true;
+                                    _errorMessage = null;
+                                  })),
+                      ),
+                    ],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
             ],
           ),
         ),
@@ -271,21 +341,22 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
     if (email.isEmpty || password.length < 6) {
       debugPrint('[Login.emailSubmit] validation fail '
           '(email empty=${email.isEmpty} pwLen=${password.length})');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('이메일과 6자 이상 비밀번호를 입력하세요')),
-      );
+      setState(() => _errorMessage = '이메일과 6자 이상 비밀번호를 입력하세요');
       return;
     }
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
     final notifier = ref.read(authProvider.notifier);
 
     if (_isSignUp) {
-      final outcome = await notifier.signUpWithEmail(email, password);
-      debugPrint('[Login.emailSubmit] signUp outcome=$outcome');
+      final res = await notifier.signUpWithEmail(email, password);
+      debugPrint('[Login.emailSubmit] signUp outcome=${res.outcome} '
+          'msg=${res.message}');
       if (!mounted) return;
-      switch (outcome) {
+      switch (res.outcome) {
         case SignUpOutcome.newAccount:
-          // OTP sheet 띄움.
           final otpResult =
               await showOtpVerificationSheet(context, ref, email: email);
           debugPrint('[Login.emailSubmit] otpResult=$otpResult');
@@ -302,37 +373,31 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
               setState(() => _isLoading = false);
           }
         case SignUpOutcome.alreadyRegistered:
-          // Supabase user-enumeration 방어 — OTP 안 옴. 로그인 모드로 자동
-          // 전환 + 안내.
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('이미 가입된 이메일입니다. 로그인 모드로 전환했습니다.')),
-          );
           setState(() {
             _isSignUp = false;
             _isLoading = false;
+            _errorMessage = '이미 가입된 이메일입니다. 로그인을 진행하세요.';
           });
         case SignUpOutcome.error:
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('가입 실패 — 잠시 후 다시 시도해주세요')),
-          );
-          setState(() => _isLoading = false);
+          setState(() {
+            _isLoading = false;
+            _errorMessage = res.message ?? '가입 실패';
+          });
       }
       return;
     }
 
     // ── 로그인 모드 ──────────────────────────────────────────────
-    final ok = await notifier.loginWithEmail(email, password);
-    debugPrint('[Login.emailSubmit] signIn ok=$ok');
+    final res = await notifier.loginWithEmail(email, password);
+    debugPrint('[Login.emailSubmit] signIn ok=${res.ok} msg=${res.message}');
     if (!mounted) return;
-    if (ok) {
+    if (res.ok) {
       Navigator.of(context).pop(true);
     } else {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('로그인 실패 — 이메일/비밀번호를 확인해주세요')),
-      );
+      setState(() {
+        _isLoading = false;
+        _errorMessage = res.message ?? '로그인 실패';
+      });
     }
   }
 
@@ -345,7 +410,12 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
   }
 
   void _onFormChanged() {
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {
+        // 사용자가 다시 입력하기 시작하면 이전 에러 사라짐.
+        if (_errorMessage != null) _errorMessage = null;
+      });
+    }
   }
 }
 

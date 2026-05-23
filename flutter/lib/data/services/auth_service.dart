@@ -165,23 +165,51 @@ class AuthService {
     }
   }
 
-  /// Email + password sign in. Returns true on success.
-  Future<bool> loginWithEmail(String email, String password) async {
+  /// Supabase Auth 의 exception 을 사용자가 이해할 수 있는 한국어 메시지로.
+  /// snackbar 에 그대로 띄울 수 있는 형태.
+  String _humanizeAuthError(Object e) {
+    if (e is AuthApiException) {
+      // code 가 있는 명시적 에러는 case 별 매핑. 없으면 message 노출.
+      return switch (e.code) {
+        'over_email_send_rate_limit' =>
+          '이메일 발송 한도 초과. 잠시 후 다시 시도해주세요',
+        'over_request_rate_limit' =>
+          '요청이 너무 많습니다. 잠시 후 다시 시도해주세요',
+        'weak_password' => '비밀번호가 너무 짧거나 약합니다',
+        'email_address_invalid' => '유효하지 않은 이메일 주소입니다',
+        'user_already_exists' => '이미 가입된 이메일입니다',
+        'invalid_credentials' => '이메일 또는 비밀번호가 잘못됐습니다',
+        'email_not_confirmed' => '이메일 인증이 안 됐습니다. 인증 후 다시 시도',
+        'otp_expired' => '코드가 만료됐습니다. 재전송 후 다시 시도',
+        'invalid_otp' => '잘못된 인증 코드입니다',
+        'signup_disabled' => '현재 가입이 제한돼 있습니다',
+        _ => e.message,
+      };
+    }
+    return e.toString();
+  }
+
+  /// Email + password sign in. (ok, message). message 는 실패 시 사용자 표시용.
+  Future<({bool ok, String? message})> loginWithEmail(
+      String email, String password) async {
+    debugPrint('[Auth.signIn] start email=$email');
     try {
       await _client.auth
           .signInWithPassword(email: email, password: password);
-      return true;
-    } catch (e) {
-      debugPrint('[Auth] email login error: $e');
-      return false;
+      debugPrint('[Auth.signIn] OK');
+      return (ok: true, message: null);
+    } catch (e, st) {
+      final msg = _humanizeAuthError(e);
+      debugPrint('[Auth.signIn] FAIL: $e\n$st');
+      return (ok: false, message: msg);
     }
   }
 
   /// Email + password sign up. Supabase user-enumeration 방어 때문에 이미
-  /// confirmed 가입자 이메일이어도 throw 하지 않고 가짜 success 응답이 옴 —
-  /// 다만 `user.identities` 가 비어있어 구분 가능. 호출자가 outcome 으로
-  /// 분기.
-  Future<SignUpOutcome> signUpWithEmail(String email, String password) async {
+  /// confirmed 가입자 이메일이어도 throw 안 하고 가짜 success — `user.identities`
+  /// 가 비어있어 구분. (outcome, message). message 는 error outcome 일 때만.
+  Future<({SignUpOutcome outcome, String? message})> signUpWithEmail(
+      String email, String password) async {
     debugPrint('[Auth.signUp] start email=$email pwLen=${password.length}');
     try {
       final res = await _client.auth.signUp(
@@ -199,27 +227,25 @@ class AuthService {
       );
       if (user == null) {
         debugPrint('[Auth.signUp] OUTCOME=error (user null)');
-        return SignUpOutcome.error;
+        return (outcome: SignUpOutcome.error, message: '가입 응답이 비정상입니다');
       }
-      // Supabase user-enumeration 방어 — 이미 confirmed 가입자에게도 200 OK
-      // 같은 가짜 success. user.identities 가 비어있는 것이 신호 (v2.x SDK).
       if (identCount == 0) {
-        debugPrint('[Auth.signUp] OUTCOME=alreadyRegistered '
-            '(empty identities — user already exists)');
-        return SignUpOutcome.alreadyRegistered;
+        debugPrint('[Auth.signUp] OUTCOME=alreadyRegistered');
+        return (outcome: SignUpOutcome.alreadyRegistered, message: null);
       }
-      debugPrint('[Auth.signUp] OUTCOME=newAccount — OTP 이메일 발송 예상');
-      return SignUpOutcome.newAccount;
+      debugPrint('[Auth.signUp] OUTCOME=newAccount');
+      return (outcome: SignUpOutcome.newAccount, message: null);
     } catch (e, st) {
-      debugPrint('[Auth.signUp] OUTCOME=error exception=$e');
+      final msg = _humanizeAuthError(e);
+      debugPrint('[Auth.signUp] OUTCOME=error exception=$e ($msg)');
       debugPrint('[Auth.signUp] stack=$st');
-      return SignUpOutcome.error;
+      return (outcome: SignUpOutcome.error, message: msg);
     }
   }
 
-  /// 가입 후 발송된 6자리 OTP 를 검증. 성공 시 Supabase 가 자동으로 session
-  /// 을 만들고 onAuthStateChange 가 발화 → _loadProfile 이 실행됨.
-  Future<bool> verifyEmailOtp(String email, String token) async {
+  /// 가입 후 발송된 6자리 OTP 를 검증. 성공 시 onAuthStateChange 가 발화.
+  Future<({bool ok, String? message})> verifyEmailOtp(
+      String email, String token) async {
     debugPrint('[Auth.verifyOtp] start email=$email tokenLen=${token.length}');
     try {
       final res = await _client.auth.verifyOTP(
@@ -229,29 +255,25 @@ class AuthService {
       );
       debugPrint('[Auth.verifyOtp] OK userId=${res.user?.id} '
           'session=${res.session != null}');
-      return true;
+      return (ok: true, message: null);
     } catch (e, st) {
-      debugPrint('[Auth.verifyOtp] FAIL exception=$e');
-      debugPrint('[Auth.verifyOtp] stack=$st');
-      return false;
+      final msg = _humanizeAuthError(e);
+      debugPrint('[Auth.verifyOtp] FAIL: $e ($msg)\n$st');
+      return (ok: false, message: msg);
     }
   }
 
-  /// 가입 OTP 이메일 재전송. cooldown 관리는 호출자 책임 (UI 의 60초 timer).
-  Future<bool> resendEmailOtp(String email) async {
+  /// 가입 OTP 이메일 재전송.
+  Future<({bool ok, String? message})> resendEmailOtp(String email) async {
     debugPrint('[Auth.resendOtp] start email=$email');
     try {
-      await _client.auth.resend(
-        type: OtpType.signup,
-        email: email,
-      );
-      debugPrint('[Auth.resendOtp] OK — Supabase 가 새 OTP 메일 발송 (이미 '
-          'confirmed 사용자면 무발송, rate-limit 시 throw 가능)');
-      return true;
+      await _client.auth.resend(type: OtpType.signup, email: email);
+      debugPrint('[Auth.resendOtp] OK');
+      return (ok: true, message: null);
     } catch (e, st) {
-      debugPrint('[Auth.resendOtp] FAIL exception=$e');
-      debugPrint('[Auth.resendOtp] stack=$st');
-      return false;
+      final msg = _humanizeAuthError(e);
+      debugPrint('[Auth.resendOtp] FAIL: $e ($msg)\n$st');
+      return (ok: false, message: msg);
     }
   }
 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// ---------------------------------------------------------------------------
-/// Face Reader — 디자인 토큰 SSOT.
+/// Facely — 디자인 토큰 SSOT.
 /// 위젯 코드에서 fontSize·color·padding·radius 를 inline 으로 박지 말고
 /// 본 파일의 토큰만 참조한다. 자세한 운영 규칙은 `flutter/DESIGN.md` 참고.
 ///
@@ -18,37 +18,58 @@ import 'package:flutter/material.dart';
 const String _kDisplayFont = 'SongMyung';
 
 class AppColors {
-  AppColors._();
-
   // Surface
   static const background = Colors.white;
+
   static const surface = Color(0xFFF5F5F5);
   static const border = Color(0xFFE0E0E0);
-
   // Text
   static const textPrimary = Color(0xFF333333);
+
   static const textSecondary = Color(0xFF777777);
   static const textHint = Color(0xFFAAAAAA);
-
   // Accent (general)
   static const accent = Color(0xFF555555);
 
   // Semantic
   static const success = Color(0xFF2E7D32);
+
   static const danger = Color(0xFFD32F2F);
   static const info = Color(0xFF1565C0);
-
   // Premium / brand-warm (gold family)
   static const gold = Color(0xFFC9A876);
+
   static const goldDim = Color(0xFFA89678);
   static const goldSoft = Color(0xFFF4E4C1);
-
   // Warm beige palette — 관상 본문 카드 및 통일된 본문 컨테이너.
   // 신규 본문 카드는 cream 배경 + shell border + darkBrown title + warmBrown secondary.
   static const cream = Color(0xFFF5EFE0);
+
   static const shell = Color(0xFFEDE5D5);
   static const darkBrown = Color(0xFF5C4033);
   static const warmBrown = Color(0xFF7B5B3A);
+  AppColors._();
+}
+
+/// border radius 스케일.
+class AppRadius {
+  static const double sm = 6;
+  static const double md = 10;
+  static const double lg = 14;
+  static const double xl = 16;
+  AppRadius._();
+}
+
+/// 4-스텝 spacing 스케일. SizedBox·padding·gap 은 본 값만 사용.
+class AppSpacing {
+  static const double xs = 4;
+  static const double sm = 8;
+  static const double md = 12;
+  static const double lg = 16;
+  static const double xl = 20;
+  static const double xxl = 24;
+  static const double huge = 32;
+  AppSpacing._();
 }
 
 /// 6-단 텍스트 토큰 + AppBar 타이틀.
@@ -56,8 +77,6 @@ class AppColors {
 /// 신규 화면은 inline `TextStyle(fontSize: …)` 대신 `AppText.X` 또는
 /// `AppText.X.copyWith(color: …)` 만 사용.
 class AppText {
-  AppText._();
-
   /// **display** — 28 w700 SongMyung. 홈 화면 "AI 관상가" 같은 화면 최상위 타이틀.
   static const TextStyle display = TextStyle(
     fontFamily: _kDisplayFont,
@@ -134,44 +153,23 @@ class AppText {
     color: AppColors.textHint,
     height: 1.4,
   );
-}
 
-/// 4-스텝 spacing 스케일. SizedBox·padding·gap 은 본 값만 사용.
-class AppSpacing {
-  AppSpacing._();
-  static const double xs = 4;
-  static const double sm = 8;
-  static const double md = 12;
-  static const double lg = 16;
-  static const double xl = 20;
-  static const double xxl = 24;
-  static const double huge = 32;
-}
-
-/// border radius 스케일.
-class AppRadius {
-  AppRadius._();
-  static const double sm = 6;
-  static const double md = 10;
-  static const double lg = 14;
-  static const double xl = 16;
+  AppText._();
 }
 
 /// Material 3 ThemeData — 토큰을 `textTheme`·`appBarTheme` 에 주입.
 /// `AppTheme.textPrimary` 등의 색상 alias 는 backward-compat 용으로 유지하되
 /// 신규 코드는 [AppColors] 를 직접 참조한다.
 class AppTheme {
-  AppTheme._();
-
   // ---- Color aliases (backward-compat with existing call sites) -----------
   static const background = AppColors.background;
+
   static const surface = AppColors.surface;
   static const border = AppColors.border;
   static const textPrimary = AppColors.textPrimary;
   static const textSecondary = AppColors.textSecondary;
   static const textHint = AppColors.textHint;
   static const accent = AppColors.accent;
-
   static ThemeData get light => ThemeData(
         brightness: Brightness.light,
         colorScheme: ColorScheme.fromSeed(
@@ -230,4 +228,6 @@ class AppTheme {
         ),
         useMaterial3: true,
       );
+
+  AppTheme._();
 }

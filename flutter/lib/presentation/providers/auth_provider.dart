@@ -33,19 +33,22 @@ class AuthNotifier extends Notifier<AuthUser?> {
     }
   }
 
-  Future<bool> loginWithEmail(String email, String password) async {
+  Future<({bool ok, String? message})> loginWithEmail(
+      String email, String password) async {
     return AuthService().loginWithEmail(email, password);
   }
 
-  Future<SignUpOutcome> signUpWithEmail(String email, String password) async {
+  Future<({SignUpOutcome outcome, String? message})> signUpWithEmail(
+      String email, String password) async {
     return AuthService().signUpWithEmail(email, password);
   }
 
-  Future<bool> verifyEmailOtp(String email, String token) async {
+  Future<({bool ok, String? message})> verifyEmailOtp(
+      String email, String token) async {
     return AuthService().verifyEmailOtp(email, token);
   }
 
-  Future<bool> resendEmailOtp(String email) async {
+  Future<({bool ok, String? message})> resendEmailOtp(String email) async {
     return AuthService().resendEmailOtp(email);
   }
 

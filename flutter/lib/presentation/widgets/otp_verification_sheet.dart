@@ -108,17 +108,17 @@ class _OtpSheetState extends ConsumerState<_OtpSheet> {
       _isLoading = true;
       _error = null;
     });
-    final success = await ref
+    final res = await ref
         .read(authProvider.notifier)
         .verifyEmailOtp(widget.email, token);
-    debugPrint('[OtpSheet._verify] success=$success');
+    debugPrint('[OtpSheet._verify] ok=${res.ok} msg=${res.message}');
     if (!mounted) return;
-    if (success) {
+    if (res.ok) {
       Navigator.of(context).pop(OtpSheetResult.verified);
     } else {
       setState(() {
         _isLoading = false;
-        _error = '코드가 잘못됐거나 이미 가입된 계정일 수 있습니다';
+        _error = res.message ?? '인증 실패';
       });
     }
   }
@@ -131,19 +131,19 @@ class _OtpSheetState extends ConsumerState<_OtpSheet> {
       return;
     }
     setState(() => _isLoading = true);
-    final success =
+    final res =
         await ref.read(authProvider.notifier).resendEmailOtp(widget.email);
-    debugPrint('[OtpSheet._resend] success=$success');
+    debugPrint('[OtpSheet._resend] ok=${res.ok} msg=${res.message}');
     if (!mounted) return;
     setState(() => _isLoading = false);
-    if (success) {
+    if (res.ok) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('이메일을 다시 발송했습니다')),
       );
       _startResendCooldown();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('재전송 실패 — 잠시 후 다시 시도')),
+        SnackBar(content: Text(res.message ?? '재전송 실패')),
       );
     }
   }
