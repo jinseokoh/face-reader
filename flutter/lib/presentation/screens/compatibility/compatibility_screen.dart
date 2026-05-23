@@ -549,16 +549,20 @@ class _CompatListCard extends StatelessWidget {
     );
   }
 
+  /// 등급별 SSOT 컬러 — accent bar · 등급명 텍스트 · stepper dot 셋 다 동일.
+  /// Tailwind-600 패밀리 (한 셋, hue 들쭉날쭉 안 함, vivid 에 가까우면서도
+  /// 본문 텍스트로 읽힘). 변경 시 _stepColor 와 동기화 — 두 함수는 반드시
+  /// 같은 값을 반환해야 한다.
   static Color _labelColor(CompatLabel l) {
     switch (l) {
       case CompatLabel.cheonjakjihap:
-        return const Color(0xFF4A8B5C); // 1순위 — 녹색
+        return const Color(0xFF16A34A); // green-600
       case CompatLabel.sangkyeongyeobin:
-        return const Color(0xFF4A7BA8); // 2순위 — 파랑
+        return const Color(0xFF2563EB); // blue-600
       case CompatLabel.mahapgaseong:
-        return const Color(0xFFC58448); // 3순위 — 오렌지 (가운데 / 노력 필요)
+        return const Color(0xFFEA580C); // orange-600
       case CompatLabel.hyeonggeuknanjo:
-        return const Color(0xFFB05858); // 4순위 — 빨강
+        return const Color(0xFFDC2626); // red-600
     }
   }
 
@@ -726,19 +730,10 @@ class _GradeStepper extends StatelessWidget {
     );
   }
 
-  // 이모지 🟢🔵🟠🔴 톤 — chip 의 muted accent 와 분리된 stepper 전용 vivid 컬러.
-  static Color _stepColor(CompatLabel l) {
-    switch (l) {
-      case CompatLabel.cheonjakjihap:
-        return const Color(0xFF22C55E); // green-500
-      case CompatLabel.sangkyeongyeobin:
-        return const Color(0xFF3B82F6); // blue-500
-      case CompatLabel.mahapgaseong:
-        return const Color(0xFFF97316); // orange-500
-      case CompatLabel.hyeonggeuknanjo:
-        return const Color(0xFFEF4444); // red-500
-    }
-  }
+  // accent bar · 등급명 텍스트 · stepper dot 모두 한 셋 (Tailwind-600).
+  // _CompatListCard._labelColor 와 반드시 동일 값 — 변경 시 동시 수정.
+  static Color _stepColor(CompatLabel l) =>
+      _CompatListCard._labelColor(l);
 }
 
 // ─────────────────────────────────────────────────────────────
