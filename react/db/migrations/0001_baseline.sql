@@ -158,11 +158,20 @@ create policy "metrics_insert_anon"
     and not (body::jsonb ? 'landmarks')
   );
 
+-- `IS NOT DISTINCT FROM` 으로 null-safe 비교. anon 이 분석 시점에 user_id=null
+-- 으로 박은 row 를 share 시점에 다시 upsert (INSERT…ON CONFLICT DO UPDATE)
+-- 할 때 UPDATE 분기 평가. 일반 `=` 비교는 SQL three-valued logic 때문에
+-- null=null → unknown → false 로 reject. IS NOT DISTINCT FROM 은 양쪽 null
+-- 도 true 처리 → anon→anon, authed→authed 모두 통과. cross-tier (anon→authed)
+-- 는 여전히 차단.
 create policy "metrics_owner_update"
-  on public.metrics for update using (user_id = auth.uid()) with check (user_id = auth.uid());
+  on public.metrics for update
+    using (user_id is not distinct from auth.uid())
+    with check (user_id is not distinct from auth.uid());
 
 create policy "metrics_owner_delete"
-  on public.metrics for delete using (user_id = auth.uid());
+  on public.metrics for delete
+    using (user_id is not distinct from auth.uid());
 -- cron · /api/erase 는 service-role 로 직접 DELETE (RLS bypass).
 
 -- 어떤 UPDATE 든 updated_at 자동 touch. views++ RPC 의 사이드이펙트 활용.
