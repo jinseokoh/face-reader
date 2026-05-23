@@ -44,81 +44,10 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
 
-  @override
-  void initState() {
-    super.initState();
-    // submit 버튼 enabled 상태는 두 필드 내용에 따라 결정 — 매 입력마다 rebuild.
-    _emailCtrl.addListener(_onFormChanged);
-    _passwordCtrl.addListener(_onFormChanged);
-  }
-
-  void _onFormChanged() {
-    if (mounted) setState(() {});
-  }
-
   bool get _canSubmit {
     final email = _emailCtrl.text.trim();
     final password = _passwordCtrl.text;
     return email.isNotEmpty && password.length >= 6;
-  }
-
-  @override
-  void dispose() {
-    _emailCtrl.dispose();
-    _passwordCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _kakaoLogin() async {
-    setState(() => _isLoading = true);
-    final launched = await ref.read(authProvider.notifier).loginWithKakao();
-    if (mounted) {
-      Navigator.of(context).pop(launched);
-    }
-  }
-
-  Future<void> _emailSubmit() async {
-    final email = _emailCtrl.text.trim();
-    final password = _passwordCtrl.text;
-    if (email.isEmpty || password.length < 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('이메일과 6자 이상 비밀번호를 입력하세요')),
-      );
-      return;
-    }
-    setState(() => _isLoading = true);
-    final notifier = ref.read(authProvider.notifier);
-    final success = _isSignUp
-        ? await notifier.signUpWithEmail(email, password)
-        : await notifier.loginWithEmail(email, password);
-    if (!mounted) return;
-
-    if (!success) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_isSignUp ? '가입 실패' : '로그인 실패')),
-      );
-      return;
-    }
-
-    if (_isSignUp) {
-      // 가입은 Supabase 에 됐고, 이제 OTP 인증 단계로. login sheet 위로
-      // OTP sheet 가 슬라이드. OTP 성공 시 onAuthStateChange 가 세션을
-      // 만들어 _loadProfile 자동 실행 → 우리는 login sheet 도 pop(true).
-      final verified =
-          await showOtpVerificationSheet(context, ref, email: email);
-      if (!mounted) return;
-      if (verified) {
-        Navigator.of(context).pop(true);
-      } else {
-        // 사용자가 OTP 취소 — login sheet 는 유지. 다시 시도 가능.
-        setState(() => _isLoading = false);
-      }
-      return;
-    }
-
-    // 로그인 (signin) 성공 — session 생성 완료.
-    Navigator.of(context).pop(true);
   }
 
   @override
@@ -171,7 +100,7 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
               const SizedBox(height: 8),
               Text(
                 isSignUp
-                    ? '가입하면 모든 기능을 사용할 수 있습니다.'
+                    ? '가입 후 모든 기능을 사용할 수 있습니다.'
                     : '로그인이 필요합니다.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
@@ -302,24 +231,98 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
                 ),
               ),
               const SizedBox(height: 16),
-              // ── 하단 hint (mode 별) ───────────────────────────────────
-              if (isSignUp)
-                Text(
-                  '🎁 첫 가입 시 3코인 지급',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AppTheme.accent, fontSize: 13),
-                )
-              else
-                Text(
-                  '처음이신가요? 위에서 \'가입\' 을 선택하세요.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AppTheme.textHint, fontSize: 12),
-                ),
+              // ── 하단 hint (mode 별) — 같은 톤(textHint·12px)으로 통일.
+              // 가입 모드의 reward 가치는 emoji 로만 시각 차별.
+              Text(
+                isSignUp
+                    ? '🎁 첫 가입 시 3코인 지급'
+                    : '처음이신가요? 위에서 \'가입\' 을 선택하세요.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppTheme.textHint, fontSize: 12),
+              ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _emailCtrl.dispose();
+    _passwordCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // submit 버튼 enabled 상태는 두 필드 내용에 따라 결정 — 매 입력마다 rebuild.
+    _emailCtrl.addListener(_onFormChanged);
+    _passwordCtrl.addListener(_onFormChanged);
+  }
+
+  Future<void> _emailSubmit() async {
+    final email = _emailCtrl.text.trim();
+    final password = _passwordCtrl.text;
+    if (email.isEmpty || password.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('이메일과 6자 이상 비밀번호를 입력하세요')),
+      );
+      return;
+    }
+    setState(() => _isLoading = true);
+    final notifier = ref.read(authProvider.notifier);
+    final success = _isSignUp
+        ? await notifier.signUpWithEmail(email, password)
+        : await notifier.loginWithEmail(email, password);
+    if (!mounted) return;
+
+    if (!success) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_isSignUp ? '가입 실패' : '로그인 실패')),
+      );
+      return;
+    }
+
+    if (_isSignUp) {
+      // 가입은 Supabase 에 됐고 이제 OTP 인증 단계로 — login sheet 위로 OTP
+      // sheet 슬라이드. 결과 3 분기: verified / cancelled / switchToLogin.
+      final otpResult =
+          await showOtpVerificationSheet(context, ref, email: email);
+      if (!mounted) return;
+      switch (otpResult) {
+        case OtpSheetResult.verified:
+          // OTP 성공 — onAuthStateChange 가 세션 만들고 _loadProfile 실행.
+          Navigator.of(context).pop(true);
+        case OtpSheetResult.switchToLogin:
+          // 이미 가입된 계정이라 OTP 안 도착 추정 — 로그인 모드로 전환,
+          // 비번 유지해 바로 재시도 가능. login sheet 는 그대로.
+          setState(() {
+            _isSignUp = false;
+            _isLoading = false;
+          });
+        case OtpSheetResult.cancelled:
+          setState(() => _isLoading = false);
+      }
+      return;
+    }
+
+    // 로그인 (signin) 성공 — session 생성 완료.
+    Navigator.of(context).pop(true);
+  }
+
+  Future<void> _kakaoLogin() async {
+    setState(() => _isLoading = true);
+    final launched = await ref.read(authProvider.notifier).loginWithKakao();
+    if (mounted) {
+      Navigator.of(context).pop(launched);
+    }
+  }
+
+  void _onFormChanged() {
+    if (mounted) setState(() {});
   }
 }
 

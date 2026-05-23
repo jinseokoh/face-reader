@@ -6,19 +6,29 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+/// OTP 시트의 결과. 부모(login_bottom_sheet)가 다음 행동을 정한다.
+///
+///   • verified — 인증 성공, 부모도 pop(true)
+///   • cancelled — 사용자가 취소, 부모는 그대로 유지
+///   • switchToLogin — "이미 가입한 계정이라면" 인지하고 로그인 모드로
+///     전환 요청. 부모는 segmented control 을 로그인으로 setState.
+enum OtpSheetResult { verified, cancelled, switchToLogin }
+
 /// 이메일 가입 후 발송된 6자리 OTP 를 사용자가 입력해 본인 인증을 마치는
-/// modal sheet. 성공 시 true 반환 → 호출자(login_bottom_sheet)가 자기
-/// sheet 도 pop(true) 처리.
+/// modal sheet.
+///
+/// Supabase user-enumeration 방어 — 이미 가입된 이메일로 signUp 해도 메일
+/// 발송 안 되고 signUp 자체는 가짜 success 응답. 사용자가 OTP sheet 에서
+/// 코드를 영영 못 받는 상황 발생 → "로그인으로 전환" 버튼을 명시 노출해
+/// 막다른 길 차단.
 ///
 /// 60초 cooldown 동안 재전송 disabled. cooldown 끝나면 "이메일 재전송" 활성.
-/// dismiss 시 false 반환 — 가입은 Supabase 에 이미 됐으므로 사용자는
-/// 나중에 같은 email/pw 로 로그인 + OTP 재전송으로 마저 진행 가능.
-Future<bool> showOtpVerificationSheet(
+Future<OtpSheetResult> showOtpVerificationSheet(
   BuildContext context,
   WidgetRef ref, {
   required String email,
 }) async {
-  final result = await showModalBottomSheet<bool>(
+  final result = await showModalBottomSheet<OtpSheetResult>(
     context: context,
     isScrollControlled: true,
     isDismissible: false, // 실수로 닫히지 않도록 — 명시적 "취소" 만.
@@ -34,7 +44,7 @@ Future<bool> showOtpVerificationSheet(
       child: _OtpSheet(email: email),
     ),
   );
-  return result ?? false;
+  return result ?? OtpSheetResult.cancelled;
 }
 
 class _OtpSheet extends ConsumerStatefulWidget {
@@ -99,11 +109,11 @@ class _OtpSheetState extends ConsumerState<_OtpSheet> {
         .verifyEmailOtp(widget.email, token);
     if (!mounted) return;
     if (success) {
-      Navigator.of(context).pop(true);
+      Navigator.of(context).pop(OtpSheetResult.verified);
     } else {
       setState(() {
         _isLoading = false;
-        _error = '인증 실패 — 코드를 다시 확인해주세요';
+        _error = '코드가 잘못됐거나 이미 가입된 계정일 수 있습니다';
       });
     }
   }
@@ -257,7 +267,8 @@ class _OtpSheetState extends ConsumerState<_OtpSheet> {
                   TextButton(
                     onPressed: _isLoading
                         ? null
-                        : () => Navigator.of(context).pop(false),
+                        : () => Navigator.of(context)
+                            .pop(OtpSheetResult.cancelled),
                     child: Text(
                       '취소',
                       style:
@@ -266,9 +277,27 @@ class _OtpSheetState extends ConsumerState<_OtpSheet> {
                   ),
                 ],
               ),
+              // Supabase user-enumeration 방어로 이미 가입된 이메일엔 OTP 가
+              // 안 발송됨. 사용자가 막다른 길에 빠지지 않도록 명시 전환 경로.
+              TextButton(
+                onPressed: _isLoading
+                    ? null
+                    : () => Navigator.of(context)
+                        .pop(OtpSheetResult.switchToLogin),
+                child: Text(
+                  '이미 가입한 계정이라면 → 로그인으로 전환',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
               const SizedBox(height: 4),
               Text(
-                '메일이 오지 않으면 스팸함을 확인하거나 재전송 버튼을 눌러주세요.',
+                '메일이 오지 않으면 스팸함을 확인하거나 재전송 버튼을 눌러주세요.\n'
+                '이미 가입된 이메일이면 코드가 발송되지 않을 수 있습니다.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppTheme.textHint, fontSize: 11),
               ),
