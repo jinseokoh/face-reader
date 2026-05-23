@@ -20,7 +20,11 @@ class SourceBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.sm),
       ),
       child: Text(
-        source == AnalysisSource.camera ? '카메라' : '앨범',
+        switch (source) {
+          AnalysisSource.camera => '카메라',
+          AnalysisSource.album => '앨범',
+          AnalysisSource.received => '받음',
+        },
         style: AppText.hint.copyWith(color: AppColors.textHint),
       ),
     );

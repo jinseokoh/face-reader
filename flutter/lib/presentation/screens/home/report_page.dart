@@ -17,6 +17,9 @@ import 'package:face_reader/data/constants/metric_text_blocks.dart';
 import 'package:face_reader/data/constants/node_text_blocks.dart';
 import 'package:face_reader/domain/services/report_assembler.dart';
 import 'package:face_reader/domain/services/share/share_publisher.dart';
+import 'package:face_reader/presentation/providers/history_provider.dart';
+import 'package:face_reader/presentation/widgets/compact_snack_bar.dart';
+import 'package:top_snackbar_flutter/top_snack_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -776,22 +779,29 @@ class _ReportPageState extends ConsumerState<ReportPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isReceived = report.source == AnalysisSource.received;
+    // received 카드는 받는 사람 입장에서 1회용 view — bookmark icon 으로 내 Hive
+    // 에 영구 저장 가능. 이미 저장된 entry 면 filled bookmark + tap 시 안내
+    // snackbar. own 카드는 기존 share 액션 그대로.
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('관상 분석'),
-        actions: [
-          IconButton(
-            icon: const FaIcon(FontAwesomeIcons.arrowUpFromBracket, size: 18),
-            tooltip: '카드 이미지 공유',
-            onPressed: () => _showShareCardSheet(context),
-          ),
-          IconButton(
-            icon: const FaIcon(FontAwesomeIcons.commentDots, size: 20),
-            tooltip: '카카오 공유',
-            onPressed: () => _shareViaKakao(context),
-          ),
-        ],
+        title: Text(isReceived ? '공유받은 카드' : '관상 분석'),
+        actions: isReceived
+            ? [_ReceivedBookmarkAction(report: report)]
+            : [
+                IconButton(
+                  icon: const FaIcon(FontAwesomeIcons.arrowUpFromBracket,
+                      size: 18),
+                  tooltip: '카드 이미지 공유',
+                  onPressed: () => _showShareCardSheet(context),
+                ),
+                IconButton(
+                  icon: const FaIcon(FontAwesomeIcons.commentDots, size: 20),
+                  tooltip: '카카오 공유',
+                  onPressed: () => _shareViaKakao(context),
+                ),
+              ],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
@@ -1941,6 +1951,50 @@ class _YinYangBar extends StatelessWidget {
       case YinYangTone.harmony:
         return _harmonyColor;
     }
+  }
+}
+
+/// AppBar action — received 카드를 내 Hive 에 저장하는 bookmark 토글.
+///
+/// 같은 supabaseId 의 entry 가 이미 history 에 있으면 filled bookmark + tap 시
+/// "이미 저장됨" snackbar. 없으면 outline bookmark_add + tap 시 add(report) 후
+/// "저장 완료" snackbar. supabaseId 기반이라 동일 카드를 두 번 paste 해도 한
+/// 번만 저장됨.
+class _ReceivedBookmarkAction extends ConsumerWidget {
+  final FaceReadingReport report;
+  const _ReceivedBookmarkAction({required this.report});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final history = ref.watch(historyProvider);
+    final uuid = report.supabaseId;
+    final alreadySaved = uuid != null &&
+        history.any((r) => r.supabaseId == uuid);
+    return IconButton(
+      icon: FaIcon(
+        alreadySaved
+            ? FontAwesomeIcons.solidBookmark
+            : FontAwesomeIcons.bookmark,
+        size: 20,
+      ),
+      tooltip: alreadySaved ? '이미 내 앨범에 저장됨' : '내 앨범에 저장',
+      onPressed: () async {
+        if (alreadySaved) {
+          showTopSnackBar(
+            Overlay.of(context),
+            CompactSnackBar.success(message: '이미 내 앨범에 저장된 카드입니다'),
+          );
+          return;
+        }
+        await ref.read(historyProvider.notifier).add(report);
+        if (!context.mounted) return;
+        showTopSnackBar(
+          Overlay.of(context),
+          CompactSnackBar.success(
+              message: '내 앨범에 저장했습니다 — 앨범 탭의 "받은 카드"'),
+        );
+      },
+    );
   }
 }
 

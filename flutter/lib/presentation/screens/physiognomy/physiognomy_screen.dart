@@ -8,6 +8,7 @@ import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_reader/core/theme.dart';
+import 'package:face_reader/domain/services/share/share_receive_service.dart';
 import 'package:face_reader/presentation/providers/history_provider.dart';
 import 'package:face_reader/presentation/providers/tab_provider.dart';
 import 'package:face_reader/presentation/screens/home/report_page.dart';
@@ -15,6 +16,7 @@ import 'package:face_reader/presentation/widgets/compact_snack_bar.dart';
 import 'package:face_reader/presentation/widgets/physiognomy_info_dialog.dart';
 import 'package:face_reader/presentation/widgets/source_badge.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
@@ -176,7 +178,10 @@ class _PhysiognomyItem extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final displayName = report.alias ?? report.faceShape.korean;
+    final displayName = report.alias ??
+        (report.source == AnalysisSource.received
+            ? '카톡으로 전달받은 카드'
+            : report.faceShape.korean);
     final isMyFace = report.isMyFace;
 
     return Padding(
@@ -416,9 +421,11 @@ class _PhysiognomyItem extends ConsumerWidget {
         borderRadius: BorderRadius.circular(AppRadius.md),
       ),
       child: FaIcon(
-        report.source == AnalysisSource.camera
-            ? FontAwesomeIcons.faceSmile
-            : FontAwesomeIcons.images,
+        switch (report.source) {
+          AnalysisSource.camera => FontAwesomeIcons.faceSmile,
+          AnalysisSource.album => FontAwesomeIcons.images,
+          AnalysisSource.received => FontAwesomeIcons.shareNodes,
+        },
         color: AppColors.textSecondary,
         size: 18,
       ),
@@ -564,6 +571,11 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
               title: const Text('관상'),
               actions: [
                 IconButton(
+                  icon: const FaIcon(FontAwesomeIcons.link, size: 20),
+                  tooltip: '공유받은 link 붙여넣기',
+                  onPressed: () => _showPasteShareLinkDialog(context),
+                ),
+                IconButton(
                   icon: const FaIcon(FontAwesomeIcons.circleInfo, size: 20),
                   onPressed: () => _showInfoDialog(context),
                 ),
@@ -601,8 +613,12 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
         body: TabBarView(
           controller: _tabController,
           children: [
-            _buildList(history, AnalysisSource.camera, hasMyFace),
-            _buildList(history, AnalysisSource.album, hasMyFace),
+            _buildList(history, const [AnalysisSource.camera], hasMyFace),
+            _buildList(
+              history,
+              const [AnalysisSource.album, AnalysisSource.received],
+              hasMyFace,
+            ),
           ],
         ),
       ),
@@ -635,19 +651,32 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
     });
   }
 
+  /// 한 tab 의 내용을 그린다. sources 는 그 tab 에서 보일 source list.
+  ///   • 카메라 탭: [camera]
+  ///   • 앨범 탭: [album, received] — 둘 다 section 으로 나란히 노출. count
+  ///     0 인 source 는 section 자체 hidden (dead-space 없음).
+  /// 모든 source 가 비어있으면 단일 empty state.
   Widget _buildList(
-      List<FaceReadingReport> history, AnalysisSource source, bool hasMyFace) {
-    final filtered = <(int, FaceReadingReport)>[];
-    for (var i = 0; i < history.length; i++) {
-      if (history[i].source == source) filtered.add((i, history[i]));
+      List<FaceReadingReport> history,
+      List<AnalysisSource> sources,
+      bool hasMyFace) {
+    final groups = <(AnalysisSource, List<(int, FaceReadingReport)>)>[];
+    for (final s in sources) {
+      final filtered = <(int, FaceReadingReport)>[];
+      for (var i = 0; i < history.length; i++) {
+        if (history[i].source == s) filtered.add((i, history[i]));
+      }
+      if (filtered.isEmpty) continue;
+      filtered.sort((a, b) {
+        final at = a.$2.timestamp;
+        final bt = b.$2.timestamp;
+        return _sortOrder == _SortOrder.newest
+            ? bt.compareTo(at)
+            : at.compareTo(bt);
+      });
+      groups.add((s, filtered));
     }
-    filtered.sort((a, b) {
-      final at = a.$2.timestamp;
-      final bt = b.$2.timestamp;
-      return _sortOrder == _SortOrder.newest
-          ? bt.compareTo(at)
-          : at.compareTo(bt);
-    });
+    final allEmpty = groups.isEmpty;
 
     return Builder(
       builder: (context) => RefreshIndicator(
@@ -661,7 +690,7 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
             SliverOverlapInjector(
               handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
             ),
-            if (filtered.isEmpty)
+            if (allEmpty)
               SliverFillRemaining(
                 hasScrollBody: false,
                 child: Padding(
@@ -691,31 +720,40 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
                 ),
               )
             else ...[
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(AppSpacing.lg,
-                    AppSpacing.lg, AppSpacing.lg, AppSpacing.md),
-                sliver: SliverToBoxAdapter(
-                  child: _RecentListHeader(
-                    order: _sortOrder,
-                    onChanged: (v) => setState(() => _sortOrder = v),
-                    source: source,
+              for (var gi = 0; gi < groups.length; gi++) ...[
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    gi == 0 ? AppSpacing.lg : AppSpacing.xl,
+                    AppSpacing.lg,
+                    AppSpacing.md,
+                  ),
+                  sliver: SliverToBoxAdapter(
+                    child: _RecentListHeader(
+                      order: _sortOrder,
+                      onChanged: (v) => setState(() => _sortOrder = v),
+                      source: groups[gi].$1,
+                      count: groups[gi].$2.length,
+                      // sort popup 은 첫 section 에만 — 한 tab 당 1개.
+                      showSortToggle: gi == 0,
+                    ),
                   ),
                 ),
-              ),
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                sliver: SliverList.builder(
-                  itemCount: filtered.length,
-                  itemBuilder: (ctx, i) {
-                    final (origIdx, report) = filtered[i];
-                    return _PhysiognomyItem(
-                      report: report,
-                      index: origIdx,
-                      source: source,
-                    );
-                  },
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                  sliver: SliverList.builder(
+                    itemCount: groups[gi].$2.length,
+                    itemBuilder: (ctx, i) {
+                      final (origIdx, report) = groups[gi].$2[i];
+                      return _PhysiognomyItem(
+                        report: report,
+                        index: origIdx,
+                        source: groups[gi].$1,
+                      );
+                    },
+                  ),
                 ),
-              ),
+              ],
               if (!hasMyFace)
                 const SliverPadding(
                   padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.xs,
@@ -749,6 +787,85 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
     await Future<void>.delayed(const Duration(milliseconds: 400));
     // ignore: avoid_print
     print('[PhysiognomyScreen] reloadFromHive → 재계산 완료');
+  }
+
+  /// 카톡 등에서 받은 facely.kr share link 를 사용자가 직접 붙여넣을 수 있도록.
+  /// Phase B (universal link) 가 완성되면 OS 가 자동으로 가로채므로 이 진입로는
+  /// backup 으로 유지. clipboard 의 첫 facely.kr 후보를 prefill 한다.
+  Future<void> _showPasteShareLinkDialog(BuildContext context) async {
+    final clipData = await Clipboard.getData(Clipboard.kTextPlain);
+    final prefill = clipData?.text ?? '';
+    if (!context.mounted) return;
+    final controller = TextEditingController(text: prefill);
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+        ),
+        title: const Text('공유받은 link 붙여넣기',
+            style: AppText.modalTitle),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '카톡에서 받은 facely.kr/r/... link 를 그대로 붙여넣으세요.',
+              style: AppText.caption,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              maxLines: 2,
+              decoration: const InputDecoration(
+                hintText: 'https://facely.kr/r/{uuid}',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('취소',
+                style: TextStyle(color: AppColors.textHint)),
+          ),
+          TextButton(
+            onPressed: () async {
+              final uuid = ShareReceiveService.extractUuid(controller.text);
+              if (uuid == null) {
+                showTopSnackBar(
+                  Overlay.of(ctx),
+                  CompactSnackBar.error(
+                      message: 'UUID 형식의 link 가 아닙니다'),
+                );
+                return;
+              }
+              Navigator.pop(ctx);
+              final report =
+                  await ShareReceiveService().fetchByUuid(uuid);
+              if (!context.mounted) return;
+              if (report == null) {
+                showTopSnackBar(
+                  Overlay.of(context),
+                  CompactSnackBar.error(
+                      message: '카드를 찾을 수 없습니다 (만료 또는 잘못된 link)'),
+                );
+                return;
+              }
+              await Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ReportPage(report: report),
+                ),
+              );
+            },
+            child: const Text('가져오기',
+                style: TextStyle(color: AppColors.textPrimary)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showInfoDialog(BuildContext context) {
@@ -817,29 +934,38 @@ class _RecentListHeader extends StatelessWidget {
   final _SortOrder order;
   final ValueChanged<_SortOrder> onChanged;
   final AnalysisSource source;
+  final int count;
+  final bool showSortToggle;
 
   const _RecentListHeader({
     required this.order,
     required this.onChanged,
     required this.source,
+    required this.count,
+    this.showSortToggle = true,
   });
 
   String get _label => switch (source) {
         AnalysisSource.camera => '카메라로 분석한 관상',
         AnalysisSource.album => '앨범사진으로 분석한 관상',
+        AnalysisSource.received => '받은 카드',
       };
 
   @override
   Widget build(BuildContext context) {
+    // received section 에만 count 노출 — viral funnel UX: 받은 카드 갯수를
+    // 사용자가 한 눈에 인지하도록.
+    final text =
+        source == AnalysisSource.received ? '$_label ($count)' : _label;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(
-          _label,
+          text,
           style: AppText.sectionTitle.copyWith(fontWeight: FontWeight.w700),
         ),
-        PopupMenuButton<_SortOrder>(
+        if (showSortToggle) PopupMenuButton<_SortOrder>(
           tooltip: '정렬',
           initialValue: order,
           padding: EdgeInsets.zero,

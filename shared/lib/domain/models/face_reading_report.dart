@@ -48,7 +48,19 @@ class MetricResult {
       );
 }
 
-enum AnalysisSource { camera, album }
+enum AnalysisSource {
+  /// 본인이 카메라로 찍어 분석.
+  camera,
+
+  /// 본인이 앨범 사진을 골라 분석.
+  album,
+
+  /// 다른 사람이 분석한 결과를 카톡 등으로 받아 bookmark 한 카드.
+  /// 본인이 분석한 것이 아니므로 thumbnailPath(local file)는 없고 R2
+  /// `thumbnailKey` (cdn.facely.kr 직통) 로만 이미지 노출. UI 의 album tab
+  /// 안 "받은 카드" section 으로 grouping.
+  received,
+}
 
 /// 14-node tree 의 개별 node 측정 snapshot.
 /// UI 의 "얼굴 부위별 균형" / "roll-up vs own" 시각화 근거.
@@ -198,6 +210,10 @@ class FaceReadingReport {
   String? thumbnailPath;
   final DateTime expiresAt;
 
+  /// source == AnalysisSource.received 일 때만 의미 있음. bookmark 시점.
+  /// 받은 카드 정렬·UI 표시 ("2일 전 받음") 용. own 카드에선 null.
+  DateTime? receivedAt;
+
   /// R2 thumbnail 객체 key (`thumbnails/YYYYMM/{uuid}.jpg`). publish 시점에
   /// 채워짐. Worker SSR 의 `og:image` 가 `${R2_CDN_BASE}/${thumbnailKey}` 로 조립.
   String? thumbnailKey;
@@ -256,6 +272,7 @@ class FaceReadingReport {
     this.isMyFace = false,
     this.thumbnailPath,
     DateTime? expiresAt,
+    this.receivedAt,
     this.thumbnailKey,
     this.deepfaceAge,
     this.deepfaceGender,
@@ -296,6 +313,7 @@ class FaceReadingReport {
         'isMyFace': isMyFace,
         'thumbnailPath': thumbnailPath,
         'expiresAt': expiresAt.toIso8601String(),
+        if (receivedAt != null) 'receivedAt': receivedAt!.toIso8601String(),
         // R2 thumbnail 포인터 + DeepFace raw audit trail.
         if (thumbnailKey != null) 'thumbnailKey': thumbnailKey,
         if (deepfaceAge != null) 'deepfaceAge': deepfaceAge,
@@ -471,6 +489,9 @@ class FaceReadingReport {
       thumbnailPath: j['thumbnailPath'] as String?,
       expiresAt: j['expiresAt'] != null
           ? DateTime.parse(j['expiresAt'] as String)
+          : null,
+      receivedAt: j['receivedAt'] != null
+          ? DateTime.parse(j['receivedAt'] as String)
           : null,
       // optional fields — null 이어도 정상.
       thumbnailKey: j['thumbnailKey'] as String?,
