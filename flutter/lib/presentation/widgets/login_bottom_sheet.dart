@@ -2,6 +2,7 @@ import 'package:face_reader/core/theme.dart';
 import 'package:face_reader/presentation/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 /// Shows a login bottom sheet. Returns true if login succeeded (Kakao browser
 /// launched or email sign-in/up succeeded).
@@ -34,6 +35,7 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
   bool _isLoading = false;
   bool _showEmail = false;
   bool _isSignUp = false;
+  bool _obscurePassword = true;
 
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
@@ -168,12 +170,24 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
               const SizedBox(height: 12),
               TextField(
                 controller: _passwordCtrl,
-                obscureText: true,
+                obscureText: _obscurePassword,
                 autofillHints: const [AutofillHints.password],
                 decoration: InputDecoration(
                   labelText: '비밀번호 (6자 이상)',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
+                  ),
+                  suffixIcon: IconButton(
+                    tooltip: _obscurePassword ? '비밀번호 보기' : '비밀번호 숨기기',
+                    icon: FaIcon(
+                      _obscurePassword
+                          ? FontAwesomeIcons.eye
+                          : FontAwesomeIcons.eyeSlash,
+                      size: 18,
+                      color: AppTheme.textSecondary,
+                    ),
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
                   ),
                 ),
               ),
