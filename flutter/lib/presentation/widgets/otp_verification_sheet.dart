@@ -95,13 +95,15 @@ class _OtpSheetState extends ConsumerState<_OtpSheet> {
     });
   }
 
+  static const _kOtpLength = 8; // Supabase 대시보드 OTP 길이와 동기.
+
   Future<void> _verify() async {
     final token = _otpCtrl.text.trim();
     debugPrint('[OtpSheet._verify] start email=${widget.email} '
         'tokenLen=${token.length}');
-    if (token.length != 6) {
-      debugPrint('[OtpSheet._verify] reject: token not 6 digits');
-      setState(() => _error = '6자리 코드를 입력하세요');
+    if (token.length != _kOtpLength) {
+      debugPrint('[OtpSheet._verify] reject: token not $_kOtpLength digits');
+      setState(() => _error = '$_kOtpLength자리 코드를 입력하세요');
       return;
     }
     setState(() {
@@ -195,7 +197,7 @@ class _OtpSheetState extends ConsumerState<_OtpSheet> {
                 keyboardType: TextInputType.number,
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(6),
+                  LengthLimitingTextInputFormatter(_kOtpLength),
                 ],
                 autofillHints: const [AutofillHints.oneTimeCode],
                 textInputAction: TextInputAction.done,
@@ -206,7 +208,7 @@ class _OtpSheetState extends ConsumerState<_OtpSheet> {
                   letterSpacing: 4,
                 ),
                 decoration: InputDecoration(
-                  hintText: '000000',
+                  hintText: '0' * _kOtpLength,
                   hintStyle: TextStyle(
                     color: AppTheme.textHint,
                     letterSpacing: 4,
@@ -224,7 +226,7 @@ class _OtpSheetState extends ConsumerState<_OtpSheet> {
                   errorText: _error,
                 ),
                 onChanged: (v) {
-                  if (v.length == 6 && !_isLoading) _verify();
+                  if (v.length == _kOtpLength && !_isLoading) _verify();
                 },
                 onSubmitted: _isLoading ? null : (_) => _verify(),
               ),
