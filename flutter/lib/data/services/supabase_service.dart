@@ -36,7 +36,10 @@ class SupabaseService {
       'expires_at': report.expiresAt.toUtc().toIso8601String(),
     };
 
-    await _client.from('metrics').insert(data);
+    // upsert — analyze 시점에 발급된 UUID 가 이미 row 로 들어가 있을 수도
+    // (재시도 / pull-to-refresh). insert 면 PK 충돌, 무엇보다 RLS reject 가
+    // 조용히 묻혀 /r/{uuid} 가 404 로 빠지는 사고가 없도록 명시 upsert.
+    await _client.from('metrics').upsert(data, onConflict: 'id');
     debugPrint('[Supabase] saved metrics id=$id');
     return id;
   }

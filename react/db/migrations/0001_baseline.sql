@@ -144,12 +144,17 @@ create policy "metrics_public_read"
 -- 의 실제 값이 들어있으면 reject. null 값 또는 key 자체가 없으면 통과.
 -- landmarks 는 key 존재 자체로 차단 (재구성 위험).
 -- user_id 는 null (anon) 또는 본인 한정.
+--
+-- `->>` (text accessor) 를 쓰는 이유: `->` 는 JSON null 값을 JSONB null 로
+-- 반환해서 SQL `IS NULL` 매칭이 false. `->>` 는 키 부재 + JSON null 둘 다
+-- SQL NULL 로 정규화. Dart `jsonEncode` 가 null 필드도 emit 하므로 `->`
+-- 사용 시 정상 capture 의 anon insert 가 전부 reject 됨.
 create policy "metrics_insert_anon"
   on public.metrics for insert with check (
         (user_id is null or user_id = auth.uid())
-    and (body::jsonb -> 'username') is null
-    and (body::jsonb -> 'alias')    is null
-    and (body::jsonb -> 'birthday') is null
+    and (body::jsonb ->> 'username') is null
+    and (body::jsonb ->> 'alias')    is null
+    and (body::jsonb ->> 'birthday') is null
     and not (body::jsonb ? 'landmarks')
   );
 

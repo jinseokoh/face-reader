@@ -109,12 +109,17 @@ class SharePublisher {
   // (제목·설명·이미지·CTA 버튼) 를 보여주려면 KakaoLink Feed template 필수.
   // imageUrl 은 R2 영구 thumbnail (`cdn.facely.kr/{thumbnailKey}`) 또는 fallback.
 
+  /// share 시점에 metrics row 가 반드시 Supabase 에 존재하도록 보장.
+  ///
+  /// 로컬 report.supabaseId 만으로는 충분하지 않다 — analyze 시점에 UUID 가
+  /// 박혀도 demographic_confirm 의 fire-and-forget saveMetrics 가 (RLS·네트워크)
+  /// 로 실패한 케이스가 있을 수 있고, 그러면 받는 사람의 /r/{uuid} 가 404 (공유
+  /// 카드를 찾을 수 없습니다) 로 빠진다. saveMetrics 는 upsert 라 호출 비용이
+  /// 낮으므로 share 마다 한 번 더 친다.
   Future<String> _ensureSupabaseId(FaceReadingReport report) async {
-    final existing = report.supabaseId;
-    if (existing != null && existing.isNotEmpty) return existing;
-    final newId = await SupabaseService().saveMetrics(report);
-    report.supabaseId = newId;
-    return newId;
+    final id = await SupabaseService().saveMetrics(report);
+    report.supabaseId = id;
+    return id;
   }
 
   String _resolveImageUrl(String? thumbnailKey) {
