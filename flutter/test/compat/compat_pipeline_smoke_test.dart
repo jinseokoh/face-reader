@@ -201,7 +201,7 @@ void main() {
     final bundle = analyzeCompatibilityFromReports(my: a, album: b);
     expect(bundle.report.intimacy.tone, IntimacyTone.pure);
     expect(bundle.narrative.sectionsInOrder.length, 5);
-    expect(bundle.narrative.scoreReason.contains('로맨스'), true);
+    expect(bundle.narrative.scoreReason.contains('이성적 끌림'), true);
     expect(bundle.narrative.intimacyChapter.isNotEmpty, true);
   });
 

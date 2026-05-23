@@ -128,7 +128,7 @@ void main() {
       expect(r.intimacy.tone, IntimacyTone.pure);
       final n = buildCompatNarrative(report: r, pairSeed: 42);
       expect(n.sectionsInOrder.length, 5);
-      expect(n.scoreReason.contains('로맨스'), true);
+      expect(n.scoreReason.contains('이성적 끌림'), true);
       expect(n.intimacyChapter.isNotEmpty, true);
     });
   });

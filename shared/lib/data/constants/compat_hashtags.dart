@@ -98,7 +98,7 @@ List<CompatChip> chipsForCompat(CompatibilityReport r) {
   if (cPa != null) dataChips.add(cPa);
   final cQi = _subChip(qi, '#소통원활', '#소통어긋남');
   if (cQi != null) dataChips.add(cQi);
-  final cIt = _subChip(it, '#로맨스가득', '#로맨스과제');
+  final cIt = _subChip(it, '#이성적끌림가득', '#이성적끌림과제');
   if (cIt != null) dataChips.add(cIt);
   for (final c in dataChips) {
     if (c.tone == CompatChipTone.warm) {

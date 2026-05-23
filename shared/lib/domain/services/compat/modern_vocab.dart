@@ -20,6 +20,24 @@ import 'compat_sub_display.dart';
 import 'five_element.dart';
 import 'palace.dart';
 
+const String kFiveFeaturesEnglish = 'Five Features';
+
+// ─────────────────────── Dimension (4 축) ───────────────────────────────────
+
+/// 五官 모던 별칭.
+const String kFiveFeaturesModern = '얼굴 5 부위';
+
+const String kThreeZonesEnglish = 'Three Zones';
+
+/// 三停 (이마/코/턱) 모던 별칭.
+const String kThreeZonesModern = '얼굴 3 구역';
+
+const String kYinYangEnglish = 'Energy';
+
+// ─────────────────────── Yin-Yang / Three Zones 모던 표현 ───────────────────
+
+/// 음양 모던 별칭. "음양" 직접 노출 대신 사용.
+const String kYinYangModern = '에너지 균형';
 // ─────────────────────── CompatLabel (4 등급) ───────────────────────────────
 
 extension CompatLabelModern on CompatLabel {
@@ -53,23 +71,25 @@ extension CompatLabelModern on CompatLabel {
   }
 }
 
-// ─────────────────────── Dimension (4 축) ───────────────────────────────────
-
 /// 점수 4 축 — UI/narrative 의 dimension 명. 한국어·영문 병행.
 extension CompatSubKindModern on CompatSubKind {
-  /// 사용자에게 보이는 한국어 이름.
-  String get modernKo {
+  /// 그 dimension 이 *무엇을 보는지* 한 줄 설명. info row 본문에 쓴다.
+  /// 명사형 종결 (판단·측정 등) 로 통일 — UX 톤 일관성.
+  String get descriptionKo {
     switch (this) {
       case CompatSubKind.element:
-        return '가치관';
+        return '얼굴형(五行)이 드러내는 기본 성향과 삶의 태도가 얼마나 잘 맞는지를 판단.';
       case CompatSubKind.palace:
-        return '관심사';
+        return '결혼·돈·자녀·일 등 12 가지 생활 영역(十二宮)에서 두 사람이 어떻게 어우러지는지를 판단.';
       case CompatSubKind.qi:
-        return '소통 스타일';
+        return '눈·코·입이 만드는 표현 방식(五官)이 만나 평소 어떻게 말하고 어떻게 듣는지를 판단.';
       case CompatSubKind.intimacy:
-        return '이성적 끌림';
+        return '이성 친밀감의 결은 매혹도와 연결이 되며, 관계의 출발이 될 수 있는 요소로 판단.';
     }
   }
+
+  /// "가치관 (Values)" 한 줄 조합.
+  String get displayLabel => '$modernKo ($englishLabel)';
 
   /// 영문 병행 표기 — "가치관 (Values)" 형태로 조합.
   String get englishLabel {
@@ -85,21 +105,17 @@ extension CompatSubKindModern on CompatSubKind {
     }
   }
 
-  /// "가치관 (Values)" 한 줄 조합.
-  String get displayLabel => '$modernKo ($englishLabel)';
-
-  /// 그 dimension 이 *무엇을 보는지* 한 줄 설명. info row 본문에 쓴다.
-  /// 명사형 종결 (판단·측정 등) 로 통일 — UX 톤 일관성.
-  String get descriptionKo {
+  /// 사용자에게 보이는 한국어 이름.
+  String get modernKo {
     switch (this) {
       case CompatSubKind.element:
-        return '얼굴형(五行)이 드러내는 기본 성향과 삶의 태도가 얼마나 잘 맞는지를 판단.';
+        return '가치관';
       case CompatSubKind.palace:
-        return '결혼·돈·자녀·일 등 12 가지 생활 영역(十二宮)에서 두 사람이 어떻게 어우러지는지를 판단.';
+        return '관심사';
       case CompatSubKind.qi:
-        return '눈·코·입이 만드는 표현 방식(五官)이 만나 평소 어떻게 말하고 어떻게 듣는지를 판단.';
+        return '소통 스타일';
       case CompatSubKind.intimacy:
-        return '이성 친밀감의 결을 모든 연령대에서 측정. 다만 풀이 톤은 동성·10대·70대 이상은 차분, 20·60대는 가벼운 호감, 30~50대 이성 페어는 분명한 매혹으로 분기.';
+        return '이성적 끌림';
     }
   }
 
@@ -117,62 +133,9 @@ extension CompatSubKindModern on CompatSubKind {
     }
   }
 }
-
-// ─────────────────────── FiveElement (5 행 체형) ────────────────────────────
-
-extension FiveElementModern on FiveElement {
-  /// 사용자가 한 번에 알 수 있는 모던 별칭. "목형" 옆에 보조 노출.
-  String get modernKo {
-    switch (this) {
-      case FiveElement.wood:
-        return '성장형';
-      case FiveElement.fire:
-        return '열정형';
-      case FiveElement.earth:
-        return '안정형';
-      case FiveElement.metal:
-        return '원칙형';
-      case FiveElement.water:
-        return '유연형';
-    }
-  }
-
-  /// 한 줄 핵심 성향 — narrative 안 "어떤 사람인지" 한 문장 보조.
-  String get coreTraitKo {
-    switch (this) {
-      case FiveElement.wood:
-        return '곧고 자라나려는 의지가 강한 사람';
-      case FiveElement.fire:
-        return '밝고 사교적이며 분위기를 끌어올리는 사람';
-      case FiveElement.earth:
-        return '말과 약속이 무겁고 진득한 사람';
-      case FiveElement.metal:
-        return '원칙과 기준이 분명하고 흔들리지 않는 사람';
-      case FiveElement.water:
-        return '상황을 부드럽게 흘려보내는 영리한 사람';
-    }
-  }
-}
-
 // ─────────────────────── ElementRelationKind (5 관계) ───────────────────────
 
 extension ElementRelationKindModern on ElementRelationKind {
-  /// 사용자에게 직관적으로 들리는 관계 이름.
-  String get modernKo {
-    switch (this) {
-      case ElementRelationKind.identity:
-        return '닮은꼴 케미';
-      case ElementRelationKind.generating:
-        return '활력을 주는 사이';
-      case ElementRelationKind.generated:
-        return '든든하게 받쳐주는 사이';
-      case ElementRelationKind.overcoming:
-        return '내가 차분히 이끄는 사이';
-      case ElementRelationKind.overcome:
-        return '나를 단련시키는 사이';
-    }
-  }
-
   /// 한 줄 부연. detail 페이지의 관계 설명에 사용.
   String get descriptionKo {
     switch (this) {
@@ -188,40 +151,64 @@ extension ElementRelationKindModern on ElementRelationKind {
         return '상대의 단단함이 나를 단련시키지만 때로 부담이 되는 관계.';
     }
   }
+
+  /// 사용자에게 직관적으로 들리는 관계 이름.
+  String get modernKo {
+    switch (this) {
+      case ElementRelationKind.identity:
+        return '닮은꼴 케미';
+      case ElementRelationKind.generating:
+        return '활력을 주는 사이';
+      case ElementRelationKind.generated:
+        return '든든하게 받쳐주는 사이';
+      case ElementRelationKind.overcoming:
+        return '내가 차분히 이끄는 사이';
+      case ElementRelationKind.overcome:
+        return '나를 단련시키는 사이';
+    }
+  }
 }
 
+// ─────────────────────── FiveElement (5 행 체형) ────────────────────────────
+
+extension FiveElementModern on FiveElement {
+  /// 한 줄 핵심 성향 — narrative 안 "어떤 사람인지" 한 문장 보조.
+  String get coreTraitKo {
+    switch (this) {
+      case FiveElement.wood:
+        return '곧고 자라나려는 의지가 강한 사람';
+      case FiveElement.fire:
+        return '밝고 사교적이며 분위기를 끌어올리는 사람';
+      case FiveElement.earth:
+        return '말과 약속이 무겁고 진득한 사람';
+      case FiveElement.metal:
+        return '원칙과 기준이 분명하고 흔들리지 않는 사람';
+      case FiveElement.water:
+        return '상황을 부드럽게 흘려보내는 영리한 사람';
+    }
+  }
+
+  /// 사용자가 한 번에 알 수 있는 모던 별칭. "목형" 옆에 보조 노출.
+  String get modernKo {
+    switch (this) {
+      case FiveElement.wood:
+        return '성장형';
+      case FiveElement.fire:
+        return '열정형';
+      case FiveElement.earth:
+        return '안정형';
+      case FiveElement.metal:
+        return '원칙형';
+      case FiveElement.water:
+        return '유연형';
+    }
+  }
+}
 // ─────────────────────── Palace (12 궁 → 모던 도메인) ───────────────────────
 
 extension PalaceModern on Palace {
-  /// 사용자가 즉시 이해하는 모던 도메인명. "재백궁" 자리에 직접 노출.
-  String get modernKo {
-    switch (this) {
-      case Palace.life:
-        return '자기다움';
-      case Palace.wealth:
-        return '재물';
-      case Palace.sibling:
-        return '친구·동료';
-      case Palace.property:
-        return '집·생활';
-      case Palace.children:
-        return '자녀·다정함';
-      case Palace.slave:
-        return '사람 관계';
-      case Palace.spouse:
-        return '배우자';
-      case Palace.illness:
-        return '건강';
-      case Palace.migration:
-        return '변화·이동';
-      case Palace.career:
-        return '커리어';
-      case Palace.fortune:
-        return '행복·여유';
-      case Palace.parents:
-        return '부모·가족';
-    }
-  }
+  /// "재물 (Money)" 한 줄 조합.
+  String get displayLabel => '$modernKo ($englishLabel)';
 
   /// 영문 병행 — "재물 (Money)" 같이 합쳐 표시.
   String get englishLabel {
@@ -253,20 +240,33 @@ extension PalaceModern on Palace {
     }
   }
 
-  /// "재물 (Money)" 한 줄 조합.
-  String get displayLabel => '$modernKo ($englishLabel)';
+  /// 사용자가 즉시 이해하는 모던 도메인명. "재백궁" 자리에 직접 노출.
+  String get modernKo {
+    switch (this) {
+      case Palace.life:
+        return '자기다움';
+      case Palace.wealth:
+        return '재물';
+      case Palace.sibling:
+        return '친구·동료';
+      case Palace.property:
+        return '집·생활';
+      case Palace.children:
+        return '자녀·다정함';
+      case Palace.slave:
+        return '사람 관계';
+      case Palace.spouse:
+        return '배우자';
+      case Palace.illness:
+        return '건강';
+      case Palace.migration:
+        return '변화·이동';
+      case Palace.career:
+        return '커리어';
+      case Palace.fortune:
+        return '행복·여유';
+      case Palace.parents:
+        return '부모·가족';
+    }
+  }
 }
-
-// ─────────────────────── Yin-Yang / Three Zones 모던 표현 ───────────────────
-
-/// 음양 모던 별칭. "음양" 직접 노출 대신 사용.
-const String kYinYangModern = '에너지 균형';
-const String kYinYangEnglish = 'Energy';
-
-/// 三停 (이마/코/턱) 모던 별칭.
-const String kThreeZonesModern = '얼굴 3 구역';
-const String kThreeZonesEnglish = 'Three Zones';
-
-/// 五官 모던 별칭.
-const String kFiveFeaturesModern = '얼굴 5 부위';
-const String kFiveFeaturesEnglish = 'Five Features';

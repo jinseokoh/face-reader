@@ -363,7 +363,7 @@ String _scoreSection(CompatibilityReport r) {
   buf.writeln('- 가치관(얼굴형 기본 성향): $el점');
   buf.writeln('- 관심사(결혼·가족·재물 등 12개 영역): $pa점');
   buf.writeln('- 소통 스타일(눈·코·입·얼굴 3 구역·에너지 균형의 짝): $qi점');
-  buf.writeln('- 로맨스(밀착도·끌림 영역): $it점');
+  buf.writeln('- 이성적 끌림(밀착도·끌림 영역): $it점');
   buf.writeln();
   buf.writeln('이 점수가 나온 이유:');
   buf.writeln('- 가장 강한 축은 "$strongest" 영역이에요. 여기가 이 관계를 지탱합니다.');
@@ -500,7 +500,7 @@ List<MapEntry<String, double>> _subDisplayPairs(CompatibilityReport r) {
         subScoreToDisplay(CompatSubKind.palace, r.sub.palaceScore)!),
     MapEntry('소통 스타일(얼굴 세부 짝)',
         subScoreToDisplay(CompatSubKind.qi, r.sub.qiScore)!),
-    MapEntry('로맨스(밀착도·끌림 영역)',
+    MapEntry('이성적 끌림(밀착도·끌림 영역)',
         subScoreToDisplay(CompatSubKind.intimacy, r.sub.intimacyScore)!),
   ];
 }
