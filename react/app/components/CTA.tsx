@@ -15,8 +15,19 @@ export function CTA(props: Props) {
     if (!isIOS && !isAndroid) return;
 
     const universalLink = `${props.appLinkBase}${props.shortId}`;
-    const storeUrl = isIOS ? props.appStoreUrl : props.playStoreUrl;
 
+    // self-redirect 가드 — appLinkBase 가 share host (WEBAPP_BASE/r/) 와
+    // 동일하므로 universalLink 가 현재 URL 과 같다. 그대로 window.location.href
+    // 에 박으면 SSR 재실행 → hydrate → useEffect → 무한 loop (Worker 호출 +
+    // Supabase egress 가 누적). iOS Universal Link / Android App Link 가
+    // 정상 가로채는 환경이면 OS 가 앱으로 열어버려 이 페이지에 도착조차
+    // 안 함. 여기 도착했다는 것은 앱 미설치·link 미설정의 신호이므로
+    // 자동 redirect 시도 자체를 skip — 사용자가 store CTA 를 직접 누름.
+    if (typeof window !== "undefined" && universalLink === window.location.href) {
+      return;
+    }
+
+    const storeUrl = isIOS ? props.appStoreUrl : props.playStoreUrl;
     const startedAt = Date.now();
     window.location.href = universalLink;
 
