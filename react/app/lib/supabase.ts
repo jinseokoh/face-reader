@@ -4,16 +4,20 @@ const SELECT = "id,body,expires_at";
 
 export async function fetchMetrics(env: Env, ids: string[]): Promise<MetricsRow[]> {
   const demoOnly = ids.every((id) => id.startsWith("00000000-0000-0000-0000-"));
-  if (demoOnly) return ids.map(demoRow);
+  if (demoOnly) {
+    console.log("[fetchMetrics] demo-only path, ids=", ids);
+    return ids.map(demoRow);
+  }
 
   if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) {
-    console.warn("[share-host] SUPABASE_* env 미설정");
+    console.warn("[fetchMetrics] SUPABASE_* env 미설정 — SUPABASE_URL?", !!env.SUPABASE_URL, "ANON_KEY?", !!env.SUPABASE_ANON_KEY);
     return [];
   }
 
   const url =
     `${env.SUPABASE_URL}/rest/v1/metrics` +
     `?id=in.(${ids.map(encodeURIComponent).join(",")})&select=${SELECT}`;
+  console.log("[fetchMetrics] GET", url);
   const res = await fetch(url, {
     headers: {
       apikey: env.SUPABASE_ANON_KEY,
@@ -21,7 +25,7 @@ export async function fetchMetrics(env: Env, ids: string[]): Promise<MetricsRow[
     },
   });
   if (!res.ok) {
-    console.error("[share-host] supabase status", res.status, await res.text());
+    console.error("[fetchMetrics] supabase status", res.status, await res.text());
     return [];
   }
   const rows = (await res.json()) as Array<{
@@ -29,17 +33,32 @@ export async function fetchMetrics(env: Env, ids: string[]): Promise<MetricsRow[
     body: string | null;
     expires_at: string | null;
   }>;
+  console.log(
+    `[fetchMetrics] raw rows.length=${rows.length} ids requested=${ids.length}`,
+    "rows:", rows.map((r) => ({
+      id: r.id,
+      bodyNull: r.body == null,
+      bodyLen: r.body?.length ?? 0,
+      expires_at: r.expires_at,
+    })),
+  );
 
   const now = Date.now();
   const map = new Map<string, MetricsRow>();
   for (const r of rows) {
-    if (!r.body) continue;
-    if (r.expires_at && new Date(r.expires_at).getTime() <= now) continue;
+    if (!r.body) {
+      console.warn("[fetchMetrics] drop: body null id=", r.id);
+      continue;
+    }
+    if (r.expires_at && new Date(r.expires_at).getTime() <= now) {
+      console.warn("[fetchMetrics] drop: expired id=", r.id, "expires_at=", r.expires_at);
+      continue;
+    }
     try {
       const raw = JSON.parse(r.body) as RawMetrics;
       map.set(r.id, { id: r.id, raw });
     } catch (e) {
-      console.error("[share-host] body parse fail", r.id, e);
+      console.error("[fetchMetrics] body parse fail", r.id, e);
     }
   }
   return ids.map((id) => map.get(id)).filter((r): r is MetricsRow => Boolean(r));

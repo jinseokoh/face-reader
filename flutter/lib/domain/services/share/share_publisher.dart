@@ -117,8 +117,11 @@ class SharePublisher {
   /// 카드를 찾을 수 없습니다) 로 빠진다. saveMetrics 는 upsert 라 호출 비용이
   /// 낮으므로 share 마다 한 번 더 친다.
   Future<String> _ensureSupabaseId(FaceReadingReport report) async {
+    debugPrint('[SharePublisher._ensureSupabaseId] report.supabaseId='
+        '${report.supabaseId} alias=${report.alias} isMyFace=${report.isMyFace}');
     final id = await SupabaseService().saveMetrics(report);
     report.supabaseId = id;
+    debugPrint('[SharePublisher._ensureSupabaseId] resolved id=$id');
     return id;
   }
 

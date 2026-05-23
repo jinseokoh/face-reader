@@ -39,8 +39,21 @@ class SupabaseService {
     // upsert — analyze 시점에 발급된 UUID 가 이미 row 로 들어가 있을 수도
     // (재시도 / pull-to-refresh). insert 면 PK 충돌, 무엇보다 RLS reject 가
     // 조용히 묻혀 /r/{uuid} 가 404 로 빠지는 사고가 없도록 명시 upsert.
-    await _client.from('metrics').upsert(data, onConflict: 'id');
-    debugPrint('[Supabase] saved metrics id=$id');
+    debugPrint('[Supabase.saveMetrics] start id=$id user_id=${data['user_id']} '
+        'body_len=${(data['body'] as String).length}');
+    try {
+      // select() 를 붙여 실제 written row 가 돌아오게 한다. RLS 거부 시
+      // PostgrestException 으로 throw → catch 에서 상세 로그.
+      final res = await _client
+          .from('metrics')
+          .upsert(data, onConflict: 'id')
+          .select('id, expires_at, views');
+      debugPrint('[Supabase.saveMetrics] OK id=$id response=$res');
+    } catch (e, st) {
+      debugPrint('[Supabase.saveMetrics] FAIL id=$id error=$e');
+      debugPrint('[Supabase.saveMetrics] stacktrace:\n$st');
+      rethrow;
+    }
     return id;
   }
 

@@ -16,12 +16,27 @@ import { renderCompat, renderSolo } from "../lib/traits";
  * 이 정리.
  */
 export async function loader({ params, request, context }: Route.LoaderArgs) {
+  console.log("[share-loader] raw params.id:", JSON.stringify(params.id));
   const ids = parsePairId(params.id);
-  if (!ids) throw new Response("Not Found", { status: 404 });
+  console.log("[share-loader] parsed ids:", JSON.stringify(ids));
+  if (!ids) {
+    console.warn("[share-loader] 404: parsePairId returned null");
+    throw new Response("Not Found", { status: 404 });
+  }
 
   const env = context.cloudflare.env;
   const rows = await fetchMetrics(env, ids);
-  if (rows.length !== ids.length) throw new Response("Not Found", { status: 404 });
+  console.log(
+    `[share-loader] fetched rows.length=${rows.length} expected=${ids.length}`,
+    "row ids:", rows.map((r) => r.id),
+  );
+  if (rows.length !== ids.length) {
+    console.warn(
+      "[share-loader] 404: row count mismatch — missing ids:",
+      ids.filter((id) => !rows.some((r) => r.id === id)),
+    );
+    throw new Response("Not Found", { status: 404 });
+  }
 
   // fire-and-forget views++. fetch latency 에 더하지 않음.
   for (const id of ids) {
