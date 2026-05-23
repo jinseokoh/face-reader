@@ -161,7 +161,7 @@ class _OtpSheetState extends ConsumerState<_OtpSheet> {
                           fontWeight: FontWeight.w600),
                     ),
                     const TextSpan(
-                        text: ' 으로 6자리 코드를 보냈습니다.\n메일을 확인해 코드를 입력해주세요.'),
+                        text: ' 으로 코드를 보냈습니다.\n메일을 확인해 코드를 입력해주세요.'),
                   ],
                 ),
                 textAlign: TextAlign.center,
