@@ -21,28 +21,39 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
+    // 작은 iPhone (예: SE 1/2/3, safe-area 차감 후 ≤ 600px) 에선 fixed
+    // 레이아웃이 23px 가량 overflow — image 와 gap 을 줄여 fit. tall device
+    // 는 기존 디자인 유지.
+    final compact = MediaQuery.of(context).size.height < 720;
+    final imageHeight = compact ? 220.0 : 280.0;
+    final topGap = compact ? AppSpacing.sm : AppSpacing.xxl;
+    final afterImage = compact ? AppSpacing.lg : 28.0;
+    final afterTitle = compact ? AppSpacing.xs : 10.0;
+    final bottomGap = compact ? AppSpacing.lg : AppSpacing.huge;
+    final titleFontSize = compact ? 30.0 : 36.0;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
-            const SizedBox(height: 24),
+            SizedBox(height: topGap),
             Image.asset(
               'assets/images/home.png',
-              height: 280,
+              height: imageHeight,
               fit: BoxFit.contain,
             ),
-            const SizedBox(height: 28),
+            SizedBox(height: afterImage),
             Text(
               '관상은 과학이다.',
               style: AppText.display.copyWith(
-                fontSize: 36,
+                fontSize: titleFontSize,
                 fontWeight: FontWeight.w700,
                 height: 1.15,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: afterTitle),
             Text(
               'Facely, 안면 계측 데이터 기반 인공지능 관상앱',
               style: AppText.body.copyWith(
@@ -82,7 +93,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: AppSpacing.huge),
+            SizedBox(height: bottomGap),
           ],
         ),
       ),

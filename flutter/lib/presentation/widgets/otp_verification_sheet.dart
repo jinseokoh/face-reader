@@ -167,6 +167,8 @@ class _OtpSheetState extends ConsumerState<_OtpSheet> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
+              // 이메일/비번 필드와 동일한 비주얼 가중치 — letter-spacing 만
+              // 살짝 줘서 6자리 숫자가 자연스럽게 보이도록.
               TextField(
                 controller: _otpCtrl,
                 autofocus: true,
@@ -179,15 +181,15 @@ class _OtpSheetState extends ConsumerState<_OtpSheet> {
                 textInputAction: TextInputAction.done,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 8,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 4,
                 ),
                 decoration: InputDecoration(
                   hintText: '000000',
                   hintStyle: TextStyle(
                     color: AppTheme.textHint,
-                    letterSpacing: 8,
+                    letterSpacing: 4,
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -224,34 +226,42 @@ class _OtpSheetState extends ConsumerState<_OtpSheet> {
                               fontSize: 16, fontWeight: FontWeight.w600)),
                 ),
               ),
-              const SizedBox(height: 12),
-              TextButton(
-                onPressed:
-                    _resendCooldownSec > 0 || _isLoading ? null : _resend,
-                child: Text(
-                  _resendCooldownSec > 0
-                      ? '재전송 가능까지 $_resendCooldownSec 초'
-                      : '이메일 재전송',
-                  style: TextStyle(
-                    color: _resendCooldownSec > 0
-                        ? AppTheme.textHint
-                        : AppTheme.textSecondary,
-                    fontSize: 13,
+              const SizedBox(height: 4),
+              // 재전송 · 취소 한 Row — 보조 액션 둘이 같은 무게라 같은 줄.
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(
+                    onPressed: _resendCooldownSec > 0 || _isLoading
+                        ? null
+                        : _resend,
+                    child: Text(
+                      _resendCooldownSec > 0
+                          ? '재전송 가능까지 $_resendCooldownSec 초'
+                          : '이메일 재전송',
+                      style: TextStyle(
+                        color: _resendCooldownSec > 0
+                            ? AppTheme.textHint
+                            : AppTheme.textSecondary,
+                        fontSize: 13,
+                      ),
+                    ),
                   ),
-                ),
+                  TextButton(
+                    onPressed: _isLoading
+                        ? null
+                        : () => Navigator.of(context).pop(false),
+                    child: Text(
+                      '취소',
+                      style:
+                          TextStyle(color: AppTheme.textHint, fontSize: 13),
+                    ),
+                  ),
+                ],
               ),
-              TextButton(
-                onPressed:
-                    _isLoading ? null : () => Navigator.of(context).pop(false),
-                child: Text(
-                  '취소',
-                  style:
-                      TextStyle(color: AppTheme.textHint, fontSize: 12),
-                ),
-              ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
               Text(
-                '메일이 오지 않으면 스팸함을 확인하거나 위 재전송 버튼을 눌러주세요.',
+                '메일이 오지 않으면 스팸함을 확인하거나 재전송 버튼을 눌러주세요.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppTheme.textHint, fontSize: 11),
               ),
