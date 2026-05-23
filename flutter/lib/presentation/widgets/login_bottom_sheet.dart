@@ -88,7 +88,10 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-        child: Column(
+        // 이메일 로그인 토글 시 form 이 펼쳐지면 모달 sheet 의 height 제한
+        // (DraggableScrollableSheet)을 넘기는 경우 발생 → 자체 scroll 로 흡수.
+        child: SingleChildScrollView(
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
@@ -215,6 +218,7 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
               style: TextStyle(color: AppTheme.accent, fontSize: 13),
             ),
           ],
+        ),
         ),
       ),
     );
