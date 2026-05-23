@@ -108,7 +108,7 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
     final isSignUp = _isSignUp;
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
         // form 이 길어지면 모달 sheet 의 height 제한을 넘기는 경우 발생 →
         // 자체 scroll 로 흡수. keyboard 가 올라와도 viewInsets + 이 scroll 로
         // 안전.
@@ -117,6 +117,18 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // drag handle — sheet 상단 시각 cue + 탭 위로 breathing room.
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: AppTheme.border,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
               // ── 모드 segmented control — 로그인 vs 가입 ──────────────
               // SSOT 이자 가장 prominent 한 mode signal. 다른 모든 라벨
               // (제목·카카오 버튼·submit 버튼·하단 hint)도 이 값에 따라 동시
