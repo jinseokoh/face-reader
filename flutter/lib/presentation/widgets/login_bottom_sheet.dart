@@ -141,7 +141,7 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
               const SizedBox(height: 8),
               Text(
                 isSignUp
-                    ? '가입하시면 분석 기록과 공유 기능을 모든 기기에서 동기화할 수 있습니다.'
+                    ? '분석 기록을 기기 간 동기화합니다.'
                     : '관상 분석과 공유 기능을 사용하려면 로그인이 필요합니다.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
