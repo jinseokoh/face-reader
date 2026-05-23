@@ -96,7 +96,10 @@ class _OtpSheetState extends ConsumerState<_OtpSheet> {
 
   Future<void> _verify() async {
     final token = _otpCtrl.text.trim();
+    debugPrint('[OtpSheet._verify] start email=${widget.email} '
+        'tokenLen=${token.length}');
     if (token.length != 6) {
+      debugPrint('[OtpSheet._verify] reject: token not 6 digits');
       setState(() => _error = '6자리 코드를 입력하세요');
       return;
     }
@@ -107,6 +110,7 @@ class _OtpSheetState extends ConsumerState<_OtpSheet> {
     final success = await ref
         .read(authProvider.notifier)
         .verifyEmailOtp(widget.email, token);
+    debugPrint('[OtpSheet._verify] success=$success');
     if (!mounted) return;
     if (success) {
       Navigator.of(context).pop(OtpSheetResult.verified);
@@ -119,10 +123,16 @@ class _OtpSheetState extends ConsumerState<_OtpSheet> {
   }
 
   Future<void> _resend() async {
-    if (_resendCooldownSec > 0 || _isLoading) return;
+    debugPrint('[OtpSheet._resend] requested cooldown=$_resendCooldownSec '
+        'loading=$_isLoading');
+    if (_resendCooldownSec > 0 || _isLoading) {
+      debugPrint('[OtpSheet._resend] skipped (cooldown or loading)');
+      return;
+    }
     setState(() => _isLoading = true);
     final success =
         await ref.read(authProvider.notifier).resendEmailOtp(widget.email);
+    debugPrint('[OtpSheet._resend] success=$success');
     if (!mounted) return;
     setState(() => _isLoading = false);
     if (success) {

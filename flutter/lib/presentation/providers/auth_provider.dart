@@ -37,7 +37,7 @@ class AuthNotifier extends Notifier<AuthUser?> {
     return AuthService().loginWithEmail(email, password);
   }
 
-  Future<bool> signUpWithEmail(String email, String password) async {
+  Future<SignUpOutcome> signUpWithEmail(String email, String password) async {
     return AuthService().signUpWithEmail(email, password);
   }
 

@@ -36,6 +36,20 @@ class AuthUser {
       );
 }
 
+/// signUpWithEmail 의 결과. Supabase 가 throw 안 하고도 "이미 가입된 계정"
+/// 케이스를 반환하므로 bool 로는 부족 — 3 가지 분기.
+enum SignUpOutcome {
+  /// 신규 가입 — OTP 이메일 발송. UI 는 OTP sheet 띄움.
+  newAccount,
+
+  /// 이미 confirmed 가입자 (user-enumeration 방어). OTP 안 옴 — UI 는
+  /// 로그인 모드로 자동 전환.
+  alreadyRegistered,
+
+  /// 예외 발생 (네트워크·rate-limit·invalid email 등).
+  error,
+}
+
 /// Singleton auth service backed by Supabase Auth. Kakao OAuth + Email both
 /// route through the same `auth.users` table; `public.users` row + signup
 /// bonus are created by the `on_auth_user_created` DB trigger.
@@ -158,51 +172,80 @@ class AuthService {
     }
   }
 
-  /// Email + password sign up. Depending on "Confirm email" setting in the
-  /// dashboard, user may receive a confirmation mail first.
-  ///
-  /// Supabase 이메일 템플릿이 OTP (`{{ .Token }}`) 를 포함하면 사용자가
-  /// 메일에서 6자리 코드를 받아 [verifyEmailOtp] 로 검증. emailRedirectTo
-  /// 는 link 방식 fallback 용 — OTP 만 쓸 거면 사용자가 link 안 눌러도 됨.
-  Future<bool> signUpWithEmail(String email, String password) async {
+  /// Email + password sign up. Supabase user-enumeration 방어 때문에 이미
+  /// confirmed 가입자 이메일이어도 throw 하지 않고 가짜 success 응답이 옴 —
+  /// 다만 `user.identities` 가 비어있어 구분 가능. 호출자가 outcome 으로
+  /// 분기.
+  Future<SignUpOutcome> signUpWithEmail(String email, String password) async {
+    debugPrint('[Auth.signUp] start email=$email pwLen=${password.length}');
     try {
-      await _client.auth
-          .signUp(email: email, password: password, emailRedirectTo: _redirectUrl);
-      return true;
-    } catch (e) {
-      debugPrint('[Auth] email signup error: $e');
-      return false;
+      final res = await _client.auth.signUp(
+        email: email,
+        password: password,
+        emailRedirectTo: _redirectUrl,
+      );
+      final user = res.user;
+      final session = res.session;
+      final identCount = user?.identities?.length ?? 0;
+      debugPrint(
+        '[Auth.signUp] response: userId=${user?.id} '
+        'identities=$identCount session=${session != null} '
+        'confirmedAt=${user?.emailConfirmedAt}',
+      );
+      if (user == null) {
+        debugPrint('[Auth.signUp] OUTCOME=error (user null)');
+        return SignUpOutcome.error;
+      }
+      // Supabase user-enumeration 방어 — 이미 confirmed 가입자에게도 200 OK
+      // 같은 가짜 success. user.identities 가 비어있는 것이 신호 (v2.x SDK).
+      if (identCount == 0) {
+        debugPrint('[Auth.signUp] OUTCOME=alreadyRegistered '
+            '(empty identities — user already exists)');
+        return SignUpOutcome.alreadyRegistered;
+      }
+      debugPrint('[Auth.signUp] OUTCOME=newAccount — OTP 이메일 발송 예상');
+      return SignUpOutcome.newAccount;
+    } catch (e, st) {
+      debugPrint('[Auth.signUp] OUTCOME=error exception=$e');
+      debugPrint('[Auth.signUp] stack=$st');
+      return SignUpOutcome.error;
     }
   }
 
   /// 가입 후 발송된 6자리 OTP 를 검증. 성공 시 Supabase 가 자동으로 session
   /// 을 만들고 onAuthStateChange 가 발화 → _loadProfile 이 실행됨.
   Future<bool> verifyEmailOtp(String email, String token) async {
-    debugPrint('[Auth] verifyEmailOtp email=$email tokenLen=${token.length}');
+    debugPrint('[Auth.verifyOtp] start email=$email tokenLen=${token.length}');
     try {
-      await _client.auth.verifyOTP(
+      final res = await _client.auth.verifyOTP(
         type: OtpType.signup,
         email: email,
         token: token,
       );
+      debugPrint('[Auth.verifyOtp] OK userId=${res.user?.id} '
+          'session=${res.session != null}');
       return true;
     } catch (e, st) {
-      debugPrint('[Auth] verifyOtp error: $e\n$st');
+      debugPrint('[Auth.verifyOtp] FAIL exception=$e');
+      debugPrint('[Auth.verifyOtp] stack=$st');
       return false;
     }
   }
 
   /// 가입 OTP 이메일 재전송. cooldown 관리는 호출자 책임 (UI 의 60초 timer).
   Future<bool> resendEmailOtp(String email) async {
-    debugPrint('[Auth] resendEmailOtp email=$email');
+    debugPrint('[Auth.resendOtp] start email=$email');
     try {
       await _client.auth.resend(
         type: OtpType.signup,
         email: email,
       );
+      debugPrint('[Auth.resendOtp] OK — Supabase 가 새 OTP 메일 발송 (이미 '
+          'confirmed 사용자면 무발송, rate-limit 시 throw 가능)');
       return true;
-    } catch (e) {
-      debugPrint('[Auth] resend error: $e');
+    } catch (e, st) {
+      debugPrint('[Auth.resendOtp] FAIL exception=$e');
+      debugPrint('[Auth.resendOtp] stack=$st');
       return false;
     }
   }

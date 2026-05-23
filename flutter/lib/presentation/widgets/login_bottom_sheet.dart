@@ -1,4 +1,5 @@
 import 'package:face_reader/core/theme.dart';
+import 'package:face_reader/data/services/auth_service.dart' show SignUpOutcome;
 import 'package:face_reader/presentation/providers/auth_provider.dart';
 import 'package:face_reader/presentation/widgets/otp_verification_sheet.dart';
 import 'package:flutter/material.dart';
@@ -265,7 +266,11 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
   Future<void> _emailSubmit() async {
     final email = _emailCtrl.text.trim();
     final password = _passwordCtrl.text;
+    debugPrint('[Login.emailSubmit] start mode=${_isSignUp ? "signup" : "signin"} '
+        'email=$email pwLen=${password.length}');
     if (email.isEmpty || password.length < 6) {
+      debugPrint('[Login.emailSubmit] validation fail '
+          '(email empty=${email.isEmpty} pwLen=${password.length})');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('이메일과 6자 이상 비밀번호를 입력하세요')),
       );
@@ -273,44 +278,62 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
     }
     setState(() => _isLoading = true);
     final notifier = ref.read(authProvider.notifier);
-    final success = _isSignUp
-        ? await notifier.signUpWithEmail(email, password)
-        : await notifier.loginWithEmail(email, password);
-    if (!mounted) return;
-
-    if (!success) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_isSignUp ? '가입 실패' : '로그인 실패')),
-      );
-      return;
-    }
 
     if (_isSignUp) {
-      // 가입은 Supabase 에 됐고 이제 OTP 인증 단계로 — login sheet 위로 OTP
-      // sheet 슬라이드. 결과 3 분기: verified / cancelled / switchToLogin.
-      final otpResult =
-          await showOtpVerificationSheet(context, ref, email: email);
+      final outcome = await notifier.signUpWithEmail(email, password);
+      debugPrint('[Login.emailSubmit] signUp outcome=$outcome');
       if (!mounted) return;
-      switch (otpResult) {
-        case OtpSheetResult.verified:
-          // OTP 성공 — onAuthStateChange 가 세션 만들고 _loadProfile 실행.
-          Navigator.of(context).pop(true);
-        case OtpSheetResult.switchToLogin:
-          // 이미 가입된 계정이라 OTP 안 도착 추정 — 로그인 모드로 전환,
-          // 비번 유지해 바로 재시도 가능. login sheet 는 그대로.
+      switch (outcome) {
+        case SignUpOutcome.newAccount:
+          // OTP sheet 띄움.
+          final otpResult =
+              await showOtpVerificationSheet(context, ref, email: email);
+          debugPrint('[Login.emailSubmit] otpResult=$otpResult');
+          if (!mounted) return;
+          switch (otpResult) {
+            case OtpSheetResult.verified:
+              Navigator.of(context).pop(true);
+            case OtpSheetResult.switchToLogin:
+              setState(() {
+                _isSignUp = false;
+                _isLoading = false;
+              });
+            case OtpSheetResult.cancelled:
+              setState(() => _isLoading = false);
+          }
+        case SignUpOutcome.alreadyRegistered:
+          // Supabase user-enumeration 방어 — OTP 안 옴. 로그인 모드로 자동
+          // 전환 + 안내.
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('이미 가입된 이메일입니다. 로그인 모드로 전환했습니다.')),
+          );
           setState(() {
             _isSignUp = false;
             _isLoading = false;
           });
-        case OtpSheetResult.cancelled:
+        case SignUpOutcome.error:
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('가입 실패 — 잠시 후 다시 시도해주세요')),
+          );
           setState(() => _isLoading = false);
       }
       return;
     }
 
-    // 로그인 (signin) 성공 — session 생성 완료.
-    Navigator.of(context).pop(true);
+    // ── 로그인 모드 ──────────────────────────────────────────────
+    final ok = await notifier.loginWithEmail(email, password);
+    debugPrint('[Login.emailSubmit] signIn ok=$ok');
+    if (!mounted) return;
+    if (ok) {
+      Navigator.of(context).pop(true);
+    } else {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('로그인 실패 — 이메일/비밀번호를 확인해주세요')),
+      );
+    }
   }
 
   Future<void> _kakaoLogin() async {
