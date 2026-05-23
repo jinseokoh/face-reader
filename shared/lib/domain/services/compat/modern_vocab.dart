@@ -67,7 +67,7 @@ extension CompatSubKindModern on CompatSubKind {
       case CompatSubKind.qi:
         return '소통 스타일';
       case CompatSubKind.intimacy:
-        return '로맨스';
+        return '이성적 끌림';
     }
   }
 
@@ -89,16 +89,17 @@ extension CompatSubKindModern on CompatSubKind {
   String get displayLabel => '$modernKo ($englishLabel)';
 
   /// 그 dimension 이 *무엇을 보는지* 한 줄 설명. info row 본문에 쓴다.
+  /// 명사형 종결 (판단·측정 등) 로 통일 — UX 톤 일관성.
   String get descriptionKo {
     switch (this) {
       case CompatSubKind.element:
-        return '얼굴형이 보여주는 기본 성향과 삶의 태도가 얼마나 잘 맞는지.';
+        return '얼굴형(五行)이 드러내는 기본 성향과 삶의 태도가 얼마나 잘 맞는지를 판단.';
       case CompatSubKind.palace:
-        return '결혼·돈·자녀·일 등 12 가지 생활 영역에서 두 사람이 어떻게 어우러지는지.';
+        return '결혼·돈·자녀·일 등 12 가지 생활 영역(十二宮)에서 두 사람이 어떻게 어우러지는지를 판단.';
       case CompatSubKind.qi:
-        return '눈·코·입이 만드는 표현 방식. 평소 어떻게 말하고 어떻게 듣는지.';
+        return '눈·코·입이 만드는 표현 방식(五官)이 만나 평소 어떻게 말하고 어떻게 듣는지를 판단.';
       case CompatSubKind.intimacy:
-        return '이성 친밀감의 결. 30~50 대 이성 페어에서만 측정.';
+        return '이성 친밀감의 결을 모든 연령대에서 측정. 다만 풀이 톤은 동성·10대·70대 이상은 차분, 20·60대는 가벼운 호감, 30~50대 이성 페어는 분명한 매혹으로 분기.';
     }
   }
 

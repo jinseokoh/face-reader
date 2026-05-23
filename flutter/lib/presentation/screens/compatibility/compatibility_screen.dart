@@ -379,6 +379,26 @@ class CompatibilityScreen extends ConsumerWidget {
                   weight: kind.weightLabel,
                   body: kind.descriptionKo,
                 ),
+              const SizedBox(height: 18),
+              const Text('비중이 다른 이유',
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimary)),
+              const SizedBox(height: 10),
+              const Text(
+                '균등 분배(각 25%)가 공평해 보일 수 있지만, 실제 관계 만족도와는 어긋납니다. 네 차원의 비중은 매일·매시간 부딪히는 빈도와 세분화 폭의 차이에서 나옵니다.\n\n'
+                '• 관심사 40% — 12 가지 생활 영역(결혼·돈·자녀·일·건강·이동·인덕…)으로 가장 잘게 쪼개져 일상 호환을 가장 정밀하게 잡아냅니다.\n'
+                '• 소통 스타일 25% — 매시간 표현이 만나며 만드는 단기 호흡·갈등의 1차 신호. 노출 빈도가 가장 잦습니다.\n'
+                '• 가치관 20% — 五行 기반 평생 변하지 않는 큰 결. 토대로서의 무게는 크지만 12 영역만큼 세분화 폭이 넓지는 않습니다.\n'
+                '• 이성적 끌림 15% — 모든 페어를 측정하되 동성·노년 페어에선 의미가 옅어지는 차원이라 평균 가중치를 낮게 잡습니다.',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                  color: AppTheme.textSecondary,
+                  height: 1.7,
+                ),
+              ),
             ],
           ),
         ),
