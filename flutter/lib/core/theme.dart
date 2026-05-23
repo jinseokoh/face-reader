@@ -186,6 +186,36 @@ class AppTheme {
           scrolledUnderElevation: 0.5,
           titleTextStyle: AppText.appBarTitle,
         ),
+        // TextField outline — Material 3 의 ColorScheme.fromSeed(grey) 가 yellow-
+        // green tint primary 를 만들어 focused border 가 녹색으로 나오는 문제
+        // 차단. 전역 InputDecorationTheme 으로 명시.
+        inputDecorationTheme: InputDecorationTheme(
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            borderSide:
+                const BorderSide(color: AppColors.textPrimary, width: 1.5),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            borderSide: const BorderSide(color: AppColors.danger),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            borderSide:
+                const BorderSide(color: AppColors.danger, width: 1.5),
+          ),
+          labelStyle: const TextStyle(color: AppColors.textSecondary),
+          floatingLabelStyle:
+              const TextStyle(color: AppColors.textPrimary),
+        ),
         // Material 3 TextTheme slot 에 본 프로젝트 토큰을 매핑.
         // `Theme.of(context).textTheme.titleLarge` 같은 lookup 이 토큰을 반환한다.
         textTheme: const TextTheme(

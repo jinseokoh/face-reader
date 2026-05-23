@@ -21,9 +21,10 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
-    // 작은 iPhone (예: SE 1/2/3, safe-area 차감 후 ≤ 600px) 에선 fixed
-    // 레이아웃이 23px 가량 overflow — image 와 gap 을 줄여 fit. tall device
-    // 는 기존 디자인 유지.
+    // 작은 iPhone (예: SE 1/2/3, safe-area 차감 후 ≤ 720px) 에선 image·gap
+    // 축소. 키보드 미드-애니메이션 등으로 constraint 가 더 떨어지면
+    // SingleChildScrollView 로 fallback scroll → 어떤 height 에도 overflow
+    // 안 함. tall device 는 Spacer 가 정상 작동해 기존 디자인 유지.
     final compact = MediaQuery.of(context).size.height < 720;
     final imageHeight = compact ? 220.0 : 280.0;
     final topGap = compact ? AppSpacing.sm : AppSpacing.xxl;
@@ -35,66 +36,77 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Column(
-          children: [
-            SizedBox(height: topGap),
-            Image.asset(
-              'assets/images/home.png',
-              height: imageHeight,
-              fit: BoxFit.contain,
-            ),
-            SizedBox(height: afterImage),
-            Text(
-              '관상은 과학이다.',
-              style: AppText.display.copyWith(
-                fontSize: titleFontSize,
-                fontWeight: FontWeight.w700,
-                height: 1.15,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: afterTitle),
-            Text(
-              'Facely, 안면 계측 데이터 기반 인공지능 관상앱',
-              style: AppText.body.copyWith(
-                color: AppTheme.textSecondary,
-                height: 1.5,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const Spacer(),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
-              child: Container(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(AppRadius.xl),
-                ),
-                child: Row(
+        child: LayoutBuilder(
+          builder: (ctx, constraints) => SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: IntrinsicHeight(
+                child: Column(
                   children: [
-                    Expanded(
-                      child: _HomeActionCard(
-                        label: '카메라로 촬영',
-                        icon: FontAwesomeIcons.camera,
-                        onPressed: _openCamera,
+                    SizedBox(height: topGap),
+                    Image.asset(
+                      'assets/images/home.png',
+                      height: imageHeight,
+                      fit: BoxFit.contain,
+                    ),
+                    SizedBox(height: afterImage),
+                    Text(
+                      '관상은 과학이다.',
+                      style: AppText.display.copyWith(
+                        fontSize: titleFontSize,
+                        fontWeight: FontWeight.w700,
+                        height: 1.15,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: afterTitle),
+                    Text(
+                      'Facely, 안면 계측 데이터 기반 인공지능 관상앱',
+                      style: AppText.body.copyWith(
+                        color: AppTheme.textSecondary,
+                        height: 1.5,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const Spacer(),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.xxl),
+                      child: Container(
+                        padding: const EdgeInsets.all(AppSpacing.lg),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius:
+                              BorderRadius.circular(AppRadius.xl),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: _HomeActionCard(
+                                label: '카메라로 촬영',
+                                icon: FontAwesomeIcons.camera,
+                                onPressed: _openCamera,
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.md),
+                            Expanded(
+                              child: _HomeActionCard(
+                                label: '앨범에서 선택',
+                                icon: FontAwesomeIcons.image,
+                                onPressed: _openAlbum,
+                                reverse: true,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: _HomeActionCard(
-                        label: '앨범에서 선택',
-                        icon: FontAwesomeIcons.image,
-                        onPressed: _openAlbum,
-                        reverse: true,
-                      ),
-                    ),
+                    SizedBox(height: bottomGap),
                   ],
                 ),
               ),
             ),
-            SizedBox(height: bottomGap),
-          ],
+          ),
         ),
       ),
     );
