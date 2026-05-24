@@ -1,5 +1,3 @@
-import 'dart:ui' as ui;
-
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'package:face_engine/data/constants/compat_hashtags.dart';
@@ -18,10 +16,11 @@ import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/domain/services/share/share_publisher.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
+import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
 // ─────────────────────────────────────────────────────────────
 // Shared helpers
@@ -64,7 +63,6 @@ class _CompatibilityDetailScreenState
     extends ConsumerState<CompatibilityDetailScreen> {
   late final CompatibilityBundle _bundle =
       analyzeCompatibilityFromReports(my: widget.my, album: widget.album);
-  final GlobalKey _shareCardKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
@@ -74,12 +72,7 @@ class _CompatibilityDetailScreenState
         title: Text(widget.album.alias ?? '궁합'),
         actions: [
           IconButton(
-            icon: const FaIcon(FontAwesomeIcons.arrowUpFromBracket, size: 18),
-            tooltip: '카드 이미지 공유',
-            onPressed: () => _showShareCardSheet(context),
-          ),
-          IconButton(
-            icon: const FaIcon(FontAwesomeIcons.commentDots, size: 20),
+            icon: const FaIcon(FontAwesomeIcons.kakaoTalk, size: 20),
             tooltip: '카카오 공유',
             onPressed: () => _shareViaKakao(context),
           ),
@@ -102,37 +95,6 @@ class _CompatibilityDetailScreenState
     );
   }
 
-  Future<void> _captureAndShareCard(BuildContext sheetContext) async {
-    try {
-      final boundary = _shareCardKey.currentContext?.findRenderObject()
-          as RenderRepaintBoundary?;
-      if (boundary == null) {
-        throw Exception('share card not mounted');
-      }
-      final image = await boundary.toImage(pixelRatio: 3.0);
-      final byteData =
-          await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) {
-        throw Exception('failed to encode png');
-      }
-      final bytes = byteData.buffer.asUint8List();
-      // SharePublisher 가 양쪽 supabaseId 보장 + face.kr/api/share 호출 +
-      // share_plus 합성 (text = https://face.kr/r/{shortId}, files = [PNG]).
-      await SharePublisher.instance.publishCompat(
-        my: widget.my,
-        album: widget.album,
-        pngBytes: bytes,
-      );
-      if (sheetContext.mounted) Navigator.of(sheetContext).pop();
-    } catch (e, st) {
-      debugPrint('[CompatShareCard] capture failed: $e\n$st');
-      if (!sheetContext.mounted) return;
-      ScaffoldMessenger.of(sheetContext).showSnackBar(
-        SnackBar(content: Text('공유 카드 생성 실패: $e')),
-      );
-    }
-  }
-
   /// 로그인 가드 — 비로그인이면 home_screen 의 "앨범에서 선택" 과 동일한
   /// login bottom sheet 띄움. true = 로그인 완료(또는 이미 로그인), false =
   /// 사용자가 취소.
@@ -145,6 +107,15 @@ class _CompatibilityDetailScreenState
 
   Future<void> _shareViaKakao(BuildContext context) async {
     if (!await _ensureLoggedIn(context)) return;
+    if (!await SharePublisher.instance.isKakaoTalkInstalled()) {
+      if (!context.mounted) return;
+      showTopSnackBar(
+        Overlay.of(context),
+        CompactSnackBar.error(
+            message: '카카오톡이 설치되어 있지않아 공유할 수 없습니다'),
+      );
+      return;
+    }
     try {
       final r = _bundle.report;
       final myAlias = widget.my.alias ?? '나';
@@ -158,93 +129,14 @@ class _CompatibilityDetailScreenState
         description: desc,
       );
     } catch (e, st) {
-      debugPrint('[CompatKakaoShare] error: $e');
-      debugPrint('[CompatKakaoShare] stackTrace: $st');
+      debugPrint('[CompatKakaoShare] error: $e\n$st');
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('공유 실패: $e'),
-            backgroundColor: Colors.red.shade700,
-          ),
+        showTopSnackBar(
+          Overlay.of(context),
+          CompactSnackBar.error(message: '공유 중 문제가 발생했어요'),
         );
       }
     }
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  // Share
-  // ─────────────────────────────────────────────────────────────
-
-  // ─── Share card sheet (이미지 1장 공유) ───
-  Future<void> _showShareCardSheet(BuildContext context) async {
-    if (!await _ensureLoggedIn(context)) return;
-    if (!context.mounted) return;
-    await showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.white,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Container(
-                  width: 36,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 14),
-                  decoration: BoxDecoration(
-                    color: AppTheme.border,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                Text('한 장 공유 카드',
-                    style: TextStyle(
-                        color: AppTheme.textPrimary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Text('인스타·카톡에 그대로 보낼 수 있는 카드입니다.',
-                    style: TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 12,
-                        height: 1.4)),
-                const SizedBox(height: 14),
-                Center(
-                  child: RepaintBoundary(
-                    key: _shareCardKey,
-                    child: _CompatShareCard(
-                      my: widget.my,
-                      album: widget.album,
-                      report: _bundle.report,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: () => _captureAndShareCard(ctx),
-                  icon: const FaIcon(FontAwesomeIcons.arrowUpFromBracket, size: 16),
-                  label: const Text('이미지로 공유',
-                      style: TextStyle(fontWeight: FontWeight.w600)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.textPrimary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 
 }
@@ -265,140 +157,6 @@ class _CompatPalette {
   static const weaknessBg = Color(0xFFF5DCD8);
   static const weaknessFg = Color(0xFF8C2E1F);
   static const weaknessBorder = Color(0xFFC97165);
-}
-
-class _CompatShareCard extends StatelessWidget {
-  final FaceReadingReport my;
-  final FaceReadingReport album;
-  final CompatibilityReport report;
-  const _CompatShareCard({
-    required this.my,
-    required this.album,
-    required this.report,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final myAlias = my.alias ?? '나';
-    final albumAlias = album.alias ?? '상대';
-    final myDemographic =
-        '${my.gender.labelKo} · ${my.ageGroup.labelKo} · ${my.faceShape.korean}';
-    final albumDemographic =
-        '${album.gender.labelKo} · ${album.ageGroup.labelKo} · ${album.faceShape.korean}';
-    final tagline = _TotalHeader._labelTagline(report.label);
-    final relation =
-        '${report.myElement.primary.korean} × ${report.albumElement.primary.korean}  ·  ${_relationKindKo(report.elementRelation.kind)}';
-
-    return Container(
-      width: 360,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [_CompatPalette.darkBrown, _CompatPalette.warmBrown],
-        ),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text('Facely 궁합평가',
-                  style: TextStyle(
-                      color: _CompatPalette.sand,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1)),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
-                  report.label.korean,
-                  style: const TextStyle(
-                    fontFamily: 'SongMyung',
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    height: 1.0,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '(${report.label.hanja})',
-                  style: TextStyle(
-                    fontFamily: 'SongMyung',
-                    color: _CompatPalette.sand,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w400,
-                    height: 1.0,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(tagline,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    color: _CompatPalette.sand,
-                    fontSize: 12,
-                    letterSpacing: 1)),
-            const SizedBox(height: 18),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                    child: _CompatShareSide(
-                        report: my,
-                        alias: myAlias,
-                        demographic: myDemographic)),
-                const Padding(
-                  padding: EdgeInsets.only(top: 24),
-                  child: Text('×',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 32,
-                          fontWeight: FontWeight.w300)),
-                ),
-                Expanded(
-                    child: _CompatShareSide(
-                        report: album,
-                        alias: albumAlias,
-                        demographic: albumDemographic)),
-              ],
-            ),
-            const SizedBox(height: 18),
-            _CompatChipsBlock(report: report),
-            const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.18)),
-              ),
-              child: Text(relation,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 1)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _CompatShareSide extends StatelessWidget {
