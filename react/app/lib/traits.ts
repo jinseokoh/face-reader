@@ -55,6 +55,17 @@ function ogImageFor(row: MetricsRow, ctx: RenderInput): string {
   return `${ctx.origin}/logo.png`;
 }
 
+/// compat 카드의 두 인물 thumbnail 용 — R2 thumbnailKey 가 있으면 직통,
+/// 없으면 gender stock png (`/female.png` / `/male.png`) fallback.
+function compatThumbUrlFor(row: MetricsRow, ctx: RenderInput): string {
+  const key = (row.raw as unknown as Record<string, unknown>).thumbnailKey;
+  if (typeof key === "string" && key.length > 0 && ctx.cdnBase) {
+    return `${ctx.cdnBase.replace(/\/$/, "")}/${key}`;
+  }
+  const gender = row.raw.gender;
+  return `${ctx.origin}${gender === "female" ? "/female.png" : "/male.png"}`;
+}
+
 export function renderSolo(row: MetricsRow, ctx: RenderInput): RenderedShare {
   const eng = runEngineFor(row);
   const ogTitle = eng.specialArchetype
@@ -94,6 +105,8 @@ export function renderCompat(a: MetricsRow, b: MetricsRow, ctx: RenderInput): Re
     appStoreUrl: ctx.appStoreUrl,
     playStoreUrl: ctx.playStoreUrl,
     compat,
+    compatAThumbUrl: compatThumbUrlFor(a, ctx),
+    compatBThumbUrl: compatThumbUrlFor(b, ctx),
   };
 }
 

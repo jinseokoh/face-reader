@@ -53,6 +53,7 @@ export interface CompatPersonOutput {
   fiveElementKo: string;
   demographic: string;
   primaryLabel: string;
+  secondaryLabel: string;
 }
 
 export interface CompatOutput {
@@ -93,4 +94,9 @@ export interface RenderedShare {
   playStoreUrl: string;
   solo?: EngineOutput;
   compat?: CompatOutput;
+  /// compat 전용 — a/b 양쪽의 R2 thumbnail 절대 URL.
+  /// thumbnailKey 가 비어있으면 gender stock png (`/female.png` / `/male.png`)
+  /// 로 fallback. solo 렌더에선 미사용.
+  compatAThumbUrl?: string;
+  compatBThumbUrl?: string;
 }

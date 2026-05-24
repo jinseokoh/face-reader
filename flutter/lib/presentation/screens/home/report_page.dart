@@ -374,6 +374,44 @@ class _HeroTop3Cell extends StatelessWidget {
   }
 }
 
+/// share card 안의 강점·약점 라인 — FontAwesome thumbs icon + 본문 text.
+/// in-app 디자인 토큰 비적용 (export medium). 본문 1줄 ellipsis 로 vertical
+/// overflow 방지 (canvas 400px 안 fixed fit).
+class _IconLineRow extends StatelessWidget {
+  final IconData icon;
+  final Color tone;
+  final String text;
+  const _IconLineRow({
+    required this.icon,
+    required this.tone,
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        FaIcon(icon, color: tone, size: 40),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 42,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF333333),
+              height: 1.4,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 // ─── Node Bar (always-expanded: 관상학 해석 + metric z 리스트 전부 노출) ───
 //
 // 14-node tree 의 각 노드(root·zone·leaf) 는 z-band(high/mid/low) 에 맞는
@@ -1391,7 +1429,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
       final report = widget.report;
       await SharePublisher.instance.publishSoloViaKakao(
         report: report,
-        title: 'Facely 관상 평가',
+        title: 'Facely, 관상은 과학이다.',
         description: '내 관상 분석 결과를 확인해 보세요',
         compositeCardPng: pngBytes,
       );
@@ -1609,7 +1647,7 @@ class _ShareCardComposite extends StatelessWidget {
     final shadowLine = attributeShadowLine[weakest.key] ?? '';
     final catchphrase = archetypeCatchphrase[arch.primary] ?? '';
 
-    const thumbSize = 120.0;
+    const thumbSize = 180.0;
     final thumbFile = ThumbnailPaths.resolveFileSync(report.thumbnailPath);
     Widget thumb;
     if (thumbFile != null && thumbFile.existsSync()) {
@@ -1621,7 +1659,7 @@ class _ShareCardComposite extends StatelessWidget {
         height: thumbSize,
         color: const Color(0xFFF5F5F5),
         child: const Icon(Icons.face,
-            size: 64, color: Color(0xFFAAAAAA)),
+            size: 96, color: Color(0xFFAAAAAA)),
       );
     }
 
@@ -1637,7 +1675,8 @@ class _ShareCardComposite extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // 상단 banner — full-bleed 800×400.
+                // 상단 banner — full-bleed 800×400 (절대 건드리지 말 것 —
+                // 외부에서 매우 최적화된 source 라 비율·크기 고정).
                 SizedBox(
                   height: 400,
                   child: Image.asset(
@@ -1647,10 +1686,11 @@ class _ShareCardComposite extends StatelessWidget {
                     fit: BoxFit.cover,
                   ),
                 ),
-                // 하단 400px content 영역 (banner 와 동일 비율 5:5).
+                // 하단 400px content 영역. 위·아래 padding 0 으로 꽉 채움,
+                // font 는 banner 와 시각적 균형 맞춰 한 단 크게.
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(28, 10, 28, 10),
+                    padding: const EdgeInsets.fromLTRB(28, 0, 28, 0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -1671,17 +1711,17 @@ class _ShareCardComposite extends StatelessWidget {
                                   Text(
                                     arch.primaryLabel,
                                     style: const TextStyle(
-                                      fontSize: 48,
+                                      fontSize: 64,
                                       fontWeight: FontWeight.w700,
                                       color: Color(0xFF333333),
                                       height: 1.1,
                                     ),
                                   ),
-                                  const SizedBox(height: 6),
+                                  const SizedBox(height: 10),
                                   Text(
                                     '${arch.secondaryLabel} 기질',
                                     style: const TextStyle(
-                                      fontSize: 32,
+                                      fontSize: 42,
                                       fontWeight: FontWeight.w500,
                                       color: Color(0xFF777777),
                                       height: 1.2,
@@ -1692,16 +1732,16 @@ class _ShareCardComposite extends StatelessWidget {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 14),
                         if (catchphrase.isNotEmpty)
                           Padding(
-                            padding: const EdgeInsets.only(bottom: 16),
+                            padding: const EdgeInsets.only(bottom: 8),
                             child: Text(
                               catchphrase,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                fontSize: 32,
+                                fontSize: 44,
                                 fontWeight: FontWeight.w600,
                                 color: Color(0xFF5C4033),
                                 height: 1.3,
@@ -1709,14 +1749,14 @@ class _ShareCardComposite extends StatelessWidget {
                               ),
                             ),
                           ),
-                        _BadgeRow(
-                          badge: '강점',
+                        _IconLineRow(
+                          icon: FontAwesomeIcons.thumbsUp,
                           tone: const Color(0xFF333333),
                           text: strengthLine,
                         ),
-                        const SizedBox(height: 10),
-                        _BadgeRow(
-                          badge: '약점',
+                        const SizedBox(height: 12),
+                        _IconLineRow(
+                          icon: FontAwesomeIcons.thumbsDown,
                           tone: const Color(0xFF333333),
                           text: shadowLine,
                         ),
@@ -1729,59 +1769,6 @@ class _ShareCardComposite extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// share card 안의 장점/단점 라벨 — pill-shape badge + 본문 text.
-/// in-app 디자인 토큰 비적용 (export medium).
-class _BadgeRow extends StatelessWidget {
-  final String badge;
-  final Color tone;
-  final String text;
-  const _BadgeRow({
-    required this.badge,
-    required this.tone,
-    required this.text,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
-          decoration: BoxDecoration(
-            border: Border.all(color: tone, width: 1.5),
-            borderRadius: BorderRadius.circular(22),
-          ),
-          child: Text(
-            badge,
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w700,
-              color: tone,
-              height: 1.2,
-            ),
-          ),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Text(
-              text,
-              style: const TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF333333),
-                height: 1.4,
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

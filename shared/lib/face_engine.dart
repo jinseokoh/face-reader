@@ -29,6 +29,7 @@ import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/services/compat/compat_adapter.dart';
 import 'package:face_engine/domain/services/compat/compat_label.dart';
 import 'package:face_engine/domain/services/compat/five_element.dart';
+import 'package:face_engine/domain/services/compat/modern_vocab.dart';
 
 @JS('runEngine')
 external set _setRunEngine(JSFunction fn);
@@ -151,9 +152,13 @@ Map<String, dynamic> _personSummary(FaceReadingReport r, FiveElement el) {
     'faceShapeKo': r.faceShape.korean,
     'fiveElement': el.name,
     'fiveElementKo': el.korean,
+    // demographic 은 sub-line 으로 ageGroup + gender + secondary 기질.
+    // 메인 label 은 archetype.primaryLabel (CompatSide 가 표시).
+    // e.g. "40대 남성 신의형기질" (sub) + "기업가형" (main).
     'demographic':
-        '${r.gender.labelKo} · ${r.ageGroup.labelKo} · ${r.faceShape.korean}',
+        '${r.ageGroup.labelKo} ${r.gender.labelKo} ${r.archetype.secondaryLabel}기질',
     'primaryLabel': r.archetype.primaryLabel,
+    'secondaryLabel': r.archetype.secondaryLabel,
   };
 }
 
@@ -164,10 +169,7 @@ String _labelTagline(CompatLabel l) => switch (l) {
       CompatLabel.hyeonggeuknanjo => '서로를 조심히 지켜 줘야 하는 자리',
     };
 
-String _relationKindKo(ElementRelationKind k) => switch (k) {
-      ElementRelationKind.identity => '비슷한 결끼리 만나는 구도',
-      ElementRelationKind.generating => '내가 상대를 살리는 상생',
-      ElementRelationKind.generated => '상대가 나를 받쳐 주는 상생',
-      ElementRelationKind.overcoming => '내가 상대를 다스리는 상극',
-      ElementRelationKind.overcome => '상대가 나를 누르는 상극',
-    };
+/// SSOT — Flutter 앱의 `ElementRelationKindModernVocab.modernKo` 와 동일
+/// 모던·구어체 라벨에 위임. 이전엔 격식체 ("내가 상대를 살리는 상생" 등) 를
+/// 별도로 갖고 있었으나 두 채널 (web/app) 라벨 통일 위해 폐기.
+String _relationKindKo(ElementRelationKind k) => k.modernKo;

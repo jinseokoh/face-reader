@@ -6,7 +6,15 @@ import type {
 } from "../lib/types";
 
 export function ShareCard({ data }: { data: RenderedShare }) {
-  if (data.compat) return <CompatHeroCard compat={data.compat} />;
+  if (data.compat) {
+    return (
+      <CompatHeroCard
+        compat={data.compat}
+        aThumbUrl={data.compatAThumbUrl ?? ""}
+        bThumbUrl={data.compatBThumbUrl ?? ""}
+      />
+    );
+  }
   if (data.solo) return <SoloHeroCard eng={data.solo} />;
   return null;
 }
@@ -63,7 +71,15 @@ function SoloHeroCard({ eng }: { eng: EngineOutput }) {
   );
 }
 
-function CompatHeroCard({ compat }: { compat: CompatOutput }) {
+function CompatHeroCard({
+  compat,
+  aThumbUrl,
+  bThumbUrl,
+}: {
+  compat: CompatOutput;
+  aThumbUrl: string;
+  bThumbUrl: string;
+}) {
   return (
     <article className="hero hero--compat">
       <p className="hero-eyebrow">Facely 궁합 평가</p>
@@ -75,9 +91,9 @@ function CompatHeroCard({ compat }: { compat: CompatOutput }) {
       <p className="compat-tagline">{compat.labelTagline}</p>
 
       <div className="compat-pair">
-        <CompatSide person={compat.a} alias="나" />
+        <CompatSide person={compat.a} thumbUrl={aThumbUrl} />
         <span className="compat-x">×</span>
-        <CompatSide person={compat.b} alias="상대" />
+        <CompatSide person={compat.b} thumbUrl={bThumbUrl} />
       </div>
 
       <ul className="hero-chips compat-chips">
@@ -94,15 +110,21 @@ function CompatHeroCard({ compat }: { compat: CompatOutput }) {
   );
 }
 
-function CompatSide({ person, alias }: { person: CompatPersonOutput; alias: string }) {
+function CompatSide({
+  person,
+  thumbUrl,
+}: {
+  person: CompatPersonOutput;
+  thumbUrl: string;
+}) {
+  // 메인 라벨 = archetype primary (e.g. "기업가형", "학자형") — 사용자에게
+  // 의미 있는 personality. demographic sub-line 은 "{ageGroup} {gender}
+  // {secondary}기질" 포맷 (얼굴형 type 보다 풍성한 context).
+  // R2 thumbnail 우선, 없으면 gender stock png (traits.ts::compatThumbUrlFor).
   return (
     <div className="compat-side">
-      <img
-        className="compat-side-thumb"
-        src={person.gender === "female" ? "/female.png" : "/male.png"}
-        alt=""
-      />
-      <p className="compat-side-alias">{alias}</p>
+      <img className="compat-side-thumb" src={thumbUrl} alt="" />
+      <p className="compat-side-alias">{person.primaryLabel}</p>
       <p className="compat-side-demo">{person.demographic}</p>
     </div>
   );

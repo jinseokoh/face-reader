@@ -619,10 +619,6 @@ class _CompatShareCardComposite extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // CompatLabel enum order: cheonjak(0) > sangkyeong(1) > mahap(2) > hyeong(3).
-    // stepper 는 low→high 로 표시 → filled count = 4 - enum.index.
-    final filledCount = 4 - report.label.index;
-
     return MediaQuery(
       data: const MediaQueryData(),
       child: Directionality(
@@ -646,7 +642,7 @@ class _CompatShareCardComposite extends StatelessWidget {
                 ),
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(28, 20, 28, 20),
+                    padding: const EdgeInsets.fromLTRB(28, 0, 28, 0),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -654,27 +650,25 @@ class _CompatShareCardComposite extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             _CompatThumb(path: my.thumbnailPath),
-                            const SizedBox(width: 20),
+                            const SizedBox(width: 24),
                             const Text(
                               '×',
                               style: TextStyle(
-                                fontSize: 36,
+                                fontSize: 60,
                                 fontWeight: FontWeight.w300,
                                 color: Color(0xFF777777),
                                 height: 1,
                               ),
                             ),
-                            const SizedBox(width: 20),
+                            const SizedBox(width: 24),
                             _CompatThumb(path: album.thumbnailPath),
                           ],
                         ),
-                        const SizedBox(height: 20),
-                        _CompatTierStepper(filledCount: filledCount),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 18),
                         Text(
                           report.label.korean,
                           style: const TextStyle(
-                            fontSize: 36,
+                            fontSize: 64,
                             fontWeight: FontWeight.w700,
                             color: Color(0xFF333333),
                             height: 1.2,
@@ -684,10 +678,10 @@ class _CompatShareCardComposite extends StatelessWidget {
                         Text(
                           narrative.summary,
                           textAlign: TextAlign.center,
-                          maxLines: 2,
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontSize: 22,
+                            fontSize: 42,
                             fontWeight: FontWeight.w400,
                             color: Color(0xFF555555),
                             height: 1.4,
@@ -712,11 +706,11 @@ class _CompatThumb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const size = 120.0;
+    const size = 160.0;
     final file = ThumbnailPaths.resolveFileSync(path);
     if (file != null && file.existsSync()) {
       return ClipRRect(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         child: Image.file(file, width: size, height: size, fit: BoxFit.cover),
       );
     }
@@ -725,48 +719,9 @@ class _CompatThumb extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         color: const Color(0xFFF5F5F5),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
       ),
-      child: const Icon(Icons.face, size: 64, color: Color(0xFFAAAAAA)),
-    );
-  }
-}
-
-/// 4-tier 진행 stepper — low(형극)→high(천작). filledCount = 현재 tier 까지
-/// 채워진 원 갯수 (1~4).
-class _CompatTierStepper extends StatelessWidget {
-  final int filledCount;
-  const _CompatTierStepper({required this.filledCount});
-
-  @override
-  Widget build(BuildContext context) {
-    const accent = Color(0xFF333333);
-    const dim = Color(0xFFD8D8D8);
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(4, (i) {
-        final filled = i < filledCount;
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: filled ? accent : Colors.white,
-                border: Border.all(color: filled ? accent : dim, width: 2),
-              ),
-            ),
-            if (i < 3)
-              Container(
-                width: 56,
-                height: 3,
-                color: (i + 1) < filledCount ? accent : dim,
-              ),
-          ],
-        );
-      }),
+      child: const Icon(Icons.face, size: 84, color: Color(0xFFAAAAAA)),
     );
   }
 }
