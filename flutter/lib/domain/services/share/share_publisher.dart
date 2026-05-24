@@ -87,18 +87,43 @@ class SharePublisher {
     );
   }
 
-  /// Solo 공유 — 카카오톡 친구 또는 채팅방에 KakaoLink Feed 발송.
+  /// 카카오톡 설치 여부. 호출부가 share 버튼을 누른 사용자에게 미설치 안내를
+  /// 띄우거나, 합성 카드 생성 같은 비용 큰 작업을 피하기 위해 사전 체크.
+  Future<bool> isKakaoTalkInstalled() =>
+      ShareClient.instance.isKakaoTalkSharingAvailable();
+
+  /// Solo 공유 — KakaoLink Feed 발송.
+  ///
+  /// `compositeCardPng` 가 link preview 의 hero 이미지로 들어간다. 호출부가
+  /// Flutter widget tree 를 RepaintBoundary 로 캡처해 PNG bytes 로 전달한다.
+  /// 본 메서드가 Kakao 의 image CDN 으로 업로드해 URL 을 받은 뒤 FeedTemplate
+  /// 에 박는다 — 우리 R2/Worker 에는 흔적이 남지 않는다.
+  ///
+  /// 카카오톡 미설치 시 동작은 caller 책임 (사전에 [isKakaoTalkInstalled] 로
+  /// 가드하라). 미설치 상태에서 본 메서드를 호출하면 `uploadImage` 가 throw.
   Future<void> publishSoloViaKakao({
     required FaceReadingReport report,
     required String title,
     required String description,
+    required Uint8List compositeCardPng,
   }) async {
     final uuid = await _ensureSupabaseId(report);
+    final webUrl = '$_hostBase/r/$uuid';
+
+    // 1) PNG bytes → Kakao 의 image CDN (kakao_flutter_sdk_share 2.0 의
+    // byteData 직접 업로드 — 임시 파일 안 거침).
+    final upload =
+        await ShareClient.instance.uploadImage(byteData: compositeCardPng);
+    final kakaoCdnUrl = upload.infos.original.url;
+    debugPrint(
+        '[SharePublisher.kakao] composite uploaded to kakao cdn=$kakaoCdnUrl');
+
+    // 2) 그 URL 을 FeedTemplate imageUrl 로.
     await _sendKakaoFeed(
       title: title,
       description: description,
-      imageUrl: _resolveImageUrl(report.thumbnailKey),
-      webUrl: '$_hostBase/r/$uuid',
+      imageUrl: kakaoCdnUrl,
+      webUrl: webUrl,
       tag: 'solo',
     );
   }

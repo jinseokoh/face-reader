@@ -1,4 +1,7 @@
+import 'dart:io';
 import 'dart:math' as math;
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -22,6 +25,7 @@ import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 
@@ -773,6 +777,10 @@ class _ReportPageState extends ConsumerState<ReportPage> {
   ];
   bool _showNodeDetails = false;
 
+  /// RepaintBoundary key for capturing the off-screen composite share card
+  /// rendered for Kakao link preview hero image.
+  final GlobalKey _shareCardKey = GlobalKey();
+
   FaceReadingReport get report => widget.report;
 
   @override
@@ -795,18 +803,35 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                 ),
               ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+      body: Stack(
+        clipBehavior: Clip.none,
         children: [
-          _buildHeader(),
-          const SizedBox(height: 16),
-          _buildArchetypeCard(),
-          const SizedBox(height: 20),
-          _buildAttributeSection(),
-          const SizedBox(height: 20),
-          _buildReadingSection(),
-          const SizedBox(height: 20),
-          _buildNodeScoreSection(),
+          ListView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+            children: [
+              _buildHeader(),
+              const SizedBox(height: 16),
+              _buildArchetypeCard(),
+              const SizedBox(height: 20),
+              _buildAttributeSection(),
+              const SizedBox(height: 20),
+              _buildReadingSection(),
+              const SizedBox(height: 20),
+              _buildNodeScoreSection(),
+            ],
+          ),
+          // 카카오 공유용 합성 카드 — 화면 밖에 항상 mount 해두고, 사용자가
+          // 카카오 버튼을 누르면 RepaintBoundary 로 캡처해 PNG 로 Kakao CDN
+          // 업로드. own 카드(isReceived=false) 에서만 노출 의미 있음.
+          if (!isReceived)
+            Positioned(
+              left: -10000,
+              top: 0,
+              child: RepaintBoundary(
+                key: _shareCardKey,
+                child: _ShareCardComposite(report: report),
+              ),
+            ),
         ],
       ),
     );
@@ -1292,25 +1317,50 @@ class _ReportPageState extends ConsumerState<ReportPage> {
 
   Future<void> _shareViaKakao(BuildContext context) async {
     if (!await _ensureLoggedIn(context)) return;
+    if (!await SharePublisher.instance.isKakaoTalkInstalled()) {
+      if (!context.mounted) return;
+      showTopSnackBar(
+        Overlay.of(context),
+        CompactSnackBar.error(
+            message: '카카오톡이 설치되어 있지않아 공유할 수 없습니다'),
+      );
+      return;
+    }
     try {
+      final pngBytes = await _captureShareCardBytes();
       final report = widget.report;
       final archLabel = report.archetype.primaryLabel;
       await SharePublisher.instance.publishSoloViaKakao(
         report: report,
         title: '$archLabel — AI 관상가',
         description: '내 관상 분석 결과를 확인해 보세요',
+        compositeCardPng: pngBytes,
       );
     } catch (e, st) {
       debugPrint('[KakaoShare] error: $e\n$st');
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('공유 실패: $e'),
-            backgroundColor: Colors.red.shade700,
-          ),
+        showTopSnackBar(
+          Overlay.of(context),
+          CompactSnackBar.error(message: '공유 중 문제가 발생했어요'),
         );
       }
     }
+  }
+
+  Future<Uint8List> _captureShareCardBytes() async {
+    final boundary = _shareCardKey.currentContext?.findRenderObject()
+        as RenderRepaintBoundary?;
+    if (boundary == null) {
+      throw StateError('share card boundary not mounted');
+    }
+    // pixelRatio 2.0 = 800px logical → 1600px physical. Kakao Feed image 권장
+    // 800x400 이상이라 충분히 sharp.
+    final image = await boundary.toImage(pixelRatio: 2.0);
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    if (byteData == null) {
+      throw StateError('failed to encode share card png');
+    }
+    return byteData.buffer.asUint8List();
   }
 
 }
@@ -1732,6 +1782,128 @@ class _ReceivedBookmarkAction extends ConsumerWidget {
               message: '내 앨범에 저장했습니다 — 앨범 탭의 "받은 카드"'),
         );
       },
+    );
+  }
+}
+
+// 카카오 link preview 의 hero image 로 박힐 합성 카드 — 800x800 logical,
+// pixelRatio 2.0 으로 캡처되어 1600x1600 PNG 로 Kakao CDN 에 업로드된다.
+// share card 는 export medium 이라 in-app design token 과 별개의 inline
+// TextStyle 을 허용 (font size 가 in-app 토큰보다 한참 크다).
+class _ShareCardComposite extends StatelessWidget {
+  final FaceReadingReport report;
+  const _ShareCardComposite({required this.report});
+
+  @override
+  Widget build(BuildContext context) {
+    final arch = report.archetype;
+    final sorted = report.attributeScores.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final top = sorted.first;
+    final weakest = sorted.last;
+    final strengthLine = attributeStrengthLine[top.key] ?? '';
+    final shadowLine = attributeShadowLine[weakest.key] ?? '';
+
+    const thumbSize = 160.0;
+    final thumbPath = report.thumbnailPath;
+    Widget thumb;
+    if (thumbPath != null && File(thumbPath).existsSync()) {
+      thumb = Image.file(File(thumbPath),
+          width: thumbSize, height: thumbSize, fit: BoxFit.cover);
+    } else {
+      thumb = Container(
+        width: thumbSize,
+        height: thumbSize,
+        color: const Color(0xFFF5F5F5),
+        child: const Icon(Icons.face,
+            size: 80, color: Color(0xFFAAAAAA)),
+      );
+    }
+
+    return MediaQuery(
+      data: const MediaQueryData(),
+      child: Directionality(
+        textDirection: TextDirection.ltr,
+        child: Material(
+          color: Colors.white,
+          child: Container(
+            width: 800,
+            height: 800,
+            color: Colors.white,
+            padding: const EdgeInsets.all(40),
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: const Color(0xFFD8D8D8), width: 1.5),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              padding: const EdgeInsets.all(36),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: thumb,
+                      ),
+                      const SizedBox(width: 32),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              arch.primaryLabel,
+                              style: const TextStyle(
+                                fontSize: 56,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF333333),
+                                height: 1.1,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              '${arch.secondaryLabel} 기질',
+                              style: const TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF777777),
+                                height: 1.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 40),
+                  Text(
+                    '장점. $strengthLine',
+                    style: const TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF333333),
+                      height: 1.45,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    '단점. $shadowLine',
+                    style: const TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF333333),
+                      height: 1.45,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
