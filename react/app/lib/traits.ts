@@ -11,7 +11,12 @@ import type {
 export interface RenderInput {
   shortId: string;
   origin: string;
+  /// `${WEBAPP_BASE}/r/` — canonical URL prefix (페이지 본인의 URL).
   appLinkBase: string;
+  /// `${WEBAPP_BASE}/r/{id}/open` — CTA 버튼이 가리키는 nested bridge URL.
+  /// 동일 페이지 URL 로 navigate 하면 Safari same-URL guard 가 noop 시키므로
+  /// 다른 sub-path 로 보내 universal link intercept 를 trigger.
+  appOpenUrl: string;
   appStoreUrl: string;
   playStoreUrl: string;
   /// R2 CDN base — body 안의 `thumbnailKey` 와 결합해서 og:image 조립.
@@ -64,6 +69,7 @@ export function renderSolo(row: MetricsRow, ctx: RenderInput): RenderedShare {
     ogImage: ogImageFor(row, ctx),
     canonicalUrl: `${ctx.appLinkBase}${ctx.shortId}`,
     appLinkBase: ctx.appLinkBase,
+    appOpenUrl: ctx.appOpenUrl,
     appStoreUrl: ctx.appStoreUrl,
     playStoreUrl: ctx.playStoreUrl,
     solo: eng,
@@ -84,6 +90,7 @@ export function renderCompat(a: MetricsRow, b: MetricsRow, ctx: RenderInput): Re
     ogImage: ogImageFor(a, ctx),
     canonicalUrl: `${ctx.appLinkBase}${ctx.shortId}`,
     appLinkBase: ctx.appLinkBase,
+    appOpenUrl: ctx.appOpenUrl,
     appStoreUrl: ctx.appStoreUrl,
     playStoreUrl: ctx.playStoreUrl,
     compat,

@@ -86,6 +86,9 @@ export interface RenderedShare {
   ogImage: string;
   canonicalUrl: string;
   appLinkBase: string;
+  /// CTA 버튼이 navigate 할 nested bridge URL — `${WEBAPP_BASE}/r/{id}/open`.
+  /// Safari same-URL guard 회피용으로 `/r/{id}` 와 다른 path 이어야 한다.
+  appOpenUrl: string;
   appStoreUrl: string;
   playStoreUrl: string;
   solo?: EngineOutput;

@@ -1,48 +1,16 @@
-import { useEffect } from "react";
-
 interface Props {
-  shortId: string;
-  appLinkBase: string;
+  /// `${WEBAPP_BASE}/r/{id}/open` — nested bridge route. /r/{id} 와 다른
+  /// path 라 Safari same-URL guard 우회 → universal link intercept 발동.
+  /// 그 페이지 자체가 useEffect 로 universal link 재발사 + store fallback.
+  appOpenUrl: string;
   appStoreUrl: string;
   playStoreUrl: string;
 }
 
 export function CTA(props: Props) {
-  useEffect(() => {
-    const ua = navigator.userAgent;
-    const isIOS = /iPhone|iPad|iPod/.test(ua);
-    const isAndroid = /Android/.test(ua);
-    if (!isIOS && !isAndroid) return;
-
-    const universalLink = `${props.appLinkBase}${props.shortId}`;
-
-    // self-redirect 가드 — appLinkBase 가 share host (WEBAPP_BASE/r/) 와
-    // 동일하므로 universalLink 가 현재 URL 과 같다. 그대로 window.location.href
-    // 에 박으면 SSR 재실행 → hydrate → useEffect → 무한 loop (Worker 호출 +
-    // Supabase egress 가 누적). iOS Universal Link / Android App Link 가
-    // 정상 가로채는 환경이면 OS 가 앱으로 열어버려 이 페이지에 도착조차
-    // 안 함. 여기 도착했다는 것은 앱 미설치·link 미설정의 신호이므로
-    // 자동 redirect 시도 자체를 skip — 사용자가 store CTA 를 직접 누름.
-    if (typeof window !== "undefined" && universalLink === window.location.href) {
-      return;
-    }
-
-    const storeUrl = isIOS ? props.appStoreUrl : props.playStoreUrl;
-    const startedAt = Date.now();
-    window.location.href = universalLink;
-
-    const fallback = window.setTimeout(() => {
-      if (Date.now() - startedAt < 2500 && document.visibilityState === "visible") {
-        window.location.href = storeUrl;
-      }
-    }, 1500);
-
-    return () => window.clearTimeout(fallback);
-  }, [props.appLinkBase, props.appStoreUrl, props.playStoreUrl, props.shortId]);
-
   return (
     <section className="cta">
-      <a className="cta-primary" href={`${props.appLinkBase}${props.shortId}`}>
+      <a className="cta-primary" href={props.appOpenUrl}>
         앱에서 전체 결과 보기
       </a>
       <p className="cta-divider">앱이 없다면</p>

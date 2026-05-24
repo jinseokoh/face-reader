@@ -46,7 +46,11 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   const ctx = {
     shortId: params.id,
     origin: new URL(request.url).origin,
+    // canonical URL 용 — `${WEBAPP_BASE}/r/{id}` 가 본 페이지 자체.
     appLinkBase: `${env.WEBAPP_BASE}/r/`,
+    // CTA 가 navigate 할 nested bridge — `${WEBAPP_BASE}/r/{id}/open`.
+    // 같은 페이지 URL 이면 Safari noop 라 sub-path 로 보내 universal link 발동.
+    appOpenUrl: `${env.WEBAPP_BASE}/r/${params.id}/open`,
     appStoreUrl: env.APP_STORE_URL,
     playStoreUrl: env.PLAY_STORE_URL,
     cdnBase: env.R2_CDN_BASE,
@@ -79,8 +83,7 @@ export default function Share({ loaderData }: Route.ComponentProps) {
     <main className="share">
       <ShareCard data={loaderData} />
       <CTA
-        shortId={loaderData.shortId}
-        appLinkBase={loaderData.appLinkBase}
+        appOpenUrl={loaderData.appOpenUrl}
         appStoreUrl={loaderData.appStoreUrl}
         playStoreUrl={loaderData.playStoreUrl}
       />

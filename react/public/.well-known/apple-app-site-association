@@ -4,7 +4,7 @@
       {
         "appIDs": ["TEAMID.com.scienceintegration.facely"],
         "components": [
-          { "/": "/r/*", "comment": "share host" }
+          { "/": "/r/*", "comment": "share host — /r/{id} readable preview + /r/{id}/open app bridge" }
         ]
       }
     ]

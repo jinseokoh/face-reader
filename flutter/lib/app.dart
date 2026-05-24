@@ -3,17 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:go_router/go_router.dart';
 
-import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/data/services/auth_service.dart';
 import 'package:facely/data/services/deep_link_service.dart';
-import 'package:facely/data/services/supabase_service.dart';
 import 'package:facely/presentation/providers/tab_provider.dart';
-import 'package:facely/presentation/screens/compatibility/compatibility_detail_screen.dart';
 import 'package:facely/presentation/screens/compatibility/compatibility_screen.dart';
 import 'package:facely/presentation/screens/home/home_screen.dart';
-import 'package:facely/presentation/screens/home/report_page.dart';
 import 'package:facely/presentation/screens/physiognomy/physiognomy_screen.dart';
 import 'package:facely/presentation/screens/settings/settings_screen.dart';
 
@@ -58,58 +55,17 @@ class _MainAppState extends ConsumerState<MainApp> {
     super.dispose();
   }
 
-  Future<void> _handleShareLink(ShareLink link) async {
+  void _handleShareLink(ShareLink link) {
     debugPrint('[ShareLink] handling $link');
+    if (!mounted) return;
+    // router 의 `/r/:id` wrapper 가 Supabase fetch + error UI 까지 책임. 여기선
+    // path 만 조립해서 push — fetch latency 동안 wrapper 가 loading shell.
     switch (link) {
       case SoloShareLink(:final uuid):
-        final report = await _fetchReport(uuid);
-        if (report == null || !mounted) return;
-        await Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => ReportPage(report: report)),
-        );
+        context.push('/r/$uuid');
       case CompatShareLink(:final uuidA, :final uuidB):
-        final both = await Future.wait([
-          _fetchReport(uuidA),
-          _fetchReport(uuidB),
-        ]);
-        final my = both[0];
-        final album = both[1];
-        if (my == null || album == null || !mounted) return;
-        await Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => CompatibilityDetailScreen(my: my, album: album),
-          ),
-        );
+        context.push('/r/$uuidA~$uuidB');
     }
-  }
-
-  Future<FaceReadingReport?> _fetchReport(String uuid) async {
-    try {
-      final row = await SupabaseService().getMetrics(uuid);
-      if (row == null) {
-        _showSnack('카드를 찾을 수 없어요');
-        return null;
-      }
-      final raw = row['body'];
-      // jsonb / text 어느 쪽으로 돌아와도 fromJsonString 이 string 만 받으므로 정규화.
-      final jsonStr = raw is String ? raw : raw?.toString();
-      if (jsonStr == null || jsonStr.isEmpty) {
-        _showSnack('카드 데이터가 비어있어요');
-        return null;
-      }
-      return FaceReadingReport.fromJsonString(jsonStr);
-    } catch (e, st) {
-      debugPrint('[ShareLink] fetch fail uuid=$uuid: $e\n$st');
-      _showSnack('카드를 불러오지 못했어요');
-      return null;
-    }
-  }
-
-  void _showSnack(String msg) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg)),
-    );
   }
 
   Future<void> _showBonusSkippedDialog() async {

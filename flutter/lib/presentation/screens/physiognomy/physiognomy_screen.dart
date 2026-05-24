@@ -8,7 +8,6 @@ import 'package:facely/core/theme.dart';
 import 'package:facely/domain/services/share/share_receive_service.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/providers/tab_provider.dart';
-import 'package:facely/presentation/screens/home/report_page.dart';
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/presentation/widgets/empty_state_placeholder.dart';
 import 'package:facely/presentation/widgets/physiognomy_info_dialog.dart';
@@ -17,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:go_router/go_router.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
@@ -189,10 +189,9 @@ class _PhysiognomyItem extends ConsumerWidget {
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(AppRadius.lg),
               child: InkWell(
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => ReportPage(report: report),
-                  ),
+                onTap: () => context.push(
+                  '/r/${report.supabaseId ?? 'local'}',
+                  extra: report,
                 ),
                 borderRadius: BorderRadius.circular(AppRadius.lg),
                 child: Padding(
@@ -860,10 +859,9 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
                 );
                 return;
               }
-              await Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => ReportPage(report: report),
-                ),
+              context.push(
+                '/r/${report.supabaseId ?? 'local'}',
+                extra: report,
               );
             },
             child: const Text('가져오기',

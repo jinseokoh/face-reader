@@ -1,4 +1,4 @@
-import 'package:facely/app.dart';
+import 'package:facely/config/router.dart';
 import 'package:facely/core/hive/hive_setup.dart';
 import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
@@ -54,11 +54,11 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       title: 'Facely',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      home: const MainApp(),
+      routerConfig: router,
     );
   }
 }

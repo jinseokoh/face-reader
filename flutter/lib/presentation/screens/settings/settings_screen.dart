@@ -1,11 +1,11 @@
 import 'package:facely/core/theme.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
-import 'package:facely/presentation/screens/wallet/wallet_page.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 import 'package:facely/presentation/widgets/purchase_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -24,9 +24,7 @@ class SettingsScreen extends ConsumerWidget {
           IconButton(
             tooltip: '지갑',
             icon: const FaIcon(FontAwesomeIcons.wallet, size: 20),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const WalletPage()),
-            ),
+            onPressed: () => context.push('/main/wallet'),
           ),
         ],
       ),

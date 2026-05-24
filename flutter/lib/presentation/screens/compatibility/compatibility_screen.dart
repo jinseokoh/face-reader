@@ -10,6 +10,7 @@ import 'package:face_engine/domain/services/compat/compat_pipeline.dart';
 import 'package:face_engine/domain/services/compat/compat_sub_display.dart';
 import 'package:face_engine/domain/services/compat/five_element.dart';
 import 'package:face_engine/domain/services/compat/modern_vocab.dart';
+import 'package:facely/config/router.dart';
 import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/data/services/analytics_service.dart';
@@ -18,7 +19,6 @@ import 'package:facely/data/services/supabase_service.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:facely/presentation/providers/compat_unlock_provider.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
-import 'package:facely/presentation/screens/compatibility/compatibility_detail_screen.dart';
 import 'package:facely/presentation/widgets/empty_state_placeholder.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 import 'package:facely/presentation/widgets/purchase_sheet.dart';
@@ -96,12 +96,7 @@ class CompatibilityScreen extends ConsumerWidget {
             album: other,
             onTap: () {
               AnalyticsService.instance.logClickCompat();
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) =>
-                      CompatibilityDetailScreen(my: myFace, album: other),
-                ),
-              );
+              context.pushCompat(my: myFace, album: other);
             },
           );
         }

@@ -1,3 +1,4 @@
+import 'package:facely/config/router.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/data/services/analytics_service.dart';
 import 'package:facely/domain/models/capture_result.dart';
@@ -6,9 +7,9 @@ import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:go_router/go_router.dart';
 
 import 'album_capture_page.dart';
-import 'demographic_confirm_screen.dart';
 import 'face_mesh_page.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -159,12 +160,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _pushDemographicConfirm(CaptureResult result) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => DemographicConfirmScreen(
-          capture: result,
-          metadataFuture: result.metadataFuture,
-        ),
+    await context.push(
+      '/capture/confirm',
+      extra: CaptureExtras(
+        capture: result,
+        metadataFuture: result.metadataFuture,
       ),
     );
   }
