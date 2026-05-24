@@ -944,7 +944,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Facely, 관상은 과학이다.',
+                      Text('Facely 관상 평가',
                           style: TextStyle(
                               color: _Palette.sand,
                               fontSize: 12,
@@ -1391,7 +1391,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
       final report = widget.report;
       await SharePublisher.instance.publishSoloViaKakao(
         report: report,
-        title: 'Facely, 관상은 과학이다.',
+        title: 'Facely 관상 평가',
         description: '내 관상 분석 결과를 확인해 보세요',
         compositeCardPng: pngBytes,
       );
@@ -1650,7 +1650,7 @@ class _ShareCardComposite extends StatelessWidget {
                 // 하단 400px content 영역 (banner 와 동일 비율 5:5).
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(28, 20, 28, 20),
+                    padding: const EdgeInsets.fromLTRB(28, 10, 28, 10),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.center,

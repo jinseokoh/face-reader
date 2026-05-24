@@ -76,7 +76,7 @@ class _CompatibilityDetailScreenState
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text(widget.album.alias ?? '궁합'),
+        title: Text(widget.album.alias ?? '궁합 분석'),
         actions: [
           IconButton(
             icon: const FaIcon(FontAwesomeIcons.kakaoTalk, size: 20),
@@ -501,7 +501,7 @@ class _TotalHeader extends StatelessWidget {
         children: [
           Align(
             alignment: Alignment.centerLeft,
-            child: Text('Facely 궁합평가',
+            child: Text('Facely 궁합 평가',
                 style: TextStyle(
                     color: _CompatPalette.sand,
                     fontSize: 12,

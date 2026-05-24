@@ -16,7 +16,7 @@ function SoloHeroCard({ eng }: { eng: EngineOutput }) {
     <article className="hero">
       <div className="hero-head-row">
         <header className="hero-head">
-          <p className="hero-eyebrow">AI 관상가 평가</p>
+          <p className="hero-eyebrow">Facely 관상 평가</p>
           <h1 className="hero-title">{eng.primaryLabel}</h1>
           <p className="hero-subtitle">{eng.secondaryLabel} 기질</p>
           {eng.specialArchetype && (
@@ -66,7 +66,7 @@ function SoloHeroCard({ eng }: { eng: EngineOutput }) {
 function CompatHeroCard({ compat }: { compat: CompatOutput }) {
   return (
     <article className="hero hero--compat">
-      <p className="hero-eyebrow">AI 관상가 궁합평가</p>
+      <p className="hero-eyebrow">Facely 궁합 평가</p>
 
       <h1 className="compat-title">
         {compat.labelKo}
