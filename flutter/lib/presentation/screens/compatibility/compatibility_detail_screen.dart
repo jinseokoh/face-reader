@@ -112,7 +112,6 @@ class _CompatibilityDetailScreenState
                 my: widget.my,
                 album: widget.album,
                 report: _bundle.report,
-                narrative: _bundle.narrative,
               ),
             ),
           ),
@@ -152,7 +151,7 @@ class _CompatibilityDetailScreenState
       await SharePublisher.instance.publishCompatViaKakao(
         my: widget.my,
         album: widget.album,
-        title: '궁합 분석 결과',
+        title: 'Facely, 궁합은 과학이다.',
         description: desc,
         compositeCardPng: pngBytes,
       );
@@ -608,13 +607,11 @@ class _CompatShareCardComposite extends StatelessWidget {
   final FaceReadingReport my;
   final FaceReadingReport album;
   final CompatibilityReport report;
-  final CompatNarrative narrative;
 
   const _CompatShareCardComposite({
     required this.my,
     required this.album,
     required this.report,
-    required this.narrative,
   });
 
   @override
@@ -644,6 +641,7 @@ class _CompatShareCardComposite extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(28, 0, 28, 0),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Row(
@@ -664,26 +662,32 @@ class _CompatShareCardComposite extends StatelessWidget {
                             _CompatThumb(path: album.thumbnailPath),
                           ],
                         ),
-                        const SizedBox(height: 18),
+                        const SizedBox(height: 28),
+                        // 관계평 + 오행평 — 두 줄 모두 관상 share card 의
+                        // _IconLineRow (강점/약점) 와 동일한 텍스트 스타일.
+                        // 왼쪽 정렬 + 오버플로 ellipsis.
                         Text(
-                          report.label.korean,
-                          style: const TextStyle(
-                            fontSize: 64,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF333333),
-                            height: 1.2,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          narrative.summary,
-                          textAlign: TextAlign.center,
+                          report.label.tagline,
+                          textAlign: TextAlign.left,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontSize: 42,
-                            fontWeight: FontWeight.w400,
-                            color: Color(0xFF555555),
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF333333),
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          report.elementRelation.kind.modernKo,
+                          textAlign: TextAlign.left,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 42,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF333333),
                             height: 1.4,
                           ),
                         ),
@@ -706,7 +710,9 @@ class _CompatThumb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const size = 160.0;
+    // 관상 share card (_ShareCardComposite) thumb 와 동일 크기·radius 로
+    // 통일 — 카카오 link preview hero 의 통일감 보장.
+    const size = 180.0;
     final file = ThumbnailPaths.resolveFileSync(path);
     if (file != null && file.existsSync()) {
       return ClipRRect(
@@ -721,7 +727,7 @@ class _CompatThumb extends StatelessWidget {
         color: const Color(0xFFF5F5F5),
         borderRadius: BorderRadius.circular(14),
       ),
-      child: const Icon(Icons.face, size: 84, color: Color(0xFFAAAAAA)),
+      child: const Icon(Icons.face, size: 96, color: Color(0xFFAAAAAA)),
     );
   }
 }

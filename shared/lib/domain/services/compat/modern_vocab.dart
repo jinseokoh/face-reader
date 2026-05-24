@@ -140,15 +140,15 @@ extension ElementRelationKindModern on ElementRelationKind {
   String get descriptionKo {
     switch (this) {
       case ElementRelationKind.identity:
-        return '비슷한 결을 가진 두 사람이라 말이 짧아도 통하는 조합.';
+        return '비슷한 결을 가진 두 사람이라 말이 별로 없어도 잘 통하는 조합.';
       case ElementRelationKind.generating:
-        return '내가 가진 기운이 상대의 동력을 키워주는 흐름.';
+        return '서로의 기운을 북돋아 함께 있을수록 힘과 활력이 살아나는 조합.';
       case ElementRelationKind.generated:
-        return '상대가 가진 결이 나의 부족함을 자연스럽게 채워주는 흐름.';
+        return '상대가 가진 결이 나의 부족함을 자연스럽게 채워주는 든든한 상생의 조합.';
       case ElementRelationKind.overcoming:
-        return '내가 상대의 들뜬 속도를 조율해 안정시켜주는 관계.';
+        return '내 기운이 상대를 누르는 흐름이라 자연스레 주도권을 쥐기 쉬운 조합.';
       case ElementRelationKind.overcome:
-        return '상대의 단단함이 나를 단련시키지만 때로 부담이 되는 관계.';
+        return '상대 기운이 나를 제어하는 흐름이라 눈치와 긴장이 쌓이기 쉬운 조합.';
     }
   }
 
@@ -156,15 +156,15 @@ extension ElementRelationKindModern on ElementRelationKind {
   String get modernKo {
     switch (this) {
       case ElementRelationKind.identity:
-        return '닮은꼴 케미';
+        return '닮은꼴 케미의 조합';
       case ElementRelationKind.generating:
-        return '활력을 주는 사이';
+        return '활력을 주는 상생의 조합';
       case ElementRelationKind.generated:
-        return '든든하게 받쳐주는 사이';
+        return '든든하게 받쳐주는 상생의 조합';
       case ElementRelationKind.overcoming:
-        return '내가 차분히 이끄는 사이';
+        return '관계의 주도권이 내쪽으로 흐르기 쉬운 조합';
       case ElementRelationKind.overcome:
-        return '나를 단련시키는 사이';
+        return '상대방으로부터 긴장과 압박이 생기기 쉬운 조합';
     }
   }
 }

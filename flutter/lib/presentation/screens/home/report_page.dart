@@ -1699,7 +1699,9 @@ class _ShareCardComposite extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
+                              // 궁합 share card (_CompatThumb) 와 동일 radius —
+                              // 카카오 link preview hero 의 통일감 보장.
+                              borderRadius: BorderRadius.circular(14),
                               child: thumb,
                             ),
                             const SizedBox(width: 24),
