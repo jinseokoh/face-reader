@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -14,6 +13,7 @@ import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/models/physiognomy_tree.dart';
 import 'package:face_engine/domain/services/yin_yang.dart';
+import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/data/constants/metric_text_blocks.dart';
 import 'package:facely/data/constants/node_text_blocks.dart';
@@ -1805,10 +1805,10 @@ class _ShareCardComposite extends StatelessWidget {
     final shadowLine = attributeShadowLine[weakest.key] ?? '';
 
     const thumbSize = 160.0;
-    final thumbPath = report.thumbnailPath;
+    final thumbFile = ThumbnailPaths.resolveFileSync(report.thumbnailPath);
     Widget thumb;
-    if (thumbPath != null && File(thumbPath).existsSync()) {
-      thumb = Image.file(File(thumbPath),
+    if (thumbFile != null && thumbFile.existsSync()) {
+      thumb = Image.file(thumbFile,
           width: thumbSize, height: thumbSize, fit: BoxFit.cover);
     } else {
       thumb = Container(

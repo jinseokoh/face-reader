@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -15,6 +14,7 @@ import 'package:face_engine/domain/services/compat/compat_pipeline.dart';
 import 'package:face_engine/domain/services/compat/compat_sub_display.dart';
 import 'package:face_engine/domain/services/compat/five_element.dart';
 import 'package:face_engine/domain/services/compat/modern_vocab.dart';
+import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/domain/services/share/share_publisher.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
@@ -642,22 +642,22 @@ class _Thumb extends StatelessWidget {
   const _Thumb({required this.path, this.size = 44});
   @override
   Widget build(BuildContext context) {
-    final p = path;
-    final file = p != null ? File(p) : null;
+    final file = ThumbnailPaths.resolveFileSync(path);
+    final hasImage = file != null && file.existsSync();
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
         color: AppTheme.border,
         borderRadius: BorderRadius.circular(8),
-        image: file != null && file.existsSync()
+        image: hasImage
             ? DecorationImage(image: FileImage(file), fit: BoxFit.cover)
             : null,
       ),
-      child: file == null || !file.existsSync()
-          ? FaIcon(FontAwesomeIcons.user,
-              color: AppTheme.textHint, size: (size * 0.5).clamp(16, 26))
-          : null,
+      child: hasImage
+          ? null
+          : FaIcon(FontAwesomeIcons.user,
+              color: AppTheme.textHint, size: (size * 0.5).clamp(16, 26)),
     );
   }
 }

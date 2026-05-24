@@ -1,10 +1,9 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
+import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
@@ -212,12 +211,12 @@ class _TxLeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final path = album?.thumbnailPath;
-    if (path != null && path.isNotEmpty) {
+    final file = ThumbnailPaths.resolveFileSync(album?.thumbnailPath);
+    if (file != null) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: Image.file(
-          File(path),
+          file,
           width: 36,
           height: 36,
           fit: BoxFit.cover,

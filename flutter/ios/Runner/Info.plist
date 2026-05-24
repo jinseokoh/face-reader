@@ -28,7 +28,7 @@
 				<key>CFBundleTypeRole</key>
 				<string>Editor</string>
 				<key>CFBundleURLName</key>
-				<string>com.chuck.facereader.auth</string>
+				<string>com.scienceintegration.facely.auth</string>
 				<key>CFBundleURLSchemes</key>
 				<array>
 					<string>facely</string>

@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
@@ -12,6 +10,7 @@ import 'package:face_engine/domain/services/compat/compat_pipeline.dart';
 import 'package:face_engine/domain/services/compat/compat_sub_display.dart';
 import 'package:face_engine/domain/services/compat/five_element.dart';
 import 'package:face_engine/domain/services/compat/modern_vocab.dart';
+import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/data/services/analytics_service.dart';
 import 'package:facely/data/services/compat_unlock_service.dart';
@@ -1004,14 +1003,14 @@ class _Thumb extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final radius = size / 2;
-    if (path == null || path!.isEmpty) {
+    final file = ThumbnailPaths.resolveFileSync(path);
+    if (file == null) {
       return CircleAvatar(
         radius: radius,
         backgroundColor: AppTheme.border,
         child: const FaIcon(FontAwesomeIcons.user, color: AppTheme.textHint, size: 22),
       );
     }
-    final file = File(path!);
     return ClipOval(
       child: Image.file(
         file,

@@ -1,10 +1,9 @@
-import 'dart:io';
-
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
+import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/domain/services/share/share_receive_service.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
@@ -43,12 +42,9 @@ class _HeaderAvatar extends StatelessWidget {
     // §3.7 — 다크 hero 의 84px 절반.
     const size = 42.0;
     Widget inner = const _HeaderAvatarPlaceholder();
-    final thumb = myFace?.thumbnailPath;
-    if (thumb != null) {
-      final file = File(thumb);
-      if (file.existsSync()) {
-        inner = Image.file(file, width: size, height: size, fit: BoxFit.cover);
-      }
+    final file = ThumbnailPaths.resolveFileSync(myFace?.thumbnailPath);
+    if (file != null && file.existsSync()) {
+      inner = Image.file(file, width: size, height: size, fit: BoxFit.cover);
     }
     return Container(
       width: size,
@@ -399,19 +395,17 @@ class _PhysiognomyItem extends ConsumerWidget {
   Widget _buildLeadingIcon() {
     // §3.7 — 내 관상 프로필 헤더 avatar 42px 와 동일 사이즈.
     const size = 42.0;
-    if (report.thumbnailPath != null) {
-      final file = File(report.thumbnailPath!);
-      if (file.existsSync()) {
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          child: Image.file(
-            file,
-            width: size,
-            height: size,
-            fit: BoxFit.cover,
-          ),
-        );
-      }
+    final file = ThumbnailPaths.resolveFileSync(report.thumbnailPath);
+    if (file != null && file.existsSync()) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: Image.file(
+          file,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+        ),
+      );
     }
     return Container(
       width: size,

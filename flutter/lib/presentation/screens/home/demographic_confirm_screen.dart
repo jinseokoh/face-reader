@@ -246,7 +246,10 @@ class _DemographicConfirmScreenState
         final dir = await getApplicationDocumentsDirectory();
         final file = File('${dir.path}/$id.jpg');
         await file.writeAsBytes(cropped);
-        report.thumbnailPath = file.path;
+        // 절대경로 박지 말 것 — iOS sandbox UUID 회전 / Android applicationId
+        // 변경 시 stale 됨. filename 만 저장 → 읽을 때 ThumbnailPaths 가 현재
+        // documents dir 와 조립.
+        report.thumbnailPath = '$id.jpg';
       } catch (e) {
         debugPrint('[Thumbnail] save error: $e');
       }

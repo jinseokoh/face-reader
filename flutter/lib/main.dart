@@ -1,5 +1,6 @@
 import 'package:facely/app.dart';
 import 'package:facely/core/hive/hive_setup.dart';
+import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/data/services/analytics_service.dart';
 import 'package:facely/data/services/auth_service.dart';
 import 'package:facely/data/services/coin_service.dart';
@@ -31,6 +32,7 @@ void main() async {
     ),
   );
   await initHive();
+  await ThumbnailPaths.initCache();
   await CoinService().initialize();
   await AuthService().initialize();
   // Warm up face-shape TFLite classifier; failure is non-fatal (falls back
