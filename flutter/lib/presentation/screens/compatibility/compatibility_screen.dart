@@ -20,6 +20,7 @@ import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:facely/presentation/providers/compat_unlock_provider.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/screens/compatibility/compatibility_detail_screen.dart';
+import 'package:facely/presentation/widgets/empty_state_placeholder.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 import 'package:facely/presentation/widgets/purchase_sheet.dart';
 import 'package:facely/presentation/widgets/source_badge.dart';
@@ -67,15 +68,17 @@ class CompatibilityScreen extends ConsumerWidget {
     Set<String> unlocked,
   ) {
     if (myFace == null) {
-      return _guide(
-        '내 관상이 등록되지 않았습니다.',
-        '궁합을 보려면 내 관상 등록이 필요합니다.',
+      return const EmptyStatePlaceholder(
+        icon: FontAwesomeIcons.userPlus,
+        title: '내 관상이 등록되지 않았습니다',
+        detail: '궁합을 보려면 내 관상 등록이 필요합니다',
       );
     }
     if (others.isEmpty) {
-      return _guide(
-        '상대방의 관상을 등록하세요.',
-        '카메라나 앨범으로 상대방의 관상을 추가하세요.',
+      return const EmptyStatePlaceholder(
+        icon: FontAwesomeIcons.peoplePulling,
+        title: '상대방의 관상을 등록하세요',
+        detail: '카메라나 앨범으로 상대방의 관상을 추가하세요',
       );
     }
 
@@ -122,32 +125,6 @@ class CompatibilityScreen extends ConsumerWidget {
     await ref.read(historyProvider.notifier).updateHive();
   }
 
-  Widget _guide(String title, String detail) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const FaIcon(FontAwesomeIcons.peoplePulling,
-                  color: AppTheme.textHint, size: 56),
-              const SizedBox(height: 20),
-              Text(title,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      color: AppTheme.textPrimary,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              Text(detail,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      color: AppTheme.textSecondary,
-                      fontSize: 13,
-                      height: 1.5)),
-            ],
-          ),
-        ),
-      );
 
   Future<void> _handleUnlockPressed(
     BuildContext context,

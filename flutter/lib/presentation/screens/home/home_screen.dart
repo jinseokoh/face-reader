@@ -225,10 +225,7 @@ class _HomeActionCardState extends State<_HomeActionCard>
         ),
         child: Material(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
           clipBehavior: Clip.antiAlias,
-          // inverse 톤 — outer container 가 surface(연회색) 라 흰 카드 + dark
-          // icon/text. 경계 정의 위해 subtle border 추가.
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.lg),
             side: BorderSide(color: AppColors.border, width: 1),

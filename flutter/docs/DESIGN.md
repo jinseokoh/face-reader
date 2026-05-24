@@ -275,6 +275,58 @@ AlertDialog(
 
 **SliverAppBar 임베딩 (expand/collapse 동작)**: 본 헤더를 `SliverAppBar.flexibleSpace`(FlexibleSpaceBar.background) 안에 넣으면, fully expanded 일 때 avatar + personal 내용이 모두 보이고 스크롤하면 background 가 자동 fade 되어 condensed 상태에서는 SliverAppBar.title (예: "관상") 만 남는다. `expandedHeight` = kToolbarHeight + 헤더 내용 높이 (대략 132~140), `pinned: true` 로 title·TabBar 유지, `TabBar` 는 `SliverAppBar.bottom` 슬롯. TabBarView 와 결합 시 `NestedScrollView` 의 `headerSliverBuilder` 에 두고 각 탭의 `CustomScrollView` 첫 sliver 는 `SliverOverlapInjector` — 인너 스크롤이 헤더 collapse 를 정상 트리거.
 
+### 3.8 Empty state placeholder
+
+**모든 빈 상태 (분석 기록 없음 / 등록된 관상 없음 / 검색 결과 없음 / 권한 거부 / 네트워크 끊김) 는 `EmptyStatePlaceholder` 위젯 한 종류로만 표시한다.** 새 화면이 자체 Column·Center·inline TextStyle 로 placeholder 를 만들면 즉시 폐기·재작업 사유.
+
+위치: `lib/presentation/widgets/empty_state_placeholder.dart`. 호출 API:
+
+```dart
+EmptyStatePlaceholder(
+  icon: FontAwesomeIcons.clockRotateLeft,
+  title: '분석 기록이 없습니다',
+  detail: '아래로 당겨 새 공식으로 재계산',     // optional
+)
+```
+
+**잠긴 디자인 토큰 (호출부 override 불가):**
+
+| slot | 토큰 | 비고 |
+|---|---|---|
+| icon | FaIcon **56px** / `AppColors.border` | "유령" 톤 — 본문보다 한 단 더 fade. textHint 보다도 옅은 border 색이 정답 (눈에 띄되 강요하지 않는다). |
+| icon→title gap | `AppSpacing.lg` (16) | |
+| title | `AppText.sectionTitle.copyWith(fontWeight: FontWeight.w400, color: AppColors.textHint)` | sectionTitle 사이즈(16) + w400 + textHint. **w600 / textPrimary 금지** — empty 상태는 강조하지 않는다. |
+| title→detail gap | `AppSpacing.sm` (8) | |
+| detail (optional) | `AppText.hint` (12 w400 textHint) | 한 줄짜리 행동 유도. 마침표 없음. |
+| outer padding | `EdgeInsets.all(AppSpacing.huge)` (32) | |
+| layout | `Center > Padding > Column(mainAxisSize.min)` | SliverFillRemaining(hasScrollBody:false) 안에 그대로 child 로 넣을 수 있다. |
+
+**문구 규칙:**
+
+- `title` 은 상태 자체 ("…이 없습니다" / "등록되지 않았습니다"). 마침표 **없이**.
+- `detail` 은 다음 액션 안내 한 줄 ("아래로 당겨 …" / "카메라나 앨범으로 …"). 마침표 **없이**.
+- `detail` 이 없으면 그냥 생략. 빈 문자열 전달 금지.
+
+**아이콘 선택 가이드 (FontAwesome 통일):**
+
+| 의미 | 권장 icon |
+|---|---|
+| 기록·history 없음 | `FontAwesomeIcons.clockRotateLeft` |
+| 사용자/프로필 등록 안 됨 | `FontAwesomeIcons.userPlus` |
+| 상대방·others 등록 안 됨 | `FontAwesomeIcons.peoplePulling` 또는 `userGroup` |
+| 검색 결과 없음 | `FontAwesomeIcons.magnifyingGlass` |
+| 네트워크 오류 | `FontAwesomeIcons.cloudArrowDown` (slash 톤은 본 시스템에 어울리지 않음) |
+
+**금지 패턴 (regression 차단):**
+
+1. inline `TextStyle(fontSize: 17, fontWeight: w600, color: textPrimary)` — 17 은 토큰 외 값, w600 + primary 는 empty 상태에 과한 weight.
+2. icon color `AppColors.textHint` 또는 `textSecondary` — empty placeholder 의 아이콘은 `AppColors.border` 한 가지로만.
+3. `EdgeInsets.all(20)` / `EdgeInsets.all(24)` 등 magic number padding.
+4. `SizedBox(height: 20)` 같은 토큰 외 gap.
+5. 화면별 자체 `_guide(...)` / `_emptyView(...)` 헬퍼 정의 — 본 위젯을 import 해서 직접 호출하라.
+
+예: `physiognomy_screen.dart` (분석 기록 없음), `compatibility_screen.dart` (내 관상 / 상대방 미등록 두 케이스).
+
 ---
 
 ## 4. 마이그레이션 가이드

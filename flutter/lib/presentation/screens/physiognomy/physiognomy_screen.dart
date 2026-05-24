@@ -1,7 +1,5 @@
 import 'dart:io';
 
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
@@ -13,11 +11,13 @@ import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/providers/tab_provider.dart';
 import 'package:facely/presentation/screens/home/report_page.dart';
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
+import 'package:facely/presentation/widgets/empty_state_placeholder.dart';
 import 'package:facely/presentation/widgets/physiognomy_info_dialog.dart';
 import 'package:facely/presentation/widgets/source_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
@@ -695,32 +695,12 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
               handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
             ),
             if (allEmpty)
-              SliverFillRemaining(
+              const SliverFillRemaining(
                 hasScrollBody: false,
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.huge),
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const FaIcon(FontAwesomeIcons.clockRotateLeft,
-                            color: AppColors.border, size: 56),
-                        const SizedBox(height: AppSpacing.lg),
-                        Text(
-                          '분석 기록이 없습니다',
-                          style: AppText.sectionTitle.copyWith(
-                            fontWeight: FontWeight.w400,
-                            color: AppColors.textHint,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        const Text(
-                          '아래로 당겨 새 공식으로 재계산',
-                          style: AppText.hint,
-                        ),
-                      ],
-                    ),
-                  ),
+                child: EmptyStatePlaceholder(
+                  icon: FontAwesomeIcons.clockRotateLeft,
+                  title: '분석 기록이 없습니다',
+                  detail: '홈 탭 이동 후 관상을 분석해 보세요',
                 ),
               )
             else ...[
@@ -791,6 +771,34 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
     await Future<void>.delayed(const Duration(milliseconds: 400));
     // ignore: avoid_print
     print('[PhysiognomyScreen] reloadFromHive → 재계산 완료');
+  }
+
+  void _showInfoDialog(BuildContext context) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'info',
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 400),
+      transitionBuilder: (ctx, anim, secondAnim, child) {
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 0.3),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+          child: FadeTransition(opacity: anim, child: child),
+        );
+      },
+      pageBuilder: (ctx, anim, secondAnim) {
+        final maxH = MediaQuery.of(ctx).size.height * 0.8;
+        return Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: maxH),
+            child: PhysiognomyInfoDialog(maxHeight: maxH),
+          ),
+        );
+      },
+    );
   }
 
   /// 카톡 등에서 받은 facely.kr share link 를 사용자가 직접 붙여넣을 수 있도록.
@@ -869,34 +877,6 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
           ),
         ],
       ),
-    );
-  }
-
-  void _showInfoDialog(BuildContext context) {
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: 'info',
-      barrierColor: Colors.black54,
-      transitionDuration: const Duration(milliseconds: 400),
-      transitionBuilder: (ctx, anim, secondAnim, child) {
-        return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0, 0.3),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
-          child: FadeTransition(opacity: anim, child: child),
-        );
-      },
-      pageBuilder: (ctx, anim, secondAnim) {
-        final maxH = MediaQuery.of(ctx).size.height * 0.8;
-        return Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: maxH),
-            child: PhysiognomyInfoDialog(maxHeight: maxH),
-          ),
-        );
-      },
     );
   }
 }

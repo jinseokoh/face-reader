@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -23,7 +22,6 @@ import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 
@@ -775,8 +773,6 @@ class _ReportPageState extends ConsumerState<ReportPage> {
   ];
   bool _showNodeDetails = false;
 
-  final GlobalKey _shareCardKey = GlobalKey();
-
   FaceReadingReport get report => widget.report;
 
   @override
@@ -793,13 +789,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             ? [_ReceivedBookmarkAction(report: report)]
             : [
                 IconButton(
-                  icon: const FaIcon(FontAwesomeIcons.arrowUpFromBracket,
-                      size: 18),
-                  tooltip: '카드 이미지 공유',
-                  onPressed: () => _showShareCardSheet(context),
-                ),
-                IconButton(
-                  icon: const FaIcon(FontAwesomeIcons.commentDots, size: 20),
+                  icon: const FaIcon(FontAwesomeIcons.kakaoTalk, size: 20),
                   tooltip: '카카오 공유',
                   onPressed: () => _shareViaKakao(context),
                 ),
@@ -1277,34 +1267,6 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     );
   }
 
-  Future<void> _captureAndShareCard(BuildContext sheetContext) async {
-    try {
-      final boundary = _shareCardKey.currentContext?.findRenderObject()
-          as RenderRepaintBoundary?;
-      if (boundary == null) {
-        throw Exception('share card not mounted');
-      }
-      final image = await boundary.toImage(pixelRatio: 3.0);
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) {
-        throw Exception('failed to encode png');
-      }
-      final bytes = byteData.buffer.asUint8List();
-      // SharePublisher 가 supabaseId 보장 + face.kr/api/share 호출 + share_plus 합성.
-      await SharePublisher.instance.publishSolo(
-        report: report,
-        pngBytes: bytes,
-      );
-      if (sheetContext.mounted) Navigator.of(sheetContext).pop();
-    } catch (e, st) {
-      debugPrint('[ShareCard] capture failed: $e\n$st');
-      if (!sheetContext.mounted) return;
-      ScaffoldMessenger.of(sheetContext).showSnackBar(
-        SnackBar(content: Text('공유 카드 생성 실패: $e')),
-      );
-    }
-  }
-
   YinYangBalance _computeReportYinYang() {
     final zMap = <String, double>{
       for (final m in report.metrics.values) m.id: m.zScore,
@@ -1351,73 +1313,6 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     }
   }
 
-  // ─── Share card sheet (C) ───
-  Future<void> _showShareCardSheet(BuildContext context) async {
-    if (!await _ensureLoggedIn(context)) return;
-    if (!context.mounted) return;
-    await showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.white,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Container(
-                  width: 36,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 14),
-                  decoration: BoxDecoration(
-                    color: AppTheme.border,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                Text('한 장 공유 카드',
-                    style: TextStyle(
-                        color: AppTheme.textPrimary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Text('인스타·카톡에 그대로 보낼 수 있는 카드입니다.',
-                    style: TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 12,
-                        height: 1.4)),
-                const SizedBox(height: 14),
-                Center(
-                  child: RepaintBoundary(
-                    key: _shareCardKey,
-                    child: _ShareCard(report: report),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: () => _captureAndShareCard(ctx),
-                  icon: const FaIcon(FontAwesomeIcons.arrowUpFromBracket, size: 16),
-                  label: const Text('이미지로 공유',
-                      style: TextStyle(fontWeight: FontWeight.w600)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.textPrimary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
 }
 
 // ─── 삼정 Radar (3-axis: 상정·중정·하정 rollUpMeanZ) ───
@@ -1591,178 +1486,6 @@ class _SamjeongRadarPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _SamjeongRadarPainter old) =>
       old.upper != upper || old.middle != middle || old.lower != lower;
-}
-
-// 인스타·카톡 공유용 카드 (화면에 360×520 으로 prescaled, 캡처 시 pixelRatio 3.0 으로 1080×1560).
-// hero 카드의 모든 핵심 정보(archetype·special·catchphrase·장점·단점·TOP3 rank/bar)를 동일하게 담는다.
-class _ShareCard extends StatelessWidget {
-  final FaceReadingReport report;
-  const _ShareCard({required this.report});
-
-  @override
-  Widget build(BuildContext context) {
-    final arch = report.archetype;
-    final catchphrase = archetypeCatchphrase[arch.primary] ?? '';
-    final sortedAttrs = report.attributeScores.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    final top3 = sortedAttrs.take(3).toList();
-    final weakest = sortedAttrs.last;
-    final strengthLine = attributeStrengthLine[top3.first.key] ?? '';
-    final shadowLine = attributeShadowLine[weakest.key] ?? '';
-    // accent(특수 archetype) 칩은 헤더에 이미 노출 중 — chip 영역에서는 생략.
-    final tldrChips = <_TldrChipData>[
-      for (final e in top3)
-        _TldrChipData(
-          label: attributeChipHigh[e.key] ?? '#${e.key.labelKo}',
-          tone: _ChipTone.warm,
-        ),
-      _TldrChipData(
-        label: attributeChipLow[weakest.key] ?? '#${weakest.key.labelKo}',
-        tone: _ChipTone.cool,
-      ),
-    ];
-    final imageUrl =
-        'https://cdn.facely.kr/archetypes/${report.gender.name}.${arch.primary.name}.png';
-
-    return Container(
-      width: 360,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [_Palette.darkBrown, _Palette.warmBrown],
-        ),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('AI 관상가 평가',
-                            style: TextStyle(
-                                color: _Palette.sand,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1)),
-                        const SizedBox(height: 10),
-                        Text(arch.primaryLabel,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                height: 1.0)),
-                        const SizedBox(height: 6),
-                        Text('${arch.secondaryLabel} 기질',
-                            style: TextStyle(
-                                color: _Palette.sand,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500)),
-                        if (arch.specialArchetype != null) ...[
-                          const SizedBox(height: 10),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.18),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                  color:
-                                      Colors.white.withValues(alpha: 0.3)),
-                            ),
-                            child: Text(arch.specialArchetype!,
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600)),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: CachedNetworkImage(
-                      imageUrl: imageUrl,
-                      width: 110,
-                      height: 130,
-                      fit: BoxFit.cover,
-                      placeholder: (_, _) => Container(
-                        width: 110,
-                        height: 130,
-                        color: Colors.white.withValues(alpha: 0.12),
-                      ),
-                      errorWidget: (_, _, _) => Container(
-                        width: 110,
-                        height: 130,
-                        color: Colors.white.withValues(alpha: 0.12),
-                        child: const FaIcon(FontAwesomeIcons.faceSmile,
-                            color: Colors.white54, size: 28),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            if (catchphrase.isNotEmpty) ...[
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.18)),
-                ),
-                child: Text(
-                  catchphrase,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13.5,
-                    height: 1.45,
-                    fontWeight: FontWeight.w600,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
-            ],
-            _HeroLine(
-              label: '강점',
-              line: strengthLine,
-              tagColor: Colors.white.withValues(alpha: 0.6),
-            ),
-            const SizedBox(height: 8),
-            _HeroLine(
-              label: '약점',
-              line: shadowLine,
-              tagColor: Colors.white.withValues(alpha: 0.6),
-            ),
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [for (final c in tldrChips) _TldrChip(data: c)],
-            ),
-            const SizedBox(height: 16),
-            _HeroTop3(top3: top3),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _TldrChip extends StatelessWidget {
