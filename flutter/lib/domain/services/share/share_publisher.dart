@@ -24,16 +24,7 @@ class SharePublisher {
   /// 의 `PAIR_SEP` 와 동일 값 유지. 변경 시 양쪽 동시 PR.
   static const String pairSep = '~';
 
-  /// thumbnailKey 가 없을 때 KakaoLink 카드의 fallback 이미지.
-  static const String _fallbackImage =
-      'https://cdn.facely.kr/assets/share-logo.png';
-
   SharePublisher._();
-
-  /// R2 CDN base — KakaoLink Feed `imageUrl` 조립에 사용.
-  String get _cdnBase =>
-      dotenv.env['R2_CDN_BASE']?.trim().replaceAll(RegExp(r'/$'), '') ??
-      'https://cdn.facely.kr';
 
   /// `.env` 의 WEBAPP_BASE — Worker 의 WEBAPP_BASE 와 동일 값. fallback 'https://facely.kr'.
   String get _hostBase =>
@@ -56,21 +47,34 @@ class SharePublisher {
 
   /// 궁합 공유 — `/r/{A}~{B}` 두 UUID 묶음. 양쪽 metrics row 가 publish 된 상태
   /// 여야 Worker SSR 이 두 행 fetch 가능.
+  /// 궁합 카드 공유 — KakaoLink Feed 발송.
+  ///
+  /// [compositeCardPng] 은 caller (CompatibilityDetailScreen) 가 off-screen
+  /// `_CompatShareCardComposite` 를 RepaintBoundary 로 캡처해 전달. 본 메서드가
+  /// Kakao 의 image CDN 으로 업로드해 URL 을 받고 FeedTemplate 에 박는다 —
+  /// publishSoloViaKakao 와 동일 패턴.
   Future<void> publishCompatViaKakao({
     required FaceReadingReport my,
     required FaceReadingReport album,
     required String title,
     required String description,
+    required Uint8List compositeCardPng,
   }) async {
     final myId = await _ensureSupabaseId(my);
     final albumId = await _ensureSupabaseId(album);
+    final webUrl = '$_hostBase/r/$myId$pairSep$albumId';
+
+    final upload =
+        await ShareClient.instance.uploadImage(byteData: compositeCardPng);
+    final kakaoCdnUrl = upload.infos.original.url;
+    debugPrint(
+        '[SharePublisher.kakao] compat composite uploaded to kakao cdn=$kakaoCdnUrl');
+
     await _sendKakaoFeed(
       title: title,
       description: description,
-      // og:image 는 Worker SSR 이 my thumbnail 을 사용. 카톡 안 카드 preview 도
-      // my thumbnail (R2 직통) — 두 사람 합성은 Worker 책임이고 KakaoLink 는 단일 이미지.
-      imageUrl: _resolveImageUrl(my.thumbnailKey),
-      webUrl: '$_hostBase/r/$myId$pairSep$albumId',
+      imageUrl: kakaoCdnUrl,
+      webUrl: webUrl,
       tag: 'compat',
     );
   }
@@ -148,13 +152,6 @@ class SharePublisher {
     report.supabaseId = id;
     debugPrint('[SharePublisher._ensureSupabaseId] resolved id=$id');
     return id;
-  }
-
-  String _resolveImageUrl(String? thumbnailKey) {
-    if (thumbnailKey != null && thumbnailKey.isNotEmpty) {
-      return '$_cdnBase/$thumbnailKey';
-    }
-    return _fallbackImage;
   }
 
   Future<void> _sendKakaoFeed({

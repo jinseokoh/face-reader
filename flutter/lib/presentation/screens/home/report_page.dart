@@ -1589,8 +1589,8 @@ class _SamjeongRadarPainter extends CustomPainter {
 // portrait source 는 좌우 또는 위·아래가 잘려 content 손실. 따라서 source 는
 // square 고정.
 //
-// **구성**: 상단 320px = assets/images/800x320.png banner (full-bleed),
-// 하단 480px = thumb + archetype label + 강점/약점 badge 2 row.
+// **구성**: 상단 400px = assets/images/800x400.png banner (full-bleed),
+// 하단 400px = thumb + archetype label + catchphrase + 강점/약점 badge 2 row.
 //
 // share card 는 export medium 이라 in-app design token 과 별개의 inline
 // TextStyle 을 허용 (font size 가 in-app 토큰보다 한참 크다).
@@ -1609,7 +1609,7 @@ class _ShareCardComposite extends StatelessWidget {
     final shadowLine = attributeShadowLine[weakest.key] ?? '';
     final catchphrase = archetypeCatchphrase[arch.primary] ?? '';
 
-    const thumbSize = 140.0;
+    const thumbSize = 120.0;
     final thumbFile = ThumbnailPaths.resolveFileSync(report.thumbnailPath);
     Widget thumb;
     if (thumbFile != null && thumbFile.existsSync()) {
@@ -1621,7 +1621,7 @@ class _ShareCardComposite extends StatelessWidget {
         height: thumbSize,
         color: const Color(0xFFF5F5F5),
         child: const Icon(Icons.face,
-            size: 72, color: Color(0xFFAAAAAA)),
+            size: 64, color: Color(0xFFAAAAAA)),
       );
     }
 
@@ -1637,20 +1637,20 @@ class _ShareCardComposite extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // 상단 banner — full-bleed 800×320.
+                // 상단 banner — full-bleed 800×400.
                 SizedBox(
-                  height: 320,
+                  height: 400,
                   child: Image.asset(
-                    'assets/images/800x320.png',
+                    'assets/images/800x400.png',
                     width: 800,
-                    height: 320,
+                    height: 400,
                     fit: BoxFit.cover,
                   ),
                 ),
-                // 하단 480px content 영역.
+                // 하단 400px content 영역 (banner 와 동일 비율 5:5).
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(36, 32, 36, 32),
+                    padding: const EdgeInsets.fromLTRB(28, 20, 28, 20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -1659,10 +1659,10 @@ class _ShareCardComposite extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             ClipRRect(
-                              borderRadius: BorderRadius.circular(14),
+                              borderRadius: BorderRadius.circular(12),
                               child: thumb,
                             ),
-                            const SizedBox(width: 28),
+                            const SizedBox(width: 24),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1671,17 +1671,17 @@ class _ShareCardComposite extends StatelessWidget {
                                   Text(
                                     arch.primaryLabel,
                                     style: const TextStyle(
-                                      fontSize: 52,
+                                      fontSize: 48,
                                       fontWeight: FontWeight.w700,
                                       color: Color(0xFF333333),
                                       height: 1.1,
                                     ),
                                   ),
-                                  const SizedBox(height: 8),
+                                  const SizedBox(height: 6),
                                   Text(
                                     '${arch.secondaryLabel} 기질',
                                     style: const TextStyle(
-                                      fontSize: 39,
+                                      fontSize: 32,
                                       fontWeight: FontWeight.w500,
                                       color: Color(0xFF777777),
                                       height: 1.2,
@@ -1692,16 +1692,16 @@ class _ShareCardComposite extends StatelessWidget {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 16),
                         if (catchphrase.isNotEmpty)
                           Padding(
-                            padding: const EdgeInsets.only(bottom: 22),
+                            padding: const EdgeInsets.only(bottom: 16),
                             child: Text(
                               catchphrase,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                fontSize: 36,
+                                fontSize: 32,
                                 fontWeight: FontWeight.w600,
                                 color: Color(0xFF5C4033),
                                 height: 1.3,
@@ -1714,7 +1714,7 @@ class _ShareCardComposite extends StatelessWidget {
                           tone: const Color(0xFF333333),
                           text: strengthLine,
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 10),
                         _BadgeRow(
                           badge: '약점',
                           tone: const Color(0xFF333333),
@@ -1751,29 +1751,29 @@ class _BadgeRow extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
           decoration: BoxDecoration(
-            border: Border.all(color: tone, width: 2),
-            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: tone, width: 1.5),
+            borderRadius: BorderRadius.circular(22),
           ),
           child: Text(
             badge,
             style: TextStyle(
-              fontSize: 33,
+              fontSize: 28,
               fontWeight: FontWeight.w700,
               color: tone,
               height: 1.2,
             ),
           ),
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: 14),
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.only(top: 10),
+            padding: const EdgeInsets.only(top: 8),
             child: Text(
               text,
               style: const TextStyle(
-                fontSize: 36,
+                fontSize: 32,
                 fontWeight: FontWeight.w500,
                 color: Color(0xFF333333),
                 height: 1.4,

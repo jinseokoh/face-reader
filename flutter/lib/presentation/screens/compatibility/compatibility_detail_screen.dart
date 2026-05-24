@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'package:face_engine/data/constants/compat_hashtags.dart';
@@ -19,6 +22,7 @@ import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
@@ -64,6 +68,9 @@ class _CompatibilityDetailScreenState
   late final CompatibilityBundle _bundle =
       analyzeCompatibilityFromReports(my: widget.my, album: widget.album);
 
+  /// RepaintBoundary key — off-screen 합성 카드 캡처용.
+  final GlobalKey _shareCardKey = GlobalKey();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -78,18 +85,37 @@ class _CompatibilityDetailScreenState
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      body: Stack(
+        clipBehavior: Clip.none,
         children: [
-          _TotalHeader(
-            my: widget.my,
-            album: widget.album,
-            report: _bundle.report,
+          ListView(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            children: [
+              _TotalHeader(
+                my: widget.my,
+                album: widget.album,
+                report: _bundle.report,
+              ),
+              const SizedBox(height: 16),
+              _SubScorePanel(report: _bundle.report),
+              const SizedBox(height: 20),
+              _NarrativeSections(narrative: _bundle.narrative),
+            ],
           ),
-          const SizedBox(height: 16),
-          _SubScorePanel(report: _bundle.report),
-          const SizedBox(height: 20),
-          _NarrativeSections(narrative: _bundle.narrative),
+          // 카카오 공유용 합성 카드 — 화면 밖 mount 후 RepaintBoundary 로 캡처.
+          Positioned(
+            left: -10000,
+            top: 0,
+            child: RepaintBoundary(
+              key: _shareCardKey,
+              child: _CompatShareCardComposite(
+                my: widget.my,
+                album: widget.album,
+                report: _bundle.report,
+                narrative: _bundle.narrative,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -117,6 +143,7 @@ class _CompatibilityDetailScreenState
       return;
     }
     try {
+      final pngBytes = await _captureShareCardBytes();
       final r = _bundle.report;
       final myAlias = widget.my.alias ?? '나';
       final albumAlias = widget.album.alias ?? '상대';
@@ -127,6 +154,7 @@ class _CompatibilityDetailScreenState
         album: widget.album,
         title: '궁합 분석 결과',
         description: desc,
+        compositeCardPng: pngBytes,
       );
     } catch (e, st) {
       debugPrint('[CompatKakaoShare] error: $e\n$st');
@@ -137,6 +165,20 @@ class _CompatibilityDetailScreenState
         );
       }
     }
+  }
+
+  Future<Uint8List> _captureShareCardBytes() async {
+    final boundary = _shareCardKey.currentContext?.findRenderObject()
+        as RenderRepaintBoundary?;
+    if (boundary == null) {
+      throw StateError('compat share card boundary not mounted');
+    }
+    final image = await boundary.toImage(pixelRatio: 2.0);
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    if (byteData == null) {
+      throw StateError('failed to encode compat share card png');
+    }
+    return byteData.buffer.asUint8List();
   }
 
 }
@@ -552,4 +594,179 @@ class _TotalHeader extends StatelessWidget {
   }
 
   static String _labelTagline(CompatLabel l) => l.tagline;
+}
+
+// 카카오 link preview hero image — 800x800 (1:1) logical, pixelRatio 2.0 으로
+// 캡처되어 1600x1600 PNG 로 Kakao CDN 에 업로드.
+//
+// **구성**: 상단 400px = assets/images/800x400.png banner (full-bleed),
+// 하단 400px = my thumb × album thumb + 4-tier stepper + label + summary.
+//
+// share card 는 export medium 이라 in-app design token 과 별개의 inline
+// TextStyle 을 허용 (font size 가 in-app 토큰보다 한참 크다).
+class _CompatShareCardComposite extends StatelessWidget {
+  final FaceReadingReport my;
+  final FaceReadingReport album;
+  final CompatibilityReport report;
+  final CompatNarrative narrative;
+
+  const _CompatShareCardComposite({
+    required this.my,
+    required this.album,
+    required this.report,
+    required this.narrative,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // CompatLabel enum order: cheonjak(0) > sangkyeong(1) > mahap(2) > hyeong(3).
+    // stepper 는 low→high 로 표시 → filled count = 4 - enum.index.
+    final filledCount = 4 - report.label.index;
+
+    return MediaQuery(
+      data: const MediaQueryData(),
+      child: Directionality(
+        textDirection: TextDirection.ltr,
+        child: Material(
+          color: Colors.white,
+          child: SizedBox(
+            width: 800,
+            height: 800,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  height: 400,
+                  child: Image.asset(
+                    'assets/images/800x400.png',
+                    width: 800,
+                    height: 400,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(28, 20, 28, 20),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _CompatThumb(path: my.thumbnailPath),
+                            const SizedBox(width: 20),
+                            const Text(
+                              '×',
+                              style: TextStyle(
+                                fontSize: 36,
+                                fontWeight: FontWeight.w300,
+                                color: Color(0xFF777777),
+                                height: 1,
+                              ),
+                            ),
+                            const SizedBox(width: 20),
+                            _CompatThumb(path: album.thumbnailPath),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        _CompatTierStepper(filledCount: filledCount),
+                        const SizedBox(height: 16),
+                        Text(
+                          report.label.korean,
+                          style: const TextStyle(
+                            fontSize: 36,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF333333),
+                            height: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          narrative.summary,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w400,
+                            color: Color(0xFF555555),
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CompatThumb extends StatelessWidget {
+  final String? path;
+  const _CompatThumb({required this.path});
+
+  @override
+  Widget build(BuildContext context) {
+    const size = 120.0;
+    final file = ThumbnailPaths.resolveFileSync(path);
+    if (file != null && file.existsSync()) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.file(file, width: size, height: size, fit: BoxFit.cover),
+      );
+    }
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F5F5),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Icon(Icons.face, size: 64, color: Color(0xFFAAAAAA)),
+    );
+  }
+}
+
+/// 4-tier 진행 stepper — low(형극)→high(천작). filledCount = 현재 tier 까지
+/// 채워진 원 갯수 (1~4).
+class _CompatTierStepper extends StatelessWidget {
+  final int filledCount;
+  const _CompatTierStepper({required this.filledCount});
+
+  @override
+  Widget build(BuildContext context) {
+    const accent = Color(0xFF333333);
+    const dim = Color(0xFFD8D8D8);
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(4, (i) {
+        final filled = i < filledCount;
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: filled ? accent : Colors.white,
+                border: Border.all(color: filled ? accent : dim, width: 2),
+              ),
+            ),
+            if (i < 3)
+              Container(
+                width: 56,
+                height: 3,
+                color: (i + 1) < filledCount ? accent : dim,
+              ),
+          ],
+        );
+      }),
+    );
+  }
 }
