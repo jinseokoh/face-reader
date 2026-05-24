@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 
-import 'package:face_reader/config/api_config.dart';
+import 'package:facely/config/api_config.dart';
 
 abstract class MetaphorRemoteDataSource {
   Future<String> fetchMetaphor(Map<String, dynamic> requestDto);

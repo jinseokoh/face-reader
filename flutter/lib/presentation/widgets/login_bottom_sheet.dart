@@ -1,7 +1,7 @@
-import 'package:face_reader/core/theme.dart';
-import 'package:face_reader/data/services/auth_service.dart' show SignUpOutcome;
-import 'package:face_reader/presentation/providers/auth_provider.dart';
-import 'package:face_reader/presentation/widgets/otp_verification_sheet.dart';
+import 'package:facely/core/theme.dart';
+import 'package:facely/data/services/auth_service.dart' show SignUpOutcome;
+import 'package:facely/presentation/providers/auth_provider.dart';
+import 'package:facely/presentation/widgets/otp_verification_sheet.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

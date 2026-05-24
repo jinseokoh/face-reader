@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:face_reader/data/services/auth_service.dart';
+import 'package:facely/data/services/auth_service.dart';
 
 final authProvider = NotifierProvider<AuthNotifier, AuthUser?>(
   AuthNotifier.new,

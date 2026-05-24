@@ -1,5 +1,5 @@
-name: face_reader
-description: 'A Flutter project.'
+name: facely
+description: 'Facely, a face reader with MediaPipe Face Mesh and Google ML Kit Face Detection.'
 publish_to: 'none'
 
 version: 1.0.0+1

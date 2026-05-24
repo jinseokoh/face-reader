@@ -1,8 +1,8 @@
-import 'package:face_reader/core/theme.dart';
-import 'package:face_reader/presentation/providers/auth_provider.dart';
-import 'package:face_reader/presentation/screens/wallet/wallet_page.dart';
-import 'package:face_reader/presentation/widgets/login_bottom_sheet.dart';
-import 'package:face_reader/presentation/widgets/purchase_sheet.dart';
+import 'package:facely/core/theme.dart';
+import 'package:facely/presentation/providers/auth_provider.dart';
+import 'package:facely/presentation/screens/wallet/wallet_page.dart';
+import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
+import 'package:facely/presentation/widgets/purchase_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:face_reader/core/theme.dart';
-import 'package:face_reader/data/services/analytics_service.dart';
-import 'package:face_reader/data/services/coin_service.dart';
-import 'package:face_reader/presentation/providers/auth_provider.dart';
+import 'package:facely/core/theme.dart';
+import 'package:facely/data/services/analytics_service.dart';
+import 'package:facely/data/services/coin_service.dart';
+import 'package:facely/presentation/providers/auth_provider.dart';
 
 /// Bottom sheet that loads coin products from RevenueCat and lets the user
 /// trigger a purchase. Refreshes auth coins on success.

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-import 'package:face_reader/core/theme.dart';
+import 'package:facely/core/theme.dart';
 
 class MetaphorPage extends StatelessWidget {
   final String markdownText;

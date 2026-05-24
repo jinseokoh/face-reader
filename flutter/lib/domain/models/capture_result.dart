@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:mediapipe_face_mesh/mediapipe_face_mesh.dart';
 
 import 'package:face_engine/domain/models/face_reading_report.dart';
-import 'package:face_reader/domain/models/face_metadata.dart';
+import 'package:facely/domain/models/face_metadata.dart';
 
 /// 캡처 단계 (camera / album) 가 끝났을 때 분석 단계로 전달되는 raw 데이터.
 ///

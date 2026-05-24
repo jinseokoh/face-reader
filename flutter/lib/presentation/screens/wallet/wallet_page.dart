@@ -5,16 +5,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
-import 'package:face_reader/core/theme.dart';
+import 'package:facely/core/theme.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/data/enums/age_group.dart';
-import 'package:face_reader/domain/models/coin_transaction.dart';
+import 'package:facely/domain/models/coin_transaction.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
-import 'package:face_reader/presentation/providers/auth_provider.dart';
-import 'package:face_reader/presentation/providers/history_provider.dart';
-import 'package:face_reader/presentation/providers/wallet_provider.dart';
-import 'package:face_reader/presentation/widgets/login_bottom_sheet.dart';
+import 'package:facely/presentation/providers/auth_provider.dart';
+import 'package:facely/presentation/providers/history_provider.dart';
+import 'package:facely/presentation/providers/wallet_provider.dart';
+import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 
 const _txDescriptionLabels = {
   'compat-unlock': '궁합 보기',

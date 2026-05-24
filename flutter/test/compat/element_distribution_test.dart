@@ -19,7 +19,7 @@ import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/domain/services/compat/element_classifier.dart';
 import 'package:face_engine/domain/services/compat/element_matrix.dart';
 import 'package:face_engine/domain/services/compat/five_element.dart';
-import 'package:face_reader/domain/services/mc_fixtures.dart';
+import 'package:facely/domain/services/mc_fixtures.dart';
 
 double _normal(Random rng) {
   double u1, u2;

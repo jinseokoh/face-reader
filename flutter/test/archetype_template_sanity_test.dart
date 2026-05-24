@@ -20,7 +20,7 @@ import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/services/attribute_derivation.dart';
 import 'package:face_engine/domain/services/attribute_normalize.dart';
-import 'package:face_reader/domain/services/mc_fixtures.dart';
+import 'package:facely/domain/services/mc_fixtures.dart';
 import 'package:face_engine/domain/services/physiognomy_scoring.dart';
 
 double _normal(Random rng) {

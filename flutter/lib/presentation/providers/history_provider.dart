@@ -3,8 +3,8 @@ import 'dart:developer' as dev;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 
-import 'package:face_reader/core/hive/hive_setup.dart';
-import 'package:face_reader/data/services/supabase_service.dart';
+import 'package:facely/core/hive/hive_setup.dart';
+import 'package:facely/data/services/supabase_service.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 
 /// debugPrint 의 rate-limit 을 피하려 raw `print` + `dev.log` 이중 출력.

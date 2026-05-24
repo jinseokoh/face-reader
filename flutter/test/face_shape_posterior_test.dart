@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:face_reader/data/services/face_shape_classifier.dart';
+import 'package:facely/data/services/face_shape_classifier.dart';
 
 /// `FaceShapeClassifier.applyPosterior()` unit tests.
 ///

@@ -10,7 +10,7 @@ import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/services/archetype.dart';
 import 'package:face_engine/domain/services/attribute_derivation.dart';
 import 'package:face_engine/domain/services/attribute_normalize.dart';
-import 'package:face_reader/domain/services/life_question_narrative.dart';
+import 'package:facely/domain/services/life_question_narrative.dart';
 import 'package:face_engine/domain/services/physiognomy_scoring.dart';
 import 'package:flutter_test/flutter_test.dart';
 

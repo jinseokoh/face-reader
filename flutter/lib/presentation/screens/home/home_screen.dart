@@ -1,8 +1,8 @@
-import 'package:face_reader/core/theme.dart';
-import 'package:face_reader/data/services/analytics_service.dart';
-import 'package:face_reader/domain/models/capture_result.dart';
-import 'package:face_reader/presentation/providers/auth_provider.dart';
-import 'package:face_reader/presentation/widgets/login_bottom_sheet.dart';
+import 'package:facely/core/theme.dart';
+import 'package:facely/data/services/analytics_service.dart';
+import 'package:facely/domain/models/capture_result.dart';
+import 'package:facely/presentation/providers/auth_provider.dart';
+import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -224,19 +224,25 @@ class _HomeActionCardState extends State<_HomeActionCard>
           child: child,
         ),
         child: Material(
-          color: AppColors.textPrimary,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(AppRadius.lg),
           clipBehavior: Clip.antiAlias,
+          // inverse 톤 — outer container 가 surface(연회색) 라 흰 카드 + dark
+          // icon/text. 경계 정의 위해 subtle border 추가.
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            side: BorderSide(color: AppColors.border, width: 1),
+          ),
           child: InkWell(
             onTap: widget.onPressed,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                FaIcon(widget.icon, size: 28, color: Colors.white),
+                FaIcon(widget.icon, size: 28, color: AppColors.textPrimary),
                 const SizedBox(height: AppSpacing.md),
                 Text(
                   widget.label,
-                  style: AppText.subTitle.copyWith(color: Colors.white),
+                  style: AppText.subTitle.copyWith(color: AppColors.textPrimary),
                 ),
               ],
             ),

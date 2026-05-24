@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import 'package:face_engine/domain/models/face_reading_report.dart';
-import 'package:face_reader/data/services/supabase_service.dart';
+import 'package:facely/data/services/supabase_service.dart';
 
 /// 카톡 등으로 받은 share URL (https://facely.kr/r/{uuid}) 을 받아
 /// Supabase metrics row 를 fetch 한 뒤 받는 사람 관점의 FaceReadingReport 로

@@ -18,7 +18,7 @@ import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/services/compat/compat_narrative.dart';
 import 'package:face_engine/domain/services/compat/compat_pipeline.dart';
 import 'package:face_engine/domain/services/compat/intimacy.dart';
-import 'package:face_reader/domain/services/mc_fixtures.dart';
+import 'package:facely/domain/services/mc_fixtures.dart';
 import 'package:face_engine/domain/services/physiognomy_scoring.dart';
 
 double _normal(Random rng) {

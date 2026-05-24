@@ -1,6 +1,6 @@
 import 'dart:math';
 import 'package:mediapipe_face_mesh/mediapipe_face_mesh.dart';
-import 'package:face_reader/domain/services/face_metrics.dart';
+import 'package:facely/domain/services/face_metrics.dart';
 
 /// Lateral / 3-4-view facial metrics.
 ///

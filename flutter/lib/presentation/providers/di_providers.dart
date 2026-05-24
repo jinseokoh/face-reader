@@ -1,12 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:face_reader/core/http/http_client.dart';
-import 'package:face_reader/data/datasources/local/metaphor_local_datasource.dart';
-import 'package:face_reader/data/datasources/remote/metaphor_remote_datasource.dart';
-import 'package:face_reader/data/repositories/metaphor_repository.dart';
+import 'package:facely/core/http/http_client.dart';
+import 'package:facely/data/datasources/local/metaphor_local_datasource.dart';
+import 'package:facely/data/datasources/remote/metaphor_remote_datasource.dart';
+import 'package:facely/data/repositories/metaphor_repository.dart';
 
 // Re-export for convenience
-export 'package:face_reader/core/http/http_client.dart' show dioProvider;
+export 'package:facely/core/http/http_client.dart' show dioProvider;
 
 // DataSources
 final metaphorRemoteDataSourceProvider = Provider<MetaphorRemoteDataSource>(

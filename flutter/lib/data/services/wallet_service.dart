@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:face_reader/domain/models/coin_transaction.dart';
+import 'package:facely/domain/models/coin_transaction.dart';
 
 /// All RPCs derive the user from `auth.uid()` — caller must be a signed-in
 /// Supabase Auth session. RLS on `public.coins` filters rows by owner, so

@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:face_reader/data/services/image_resizer.dart';
-import 'package:face_reader/data/services/r2_uploader.dart';
-import 'package:face_reader/domain/models/face_metadata.dart';
+import 'package:facely/data/services/image_resizer.dart';
+import 'package:facely/data/services/r2_uploader.dart';
+import 'package:facely/domain/models/face_metadata.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';

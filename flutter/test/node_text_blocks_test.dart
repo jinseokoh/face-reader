@@ -9,7 +9,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:face_reader/data/constants/node_text_blocks.dart';
+import 'package:facely/data/constants/node_text_blocks.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/physiognomy_tree.dart';
 

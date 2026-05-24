@@ -1,8 +1,8 @@
-import 'package:face_reader/data/constants/archetype_text_blocks.dart';
-import 'package:face_reader/data/constants/rule_text_blocks.dart';
+import 'package:facely/data/constants/archetype_text_blocks.dart';
+import 'package:facely/data/constants/rule_text_blocks.dart';
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
-import 'package:face_reader/domain/services/life_question_narrative.dart';
+import 'package:facely/domain/services/life_question_narrative.dart';
 
 /// 조립된 본문 + 원본 rule block 참조.
 /// `selectedBlocks` 는 UI 렌더링에서 직접 사용하지 않고,

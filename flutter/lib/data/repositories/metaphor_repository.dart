@@ -1,13 +1,13 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 
-import 'package:face_reader/data/datasources/local/metaphor_local_datasource.dart';
-import 'package:face_reader/data/datasources/remote/metaphor_remote_datasource.dart';
+import 'package:facely/data/datasources/local/metaphor_local_datasource.dart';
+import 'package:facely/data/datasources/remote/metaphor_remote_datasource.dart';
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
-import 'package:face_reader/domain/services/report_assembler.dart';
+import 'package:facely/domain/services/report_assembler.dart';
 
 class MetaphorRepository {
   final MetaphorRemoteDataSource remoteDataSource;

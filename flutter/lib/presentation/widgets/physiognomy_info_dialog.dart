@@ -1,4 +1,4 @@
-import 'package:face_reader/core/theme.dart';
+import 'package:facely/core/theme.dart';
 import 'package:flutter/material.dart';
 
 class PhysiognomyInfoDialog extends StatefulWidget {

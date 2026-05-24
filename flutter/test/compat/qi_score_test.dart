@@ -23,7 +23,7 @@ import 'package:face_engine/domain/services/compat/palace_state.dart';
 import 'package:face_engine/domain/services/compat/qi_score.dart';
 import 'package:face_engine/domain/services/compat/yinyang_matcher.dart';
 import 'package:face_engine/domain/services/compat/zone_harmony.dart';
-import 'package:face_reader/domain/services/mc_fixtures.dart';
+import 'package:facely/domain/services/mc_fixtures.dart';
 import 'package:face_engine/domain/services/physiognomy_scoring.dart';
 import 'package:face_engine/domain/services/yin_yang.dart';
 

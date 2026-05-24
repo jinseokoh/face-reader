@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:video_player/video_player.dart';
 
-import 'package:face_reader/core/theme.dart';
-import 'package:face_reader/data/services/ad_service.dart';
-import 'package:face_reader/presentation/providers/auth_provider.dart';
-import 'package:face_reader/presentation/providers/wallet_provider.dart';
+import 'package:facely/core/theme.dart';
+import 'package:facely/data/services/ad_service.dart';
+import 'package:facely/presentation/providers/auth_provider.dart';
+import 'package:facely/presentation/providers/wallet_provider.dart';
 
 /// 광고 시청 → 보상 화면.
 ///

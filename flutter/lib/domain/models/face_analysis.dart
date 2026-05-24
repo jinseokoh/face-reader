@@ -7,14 +7,14 @@ import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/data/constants/face_reference_data.dart';
-import 'package:face_reader/data/services/face_shape_classifier.dart';
+import 'package:facely/data/services/face_shape_classifier.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/services/age_adjustment.dart';
 import 'package:face_engine/domain/services/archetype.dart';
 import 'package:face_engine/domain/services/attribute_derivation.dart';
 import 'package:face_engine/domain/services/attribute_normalize.dart';
-import 'package:face_reader/domain/services/face_metrics.dart';
-import 'package:face_reader/domain/services/face_metrics_lateral.dart';
+import 'package:facely/domain/services/face_metrics.dart';
+import 'package:facely/domain/services/face_metrics_lateral.dart';
 import 'package:face_engine/domain/services/metric_score.dart';
 import 'package:face_engine/domain/services/physiognomy_scoring.dart';
 

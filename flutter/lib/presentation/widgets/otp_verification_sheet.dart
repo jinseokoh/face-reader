@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:face_reader/core/theme.dart';
-import 'package:face_reader/presentation/providers/auth_provider.dart';
+import 'package:facely/core/theme.dart';
+import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

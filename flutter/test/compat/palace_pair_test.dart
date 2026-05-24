@@ -19,7 +19,7 @@ import 'package:face_engine/domain/services/compat/palace.dart';
 import 'package:face_engine/domain/services/compat/palace_pair_matcher.dart';
 import 'package:face_engine/domain/services/compat/palace_rules.dart';
 import 'package:face_engine/domain/services/compat/palace_state.dart';
-import 'package:face_reader/domain/services/mc_fixtures.dart';
+import 'package:facely/domain/services/mc_fixtures.dart';
 import 'package:face_engine/domain/services/physiognomy_scoring.dart';
 
 double _normal(Random rng) {

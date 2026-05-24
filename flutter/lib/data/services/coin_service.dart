@@ -4,8 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
-import 'package:face_reader/data/services/auth_service.dart';
-import 'package:face_reader/domain/models/coin_transaction.dart';
+import 'package:facely/data/services/auth_service.dart';
+import 'package:facely/domain/models/coin_transaction.dart';
 
 class CoinProduct {
   final String id;

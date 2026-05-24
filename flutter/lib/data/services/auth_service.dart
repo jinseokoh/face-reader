@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:face_reader/data/services/wallet_service.dart';
-import 'package:face_reader/domain/models/coin_transaction.dart';
+import 'package:facely/data/services/wallet_service.dart';
+import 'package:facely/domain/models/coin_transaction.dart';
 
 class AuthUser {
   final String id;                  // auth.uid()

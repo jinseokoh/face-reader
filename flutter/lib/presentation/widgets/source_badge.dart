@@ -1,5 +1,5 @@
 import 'package:face_engine/domain/models/face_reading_report.dart';
-import 'package:face_reader/core/theme.dart';
+import 'package:facely/core/theme.dart';
 import 'package:flutter/material.dart';
 
 /// 카메라/앨범 source 표기용 outlined pill — 색 없이 border 만.

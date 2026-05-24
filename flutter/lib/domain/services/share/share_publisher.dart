@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:face_engine/domain/models/face_reading_report.dart';
-import 'package:face_reader/data/services/supabase_service.dart';
+import 'package:facely/data/services/supabase_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart' hide Gender;

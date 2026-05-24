@@ -5,17 +5,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'package:face_engine/domain/models/face_reading_report.dart';
-import 'package:face_reader/core/theme.dart';
-import 'package:face_reader/data/services/auth_service.dart';
-import 'package:face_reader/data/services/deep_link_service.dart';
-import 'package:face_reader/data/services/supabase_service.dart';
-import 'package:face_reader/presentation/providers/tab_provider.dart';
-import 'package:face_reader/presentation/screens/compatibility/compatibility_detail_screen.dart';
-import 'package:face_reader/presentation/screens/compatibility/compatibility_screen.dart';
-import 'package:face_reader/presentation/screens/home/home_screen.dart';
-import 'package:face_reader/presentation/screens/home/report_page.dart';
-import 'package:face_reader/presentation/screens/physiognomy/physiognomy_screen.dart';
-import 'package:face_reader/presentation/screens/settings/settings_screen.dart';
+import 'package:facely/core/theme.dart';
+import 'package:facely/data/services/auth_service.dart';
+import 'package:facely/data/services/deep_link_service.dart';
+import 'package:facely/data/services/supabase_service.dart';
+import 'package:facely/presentation/providers/tab_provider.dart';
+import 'package:facely/presentation/screens/compatibility/compatibility_detail_screen.dart';
+import 'package:facely/presentation/screens/compatibility/compatibility_screen.dart';
+import 'package:facely/presentation/screens/home/home_screen.dart';
+import 'package:facely/presentation/screens/home/report_page.dart';
+import 'package:facely/presentation/screens/physiognomy/physiognomy_screen.dart';
+import 'package:facely/presentation/screens/settings/settings_screen.dart';
 
 class MainApp extends ConsumerStatefulWidget {
   const MainApp({super.key});
