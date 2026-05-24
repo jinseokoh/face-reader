@@ -2,7 +2,7 @@
   "applinks": {
     "details": [
       {
-        "appIDs": ["TEAMID.com.example.face"],
+        "appIDs": ["TEAMID.com.scienceintegration.facely"],
         "components": [
           { "/": "/r/*", "comment": "share host" }
         ]

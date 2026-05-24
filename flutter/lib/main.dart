@@ -1,12 +1,12 @@
 import 'package:facely/app.dart';
 import 'package:facely/core/hive/hive_setup.dart';
 import 'package:facely/core/storage/thumbnail_paths.dart';
+import 'package:facely/core/theme.dart';
 import 'package:facely/data/services/analytics_service.dart';
 import 'package:facely/data/services/auth_service.dart';
 import 'package:facely/data/services/coin_service.dart';
 import 'package:facely/data/services/deep_link_service.dart';
 import 'package:facely/data/services/face_shape_classifier.dart';
-import 'package:facely/core/theme.dart';
 import 'package:facely/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -55,7 +55,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'AI 관상가',
+      title: 'Facely',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       home: const MainApp(),

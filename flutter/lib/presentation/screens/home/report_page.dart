@@ -3,7 +3,6 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:face_engine/data/constants/archetype_catchphrase.dart';
 import 'package:face_engine/data/constants/face_reference_data.dart';
 import 'package:face_engine/data/enums/age_group.dart';
@@ -23,10 +22,11 @@ import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
-import 'package:top_snackbar_flutter/top_snack_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
 
 const _nodeLabels = <String, String>{
@@ -760,6 +760,50 @@ class _Palette {
   );
 }
 
+/// AppBar action — received 카드를 내 Hive 에 저장하는 bookmark 토글.
+///
+/// 같은 supabaseId 의 entry 가 이미 history 에 있으면 filled bookmark + tap 시
+/// "이미 저장됨" snackbar. 없으면 outline bookmark_add + tap 시 add(report) 후
+/// "저장 완료" snackbar. supabaseId 기반이라 동일 카드를 두 번 paste 해도 한
+/// 번만 저장됨.
+class _ReceivedBookmarkAction extends ConsumerWidget {
+  final FaceReadingReport report;
+  const _ReceivedBookmarkAction({required this.report});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final history = ref.watch(historyProvider);
+    final uuid = report.supabaseId;
+    final alreadySaved = uuid != null &&
+        history.any((r) => r.supabaseId == uuid);
+    return IconButton(
+      icon: FaIcon(
+        alreadySaved
+            ? FontAwesomeIcons.solidBookmark
+            : FontAwesomeIcons.bookmark,
+        size: 20,
+      ),
+      tooltip: alreadySaved ? '이미 내 앨범에 저장됨' : '내 앨범에 저장',
+      onPressed: () async {
+        if (alreadySaved) {
+          showTopSnackBar(
+            Overlay.of(context),
+            CompactSnackBar.success(message: '이미 내 앨범에 저장된 카드입니다'),
+          );
+          return;
+        }
+        await ref.read(historyProvider.notifier).add(report);
+        if (!context.mounted) return;
+        showTopSnackBar(
+          Overlay.of(context),
+          CompactSnackBar.success(
+              message: '내 앨범에 저장했습니다 — 앨범 탭의 "받은 카드"'),
+        );
+      },
+    );
+  }
+}
+
 class _ReportPageState extends ConsumerState<ReportPage> {
   /// 관상 파이프라인이 근거로 삼는 학술·전통 자료 10선. UI 의 참고 자료
   /// 섹션과 PDF/클립보드 export 가 공유한다.
@@ -900,7 +944,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('AI 관상가 평가',
+                      Text('Facely, 관상은 과학이다.',
                           style: TextStyle(
                               color: _Palette.sand,
                               fontSize: 12,
@@ -1292,6 +1336,22 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     );
   }
 
+  Future<Uint8List> _captureShareCardBytes() async {
+    final boundary = _shareCardKey.currentContext?.findRenderObject()
+        as RenderRepaintBoundary?;
+    if (boundary == null) {
+      throw StateError('share card boundary not mounted');
+    }
+    // pixelRatio 2.0 = 800px logical → 1600px physical. Kakao Feed image 권장
+    // 800x400 이상이라 충분히 sharp.
+    final image = await boundary.toImage(pixelRatio: 2.0);
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    if (byteData == null) {
+      throw StateError('failed to encode share card png');
+    }
+    return byteData.buffer.asUint8List();
+  }
+
   YinYangBalance _computeReportYinYang() {
     final zMap = <String, double>{
       for (final m in report.metrics.values) m.id: m.zScore,
@@ -1329,10 +1389,9 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     try {
       final pngBytes = await _captureShareCardBytes();
       final report = widget.report;
-      final archLabel = report.archetype.primaryLabel;
       await SharePublisher.instance.publishSoloViaKakao(
         report: report,
-        title: '$archLabel — AI 관상가',
+        title: 'Facely, 관상은 과학이다.',
         description: '내 관상 분석 결과를 확인해 보세요',
         compositeCardPng: pngBytes,
       );
@@ -1345,22 +1404,6 @@ class _ReportPageState extends ConsumerState<ReportPage> {
         );
       }
     }
-  }
-
-  Future<Uint8List> _captureShareCardBytes() async {
-    final boundary = _shareCardKey.currentContext?.findRenderObject()
-        as RenderRepaintBoundary?;
-    if (boundary == null) {
-      throw StateError('share card boundary not mounted');
-    }
-    // pixelRatio 2.0 = 800px logical → 1600px physical. Kakao Feed image 권장
-    // 800x400 이상이라 충분히 sharp.
-    final image = await boundary.toImage(pixelRatio: 2.0);
-    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-    if (byteData == null) {
-      throw StateError('failed to encode share card png');
-    }
-    return byteData.buffer.asUint8List();
   }
 
 }
@@ -1536,6 +1579,222 @@ class _SamjeongRadarPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _SamjeongRadarPainter old) =>
       old.upper != upper || old.middle != middle || old.lower != lower;
+}
+
+// 카카오 link preview 의 hero image 로 박힐 합성 카드 — 800x800 (1:1) logical,
+// pixelRatio 2.0 으로 캡처되어 1600x1600 PNG 로 Kakao CDN 에 업로드.
+//
+// **square 1:1 고정 이유**: Kakao Feed chat preview 의 image slot 은 어떤
+// source aspect 를 보내도 center-crop 으로 1:1 square 로 표시. landscape /
+// portrait source 는 좌우 또는 위·아래가 잘려 content 손실. 따라서 source 는
+// square 고정.
+//
+// **구성**: 상단 300px = assets/images/800x300.png banner (full-bleed),
+// 하단 500px = thumb + archetype label + 장점/단점 badge 2 row.
+//
+// share card 는 export medium 이라 in-app design token 과 별개의 inline
+// TextStyle 을 허용 (font size 가 in-app 토큰보다 한참 크다).
+class _ShareCardComposite extends StatelessWidget {
+  final FaceReadingReport report;
+  const _ShareCardComposite({required this.report});
+
+  @override
+  Widget build(BuildContext context) {
+    final arch = report.archetype;
+    final sorted = report.attributeScores.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final top = sorted.first;
+    final weakest = sorted.last;
+    final strengthLine = attributeStrengthLine[top.key] ?? '';
+    final shadowLine = attributeShadowLine[weakest.key] ?? '';
+    final catchphrase = archetypeCatchphrase[arch.primary] ?? '';
+
+    const thumbSize = 140.0;
+    final thumbFile = ThumbnailPaths.resolveFileSync(report.thumbnailPath);
+    Widget thumb;
+    if (thumbFile != null && thumbFile.existsSync()) {
+      thumb = Image.file(thumbFile,
+          width: thumbSize, height: thumbSize, fit: BoxFit.cover);
+    } else {
+      thumb = Container(
+        width: thumbSize,
+        height: thumbSize,
+        color: const Color(0xFFF5F5F5),
+        child: const Icon(Icons.face,
+            size: 72, color: Color(0xFFAAAAAA)),
+      );
+    }
+
+    return MediaQuery(
+      data: const MediaQueryData(),
+      child: Directionality(
+        textDirection: TextDirection.ltr,
+        child: Material(
+          color: Colors.white,
+          child: SizedBox(
+            width: 800,
+            height: 800,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // 상단 banner — full-bleed 800×300.
+                SizedBox(
+                  height: 300,
+                  child: Image.asset(
+                    'assets/images/800x300.png',
+                    width: 800,
+                    height: 300,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                // 하단 500px content 영역.
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(36, 32, 36, 32),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(14),
+                              child: thumb,
+                            ),
+                            const SizedBox(width: 28),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    arch.primaryLabel,
+                                    style: const TextStyle(
+                                      fontSize: 52,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF333333),
+                                      height: 1.1,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    '${arch.secondaryLabel} 기질',
+                                    style: const TextStyle(
+                                      fontSize: 39,
+                                      fontWeight: FontWeight.w500,
+                                      color: Color(0xFF777777),
+                                      height: 1.2,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        if (catchphrase.isNotEmpty)
+                          Container(
+                            width: double.infinity,
+                            margin: const EdgeInsets.only(bottom: 22),
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 14),
+                            decoration: const BoxDecoration(
+                              border: Border(
+                                top: BorderSide(
+                                    color: Color(0xFFEEEEEE), width: 1),
+                                bottom: BorderSide(
+                                    color: Color(0xFFEEEEEE), width: 1),
+                              ),
+                            ),
+                            child: Text(
+                              catchphrase,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 36,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF5C4033),
+                                height: 1.3,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ),
+                        _BadgeRow(
+                          badge: '강점',
+                          tone: const Color(0xFF2E7D32),
+                          text: strengthLine,
+                        ),
+                        const SizedBox(height: 14),
+                        _BadgeRow(
+                          badge: '약점',
+                          tone: const Color(0xFFC62828),
+                          text: shadowLine,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// share card 안의 장점/단점 라벨 — pill-shape badge + 본문 text.
+/// in-app 디자인 토큰 비적용 (export medium).
+class _BadgeRow extends StatelessWidget {
+  final String badge;
+  final Color tone;
+  final String text;
+  const _BadgeRow({
+    required this.badge,
+    required this.tone,
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
+          decoration: BoxDecoration(
+            color: tone,
+            borderRadius: BorderRadius.circular(28),
+          ),
+          child: Text(
+            badge,
+            style: const TextStyle(
+              fontSize: 33,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+              height: 1.2,
+            ),
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 36,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF333333),
+                height: 1.4,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _TldrChip extends StatelessWidget {
@@ -1739,172 +1998,6 @@ class _YinYangBar extends StatelessWidget {
       case YinYangTone.harmony:
         return _harmonyColor;
     }
-  }
-}
-
-/// AppBar action — received 카드를 내 Hive 에 저장하는 bookmark 토글.
-///
-/// 같은 supabaseId 의 entry 가 이미 history 에 있으면 filled bookmark + tap 시
-/// "이미 저장됨" snackbar. 없으면 outline bookmark_add + tap 시 add(report) 후
-/// "저장 완료" snackbar. supabaseId 기반이라 동일 카드를 두 번 paste 해도 한
-/// 번만 저장됨.
-class _ReceivedBookmarkAction extends ConsumerWidget {
-  final FaceReadingReport report;
-  const _ReceivedBookmarkAction({required this.report});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final history = ref.watch(historyProvider);
-    final uuid = report.supabaseId;
-    final alreadySaved = uuid != null &&
-        history.any((r) => r.supabaseId == uuid);
-    return IconButton(
-      icon: FaIcon(
-        alreadySaved
-            ? FontAwesomeIcons.solidBookmark
-            : FontAwesomeIcons.bookmark,
-        size: 20,
-      ),
-      tooltip: alreadySaved ? '이미 내 앨범에 저장됨' : '내 앨범에 저장',
-      onPressed: () async {
-        if (alreadySaved) {
-          showTopSnackBar(
-            Overlay.of(context),
-            CompactSnackBar.success(message: '이미 내 앨범에 저장된 카드입니다'),
-          );
-          return;
-        }
-        await ref.read(historyProvider.notifier).add(report);
-        if (!context.mounted) return;
-        showTopSnackBar(
-          Overlay.of(context),
-          CompactSnackBar.success(
-              message: '내 앨범에 저장했습니다 — 앨범 탭의 "받은 카드"'),
-        );
-      },
-    );
-  }
-}
-
-// 카카오 link preview 의 hero image 로 박힐 합성 카드 — 800x800 logical,
-// pixelRatio 2.0 으로 캡처되어 1600x1600 PNG 로 Kakao CDN 에 업로드된다.
-// share card 는 export medium 이라 in-app design token 과 별개의 inline
-// TextStyle 을 허용 (font size 가 in-app 토큰보다 한참 크다).
-class _ShareCardComposite extends StatelessWidget {
-  final FaceReadingReport report;
-  const _ShareCardComposite({required this.report});
-
-  @override
-  Widget build(BuildContext context) {
-    final arch = report.archetype;
-    final sorted = report.attributeScores.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    final top = sorted.first;
-    final weakest = sorted.last;
-    final strengthLine = attributeStrengthLine[top.key] ?? '';
-    final shadowLine = attributeShadowLine[weakest.key] ?? '';
-
-    const thumbSize = 160.0;
-    final thumbFile = ThumbnailPaths.resolveFileSync(report.thumbnailPath);
-    Widget thumb;
-    if (thumbFile != null && thumbFile.existsSync()) {
-      thumb = Image.file(thumbFile,
-          width: thumbSize, height: thumbSize, fit: BoxFit.cover);
-    } else {
-      thumb = Container(
-        width: thumbSize,
-        height: thumbSize,
-        color: const Color(0xFFF5F5F5),
-        child: const Icon(Icons.face,
-            size: 80, color: Color(0xFFAAAAAA)),
-      );
-    }
-
-    return MediaQuery(
-      data: const MediaQueryData(),
-      child: Directionality(
-        textDirection: TextDirection.ltr,
-        child: Material(
-          color: Colors.white,
-          child: Container(
-            width: 800,
-            height: 800,
-            color: Colors.white,
-            padding: const EdgeInsets.all(40),
-            child: Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: const Color(0xFFD8D8D8), width: 1.5),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              padding: const EdgeInsets.all(36),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: thumb,
-                      ),
-                      const SizedBox(width: 32),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              arch.primaryLabel,
-                              style: const TextStyle(
-                                fontSize: 56,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF333333),
-                                height: 1.1,
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              '${arch.secondaryLabel} 기질',
-                              style: const TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.w500,
-                                color: Color(0xFF777777),
-                                height: 1.2,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 40),
-                  Text(
-                    '장점. $strengthLine',
-                    style: const TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF333333),
-                      height: 1.45,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    '단점. $shadowLine',
-                    style: const TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF333333),
-                      height: 1.45,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }
 

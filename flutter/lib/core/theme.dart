@@ -77,7 +77,7 @@ class AppSpacing {
 /// 신규 화면은 inline `TextStyle(fontSize: …)` 대신 `AppText.X` 또는
 /// `AppText.X.copyWith(color: …)` 만 사용.
 class AppText {
-  /// **display** — 28 w700 SongMyung. 홈 화면 "AI 관상가" 같은 화면 최상위 타이틀.
+  /// **display** — 28 w700 SongMyung. 홈 화면 타이틀 같은 화면 최상위 타이틀.
   static const TextStyle display = TextStyle(
     fontFamily: _kDisplayFont,
     fontSize: 28,
