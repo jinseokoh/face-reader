@@ -297,39 +297,6 @@ class _HeroLine extends StatelessWidget {
   }
 }
 
-/// 관상 hero 카드의 우측 thumbnail avatar — 사용자 얼굴 thumbnail 을 100px
-/// 원형 frame 에. thumbnail 이 없으면 user icon placeholder.
-class _UserAvatar extends StatelessWidget {
-  final String? thumbnailPath;
-  const _UserAvatar({required this.thumbnailPath});
-
-  @override
-  Widget build(BuildContext context) {
-    const size = 50.0;
-    final file = ThumbnailPaths.resolveFileSync(thumbnailPath);
-    Widget inner = Container(
-      color: Colors.white.withValues(alpha: 0.12),
-      child: const Center(
-        child: FaIcon(FontAwesomeIcons.user,
-            color: Colors.white54, size: 18),
-      ),
-    );
-    if (file != null && file.existsSync()) {
-      inner = Image.file(file, width: size, height: size, fit: BoxFit.cover);
-    }
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(
-            color: Colors.white.withValues(alpha: 0.3), width: 1.5),
-      ),
-      child: ClipOval(child: inner),
-    );
-  }
-}
-
 class _HeroTop3 extends StatelessWidget {
   final List<MapEntry<Attribute, double>> top3;
   const _HeroTop3({required this.top3});
@@ -1459,7 +1426,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
       await SharePublisher.instance.publishSoloViaKakao(
         report: report,
         title: 'Facely, 관상은 과학이다.',
-        description: '내 관상 분석 결과를 확인해 보세요',
+        description: '관상 상세내용을 확인해 보세요',
         compositeCardPng: pngBytes,
       );
     } catch (e, st) {
@@ -1853,6 +1820,39 @@ class _TldrChipData {
   final String label;
   final _ChipTone tone;
   const _TldrChipData({required this.label, required this.tone});
+}
+
+/// 관상 hero 카드의 우측 thumbnail avatar — 사용자 얼굴 thumbnail 을 100px
+/// 원형 frame 에. thumbnail 이 없으면 user icon placeholder.
+class _UserAvatar extends StatelessWidget {
+  final String? thumbnailPath;
+  const _UserAvatar({required this.thumbnailPath});
+
+  @override
+  Widget build(BuildContext context) {
+    const size = 50.0;
+    final file = ThumbnailPaths.resolveFileSync(thumbnailPath);
+    Widget inner = Container(
+      color: Colors.white.withValues(alpha: 0.12),
+      child: const Center(
+        child: FaIcon(FontAwesomeIcons.user,
+            color: Colors.white54, size: 18),
+      ),
+    );
+    if (file != null && file.existsSync()) {
+      inner = Image.file(file, width: size, height: size, fit: BoxFit.cover);
+    }
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+            color: Colors.white.withValues(alpha: 0.3), width: 1.5),
+      ),
+      child: ClipOval(child: inner),
+    );
+  }
 }
 
 // ─── Yin-Yang balance bar (음기 ←→ 양기 축) ───
