@@ -755,7 +755,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
   }
 
   /// 캡처 완료 후 caller (HomeScreen) 에 raw 데이터만 돌려준다. demographic
-  /// 확인·분석·저장은 DemographicConfirmScreen 이 담당.
+  /// 확인·분석·저장은 InfoConfirmScreen 이 담당.
   Future<void> _runAnalysis({List<FaceMeshLandmark>? lateralLandmarks}) async {
     final frontal = _frontalLandmarks;
     if (frontal == null) return;

@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
+import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/app.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/domain/services/share/share_receive_service.dart';
+import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/screens/compatibility/compatibility_detail_screen.dart';
-import 'package:facely/presentation/screens/home/demographic_confirm_screen.dart';
+import 'package:facely/presentation/screens/home/info_confirm_screen.dart';
 import 'package:facely/presentation/screens/home/report_page.dart';
-import 'package:facely/presentation/screens/wallet/wallet_page.dart';
+import 'package:facely/presentation/screens/ledger/ledger_page.dart';
+import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/domain/models/capture_result.dart';
 import 'package:facely/domain/models/face_metadata.dart';
 
@@ -28,14 +32,23 @@ import 'package:facely/domain/models/face_metadata.dart';
 /// 등록 안 함.
 final router = GoRouter(
   initialLocation: '/main',
+  // OAuth deep link 가로채기 — Supabase SDK 가 `facely://auth-callback/?code=…`
+  // 를 받아 session 교환을 이미 처리하지만, Flutter engine 은 같은 URI 를
+  // GoRouter 에도 전달한다. router 에 매칭 라우트가 없으면 "Page Not Found" 가
+  // 깜빡인다. 여기서 home 으로 흘려보내 깜빡임 제거.
+  redirect: (ctx, state) {
+    final loc = state.uri.toString();
+    if (loc.contains('auth-callback')) return '/main';
+    return null;
+  },
   routes: [
     GoRoute(
       path: '/main',
       builder: (ctx, state) => const MainApp(),
       routes: [
         GoRoute(
-          path: 'wallet', // → /main/wallet
-          builder: (ctx, state) => const WalletPage(),
+          path: 'ledger', // → /main/ledger
+          builder: (ctx, state) => const LedgerPage(),
         ),
       ],
     ),
@@ -56,7 +69,7 @@ final router = GoRouter(
     ),
     GoRoute(
       path: '/capture/confirm',
-      builder: (ctx, state) => DemographicConfirmScreen(
+      builder: (ctx, state) => InfoConfirmScreen(
         capture: (state.extra! as CaptureExtras).capture,
         metadataFuture: (state.extra! as CaptureExtras).metadataFuture,
       ),
@@ -83,7 +96,7 @@ Widget _buildShareDestination(GoRouterState state) {
   return _ReportRouteWrapper(uuid: id, preloaded: preloaded);
 }
 
-/// 캡처 흐름 → DemographicConfirmScreen 으로 넘기는 두 인자 묶음.
+/// 캡처 흐름 → InfoConfirmScreen 으로 넘기는 두 인자 묶음.
 /// router 의 `extra` 는 한 객체만 받으므로 wrapper.
 class CaptureExtras {
   final CaptureResult capture;
@@ -122,37 +135,67 @@ extension CompatPushExtension on BuildContext {
 }
 
 /// 관상 deep-link wrapper — preloaded null 이면 Supabase 에서 fetch.
-class _ReportRouteWrapper extends StatefulWidget {
+///
+/// **Auto-register (채팅 매칭 후보)** — fetch 결과의 `autoRegisterEligible`
+/// (sender 측 camera + isMyFace) 가 true 이고 local history 에 같은 supabaseId
+/// 가 없으면 자동으로 앨범에 추가 + top snackbar 로 알림. preloaded (in-app
+/// push) 흐름은 외부 share 가 아니므로 적격성 false 로 wrap.
+class _ReportRouteWrapper extends ConsumerStatefulWidget {
   final String uuid;
   final FaceReadingReport? preloaded;
   const _ReportRouteWrapper({required this.uuid, this.preloaded});
 
   @override
-  State<_ReportRouteWrapper> createState() => _ReportRouteWrapperState();
+  ConsumerState<_ReportRouteWrapper> createState() =>
+      _ReportRouteWrapperState();
 }
 
-class _ReportRouteWrapperState extends State<_ReportRouteWrapper> {
-  late final Future<FaceReadingReport?> _future;
+class _ReportRouteWrapperState extends ConsumerState<_ReportRouteWrapper> {
+  late final Future<ShareReceiveResult?> _future;
+  // FutureBuilder 가 부모 rebuild 마다 builder 를 재호출하므로 once-flag 로
+  // auto-register 가 한 번만 일어나도록 보호.
+  bool _autoRegisterChecked = false;
 
   @override
   void initState() {
     super.initState();
-    _future = widget.preloaded != null
-        ? Future.value(widget.preloaded)
+    final preloaded = widget.preloaded;
+    _future = preloaded != null
+        ? Future.value(
+            (report: preloaded, autoRegisterEligible: false))
         : ShareReceiveService().fetchByUuid(widget.uuid);
+  }
+
+  void _maybeAutoRegister(FaceReadingReport report, bool eligible) {
+    if (_autoRegisterChecked) return;
+    _autoRegisterChecked = true;
+    if (!eligible) return;
+    final history = ref.read(historyProvider);
+    if (history.any((r) => r.supabaseId == report.supabaseId)) return;
+    ref.read(historyProvider.notifier).add(report);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showTopSnackBar(
+        Overlay.of(context),
+        CompactSnackBar.success(
+          message: '내 앨범에 자동 추가했어요 — 궁합 분석에 사용됩니다',
+        ),
+      );
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<FaceReadingReport?>(
+    return FutureBuilder<ShareReceiveResult?>(
       future: _future,
       builder: (ctx, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
           return const _LoadingScaffold();
         }
-        final report = snap.data;
-        if (report == null) return const _ShareErrorScreen();
-        return ReportPage(report: report);
+        final result = snap.data;
+        if (result == null) return const _ShareErrorScreen();
+        _maybeAutoRegister(result.report, result.autoRegisterEligible);
+        return ReportPage(report: result.report);
       },
     );
   }
@@ -169,7 +212,7 @@ class _CompatRouteWrapper extends StatefulWidget {
 }
 
 class _CompatRouteWrapperState extends State<_CompatRouteWrapper> {
-  late final Future<List<FaceReadingReport?>> _future;
+  late final Future<List<ShareReceiveResult?>> _future;
 
   @override
   void initState() {
@@ -183,14 +226,14 @@ class _CompatRouteWrapperState extends State<_CompatRouteWrapper> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<FaceReadingReport?>>(
+    return FutureBuilder<List<ShareReceiveResult?>>(
       future: _future,
       builder: (ctx, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
           return const _LoadingScaffold();
         }
-        final my = snap.data?[0];
-        final album = snap.data?[1];
+        final my = snap.data?[0]?.report;
+        final album = snap.data?[1]?.report;
         if (my == null || album == null) return const _ShareErrorScreen();
         return CompatibilityDetailScreen(my: my, album: album);
       },

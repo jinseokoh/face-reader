@@ -19,6 +19,7 @@ import 'package:facely/data/services/supabase_service.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:facely/presentation/providers/compat_unlock_provider.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
+import 'package:facely/presentation/providers/tab_provider.dart';
 import 'package:facely/presentation/widgets/empty_state_placeholder.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 import 'package:facely/presentation/widgets/purchase_sheet.dart';
@@ -28,11 +29,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 /// 궁합 탭 — 내 얼굴이 아닌 다른 인물 리스트. 기본 lock, 1 코인 해제.
-class CompatibilityScreen extends ConsumerWidget {
+/// 두 섹션 (미확인 → 확인) 으로 분리, 각 섹션은 자체 정렬 selector 보유.
+class CompatibilityScreen extends ConsumerStatefulWidget {
   const CompatibilityScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CompatibilityScreen> createState() =>
+      _CompatibilityScreenState();
+}
+
+class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
+  // 미확인 카드는 점수가 노출되지 않으므로 시간 기준 정렬만 의미 있음.
+  _LockedSort _lockedSort = _LockedSort.newest;
+  // 확인 카드는 점수까지 노출되므로 score 정렬을 기본값으로 (가장 흥미로운
+  // 매치를 먼저 보여줌).
+  _UnlockedSort _unlockedSort = _UnlockedSort.score;
+
+  @override
+  Widget build(BuildContext context) {
     final history = ref.watch(historyProvider);
     final myFace = history
         .where((r) => r.isMyFace)
@@ -42,11 +56,26 @@ class CompatibilityScreen extends ConsumerWidget {
         history.where((r) => !r.isMyFace).toList(growable: false);
     final unlocksAsync = ref.watch(compatUnlocksProvider);
     final unlocked = unlocksAsync.asData?.value ?? const <String>{};
+    final auth = ref.watch(authProvider);
 
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: const Text('궁합'),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('궁합'),
+            if (auth != null) ...[
+              const SizedBox(width: AppSpacing.md),
+              _CoinChip(
+                coins: auth.coins,
+                onTap: () => ref
+                    .read(selectedTabProvider.notifier)
+                    .selectTab(3),
+              ),
+            ],
+          ],
+        ),
         actions: [
           IconButton(
             icon: const FaIcon(FontAwesomeIcons.circleInfo, size: 20),
@@ -55,13 +84,12 @@ class CompatibilityScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: _body(context, ref, myFace, others, unlocked),
+      body: _body(context, myFace, others, unlocked),
     );
   }
 
   Widget _body(
     BuildContext context,
-    WidgetRef ref,
     FaceReadingReport? myFace,
     List<FaceReadingReport> others,
     Set<String> unlocked,
@@ -81,31 +109,93 @@ class CompatibilityScreen extends ConsumerWidget {
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      itemCount: others.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 12),
-      itemBuilder: (ctx, i) {
-        final other = others[i];
-        final key = tryPairKey(myFace, other);
-        final isUnlocked = key != null && unlocked.contains(key);
+    // 두 섹션 분리.
+    final lockedList = <FaceReadingReport>[];
+    final unlockedList = <FaceReadingReport>[];
+    for (final o in others) {
+      final key = tryPairKey(myFace, o);
+      if (key != null && unlocked.contains(key)) {
+        unlockedList.add(o);
+      } else {
+        lockedList.add(o);
+      }
+    }
 
-        if (isUnlocked) {
-          return _CompatListCard(
-            my: myFace,
-            album: other,
-            onTap: () {
-              AnalyticsService.instance.logClickCompat();
-              context.pushCompat(my: myFace, album: other);
-            },
-          );
-        }
-        return _CompatLockedCard(
-          album: other,
-          onUnlockPressed: () =>
-              _handleUnlockPressed(context, ref, myFace, other),
-        );
-      },
+    // 미확인 — 시간 기준 정렬만.
+    lockedList.sort((a, b) => switch (_lockedSort) {
+          _LockedSort.newest => b.timestamp.compareTo(a.timestamp),
+          _LockedSort.oldest => a.timestamp.compareTo(b.timestamp),
+        });
+
+    // 확인 — score 정렬 시에만 pipeline 호출 (시간 정렬은 timestamp 만 비교).
+    final List<FaceReadingReport> unlockedSorted;
+    if (_unlockedSort == _UnlockedSort.score) {
+      final scored = unlockedList
+          .map((o) => (
+                report: o,
+                score: analyzeCompatibilityFromReports(my: myFace, album: o)
+                    .report
+                    .total,
+              ))
+          .toList()
+        ..sort((a, b) => b.score.compareTo(a.score));
+      unlockedSorted = scored.map((e) => e.report).toList();
+    } else {
+      unlockedSorted = [...unlockedList]
+        ..sort((a, b) => switch (_unlockedSort) {
+              _UnlockedSort.newest => b.timestamp.compareTo(a.timestamp),
+              _UnlockedSort.oldest => a.timestamp.compareTo(b.timestamp),
+              _UnlockedSort.score => 0,
+            });
+    }
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      children: [
+        if (lockedList.isNotEmpty) ...[
+          _SectionHeader<_LockedSort>(
+            title: '미확인',
+            count: lockedList.length,
+            value: _lockedSort,
+            values: _LockedSort.values,
+            labelOf: (v) => v.label,
+            onChanged: (v) => setState(() => _lockedSort = v),
+          ),
+          const SizedBox(height: 8),
+          ...lockedList.map((other) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _CompatLockedCard(
+                  album: other,
+                  onUnlockPressed: () =>
+                      _handleUnlockPressed(context, ref, myFace, other),
+                ),
+              )),
+        ],
+        if (lockedList.isNotEmpty && unlockedSorted.isNotEmpty)
+          const SizedBox(height: 20),
+        if (unlockedSorted.isNotEmpty) ...[
+          _SectionHeader<_UnlockedSort>(
+            title: '확인',
+            count: unlockedSorted.length,
+            value: _unlockedSort,
+            values: _UnlockedSort.values,
+            labelOf: (v) => v.label,
+            onChanged: (v) => setState(() => _unlockedSort = v),
+          ),
+          const SizedBox(height: 8),
+          ...unlockedSorted.map((other) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _CompatListCard(
+                  my: myFace,
+                  album: other,
+                  onTap: () {
+                    AnalyticsService.instance.logClickCompat();
+                    context.pushCompat(my: myFace, album: other);
+                  },
+                ),
+              )),
+        ],
+      ],
     );
   }
 
@@ -577,7 +667,6 @@ class _CompatLockedCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authProvider);
     final isLoggedIn = auth != null;
-    final coins = auth?.coins ?? 0;
     final alias = album.alias;
     // 관상 list 와 동일 포맷 (DESIGN.md §0.0.1 — 같은 정보 같은 포맷):
     //   "연령대 성별 인종" 공백 구분, 가운데점 X.
@@ -586,8 +675,10 @@ class _CompatLockedCard extends ConsumerWidget {
         '${album.ethnicity.labelKo}';
     final subtitle = alias ?? album.faceShape.korean;
 
+    // 잔액(N코인 보유)은 AppBar 의 _CoinChip 이 single source of truth.
+    // 카드마다 반복하지 않음 — 시각 노이즈 제거.
     final cta = isLoggedIn
-        ? '궁합 보기 ($coins코인 보유)'
+        ? '1코인으로 궁합 보기'
         : '카카오 로그인하고 3 코인 받기';
 
     return Container(
@@ -1017,6 +1108,126 @@ class _Thumb extends StatelessWidget {
           backgroundColor: AppTheme.border,
           child: const FaIcon(FontAwesomeIcons.fileImage,
               color: AppTheme.textHint, size: 18),
+        ),
+      ),
+    );
+  }
+}
+
+enum _LockedSort {
+  newest('최신순'),
+  oldest('오래된순');
+
+  final String label;
+  const _LockedSort(this.label);
+}
+
+enum _UnlockedSort {
+  score('점수순'),
+  newest('최신순'),
+  oldest('오래된순');
+
+  final String label;
+  const _UnlockedSort(this.label);
+}
+
+/// 섹션 헤더 — 타이틀(N) + 정렬 토글. 관상 탭의 sort selector 와 동일 패턴
+/// (DESIGN.md §0.0.1 통일성). T 는 각 섹션의 enum 타입.
+class _SectionHeader<T> extends StatelessWidget {
+  final String title;
+  final int count;
+  final T value;
+  final List<T> values;
+  final String Function(T) labelOf;
+  final ValueChanged<T> onChanged;
+  const _SectionHeader({
+    required this.title,
+    required this.count,
+    required this.value,
+    required this.values,
+    required this.labelOf,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          '$title ($count)',
+          style: AppText.sectionTitle.copyWith(fontWeight: FontWeight.w700),
+        ),
+        PopupMenuButton<T>(
+          tooltip: '정렬',
+          initialValue: value,
+          padding: EdgeInsets.zero,
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+          onSelected: onChanged,
+          itemBuilder: (ctx) => values
+              .map(
+                (o) => PopupMenuItem<T>(
+                  value: o,
+                  child: Text(labelOf(o), style: AppText.body),
+                ),
+              )
+              .toList(),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                labelOf(value),
+                style: AppText.caption.copyWith(color: AppColors.textHint),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              const FaIcon(FontAwesomeIcons.chevronDown,
+                  size: 12, color: AppColors.textHint),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 잔액 chip — AppBar 의 '궁합' 타이틀 옆에 들어가는 단일 source of truth.
+/// 카드마다 반복되던 "(N코인 보유)" 노이즈를 제거하고, tap 시 설정 탭으로
+/// 보낸다 (코인 구매는 설정 탭의 PurchaseSheet 진입로).
+class _CoinChip extends StatelessWidget {
+  final int coins;
+  final VoidCallback onTap;
+  const _CoinChip({required this.coins, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md, vertical: 4),
+        decoration: BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(color: AppTheme.border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const FaIcon(FontAwesomeIcons.coins,
+                size: 12, color: AppTheme.textSecondary),
+            const SizedBox(width: AppSpacing.xs),
+            Text(
+              '$coins',
+              style: AppText.caption.copyWith(
+                color: AppTheme.textPrimary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
       ),
     );

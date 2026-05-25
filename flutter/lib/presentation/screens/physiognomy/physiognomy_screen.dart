@@ -5,7 +5,6 @@ import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
-import 'package:facely/domain/services/share/share_receive_service.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/providers/tab_provider.dart';
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
@@ -13,7 +12,6 @@ import 'package:facely/presentation/widgets/empty_state_placeholder.dart';
 import 'package:facely/presentation/widgets/physiognomy_info_dialog.dart';
 import 'package:facely/presentation/widgets/source_badge.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
@@ -568,11 +566,6 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
               title: const Text('관상'),
               actions: [
                 IconButton(
-                  icon: const FaIcon(FontAwesomeIcons.link, size: 20),
-                  tooltip: '공유받은 link 붙여넣기',
-                  onPressed: () => _showPasteShareLinkDialog(context),
-                ),
-                IconButton(
                   icon: const FaIcon(FontAwesomeIcons.circleInfo, size: 20),
                   onPressed: () => _showInfoDialog(context),
                 ),
@@ -794,83 +787,6 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
     );
   }
 
-  /// 카톡 등에서 받은 facely.kr share link 를 사용자가 직접 붙여넣을 수 있도록.
-  /// Phase B (universal link) 가 완성되면 OS 가 자동으로 가로채므로 이 진입로는
-  /// backup 으로 유지. clipboard 의 첫 facely.kr 후보를 prefill 한다.
-  Future<void> _showPasteShareLinkDialog(BuildContext context) async {
-    final clipData = await Clipboard.getData(Clipboard.kTextPlain);
-    final prefill = clipData?.text ?? '';
-    if (!context.mounted) return;
-    final controller = TextEditingController(text: prefill);
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.xl),
-        ),
-        title: const Text('공유받은 link 붙여넣기',
-            style: AppText.modalTitle),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              '카톡에서 받은 facely.kr/r/... link 를 그대로 붙여넣으세요.',
-              style: AppText.caption,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextField(
-              controller: controller,
-              autofocus: true,
-              maxLines: 2,
-              decoration: const InputDecoration(
-                hintText: 'https://facely.kr/r/{uuid}',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('취소',
-                style: TextStyle(color: AppColors.textHint)),
-          ),
-          TextButton(
-            onPressed: () async {
-              final uuid = ShareReceiveService.extractUuid(controller.text);
-              if (uuid == null) {
-                showTopSnackBar(
-                  Overlay.of(ctx),
-                  CompactSnackBar.error(
-                      message: 'UUID 형식의 link 가 아닙니다'),
-                );
-                return;
-              }
-              Navigator.pop(ctx);
-              final report =
-                  await ShareReceiveService().fetchByUuid(uuid);
-              if (!context.mounted) return;
-              if (report == null) {
-                showTopSnackBar(
-                  Overlay.of(context),
-                  CompactSnackBar.error(
-                      message: '카드를 찾을 수 없습니다 (만료 또는 잘못된 link)'),
-                );
-                return;
-              }
-              context.push(
-                '/r/${report.supabaseId ?? 'local'}',
-                extra: report,
-              );
-            },
-            child: const Text('가져오기',
-                style: TextStyle(color: AppColors.textPrimary)),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _ProfileHintCard extends StatelessWidget {
@@ -965,6 +881,7 @@ class _RecentListHeader extends StatelessWidget {
                 order.label,
                 style: AppText.caption.copyWith(color: AppColors.textHint),
               ),
+              const SizedBox(width: AppSpacing.sm),
               const FaIcon(FontAwesomeIcons.chevronDown,
                   size: 12, color: AppColors.textHint),
             ],

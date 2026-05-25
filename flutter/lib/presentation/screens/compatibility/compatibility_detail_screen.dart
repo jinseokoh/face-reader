@@ -70,6 +70,7 @@ class _CompatibilityDetailScreenState
 
   /// RepaintBoundary key — off-screen 합성 카드 캡처용.
   final GlobalKey _shareCardKey = GlobalKey();
+  bool _isSharing = false;
 
   @override
   Widget build(BuildContext context) {
@@ -79,9 +80,18 @@ class _CompatibilityDetailScreenState
         title: Text(widget.album.alias ?? '궁합 분석'),
         actions: [
           IconButton(
-            icon: const FaIcon(FontAwesomeIcons.kakaoTalk, size: 20),
+            icon: _isSharing
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.textPrimary,
+                    ),
+                  )
+                : const FaIcon(FontAwesomeIcons.kakaoTalk, size: 20),
             tooltip: '카카오 공유',
-            onPressed: () => _shareViaKakao(context),
+            onPressed: _isSharing ? null : () => _shareViaKakao(context),
           ),
         ],
       ),
@@ -141,6 +151,7 @@ class _CompatibilityDetailScreenState
       );
       return;
     }
+    setState(() => _isSharing = true);
     try {
       final pngBytes = await _captureShareCardBytes();
       final r = _bundle.report;
@@ -163,6 +174,8 @@ class _CompatibilityDetailScreenState
           CompactSnackBar.error(message: '공유 중 문제가 발생했어요'),
         );
       }
+    } finally {
+      if (mounted) setState(() => _isSharing = false);
     }
   }
 
@@ -663,33 +676,16 @@ class _CompatShareCardComposite extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 28),
-                        // 관계평 + 오행평 — 두 줄 모두 관상 share card 의
-                        // _IconLineRow (강점/약점) 와 동일한 텍스트 스타일.
-                        // 왼쪽 정렬 + 오버플로 ellipsis.
-                        Text(
-                          report.label.tagline,
-                          textAlign: TextAlign.left,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 42,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF333333),
-                            height: 1.4,
-                          ),
+                        // 관계평 + 오행평 — 관상 share card 의 _IconLineRow
+                        // (강점/약점) 와 동일한 icon + text 패턴으로 통일.
+                        _CompatIconLineRow(
+                          icon: FontAwesomeIcons.handshake,
+                          text: report.label.tagline,
                         ),
                         const SizedBox(height: 12),
-                        Text(
-                          report.elementRelation.kind.modernKo,
-                          textAlign: TextAlign.left,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 42,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF333333),
-                            height: 1.4,
-                          ),
+                        _CompatIconLineRow(
+                          icon: FontAwesomeIcons.handshake,
+                          text: report.elementRelation.kind.modernKo,
                         ),
                       ],
                     ),
@@ -700,6 +696,38 @@ class _CompatShareCardComposite extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// 궁합 share card 의 한줄평 row — 관상 카드 `_IconLineRow` 와 동일한
+/// icon(40) + text(42·w500·#333) 패턴. handshake 아이콘으로 두 줄 통일.
+class _CompatIconLineRow extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  const _CompatIconLineRow({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        FaIcon(icon, color: const Color(0xFF333333), size: 40),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 42,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF333333),
+              height: 1.4,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

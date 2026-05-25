@@ -22,9 +22,9 @@ class SettingsScreen extends ConsumerWidget {
         title: const Text('설정'),
         actions: [
           IconButton(
-            tooltip: '지갑',
-            icon: const FaIcon(FontAwesomeIcons.wallet, size: 20),
-            onPressed: () => context.push('/main/wallet'),
+            tooltip: '사용내역',
+            icon: const FaIcon(FontAwesomeIcons.receipt, size: 20),
+            onPressed: () => context.push('/main/ledger'),
           ),
         ],
       ),

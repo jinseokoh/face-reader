@@ -856,6 +856,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     '얼굴 매력도 연구 (Rhodes, 2006) — 평균성·대칭성과 매력의 상관관계',
   ];
   bool _showNodeDetails = false;
+  bool _isSharing = false;
 
   /// RepaintBoundary key for capturing the off-screen composite share card
   /// rendered for Kakao link preview hero image.
@@ -877,9 +878,19 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             ? [_ReceivedBookmarkAction(report: report)]
             : [
                 IconButton(
-                  icon: const FaIcon(FontAwesomeIcons.kakaoTalk, size: 20),
+                  icon: _isSharing
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.textPrimary,
+                          ),
+                        )
+                      : const FaIcon(FontAwesomeIcons.kakaoTalk, size: 20),
                   tooltip: '카카오 공유',
-                  onPressed: () => _shareViaKakao(context),
+                  onPressed:
+                      _isSharing ? null : () => _shareViaKakao(context),
                 ),
               ],
       ),
@@ -1420,6 +1431,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
       );
       return;
     }
+    setState(() => _isSharing = true);
     try {
       final pngBytes = await _captureShareCardBytes();
       final report = widget.report;
@@ -1437,6 +1449,8 @@ class _ReportPageState extends ConsumerState<ReportPage> {
           CompactSnackBar.error(message: '공유 중 문제가 발생했어요'),
         );
       }
+    } finally {
+      if (mounted) setState(() => _isSharing = false);
     }
   }
 

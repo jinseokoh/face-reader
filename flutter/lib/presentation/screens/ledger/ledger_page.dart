@@ -27,8 +27,8 @@ String _describeTx(CoinTransaction tx) {
   return tx.kind.label;
 }
 
-class WalletPage extends ConsumerWidget {
-  const WalletPage({super.key});
+class LedgerPage extends ConsumerWidget {
+  const LedgerPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -38,7 +38,7 @@ class WalletPage extends ConsumerWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('지갑'),
+        title: const Text('사용내역'),
         actions: [
           if (user != null) ...[
             Padding(
@@ -272,10 +272,10 @@ class _LoggedOutView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            FaIcon(FontAwesomeIcons.wallet,
+            FaIcon(FontAwesomeIcons.receipt,
                 color: AppTheme.textHint, size: 48),
             const SizedBox(height: 16),
-            Text('로그인 후 지갑을 이용할 수 있습니다',
+            Text('로그인 후 사용내역을 이용할 수 있습니다',
                 style: TextStyle(
                     color: AppTheme.textSecondary, fontSize: 15)),
             const SizedBox(height: 20),

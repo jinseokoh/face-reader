@@ -27,7 +27,7 @@ import 'package:uuid/uuid.dart';
 ///
 /// 다음 turn 에 DeepFace 통합 시 [initial...] 인자를 DeepFace 응답으로 채울
 /// 예정. 지금은 sensible default (eastAsian / female / thirties) 로 prefill.
-class DemographicConfirmScreen extends ConsumerStatefulWidget {
+class InfoConfirmScreen extends ConsumerStatefulWidget {
   final CaptureResult capture;
   final Ethnicity initialEthnicity;
   final Gender initialGender;
@@ -36,7 +36,7 @@ class DemographicConfirmScreen extends ConsumerStatefulWidget {
   // 자동으로 prefill. null 이면 default 그대로 유지.
   final Future<FaceMetadata?>? metadataFuture;
 
-  const DemographicConfirmScreen({
+  const InfoConfirmScreen({
     super.key,
     required this.capture,
     this.initialEthnicity = Ethnicity.eastAsian,
@@ -46,12 +46,12 @@ class DemographicConfirmScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<DemographicConfirmScreen> createState() =>
-      _DemographicConfirmScreenState();
+  ConsumerState<InfoConfirmScreen> createState() =>
+      _InfoConfirmScreenState();
 }
 
-class _DemographicConfirmScreenState
-    extends ConsumerState<DemographicConfirmScreen> {
+class _InfoConfirmScreenState
+    extends ConsumerState<InfoConfirmScreen> {
   late Ethnicity _ethnicity;
   late Gender _gender;
   late AgeGroup _ageGroup;
@@ -87,20 +87,21 @@ class _DemographicConfirmScreenState
             children: [
               const SizedBox(height: 16),
               const Text(
-                '추정된 정보가 맞나요?',
+                '추정 정보가 맞나요?',
                 style: AppText.display,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
-                _subtitle(),
+                '인공지능은 실수할 수 있습니다.',
                 style: AppText.body.copyWith(color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
               _PickerRow(
                 label: '인종',
                 value: _ethnicity.labelKo,
+                inferring: _inferring && !_userTouched,
                 onTap: () => _showPicker<Ethnicity>(
                   title: '인종 선택',
                   values: Ethnicity.values,
@@ -113,6 +114,7 @@ class _DemographicConfirmScreenState
               _PickerRow(
                 label: '성별',
                 value: _gender.labelKo,
+                inferring: _inferring && !_userTouched,
                 onTap: () => _showPicker<Gender>(
                   title: '성별 선택',
                   values: Gender.values,
@@ -125,6 +127,7 @@ class _DemographicConfirmScreenState
               _PickerRow(
                 label: '나이대',
                 value: _ageGroup.labelKo,
+                inferring: _inferring && !_userTouched,
                 onTap: () => _showPicker<AgeGroup>(
                   title: '나이대 선택',
                   values: AgeGroup.values
@@ -134,6 +137,12 @@ class _DemographicConfirmScreenState
                   labelOf: (e) => e.labelKo,
                   onConfirm: (e) => _touchAndSet(() => _ageGroup = e),
                 ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                '잘못된 항목은 직접 수정해 주세요.',
+                style: AppText.body.copyWith(color: AppColors.textSecondary),
+                textAlign: TextAlign.center,
               ),
               const Spacer(),
               ElevatedButton(
@@ -354,14 +363,6 @@ class _DemographicConfirmScreenState
     );
   }
 
-  String _subtitle() {
-    if (_inferring) return '얼굴에서 정보를 추정하는 중...';
-    if (_inferred != null && !_userTouched) {
-      return '잘못된 항목은 직접 수정해 주세요.';
-    }
-    return '잘못된 항목은 직접 수정해 주세요.';
-  }
-
   /// picker 한 항목이 바뀌면 userTouched flag 켜고 setState 로 값 반영.
   void _touchAndSet(VoidCallback updater) {
     setState(() {
@@ -375,8 +376,17 @@ class _PickerRow extends StatelessWidget {
   final String label;
   final String value;
   final VoidCallback onTap;
-  const _PickerRow(
-      {required this.label, required this.value, required this.onTap});
+  // DeepFace 결과 대기 중 — value 자리에 spinner + "추정 중..." 표시.
+  // default 값(eastAsian/female/thirties) 이 잠깐 보였다가 추정치로 깜빡이는
+  // 혼란을 차단. tap 은 허용 — 만지면 _userTouched=true 되어 추정값으로 덮지
+  // 않으므로 사용자 선택 존중 로직과 자연스럽게 연동.
+  final bool inferring;
+  const _PickerRow({
+    required this.label,
+    required this.value,
+    required this.onTap,
+    this.inferring = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -396,9 +406,25 @@ class _PickerRow extends StatelessWidget {
                 style: AppText.body.copyWith(color: AppColors.textSecondary)),
             Row(
               children: [
-                Text(value,
-                    style: AppText.body
-                        .copyWith(fontWeight: FontWeight.w600)),
+                if (inferring) ...[
+                  const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                          AppColors.textHint),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text('추정 중...',
+                      style: AppText.body.copyWith(
+                          color: AppColors.textHint,
+                          fontWeight: FontWeight.w500)),
+                ] else
+                  Text(value,
+                      style: AppText.body
+                          .copyWith(fontWeight: FontWeight.w600)),
                 const SizedBox(width: 6),
                 const FaIcon(FontAwesomeIcons.chevronDown,
                     color: AppColors.textHint, size: 12),

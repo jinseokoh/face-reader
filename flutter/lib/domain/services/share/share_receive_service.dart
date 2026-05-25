@@ -5,6 +5,17 @@ import 'package:flutter/foundation.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/data/services/supabase_service.dart';
 
+/// fetch 결과 — rehydrated report + auto-register 적격성.
+///
+/// `autoRegisterEligible` 는 원본 (sender 측) body 의 `source=camera &&
+/// isMyFace=true` 일 때 true. 채팅 매칭 후보로 자동 등록할지 판단 용.
+/// rehydrated report 의 source/isMyFace 는 받는 사람 관점으로 override 되므로
+/// 이 flag 가 없으면 호출자가 원본 메타데이터를 알 길이 없다.
+typedef ShareReceiveResult = ({
+  FaceReadingReport report,
+  bool autoRegisterEligible,
+});
+
 /// 카톡 등으로 받은 share URL (https://facely.kr/r/{uuid}) 을 받아
 /// Supabase metrics row 를 fetch 한 뒤 받는 사람 관점의 FaceReadingReport 로
 /// rehydrate 한다.
@@ -16,6 +27,8 @@ import 'package:facely/data/services/supabase_service.dart';
 ///     parse. 원본 alias·thumbnailPath 는 leak 차단.
 ///   • `thumbnailKey` 와 `supabaseId` 는 그대로 둔다 — CDN 직통 read-only,
 ///     향후 궁합 pair_key 의 절반.
+///   • 원본 (sender 측) `source` 와 `isMyFace` 를 별도 flag (autoRegisterEligible)
+///     로 노출해 router 가 채팅 매칭 후보 자동 등록 여부 판단에 사용.
 ///
 /// 받는 사람이 Hive 에 저장하면 본문이 영구 박힘 — Supabase row 가 만료·삭제
 /// 돼도 view 가능 (offline·resilient).
@@ -27,7 +40,7 @@ class ShareReceiveService {
 
   /// uuid 로 fetch. row 없거나 body parse 실패 시 null.
   /// 호출자가 UI 에 "잘못된 link" snackbar 등 노출.
-  Future<FaceReadingReport?> fetchByUuid(String uuid) async {
+  Future<ShareReceiveResult?> fetchByUuid(String uuid) async {
     debugPrint('[ShareReceiveService] fetch uuid=$uuid');
     final row = await _supabase.getMetrics(uuid);
     if (row == null) {
@@ -41,6 +54,12 @@ class ShareReceiveService {
     }
     try {
       final original = jsonDecode(body) as Map<String, dynamic>;
+      // override 전에 원본 메타 캡쳐 — 채팅 매칭 자동 등록 적격성 판정에 사용.
+      // sender 측 카메라 자가 촬영 본인 카드만 받은 사람 앨범에 자동 등록.
+      final origSourceName = original['source'] as String?;
+      final origIsMyFace = original['isMyFace'] as bool? ?? false;
+      final autoRegisterEligible =
+          origSourceName == AnalysisSource.camera.name && origIsMyFace;
       final overridden = <String, dynamic>{
         ...original,
         'source': AnalysisSource.received.name,
@@ -59,8 +78,9 @@ class ShareReceiveService {
       final report =
           FaceReadingReport.fromJsonString(jsonEncode(overridden));
       debugPrint('[ShareReceiveService] OK uuid=$uuid alias_orig='
-          '${original['alias']} thumbKey=${report.thumbnailKey}');
-      return report;
+          '${original['alias']} thumbKey=${report.thumbnailKey} '
+          'autoRegisterEligible=$autoRegisterEligible');
+      return (report: report, autoRegisterEligible: autoRegisterEligible);
     } catch (e, st) {
       debugPrint('[ShareReceiveService] parse failed uuid=$uuid error=$e');
       debugPrint('$st');
