@@ -15,6 +15,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta
+          name="naver-site-verification"
+          content="030f9c075e4b47e60585eecd911d3d5d26d82122"
+        />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2" />
         <Meta />
         <Links />

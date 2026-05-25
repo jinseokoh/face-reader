@@ -1,5 +1,6 @@
 import 'package:facely/core/theme.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
+import 'package:facely/presentation/widgets/legal_doc_sheet.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 import 'package:facely/presentation/widgets/purchase_sheet.dart';
 import 'package:flutter/material.dart';
@@ -22,7 +23,7 @@ class SettingsScreen extends ConsumerWidget {
         title: const Text('설정'),
         actions: [
           IconButton(
-            tooltip: '사용내역',
+            tooltip: '코인 사용내역',
             icon: const FaIcon(FontAwesomeIcons.receipt, size: 20),
             onPressed: () => context.push('/main/ledger'),
           ),
@@ -151,12 +152,12 @@ class SettingsScreen extends ConsumerWidget {
           _menuItem(
             icon: FontAwesomeIcons.fileLines,
             title: '이용약관 보기',
-            onTap: () {},
+            onTap: () => LegalDocSheet.showTerms(context, ref),
           ),
           _menuItem(
             icon: FontAwesomeIcons.shieldHalved,
             title: '개인정보 약관 보기',
-            onTap: () {},
+            onTap: () => LegalDocSheet.showPrivacy(context, ref),
           ),
           if (isLoggedIn) ...[
             _menuItem(

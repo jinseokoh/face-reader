@@ -38,7 +38,7 @@ class LedgerPage extends ConsumerWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('사용내역'),
+        title: const Text('코인 사용내역'),
         actions: [
           if (user != null) ...[
             Padding(
@@ -275,7 +275,7 @@ class _LoggedOutView extends StatelessWidget {
             FaIcon(FontAwesomeIcons.receipt,
                 color: AppTheme.textHint, size: 48),
             const SizedBox(height: 16),
-            Text('로그인 후 사용내역을 이용할 수 있습니다',
+            Text('로그인 후 코인 사용내역을 이용할 수 있습니다',
                 style: TextStyle(
                     color: AppTheme.textSecondary, fontSize: 15)),
             const SizedBox(height: 20),
