@@ -1,11 +1,13 @@
-import { Form, useNavigation } from 'react-router'
+import { useState } from 'react'
 import type { Route } from './+types/contact'
 
 /**
- * `GET/POST /contact` — **개인정보 삭제 요청 폼** (Google Play 요구사항).
+ * `GET /contact` — **개인정보 삭제 요청 폼** (Google Play 요구사항).
  *
- * POST 시 web3forms 로 전송 → 운영자 이메일로 전달.
- * 실키는 `pnpm wrangler secret put WEB3FORMS_ACCESS_KEY`.
+ * 브라우저가 직접 `api.web3forms.com` 으로 AJAX POST. Worker → web3forms 는
+ * CF WAF (1106) 에 차단되므로 client-side fetch 로 우회.
+ * web3forms 응답의 `success` / `message` 를 그대로 상태로 노출 → 메일 발송
+ * 실패 시 실제 원인이 화면에 표시됨.
  */
 
 export function meta(_: Route.MetaArgs) {
@@ -18,69 +20,58 @@ export function meta(_: Route.MetaArgs) {
   ]
 }
 
-type ActionData =
-  | { ok: true }
-  | { ok: false; error: string }
+export async function loader({ context }: Route.LoaderArgs) {
+  return { accessKey: context.cloudflare.env.WEB3FORMS_ACCESS_KEY }
+}
 
-export async function action({
-  request,
-  context,
-}: Route.ActionArgs): Promise<ActionData> {
-  const form = await request.formData()
-  const email = String(form.get('email') ?? '').trim()
-  const accountId = String(form.get('accountId') ?? '').trim()
-  const reason = String(form.get('reason') ?? '').trim()
-  const consent = form.get('consent') === 'on'
+type Status =
+  | { kind: 'idle' }
+  | { kind: 'sending' }
+  | { kind: 'success' }
+  | { kind: 'error'; message: string }
 
-  if (!email || !accountId || !consent) {
-    return { ok: false, error: '필수 항목을 모두 입력해 주세요.' }
-  }
+export default function Contact({ loaderData }: Route.ComponentProps) {
+  const { accessKey } = loaderData
+  const [status, setStatus] = useState<Status>({ kind: 'idle' })
 
-  const accessKey = context.cloudflare.env.WEB3FORMS_ACCESS_KEY
-  if (!accessKey || accessKey === 'REPLACE_ME') {
-    return {
-      ok: false,
-      error: '서비스가 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.',
+  const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    // React synthetic event 의 currentTarget 은 await 이후 null 됨 — 미리 캡쳐.
+    const form = event.currentTarget
+    setStatus({ kind: 'sending' })
+
+    const formData = new FormData(form)
+    formData.append('access_key', accessKey)
+    formData.append('subject', '[Facely] 개인정보 삭제 요청')
+    formData.append('from_name', 'Facely 삭제 요청 폼')
+
+    try {
+      const response = await fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        body: formData,
+      })
+      const data = (await response.json()) as {
+        success?: boolean
+        message?: string
+      }
+      if (data.success) {
+        setStatus({ kind: 'success' })
+        form.reset()
+      } else {
+        setStatus({
+          kind: 'error',
+          message: data.message ?? `HTTP ${response.status}`,
+        })
+      }
+    } catch (err) {
+      setStatus({
+        kind: 'error',
+        message: err instanceof Error ? err.message : '네트워크 오류',
+      })
     }
   }
 
-  const res = await fetch('https://api.web3forms.com/submit', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify({
-      access_key: accessKey,
-      subject: '[Facely] 개인정보 삭제 요청',
-      from_name: 'Facely 삭제 요청 폼',
-      email,
-      message: [
-        '【개인정보 삭제 요청】',
-        '',
-        `회신 이메일: ${email}`,
-        `가입 ID / 이메일: ${accountId}`,
-        '',
-        '사유:',
-        reason || '(미작성)',
-        '',
-        `User-Agent: ${request.headers.get('user-agent') ?? '-'}`,
-        `IP: ${request.headers.get('cf-connecting-ip') ?? '-'}`,
-      ].join('\n'),
-    }),
-  })
-
-  if (!res.ok) {
-    return { ok: false, error: '전송 중 오류가 발생했습니다. 다시 시도해 주세요.' }
-  }
-  return { ok: true }
-}
-
-export default function Removal({ actionData }: Route.ComponentProps) {
-  const nav = useNavigation()
-  const submitting = nav.state === 'submitting'
-
-  if (actionData?.ok) {
+  if (status.kind === 'success') {
     return (
       <main className="doc">
         <h1>요청이 접수되었습니다</h1>
@@ -94,6 +85,8 @@ export default function Removal({ actionData }: Route.ComponentProps) {
     )
   }
 
+  const sending = status.kind === 'sending'
+
   return (
     <main className="doc">
       <h1>개인정보 삭제 요청</h1>
@@ -102,7 +95,7 @@ export default function Removal({ actionData }: Route.ComponentProps) {
         결과를 회신드립니다.
       </p>
 
-      <Form method="post" className="form">
+      <form onSubmit={onSubmit} className="form">
         <label className="form-label">
           회신 받을 이메일 <span className="form-required">*</span>
           <input
@@ -119,7 +112,7 @@ export default function Removal({ actionData }: Route.ComponentProps) {
           가입 시 사용한 이메일 또는 ID <span className="form-required">*</span>
           <input
             type="text"
-            name="accountId"
+            name="name"
             required
             autoComplete="username"
             className="form-input"
@@ -128,10 +121,11 @@ export default function Removal({ actionData }: Route.ComponentProps) {
         </label>
 
         <label className="form-label">
-          삭제 사유 (선택)
+          삭제 사유 <span className="form-required">*</span>
           <textarea
-            name="reason"
+            name="message"
             rows={4}
+            required
             className="form-input"
             placeholder="자유롭게 작성해 주세요"
           />
@@ -144,14 +138,14 @@ export default function Removal({ actionData }: Route.ComponentProps) {
           </span>
         </label>
 
-        {actionData && !actionData.ok && (
-          <p className="form-error">{actionData.error}</p>
+        {status.kind === 'error' && (
+          <p className="form-error">전송 실패: {status.message}</p>
         )}
 
-        <button type="submit" className="form-submit" disabled={submitting}>
-          {submitting ? '전송 중…' : '삭제 요청 보내기'}
+        <button type="submit" className="form-submit" disabled={sending}>
+          {sending ? '전송 중…' : '삭제 요청 보내기'}
         </button>
-      </Form>
+      </form>
 
       <p className="doc-back">
         <a href="/">← 홈으로</a>

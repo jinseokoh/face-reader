@@ -25,15 +25,11 @@
     "PLAY_STORE_URL": "https://play.google.com/store/apps/details?id=com.scienceintegration.facely",
     "APP_BUNDLE_ID_IOS": "com.scienceintegration.facely",
     "APP_BUNDLE_ID_ANDROID": "com.scienceintegration.facely",
-    // R2 presign — bucket / 계정 / CDN base URL.
     // Secrets (R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, FACE_API_SECRET) 는
     // `pnpm wrangler secret put <name>` 로 별도 등록.
     "R2_ACCOUNT_ID": "ca1ff6eccc34cde965e29dd59de4e1ee",
     "R2_BUCKET_NAME": "facely",
     "R2_CDN_BASE": "https://cdn.facely.kr",
-    "FACE_TOKEN_TTL_SEC": "300",
-    // web3forms — /removal 폼 제출 → email forwarding.
-    // 실키는 `pnpm wrangler secret put WEB3FORMS_ACCESS_KEY` 로 교체 (이 var 는 삭제).
-    "WEB3FORMS_ACCESS_KEY": "REPLACE_ME"
+    "FACE_TOKEN_TTL_SEC": "300"
   }
 }
