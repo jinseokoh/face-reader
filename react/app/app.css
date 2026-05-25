@@ -48,17 +48,25 @@ code {
 .landing {
   text-align: center;
   min-height: 100dvh;
-  padding: 24px;
+  padding: 32px 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 14px;
 }
+.landing-hero-img {
+  display: block;
+  width: 100%;
+  max-width: 360px;
+  height: auto;
+  margin: 0 auto 8px;
+  border-radius: 20px;
+}
 .landing-hero {
-  /* 디자인 5단 size (24/16/14/13/12) 의 hero 예외. Flutter home 의 SongMyung 48px
-     과 시각적으로 균형 맞추는 단일 hero size — 본 landing 한 곳에서만 사용. */
-  font-size: 48px;
+  /* 디자인 5단 size (24/16/14/13/12) 의 hero 예외. hero 이미지와 시각적
+     균형을 위해 1 step 축소. */
+  font-size: 40px;
   font-weight: 800;
   line-height: 1.15;
   letter-spacing: -0.01em;
@@ -73,7 +81,174 @@ code {
   line-height: 1.55;
 }
 
+.landing-cta {
+  margin-top: 8px;
+}
+.landing-cta-primary {
+  display: inline-block;
+  background: var(--ink);
+  color: #fff;
+  padding: 14px 28px;
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.landing-footer {
+  margin-top: auto;
+  padding-top: 32px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--caption);
+}
+.landing-footer a {
+  color: var(--caption);
+  text-decoration: none;
+}
+.landing-footer a:hover {
+  color: var(--ink);
+}
+
 .error h1 {
+  color: var(--accent);
+}
+
+/* ─── doc pages (terms / privacy) ─── */
+.doc {
+  max-width: 720px;
+  padding: 32px 20px 64px;
+}
+.doc-body h1 {
+  font-size: 24px;
+  margin: 0 0 24px;
+}
+.doc-body h2 {
+  font-size: 18px;
+  margin: 32px 0 10px;
+}
+.doc-body h3 {
+  font-size: 15px;
+  margin: 20px 0 8px;
+}
+.doc-body p,
+.doc-body ul {
+  font-size: 14px;
+  color: var(--ink);
+  line-height: 1.7;
+  margin: 0 0 12px;
+}
+.doc-body ul {
+  padding-left: 20px;
+}
+.doc-body li {
+  margin-bottom: 4px;
+}
+.doc-body a {
+  color: var(--ink);
+  text-decoration: underline;
+}
+.doc-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0 20px;
+  font-size: 13px;
+}
+.doc-body th,
+.doc-body td {
+  border: 1px solid #e0e0e0;
+  padding: 8px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+.doc-body th {
+  background: #f0f0f1;
+  font-weight: 600;
+}
+.doc-lead {
+  color: var(--caption);
+  font-size: 14px;
+  margin: 0 0 24px;
+  line-height: 1.6;
+}
+.doc-back {
+  margin-top: 40px;
+  font-size: 13px;
+}
+.doc-back a {
+  color: var(--caption);
+  text-decoration: none;
+}
+
+/* ─── form (removal) ─── */
+.form {
+  display: grid;
+  gap: 18px;
+  margin: 24px 0;
+}
+.form-label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.form-required {
+  color: var(--accent);
+}
+.form-input {
+  font: inherit;
+  font-size: 14px;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  font-weight: 400;
+  width: 100%;
+}
+.form-input:focus {
+  outline: none;
+  border-color: var(--ink);
+}
+textarea.form-input {
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.5;
+}
+.form-check {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.5;
+}
+.form-check input {
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+.form-submit {
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 14px;
+  background: var(--ink);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.form-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.form-error {
+  margin: 0;
+  font-size: 13px;
   color: var(--accent);
 }
 

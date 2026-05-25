@@ -30,10 +30,30 @@ export function meta(_: Route.MetaArgs) {
 export default function Index() {
   return (
     <main className="landing">
+      <img
+        src="https://cdn.facely.kr/assets/hero.png"
+        alt="Facely"
+        className="landing-hero-img"
+        fetchPriority="high"
+      />
       <h1 className="landing-hero">관상은 과학이다.</h1>
       <p className="landing-sub">
         Facely, 안면 계측 데이터 기반 인공지능 관상앱.
       </p>
+
+      <div className="landing-cta">
+        <a href="/app" className="landing-cta-primary">
+          앱 받기
+        </a>
+      </div>
+
+      <footer className="landing-footer">
+        <a href="/terms">이용약관</a>
+        <span aria-hidden="true">·</span>
+        <a href="/privacy">개인정보처리방침</a>
+        <span aria-hidden="true">·</span>
+        <a href="/removal">개인정보 삭제</a>
+      </footer>
     </main>
   )
 }

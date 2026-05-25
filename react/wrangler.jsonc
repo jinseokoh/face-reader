@@ -31,6 +31,9 @@
     "R2_ACCOUNT_ID": "ca1ff6eccc34cde965e29dd59de4e1ee",
     "R2_BUCKET_NAME": "facely",
     "R2_CDN_BASE": "https://cdn.facely.kr",
-    "FACE_TOKEN_TTL_SEC": "300"
+    "FACE_TOKEN_TTL_SEC": "300",
+    // web3forms — /removal 폼 제출 → email forwarding.
+    // 실키는 `pnpm wrangler secret put WEB3FORMS_ACCESS_KEY` 로 교체 (이 var 는 삭제).
+    "WEB3FORMS_ACCESS_KEY": "REPLACE_ME"
   }
 }
