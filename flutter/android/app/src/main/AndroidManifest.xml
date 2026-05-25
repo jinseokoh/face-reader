@@ -45,6 +45,11 @@ android:label="AI 관상가"
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- AdMob app ID — Google official test app ID (phase 1).
+             Release 전에 실 app ID 로 교체 + .env 의 ADMOB_REWARDED_UNIT_ID_ANDROID 도 교체. -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-3940256099942544~3347511713"/>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

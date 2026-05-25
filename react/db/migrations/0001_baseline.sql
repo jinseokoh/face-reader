@@ -436,7 +436,107 @@ grant  execute on function public.spend_coins(integer, text, text)              
 grant  execute on function public.unlock_compat(text)                            to authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 11. TODO — ads / ad_views / claim_ad_reward
+-- 11. rewarded_ad_progress — AdMob 일일 무료 코인 (3편 시청 = 1 코인)
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 정책:
+--   - day = (now() AT TIME ZONE 'Asia/Seoul')::date — KST 자정 기준 reset
+--   - 하루 최대 3편 시청 → 자동 +1 코인 (kind=bonus), 그날은 더 받을 수 없음
+--   - 진행도 / claim 여부는 (user_id, day) row 1건에 누적
+--   - Flutter `PurchaseSheet` "오늘의 무료 코인" 카드가 상태 표시 + 진입
+
+create table if not exists public.rewarded_ad_progress (
+  user_id    uuid        not null references auth.users(id) on delete cascade,
+  day        date        not null default ((now() at time zone 'Asia/Seoul')::date),
+  views      integer     not null default 0,
+  claimed    boolean     not null default false,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, day)
+);
+
+alter table public.rewarded_ad_progress enable row level security;
+
+drop policy if exists "rewarded_ad_progress_self_read" on public.rewarded_ad_progress;
+create policy "rewarded_ad_progress_self_read"
+  on public.rewarded_ad_progress for select using (user_id = auth.uid());
+
+-- write 는 RPC (security definer) 만. anon/authenticated 직접 write 없음.
+
+-- RPC: rewarded_ad_status — 오늘의 진행도 read
+create or replace function public.rewarded_ad_status()
+returns json
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_uid     uuid    := auth.uid();
+  v_day     date    := (now() at time zone 'Asia/Seoul')::date;
+  v_views   integer := 0;
+  v_claimed boolean := false;
+begin
+  if v_uid is null then raise exception 'not authenticated'; end if;
+  select views, claimed into v_views, v_claimed
+    from rewarded_ad_progress
+    where user_id = v_uid and day = v_day;
+  return json_build_object(
+    'progress',      coalesce(v_views, 0),
+    'max',           3,
+    'claimed_today', coalesce(v_claimed, false),
+    'balance_after', null
+  );
+end; $$;
+
+-- RPC: record_rewarded_ad_view — 광고 1편 시청 기록 + 3편 도달 시 자동 +1 코인
+-- 반환: { progress, max, claimed_today, balance_after }
+--   balance_after — 이번 호출로 코인 지급된 경우 새 잔액, 아니면 null
+create or replace function public.record_rewarded_ad_view()
+returns json
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_uid     uuid := auth.uid();
+  v_day     date := (now() at time zone 'Asia/Seoul')::date;
+  v_views   integer;
+  v_claimed boolean;
+  v_balance integer;
+begin
+  if v_uid is null then raise exception 'not authenticated'; end if;
+
+  insert into rewarded_ad_progress (user_id, day, views, claimed, updated_at)
+    values (v_uid, v_day, 1, false, now())
+    on conflict (user_id, day) do update
+      set views = case
+            when rewarded_ad_progress.claimed then rewarded_ad_progress.views
+            when rewarded_ad_progress.views >= 3 then rewarded_ad_progress.views
+            else rewarded_ad_progress.views + 1
+          end,
+          updated_at = now()
+    returning views, claimed into v_views, v_claimed;
+
+  if v_views >= 3 and not v_claimed then
+    -- 자동 +1 코인 grant. grant_coins 가 SECURITY DEFINER 이지만
+    -- auth.uid() 는 동일 JWT 컨텍스트 — 정상 동작.
+    select grant_coins(1, 'bonus', null, null, '광고 3편 무료 보상')
+      into v_balance;
+    update rewarded_ad_progress
+      set claimed = true, updated_at = now()
+      where user_id = v_uid and day = v_day;
+    v_claimed := true;
+  end if;
+
+  return json_build_object(
+    'progress',      v_views,
+    'max',           3,
+    'claimed_today', v_claimed,
+    'balance_after', v_balance
+  );
+end; $$;
+
+revoke execute on function public.rewarded_ad_status()      from public, anon;
+revoke execute on function public.record_rewarded_ad_view() from public, anon;
+grant  execute on function public.rewarded_ad_status()      to authenticated;
+grant  execute on function public.record_rewarded_ad_view() to authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 12. TODO — ads / ad_views / claim_ad_reward (custom video 트랙, dormant)
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 보상형 광고 시스템. Flutter `lib/data/services/ad_service.dart` 가 참조하나
 -- 본 baseline 작성 시점엔 운영 schema dump 가 없어 정확한 DDL 미반영.

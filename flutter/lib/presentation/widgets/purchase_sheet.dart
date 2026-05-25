@@ -1,13 +1,16 @@
+import 'package:facely/core/theme.dart';
+import 'package:facely/data/services/admob_service.dart';
+import 'package:facely/data/services/analytics_service.dart';
+import 'package:facely/data/services/coin_service.dart';
+import 'package:facely/data/services/free_coin_service.dart';
+import 'package:facely/presentation/providers/auth_provider.dart';
+import 'package:facely/presentation/providers/free_coin_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:facely/core/theme.dart';
-import 'package:facely/data/services/analytics_service.dart';
-import 'package:facely/data/services/coin_service.dart';
-import 'package:facely/presentation/providers/auth_provider.dart';
-
 /// Bottom sheet that loads coin products from RevenueCat and lets the user
-/// trigger a purchase. Refreshes auth coins on success.
+/// trigger a purchase. Also exposes the AdMob rewarded-video free-coin track
+/// (3편 시청 = 1코인, 1일 1회). Refreshes auth coins on success.
 class PurchaseSheet extends ConsumerStatefulWidget {
   final VoidCallback? onPurchased;
   const PurchaseSheet({super.key, this.onPurchased});
@@ -27,25 +30,180 @@ class PurchaseSheet extends ConsumerStatefulWidget {
   }
 }
 
+/// 오늘의 무료 코인 버튼 — IAP 상품 버튼과 시각적으로 동일한 surface/border 톤.
+/// 좌측 label = "1 코인 무료 (가능 X/3)", 우측 trailing = "광고 보기" / 진행 상태.
+class _FreeCoinCard extends StatelessWidget {
+  static const _subLabel = '광고 3편을 보면 1코인 충전';
+  final FreeCoinStatus status;
+  final bool busy;
+  final VoidCallback? onTap;
+
+  const _FreeCoinCard(
+      {required this.status, required this.busy, required this.onTap});
+
+  String get _mainLabel {
+    if (status.claimedToday) return '오늘의 무료 1코인 (충전 완료)';
+    return '오늘의 무료1코인 (${status.progress}/${status.max})';
+  }
+
+  String get _rightLabel {
+    if (status.claimedToday) return '내일 다시';
+    return '광고 보기';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 64,
+      child: ElevatedButton(
+        onPressed: busy ? null : onTap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.surface,
+          foregroundColor: AppColors.textPrimary,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.lg - 2),
+            side: const BorderSide(color: AppColors.border),
+          ),
+        ),
+        child: busy
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2))
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(_mainLabel, style: AppText.subTitle),
+                      const SizedBox(height: 2),
+                      const Text(_subLabel, style: AppText.hint),
+                    ],
+                  ),
+                  Text(_rightLabel,
+                      style: AppText.body
+                          .copyWith(color: AppColors.textSecondary)),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+class _FreeCoinSkeleton extends StatelessWidget {
+  const _FreeCoinSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox(width: double.infinity, height: 64);
+  }
+}
+
 class _PurchaseSheetState extends ConsumerState<PurchaseSheet> {
   List<CoinProduct> _products = [];
   bool _isLoading = true;
   String? _purchasing;
+  bool _watchingAd = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final freeCoinAsync = ref.watch(freeCoinStatusProvider);
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+            AppSpacing.xxl, AppSpacing.xxl, AppSpacing.xxl, AppSpacing.huge),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('코인 충전', style: AppText.modalTitle),
+            const SizedBox(height: AppSpacing.xl),
+            // 무료 코인 카드 (AdMob rewarded 3편 = 1코인).
+            // 비로그인이면 null → 카드 미노출.
+            freeCoinAsync.when(
+              data: (status) => status == null
+                  ? const SizedBox.shrink()
+                  : Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                      child: _FreeCoinCard(
+                        status: status,
+                        busy: _watchingAd,
+                        onTap: status.claimedToday || _purchasing != null
+                            ? null
+                            : _watchAd,
+                      ),
+                    ),
+              loading: () => const Padding(
+                padding: EdgeInsets.only(bottom: AppSpacing.md),
+                child: _FreeCoinSkeleton(),
+              ),
+              error: (_, _) => const SizedBox.shrink(),
+            ),
+            if (_isLoading)
+              const Padding(
+                padding: EdgeInsets.all(AppSpacing.xxl),
+                child: CircularProgressIndicator(),
+              )
+            else if (_products.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(AppSpacing.xxl),
+                child: Text(
+                  _emptyReason(),
+                  style: AppText.caption.copyWith(color: AppColors.textHint),
+                  textAlign: TextAlign.center,
+                ),
+              )
+            else
+              ..._products.map((p) => Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.sm + 2),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed:
+                            _purchasing != null ? null : () => _purchase(p),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.surface,
+                          foregroundColor: AppColors.textPrimary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(AppRadius.lg - 2),
+                            side: const BorderSide(color: AppColors.border),
+                          ),
+                        ),
+                        child: _purchasing == p.id
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2))
+                            : Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text('${p.coins} 코인',
+                                      style: AppText.subTitle),
+                                  Text(p.price,
+                                      style: AppText.body.copyWith(
+                                          color: AppColors.textSecondary)),
+                                ],
+                              ),
+                      ),
+                    ),
+                  )),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   void initState() {
     super.initState();
     _loadProducts();
-  }
-
-  Future<void> _loadProducts() async {
-    final products = await CoinService().getProducts();
-    if (mounted) {
-      setState(() {
-        _products = products;
-        _isLoading = false;
-      });
-    }
   }
 
   /// 빈 상품 list 의 구체 원인을 한 문장으로. 진단 / 디버그 용.
@@ -60,6 +218,16 @@ class _PurchaseSheetState extends ConsumerState<PurchaseSheet> {
     return '스토어에 등록된 상품이 없습니다.\n'
         '(App Store Connect / Play Console 의 상품 ID·승인 상태 확인,\n'
         '시뮬레이터/에뮬레이터에서는 IAP 미작동)';
+  }
+
+  Future<void> _loadProducts() async {
+    final products = await CoinService().getProducts();
+    if (mounted) {
+      setState(() {
+        _products = products;
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _purchase(CoinProduct product) async {
@@ -83,116 +251,44 @@ class _PurchaseSheetState extends ConsumerState<PurchaseSheet> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('코인 충전',
-                style: TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600)),
-            const SizedBox(height: 20),
-            // 광고 보상 옵션 — 광고 SDK 미통합 상태의 placeholder. UI 자리만 잡고
-            // SDK 연결되면 onPressed 만 실 reward 흐름으로 교체.
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: _purchasing != null
-                      ? null
-                      : () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('광고 시청 기능은 곧 활성화됩니다'),
-                            ),
-                          );
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.surface,
-                    foregroundColor: AppTheme.textPrimary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: AppTheme.border),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('1 코인',
-                          style: TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.w600)),
-                      Text('광고보기',
-                          style: TextStyle(
-                              color: AppTheme.textSecondary, fontSize: 14)),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            if (_isLoading)
-              const Padding(
-                padding: EdgeInsets.all(24),
-                child: CircularProgressIndicator(),
-              )
-            else if (_products.isEmpty)
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  _emptyReason(),
-                  style: TextStyle(color: AppTheme.textHint, fontSize: 13),
-                  textAlign: TextAlign.center,
-                ),
-              )
-            else
-              ..._products.map((p) => Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton(
-                        onPressed:
-                            _purchasing != null ? null : () => _purchase(p),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.surface,
-                          foregroundColor: AppTheme.textPrimary,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: BorderSide(color: AppTheme.border),
-                          ),
-                        ),
-                        child: _purchasing == p.id
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2))
-                            : Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text('${p.coins} 코인',
-                                      style: const TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w600)),
-                                  Text(p.price,
-                                      style: TextStyle(
-                                          color: AppTheme.textSecondary,
-                                          fontSize: 14)),
-                                ],
-                              ),
-                      ),
-                    ),
-                  )),
-          ],
-        ),
-      ),
-    );
+  Future<void> _watchAd() async {
+    setState(() => _watchingAd = true);
+    final earned = await AdMobService().showRewarded();
+    if (!mounted) {
+      return;
+    }
+    if (!earned) {
+      setState(() => _watchingAd = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('광고 시청이 완료되지 않았어요')),
+      );
+      return;
+    }
+    try {
+      final s = await FreeCoinService().recordView();
+      if (!mounted) return;
+      ref.invalidate(freeCoinStatusProvider);
+      if (s.balanceAfter != null) {
+        await ref.read(authProvider.notifier).refreshCoins();
+        if (!mounted) return;
+        widget.onPurchased?.call();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('1 코인이 무료 충전되었습니다!')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${s.remaining}편 더 보면 충전됩니다'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('진행도 저장 실패: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _watchingAd = false);
+    }
   }
 }

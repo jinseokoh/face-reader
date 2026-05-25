@@ -1,6 +1,6 @@
 # TODO — 해야 할 일
 
-**최종 업데이트**: 2026-05-23
+**최종 업데이트**: 2026-05-25
 **역할**: 우선순위가 살아있는 단일 작업 큐. 완료 항목은 §완료 이력 으로 내림. 새 작업은 우선순위 표 안에 추가.
 
 ---
@@ -76,6 +76,30 @@ REVENUECAT_API_KEY_ANDROID=goog_xxxxxxxxxxxxxxxxxxxxxxxxx
 - `spend_coins` / `unlock_compat` 은 react/db migration 0001 에 정의됨. signup 보너스는 `handle_new_user` 트리거 + `bonus_recipients` ledger 가 이미 작동
 - 결제로 받은 coin 은 `AuthService.addCoins(kind: purchase, productId)` 가 `coins` 테이블에 기록
 
+#### AdMob 실 ad unit 전환 체크리스트
+
+현재 Google 공식 test app/unit ID (영구 유효, 가짜 광고) 만 동작. 실 광고 노출·수익 받으려면:
+
+**1) AdMob 콘솔 설정**
+- [ ] admob.google.com → Apps → Add App → iOS · Android 두 앱 등록 (Bundle ID `com.scienceintegration.facely` / package name 동일)
+- [ ] 각 앱마다 Ad Unit → "Rewarded" 1개 생성 → `ca-app-pub-XXXX/YYYY` ID 복사
+
+**2) Native config 교체**
+- [ ] `flutter/android/app/src/main/AndroidManifest.xml` 의 `meta-data com.google.android.gms.ads.APPLICATION_ID` → 실 Android app ID (`~` 뒤 숫자 형식)
+- [ ] `flutter/ios/Runner/Info.plist` 의 `GADApplicationIdentifier` → 실 iOS app ID. `SKAdNetworkItems` 도 AdMob 가이드 따라 전체 네트워크 ID 추가 (현재는 Google 1개만)
+
+**3) Flutter `.env` 키 추가**
+```
+ADMOB_REWARDED_UNIT_ID_IOS=ca-app-pub-xxxx/yyyy
+ADMOB_REWARDED_UNIT_ID_ANDROID=ca-app-pub-xxxx/yyyy
+```
+- 비어있으면 `AdMobService._rewardedUnitId()` 가 Google test unit ID 로 fallback (개발 안전망)
+
+**4) 정책·UX 검증**
+- [ ] Apple ATT (App Tracking Transparency) prompt 노출 정책 — iOS 14.5+ 에서 personalized ad 받으려면 NSUserTrackingUsageDescription + ATTrackingManager 호출 필요. 현재 미통합 — non-personalized 광고로 충분하면 생략 OK
+- [ ] Play / App Store 의 AdMob 광고 정책 (광고 라벨, 미성년자 보호) 검토
+- [ ] AdMob mediation 추가 검토 (Phase 2 hybrid 시 custom video provider 와 weight 분배)
+
 ### Roadmap-D · narrative engine 확장
 
 - 8 섹션 fallback variant 1→5 확장 완료. 남은 영역: 종합 조언 stage 가 연령대별 더 풍성하게.
@@ -87,6 +111,7 @@ REVENUECAT_API_KEY_ANDROID=goog_xxxxxxxxxxxxxxxxxxxxxxxxx
 
 | 날짜 | 작업 | 결과 |
 |---|---|---|
+| 2026-05-25 | AdMob rewarded video — 일일 무료 코인 (3편 = 1코인, KST 자정 reset) | PurchaseSheet 의 placeholder "광고보기" 자리를 실 AdMob rewarded 트랙으로 교체. (1) DB `rewarded_ad_progress` table + `rewarded_ad_status` / `record_rewarded_ad_view` RPC — KST 자정 기준 day reset, 3편 도달 시 자동 `grant_coins(1, bonus)`. (2) `google_mobile_ads ^5.3.0` 추가 + Google 공식 test app/unit ID (Android `~3347511713`/`/5224354917`, iOS `~1458002511`/`/1712485313`) native config. (3) `AdMobService.showRewarded()` 가 onUserEarnedReward 콜백을 truthful single source — load·dismiss·fail 모두 false. (4) `FreeCoinService` + `freeCoinStatusProvider` (Riverpod autoDispose). (5) PurchaseSheet 의 `_FreeCoinCard` — IAP 상품 버튼과 동일한 surface/border/textPrimary/textSecondary 톤 (시트 안 위젯 톤 통일). 좌측 "1 코인 무료 (1/3)" · 우측 "2편 더 보기" / claimed 시 "내일 다시" disabled. 145/145 green. |
 | 2026-05-22 | 궁합 detail UI 통일 + intimacy chapter 분량 복구 | (1) 섹션 순서 — 한줄요약→핵심3가지→갈등→전략→이성적 끌림의 결→점수와 이유. (2) flirty/spicy 도 4 axis 산문체 출력 — pure 와 동등 분량. 톤 분기는 opener/closer 어휘만. 이전 인스타 카피 분량으로 줄였던 결정 폐기. (3) Scaffold 배경 Colors.white 로 관상 detail 과 통일. (4) _NarrativeCard 의 magic number 를 AppSpacing/AppRadius 토큰으로 정렬. |
 | 2026-05-22 | 카카오 공유 — share_publisher.publishSoloViaKakao / publishCompatViaKakao | KakaoLink Feed template. report_page · compatibility_detail_screen 의 `_shareViaKakao` 두 곳 → SharePublisher 호출. R2 thumbnailKey 가 metadata 로부터 FaceReadingReport 에 자동 채워짐 (demographic_confirm_screen). Worker SSR 의 og:image = `cdn.facely.kr/{thumbnailKey}` 로 박힘. R2 path prefix 는 `thumbnails/YYYYMM` → `thumbnails/YYYYMMDD` 로 분산. Cloudflare Worker (`facely.kr`) 배포 완료 — version `a131d3e6-e382-40c8-9a22-34de21f974b6`. |
 | 2026-05-21 | Material/Cupertino Icons 완전 제거 → FontAwesome 통일 | 14 파일 50+ 아이콘 전부 FA migration. DESIGN.md §1.5 에 "icon 은 오직 FontAwesome" 컨벤션 박음. font_awesome_flutter 가 단일 icon source. 0 analyze new issue. |
