@@ -1,8 +1,8 @@
 import { Form, useNavigation } from 'react-router'
-import type { Route } from './+types/removal'
+import type { Route } from './+types/contact'
 
 /**
- * `GET/POST /removal` — **개인정보 삭제 요청 폼** (Google Play 요구사항).
+ * `GET/POST /contact` — **개인정보 삭제 요청 폼** (Google Play 요구사항).
  *
  * POST 시 web3forms 로 전송 → 운영자 이메일로 전달.
  * 실키는 `pnpm wrangler secret put WEB3FORMS_ACCESS_KEY`.

@@ -31,7 +31,7 @@ export default function Index() {
   return (
     <main className="landing">
       <img
-        src="https://cdn.facely.kr/assets/hero.png"
+        src="https://cdn.facely.kr/assets/hero-bg.png"
         alt="Facely"
         className="landing-hero-img"
         fetchPriority="high"
@@ -43,7 +43,7 @@ export default function Index() {
 
       <div className="landing-cta">
         <a href="/app" className="landing-cta-primary">
-          앱 받기
+          앱 다운로드
         </a>
       </div>
 
@@ -52,7 +52,7 @@ export default function Index() {
         <span aria-hidden="true">·</span>
         <a href="/privacy">개인정보처리방침</a>
         <span aria-hidden="true">·</span>
-        <a href="/removal">개인정보 삭제</a>
+        <a href="/contact">삭제요청</a>
       </footer>
     </main>
   )
