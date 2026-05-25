@@ -56,6 +56,10 @@ class AuthNotifier extends Notifier<AuthUser?> {
     await AuthService().logout();
   }
 
+  Future<({bool ok, String? message})> deleteAccount() async {
+    return AuthService().deleteAccount();
+  }
+
   Future<void> refreshCoins() async {
     await AuthService().refreshCoins();
   }

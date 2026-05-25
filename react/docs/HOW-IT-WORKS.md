@@ -1,11 +1,13 @@
 # HOW-IT-WORKS — facely
 
-`facely.kr` 의 Cloudflare Workers 앱. 책임을 **최소 두 가지** 로 좁힌다:
+`facely.kr` 의 Cloudflare Workers 앱. 책임:
 
 1. **R2 presign URL 발급** (`POST /api/r2/presign`) — 모바일 앱이 분석용 임시 이미지·공유 thumbnail 을 R2 에 직접 PUT 할 수 있도록 단기 SigV4 URL 만 발급. 객체 자체엔 손 안 댄다.
 2. **공유 link 의 SSR host** (`GET /r/{uuid}`) — 받는 사람이 카톡에서 link 탭했을 때 OG 카드·리포트·딥링크·스토어 fallback. Supabase `metrics` 행을 **read-only** 로 fetch.
+3. **계정 삭제 admin endpoint** (`POST /api/account/delete`) — 사용자 JWT 검증 후 R2 thumbnails 일괄 삭제 + metrics row 삭제 + Supabase admin API 로 `auth.users` 삭제 (cascade 로 users/coins/unlocks). `SUPABASE_SERVICE_ROLE_KEY` 사용.
+4. **landing & 정적 문서** (`/`, `/app`, `/terms`, `/privacy`, `/contact`) — hero / 이용약관 / 개인정보처리방침 / 개인정보 삭제 요청 폼.
 
-이미지 본체는 단 한 번도 Worker 메모리에 안 들어옴 (R2 직통 PUT, CDN GET). Worker 는 어떤 데이터도 Supabase 에 write 하지 않는다 — Flutter 가 직접 `metrics` 에 UPSERT 하고 Worker 는 그 행을 읽기만 한다 (왕복 최소화).
+이미지 본체는 단 한 번도 Worker 메모리에 안 들어옴 (R2 직통 PUT, CDN GET). Worker 의 Supabase write 는 `/api/account/delete` (service_role) 하나뿐 — 평상시 분석/공유 흐름은 Flutter ↔ Supabase 직통이고 Worker 는 read-only.
 
 ---
 
@@ -647,15 +649,22 @@ Flutter 측은 `pubspec.yaml` 에 `path: ../shared` 의존으로 들고 옴 — 
 
 ### react/
 
-| 경로                           | 역할                                                                                   |
-| ------------------------------ | -------------------------------------------------------------------------------------- |
-| `workers/app.ts`               | RR7 createRequestHandler entry                                                         |
-| `app/routes.ts`                | 라우트 정의 (4 개)                                                                     |
-| `app/routes/_index.tsx`        | landing (dev 데모용)                                                                   |
-| `app/routes/share.tsx`         | `GET /r/:id` SSR loader (PAIR_SEP split → 1 또는 2 UUID) + meta + ShareCard/CompatCard |
-| `app/lib/share-id.ts`          | `PAIR_SEP = "~"` + `parsePairId(id): string[]` 헬퍼 (관상·궁합 분기 SSOT)              |
-| `app/routes/api.r2.presign.ts` | `POST /api/r2/presign` — SigV4 presign + HMAC token                                    |
-| `app/lib/supabase.ts`          | `fetchMetrics(env, ids[])` read-only REST helper (compat 도 multi-id 한 번)            |
+| 경로                                | 역할                                                                                                                                                                                                  |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `workers/app.ts`                    | RR7 createRequestHandler entry                                                                                                                                                                        |
+| `app/routes.ts`                     | 라우트 정의 (현재 8 개)                                                                                                                                                                               |
+| `app/routes/_index.tsx`             | landing — hero (full-bleed cdn 이미지) + CTA `/app` + footer (terms/privacy/contact)                                                                                                                  |
+| `app/routes/app.tsx`                | `GET /app` — UA detect 후 iOS → App Store / Android → Play Store 즉시 302. desktop 은 fallback 화면                                                                                                   |
+| `app/routes/terms.tsx`              | `GET /terms` — `public/terms.md` 를 `env.ASSETS.fetch` + 미니 md 렌더                                                                                                                                 |
+| `app/routes/privacy.tsx`            | `GET /privacy` — `public/privacy.md` 동일 패턴                                                                                                                                                        |
+| `app/routes/contact.tsx`            | `GET /contact` — 개인정보 삭제 요청 폼. 브라우저가 `api.web3forms.com` 으로 직접 AJAX POST (Worker→web3forms 는 CF WAF 1106 차단됨). `?ok=1` 로 redirect 받으면 success 화면                          |
+| `app/routes/share.tsx`              | `GET /r/:id` SSR loader (PAIR_SEP split → 1 또는 2 UUID) + meta + ShareCard/CompatCard                                                                                                                |
+| `app/routes/r.$id.open.tsx`         | `GET /r/:id/open` — Universal/App Link bridge. AASA intercept 안 되면 1.5s 후 스토어 fallback                                                                                                         |
+| `app/lib/share-id.ts`               | `PAIR_SEP = "~"` + `parsePairId(id): string[]` 헬퍼 (관상·궁합 분기 SSOT)                                                                                                                             |
+| `app/lib/markdown.ts`               | 정규식 기반 미니 md 파서 (heading·list·table·bold·link). terms/privacy 가 `dangerouslySetInnerHTML` 으로 소비                                                                                          |
+| `app/routes/api.r2.presign.ts`      | `POST /api/r2/presign` — SigV4 presign + HMAC token                                                                                                                                                   |
+| `app/routes/api.account.delete.ts`  | `POST /api/account/delete` — 회원 탈퇴. JWT 검증 → metrics.body 에서 thumbnailKey 수집 → R2 일괄 DELETE → metrics row DELETE → `auth.users` admin DELETE (cascade). `SUPABASE_SERVICE_ROLE_KEY` 사용. |
+| `app/lib/supabase.ts`               | `fetchMetrics(env, ids[])` read-only REST helper (compat 도 multi-id 한 번)                                                                                                                           |
 
 > Worker 가 metrics 에 write 하지 않음 → `/api/share` 같은 publish endpoint 는 일부러 만들지 않음. Flutter ↔ Supabase 직통.
 > | `app/lib/traits.ts` | shared engine 호출 + RenderedShare 합성 |
@@ -695,7 +704,9 @@ Flutter 측은 `pubspec.yaml` 에 `path: ../shared` 의존으로 들고 옴 — 
 | `R2_ACCESS_KEY_ID`                            | secret | Worker R2 API token                                                                                                                             |
 | `R2_SECRET_ACCESS_KEY`                        | secret | Worker R2 API token                                                                                                                             |
 | `FACE_API_SECRET`                             | secret | HMAC (Python 과 동일 값). presign 발급 시 함께 줘서 `/analyze` 호출 인증                                                                        |
-| `SUPABASE_URL` / `SUPABASE_ANON_KEY`          | var    | metrics REST `select` 만 (read-only). Worker 는 write 안 함                                                                                     |
+| `SUPABASE_URL` / `SUPABASE_ANON_KEY`          | secret | metrics REST + `/auth/v1/user` JWT 검증용                                                                                                       |
+| `SUPABASE_SERVICE_ROLE_KEY`                   | secret | `/api/account/delete` 전용 — `auth.users` admin DELETE + RLS bypass DELETE FROM metrics. **클라이언트 노출 절대 금지**                          |
+| `WEB3FORMS_ACCESS_KEY`                        | secret | `/contact` 폼의 access_key. 브라우저 HTML 에 노출되지만 web3forms 의 보안 모델 (spam filter / rate limit) 전제                                  |
 
 ### Python (`python/docker-compose.yml` env)
 
@@ -722,19 +733,39 @@ Flutter 측은 `pubspec.yaml` 에 `path: ../shared` 의존으로 들고 옴 — 
 1. shared/ Dart 룰 변경
    → cd react && pnpm build:shared
 2. (필요시) Flutter 빌드 / Worker typecheck
-3. Worker: pnpm wrangler deploy
+3. Worker: pnpm run build && pnpm run deploy
 4. Python: cd python && docker compose up -d --build
 5. Flutter: 평소 빌드 → 스토어 업로드
 ```
 
 R2 lifecycle / Supabase 스키마 변경은 별도 절차 (대시보드 또는 마이그레이션 SQL).
 
+### 10.1 Worker secret 최초 등록 (1회성)
+
+새 머신·새 staging·secret rotation 시:
+
+```bash
+cd react
+pnpm wrangler secret put R2_ACCESS_KEY_ID
+pnpm wrangler secret put R2_SECRET_ACCESS_KEY
+pnpm wrangler secret put FACE_API_SECRET
+pnpm wrangler secret put SUPABASE_URL
+pnpm wrangler secret put SUPABASE_ANON_KEY
+pnpm wrangler secret put SUPABASE_SERVICE_ROLE_KEY   # /api/account/delete 전용
+pnpm wrangler secret put WEB3FORMS_ACCESS_KEY        # /contact 폼
+pnpm cf-typegen      # Cloudflare.Env 타입 재생성
+```
+
+**중요**: secret 과 같은 이름의 `vars` 항목을 `wrangler.jsonc` 에 절대 두지 말 것 — wrangler 가 deploy 마다 var 로 덮어써 secret 이 사라진다 (1106 / placeholder 사고 회피). secret put 이 API 충돌 (`failed`) 로 실패하면 → `wrangler.jsonc vars` 에서 같은 이름 라인 삭제 → deploy 한 번 → secret put 재시도.
+
+`SUPABASE_SERVICE_ROLE_KEY` 는 Supabase dashboard > Project Settings > API > **service_role** key. anon key 와 헷갈리지 말 것.
+
 ---
 
 ## 11. 절대 금지 (regression 차단용 chunk)
 
 - 모바일 이미지가 Worker 경유 (Workers 의 R2 binding 으로 PUT) — **금지**. 모바일 ↔ R2 직통 PUT.
-- Worker 가 Supabase 에 write — **금지**. Worker 는 read-only. `/api/share` 같은 publish endpoint 도입 X. Flutter ↔ Supabase 직통.
+- Worker 가 Supabase 에 write — **금지** (단 예외: `/api/account/delete` 만 service_role 로 metrics 삭제 + auth.users admin DELETE). 평상시 분석/공유 흐름에 `/api/share` 같은 publish endpoint 도입 X — Flutter ↔ Supabase 직통.
 - Worker 와 Flutter 사이에 body payload 왕복 — **금지** (큰 데이터 두 번 흐름). UUID 만 흐른다.
 - Python `/analyze` 가 DeepFace raw (`{age, gender, race}`) 외 가공·매핑·정규화 응답 — **금지**. 모든 변환 책임은 소비자(Flutter).
 - `body` 에 얼굴 원본 이미지·landmark 좌표·alias·사용자 이름·생년월일 저장 — **금지** (thumbnailKey 포인터만 허용; RLS check 로 강제).

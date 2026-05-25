@@ -1,8 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:hive_ce_flutter/hive_ce_flutter.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:facely/core/hive/hive_setup.dart';
 import 'package:facely/data/services/wallet_service.dart';
 import 'package:facely/domain/models/coin_transaction.dart';
 
@@ -280,6 +283,48 @@ class AuthService {
   Future<void> logout() async {
     await _client.auth.signOut();
     _setUser(null);
+  }
+
+  /// 회원 탈퇴 — Cloudflare Worker `/api/account/delete` 호출:
+  ///   1) R2 thumbnail 일괄 삭제
+  ///   2) public.metrics row 삭제
+  ///   3) auth.users 삭제 (cascade 로 users/coins/unlocks 자동 삭제)
+  ///
+  /// 성공 시 local Hive 비우고 signOut. 재가입 시 bonus_recipients 영구
+  /// 테이블 덕분에 보너스 코인 자동으로 0 지급.
+  Future<({bool ok, String? message})> deleteAccount() async {
+    final session = _client.auth.currentSession;
+    if (session == null) {
+      return (ok: false, message: '로그인 상태가 아닙니다.');
+    }
+    try {
+      final res = await http.post(
+        Uri.parse('https://facely.kr/api/account/delete'),
+        headers: {
+          'Authorization': 'Bearer ${session.accessToken}',
+        },
+      );
+      if (res.statusCode != 200) {
+        debugPrint('[Auth.deleteAccount] HTTP ${res.statusCode}: ${res.body}');
+        return (
+          ok: false,
+          message: '탈퇴 처리 실패 (${res.statusCode}). 잠시 후 다시 시도해 주세요.',
+        );
+      }
+      // local cleanup — 어차피 logout 으로 user 사라지지만 Hive 잔여 강제 정리.
+      try {
+        await Hive.box<String>(HiveBoxes.history).clear();
+        await Hive.box<String>(HiveBoxes.auth).clear();
+      } catch (e) {
+        debugPrint('[Auth.deleteAccount] Hive clear error: $e');
+      }
+      await _client.auth.signOut();
+      _setUser(null);
+      return (ok: true, message: null);
+    } catch (e, st) {
+      debugPrint('[Auth.deleteAccount] error: $e\n$st');
+      return (ok: false, message: '네트워크 오류. 잠시 후 다시 시도해 주세요.');
+    }
   }
 
   Future<int> refreshCoins() async {

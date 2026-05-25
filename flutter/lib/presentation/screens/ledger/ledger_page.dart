@@ -1,19 +1,18 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:timeago/timeago.dart' as timeago;
-
-import 'package:facely/core/storage/thumbnail_paths.dart';
-import 'package:facely/core/theme.dart';
+import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
-import 'package:face_engine/data/enums/age_group.dart';
-import 'package:facely/domain/models/coin_transaction.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
+import 'package:facely/core/storage/thumbnail_paths.dart';
+import 'package:facely/core/theme.dart';
+import 'package:facely/domain/models/coin_transaction.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/providers/wallet_provider.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 const _txDescriptionLabels = {
   'compat-unlock': '궁합 보기',
@@ -25,6 +24,23 @@ String _describeTx(CoinTransaction tx) {
     return _txDescriptionLabels[desc] ?? desc;
   }
   return tx.kind.label;
+}
+
+Widget _txIconAvatar(CoinTransaction tx) {
+  return CircleAvatar(
+    radius: 18,
+    backgroundColor: Colors.white,
+    child: FaIcon(
+      switch (tx.kind) {
+        CoinTxKind.purchase => FontAwesomeIcons.cartPlus,
+        CoinTxKind.bonus => FontAwesomeIcons.gift,
+        CoinTxKind.refund => FontAwesomeIcons.arrowRotateLeft,
+        CoinTxKind.spend => FontAwesomeIcons.circleMinus,
+      },
+      color: AppTheme.textSecondary,
+      size: 16,
+    ),
+  );
 }
 
 class LedgerPage extends ConsumerWidget {
@@ -109,23 +125,66 @@ class LedgerPage extends ConsumerWidget {
   }
 }
 
+class _EmptyHistory extends StatelessWidget {
+  const _EmptyHistory();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 32),
+      child: Center(
+        child: Text('아직 거래 내역이 없습니다',
+            style: TextStyle(color: AppTheme.textHint, fontSize: 13)),
+      ),
+    );
+  }
+}
+
+class _LoggedOutView extends StatelessWidget {
+  final VoidCallback onLogin;
+  const _LoggedOutView({required this.onLogin});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FaIcon(FontAwesomeIcons.receipt,
+                color: AppTheme.textHint, size: 48),
+            const SizedBox(height: 16),
+            Text('로그인 후 코인 사용내역을 볼 수 있습니다',
+                style: TextStyle(
+                    color: AppTheme.textSecondary, fontSize: 15)),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: 220,
+              height: 46,
+              child: ElevatedButton(
+                onPressed: onLogin,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFEE500),
+                  foregroundColor: const Color(0xFF3C1E1E),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('카카오로 로그인',
+                    style: TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _TransactionTile extends ConsumerWidget {
   final CoinTransaction tx;
   const _TransactionTile({required this.tx});
-
-  FaceReadingReport? _resolveAlbum(List<FaceReadingReport> history) {
-    if (tx.description != 'compat-unlock') return null;
-    final ref = tx.referenceId;
-    if (ref == null) return null;
-    final parts = ref.split('::');
-    if (parts.length != 2) return null;
-    final albumId = parts[1];
-    if (albumId.isEmpty) return null;
-    for (final r in history) {
-      if (r.supabaseId == albumId) return r;
-    }
-    return null;
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -202,6 +261,20 @@ class _TransactionTile extends ConsumerWidget {
       ),
     );
   }
+
+  FaceReadingReport? _resolveAlbum(List<FaceReadingReport> history) {
+    if (tx.description != 'compat-unlock') return null;
+    final ref = tx.referenceId;
+    if (ref == null) return null;
+    final parts = ref.split('::');
+    if (parts.length != 2) return null;
+    final albumId = parts[1];
+    if (albumId.isEmpty) return null;
+    for (final r in history) {
+      if (r.supabaseId == albumId) return r;
+    }
+    return null;
+  }
 }
 
 class _TxLeading extends StatelessWidget {
@@ -225,79 +298,5 @@ class _TxLeading extends StatelessWidget {
       );
     }
     return _txIconAvatar(tx);
-  }
-}
-
-Widget _txIconAvatar(CoinTransaction tx) {
-  return CircleAvatar(
-    radius: 18,
-    backgroundColor: Colors.white,
-    child: FaIcon(
-      switch (tx.kind) {
-        CoinTxKind.purchase => FontAwesomeIcons.cartPlus,
-        CoinTxKind.bonus => FontAwesomeIcons.gift,
-        CoinTxKind.refund => FontAwesomeIcons.arrowRotateLeft,
-        CoinTxKind.spend => FontAwesomeIcons.circleMinus,
-      },
-      color: AppTheme.textSecondary,
-      size: 16,
-    ),
-  );
-}
-
-class _EmptyHistory extends StatelessWidget {
-  const _EmptyHistory();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 32),
-      child: Center(
-        child: Text('아직 거래 내역이 없습니다',
-            style: TextStyle(color: AppTheme.textHint, fontSize: 13)),
-      ),
-    );
-  }
-}
-
-class _LoggedOutView extends StatelessWidget {
-  final VoidCallback onLogin;
-  const _LoggedOutView({required this.onLogin});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            FaIcon(FontAwesomeIcons.receipt,
-                color: AppTheme.textHint, size: 48),
-            const SizedBox(height: 16),
-            Text('로그인 후 코인 사용내역을 이용할 수 있습니다',
-                style: TextStyle(
-                    color: AppTheme.textSecondary, fontSize: 15)),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: 220,
-              height: 46,
-              child: ElevatedButton(
-                onPressed: onLogin,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFEE500),
-                  foregroundColor: const Color(0xFF3C1E1E),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-                child: const Text('카카오로 로그인',
-                    style: TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.w600)),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

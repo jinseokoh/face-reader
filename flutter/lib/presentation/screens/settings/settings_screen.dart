@@ -1,5 +1,6 @@
 import 'package:facely/core/theme.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
+import 'package:facely/presentation/widgets/account_deletion_dialog.dart';
 import 'package:facely/presentation/widgets/legal_doc_sheet.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 import 'package:facely/presentation/widgets/purchase_sheet.dart';
@@ -107,9 +108,19 @@ class SettingsScreen extends ConsumerWidget {
                       const Spacer(),
                       GestureDetector(
                         onTap: () => _showPurchaseSheet(context, ref),
-                        child: Text('충전하기',
-                            style: TextStyle(
-                                color: AppTheme.textHint, fontSize: 13)),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.textPrimary,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text('충전하기',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700)),
+                        ),
                       ),
                     ],
                   ),
@@ -163,7 +174,8 @@ class SettingsScreen extends ConsumerWidget {
             _menuItem(
               icon: FontAwesomeIcons.userXmark,
               title: '회원 탈퇴',
-              onTap: () {},
+              titleColor: AppColors.danger,
+              onTap: () => AccountDeletionDialog.show(context, ref),
             ),
           ],
           FutureBuilder<PackageInfo>(
