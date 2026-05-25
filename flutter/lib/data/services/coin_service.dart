@@ -34,34 +34,42 @@ class CoinService {
 
   bool _initialized = false;
   bool get isAvailable => _initialized;
+  String? _initError;
+  String? _lastFetchError;
+  /// 초기화 실패 시 사유 (UI 진단용). 미설정도 별도 메시지.
+  String? get initError => _initError;
+  /// 마지막 `getProducts` 호출의 에러 메시지 (성공 시 null).
+  String? get lastFetchError => _lastFetchError;
 
-  /// RevenueCat key 는 플랫폼별로 발급된다 — iOS 는 `appl_…`, Android 는
-  /// `goog_…` prefix. 단일 key 를 양 플랫폼에 박으면 release 빌드에서 wrong
-  /// API key 로 throw → main.dart 의 await 가 propagate → 앱 자체가 안 뜸.
+  /// RevenueCat key 종류 (prefix 로 구분):
+  ///   `appl_` (iOS App Store) · `goog_` (Google Play) · `amzn_` (Amazon) ·
+  ///   `strp_` (Stripe) · `test_` (RevenueCat "Test Store" — 실제 store
+  ///   연결 없이 mock IAP 로 개발용)
   ///
   /// 정책:
   ///   1. `REVENUECAT_API_KEY_IOS` / `REVENUECAT_API_KEY_ANDROID` 가 있으면
-  ///      플랫폼에 맞는 걸 사용. 없으면 fallback `REVENUECAT_API_KEY` (legacy).
-  ///   2. key 가 비었거나 placeholder (`test_` prefix) 면 init 건너뜀 — 결제
-  ///      미동작이지만 앱은 정상 launch. Phase 3 유료화 (TODO Roadmap-C)
-  ///      실키 발급 후 본격 가동.
+  ///      플랫폼에 맞는 걸 사용. 없으면 fallback `REVENUECAT_API_KEY` (legacy
+  ///      또는 Test Store).
+  ///   2. key 가 비어있을 때만 init 건너뜀.
   ///   3. Purchases.configure 가 throw 해도 swallow + log — 결제는 부가
   ///      기능이고 앱 launch 자체를 막아선 안 됨.
   Future<void> initialize() async {
     if (_initialized) return;
     final apiKey = _resolveApiKey();
     if (apiKey == null) {
-      debugPrint('[CoinService] RevenueCat key 미설정/placeholder — IAP disabled');
+      _initError = 'RevenueCat API key 미설정 (또는 test_ placeholder)';
+      debugPrint('[CoinService] $_initError — IAP disabled');
       return;
     }
     try {
       await Purchases.configure(PurchasesConfiguration(apiKey));
       _initialized = true;
+      _initError = null;
       debugPrint('[CoinService] RevenueCat initialized (platform='
           '${Platform.isIOS ? "ios" : "android"})');
     } catch (e) {
-      debugPrint('[CoinService] RevenueCat.configure failed — IAP disabled. '
-          'error=$e');
+      _initError = 'configure failed: $e';
+      debugPrint('[CoinService] $_initError — IAP disabled');
     }
   }
 
@@ -75,7 +83,6 @@ class CoinService {
         ? platformKey!.trim()
         : (dotenv.env['REVENUECAT_API_KEY']?.trim() ?? '');
     if (raw.isEmpty) return null;
-    if (raw.startsWith('test_')) return null;
     return raw;
   }
 
@@ -91,13 +98,19 @@ class CoinService {
     if (!_initialized) return [];
     try {
       final products = await Purchases.getProducts(_productIds);
-      return products.map((p) => CoinProduct(
-        id: p.identifier,
-        coins: _coinMap[p.identifier] ?? 0,
-        price: p.priceString,
-        storeProduct: p,
-      )).toList();
+      _lastFetchError = null;
+      debugPrint('[CoinService] getProducts → ${products.length} item(s) '
+          'for ids=$_productIds');
+      return products
+          .map((p) => CoinProduct(
+                id: p.identifier,
+                coins: _coinMap[p.identifier] ?? 0,
+                price: p.priceString,
+                storeProduct: p,
+              ))
+          .toList();
     } catch (e) {
+      _lastFetchError = e.toString();
       debugPrint('[CoinService] getProducts error: $e');
       return [];
     }

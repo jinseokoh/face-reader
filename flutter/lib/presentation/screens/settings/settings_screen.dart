@@ -174,7 +174,6 @@ class SettingsScreen extends ConsumerWidget {
             _menuItem(
               icon: FontAwesomeIcons.userXmark,
               title: '회원 탈퇴',
-              titleColor: AppColors.danger,
               onTap: () => AccountDeletionDialog.show(context, ref),
             ),
           ],

@@ -48,6 +48,20 @@ class _PurchaseSheetState extends ConsumerState<PurchaseSheet> {
     }
   }
 
+  /// 빈 상품 list 의 구체 원인을 한 문장으로. 진단 / 디버그 용.
+  String _emptyReason() {
+    final svc = CoinService();
+    if (!svc.isAvailable) {
+      return '결제 시스템이 활성화되지 않았습니다.\n${svc.initError ?? "원인 미상"}';
+    }
+    if (svc.lastFetchError != null) {
+      return '상품 정보를 불러오지 못했습니다.\n${svc.lastFetchError}';
+    }
+    return '스토어에 등록된 상품이 없습니다.\n'
+        '(App Store Connect / Play Console 의 상품 ID·승인 상태 확인,\n'
+        '시뮬레이터/에뮬레이터에서는 IAP 미작동)';
+  }
+
   Future<void> _purchase(CoinProduct product) async {
     AnalyticsService.instance.logClickCoin(product.coins);
     setState(() => _purchasing = product.id);
@@ -130,9 +144,11 @@ class _PurchaseSheetState extends ConsumerState<PurchaseSheet> {
             else if (_products.isEmpty)
               Padding(
                 padding: const EdgeInsets.all(24),
-                child: Text('상품을 불러올 수 없습니다.\n스토어 설정 후 이용 가능합니다.',
-                    style: TextStyle(color: AppTheme.textHint, fontSize: 14),
-                    textAlign: TextAlign.center),
+                child: Text(
+                  _emptyReason(),
+                  style: TextStyle(color: AppTheme.textHint, fontSize: 13),
+                  textAlign: TextAlign.center,
+                ),
               )
             else
               ..._products.map((p) => Padding(
