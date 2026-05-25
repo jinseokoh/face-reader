@@ -66,6 +66,16 @@ function compatThumbUrlFor(row: MetricsRow, ctx: RenderInput): string {
   return `${ctx.origin}${gender === "female" ? "/female.png" : "/male.png"}`;
 }
 
+/// solo 카드의 사용자 thumbnail — 있으면 R2 직통, 없으면 undefined.
+/// React 측에서 undefined 이면 engine 의 archetype portraitUrl 로 fallback.
+function soloThumbUrlFor(row: MetricsRow, ctx: RenderInput): string | undefined {
+  const key = (row.raw as unknown as Record<string, unknown>).thumbnailKey;
+  if (typeof key === "string" && key.length > 0 && ctx.cdnBase) {
+    return `${ctx.cdnBase.replace(/\/$/, "")}/${key}`;
+  }
+  return undefined;
+}
+
 export function renderSolo(row: MetricsRow, ctx: RenderInput): RenderedShare {
   const eng = runEngineFor(row);
   const ogTitle = eng.specialArchetype
@@ -84,6 +94,7 @@ export function renderSolo(row: MetricsRow, ctx: RenderInput): RenderedShare {
     appStoreUrl: ctx.appStoreUrl,
     playStoreUrl: ctx.playStoreUrl,
     solo: eng,
+    soloThumbUrl: soloThumbUrlFor(row, ctx),
   };
 }
 

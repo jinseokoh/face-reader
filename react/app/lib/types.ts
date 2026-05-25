@@ -32,6 +32,10 @@ export interface ShareTopRank {
 
 export interface EngineOutput {
   gender: string;
+  genderKo: string;
+  ageGroupKo: string;
+  ethnicityKo: string;
+  faceShapeKo: string;
   primaryAttribute: string;
   primaryLabel: string;
   secondaryLabel: string;
@@ -41,6 +45,8 @@ export interface EngineOutput {
   shadowLine: string;
   chips: ShareChip[];
   top3: ShareTopRank[];
+  /// archetype 별 fallback portrait. 새 디자인은 사용자 thumbnail (RenderedShare
+  /// .soloThumbUrl) 우선, 없을 때만 fallback.
   portraitUrl: string;
 }
 
@@ -94,9 +100,12 @@ export interface RenderedShare {
   playStoreUrl: string;
   solo?: EngineOutput;
   compat?: CompatOutput;
+  /// solo 전용 — 사용자 face thumbnail R2 URL. thumbnailKey 가 비어있으면
+  /// engine 의 archetype `portraitUrl` 로 fallback.
+  soloThumbUrl?: string;
   /// compat 전용 — a/b 양쪽의 R2 thumbnail 절대 URL.
   /// thumbnailKey 가 비어있으면 gender stock png (`/female.png` / `/male.png`)
-  /// 로 fallback. solo 렌더에선 미사용.
+  /// 로 fallback.
   compatAThumbUrl?: string;
   compatBThumbUrl?: string;
 }

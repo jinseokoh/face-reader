@@ -2,12 +2,12 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:face_engine/data/constants/archetype_catchphrase.dart';
 import 'package:face_engine/data/constants/face_reference_data.dart';
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/attribute.dart';
 import 'package:face_engine/data/enums/ethnicity.dart';
+import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/models/physiognomy_tree.dart';
@@ -277,15 +277,13 @@ class _HeroLine extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          width: 56,
-          child: Text(label,
-              style: TextStyle(
-                  color: tagColor,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.3)),
-        ),
+        Text(label,
+            style: TextStyle(
+                color: tagColor,
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+                height: 1.45)),
+        const SizedBox(width: 8),
         Expanded(
           child: Text(line,
               style: const TextStyle(
@@ -295,6 +293,39 @@ class _HeroLine extends StatelessWidget {
                   fontWeight: FontWeight.w500)),
         ),
       ],
+    );
+  }
+}
+
+/// 관상 hero 카드의 우측 thumbnail avatar — 사용자 얼굴 thumbnail 을 100px
+/// 원형 frame 에. thumbnail 이 없으면 user icon placeholder.
+class _UserAvatar extends StatelessWidget {
+  final String? thumbnailPath;
+  const _UserAvatar({required this.thumbnailPath});
+
+  @override
+  Widget build(BuildContext context) {
+    const size = 50.0;
+    final file = ThumbnailPaths.resolveFileSync(thumbnailPath);
+    Widget inner = Container(
+      color: Colors.white.withValues(alpha: 0.12),
+      child: const Center(
+        child: FaIcon(FontAwesomeIcons.user,
+            color: Colors.white54, size: 18),
+      ),
+    );
+    if (file != null && file.existsSync()) {
+      inner = Image.file(file, width: size, height: size, fit: BoxFit.cover);
+    }
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+            color: Colors.white.withValues(alpha: 0.3), width: 1.5),
+      ),
+      child: ClipOval(child: inner),
     );
   }
 }
@@ -1023,37 +1054,35 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Builder(builder: (_) {
-                  final imageUrl =
-                      'https://cdn.facely.kr/archetypes/${report.gender.name}.${arch.primary.name}.png';
-                  return ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: CachedNetworkImage(
-                      imageUrl: imageUrl,
-                      width: 110,
-                      height: 130,
-                      fit: BoxFit.cover,
-                      placeholder: (_, url) => Container(
-                        width: 110,
-                        height: 130,
-                        color: Colors.white.withValues(alpha: 0.12),
-                        child: const Center(
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
-                        ),
-                      ),
-                      errorWidget: (_, url, e) => Container(
-                        width: 110,
-                        height: 130,
-                        color: Colors.white.withValues(alpha: 0.12),
-                        child: const Center(
-                          child: FaIcon(FontAwesomeIcons.fileImage,
-                              color: Colors.white54, size: 28),
-                        ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _UserAvatar(thumbnailPath: report.thumbnailPath),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${report.ageGroup.labelKo} ${report.gender.labelKo} ${report.ethnicity.labelKo}',
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        color: _Palette.sand,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        height: 1.3,
                       ),
                     ),
-                  );
-                }),
+                    const SizedBox(height: 2),
+                    Text(
+                      report.faceShape.korean,
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        color: _Palette.sand,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),

@@ -15,11 +15,24 @@ export function ShareCard({ data }: { data: RenderedShare }) {
       />
     );
   }
-  if (data.solo) return <SoloHeroCard eng={data.solo} />;
+  if (data.solo) {
+    return (
+      <SoloHeroCard
+        eng={data.solo}
+        thumbUrl={data.soloThumbUrl ?? data.solo.portraitUrl}
+      />
+    );
+  }
   return null;
 }
 
-function SoloHeroCard({ eng }: { eng: EngineOutput }) {
+function SoloHeroCard({
+  eng,
+  thumbUrl,
+}: {
+  eng: EngineOutput;
+  thumbUrl: string;
+}) {
   return (
     <article className="hero">
       <div className="hero-head-row">
@@ -31,7 +44,13 @@ function SoloHeroCard({ eng }: { eng: EngineOutput }) {
             <span className="hero-special">{eng.specialArchetype}</span>
           )}
         </header>
-        <img className="hero-portrait" src={eng.portraitUrl} alt="" />
+        <div className="hero-side">
+          <img className="hero-avatar" src={thumbUrl} alt="" />
+          <p className="hero-side-demo">
+            {eng.ageGroupKo} {eng.genderKo} {eng.ethnicityKo}
+          </p>
+          <p className="hero-side-demo">{eng.faceShapeKo}</p>
+        </div>
       </div>
 
       {eng.catchphrase && (

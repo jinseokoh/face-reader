@@ -23,6 +23,7 @@ import 'package:face_engine/data/constants/archetype_catchphrase.dart';
 import 'package:face_engine/data/constants/compat_hashtags.dart';
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/attribute.dart';
+import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
@@ -85,6 +86,10 @@ Map<String, dynamic> _composeShareOutput(FaceReadingReport report) {
 
   return {
     'gender': report.gender.name,
+    'genderKo': report.gender.labelKo,
+    'ageGroupKo': report.ageGroup.labelKo,
+    'ethnicityKo': report.ethnicity.labelKo,
+    'faceShapeKo': report.faceShape.korean,
     'primaryAttribute': arch.primary.name,
     'primaryLabel': arch.primaryLabel,
     'secondaryLabel': arch.secondaryLabel,
@@ -95,6 +100,8 @@ Map<String, dynamic> _composeShareOutput(FaceReadingReport report) {
     'chips': chips,
     'top3': topRanks,
     // archetype 별 supabase storage portrait — Flutter 와 동일 URL.
+    // 새 디자인은 user thumbnail avatar 를 우선 사용 (share.tsx 가 별도 URL
+    // 전달). portraitUrl 은 archetype fallback / legacy 호환용으로 유지.
     'portraitUrl':
         'https://jicaenyzunjdlcxcdbfb.supabase.co/storage/v1/object/public/images/archetypes/${report.gender.name}.${arch.primary.name}.png',
   };

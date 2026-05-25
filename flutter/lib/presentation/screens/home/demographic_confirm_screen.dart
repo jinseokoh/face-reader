@@ -199,75 +199,89 @@ class _DemographicConfirmScreenState
   }
 
   /// 확인된 demographic 으로 full pipeline 실행.
+  ///
+  /// **stuck 방지 contract** —
+  /// (1) metadata 대기는 8초 timeout. 안 끝나면 metadata 없이 진행. 사용자가
+  ///     "분석 시작" 누르고 무한정 spinner 만 돌아가는 케이스 차단.
+  /// (2) 모든 예외 path 에서 `_isAnalyzing` 가 false 로 reset 보장 (try/finally).
+  ///     이전엔 metadataFuture 가 throw 하면 영구히 spinner 상태로 stuck.
+  /// metadata timeout 시 thumbnailKey 는 null — 카카오 공유는 영향 없음
+  /// (uploadImage 경로), 웹 OG preview 만 logo.png 로 fallback.
   Future<void> _runFullAnalysis() async {
     setState(() => _isAnalyzing = true);
-
-    // background metadata pipeline (R2 thumbnail 업로드 포함) 이 아직 안 끝났
-    // 으면 기다림. 안 기다리면 _inferred 가 null 인 채로 report.thumbnailKey 가
-    // null 로 박혀서 카카오 공유 카드의 og:image 가 fallback 으로 떨어진다.
-    if (_inferring && widget.metadataFuture != null) {
-      final meta = await widget.metadataFuture;
-      if (!mounted) return;
-      if (meta != null) _inferred = meta;
-    }
-
-    final c = widget.capture;
-    final report = analyzeFaceReading(
-      landmarks: c.frontalLandmarks,
-      ethnicity: _ethnicity,
-      gender: _gender,
-      ageGroup: _ageGroup,
-      source: c.source,
-      imageWidth: c.imageWidth,
-      imageHeight: c.imageHeight,
-      lateralLandmarks: c.lateralLandmarks,
-    );
-
-    // metadata.uuid 가 있으면 그걸 supabaseId 로 그대로 사용 (R2 thumbnailKey 의
-    // uuid 부분과 매칭되어야 single trace id 유지). 없으면 fallback v4.
-    final id = _inferred?.uuid ?? const Uuid().v4();
-    report.supabaseId = id;
-    // R2 영구 thumbnail 의 path key — analyze 시점에 이미 PUT 됨.
-    // Worker SSR 의 og:image 가 `cdn.facely.kr/${thumbnailKey}` 로 조립.
-    report.thumbnailKey = _inferred?.thumbnailKey;
-
-    // 썸네일 생성 — ML Kit bbox 기반 face-centered 256 square crop.
-    // 단순 비례 축소 (FlutterImageCompress) 만 하면 album path 의 square-padded
-    // 1024×1024 이미지가 그대로 작아지면서 face 가 가운데 점처럼 보이는 문제 발생.
-    // faceCenterSquareCrop 가 ML Kit 으로 face 위치를 찾아 padding 25% 둘러
-    // 256×256 으로 출력 → 사용자가 보는 thumbnail 은 항상 얼굴 중심.
-    final still = c.stillBytes;
-    if (still != null) {
-      try {
-        final cropped = await ImageResizer.faceCenterSquareCropFromBytes(
-          still,
-          outSize: 256,
-        );
-        final dir = await getApplicationDocumentsDirectory();
-        final file = File('${dir.path}/$id.jpg');
-        await file.writeAsBytes(cropped);
-        // 절대경로 박지 말 것 — iOS sandbox UUID 회전 / Android applicationId
-        // 변경 시 stale 됨. filename 만 저장 → 읽을 때 ThumbnailPaths 가 현재
-        // documents dir 와 조립.
-        report.thumbnailPath = '$id.jpg';
-      } catch (e) {
-        debugPrint('[Thumbnail] save error: $e');
+    try {
+      if (_inferring && widget.metadataFuture != null) {
+        try {
+          final meta = await widget.metadataFuture!
+              .timeout(const Duration(seconds: 8));
+          if (!mounted) return;
+          if (meta != null) _inferred = meta;
+        } catch (e) {
+          // timeout / network 에러 / API 실패 — metadata 없이 진행.
+          debugPrint('[DemographicConfirm] metadata wait failed: $e');
+        }
       }
+
+      final c = widget.capture;
+      final report = analyzeFaceReading(
+        landmarks: c.frontalLandmarks,
+        ethnicity: _ethnicity,
+        gender: _gender,
+        ageGroup: _ageGroup,
+        source: c.source,
+        imageWidth: c.imageWidth,
+        imageHeight: c.imageHeight,
+        lateralLandmarks: c.lateralLandmarks,
+      );
+
+      // metadata.uuid 가 있으면 그걸 supabaseId 로 그대로 사용 (R2 thumbnailKey 의
+      // uuid 부분과 매칭되어야 single trace id 유지). 없으면 fallback v4.
+      final id = _inferred?.uuid ?? const Uuid().v4();
+      report.supabaseId = id;
+      // R2 영구 thumbnail 의 path key — analyze 시점에 이미 PUT 됨.
+      // Worker SSR 의 og:image 가 `cdn.facely.kr/${thumbnailKey}` 로 조립.
+      report.thumbnailKey = _inferred?.thumbnailKey;
+
+      // 썸네일 생성 — ML Kit bbox 기반 face-centered 256 square crop.
+      // 단순 비례 축소 (FlutterImageCompress) 만 하면 album path 의 square-padded
+      // 1024×1024 이미지가 그대로 작아지면서 face 가 가운데 점처럼 보이는 문제 발생.
+      // faceCenterSquareCrop 가 ML Kit 으로 face 위치를 찾아 padding 25% 둘러
+      // 256×256 으로 출력 → 사용자가 보는 thumbnail 은 항상 얼굴 중심.
+      final still = c.stillBytes;
+      if (still != null) {
+        try {
+          final cropped = await ImageResizer.faceCenterSquareCropFromBytes(
+            still,
+            outSize: 256,
+          );
+          final dir = await getApplicationDocumentsDirectory();
+          final file = File('${dir.path}/$id.jpg');
+          await file.writeAsBytes(cropped);
+          // 절대경로 박지 말 것 — iOS sandbox UUID 회전 / Android applicationId
+          // 변경 시 stale 됨. filename 만 저장 → 읽을 때 ThumbnailPaths 가 현재
+          // documents dir 와 조립.
+          report.thumbnailPath = '$id.jpg';
+        } catch (e) {
+          debugPrint('[Thumbnail] save error: $e');
+        }
+      }
+
+      if (!mounted) return;
+      ref.read(historyProvider.notifier).add(report);
+      ref.read(historyTabProvider.notifier).selectTab(
+          c.source == AnalysisSource.camera ? 0 : 1);
+      ref.read(selectedTabProvider.notifier).selectTab(1);
+
+      SupabaseService().saveMetrics(report).catchError((e) {
+        debugPrint('[Supabase] save error: $e');
+        return '';
+      });
+
+      if (!mounted) return;
+      Navigator.of(context).pop();
+    } finally {
+      if (mounted) setState(() => _isAnalyzing = false);
     }
-
-    if (!mounted) return;
-    ref.read(historyProvider.notifier).add(report);
-    ref.read(historyTabProvider.notifier).selectTab(
-        c.source == AnalysisSource.camera ? 0 : 1);
-    ref.read(selectedTabProvider.notifier).selectTab(1);
-
-    SupabaseService().saveMetrics(report).catchError((e) {
-      debugPrint('[Supabase] save error: $e');
-      return '';
-    });
-
-    if (!mounted) return;
-    Navigator.of(context).pop();
   }
 
   void _showPicker<T>({
