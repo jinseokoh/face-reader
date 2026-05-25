@@ -255,13 +255,13 @@ class _InfoConfirmScreenState
       // 단순 비례 축소 (FlutterImageCompress) 만 하면 album path 의 square-padded
       // 1024×1024 이미지가 그대로 작아지면서 face 가 가운데 점처럼 보이는 문제 발생.
       // faceCenterSquareCrop 가 ML Kit 으로 face 위치를 찾아 padding 25% 둘러
-      // 256×256 으로 출력 → 사용자가 보는 thumbnail 은 항상 얼굴 중심.
+      // 200×200 으로 출력 → 사용자가 보는 thumbnail 은 항상 얼굴 중심.
       final still = c.stillBytes;
       if (still != null) {
         try {
           final cropped = await ImageResizer.faceCenterSquareCropFromBytes(
             still,
-            outSize: 256,
+            outSize: 200,
           );
           final dir = await getApplicationDocumentsDirectory();
           final file = File('${dir.path}/$id.jpg');

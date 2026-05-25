@@ -53,7 +53,7 @@ class ImageResizer {
   /// PNG → flutter_image_compress 로 JPG 재인코딩.
   static Future<Uint8List> faceCenterSquareCrop(
     File file, {
-    int outSize = 256,
+    int outSize = 200,
     double padding = 0.25,
     int quality = _kJpegQuality,
   }) async {
@@ -73,7 +73,7 @@ class ImageResizer {
   static Future<Uint8List> faceCenterSquareCropFromBytes(
     Uint8List bytes, {
     InputImage? mlKitInput,
-    int outSize = 256,
+    int outSize = 200,
     double padding = 0.25,
     int quality = _kJpegQuality,
   }) async {

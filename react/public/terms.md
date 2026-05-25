@@ -47,5 +47,5 @@ Facely 는 안면 계측 데이터를 기반으로 인공지능 관상 분석을
 
 ## 9. 문의
 
-- 이메일: zplaydevelop@gmail.com
-- 사업자: Facely
+- 이메일: uncle@facely.kr
+- 사업자: 에스아이(S.I.)
