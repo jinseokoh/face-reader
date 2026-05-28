@@ -62,7 +62,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                     SizedBox(height: afterTitle),
                     Text(
-                      'Facely, 안면 계측 데이터 기반 인공지능 관상앱',
+                      '안면 계측 데이터 기반 인공지능 관상앱',
                       style: AppText.body.copyWith(
                         color: AppTheme.textSecondary,
                         height: 1.5,

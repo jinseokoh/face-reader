@@ -34,7 +34,7 @@ class AccountDeletionDialog {
           ),
           title: const Text('탈퇴가 완료되었습니다', style: AppText.modalTitle),
           content: const Text(
-            '모든 데이터가 영구 삭제되었습니다.\n그동안 Facely 를 이용해 주셔서 감사합니다.',
+            '모든 데이터가 영구 삭제되었습니다.\n그동안 관상은 과학이다를 이용해 주셔서 감사합니다.',
             style: AppText.body,
           ),
           actions: [

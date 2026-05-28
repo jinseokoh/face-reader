@@ -1,7 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.CAMERA"/>
     <application
-android:label="AI 관상가"
+android:label="관상은 과학이다"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
         <activity

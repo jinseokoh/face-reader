@@ -1,11 +1,11 @@
 {
-    "name": "ks",
-    "short_name": "ks",
+    "name": "관상은 과학이다",
+    "short_name": "관상은 과학이다",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FFFFFF",
+    "theme_color": "#FFFFFF",
+    "description": "관상은 과학이다 — 안면 계측 데이터 기반 인공지능 관상앱",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -991,7 +991,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Facely 관상 평가',
+                      Text('관상은 과학이다',
                           style: TextStyle(
                               color: _Palette.sand,
                               fontSize: 12,
@@ -1437,7 +1437,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
       final report = widget.report;
       await SharePublisher.instance.publishSoloViaKakao(
         report: report,
-        title: 'Facely, 관상은 과학이다.',
+        title: '관상은 과학이다',
         description: '관상 상세내용을 확인해 보세요',
         compositeCardPng: pngBytes,
       );

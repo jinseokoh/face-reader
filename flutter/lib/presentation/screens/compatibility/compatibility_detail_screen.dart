@@ -162,7 +162,7 @@ class _CompatibilityDetailScreenState
       await SharePublisher.instance.publishCompatViaKakao(
         my: widget.my,
         album: widget.album,
-        title: 'Facely, 궁합은 과학이다.',
+        title: '관상은 과학이다 — 궁합',
         description: desc,
         compositeCardPng: pngBytes,
       );
@@ -513,7 +513,7 @@ class _TotalHeader extends StatelessWidget {
         children: [
           Align(
             alignment: Alignment.centerLeft,
-            child: Text('Facely 궁합 평가',
+            child: Text('관상은 과학이다',
                 style: TextStyle(
                     color: _CompatPalette.sand,
                     fontSize: 12,

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// ---------------------------------------------------------------------------
-/// Facely — 디자인 토큰 SSOT.
+/// 관상은 과학이다 — 디자인 토큰 SSOT.
 /// 위젯 코드에서 fontSize·color·padding·radius 를 inline 으로 박지 말고
 /// 본 파일의 토큰만 참조한다. 자세한 운영 규칙은 `flutter/DESIGN.md` 참고.
 ///

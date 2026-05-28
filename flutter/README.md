@@ -1,17 +1,8 @@
-# ks
+# 관상은 과학이다
 
-A new Flutter project.
+안면 계측 데이터 기반 인공지능 관상앱.
 
-## Getting Started
+MediaPipe Face Mesh 468 landmarks → 17 frontal + 8 lateral metric → 14-node tree
+→ 10 attribute → archetype → 8 인생 질문 본문. 궁합 엔진은 별도 (五行·十二宮·五官·三停·陰陽).
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+상세 오리엔테이션·SSOT: [`CLAUDE.md`](CLAUDE.md) 참조.
