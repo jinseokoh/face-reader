@@ -253,6 +253,15 @@ textarea.form-input {
   font-size: 13px;
   color: var(--accent);
 }
+.form-notice {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 12px 14px;
+}
 
 /* ─── hero card (mirror flutter report_page.dart §_HeroCard) ─── */
 .hero {

@@ -2,7 +2,7 @@ import 'package:facely/core/theme.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:facely/presentation/widgets/account_deletion_dialog.dart';
 import 'package:facely/presentation/widgets/legal_doc_sheet.dart';
-import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
+import 'package:facely/presentation/widgets/login_entry_button.dart';
 import 'package:facely/presentation/widgets/purchase_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -128,36 +128,7 @@ class SettingsScreen extends ConsumerWidget {
               ),
             )
           else
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppTheme.surface,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppTheme.border),
-              ),
-              child: Column(
-                children: [
-                  // Login button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: ElevatedButton(
-                      onPressed: () => showLoginBottomSheet(context, ref),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFEE500),
-                        foregroundColor: const Color(0xFF3C1E1E),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: const Text('카카오로 로그인',
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.w600)),
-                    ),
-                  ),
-                  // 로그인 전엔 "남은 코인 --" 표시 안 함 (로그인 후에만 의미 있음)
-                ],
-              ),
-            ),
+            const LoginEntryButton(),
           const SizedBox(height: 24),
 
           _menuItem(

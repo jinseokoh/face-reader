@@ -8,7 +8,7 @@ import 'package:facely/domain/models/coin_transaction.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/providers/wallet_provider.dart';
-import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
+import 'package:facely/presentation/widgets/login_entry_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -76,7 +76,7 @@ class LedgerPage extends ConsumerWidget {
         ],
       ),
       body: user == null
-          ? _LoggedOutView(onLogin: () => showLoginBottomSheet(context, ref))
+          ? const _LoggedOutView()
           : RefreshIndicator(
               onRefresh: () async {
                 await ref.read(authProvider.notifier).refreshCoins();
@@ -141,8 +141,7 @@ class _EmptyHistory extends StatelessWidget {
 }
 
 class _LoggedOutView extends StatelessWidget {
-  final VoidCallback onLogin;
-  const _LoggedOutView({required this.onLogin});
+  const _LoggedOutView();
 
   @override
   Widget build(BuildContext context) {
@@ -156,25 +155,9 @@ class _LoggedOutView extends StatelessWidget {
                 color: AppTheme.textHint, size: 48),
             const SizedBox(height: 16),
             Text('로그인 후 코인 사용내역을 볼 수 있습니다',
-                style: TextStyle(
-                    color: AppTheme.textSecondary, fontSize: 15)),
+                style: AppText.body.copyWith(color: AppTheme.textSecondary)),
             const SizedBox(height: 20),
-            SizedBox(
-              width: 220,
-              height: 46,
-              child: ElevatedButton(
-                onPressed: onLogin,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFEE500),
-                  foregroundColor: const Color(0xFF3C1E1E),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-                child: const Text('카카오로 로그인',
-                    style: TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.w600)),
-              ),
-            ),
+            const LoginEntryButton(),
           ],
         ),
       ),

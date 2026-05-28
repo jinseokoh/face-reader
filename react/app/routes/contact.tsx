@@ -12,10 +12,10 @@ import type { Route } from './+types/contact'
 
 export function meta(_: Route.MetaArgs) {
   return [
-    { title: 'Facely — 개인정보 삭제 요청' },
+    { title: '관상은 과학이다 — 개인정보 삭제 요청' },
     {
       name: 'description',
-      content: 'Facely 계정 및 분석 데이터 삭제 요청 폼',
+      content: '관상은 과학이다 계정 및 분석 데이터 삭제 요청 폼',
     },
   ]
 }
@@ -91,11 +91,16 @@ export default function Contact({ loaderData }: Route.ComponentProps) {
     <main className="doc">
       <h1>개인정보 삭제 요청</h1>
       <p className="doc-lead">
-        Facely 계정 및 분석 데이터의 삭제를 요청합니다. 처리 후 입력하신 이메일로
-        결과를 회신드립니다.
+        관상은 과학이다 계정 및 분석 데이터의 삭제를 요청합니다. 처리 후
+        입력하신 이메일로 결과를 회신드립니다.
       </p>
 
       <form onSubmit={onSubmit} className="form">
+        <p className="form-notice">
+          삭제되는 내용은 관상 기록 추적용 저해상도 200×200 썸네일과 안면 계측
+          데이터 파일 전부입니다.
+        </p>
+
         <label className="form-label">
           회신 받을 이메일 <span className="form-required">*</span>
           <input
@@ -134,7 +139,8 @@ export default function Contact({ loaderData }: Route.ComponentProps) {
         <label className="form-check">
           <input type="checkbox" name="consent" required />
           <span>
-            본인의 데이터에 대한 삭제 요청이며, 삭제 후 복구가 불가능함에 동의합니다.
+            본인의 데이터에 대한 삭제 요청이며, 삭제 후 복구가 불가능함에
+            동의합니다.
           </span>
         </label>
 

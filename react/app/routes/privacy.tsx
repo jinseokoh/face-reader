@@ -1,10 +1,10 @@
-import type { Route } from './+types/privacy'
 import { renderMarkdown } from '../lib/markdown'
+import type { Route } from './+types/privacy'
 
 export function meta(_: Route.MetaArgs) {
   return [
-    { title: 'Facely — 개인정보처리방침' },
-    { name: 'description', content: 'Facely 개인정보처리방침' },
+    { title: '관상은 과학이다 — 개인정보처리방침' },
+    { name: 'description', content: '관상은 과학이다 개인정보처리방침' },
   ]
 }
 

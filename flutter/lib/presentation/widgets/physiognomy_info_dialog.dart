@@ -13,7 +13,7 @@ class _PhysiognomyInfoDialogState extends State<PhysiognomyInfoDialog>
     with SingleTickerProviderStateMixin {
   static const _paragraphs = [
     '본 앱은 MediaPipe Face Mesh(468개 랜드마크)를 활용하여 얼굴의 기하학적 비율을 정밀하게 측정합니다. '
-        '측정된 15가지 안면 비율은 Leslie Farkas의 인체계측학 연구(1994), '
+        '측정된 정면 17가지·측면 8가지 안면 비율은 Leslie Farkas의 인체계측학 연구(1994), '
         'ICD 메타분석(PMC9029890, 22,638명), NIOSH 안면 데이터셋(3,997명) 등 '
         '학술 문헌에 기반한 인종·성별별 레퍼런스 데이터와 비교하여 Z-score로 산출됩니다.',
     '관상학은 동양에서 수천 년간 이어져 온 전통적 인상 해석 체계입니다. '
@@ -32,7 +32,7 @@ class _PhysiognomyInfoDialogState extends State<PhysiognomyInfoDialog>
     '본 앱의 결과는 과학적 측정과 전통 문화적 해석이 만나는 흥미로운 교차점으로서 '
         '즐겁게 참고하시되, 어디까지나 재미와 교양의 영역으로 받아들여 주시기 바랍니다. '
         '모든 사람의 얼굴에는 저마다의 아름다움과 고유한 이야기가 담겨 있습니다. '
-        '보다 존중하는 시각으로 얼굴을 바라보는 계기가 되길 바랍니다. -- 페이슬리.',
+        '보다 존중하는 시각으로 얼굴을 바라보는 계기가 되길 바랍니다.',
   ];
 
   late final AnimationController _controller;

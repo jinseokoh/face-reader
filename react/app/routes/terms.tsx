@@ -1,10 +1,10 @@
-import type { Route } from './+types/terms'
 import { renderMarkdown } from '../lib/markdown'
+import type { Route } from './+types/terms'
 
 export function meta(_: Route.MetaArgs) {
   return [
-    { title: 'Facely — 이용약관' },
-    { name: 'description', content: 'Facely 서비스 이용약관' },
+    { title: '관상은 과학이다 — 이용약관' },
+    { name: 'description', content: '관상은 과학이다 서비스 이용약관' },
   ]
 }
 

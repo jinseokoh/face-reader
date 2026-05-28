@@ -32,14 +32,12 @@ export default function Index() {
     <main className="landing">
       <img
         src="https://cdn.facely.kr/assets/hero-bg.png"
-        alt="Facely"
+        alt="facely.kr"
         className="landing-hero-img"
         fetchPriority="high"
       />
-      <h1 className="landing-hero">관상은 과학이다.</h1>
-      <p className="landing-sub">
-        Facely, 안면 계측 데이터 기반 인공지능 관상앱.
-      </p>
+      <h1 className="landing-hero">관상은 과학이다</h1>
+      <p className="landing-sub">안면 계측 데이터 기반 인공지능 관상앱</p>
 
       <div className="landing-cta">
         <a href="/app" className="landing-cta-primary">
