@@ -46,3 +46,7 @@ app.*.map.json
 
 # Environment variables
 .env
+
+# Android release signing (key.properties 는 표준 gitignore 에서 이미 제외)
+*.jks
+*.keystore
