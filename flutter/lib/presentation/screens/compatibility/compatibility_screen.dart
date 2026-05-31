@@ -213,14 +213,21 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
     );
   }
 
-  /// report.supabaseId 가 null 이면 saveMetrics 로 UUID 를 할당하고 Hive 에
-  /// 써서 다음 실행에서도 같은 key 가 유지되도록 한다.
+  /// 궁합 진입 시 metrics row 를 서버에 보장.
+  ///
+  /// - **본인 얼굴(isMyFace)**: 멀티디바이스 복원(로그인 후 `where user_id=나`)을
+  ///   위해 supabaseId 가 이미 있어도 **항상 upsert** (서버에 내 카드 보장).
+  ///   saveMetrics 는 upsert 라 idempotent.
+  /// - **그 외(상대/앨범)**: supabaseId 있으면 skip — 남의(받은) 카드를 내 user_id 로
+  ///   upload·claim 하지 않기 위함. null 일 때만 id 발급.
   Future<void> _ensureSupabaseId(
       WidgetRef ref, FaceReadingReport report) async {
-    if (report.supabaseId != null) return;
+    if (!report.isMyFace && report.supabaseId != null) return;
     final uuid = await SupabaseService().saveMetrics(report);
-    report.supabaseId = uuid;
-    await ref.read(historyProvider.notifier).updateHive();
+    if (report.supabaseId != uuid) {
+      report.supabaseId = uuid;
+      await ref.read(historyProvider.notifier).updateHive();
+    }
   }
 
 
