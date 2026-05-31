@@ -11,7 +11,7 @@ import 'package:facely/data/services/supabase_service.dart';
 ///
 /// 핵심 변환:
 ///   * Supabase metrics row 자체는 **읽기만** — user_id 도, body 도 안 건드린다.
-///   * body JSON 을 받아 `source=received`, `receivedAt=now`, `isMyFace=false`,
+///   * body JSON 을 받아 `source=received`, `isMyFace=false`,
 ///     `alias=null`, `thumbnailPath=null` 로 override 한 뒤 fromJsonString 으로
 ///     parse. 원본 alias·thumbnailPath 는 leak 차단.
 ///   * `thumbnailKey` 와 `supabaseId` 는 그대로 둔다 — CDN 직통 read-only,
@@ -44,7 +44,6 @@ class ShareReceiveService {
       final overridden = <String, dynamic>{
         ...original,
         'source': AnalysisSource.received.name,
-        'receivedAt': DateTime.now().toIso8601String(),
         // isMyFace 는 row 컬럼에서 읽지만, 받는 사람 입장에서는 항상 false.
         'isMyFace': false,
         // 받는 사람 시점에선 alias·local thumbnail 초기화.

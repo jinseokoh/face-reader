@@ -209,23 +209,9 @@ class FaceReadingReport {
   bool isMyFace;
   String? thumbnailPath;
 
-  /// source == AnalysisSource.received 일 때만 의미 있음. bookmark 시점.
-  /// 받은 카드 정렬·UI 표시 ("2일 전 받음") 용. own 카드에선 null.
-  DateTime? receivedAt;
-
   /// R2 thumbnail 객체 key (`thumbnails/YYYYMM/{uuid}.jpg`). publish 시점에
   /// 채워짐. Worker SSR 의 `og:image` 가 `${R2_CDN_BASE}/${thumbnailKey}` 로 조립.
   String? thumbnailKey;
-
-  /// DeepFace 추정값 보존 (사용자 picker 와의 일치도 audit trail). app 의
-  /// 사용자 선택 (gender/ethnicity enum) 과 의도적으로 페어로 저장 —
-  /// HOW-IT-WORKS §5.2. **둘 다 살려둔 redundancy 는 의도적. "정리" 금지.**
-  ///
-  /// 값은 Python /analyze 가 Flutter enum name 으로 정규화한 후 그대로 보존
-  /// ("male"/"female", "eastAsian"/"caucasian"/…).
-  int? deepfaceAge;
-  String? deepfaceGender; // "male" | "female" — Gender enum name
-  String? deepfaceEthnicity; // Ethnicity enum name 6종 중 하나
 
   /// 17 frontal metric results.
   final Map<String, MetricResult> metrics;
@@ -270,11 +256,7 @@ class FaceReadingReport {
     this.alias,
     this.isMyFace = false,
     this.thumbnailPath,
-    this.receivedAt,
     this.thumbnailKey,
-    this.deepfaceAge,
-    this.deepfaceGender,
-    this.deepfaceEthnicity,
     required this.metrics,
     this.lateralMetrics,
     this.lateralFlags,
@@ -296,11 +278,10 @@ class FaceReadingReport {
   /// 서버 metrics.body 전용 직렬화.
   ///
   /// body = 분석 결과 payload. 소유/관계 메타(alias, isMyFace)와 로컬 전용
-  /// 필드(thumbnailPath, receivedAt)는 제외한다.
+  /// 필드(thumbnailPath)는 제외한다.
   /// - alias → metrics 컬럼
   /// - isMyFace → metrics 컬럼 (is_my_face)
   /// - thumbnailPath → 디바이스 로컬 경로
-  /// - receivedAt → 수신자 로컬 메타
   String toBodyJson() => jsonEncode({
         'schemaVersion': schemaVersion,
         'ethnicity': ethnicity.name,
@@ -310,9 +291,6 @@ class FaceReadingReport {
         'source': source.name,
         'supabaseId': supabaseId,
         if (thumbnailKey != null) 'thumbnailKey': thumbnailKey,
-        if (deepfaceAge != null) 'deepfaceAge': deepfaceAge,
-        if (deepfaceGender != null) 'deepfaceGender': deepfaceGender,
-        if (deepfaceEthnicity != null) 'deepfaceEthnicity': deepfaceEthnicity,
         'metrics': {
           for (final e in metrics.entries) e.key: e.value.rawValue,
         },
@@ -343,12 +321,8 @@ class FaceReadingReport {
         'alias': alias,
         'isMyFace': isMyFace,
         'thumbnailPath': thumbnailPath,
-        if (receivedAt != null) 'receivedAt': receivedAt!.toIso8601String(),
-        // R2 thumbnail 포인터 + DeepFace raw audit trail.
+        // R2 thumbnail 포인터.
         if (thumbnailKey != null) 'thumbnailKey': thumbnailKey,
-        if (deepfaceAge != null) 'deepfaceAge': deepfaceAge,
-        if (deepfaceGender != null) 'deepfaceGender': deepfaceGender,
-        if (deepfaceEthnicity != null) 'deepfaceEthnicity': deepfaceEthnicity,
         // rawValue 만 저장 — id → double. 현재 ref 에 의존하는 z/zAdjusted/
         // metricScore 는 절대 저장 금지 (저장하면 ref 변경이 기존 리포트에
         // 반영되지 않는 stale-z 버그 발생).
@@ -517,14 +491,8 @@ class FaceReadingReport {
       alias: j['alias'] as String?,
       isMyFace: j['isMyFace'] as bool? ?? false,
       thumbnailPath: j['thumbnailPath'] as String?,
-      receivedAt: j['receivedAt'] != null
-          ? DateTime.parse(j['receivedAt'] as String)
-          : null,
       // optional fields — null 이어도 정상.
       thumbnailKey: j['thumbnailKey'] as String?,
-      deepfaceAge: (j['deepfaceAge'] as num?)?.toInt(),
-      deepfaceGender: j['deepfaceGender'] as String?,
-      deepfaceEthnicity: j['deepfaceEthnicity'] as String?,
       metrics: metrics,
       lateralMetrics: lateralMetrics,
       lateralFlags: lateralFlags,
