@@ -40,14 +40,14 @@ export type Demographics = {
   source?: string;
   gender?: string;
   ethnicity?: string;
-  ageGroup?: string;
+  age_group?: string;
 };
 
 export function parseDemographics(body: string | null | undefined): Demographics {
   if (!body) return {};
   try {
     const j = JSON.parse(body);
-    return { source: j.source, gender: j.gender, ethnicity: j.ethnicity, ageGroup: j.ageGroup };
+    return { source: j.source, gender: j.gender, ethnicity: j.ethnicity, age_group: j.age_group };
   } catch {
     return {};
   }

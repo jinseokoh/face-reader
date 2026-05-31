@@ -302,28 +302,28 @@ class FaceReadingReport {
   /// - thumbnailPath → 디바이스 로컬 경로
   /// - receivedAt → 수신자 로컬 메타
   String toBodyJson() => jsonEncode({
-        'schemaVersion': schemaVersion,
+        'schema_version': schemaVersion,
         'ethnicity': ethnicity.name,
         'gender': gender.name,
-        'ageGroup': ageGroup.jsonValue,
+        'age_group': ageGroup.jsonValue,
         'timestamp': timestamp.toIso8601String(),
         'source': source.name,
-        'supabaseId': supabaseId,
-        if (thumbnailKey != null) 'thumbnailKey': thumbnailKey,
-        if (deepfaceAge != null) 'deepfaceAge': deepfaceAge,
-        if (deepfaceGender != null) 'deepfaceGender': deepfaceGender,
-        if (deepfaceEthnicity != null) 'deepfaceEthnicity': deepfaceEthnicity,
+        'supabase_id': supabaseId,
+        if (thumbnailKey != null) 'thumbnail_key': thumbnailKey,
+        if (deepfaceAge != null) 'deepface_age': deepfaceAge,
+        if (deepfaceGender != null) 'deepface_gender': deepfaceGender,
+        if (deepfaceEthnicity != null) 'deepface_ethnicity': deepfaceEthnicity,
         'metrics': {
           for (final e in metrics.entries) e.key: e.value.rawValue,
         },
         if (lateralMetrics != null)
-          'lateralMetrics': {
+          'lateral_metrics': {
             for (final e in lateralMetrics!.entries) e.key: e.value.rawValue,
           },
-        if (faceShapeLabel != null) 'faceShapeLabel': faceShapeLabel,
+        if (faceShapeLabel != null) 'face_shape_label': faceShapeLabel,
         if (faceShapeConfidence != null)
-          'faceShapeConfidence': faceShapeConfidence,
-        'faceShape': faceShape.name,
+          'face_shape_confidence': faceShapeConfidence,
+        'face_shape': faceShape.name,
       });
 
   /// v3 (2026-04-18): capture-only serialization. 저장하는 것은 **metric rawValue
@@ -333,22 +333,22 @@ class FaceReadingReport {
   /// reference·age adjustment·rule·quantile 로 100% 재계산된다. 엔진·ref 가
   /// 바뀌면 기존 리포트가 자동으로 새 공식의 결과를 받는다.
   String toJsonString() => jsonEncode({
-        'schemaVersion': schemaVersion,
+        'schema_version': schemaVersion,
         'ethnicity': ethnicity.name,
         'gender': gender.name,
-        'ageGroup': ageGroup.jsonValue,
+        'age_group': ageGroup.jsonValue,
         'timestamp': timestamp.toIso8601String(),
         'source': source.name,
-        'supabaseId': supabaseId,
+        'supabase_id': supabaseId,
         'alias': alias,
-        'isMyFace': isMyFace,
-        'thumbnailPath': thumbnailPath,
-        if (receivedAt != null) 'receivedAt': receivedAt!.toIso8601String(),
+        'is_my_face': isMyFace,
+        'thumbnail_path': thumbnailPath,
+        if (receivedAt != null) 'received_at': receivedAt!.toIso8601String(),
         // R2 thumbnail 포인터 + DeepFace raw audit trail.
-        if (thumbnailKey != null) 'thumbnailKey': thumbnailKey,
-        if (deepfaceAge != null) 'deepfaceAge': deepfaceAge,
-        if (deepfaceGender != null) 'deepfaceGender': deepfaceGender,
-        if (deepfaceEthnicity != null) 'deepfaceEthnicity': deepfaceEthnicity,
+        if (thumbnailKey != null) 'thumbnail_key': thumbnailKey,
+        if (deepfaceAge != null) 'deepface_age': deepfaceAge,
+        if (deepfaceGender != null) 'deepface_gender': deepfaceGender,
+        if (deepfaceEthnicity != null) 'deepface_ethnicity': deepfaceEthnicity,
         // rawValue 만 저장 — id → double. 현재 ref 에 의존하는 z/zAdjusted/
         // metricScore 는 절대 저장 금지 (저장하면 ref 변경이 기존 리포트에
         // 반영되지 않는 stale-z 버그 발생).
@@ -356,14 +356,14 @@ class FaceReadingReport {
           for (final e in metrics.entries) e.key: e.value.rawValue,
         },
         if (lateralMetrics != null)
-          'lateralMetrics': {
+          'lateral_metrics': {
             for (final e in lateralMetrics!.entries) e.key: e.value.rawValue,
           },
         // lateralFlags 는 lateral z + 현재 metricScore 임계로 load 시 재계산.
-        if (faceShapeLabel != null) 'faceShapeLabel': faceShapeLabel,
+        if (faceShapeLabel != null) 'face_shape_label': faceShapeLabel,
         if (faceShapeConfidence != null)
-          'faceShapeConfidence': faceShapeConfidence,
-        'faceShape': faceShape.name,
+          'face_shape_confidence': faceShapeConfidence,
+        'face_shape': faceShape.name,
       });
 
   /// capture 만 역직렬화하고 derived (nodeScores·attributes·rules·
@@ -372,34 +372,34 @@ class FaceReadingReport {
     _trace('enter len=${jsonStr.length}');
     final j = jsonDecode(jsonStr) as Map<String, dynamic>;
     _trace('jsonDecode OK keys=${j.keys.toList()}');
-    final version = (j['schemaVersion'] as num?)?.toInt() ?? 0;
-    _trace('schemaVersion=$version (expected $kReportSchemaVersion)');
+    final version = (j['schema_version'] as num?)?.toInt() ?? 0;
+    _trace('schema_version=$version (expected $kReportSchemaVersion)');
     if (version != kReportSchemaVersion) {
       throw FormatException(
-          'FaceReadingReport schemaVersion mismatch: $version != $kReportSchemaVersion');
+          'FaceReadingReport schema_version mismatch: $version != $kReportSchemaVersion');
     }
 
     // ─── capture 필드 파싱 ───
     _trace('enum decode: ethnicity=${j['ethnicity']} gender=${j['gender']} '
-        'ageGroup=${j['ageGroup']} source=${j['source']}');
+        'age_group=${j['age_group']} source=${j['source']}');
     final ethnicity = Ethnicity.values.byName(j['ethnicity'] as String);
     final gender = Gender.values.byName(j['gender'] as String);
-    final ageGroup = AgeGroupParser.fromJsonValue(j['ageGroup'] as String);
+    final ageGroup = AgeGroupParser.fromJsonValue(j['age_group'] as String);
     final isOver50 = ageGroup.isOver50;
     _trace('enums OK: $ethnicity/$gender/$ageGroup isOver50=$isOver50');
     final rawMetrics = _extractRawMap(j['metrics']);
     _trace('rawMetrics: ${rawMetrics.length} keys=${rawMetrics.keys.toList()}');
-    final rawLateral = j['lateralMetrics'] == null
+    final rawLateral = j['lateral_metrics'] == null
         ? null
-        : _extractRawMap(j['lateralMetrics']);
+        : _extractRawMap(j['lateral_metrics']);
     _trace('rawLateral: ${rawLateral?.length ?? "null"} '
         '${rawLateral?.keys.toList() ?? ""}');
-    final faceShapeLabel = j['faceShapeLabel'] as String?;
-    final faceShapeConfidence = (j['faceShapeConfidence'] as num?)?.toDouble();
-    _trace('faceShapeLabel=$faceShapeLabel conf=$faceShapeConfidence '
-        'faceShapeRaw=${j['faceShape']}');
-    final faceShape = j['faceShape'] is String
-        ? FaceShape.values.byName(j['faceShape'] as String)
+    final faceShapeLabel = j['face_shape_label'] as String?;
+    final faceShapeConfidence = (j['face_shape_confidence'] as num?)?.toDouble();
+    _trace('face_shape_label=$faceShapeLabel conf=$faceShapeConfidence '
+        'face_shape_raw=${j['face_shape']}');
+    final faceShape = j['face_shape'] is String
+        ? FaceShape.values.byName(j['face_shape'] as String)
         : FaceShapeLabel.fromEnglish(faceShapeLabel);
     _trace('faceShape=$faceShape');
 
@@ -513,18 +513,18 @@ class FaceReadingReport {
       ageGroup: ageGroup,
       timestamp: DateTime.parse(j['timestamp'] as String),
       source: AnalysisSource.values.byName(j['source'] as String),
-      supabaseId: j['supabaseId'] as String?,
+      supabaseId: j['supabase_id'] as String?,
       alias: j['alias'] as String?,
-      isMyFace: j['isMyFace'] as bool? ?? false,
-      thumbnailPath: j['thumbnailPath'] as String?,
-      receivedAt: j['receivedAt'] != null
-          ? DateTime.parse(j['receivedAt'] as String)
+      isMyFace: j['is_my_face'] as bool? ?? false,
+      thumbnailPath: j['thumbnail_path'] as String?,
+      receivedAt: j['received_at'] != null
+          ? DateTime.parse(j['received_at'] as String)
           : null,
       // optional fields — null 이어도 정상.
-      thumbnailKey: j['thumbnailKey'] as String?,
-      deepfaceAge: (j['deepfaceAge'] as num?)?.toInt(),
-      deepfaceGender: j['deepfaceGender'] as String?,
-      deepfaceEthnicity: j['deepfaceEthnicity'] as String?,
+      thumbnailKey: j['thumbnail_key'] as String?,
+      deepfaceAge: (j['deepface_age'] as num?)?.toInt(),
+      deepfaceGender: j['deepface_gender'] as String?,
+      deepfaceEthnicity: j['deepface_ethnicity'] as String?,
       metrics: metrics,
       lateralMetrics: lateralMetrics,
       lateralFlags: lateralFlags,

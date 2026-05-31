@@ -49,7 +49,7 @@ export const MetricShow = () => {
                   </Descriptions.Item>
                   <Descriptions.Item label="ethnicity">{d.ethnicity ?? "-"}</Descriptions.Item>
                   <Descriptions.Item label="성별">{GENDER_LABEL[d.gender ?? ""] ?? d.gender ?? "-"}</Descriptions.Item>
-                  <Descriptions.Item label="연령대">{d.ageGroup ?? "-"}</Descriptions.Item>
+                  <Descriptions.Item label="연령대">{d.age_group ?? "-"}</Descriptions.Item>
                 </>
               );
             })()}

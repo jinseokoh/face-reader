@@ -137,7 +137,7 @@ export const MetricList = () => {
           title="연령대"
           dataIndex="body"
           render={(_: unknown, record: MetricEntry) => {
-            const v = parseDemographics(record.body).ageGroup;
+            const v = parseDemographics(record.body).age_group;
             return v ?? <Text type="secondary">-</Text>;
           }}
         />

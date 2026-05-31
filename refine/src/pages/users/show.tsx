@@ -299,7 +299,7 @@ export const UserShow = () => {
             <Table.Column<MetricEntry>
               title="age"
               dataIndex="body"
-              render={(_: unknown, record: MetricEntry) => parseDemographics(record.body).ageGroup ?? "-"}
+              render={(_: unknown, record: MetricEntry) => parseDemographics(record.body).age_group ?? "-"}
             />
             <Table.Column<MetricEntry>
               title="ethnicity"
