@@ -26,6 +26,11 @@ class _MainAppState extends ConsumerState<MainApp> {
   StreamSubscription<void>? _bonusSkippedSub;
   StreamSubscription<ShareLink>? _shareLinkSub;
 
+  // cold-start 시 getInitialLink + uriLinkStream 이중 전달 / pending+stream 겹침으로
+  // 같은 화면이 2번 push 되는 것 방지용 dedup.
+  String? _lastSharePath;
+  DateTime _lastShareAt = DateTime.fromMillisecondsSinceEpoch(0);
+
   @override
   void initState() {
     super.initState();
@@ -61,12 +66,20 @@ class _MainAppState extends ConsumerState<MainApp> {
     if (!mounted) return;
     // router 의 `/r/:id` wrapper 가 Supabase fetch + error UI 까지 책임. 여기선
     // path 만 조립해서 push — fetch latency 동안 wrapper 가 loading shell.
-    switch (link) {
-      case SoloShareLink(:final uuid):
-        context.push('/r/$uuid');
-      case CompatShareLink(:final uuidA, :final uuidB):
-        context.push('/r/$uuidA~$uuidB');
+    final path = switch (link) {
+      SoloShareLink(:final uuid) => '/r/$uuid',
+      CompatShareLink(:final uuidA, :final uuidB) => '/r/$uuidA~$uuidB',
+    };
+    // 동일 link 이중 전달 무시 (2초 내 같은 path) → 화면 1장만.
+    final now = DateTime.now();
+    if (path == _lastSharePath &&
+        now.difference(_lastShareAt) < const Duration(seconds: 2)) {
+      debugPrint('[ShareLink] dup ignored: $path');
+      return;
     }
+    _lastSharePath = path;
+    _lastShareAt = now;
+    context.push(path);
   }
 
   Future<void> _showBonusSkippedDialog() async {

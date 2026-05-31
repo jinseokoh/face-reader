@@ -943,10 +943,16 @@ class _ReportPageState extends ConsumerState<ReportPage> {
         // deep link cold-start 진입 시 stack 이 없어 자동 back 이 안 생긴다.
         // stack 있으면 뒤로(←), 없으면 닫기(X)→홈 으로 항상 탈출 가능하게 명시.
         leading: IconButton(
+          // 받은 카드는 main 위 overlay 성격 → 항상 닫기(X). 본인 리포트는 stack
+          // 있으면 뒤로(←). 어느 경우든 pop 불가하면 홈(/main)으로.
           icon: Icon(
-            Navigator.of(context).canPop() ? Icons.arrow_back : Icons.close,
+            (isReceived || !Navigator.of(context).canPop())
+                ? Icons.close
+                : Icons.arrow_back,
           ),
-          tooltip: Navigator.of(context).canPop() ? '뒤로' : '닫기',
+          tooltip: (isReceived || !Navigator.of(context).canPop())
+              ? '닫기'
+              : '뒤로',
           onPressed: () => Navigator.of(context).canPop()
               ? Navigator.of(context).pop()
               : context.go('/main'),
