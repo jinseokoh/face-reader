@@ -289,7 +289,7 @@ class FaceReadingReport {
         'ageGroup': ageGroup.jsonValue,
         'timestamp': timestamp.toIso8601String(),
         'source': source.name,
-        'supabaseId': supabaseId,
+        // supabaseId 제외 — 서버는 metrics.id 컬럼이 canonical (== supabaseId).
         if (thumbnailKey != null) 'thumbnailKey': thumbnailKey,
         'metrics': {
           for (final e in metrics.entries) e.key: e.value.rawValue,
