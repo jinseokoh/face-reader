@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// 일일 무료 코인 (AdMob rewarded 3편 = 1코인) 진행도 + 시청 기록.
-/// SoT 는 서버 — `rewarded_ad_progress` table (KST 자정 기준 reset).
+/// SoT 는 서버 — `ad_rewards` table (KST 자정 기준 reset).
 class FreeCoinStatus {
   final int progress;
   final int max;
@@ -35,12 +35,12 @@ class FreeCoinService {
   SupabaseClient get _client => Supabase.instance.client;
 
   Future<FreeCoinStatus> status() async {
-    final r = await _client.rpc('rewarded_ad_status');
+    final r = await _client.rpc('ad_reward_status');
     return FreeCoinStatus.fromRpc(Map<String, dynamic>.from(r as Map));
   }
 
   Future<FreeCoinStatus> recordView() async {
-    final r = await _client.rpc('record_rewarded_ad_view');
+    final r = await _client.rpc('ad_reward_record_view');
     debugPrint('[FreeCoin] recordView → $r');
     return FreeCoinStatus.fromRpc(Map<String, dynamic>.from(r as Map));
   }

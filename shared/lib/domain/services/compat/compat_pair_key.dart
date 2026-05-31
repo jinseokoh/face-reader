@@ -1,4 +1,4 @@
-/// Compat pair_key = my.supabaseId :: album.supabaseId.
+/// Compat pair_key = my.supabaseId ~ album.supabaseId.
 ///
 /// 비대칭(나 × 상대) · 순서 고정. 두 report 모두 supabaseId 가 할당된 뒤에만
 /// key 가 만들어짐 — 서버 UUID 를 앵커로 삼아 설치·기기 변경 후에도 unlock
@@ -12,5 +12,5 @@ String? tryPairKey(FaceReadingReport my, FaceReadingReport album) {
   final myId = my.supabaseId;
   final albumId = album.supabaseId;
   if (myId == null || albumId == null) return null;
-  return '$myId::$albumId';
+  return '$myId~$albumId';
 }

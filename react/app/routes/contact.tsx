@@ -96,10 +96,13 @@ export default function Contact({ loaderData }: Route.ComponentProps) {
       </p>
 
       <form onSubmit={onSubmit} className="form">
-        <p className="form-notice">
-          삭제되는 내용은 관상 기록 추적용 저해상도 200×200 썸네일과 안면 계측
-          데이터 파일 전부입니다.
-        </p>
+        <ul className="form-note">
+          <li>
+            삭제되는 내용은 관상 기록 추적용 저해상도 200×200 썸네일과 안면 계측
+            데이터 파일 전부입니다.
+          </li>
+          <li>삭제이후 복원은 불가하므로 신중히 선택해 주세요.</li>
+        </ul>
 
         <label className="form-label">
           회신 받을 이메일 <span className="form-required">*</span>

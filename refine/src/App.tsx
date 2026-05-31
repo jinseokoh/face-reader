@@ -62,7 +62,7 @@ function App() {
                     name: "users",
                     list: "/users",
                     show: "/users/show/:id",
-                    meta: { label: "가입자", icon: <TeamOutlined /> },
+                    meta: { label: "사용자", icon: <TeamOutlined /> },
                   },
                   {
                     name: "metrics",

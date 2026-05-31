@@ -13,6 +13,7 @@ import {
   Tag,
   Typography,
 } from "antd";
+import { UserLink } from "../../components/user-link";
 import type { AppUser, CoinEntry, MetricEntry } from "../../types";
 
 const { Title, Text } = Typography;
@@ -113,7 +114,7 @@ export const DashboardPage = () => {
       <Row gutter={[12, 12]}>
         <Col xs={12} md={6}>
           <Card>
-            <Statistic title="총 가입자" value={users.length} suffix="명" />
+            <Statistic title="총 사용자" value={users.length} suffix="명" />
             <Text type="secondary" style={{ fontSize: 12 }}>
               7일 신규 +{newUsers7} · 30일 +{newUsers30}
             </Text>
@@ -205,7 +206,7 @@ export const DashboardPage = () => {
 
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={10}>
-          <Card title="최근 가입자">
+          <Card title="최근 사용자">
             {recentSignups.length === 0 ? (
               <Empty />
             ) : (
@@ -221,7 +222,7 @@ export const DashboardPage = () => {
                       }
                       title={
                         <Space>
-                          <Text strong>{u.nickname ?? "(닉네임 없음)"}</Text>
+                          <UserLink id={u.id}><Text strong>{u.nickname ?? "(닉네임 없음)"}</Text></UserLink>
                           {u.signup_bonus_skipped && (
                             <Tag color="warning">bonus skipped</Tag>
                           )}
@@ -264,7 +265,7 @@ export const DashboardPage = () => {
                         <Avatar src={u?.profile_image_url ?? undefined} size={20}>
                           {u?.nickname?.[0] ?? "?"}
                         </Avatar>
-                        <Text>{u?.nickname ?? uid.slice(0, 8) + "…"}</Text>
+                        <UserLink id={uid}><Text>{u?.nickname ?? uid.slice(0, 8) + "…"}</Text></UserLink>
                       </Space>
                     );
                   }}

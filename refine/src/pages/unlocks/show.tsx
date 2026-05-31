@@ -15,7 +15,7 @@ const { Text } = Typography;
 export const UnlockShow = () => {
   const { id } = useParams<{ id: string }>();
   const pairKey = id ? decodeURIComponent(id) : "";
-  const [myId, albumId] = pairKey.split("::");
+  const [myId, albumId] = pairKey.split("~");
 
   const { result, query } = useMany<MetricEntry>({
     resource: "metrics",

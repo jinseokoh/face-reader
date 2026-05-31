@@ -1,5 +1,6 @@
 import { DateField, NumberField, Show } from "@refinedev/antd";
 import { useList, useShow } from "@refinedev/core";
+import { useParams } from "react-router";
 import {
   Avatar,
   Button,
@@ -41,10 +42,12 @@ const KIND_LABEL: Record<CoinEntry["kind"], string> = {
 };
 
 export const UserShow = () => {
+  const { id } = useParams<{ id: string }>();
+
   const {
     result: user,
     query: { isLoading, refetch: refetchUser },
-  } = useShow<AppUser>();
+  } = useShow<AppUser>({ resource: "admin_users", id });
 
   const userId = user?.id;
 
@@ -117,6 +120,11 @@ export const UserShow = () => {
               <Descriptions.Item label="UUID">
                 <Text code copyable style={{ fontSize: 11 }}>
                   {user?.id}
+                </Text>
+              </Descriptions.Item>
+              <Descriptions.Item label="이메일">
+                <Text style={{ fontSize: 12 }}>
+                  {user?.email ?? "—"}
                 </Text>
               </Descriptions.Item>
               <Descriptions.Item label="Kakao ID">

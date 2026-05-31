@@ -1,6 +1,7 @@
 import { DateField, List, ShowButton, useTable } from "@refinedev/antd";
 import { useMany } from "@refinedev/core";
 import { Avatar, Space, Table, Tag, Tooltip, Typography } from "antd";
+import { UserLink } from "../../components/user-link";
 import type { AppUser, MetricEntry } from "../../types";
 
 const { Text } = Typography;
@@ -64,7 +65,7 @@ export const MetricList = () => {
                 <Avatar src={u.profile_image_url ?? undefined} size={24}>
                   {u.nickname?.[0] ?? "?"}
                 </Avatar>
-                <Text strong>{u.nickname ?? "(없음)"}</Text>
+                <UserLink id={uid}><Text strong>{u.nickname ?? "(없음)"}</Text></UserLink>
               </Space>
             );
           }}

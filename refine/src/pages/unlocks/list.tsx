@@ -1,6 +1,7 @@
 import { DateField, List, ShowButton, useTable } from "@refinedev/antd";
 import { useMany } from "@refinedev/core";
 import { Avatar, Space, Table, Tag, Tooltip, Typography } from "antd";
+import { UserLink } from "../../components/user-link";
 import type { AppUser, Unlock } from "../../types";
 
 const { Text } = Typography;
@@ -43,7 +44,7 @@ export const UnlockList = () => {
     <List title="궁합 unlock 내역">
       <Table
         {...tableProps}
-        rowKey={(r) => `${r.user_id}::${r.pair_key}`}
+        rowKey={(r) => `${r.user_id}~${r.pair_key}`}
         size="middle"
         scroll={{ x: 1100 }}
       >
@@ -63,7 +64,7 @@ export const UnlockList = () => {
                 <Avatar src={u.profile_image_url ?? undefined} size={24}>
                   {u.nickname?.[0] ?? "?"}
                 </Avatar>
-                <Text strong>{u.nickname ?? "(없음)"}</Text>
+                <UserLink id={uid}><Text strong>{u.nickname ?? "(없음)"}</Text></UserLink>
               </Space>
             );
           }}
@@ -83,7 +84,7 @@ export const UnlockList = () => {
           }}
         />
         <Table.Column<Unlock>
-          title="pair_key (my::album)"
+          title="pair_key (my~album)"
           dataIndex="pair_key"
           render={(v: string) => (
             <Text code copyable={{ text: v }} style={{ fontSize: 11 }}>

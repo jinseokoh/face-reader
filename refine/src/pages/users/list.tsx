@@ -7,18 +7,20 @@ import {
 } from "@refinedev/antd";
 import type { BaseRecord } from "@refinedev/core";
 import { Avatar, Space, Table, Tag, Typography } from "antd";
+import { UserLink } from "../../components/user-link";
 import type { AppUser } from "../../types";
 
 const { Text } = Typography;
 
 export const UserList = () => {
   const { tableProps } = useTable<AppUser>({
+    resource: "admin_users",
     syncWithLocation: true,
     sorters: { initial: [{ field: "created_at", order: "desc" }] },
   });
 
   return (
-    <List title="가입자">
+    <List title="사용자">
       <Table {...tableProps} rowKey="id" size="middle">
         <Table.Column
           title=""
@@ -33,8 +35,21 @@ export const UserList = () => {
         <Table.Column
           title="닉네임"
           dataIndex="nickname"
+          render={(v: string | null, record: AppUser) => (
+            <UserLink id={record.id}>
+              {v ? <Text strong>{v}</Text> : <Text type="secondary">-</Text>}
+            </UserLink>
+          )}
+        />
+        <Table.Column
+          title="이메일"
+          dataIndex="email"
           render={(v: string | null) =>
-            v ? <Text strong>{v}</Text> : <Text type="secondary">-</Text>
+            v ? (
+              <Text style={{ fontSize: 12 }}>{v}</Text>
+            ) : (
+              <Text type="secondary">—</Text>
+            )
           }
         />
         <Table.Column

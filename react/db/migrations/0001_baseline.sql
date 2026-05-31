@@ -8,12 +8,13 @@
 -- OR REPLACE).
 --
 -- 포함:
---   • tables    : users · coins · metrics · unlocks · bonus_recipients
+--   • tables    : users · coins · metrics · unlocks · bonus_recipients · ad_rewards
 --                 (+ ads / ad_views — TODO 블록 참조)
+--   • views     : admin_users (users + auth.users.email · service_role 전용)
 --   • triggers  : handle_new_user (auth.users → public.users + 보너스 3 코인)
 --                 touch_metrics_updated_at (views++ 시 updated_at 자동 갱신)
---   • rpcs      : grant_coins / spend_coins / unlock_compat
---                 increment_metrics_views
+--   • rpcs      : grant_coins · admin_grant_coins · spend_coins · unlock_compat
+--                 increment_metrics_views · ad_reward_status · ad_reward_record_view
 --                 (+ claim_ad_reward — TODO)
 --   • rls       : 각 테이블 별 정책
 --   • indexes   : 운영 query 패턴 기반
@@ -62,6 +63,25 @@ create policy "users_self_read"
 create policy "users_self_update"
   on public.users for update using (id = auth.uid()) with check (id = auth.uid());
 -- INSERT 는 handle_new_user 트리거 (SECURITY DEFINER) 전용.
+
+-- admin_users — public.users + auth.users.email (service_role 전용).
+-- email 은 auth.users 에만 존재. 컬럼 복제 없이 view 로만 노출하므로 drift 없음.
+-- view 는 owner(postgres) 권한으로 auth.users 를 읽고, anon/authenticated 는 차단.
+create or replace view public.admin_users as
+select
+  u.id,
+  u.kakao_user_id,
+  u.nickname,
+  u.profile_image_url,
+  u.coins,
+  u.signup_bonus_skipped,
+  u.created_at,
+  au.email
+from public.users u
+left join auth.users au on au.id = u.id;
+
+revoke all on public.admin_users from anon, authenticated;
+grant select on public.admin_users to service_role;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 2. public.coins — 코인 거래 ledger
@@ -207,7 +227,7 @@ grant execute on function public.increment_metrics_views(uuid) to anon, authenti
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 4. public.unlocks — 궁합 카드 해제 ledger
 -- ─────────────────────────────────────────────────────────────────────────────
--- pair_key = `${my.supabaseId}::${album.supabaseId}` (client 가 생성, 비대칭).
+-- pair_key = `${my.supabaseId}~${album.supabaseId}` (client 가 생성, 비대칭).
 -- INSERT 는 unlock_compat (SECURITY DEFINER) RPC 만 — 코인 차감 + 삽입 트랜잭션.
 
 create table if not exists public.unlocks (
@@ -353,6 +373,33 @@ begin
 end; $$;
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- 7-1. RPC: admin_grant_coins — 관리자(refine) 임의 사용자 코인 지급
+-- ─────────────────────────────────────────────────────────────────────────────
+-- service_role 전용. auth.uid() 가 아니라 p_user_id 대상에 직접 적립 + bonus ledger.
+-- 반환: 대상 사용자의 새 잔액.
+create or replace function public.admin_grant_coins(
+  p_user_id     uuid,
+  p_amount      integer,
+  p_description text default null
+) returns integer
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_balance integer;
+begin
+  if p_amount <= 0 then raise exception 'amount must be positive'; end if;
+
+  update users set coins = coins + p_amount
+    where id = p_user_id
+    returning coins into v_balance;
+  if v_balance is null then raise exception 'user not found: %', p_user_id; end if;
+
+  insert into coins (user_id, kind, amount, balance_after, description)
+    values (p_user_id, 'bonus', p_amount, v_balance, coalesce(p_description, 'admin grant'));
+  return v_balance;
+end; $$;
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- 8. RPC: spend_coins — 차감 (범용)
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 반환: 성공 시 새 잔액, 잔액 부족 시 -1.
@@ -430,13 +477,15 @@ end; $$;
 revoke execute on function public.grant_coins(integer, text, text, text, text) from public, anon;
 revoke execute on function public.spend_coins(integer, text, text)              from public, anon;
 revoke execute on function public.unlock_compat(text)                            from public, anon;
+revoke execute on function public.admin_grant_coins(uuid, integer, text)         from public, anon, authenticated;
 
 grant  execute on function public.grant_coins(integer, text, text, text, text) to authenticated;
 grant  execute on function public.spend_coins(integer, text, text)              to authenticated;
 grant  execute on function public.unlock_compat(text)                            to authenticated;
+grant  execute on function public.admin_grant_coins(uuid, integer, text)         to service_role;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 11. rewarded_ad_progress — AdMob 일일 무료 코인 (3편 시청 = 1 코인)
+-- 11. ad_rewards — AdMob 일일 무료 코인 (3편 시청 = 1 코인)
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 정책:
 --   - day = (now() AT TIME ZONE 'Asia/Seoul')::date — KST 자정 기준 reset
@@ -444,7 +493,7 @@ grant  execute on function public.unlock_compat(text)                           
 --   - 진행도 / claim 여부는 (user_id, day) row 1건에 누적
 --   - Flutter `PurchaseSheet` "오늘의 무료 코인" 카드가 상태 표시 + 진입
 
-create table if not exists public.rewarded_ad_progress (
+create table if not exists public.ad_rewards (
   user_id    uuid        not null references auth.users(id) on delete cascade,
   day        date        not null default ((now() at time zone 'Asia/Seoul')::date),
   views      integer     not null default 0,
@@ -453,16 +502,16 @@ create table if not exists public.rewarded_ad_progress (
   primary key (user_id, day)
 );
 
-alter table public.rewarded_ad_progress enable row level security;
+alter table public.ad_rewards enable row level security;
 
-drop policy if exists "rewarded_ad_progress_self_read" on public.rewarded_ad_progress;
-create policy "rewarded_ad_progress_self_read"
-  on public.rewarded_ad_progress for select using (user_id = auth.uid());
+drop policy if exists "ad_rewards_self_read" on public.ad_rewards;
+create policy "ad_rewards_self_read"
+  on public.ad_rewards for select using (user_id = auth.uid());
 
 -- write 는 RPC (security definer) 만. anon/authenticated 직접 write 없음.
 
--- RPC: rewarded_ad_status — 오늘의 진행도 read
-create or replace function public.rewarded_ad_status()
+-- RPC: ad_reward_status — 오늘의 진행도 read
+create or replace function public.ad_reward_status()
 returns json
 language plpgsql security definer set search_path = public
 as $$
@@ -474,7 +523,7 @@ declare
 begin
   if v_uid is null then raise exception 'not authenticated'; end if;
   select views, claimed into v_views, v_claimed
-    from rewarded_ad_progress
+    from ad_rewards
     where user_id = v_uid and day = v_day;
   return json_build_object(
     'progress',      coalesce(v_views, 0),
@@ -484,10 +533,10 @@ begin
   );
 end; $$;
 
--- RPC: record_rewarded_ad_view — 광고 1편 시청 기록 + 3편 도달 시 자동 +1 코인
+-- RPC: ad_reward_record_view — 광고 1편 시청 기록 + 3편 도달 시 자동 +1 코인
 -- 반환: { progress, max, claimed_today, balance_after }
 --   balance_after — 이번 호출로 코인 지급된 경우 새 잔액, 아니면 null
-create or replace function public.record_rewarded_ad_view()
+create or replace function public.ad_reward_record_view()
 returns json
 language plpgsql security definer set search_path = public
 as $$
@@ -500,13 +549,13 @@ declare
 begin
   if v_uid is null then raise exception 'not authenticated'; end if;
 
-  insert into rewarded_ad_progress (user_id, day, views, claimed, updated_at)
+  insert into ad_rewards (user_id, day, views, claimed, updated_at)
     values (v_uid, v_day, 1, false, now())
     on conflict (user_id, day) do update
       set views = case
-            when rewarded_ad_progress.claimed then rewarded_ad_progress.views
-            when rewarded_ad_progress.views >= 3 then rewarded_ad_progress.views
-            else rewarded_ad_progress.views + 1
+            when ad_rewards.claimed then ad_rewards.views
+            when ad_rewards.views >= 3 then ad_rewards.views
+            else ad_rewards.views + 1
           end,
           updated_at = now()
     returning views, claimed into v_views, v_claimed;
@@ -516,7 +565,7 @@ begin
     -- auth.uid() 는 동일 JWT 컨텍스트 — 정상 동작.
     select grant_coins(1, 'bonus', null, null, '광고 3편 무료 보상')
       into v_balance;
-    update rewarded_ad_progress
+    update ad_rewards
       set claimed = true, updated_at = now()
       where user_id = v_uid and day = v_day;
     v_claimed := true;
@@ -530,10 +579,10 @@ begin
   );
 end; $$;
 
-revoke execute on function public.rewarded_ad_status()      from public, anon;
-revoke execute on function public.record_rewarded_ad_view() from public, anon;
-grant  execute on function public.rewarded_ad_status()      to authenticated;
-grant  execute on function public.record_rewarded_ad_view() to authenticated;
+revoke execute on function public.ad_reward_status()      from public, anon;
+revoke execute on function public.ad_reward_record_view() from public, anon;
+grant  execute on function public.ad_reward_status()      to authenticated;
+grant  execute on function public.ad_reward_record_view() to authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 12. TODO — ads / ad_views / claim_ad_reward (custom video 트랙, dormant)
@@ -572,7 +621,7 @@ grant  execute on function public.record_rewarded_ad_view() to authenticated;
 --           --function claim_ad_reward "$DB_URL" >> 0001_baseline.sql
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 12. Storage bucket — 'ads' (수동 생성)
+-- 13. Storage bucket — 'ads' (수동 생성)
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Supabase 대시보드 → Storage → Create bucket
 --   name: ads
@@ -595,19 +644,44 @@ grant  execute on function public.record_rewarded_ad_view() to authenticated;
 -- end$$;
 
 -- ============================================================================
--- DEV ONLY — reset (전체 데이터 날아감)
+-- DEV ONLY — reset (⚠️ 파괴적 · 전체 초기화)
 -- ============================================================================
--- drop trigger if exists on_auth_user_created on auth.users;
--- drop trigger if exists metrics_touch on public.metrics;
--- drop function if exists public.handle_new_user();
--- drop function if exists public.touch_metrics_updated_at();
--- drop function if exists public.increment_metrics_views(uuid);
--- drop function if exists public.grant_coins(integer, text, text, text, text);
--- drop function if exists public.spend_coins(integer, text, text);
--- drop function if exists public.unlock_compat(text);
--- drop table    if exists public.bonus_recipients cascade;
--- drop table    if exists public.unlocks          cascade;
--- drop table    if exists public.metrics          cascade;
--- drop table    if exists public.coins            cascade;
--- drop table    if exists public.users            cascade;
--- -- 그 후 본 0001_baseline.sql 통째로 다시 RUN.
+-- ⚠️ 사용법: 평소 주석 유지. reset 시 "이 블록만" 선택해 주석 해제 후 단독 RUN
+--    → 그 다음 본 0001_baseline.sql 을 통째로 다시 RUN.
+--    ❌ 이 블록을 해제한 채 파일 전체를 한 번에 RUN 금지 — 맨 끝에서 방금 만든
+--       객체를 전부 drop 해버린다.
+--    ✅ reset·baseline 모두 Supabase SQL Editor(=postgres 롤)에서 실행할 것.
+--       (default privileges 가 "객체를 만든 롤" 기준이라 롤이 다르면 권한 누락)
+--
+-- 메커니즘: enumerated drop 과 달리 객체가 늘어도 안 썩음 — public 을 스키마째
+-- 비운다. on_auth_user_created 트리거는 public.handle_new_user() drop 시 cascade
+-- 로 함께 제거된다. drop schema 가 default privileges 도 지우므로 Supabase 기본
+-- 권한을 복원한다.
+--
+-- drop schema public 은 public 만 지우므로 가입 계정(auth.users)까지 비워 진짜
+-- clean slate 로 만든다. baseline 재실행 후 사용자는 재가입부터 시작 —
+-- handle_new_user 가 profile + 가입 보너스 3 코인 을 재생성.
+--
+-- drop schema public cascade;
+-- create schema public;
+-- delete from auth.users;   -- auth.identities/sessions 로 cascade. storage 객체가 있으면 먼저 비울 것.
+--
+-- grant usage on schema public to postgres, anon, authenticated, service_role;
+-- grant all   on schema public to postgres, service_role;
+-- alter default privileges in schema public grant all on tables    to postgres, anon, authenticated, service_role;
+-- alter default privileges in schema public grant all on functions to postgres, anon, authenticated, service_role;
+-- alter default privileges in schema public grant all on sequences to postgres, anon, authenticated, service_role;
+
+-- ============================================================================
+-- 관리자(refine) 로그인 계정 생성
+-- ============================================================================
+-- refine admin 은 별도 role 검사 없이 "인증된 Supabase 계정이면" 로그인 가능하고,
+-- 데이터 접근은 env 의 service_role 키로 한다 (refine/src/providers/supabase-client.ts).
+-- 따라서 "관리자 계정" = refine 에 로그인할 email/password 계정 1개만 만들면 된다.
+-- 관리 권한의 실체는 refine env 의 VITE_SUPABASE_SERVICE_KEY 이지 DB role 이 아니다.
+--
+-- reset + baseline RUN 후:
+--   Supabase 대시보드 → Authentication → Users → Add user
+--     · Email / Password 입력 + "Auto Confirm User" 체크 (이메일 인증 생략)
+--   → on_auth_user_created 트리거가 public.users profile + 3 코인 을 자동 생성
+--   → 이 email/password 로 refine 로그인.

@@ -6,6 +6,7 @@ export type AppUser = {
   coins: number;
   signup_bonus_skipped: boolean;
   created_at: string;
+  email: string | null;
 };
 
 export type CoinKind = "purchase" | "spend" | "bonus" | "refund";
