@@ -1,235 +1,40 @@
-# TODONOW — 궁합 유료-소유 모델 + metrics 스키마 정리
+# TODONOW — 남은 일
 
-> 이 phase 의 목적: **받은 카드(공유 UUID)를 관상 앨범에서 분리**하고, **궁합을 "결제=소유" 모델**로 정립하며, 이를 뒷받침하도록 **metrics 스키마/직렬화를 정리**한다.
-> 작성 시점 합의 기준. 점검용. (구현 전 최종 확인 단계)
-
----
-
-## 0. 대전제 (이번 phase 의 아키텍처 결정)
-
-- **로컬 Hive = durable SOT**, **remote(Supabase metrics) = 공유용 projection(90일 TTL)** — 현 구조 유지.
-- 즉 "remote=SOT, 로컬=캐시" 전환은 **이번 phase 아님** (아래 §제외 참조).
-- 필드 canonical 위치 정리(아래)는 local↔remote SOT 결정과 **독립적**으로 진행.
+> 이번 세션 완료분(metrics 슬림화 · 궁합 유료-소유 · expiry 폐기 · DTO 키 camelCase 통일 ·
+> unlocks.body · RLS claim 수정)은 git history 참조. 아래는 **아직 안 된 것만**.
 
 ---
 
-## 1. 범위
+## A. 클라이언트 배포 (서버·DB·worker 는 이미 반영됨)
 
-### 포함 (이번 phase)
-1. metrics 중복 컬럼 제거 — demographics(source/ethnicity/gender/age_group)는 **이미 body 에도 있으므로** 중복인 top-level 컬럼만 drop(body 사본을 단일 소스로). isMyFace 는 body 에서 빼고 컬럼으로 승격
-2. 직렬화 분리 (`toJsonString` 로컬용 / `toBodyJson` 서버 body용)
-3. flutter write/receive 경로 반영
-4. refine admin 의 metrics 읽기 경로 반영 (body 파싱)
-5. 관상 앨범에서 "받은 카드" 섹션 제거 → 받은 카드는 궁합 탭에만
-6. 궁합 "결제=소유" 보강: unlock 된 상대 만료 제외 + thumbnail gender fallback + 로컬 스냅샷 계산
-7. 받은 카드 ReportPage 에 "나와의 궁합 보기" CTA(+teaser)
-8. 약관/개인정보 1줄 (결제한 궁합 결과는 상대 삭제와 무관하게 기기 보관)
-
-### 제외 (다음 phase 로 명시 연기)
-- ❌ Hive 역할 강등(remote=SOT, 로컬=캐시) — anon auth + owner-row 만료 제외 + 받은 북마크 server화 선행 필요
-- ❌ Supabase anonymous auth 도입
-- ❌ 원격 채팅 / liveness 본인 인증 (isMyFace 신뢰성 강화)
-- ❌ Hive 라이브러리 교체
+- [ ] **flutter 앱 재빌드/스토어 배포** — 만기 제거 · upload-on-share · 받은카드 궁합 CTA ·
+      thumbnail gender fallback · unlocks.body 복원 등 Dart 변경 반영
+- [ ] **refine admin 재빌드/배포** — demographics body 파싱 · "90일+ 미활동 정리" 버튼 ·
+      email 컬럼 · nickname 링크 · 사용자 라벨
 
 ---
 
-## 2. 최종 스키마 (확정)
+## B. 멀티디바이스 (로그인 기반 — anon-auth 불필요) — ✅ 핵심 완료
 
-```
-public.metrics:
-  id, user_id, body, alias, is_my_face, views, expires_at, created_at, updated_at
-```
+> 멀티디바이스 = email/password 로그인. unlocks(+unlocks.body 상대 스냅샷)는 user_id 로
+> 가져와지고, 본인 얼굴은 로그인 시 rehydrate 로 복원. anon-auth 불필요.
 
-**배치 원칙 (하나의 규칙):**
-- **body = 분석 결과 payload** — demographics·metrics·faceShape 등 관상 분석 데이터.
-- **컬럼 = 관계/소유 메타 + 쿼리 키** — user_id, isMyFace, alias, views, expires_at, timestamps.
-
-→ demographics→body, isMyFace·alias→컬럼은 위 규칙에서 자동 도출. (성격이 다른 분류 차이일 뿐, 비대칭 아님)
-
-| 필드 | 위치 | canonical | 비고 |
-|---|---|---|---|
-| source, ethnicity, gender, age_group | **body 안에만** | body | 컬럼 drop. refine 가 body 파싱(키: `source/gender/ethnicity/ageGroup`) |
-| isMyFace | **컬럼(`is_my_face`)** | 컬럼 | body 에서 제거 |
-| alias | **컬럼(현행 유지)** | 컬럼 | 본인이 metrics 에 붙이는 이름 = 소유 메타. body 에 안 넣음 |
-| 나머지(user_id/views/expires_at/created_at/updated_at/body) | 컬럼 | — | 변경 없음 |
-
-- RLS `metrics_insert_anon` 의 `body->>'alias' is null` 가드: **변경 불필요** (alias 가 body 에 안 들어가므로 항상 만족).
-- check constraint `source in ('camera','album')`: source 컬럼 drop 과 함께 제거.
+- [x] **로그인 시 본인 관상 server 복원** (rehydrate): `metrics where user_id=나` →
+      로컬 Hive 복원 (`historyRehydrateProvider`). 커밋 `232d5a9`.
+- [x] **unlock 시점 본인 카드 업로드 보장**: isMyFace 카드는 궁합 진입 시 항상 upsert. 커밋 `940da56`.
+- [ ] (검증) device B 실기에서 로그인 → myFace 복원 + unlocks.body 상대 → 궁합 렌더 e2e 확인
+- [ ] 받은 북마크(미결제 received) server 테이블화 — 필요 시 (낮은 우선순위)
 
 ---
 
-## 3. Workstream 상세
+## C. 향후 — 채팅 / 본인 인증
 
-### A. DB — `react/db/migrations/0001_baseline.sql`
-- [ ] metrics 테이블에서 컬럼 drop: `source`, `ethnicity`, `gender`, `age_group`
-- [ ] `source` check constraint 제거
-- [ ] 컬럼 추가: `is_my_face boolean not null default false`
-- [ ] `alias` 컬럼 유지
-- [ ] metrics 관련 index 점검 (source/gender 인덱스 없음 — 영향 없음 확인)
-- [ ] (확인) `metrics_insert_anon` 정책은 그대로 — alias 가드 유지해도 무해
-- [ ] reset 흐름은 기존 §DEV ONLY reset 블록 그대로 (drop schema → baseline RUN)
-
-### B. 직렬화 — `shared/lib/domain/models/face_reading_report.dart`
-
-> 핵심: 지금은 `toJsonString()` 하나가 **로컬 Hive + 서버 body 겸용**. 이걸 둘로 쪼갠다.
-> alias·isMyFace 는 **로컬엔 남기고 서버 body 에서만 뺀다** (로컬은 표시용으로 필요).
-
-| 직렬화 | 용도 | alias | isMyFace | demographics | thumbnailPath/receivedAt |
-|---|---|---|---|---|---|
-| `toJsonString()` (현행 유지) | 로컬 Hive | 유지 | 유지 | 유지 | 유지 |
-| `toBodyJson()` (신규) | 서버 body | **제외** | **제외** | 유지 | 제외 |
-
-- [ ] `toJsonString()` — **로컬 Hive 전용, 현행 그대로** (alias·isMyFace 포함)
-- [ ] **`toBodyJson()` 신규** — 서버 body 전용:
-  - **제외**: `alias`(→컬럼), `isMyFace`(→컬럼), 로컬 전용 `thumbnailPath`·`receivedAt`
-  - **포함**: `ethnicity/gender/ageGroup/source` + `metrics` rawValue + faceShape 등 분석 payload
-- [ ] `fromJsonString()` — 로컬 load 경로(변경 없음, alias·isMyFace 계속 읽음)
-
-### C. flutter write/receive
-- [ ] `data/services/supabase_service.dart`
-  - [ ] `saveMetrics`: `body: report.toBodyJson()`, 컬럼 payload 에서 `source/ethnicity/gender/age_group` 제거, `is_my_face: report.isMyFace` 추가
-  - [ ] `upsertMetricsBody`: 동일하게 `toBodyJson()` + `is_my_face`
-  - [ ] `updateAlias`: **변경 없음** (alias 컬럼 update 유지)
-- [ ] `domain/services/share/share_receive_service.dart`
-  - [ ] isMyFace 를 **row 의 `is_my_face` 컬럼**에서 읽기 (현재 `body['isMyFace']` → 컬럼)
-  - [ ] `autoRegisterEligible`: source 는 body 에서 계속 읽음, isMyFace 만 컬럼으로
-
-### D. 관상 앨범에서 받은 카드 분리
-- [ ] `presentation/screens/physiognomy/physiognomy_screen.dart`
-  - [ ] 앨범 탭 source 목록 `[album, received]` → **`[album]` 만**
-  - [ ] `received` 섹션/헤더('받은 카드') 제거
-- [ ] 받은 카드는 이제 **궁합 탭에서만** 노출
-
-### E. 궁합 "결제=소유" 보강
-- [ ] `presentation/providers/history_provider.dart`
-  - [ ] load 시 만료 prune 예외: **나와 unlock 된 pair 의 상대 카드는 `expiresAt` 지나도 유지** (unlocked Set 기준)
-- [ ] `presentation/screens/compatibility/compatibility_screen.dart`
-  - [ ] 후보(`!isMyFace`) 목록 유지 — locked/unlocked 2섹션 유지
-  - [ ] 궁합 계산은 **로컬 스냅샷(body rawValue)** 으로 (remote 생존 비의존) — 이미 로컬에 metrics 있음
-- [ ] thumbnail 렌더 (해당 위젯)
-  - [ ] received 카드 R2 thumbnail 404/missing → **gender 기반 fallback 아바타** (gender 는 body 에 있음)
-
-### F. 받은 카드 → 궁합 전환 CTA (자동저장 없음)
-- [ ] `presentation/screens/home/report_page.dart` (source==received 일 때)
-  - [ ] **"나와의 궁합 보기 (N코인)" primary CTA** — **단순 버튼만** (teaser 없음)
-  - [ ] unlock 후 같은 자리 "궁합 결과 보기"
-- [ ] `config/router.dart` — **`_maybeAutoRegister` 제거**: 공유 링크 열람만으로 history 자동 저장 안 함
-- [ ] 받은 카드는 **사용자가 CTA 를 눌러 궁합으로 진행한 시점에만** history 저장 = "주체적 추가". 열람만 하면 저장 안 됨(ephemeral)
-
-### G. refine admin — body 파싱으로 전환
-- [ ] `refine/src/types.ts` — `MetricEntry` 에서 컬럼 `source/ethnicity/gender/age_group` 제거, `is_my_face` 추가; body 파싱 헬퍼 타입
-- [ ] `refine/src/pages/metrics/list.tsx`
-  - [ ] source/gender/ethnicity/age_group 를 **body 파싱**으로 display (키: `source/gender/ethnicity/ageGroup`)
-  - [ ] 해당 컬럼 **서버 필터/소팅 제거** (display-only, 합의됨)
-  - [ ] alias 컬럼 표시 **유지**
-  - [ ] (옵션) `is_my_face` 컬럼 표시 추가
-- [ ] `refine/src/pages/metrics/show.tsx` — 동일 body 파싱
-- [ ] `refine/src/pages/dashboard/index.tsx` — source/gender **집계 제거** (body 파싱 비용 대비 불필요)
-
-### H. 문서 / 약관
-- [ ] `react/public/privacy.md` (또는 terms) — "결제한 궁합 결과는 상대방 데이터 삭제와 무관하게 기기에 보관됨" 1줄
-- [ ] 변경 후 react 재배포(`pnpm build && pnpm run deploy`) + Flutter 는 fetch 라 자동 반영
+- [ ] 원격 채팅 (양쪽 본인 얼굴 = 실 유저일 때만)
+- [ ] **liveness 본인 인증** — isMyFace 는 현재 self-asserted. 채팅 출시 전 catfishing 방지용 검증 필요
 
 ---
 
-## 4. 결정 완료 (전부 확정)
+## 참고 (옵션, 급하지 않음)
 
-- ✅ **궁합 후보 정의** — `!isMyFace` **전부 유지** (내가 앨범으로 분석한 타인 얼굴 + 받은 카드 모두 후보)
-- ✅ **CTA** — **단순 버튼만** (blur teaser 없음)
-- ✅ **dashboard 집계** — source/gender **집계 제거**
-- ✅ **received 진입/저장** — **자동저장 없음. CTA 로만.** 공유 링크 열람만으론 저장 안 하고, 사용자가 "나와의 궁합 보기" CTA 를 눌러 궁합으로 진행할 때만 저장(주체적 추가). → `router.dart` `_maybeAutoRegister` 제거
-- ✅ `thumbnailPath`·`receivedAt` → Hive 로컬(`toJsonString`) 유지 / 서버 body(`toBodyJson`) 제외 (device·수신자 로컬 메타. receivedAt 은 현재 미사용이나 받은-카드 UX 대비 로컬 보존)
-
----
-
-## 5. 실행 순서 (제안)
-
-1. DB baseline 수정 (§A) — reset 전제이므로 먼저 확정
-2. shared `toBodyJson` (§B)
-3. flutter write/receive (§C)
-4. refine body 파싱 (§G) — 스키마와 동시 정합
-5. 관상앨범 분리 (§D) + 궁합 보강 (§E,F)
-6. 약관 1줄 (§H)
-7. 검증 (§6) → reset + baseline RUN → 재배포
-
----
-
-## 6. 검증 체크리스트
-
-- [ ] `flutter analyze` 0 issues / 관련 test green
-- [ ] refine `npx tsc --noEmit` 0 errors
-- [ ] 신규 분석 publish → metrics row 에 `is_my_face` 채워지고 body 에 demographics 존재, body 에 isMyFace/alias **없음**
-- [ ] anon publish 가 RLS 통과 (alias body 미포함 확인)
-- [ ] 공유 링크 수신 → isMyFace 를 컬럼에서 정상 판독, autoRegister 정상
-- [ ] 관상 앨범 탭: received 안 보임 / 궁합 탭: 받은 카드 보임
-- [ ] unlock 된 상대: `expiresAt` 지나도 목록 유지, thumbnail 없으면 gender 아바타
-- [ ] received ReportPage: 궁합 CTA 노출
-- [ ] refine: metrics 목록에 demographics 표시(소팅 불가 허용), alias 표시
-- [ ] reset 블록 단독 RUN → baseline RUN → 관리자 계정 생성 흐름 정상
-
----
-
-## 7. 다음 phase 예고 (이번엔 안 함)
-
-- anon auth 도입 → metrics 전부 user_id 보유 → "remote=SOT, 로컬=캐시" 전환
-- owner 본인 row 만료 제외
-- 받은 북마크 server 테이블화
-- 원격 채팅 + liveness 본인 인증 (isMyFace 신뢰성)
-
-### 7-1. [마지막 phase] 결제 궁합 = `unlocks.body` 서버 보관
-
-**문제**: "결제한 궁합을 기기 로컬에 보관" 은 **다중 디바이스 UX 오류** (폰A 결제 → 폰B/재설치 못 봄).
-**해결**: 결제한 상대 스냅샷을 `unlocks` 행에 per-user 로 저장하고, 궁합 표시는 그걸 read.
-unlock 은 이미 로그인 필수(`auth.uid()`)라 per-account·다중 디바이스 자연 충족. 상대 metrics 삭제와도 무관.
-
-- [x] `unlocks` 에 `body text` 컬럼 추가 (unlock 시점 상대 metrics body 스냅샷)
-- [x] `unlock_compat` RPC: insert 시 상대(album) body 스냅샷 저장
-      (`(select body from metrics where id = split_part(p_pair_key,'~',2)::uuid)`)
-- [x] 궁합 표시: 로컬 Hive 우선 + 누락 시 `unlocks.body` 로 상대 복원(gap-fill).
-      `compat_unlock_service.reconstructUnlockedPartners()` + `unlockedPartnerBodiesProvider`.
-      복원 시 supabaseId=album·source=received·isMyFace=false 주입(share_receive 패턴).
-- [x] received 로컬 prune 예외 hack — expiry 폐기(§8)로 이미 제거됨(전 항목 영구 보존).
-- [x] privacy.md: "결제 궁합은 계정에 보관(상대 삭제와 무관)" 문구 추가.
-- [x] raw SQL 안내(`alter table unlocks add column body` + `unlock_compat` 교체) + baseline.sql 갱신.
-
-> 남은 한계(별도 phase): **본인 얼굴(myFace) 은 로컬 전용**이라, 완전 멀티디바이스(폰B/재설치)
-> 에서 구매 궁합을 보려면 본인 얼굴 server 동기화(anon-auth) 가 추가로 필요. unlocks.body 는
-> 상대(partner) 영속 + 동일기기 로컬삭제 복구를 해결. 본인얼굴 sync 는 anon-auth phase 로 이월.
-
-**SQL 스케치 (마지막 phase 확정 시 다듬을 것):**
-```sql
--- baseline & live(raw) 공통
-alter table public.unlocks add column if not exists body text;  -- live raw update 용
-
--- unlock_compat 내부 insert 교체
-insert into unlocks (user_id, pair_key, body)
-  values (v_uid, p_pair_key,
-          (select body from metrics where id = split_part(p_pair_key, '~', 2)::uuid));
-```
-
----
-
-## 8. [추가 결정] expiry 폐기 + 공유 시에만 업로드 + refine 삭제 버튼
-
-> 결정 근거·모델: [[EXPIRY]] 상단 "⚑ 결정". remote=공유본만, 로컬=영구 SSOT, expiry 로직 소멸.
-> ⚠️ `expires_at` drop = 스키마 변경 → 한 번 더 reset(또는 `alter table metrics drop column expires_at`) 필요.
-
-### A. 공유 시에만 remote 업로드
-- [ ] `flutter/lib/presentation/screens/home/info_confirm_screen.dart` — 분석 confirm 시 eager `SupabaseService().saveMetrics(report)` **제거** (로컬 Hive add 만)
-- [ ] 업로드는 lazy 경로 유지: `share_publisher`(공유) / `compatibility_screen`(궁합 진입) 의 "supabaseId 없으면 saveMetrics" 가 담당
-- [ ] (확인) `upsertMetricsBody` 는 `supabaseId==null 이면 return` → 미공유분 자동 제외 (추가 작업 없음)
-
-### B. expiry 로직 전부 제거
-- [ ] **baseline**: `metrics` 에서 `expires_at` 컬럼 + `idx_metrics_expires_at` 제거
-- [ ] **shared 모델**: `FaceReadingReport.expiresAt` 필드 · 90일 default · `toJsonString`/`toBodyJson`/`fromJsonString` 의 expiresAt 제거
-- [ ] **flutter supabase_service**: save/upsert payload 에서 `expires_at` 제거
-- [ ] **flutter history_provider**: 만료 prune(`expiresAt < now` drop) + received 예외 hack 제거 → 로컬 영구
-- [ ] **worker**: `react/app/lib/supabase.ts` fetchMetrics 의 `expires_at <= now` drop 체크 제거 + SELECT 에서 expires_at 제거
-- [ ] 영향: `react/docs/EXPIRY.md` 갱신(폐기 반영), `HOW-IT-WORKS.md` 의 expiry/cron 서술 정리
-
-### C. refine "90일+ 미활동 삭제" 버튼
-- [ ] refine metrics 목록(또는 dashboard)에 버튼: `delete from metrics where updated_at < now() - interval '90 days'` (adminClient=service_role)
-- [ ] 삭제 건수 confirm + 결과 토스트. (R2 thumbnail orphan 정리는 별개·추후)
-
-### 적용
-- [ ] 코드 반영 → `flutter analyze` / refine `tsc`·build → baseline reset+RUN(또는 alter drop column) → worker 재배포
+- refine dashboard 의 source/gender 집계 — 이번에 제거함. body 파싱 기반으로 살릴지 미정
+- R2 thumbnail orphan 정리 — "90일+ 삭제" 버튼은 DB row 만 지움. R2 객체 정리는 별도(추후)
