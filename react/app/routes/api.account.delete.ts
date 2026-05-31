@@ -8,7 +8,7 @@ import type { Route } from './+types/api.account.delete'
  *
  * 흐름:
  *   1) JWT 검증 + user_id 추출 (Supabase /auth/v1/user)
- *   2) RLS-scoped SELECT 으로 user 의 metrics.body → thumbnail_key 수집
+ *   2) RLS-scoped SELECT 으로 user 의 metrics.body → thumbnailKey 수집
  *   3) R2 thumbnails 일괄 DELETE
  *   4) service_role 로 DELETE FROM metrics WHERE user_id (FK 가 SET NULL 이라 cascade X)
  *   5) service_role admin API 로 auth.users DELETE → cascade 로 users/coins/unlocks 자동 삭제
@@ -58,8 +58,8 @@ export async function action({ request, context }: Route.ActionArgs) {
   const thumbnailKeys: string[] = []
   for (const r of rows) {
     try {
-      const b = JSON.parse(r.body) as { thumbnail_key?: string }
-      if (b.thumbnail_key) thumbnailKeys.push(b.thumbnail_key)
+      const b = JSON.parse(r.body) as { thumbnailKey?: string }
+      if (b.thumbnailKey) thumbnailKeys.push(b.thumbnailKey)
     } catch {
       /* malformed body — skip */
     }

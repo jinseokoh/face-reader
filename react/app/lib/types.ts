@@ -1,15 +1,15 @@
 export type FiveElement = "wood" | "fire" | "earth" | "metal" | "water";
 
 export interface RawMetrics {
-  schema_version: number;
+  schemaVersion: number;
   ethnicity: string;
   gender: string;
-  age_group: string;
+  ageGroup: string;
   source: string;
   metrics: Record<string, number>;
-  lateral_metrics?: Record<string, number>;
-  face_shape_label?: string;
-  face_shape: string;
+  lateralMetrics?: Record<string, number>;
+  faceShapeLabel?: string;
+  faceShape: string;
 }
 
 export interface MetricsRow {
@@ -100,11 +100,11 @@ export interface RenderedShare {
   playStoreUrl: string;
   solo?: EngineOutput;
   compat?: CompatOutput;
-  /// solo 전용 — 사용자 face thumbnail R2 URL. thumbnail_key 가 비어있으면
+  /// solo 전용 — 사용자 face thumbnail R2 URL. thumbnailKey 가 비어있으면
   /// engine 의 archetype `portraitUrl` 로 fallback.
   soloThumbUrl?: string;
   /// compat 전용 — a/b 양쪽의 R2 thumbnail 절대 URL.
-  /// thumbnail_key 가 비어있으면 gender stock png (`/female.png` / `/male.png`)
+  /// thumbnailKey 가 비어있으면 gender stock png (`/female.png` / `/male.png`)
   /// 로 fallback.
   compatAThumbUrl?: string;
   compatBThumbUrl?: string;

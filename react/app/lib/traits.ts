@@ -19,7 +19,7 @@ export interface RenderInput {
   appOpenUrl: string;
   appStoreUrl: string;
   playStoreUrl: string;
-  /// R2 CDN base — body 안의 `thumbnail_key` 와 결합해서 og:image 조립.
+  /// R2 CDN base — body 안의 `thumbnailKey` 와 결합해서 og:image 조립.
   /// 없으면 fallback logo.png.
   cdnBase?: string;
 }
@@ -48,17 +48,17 @@ function ogImageFor(row: MetricsRow, ctx: RenderInput): string {
   // body 안에 thumbnailKey (R2 path) 가 있으면 cdn.facely.kr/{key} 사용.
   // 없으면 fallback logo.png. PII (얼굴 thumbnail) 노출이므로 meta 에 robots
   // noindex 동시에 박혀 있음 (share.tsx).
-  const key = (row.raw as unknown as Record<string, unknown>).thumbnail_key;
+  const key = (row.raw as unknown as Record<string, unknown>).thumbnailKey;
   if (typeof key === "string" && key.length > 0 && ctx.cdnBase) {
     return `${ctx.cdnBase.replace(/\/$/, "")}/${key}`;
   }
   return `${ctx.origin}/logo.png`;
 }
 
-/// compat 카드의 두 인물 thumbnail 용 — R2 thumbnail_key 가 있으면 직통,
+/// compat 카드의 두 인물 thumbnail 용 — R2 thumbnailKey 가 있으면 직통,
 /// 없으면 gender stock png (`/female.png` / `/male.png`) fallback.
 function compatThumbUrlFor(row: MetricsRow, ctx: RenderInput): string {
-  const key = (row.raw as unknown as Record<string, unknown>).thumbnail_key;
+  const key = (row.raw as unknown as Record<string, unknown>).thumbnailKey;
   if (typeof key === "string" && key.length > 0 && ctx.cdnBase) {
     return `${ctx.cdnBase.replace(/\/$/, "")}/${key}`;
   }
@@ -69,7 +69,7 @@ function compatThumbUrlFor(row: MetricsRow, ctx: RenderInput): string {
 /// solo 카드의 사용자 thumbnail — 있으면 R2 직통, 없으면 undefined.
 /// React 측에서 undefined 이면 engine 의 archetype portraitUrl 로 fallback.
 function soloThumbUrlFor(row: MetricsRow, ctx: RenderInput): string | undefined {
-  const key = (row.raw as unknown as Record<string, unknown>).thumbnail_key;
+  const key = (row.raw as unknown as Record<string, unknown>).thumbnailKey;
   if (typeof key === "string" && key.length > 0 && ctx.cdnBase) {
     return `${ctx.cdnBase.replace(/\/$/, "")}/${key}`;
   }

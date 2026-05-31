@@ -44,14 +44,14 @@ class ShareReceiveService {
       final overridden = <String, dynamic>{
         ...original,
         'source': AnalysisSource.received.name,
-        'received_at': DateTime.now().toIso8601String(),
-        // is_my_face 는 row 컬럼에서 읽지만, 받는 사람 입장에서는 항상 false.
-        'is_my_face': false,
+        'receivedAt': DateTime.now().toIso8601String(),
+        // isMyFace 는 row 컬럼에서 읽지만, 받는 사람 입장에서는 항상 false.
+        'isMyFace': false,
         // 받는 사람 시점에선 alias·local thumbnail 초기화.
         'alias': null,
-        'thumbnail_path': null,
-        // supabase_id 는 URL 의 uuid 와 동일해야 함.
-        'supabase_id': uuid,
+        'thumbnailPath': null,
+        // supabaseId 는 URL 의 uuid 와 동일해야 함.
+        'supabaseId': uuid,
       };
       final report =
           FaceReadingReport.fromJsonString(jsonEncode(overridden));

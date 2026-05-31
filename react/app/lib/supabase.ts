@@ -96,14 +96,14 @@ function demoRow(id: string): MetricsRow {
   return {
     id,
     raw: {
-      schema_version: 1,
+      schemaVersion: 1,
       ethnicity: "eastAsian",
       gender: isB ? "male" : "female",
-      age_group: "thirties",
+      ageGroup: "thirties",
       timestamp: "2026-04-27T00:00:00.000Z",
       source: "album",
       metrics: DEMO_RAW_METRICS,
-      face_shape: isB ? "oblong" : "oval",
+      faceShape: isB ? "oblong" : "oval",
     } as unknown as RawMetrics,
   };
 }
