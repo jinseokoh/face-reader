@@ -1,21 +1,23 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import type { Route } from './+types/r.$id.open'
 
 /**
- * `GET /r/:id/open` — **앱 진입 전용 nested bridge route**.
+ * `GET /r/:id/open` — 앱 진입 bridge.
  *
- * `/r/:id` (readable preview) 와 같은 resource 의 sub-action. CTA 가 이쪽으로
- * navigate 하면 iOS Universal Link / Android App Link 가 가로채 Flutter 앱의
- * deep-link stream 으로 흘려준다. 앱은 받은 uuid 로 ReportPage(received) 를
- * 띄워 사용자가 북마크 가능.
+ * 앱은 `https://facely.kr/r/*` 를 App Link(Android, autoVerify) / Universal Link
+ * (iOS, applinks:facely.kr) 로만 받는다. 커스텀 스킴 `facely://` 는 auth-callback
+ * 전용이라 /r/ 진입엔 못 쓴다.
  *
- * **왜 `/r/:id` 와 분리?** 카톡 카드 preview tap → Safari 가 `/r/:id` 로 진입.
- * 사용자가 같은 페이지의 CTA 를 다시 `/r/:id` 로 보내면 Safari 는 "same URL"
- * 로 간주해 navigate 자체를 안 함 → universal link intercept 발동 안 함.
- * `/r/:id/open` 은 다른 path 라 Safari 가 navigate 시도 → OS 가 가로챔.
+ * 플랫폼별 전략:
+ *   • Android (Chrome·카카오 인앱 모두): `intent://` — 앱 있으면 launch,
+ *     없으면 `browser_fallback_url`(스토어)을 OS 가 자동 처리. 인앱 webview 도 지원.
+ *   • iOS Safari: Universal Link(`/r/:id`) 1회 시도(현재 `/open` 과 다른 path 라
+ *     self-loop 없음) → 안 열리면 수동 UI.
+ *   • iOS 카카오 등 인앱 webview: Universal Link 가로채기 불가 → 즉시 수동 UI
+ *     ("다른 브라우저로 열기" 안내 + 스토어/웹 link).
  *
- * **앱 미설치 fallback**: useEffect 가 universal link 발사 후 1.5s 뒤 still
- * visible 이면 App Store / Play Store 로 redirect.
+ * ⚠️ 옛 버그: universalLink 를 `${webappBase}/r/${id}/open`(= 현재 URL)로 두고
+ * `location.href` 했더니 자기 자신 재로드 → 무한 루프. self-URL navigate 금지.
  */
 
 export function meta(_: Route.MetaArgs) {
@@ -37,43 +39,74 @@ export async function loader({ params, context }: Route.LoaderArgs) {
 
 export default function OpenBridge({ loaderData }: Route.ComponentProps) {
   const { id, appStoreUrl, playStoreUrl, webappBase } = loaderData
+  const [stuck, setStuck] = useState(false)
+  const [storeUrl, setStoreUrl] = useState(playStoreUrl)
 
   useEffect(() => {
     const ua = navigator.userAgent
     const isIOS = /iPhone|iPad|iPod/.test(ua)
     const isAndroid = /Android/.test(ua)
+    const isKakao = /KAKAOTALK/i.test(ua)
+    const store = isIOS ? appStoreUrl : playStoreUrl
+    setStoreUrl(store)
 
-    // Desktop 등 unsupported 환경 — readable preview 로 redirect.
+    // Desktop 등 미지원 — readable preview 로.
     if (!isIOS && !isAndroid) {
       window.location.replace(`${webappBase}/r/${id}`)
       return
     }
 
-    // Universal/App Link target — `/r/{id}/open` 자체로 OS intercept.
-    // AASA components 가 `/r/*` 와일드카드라 sub-path 도 매칭. 앱 설치돼 있으면
-    // OS 가 가로채 Flutter 앱 launch, 미설치면 Safari 가 그대로 이 페이지에
-    // 머물러 useEffect fallback timer 가 store 로 보낸다.
-    const universalLink = `${webappBase}/r/${id}/open`
-    const storeUrl = isIOS ? appStoreUrl : playStoreUrl
+    if (isAndroid) {
+      // intent:// — 앱 launch or 스토어 fallback 을 OS 가 처리 (카카오 인앱 포함).
+      window.location.href =
+        `intent://facely.kr/r/${id}` +
+        `#Intent;scheme=https;package=com.scienceintegration.facely;` +
+        `S.browser_fallback_url=${encodeURIComponent(store)};end`
+      // 극히 드물게 아무 일도 안 나면 수동 UI.
+      const t = window.setTimeout(() => setStuck(true), 3000)
+      return () => window.clearTimeout(t)
+    }
+
+    // iOS 카카오 등 인앱 webview: Universal Link 불가 → 즉시 수동 안내.
+    if (isKakao) {
+      setStuck(true)
+      return
+    }
+
+    // iOS Safari: Universal Link 1회 시도 → 앱 있으면 OS 가 가로채 launch(페이지
+    // hidden) → 타이머 미발동. 안 열리면 stuck UI.
     const startedAt = Date.now()
-
-    window.location.href = universalLink
-
-    const fallback = window.setTimeout(() => {
+    window.location.href = `${webappBase}/r/${id}`
+    const t = window.setTimeout(() => {
       if (
-        Date.now() - startedAt < 2500 &&
-        document.visibilityState === 'visible'
+        document.visibilityState === 'visible' &&
+        Date.now() - startedAt < 3000
       ) {
-        window.location.href = storeUrl
+        setStuck(true)
       }
     }, 1500)
-
-    return () => window.clearTimeout(fallback)
+    return () => window.clearTimeout(t)
   }, [id, appStoreUrl, playStoreUrl, webappBase])
 
   return (
     <main className="bridge">
-      <p className="bridge-text">관상은 과학이다 앱을 여는 중…</p>
+      {stuck ? (
+        <>
+          <p className="bridge-text">앱이 자동으로 열리지 않았어요</p>
+          <p className="bridge-sub">
+            카카오 등 앱 안의 브라우저에서는 앱 열기가 제한됩니다. 오른쪽 위 메뉴에서
+            <b> 다른 브라우저로 열기</b> 후 다시 시도하거나, 아래에서 진행해 주세요.
+          </p>
+          <a className="bridge-link" href={`${webappBase}/r/${id}`}>
+            웹에서 결과 보기
+          </a>
+          <a className="bridge-link" href={storeUrl}>
+            앱 설치하기
+          </a>
+        </>
+      ) : (
+        <p className="bridge-text">관상은 과학이다 앱을 여는 중…</p>
+      )}
       <noscript>
         <p>JavaScript 가 비활성 상태입니다. 아래 link 로 앱을 받아주세요.</p>
         <a href={appStoreUrl}>App Store</a>

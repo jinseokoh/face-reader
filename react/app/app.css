@@ -275,6 +275,35 @@ textarea.form-input {
   margin-bottom: 4px;
 }
 
+/* ─── /r/:id/open 앱 진입 bridge ─── */
+.bridge {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 48px 24px;
+  text-align: center;
+}
+.bridge-text {
+  font-size: 16px;
+  color: #1a1a1a;
+}
+.bridge-sub {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #666;
+  margin: 12px 0 24px;
+}
+.bridge-link {
+  display: block;
+  margin: 8px auto;
+  max-width: 280px;
+  padding: 12px 16px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1a1a1a;
+  text-decoration: none;
+}
+
 /* ─── hero card (mirror flutter report_page.dart §_HeroCard) ─── */
 .hero {
   padding: 20px;
