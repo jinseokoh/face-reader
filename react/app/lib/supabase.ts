@@ -1,6 +1,6 @@
 import type { MetricsRow, RawMetrics } from "./types";
 
-const SELECT = "id,body,expires_at";
+const SELECT = "id,body";
 
 export async function fetchMetrics(env: Env, ids: string[]): Promise<MetricsRow[]> {
   const demoOnly = ids.every((id) => id.startsWith("00000000-0000-0000-0000-"));
@@ -31,7 +31,6 @@ export async function fetchMetrics(env: Env, ids: string[]): Promise<MetricsRow[
   const rows = (await res.json()) as Array<{
     id: string;
     body: string | null;
-    expires_at: string | null;
   }>;
   console.log(
     `[fetchMetrics] raw rows.length=${rows.length} ids requested=${ids.length}`,
@@ -39,19 +38,13 @@ export async function fetchMetrics(env: Env, ids: string[]): Promise<MetricsRow[
       id: r.id,
       bodyNull: r.body == null,
       bodyLen: r.body?.length ?? 0,
-      expires_at: r.expires_at,
     })),
   );
 
-  const now = Date.now();
   const map = new Map<string, MetricsRow>();
   for (const r of rows) {
     if (!r.body) {
       console.warn("[fetchMetrics] drop: body null id=", r.id);
-      continue;
-    }
-    if (r.expires_at && new Date(r.expires_at).getTime() <= now) {
-      console.warn("[fetchMetrics] drop: expired id=", r.id, "expires_at=", r.expires_at);
       continue;
     }
     try {

@@ -6,7 +6,6 @@ import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/data/services/image_resizer.dart';
-import 'package:facely/data/services/supabase_service.dart';
 import 'package:facely/domain/models/capture_result.dart';
 import 'package:facely/domain/models/face_analysis.dart';
 import 'package:facely/domain/models/face_metadata.dart';
@@ -280,11 +279,6 @@ class _InfoConfirmScreenState
       ref.read(historyTabProvider.notifier).selectTab(
           c.source == AnalysisSource.camera ? 0 : 1);
       ref.read(selectedTabProvider.notifier).selectTab(1);
-
-      SupabaseService().saveMetrics(report).catchError((e) {
-        debugPrint('[Supabase] save error: $e');
-        return '';
-      });
 
       if (!mounted) return;
       Navigator.of(context).pop();

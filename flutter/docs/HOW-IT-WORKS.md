@@ -255,7 +255,7 @@ raw → globalPct = _rawToPercentile(raw, attr, gender)   ← 21-point quantile 
 
 ```
 schemaVersion(1) · ethnicity · gender · ageGroup · timestamp · source
-supabaseId · alias · isMyFace · thumbnailPath · expiresAt
+supabaseId · alias · isMyFace · thumbnailPath
 metrics (17 frontal raw)
 lateralMetrics? (8 lateral raw)
 faceShapeLabel? · faceShapeConfidence? · faceShape (enum)

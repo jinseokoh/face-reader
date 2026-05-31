@@ -175,3 +175,55 @@ public.metrics:
 - owner 본인 row 만료 제외
 - 받은 북마크 server 테이블화
 - 원격 채팅 + liveness 본인 인증 (isMyFace 신뢰성)
+
+### 7-1. [마지막 phase] 결제 궁합 = `unlocks.body` 서버 보관
+
+**문제**: "결제한 궁합을 기기 로컬에 보관" 은 **다중 디바이스 UX 오류** (폰A 결제 → 폰B/재설치 못 봄).
+**해결**: 결제한 상대 스냅샷을 `unlocks` 행에 per-user 로 저장하고, 궁합 표시는 그걸 read.
+unlock 은 이미 로그인 필수(`auth.uid()`)라 per-account·다중 디바이스 자연 충족. 상대 metrics 삭제와도 무관.
+
+- [ ] `unlocks` 에 `body text` 컬럼 추가 (unlock 시점 상대 metrics body 스냅샷)
+- [ ] `unlock_compat` RPC: insert 시 상대 body 도 저장
+      (album uuid = `split_part(p_pair_key,'~',2)`; `select body from metrics where id = <album>`)
+- [ ] 궁합 표시 로직: unlocked pair 는 `unlocks.body` 를 SOT 로 read (로컬 Hive 는 캐시)
+- [ ] received 로컬 prune 예외 hack 제거 (history_provider) — 더 이상 불필요
+- [ ] privacy.md: "결제 궁합은 **계정**에 보관(상대 삭제와 무관)" 문구로 재기재
+- [ ] **raw SQL 업데이트 안내 + baseline.sql 갱신은 이 마지막 phase 에 작성** (지시)
+
+**SQL 스케치 (마지막 phase 확정 시 다듬을 것):**
+```sql
+-- baseline & live(raw) 공통
+alter table public.unlocks add column if not exists body text;  -- live raw update 용
+
+-- unlock_compat 내부 insert 교체
+insert into unlocks (user_id, pair_key, body)
+  values (v_uid, p_pair_key,
+          (select body from metrics where id = split_part(p_pair_key, '~', 2)::uuid));
+```
+
+---
+
+## 8. [추가 결정] expiry 폐기 + 공유 시에만 업로드 + refine 삭제 버튼
+
+> 결정 근거·모델: [[EXPIRY]] 상단 "⚑ 결정". remote=공유본만, 로컬=영구 SSOT, expiry 로직 소멸.
+> ⚠️ `expires_at` drop = 스키마 변경 → 한 번 더 reset(또는 `alter table metrics drop column expires_at`) 필요.
+
+### A. 공유 시에만 remote 업로드
+- [ ] `flutter/lib/presentation/screens/home/info_confirm_screen.dart` — 분석 confirm 시 eager `SupabaseService().saveMetrics(report)` **제거** (로컬 Hive add 만)
+- [ ] 업로드는 lazy 경로 유지: `share_publisher`(공유) / `compatibility_screen`(궁합 진입) 의 "supabaseId 없으면 saveMetrics" 가 담당
+- [ ] (확인) `upsertMetricsBody` 는 `supabaseId==null 이면 return` → 미공유분 자동 제외 (추가 작업 없음)
+
+### B. expiry 로직 전부 제거
+- [ ] **baseline**: `metrics` 에서 `expires_at` 컬럼 + `idx_metrics_expires_at` 제거
+- [ ] **shared 모델**: `FaceReadingReport.expiresAt` 필드 · 90일 default · `toJsonString`/`toBodyJson`/`fromJsonString` 의 expiresAt 제거
+- [ ] **flutter supabase_service**: save/upsert payload 에서 `expires_at` 제거
+- [ ] **flutter history_provider**: 만료 prune(`expiresAt < now` drop) + received 예외 hack 제거 → 로컬 영구
+- [ ] **worker**: `react/app/lib/supabase.ts` fetchMetrics 의 `expires_at <= now` drop 체크 제거 + SELECT 에서 expires_at 제거
+- [ ] 영향: `react/docs/EXPIRY.md` 갱신(폐기 반영), `HOW-IT-WORKS.md` 의 expiry/cron 서술 정리
+
+### C. refine "90일+ 미활동 삭제" 버튼
+- [ ] refine metrics 목록(또는 dashboard)에 버튼: `delete from metrics where updated_at < now() - interval '90 days'` (adminClient=service_role)
+- [ ] 삭제 건수 confirm + 결과 토스트. (R2 thumbnail orphan 정리는 별개·추후)
+
+### 적용
+- [ ] 코드 반영 → `flutter analyze` / refine `tsc`·build → baseline reset+RUN(또는 alter drop column) → worker 재배포

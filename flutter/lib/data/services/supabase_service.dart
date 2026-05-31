@@ -29,7 +29,6 @@ class SupabaseService {
       'user_id': _client.auth.currentUser?.id,
       'body': report.toBodyJson(),
       'is_my_face': report.isMyFace,
-      'expires_at': report.expiresAt.toUtc().toIso8601String(),
     };
 
     // upsert — analyze 시점에 발급된 UUID 가 이미 row 로 들어가 있을 수도
@@ -43,7 +42,7 @@ class SupabaseService {
       final res = await _client
           .from('metrics')
           .upsert(data, onConflict: 'id')
-          .select('id, expires_at, views');
+          .select('id, views');
       debugPrint('[Supabase.saveMetrics] OK id=$id response=$res');
     } catch (e, st) {
       debugPrint('[Supabase.saveMetrics] FAIL id=$id error=$e');
@@ -85,7 +84,6 @@ class SupabaseService {
       'user_id': _client.auth.currentUser?.id,
       'body': report.toBodyJson(),
       'is_my_face': report.isMyFace,
-      'expires_at': report.expiresAt.toUtc().toIso8601String(),
     });
     debugPrint('[Supabase] upserted metrics id=$id');
   }

@@ -208,7 +208,6 @@ class FaceReadingReport {
   String? alias;
   bool isMyFace;
   String? thumbnailPath;
-  final DateTime expiresAt;
 
   /// source == AnalysisSource.received 일 때만 의미 있음. bookmark 시점.
   /// 받은 카드 정렬·UI 표시 ("2일 전 받음") 용. own 카드에선 null.
@@ -271,7 +270,6 @@ class FaceReadingReport {
     this.alias,
     this.isMyFace = false,
     this.thumbnailPath,
-    DateTime? expiresAt,
     this.receivedAt,
     this.thumbnailKey,
     this.deepfaceAge,
@@ -288,7 +286,7 @@ class FaceReadingReport {
     this.faceShapeConfidence,
     this.faceShape = FaceShape.unknown,
     this.schemaVersion = kReportSchemaVersion,
-  }) : expiresAt = expiresAt ?? DateTime.now().add(const Duration(days: 90));
+  });
 
   /// UI / assembler 공용 shortcut — 정규화 점수만 빠르게.
   Map<Attribute, double> get attributeScores => {
@@ -311,7 +309,6 @@ class FaceReadingReport {
         'timestamp': timestamp.toIso8601String(),
         'source': source.name,
         'supabaseId': supabaseId,
-        'expiresAt': expiresAt.toIso8601String(),
         if (thumbnailKey != null) 'thumbnailKey': thumbnailKey,
         if (deepfaceAge != null) 'deepfaceAge': deepfaceAge,
         if (deepfaceGender != null) 'deepfaceGender': deepfaceGender,
@@ -346,7 +343,6 @@ class FaceReadingReport {
         'alias': alias,
         'isMyFace': isMyFace,
         'thumbnailPath': thumbnailPath,
-        'expiresAt': expiresAt.toIso8601String(),
         if (receivedAt != null) 'receivedAt': receivedAt!.toIso8601String(),
         // R2 thumbnail 포인터 + DeepFace raw audit trail.
         if (thumbnailKey != null) 'thumbnailKey': thumbnailKey,
@@ -521,9 +517,6 @@ class FaceReadingReport {
       alias: j['alias'] as String?,
       isMyFace: j['isMyFace'] as bool? ?? false,
       thumbnailPath: j['thumbnailPath'] as String?,
-      expiresAt: j['expiresAt'] != null
-          ? DateTime.parse(j['expiresAt'] as String)
-          : null,
       receivedAt: j['receivedAt'] != null
           ? DateTime.parse(j['receivedAt'] as String)
           : null,

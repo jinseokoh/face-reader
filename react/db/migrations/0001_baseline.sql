@@ -137,12 +137,11 @@ create table if not exists public.metrics (
   alias        text,
   is_my_face   boolean     not null default false,
   views        integer     not null default 0,
-  expires_at   timestamptz not null,
   created_at   timestamptz not null default now(),
   updated_at   timestamptz not null default now()
 );
 
-create index if not exists idx_metrics_expires_at  on public.metrics (expires_at);
+-- updated_at 인덱스: refine "90일+ 미활동 삭제" 정리 쿼리용.
 create index if not exists idx_metrics_updated_at  on public.metrics (updated_at);
 
 alter table public.metrics enable row level security;
@@ -635,8 +634,7 @@ grant  execute on function public.ad_reward_record_view() to authenticated;
 -- declare sid uuid := gen_random_uuid(); v integer;
 -- begin
 --   -- metrics: insert (anon 가능) → views++ RPC → updated_at 자동 변화 → 삭제
---   insert into public.metrics (id, body, expires_at)
---   values (sid, '{}', now() + interval '90 days');
+--   insert into public.metrics (id, body) values (sid, '{}');
 --   perform public.increment_metrics_views(sid);
 --   select views into v from public.metrics where id = sid;
 --   raise notice 'views after rpc = %', v;  -- 1

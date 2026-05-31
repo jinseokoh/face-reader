@@ -312,13 +312,6 @@ export const UserShow = () => {
               render={(v: string | null) => v ?? <Text type="secondary">-</Text>}
             />
             <Table.Column<MetricEntry>
-              title="만료"
-              dataIndex="expires_at"
-              render={(v: string) => (
-                <DateField value={v} format="MM-DD HH:mm" />
-              )}
-            />
-            <Table.Column<MetricEntry>
               title="업로드"
               dataIndex="created_at"
               render={(v: string) => (

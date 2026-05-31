@@ -60,9 +60,6 @@ export const MetricShow = () => {
             <Descriptions.Item label="조회수">{row.views}</Descriptions.Item>
             <Descriptions.Item label="created_at">{row.created_at}</Descriptions.Item>
             <Descriptions.Item label="updated_at">{row.updated_at}</Descriptions.Item>
-            <Descriptions.Item label="expires_at" span={2}>
-              {row.expires_at}
-            </Descriptions.Item>
           </Descriptions>
 
           {result.error && (

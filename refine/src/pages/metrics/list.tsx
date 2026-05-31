@@ -1,6 +1,7 @@
 import { DateField, List, ShowButton, useTable } from "@refinedev/antd";
-import { useMany } from "@refinedev/core";
-import { Avatar, Space, Table, Tag, Tooltip, Typography } from "antd";
+import { useInvalidate, useMany } from "@refinedev/core";
+import { Avatar, Modal, Space, Table, Tag, Typography, message } from "antd";
+import { adminClient } from "../../providers/data";
 import { UserLink } from "../../components/user-link";
 import type { AppUser, MetricEntry } from "../../types";
 import { parseDemographics } from "../../types";
@@ -26,6 +27,8 @@ export const MetricList = () => {
     },
   });
 
+  const invalidate = useInvalidate();
+
   const userIds = (result?.data ?? [])
     .map((m) => m.user_id)
     .filter((v): v is string => !!v);
@@ -43,10 +46,53 @@ export const MetricList = () => {
     (usersResult ?? []).map((u) => [u.id, u])
   );
 
-  const now = Date.now();
+  const handleCleanup = () => {
+    Modal.confirm({
+      title: "90일+ 미활동 metrics 삭제",
+      content: "updated_at 이 90일 이상 지난 metrics 를 삭제합니다. 되돌릴 수 없습니다.",
+      okText: "삭제",
+      okButtonProps: { danger: true },
+      cancelText: "취소",
+      onOk: async () => {
+        const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+        // R2 thumbnail 고아 정리는 별개(추후) — 이 버튼은 Supabase row 만 삭제.
+        const { data, error } = await adminClient
+          .from("metrics")
+          .delete()
+          .lt("updated_at", cutoff)
+          .select("id");
+        if (error) {
+          message.error(`삭제 실패: ${error.message}`);
+          return;
+        }
+        message.success(`${data?.length ?? 0}건 삭제됨`);
+        invalidate({ resource: "metrics", invalidates: ["list"] });
+      },
+    });
+  };
 
   return (
-    <List title="metric 업로드">
+    <List
+      title="metric 업로드"
+      headerButtons={({ defaultButtons }) => (
+        <>
+          {defaultButtons}
+          <button
+            onClick={handleCleanup}
+            style={{
+              cursor: "pointer",
+              padding: "4px 12px",
+              border: "1px solid #d9d9d9",
+              borderRadius: 6,
+              background: "#fff",
+              fontSize: 13,
+            }}
+          >
+            90일+ 미활동 정리
+          </button>
+        </>
+      )}
+    >
       <Table {...tableProps} rowKey="id" size="middle" scroll={{ x: 1100 }}>
         <Table.Column<MetricEntry>
           title="업로더"
@@ -143,28 +189,6 @@ export const MetricList = () => {
               {v}
             </Text>
           )}
-        />
-        <Table.Column<MetricEntry>
-          title="만료"
-          dataIndex="expires_at"
-          sorter
-          render={(v: string) => {
-            const ms = new Date(v).getTime() - now;
-            const days = Math.floor(ms / 86_400_000);
-            const expired = ms < 0;
-            const soon = !expired && days < 3;
-            return (
-              <Tooltip title={v}>
-                <Tag color={expired ? "red" : soon ? "orange" : "default"}>
-                  {expired
-                    ? "만료됨"
-                    : days === 0
-                    ? "오늘 만료"
-                    : `${days}일 남음`}
-                </Tag>
-              </Tooltip>
-            );
-          }}
         />
         <Table.Column<MetricEntry>
           title="ID"

@@ -276,7 +276,7 @@ DI 는 분산 — 각 service/repository 가 자체 Provider 정의 (`final fooP
 ### 6.2 Supabase
 
 - **Project**: `jicaenyzunjdlcxcdbfb`
-- **Table `metrics`**: `id` (UUID) · `body` (TEXT, FaceReadingReport JSON) · `source` · `ethnicity` · `gender` · `age_group` · `views` · `expires_at` · `created_at` · `updated_at`
+- **Table `metrics`**: `id` (UUID) · `body` (TEXT, FaceReadingReport JSON) · `alias` · `is_my_face` · `views` · `created_at` · `updated_at`
 - **RPC**: `increment_metrics_views(uuid)` — 공유 link 조회 시 views++ (inactivity cleanup active 신호)
 - **DDL SSOT**: `react/db/migrations/0001_baseline.sql`. 운영 안내(접속/스모크/dev reset) 는 `flutter/docs.bak/supabase/SQL.md` (현재 react/db SSOT 와 일치하는지 확인 후 폐기 예정).
 

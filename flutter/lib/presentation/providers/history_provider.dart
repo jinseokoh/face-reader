@@ -97,10 +97,8 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
   Future<void> reloadFromHive() async {
     final parsed = <FaceReadingReport>[];
     final nextJson = <String>[];
-    int droppedExpired = 0;
     int droppedNull = 0;
     int failedCount = 0;
-    final now = DateTime.now();
     final boxLen = _box.length;
     _log('reload START box.length=$boxLen state.length=${state.length} '
         'box.values.length=${_box.values.length} '
@@ -116,15 +114,7 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
           'head=${json.length > 160 ? json.substring(0, 160) : json}');
       try {
         final report = FaceReadingReport.fromJsonString(json);
-        final alive = report.expiresAt.isAfter(now);
-        final isReceived = report.source == AnalysisSource.received;
-        _log('reload entry $i PARSED: expiresAt=${report.expiresAt} '
-            'alive=$alive isReceived=$isReceived supabaseId=${report.supabaseId} alias=${report.alias}');
-        if (!alive && !isReceived) {
-          droppedExpired++;
-          _log('reload DROP entry $i: expired (expiresAt=${report.expiresAt})');
-          continue;
-        }
+        _log('reload entry $i PARSED: supabaseId=${report.supabaseId} alias=${report.alias}');
         parsed.add(report);
         nextJson.add(report.toJsonString());
       } catch (e, st) {
@@ -136,7 +126,7 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
         nextJson.add(json);
       }
     }
-    _log('reload SUMMARY parsed=${parsed.length} expired=$droppedExpired '
+    _log('reload SUMMARY parsed=${parsed.length} '
         'null=$droppedNull failed=$failedCount nextJson=${nextJson.length}');
 
     // 방어: parsed 가 0 인데 기존 state 가 비어있지 않다면 box 재기록 금지.
@@ -168,10 +158,7 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
 
   List<FaceReadingReport> _loadFromHive() {
     final reports = <FaceReadingReport>[];
-    final survivorJson = <String>[];
-    final now = DateTime.now();
     final boxLen = _box.length;
-    int expiredCount = 0;
     int failCount = 0;
     int nullCount = 0;
     _log('load START box.length=$boxLen box.values.length=${_box.values.length}');
@@ -186,60 +173,18 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
           'head=${json.length > 160 ? json.substring(0, 160) : json}');
       try {
         final report = FaceReadingReport.fromJsonString(json);
-        final alive = report.expiresAt.isAfter(now);
-        // 받은 카드(source==received)는 만료돼도 삭제하지 않는다.
-        // 궁합 unlock 된 상대 카드일 수 있으며, unlock 결제 후 데이터가
-        // 사라지면 UX 문제. HistoryNotifier.build() 가 sync 이므로
-        // compatUnlocksProvider(async) 를 여기서 읽을 수 없어 received
-        // 전체를 보존하는 보수적 정책 적용.
-        // TODO: AsyncNotifier 전환 후 unlocked pair_key set 기반 정밀 prune
-        final isReceived = report.source == AnalysisSource.received;
-        _log('load entry $i PARSED: expiresAt=${report.expiresAt} '
-            'alive=$alive isReceived=$isReceived supabaseId=${report.supabaseId}');
-        if (alive || isReceived) {
-          reports.add(report);
-          survivorJson.add(json);
-        } else {
-          expiredCount++;
-          _log('load DROP entry $i: expired');
-        }
+        _log('load entry $i PARSED: supabaseId=${report.supabaseId}');
+        reports.add(report);
       } catch (e, st) {
         failCount++;
         _log('load FAIL entry $i: $e');
         _log('load FAIL stacktrace:\n$st');
         _log('load FAIL raw head: '
             '${json.length > 200 ? json.substring(0, 200) : json}');
-        survivorJson.add(json);
       }
     }
-    final anyExpired = expiredCount > 0;
-    final anyParseError = failCount > 0;
-    _log('load SUMMARY alive=${reports.length} expired=$expiredCount '
-        'fail=$failCount null=$nullCount survivor=${survivorJson.length}');
-    // build() 는 sync 이므로 compaction 은 fire-and-forget. log 로 추적.
-    if (anyExpired && !anyParseError) {
-      _log('load COMPACT scheduled (alive-only) n=${reports.length}');
-      Future(() async {
-        await _box.clear();
-        for (final r in reports) {
-          await _box.add(r.toJsonString());
-        }
-        await _box.flush();
-        _log('load COMPACTED (alive-only) → box=${_box.length}');
-      });
-    } else if (anyExpired) {
-      _log('load COMPACT scheduled (survivor) n=${survivorJson.length}');
-      Future(() async {
-        await _box.clear();
-        for (final j in survivorJson) {
-          await _box.add(j);
-        }
-        await _box.flush();
-        _log('load COMPACTED (survivor) → box=${_box.length}');
-      });
-    } else {
-      _log('load NO-COMPACT box unchanged=${_box.length}');
-    }
+    _log('load SUMMARY loaded=${reports.length} '
+        'fail=$failCount null=$nullCount');
     return reports;
   }
 

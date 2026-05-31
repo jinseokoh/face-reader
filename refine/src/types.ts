@@ -31,7 +31,6 @@ export type MetricEntry = {
   body: string;
   is_my_face: boolean;
   alias: string | null;
-  expires_at: string;
   views: number;
   updated_at: string;
   created_at: string;
