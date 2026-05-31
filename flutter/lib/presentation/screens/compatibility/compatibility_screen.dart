@@ -1105,41 +1105,40 @@ class _Thumb extends StatelessWidget {
   Widget build(BuildContext context) {
     final radius = size / 2;
     final file = ThumbnailPaths.resolveFileSync(path);
-    if (file == null) {
-      return CircleAvatar(
-        radius: radius,
-        backgroundColor: AppTheme.border,
-        child: FaIcon(
-          _genderIcon(gender),
-          color: AppTheme.textHint,
-          size: 22,
-        ),
-      );
-    }
+    if (file == null) return _genderFallback(radius);
     return ClipOval(
       child: Image.file(
         file,
         width: size,
         height: size,
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => CircleAvatar(
-          radius: radius,
-          backgroundColor: AppTheme.border,
-          child: FaIcon(
-            _genderIcon(gender),
-            color: AppTheme.textHint,
-            size: 18,
-          ),
-        ),
+        errorBuilder: (_, _, _) => _genderFallback(radius),
       ),
     );
   }
 
-  static IconData _genderIcon(Gender? g) => switch (g) {
-        Gender.male => FontAwesomeIcons.person,
-        Gender.female => FontAwesomeIcons.personDress,
-        _ => FontAwesomeIcons.user,
-      };
+  /// thumbnail 없을 때 gender 기본 아바타. male/female 은 png 에셋,
+  /// gender 미상이면 generic user 아이콘.
+  Widget _genderFallback(double radius) {
+    final asset = switch (gender) {
+      Gender.male => 'assets/icons/male.png',
+      Gender.female => 'assets/icons/female.png',
+      _ => null,
+    };
+    if (asset == null) {
+      return CircleAvatar(
+        radius: radius,
+        backgroundColor: AppTheme.border,
+        child: FaIcon(FontAwesomeIcons.user,
+            color: AppTheme.textHint, size: radius * 0.85),
+      );
+    }
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: AppTheme.border,
+      backgroundImage: AssetImage(asset),
+    );
+  }
 }
 
 enum _LockedSort {
