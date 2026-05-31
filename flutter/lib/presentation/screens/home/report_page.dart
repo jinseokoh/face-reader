@@ -14,6 +14,7 @@ import 'package:face_engine/domain/models/physiognomy_tree.dart';
 import 'package:face_engine/domain/services/compat/compat_pair_key.dart';
 import 'package:face_engine/domain/services/yin_yang.dart';
 import 'package:facely/config/router.dart';
+import 'package:go_router/go_router.dart';
 import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/data/constants/metric_text_blocks.dart';
@@ -939,6 +940,17 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
+        // deep link cold-start 진입 시 stack 이 없어 자동 back 이 안 생긴다.
+        // stack 있으면 뒤로(←), 없으면 닫기(X)→홈 으로 항상 탈출 가능하게 명시.
+        leading: IconButton(
+          icon: Icon(
+            Navigator.of(context).canPop() ? Icons.arrow_back : Icons.close,
+          ),
+          tooltip: Navigator.of(context).canPop() ? '뒤로' : '닫기',
+          onPressed: () => Navigator.of(context).canPop()
+              ? Navigator.of(context).pop()
+              : context.go('/main'),
+        ),
         title: Text(isReceived ? '공유받은 카드' : '관상 분석'),
         actions: isReceived
             ? [_ReceivedBookmarkAction(report: report)]

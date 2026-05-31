@@ -23,6 +23,7 @@ import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
@@ -77,6 +78,17 @@ class _CompatibilityDetailScreenState
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
+        // deep link cold-start 진입 시 stack 이 없을 수 있어 명시 — stack 있으면
+        // 뒤로(←), 없으면 닫기(X)→홈 으로 항상 탈출 가능하게.
+        leading: IconButton(
+          icon: Icon(
+            Navigator.of(context).canPop() ? Icons.arrow_back : Icons.close,
+          ),
+          tooltip: Navigator.of(context).canPop() ? '뒤로' : '닫기',
+          onPressed: () => Navigator.of(context).canPop()
+              ? Navigator.of(context).pop()
+              : context.go('/main'),
+        ),
         title: Text(widget.album.alias ?? '궁합 분석'),
         actions: [
           IconButton(
