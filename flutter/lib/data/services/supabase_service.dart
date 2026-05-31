@@ -62,6 +62,24 @@ class SupabaseService {
     return response;
   }
 
+  /// Fetch all metrics rows owned by the current user (for login rehydrate).
+  /// Returns raw rows with `id`, `is_my_face`, and `body`.
+  Future<List<Map<String, dynamic>>> fetchMyMetrics() async {
+    if (_client.auth.currentUser == null) return [];
+    try {
+      final rows = await _client
+          .from('metrics')
+          .select('id, is_my_face, body')
+          .eq('user_id', _client.auth.currentUser!.id);
+      debugPrint('[Supabase.fetchMyMetrics] OK rows=${rows.length}');
+      return List<Map<String, dynamic>>.from(rows);
+    } catch (e, st) {
+      debugPrint('[Supabase.fetchMyMetrics] FAIL: $e');
+      debugPrint('[Supabase.fetchMyMetrics] stacktrace:\n$st');
+      return [];
+    }
+  }
+
   /// Delete a metrics record by UUID
   Future<void> deleteMetrics(String uuid) async {
     await _client.from('metrics').delete().eq('id', uuid);

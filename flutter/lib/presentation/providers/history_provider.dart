@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:developer' as dev;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +6,7 @@ import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 
 import 'package:facely/core/hive/hive_setup.dart';
 import 'package:facely/data/services/supabase_service.dart';
+import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 
 /// debugPrint 의 rate-limit 을 피하려 raw `print` + `dev.log` 이중 출력.
@@ -156,6 +158,53 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
     }
   }
 
+  /// Fetch the current user's own metrics from Supabase and merge any missing
+  /// entries into local history. Dedup by supabaseId — local entries are never
+  /// overwritten. Returns the count of newly added reports.
+  Future<int> rehydrateFromServer() async {
+    final rows = await SupabaseService().fetchMyMetrics();
+    if (rows.isEmpty) {
+      _log('rehydrate: no server rows');
+      return 0;
+    }
+
+    final existingIds = <String>{
+      for (final r in state)
+        if (r.supabaseId != null) r.supabaseId!,
+    };
+
+    final added = <FaceReadingReport>[];
+    for (final row in rows) {
+      final id = row['id'] as String?;
+      if (id == null) continue;
+      if (existingIds.contains(id)) continue;
+
+      final body = row['body'];
+      if (body is! String || body.isEmpty) continue;
+
+      try {
+        final map = jsonDecode(body) as Map<String, dynamic>;
+        map['supabaseId'] = id;
+        map['isMyFace'] = row['is_my_face'] ?? false;
+        map['thumbnailPath'] = null;
+        final report = FaceReadingReport.fromJsonString(jsonEncode(map));
+        added.add(report);
+      } catch (e) {
+        _log('rehydrate SKIP id=$id parse error: $e');
+      }
+    }
+
+    if (added.isEmpty) {
+      _log('rehydrate: ${rows.length} server rows, all already local');
+      return 0;
+    }
+
+    state = [...state, ...added];
+    await _saveToHive();
+    _log('rehydrate: added ${added.length} of ${rows.length} server rows');
+    return added.length;
+  }
+
   List<FaceReadingReport> _loadFromHive() {
     final reports = <FaceReadingReport>[];
     final boxLen = _box.length;
@@ -201,3 +250,13 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
     _log('save END box=${_box.length} values=${_box.values.length}');
   }
 }
+
+/// Rehydrate local history from Supabase when logged in.
+/// Watches [authProvider] so it fires once per login transition and on
+/// app start if a session is already restored. autoDispose ensures cleanup
+/// on logout (auth → null invalidates, next login re-fires).
+final historyRehydrateProvider = FutureProvider.autoDispose<int>((ref) async {
+  final user = ref.watch(authProvider);
+  if (user == null) return 0;
+  return ref.read(historyProvider.notifier).rehydrateFromServer();
+});

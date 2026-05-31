@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/data/services/auth_service.dart';
 import 'package:facely/data/services/deep_link_service.dart';
+import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/providers/tab_provider.dart';
 import 'package:facely/presentation/screens/compatibility/compatibility_screen.dart';
 import 'package:facely/presentation/screens/home/home_screen.dart';
@@ -117,6 +118,8 @@ class _MainAppState extends ConsumerState<MainApp> {
   @override
   Widget build(BuildContext context) {
     final selectedIndex = ref.watch(selectedTabProvider);
+    // Fire-and-forget: rehydrate local history from server on login / app start.
+    ref.watch(historyRehydrateProvider);
 
     return Scaffold(
       body: IndexedStack(
