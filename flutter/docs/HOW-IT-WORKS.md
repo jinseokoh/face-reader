@@ -251,15 +251,33 @@ raw → globalPct = _rawToPercentile(raw, attr, gender)   ← 21-point quantile 
 
 ### 6.2 Top-Level Key
 
-`face_reading_report.dart::toJsonString()` SSOT:
+**Hive ↔ Supabase metrics — 개정판 (최종)**
 
-```
-schemaVersion(1) · ethnicity · gender · ageGroup · timestamp · source
-supabaseId · alias · isMyFace · thumbnailPath
-metrics (17 frontal raw)
-lateralMetrics? (8 lateral raw)
-faceShapeLabel? · faceShapeConfidence? · faceShape (enum)
-```
+- **Hive DTO** = `toJsonString()` (로컬 영구 라이브러리, 전체 필드)
+- **외부 metrics DTO** = Supabase `metrics` row = 컬럼 + `body`(=`toBodyJson()`)
+- 규칙: **컬럼 = 관계·소유 메타(snake_case) / body = 분석 payload(camelCase)**
+
+| prop (camelCase) | Hive `toJsonString` | Supabase 위치 | 역할 |
+|---|---|---|---|
+| id / supabaseId | body `supabaseId` | **column `id`** (body 제외) | 공유 UUID·PK. Hive 는 id 컬럼이 없어 body 보관, 서버는 컬럼 canonical |
+| userId | ✗ | **column `user_id`** | 업로더(anon=null), 소유·RLS |
+| alias | body | **column** (body 제외) | 소유자 지정 이름 |
+| isMyFace | body | **column `is_my_face`** (body 제외) | 본인 얼굴 플래그(궁합·business) |
+| views | ✗ | **column** | 서버 조회수 |
+| createdAt | ✗ | **column** | 첫 publish 시각 |
+| updatedAt | ✗ | **column** | 마지막 활동 → 90일+ 미활동 삭제 기준 |
+| schemaVersion | body | body | 버전(호환성 invalidation) |
+| ethnicity / gender / ageGroup | body | body | demographics = z-score 재계산 input |
+| timestamp | body | body | 분석 시각, 정렬·표시·수신재구성 |
+| source | body | body | camera/album/received |
+| thumbnailKey | body | body | R2 CDN 키(remote 이미지·og:image) |
+| metrics (rawValue map) | body | body | 핵심 capture (z/score 는 load 시 재계산) |
+| lateralMetrics | body(조건) | body | 측면 capture rawValue |
+| faceShape / Label / Confidence | body | body | 얼굴형 분류 |
+| thumbnailPath | body | ✗ (toBodyJson 제외) | 기기 로컬 파일명 |
+| (derived) nodeScores·attributes·rules·archetype | ✗ 미저장 | ✗ 미저장 | load 시 현재 엔진 재계산 |
+
+> 제거 이력: `receivedAt`(미사용 로컬 메타) · `deepface*`(never-wired dead) · `expiresAt`(expiry 폐기) · body 의 `supabaseId`(서버 id 컬럼 중복) 는 정리됨.
 
 ### 6.3 재계산 흐름 (`fromJsonString()`)
 
