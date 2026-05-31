@@ -56,6 +56,9 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
         history.where((r) => !r.isMyFace).toList(growable: false);
     final unlocksAsync = ref.watch(compatUnlocksProvider);
     final unlocked = unlocksAsync.asData?.value ?? const <String>{};
+    final reconstructed =
+        ref.watch(unlockedPartnerBodiesProvider).asData?.value ??
+            const <FaceReadingReport>[];
     final auth = ref.watch(authProvider);
 
     return Scaffold(
@@ -84,7 +87,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
           ),
         ],
       ),
-      body: _body(context, myFace, others, unlocked),
+      body: _body(context, myFace, others, unlocked, reconstructed),
     );
   }
 
@@ -93,6 +96,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
     FaceReadingReport? myFace,
     List<FaceReadingReport> others,
     Set<String> unlocked,
+    List<FaceReadingReport> reconstructed,
   ) {
     if (myFace == null) {
       return const EmptyStatePlaceholder(
@@ -101,24 +105,34 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
         detail: '궁합을 보려면 내 관상 등록이 필요합니다',
       );
     }
-    if (others.isEmpty) {
-      return const EmptyStatePlaceholder(
-        icon: FontAwesomeIcons.peoplePulling,
-        title: '상대방의 관상을 등록하세요',
-        detail: '카메라나 앨범으로 상대방의 관상을 추가하세요',
-      );
-    }
 
-    // 두 섹션 분리.
+    // 두 섹션 분리 — 로컬 history 기반.
     final lockedList = <FaceReadingReport>[];
     final unlockedList = <FaceReadingReport>[];
+    final localIds = <String>{};
     for (final o in others) {
       final key = tryPairKey(myFace, o);
+      if (o.supabaseId != null) localIds.add(o.supabaseId!);
       if (key != null && unlocked.contains(key)) {
         unlockedList.add(o);
       } else {
         lockedList.add(o);
       }
+    }
+
+    // 로컬에 없는 복원 파트너를 unlocked 에 추가 (gap fill).
+    for (final r in reconstructed) {
+      if (r.supabaseId != null && !localIds.contains(r.supabaseId)) {
+        unlockedList.add(r);
+      }
+    }
+
+    if (others.isEmpty && unlockedList.isEmpty) {
+      return const EmptyStatePlaceholder(
+        icon: FontAwesomeIcons.peoplePulling,
+        title: '상대방의 관상을 등록하세요',
+        detail: '카메라나 앨범으로 상대방의 관상을 추가하세요',
+      );
     }
 
     // 미확인 — 시간 기준 정렬만.

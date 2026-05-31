@@ -182,13 +182,19 @@ public.metrics:
 **해결**: 결제한 상대 스냅샷을 `unlocks` 행에 per-user 로 저장하고, 궁합 표시는 그걸 read.
 unlock 은 이미 로그인 필수(`auth.uid()`)라 per-account·다중 디바이스 자연 충족. 상대 metrics 삭제와도 무관.
 
-- [ ] `unlocks` 에 `body text` 컬럼 추가 (unlock 시점 상대 metrics body 스냅샷)
-- [ ] `unlock_compat` RPC: insert 시 상대 body 도 저장
-      (album uuid = `split_part(p_pair_key,'~',2)`; `select body from metrics where id = <album>`)
-- [ ] 궁합 표시 로직: unlocked pair 는 `unlocks.body` 를 SOT 로 read (로컬 Hive 는 캐시)
-- [ ] received 로컬 prune 예외 hack 제거 (history_provider) — 더 이상 불필요
-- [ ] privacy.md: "결제 궁합은 **계정**에 보관(상대 삭제와 무관)" 문구로 재기재
-- [ ] **raw SQL 업데이트 안내 + baseline.sql 갱신은 이 마지막 phase 에 작성** (지시)
+- [x] `unlocks` 에 `body text` 컬럼 추가 (unlock 시점 상대 metrics body 스냅샷)
+- [x] `unlock_compat` RPC: insert 시 상대(album) body 스냅샷 저장
+      (`(select body from metrics where id = split_part(p_pair_key,'~',2)::uuid)`)
+- [x] 궁합 표시: 로컬 Hive 우선 + 누락 시 `unlocks.body` 로 상대 복원(gap-fill).
+      `compat_unlock_service.reconstructUnlockedPartners()` + `unlockedPartnerBodiesProvider`.
+      복원 시 supabaseId=album·source=received·isMyFace=false 주입(share_receive 패턴).
+- [x] received 로컬 prune 예외 hack — expiry 폐기(§8)로 이미 제거됨(전 항목 영구 보존).
+- [x] privacy.md: "결제 궁합은 계정에 보관(상대 삭제와 무관)" 문구 추가.
+- [x] raw SQL 안내(`alter table unlocks add column body` + `unlock_compat` 교체) + baseline.sql 갱신.
+
+> 남은 한계(별도 phase): **본인 얼굴(myFace) 은 로컬 전용**이라, 완전 멀티디바이스(폰B/재설치)
+> 에서 구매 궁합을 보려면 본인 얼굴 server 동기화(anon-auth) 가 추가로 필요. unlocks.body 는
+> 상대(partner) 영속 + 동일기기 로컬삭제 복구를 해결. 본인얼굴 sync 는 anon-auth phase 로 이월.
 
 **SQL 스케치 (마지막 phase 확정 시 다듬을 것):**
 ```sql

@@ -1,5 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'package:face_engine/domain/models/face_reading_report.dart';
 
 /// unlocks 테이블 + unlock_compat RPC 래퍼.
 ///
@@ -15,14 +19,60 @@ class CompatUnlockService {
 
   /// 현 사용자의 unlock 된 pair_key 집합. 비로그인이면 빈 set.
   Future<Set<String>> list() async {
+    final data = await listWithBody();
+    return data.keys.toSet();
+  }
+
+  /// pair_key → body(JSON string, nullable) 맵. 비로그인이면 빈 맵.
+  Future<Map<String, String?>> listWithBody() async {
     if (_client.auth.currentUser == null) return const {};
     try {
-      final rows = await _client.from('unlocks').select('pair_key');
-      return rows.map<String>((r) => r['pair_key'] as String).toSet();
+      final rows =
+          await _client.from('unlocks').select('pair_key, body');
+      return {
+        for (final r in rows)
+          r['pair_key'] as String: r['body'] as String?,
+      };
     } catch (e) {
-      debugPrint('[CompatUnlock] list error: $e');
+      debugPrint('[CompatUnlock] listWithBody error: $e');
       return const {};
     }
+  }
+
+  /// `listWithBody()` 의 non-null body 를 [FaceReadingReport] 로 복원.
+  ///
+  /// body 는 `toBodyJson()` 출력이므로 supabaseId 가 빠져 있다.
+  /// pair_key(`myUuid~albumUuid`) 에서 album uuid 를 추출해 주입하고,
+  /// [ShareReceiveService.fetchByUuid] 와 동일하게 source/isMyFace/alias/
+  /// thumbnailPath 를 override 한 뒤 fromJsonString 으로 parse.
+  Future<List<FaceReadingReport>> reconstructUnlockedPartners() async {
+    final data = await listWithBody();
+    final results = <FaceReadingReport>[];
+    for (final entry in data.entries) {
+      final body = entry.value;
+      if (body == null || body.isEmpty) continue;
+      final parts = entry.key.split('~');
+      if (parts.length != 2) continue;
+      final albumUuid = parts[1];
+      try {
+        final original = jsonDecode(body) as Map<String, dynamic>;
+        final overridden = <String, dynamic>{
+          ...original,
+          'supabaseId': albumUuid,
+          'source': AnalysisSource.received.name,
+          'isMyFace': false,
+          'alias': null,
+          'thumbnailPath': null,
+        };
+        final report =
+            FaceReadingReport.fromJsonString(jsonEncode(overridden));
+        results.add(report);
+      } catch (e) {
+        debugPrint('[CompatUnlock] reconstruct failed '
+            'pairKey=${entry.key}: $e');
+      }
+    }
+    return results;
   }
 
   /// unlock_compat RPC 호출.

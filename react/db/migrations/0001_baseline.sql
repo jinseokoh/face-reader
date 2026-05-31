@@ -232,6 +232,8 @@ grant execute on function public.increment_metrics_views(uuid) to anon, authenti
 create table if not exists public.unlocks (
   user_id    uuid        not null references auth.users(id) on delete cascade,
   pair_key   text        not null,
+  body       text,        -- 결제 시점 상대(album) metrics body 스냅샷.
+                          -- 상대가 metrics 를 삭제·만료해도 구매한 궁합 보존(SSOT).
   created_at timestamptz not null default now(),
   primary key (user_id, pair_key)
 );
@@ -462,7 +464,14 @@ begin
     returning coins into v_balance;
   if v_balance is null then return -1; end if;
 
-  insert into unlocks (user_id, pair_key) values (v_uid, p_pair_key);
+  -- 결제 확정 → 상대(album = pair_key 의 2번째 uuid) metrics body 스냅샷 저장.
+  -- 상대가 이후 metrics 를 지워도 구매한 궁합이 unlocks.body 로 영구 보존.
+  insert into unlocks (user_id, pair_key, body)
+    values (
+      v_uid,
+      p_pair_key,
+      (select body from metrics where id = split_part(p_pair_key, '~', 2)::uuid)
+    );
 
   insert into coins (user_id, kind, amount, balance_after, reference_id, description)
     values (v_uid, 'spend', -1, v_balance, p_pair_key, 'compat-unlock');
