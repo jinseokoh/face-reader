@@ -524,7 +524,7 @@ class _CompatListCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   // 관상 list item 과 동일 사이즈·token (DESIGN.md §0.0.1).
-                  _Thumb(path: album.thumbnailPath, size: 42),
+                  _Thumb(path: album.thumbnailPath, size: 42, gender: album.gender),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Column(
@@ -696,7 +696,7 @@ class _CompatLockedCard extends ConsumerWidget {
             children: [
               // 관상 list item 과 동일 thumb 사이즈 (42) + 동일 title/subtitle
               // 토큰·간격 (DESIGN.md §0.0.1 통일성).
-              _Thumb(path: album.thumbnailPath, size: 42),
+              _Thumb(path: album.thumbnailPath, size: 42, gender: album.gender),
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
@@ -1084,7 +1084,8 @@ class _TaglinePair {
 class _Thumb extends StatelessWidget {
   final String? path;
   final double size;
-  const _Thumb({required this.path, required this.size});
+  final Gender? gender;
+  const _Thumb({required this.path, required this.size, this.gender});
 
   @override
   Widget build(BuildContext context) {
@@ -1094,7 +1095,11 @@ class _Thumb extends StatelessWidget {
       return CircleAvatar(
         radius: radius,
         backgroundColor: AppTheme.border,
-        child: const FaIcon(FontAwesomeIcons.user, color: AppTheme.textHint, size: 22),
+        child: FaIcon(
+          _genderIcon(gender),
+          color: AppTheme.textHint,
+          size: 22,
+        ),
       );
     }
     return ClipOval(
@@ -1106,12 +1111,21 @@ class _Thumb extends StatelessWidget {
         errorBuilder: (_, _, _) => CircleAvatar(
           radius: radius,
           backgroundColor: AppTheme.border,
-          child: const FaIcon(FontAwesomeIcons.fileImage,
-              color: AppTheme.textHint, size: 18),
+          child: FaIcon(
+            _genderIcon(gender),
+            color: AppTheme.textHint,
+            size: 18,
+          ),
         ),
       ),
     );
   }
+
+  static IconData _genderIcon(Gender? g) => switch (g) {
+        Gender.male => FontAwesomeIcons.person,
+        Gender.female => FontAwesomeIcons.personDress,
+        _ => FontAwesomeIcons.user,
+      };
 }
 
 enum _LockedSort {

@@ -606,7 +606,7 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
             _buildList(history, const [AnalysisSource.camera], hasMyFace),
             _buildList(
               history,
-              const [AnalysisSource.album, AnalysisSource.received],
+              const [AnalysisSource.album],
               hasMyFace,
             ),
           ],

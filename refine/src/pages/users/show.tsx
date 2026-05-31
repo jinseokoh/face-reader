@@ -24,6 +24,7 @@ import { GiftOutlined } from "@ant-design/icons";
 import { useState } from "react";
 import { adminClient } from "../../providers/data";
 import type { AppUser, CoinEntry, MetricEntry, Unlock } from "../../types";
+import { parseDemographics } from "../../types";
 
 const { Title, Text } = Typography;
 
@@ -284,14 +285,27 @@ export const UserShow = () => {
           >
             <Table.Column<MetricEntry>
               title="source"
-              dataIndex="source"
-              render={(v: MetricEntry["source"]) => (
-                <Tag color={v === "camera" ? "blue" : "green"}>{v}</Tag>
-              )}
+              dataIndex="body"
+              render={(_: unknown, record: MetricEntry) => {
+                const v = parseDemographics(record.body).source;
+                return v ? <Tag color={v === "camera" ? "blue" : "green"}>{v}</Tag> : <Text type="secondary">-</Text>;
+              }}
             />
-            <Table.Column<MetricEntry> title="gender" dataIndex="gender" />
-            <Table.Column<MetricEntry> title="age" dataIndex="age_group" />
-            <Table.Column<MetricEntry> title="ethnicity" dataIndex="ethnicity" />
+            <Table.Column<MetricEntry>
+              title="gender"
+              dataIndex="body"
+              render={(_: unknown, record: MetricEntry) => parseDemographics(record.body).gender ?? "-"}
+            />
+            <Table.Column<MetricEntry>
+              title="age"
+              dataIndex="body"
+              render={(_: unknown, record: MetricEntry) => parseDemographics(record.body).ageGroup ?? "-"}
+            />
+            <Table.Column<MetricEntry>
+              title="ethnicity"
+              dataIndex="body"
+              render={(_: unknown, record: MetricEntry) => parseDemographics(record.body).ethnicity ?? "-"}
+            />
             <Table.Column<MetricEntry>
               title="alias"
               dataIndex="alias"

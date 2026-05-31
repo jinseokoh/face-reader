@@ -295,6 +295,40 @@ class FaceReadingReport {
         for (final e in attributes.entries) e.key: e.value.normalizedScore,
       };
 
+  /// 서버 metrics.body 전용 직렬화.
+  ///
+  /// body = 분석 결과 payload. 소유/관계 메타(alias, isMyFace)와 로컬 전용
+  /// 필드(thumbnailPath, receivedAt)는 제외한다.
+  /// - alias → metrics 컬럼
+  /// - isMyFace → metrics 컬럼 (is_my_face)
+  /// - thumbnailPath → 디바이스 로컬 경로
+  /// - receivedAt → 수신자 로컬 메타
+  String toBodyJson() => jsonEncode({
+        'schemaVersion': schemaVersion,
+        'ethnicity': ethnicity.name,
+        'gender': gender.name,
+        'ageGroup': ageGroup.jsonValue,
+        'timestamp': timestamp.toIso8601String(),
+        'source': source.name,
+        'supabaseId': supabaseId,
+        'expiresAt': expiresAt.toIso8601String(),
+        if (thumbnailKey != null) 'thumbnailKey': thumbnailKey,
+        if (deepfaceAge != null) 'deepfaceAge': deepfaceAge,
+        if (deepfaceGender != null) 'deepfaceGender': deepfaceGender,
+        if (deepfaceEthnicity != null) 'deepfaceEthnicity': deepfaceEthnicity,
+        'metrics': {
+          for (final e in metrics.entries) e.key: e.value.rawValue,
+        },
+        if (lateralMetrics != null)
+          'lateralMetrics': {
+            for (final e in lateralMetrics!.entries) e.key: e.value.rawValue,
+          },
+        if (faceShapeLabel != null) 'faceShapeLabel': faceShapeLabel,
+        if (faceShapeConfidence != null)
+          'faceShapeConfidence': faceShapeConfidence,
+        'faceShape': faceShape.name,
+      });
+
   /// v3 (2026-04-18): capture-only serialization. 저장하는 것은 **metric rawValue
   /// 와 camera meta(ethnicity/gender/ageGroup/faceShape…) 뿐**이다. z-score,
   /// zAdjusted, metricScore, lateralFlags, nodeScores, attributes, rules,

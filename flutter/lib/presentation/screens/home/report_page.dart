@@ -11,7 +11,9 @@ import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/models/physiognomy_tree.dart';
+import 'package:face_engine/domain/services/compat/compat_pair_key.dart';
 import 'package:face_engine/domain/services/yin_yang.dart';
+import 'package:facely/config/router.dart';
 import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/data/constants/metric_text_blocks.dart';
@@ -19,6 +21,7 @@ import 'package:facely/data/constants/node_text_blocks.dart';
 import 'package:facely/domain/services/report_assembler.dart';
 import 'package:facely/domain/services/share/share_publisher.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
+import 'package:facely/presentation/providers/compat_unlock_provider.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
@@ -833,10 +836,73 @@ class _ReceivedBookmarkAction extends ConsumerWidget {
         showTopSnackBar(
           Overlay.of(context),
           CompactSnackBar.success(
-              message: '내 앨범에 저장했습니다 — 앨범 탭의 "받은 카드"'),
+              message: '내 앨범에 저장했습니다 — 궁합 탭에서 확인 가능'),
         );
       },
     );
+  }
+}
+
+/// 받은 카드 ReportPage 의 궁합 CTA.
+/// 내 관상(isMyFace) 이 설정돼 있으면 "나와의 궁합 보기" 또는 (이미 unlock 된
+/// 경우) "궁합 결과 보기" 버튼을 노출한다. 탭 시 이 받은 카드를 history 에
+/// 저장(주체적 추가)하고 궁합 흐름으로 진입한다.
+class _CompatCta extends ConsumerWidget {
+  final FaceReadingReport report;
+  const _CompatCta({required this.report});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final history = ref.watch(historyProvider);
+    final myFace = history
+        .where((r) => r.isMyFace)
+        .cast<FaceReadingReport?>()
+        .firstOrNull;
+    if (myFace == null) {
+      return const SizedBox.shrink();
+    }
+    final unlocksAsync = ref.watch(compatUnlocksProvider);
+    final unlocked = unlocksAsync.asData?.value ?? const <String>{};
+    final key = tryPairKey(myFace, report);
+    final isUnlocked = key != null && unlocked.contains(key);
+    final label = isUnlocked ? '궁합 결과 보기' : '나와의 궁합 보기';
+
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: ElevatedButton(
+        onPressed: () => _onTap(context, ref, myFace, isUnlocked),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.textPrimary,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+          elevation: 0,
+        ),
+        child: Text(
+          label,
+          style: AppText.subTitle.copyWith(color: Colors.white),
+        ),
+      ),
+    );
+  }
+
+  void _onTap(
+    BuildContext context,
+    WidgetRef ref,
+    FaceReadingReport myFace,
+    bool isUnlocked,
+  ) {
+    // 주체적 추가 — history 에 없으면 저장.
+    final history = ref.read(historyProvider);
+    final alreadySaved = report.supabaseId != null &&
+        history.any((r) => r.supabaseId == report.supabaseId);
+    if (!alreadySaved) {
+      ref.read(historyProvider.notifier).add(report);
+    }
+    // 궁합 흐름으로 진입.
+    context.pushCompat(my: myFace, album: report);
   }
 }
 
@@ -901,6 +967,10 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
             children: [
               _buildHeader(),
+              if (isReceived) ...[
+                const SizedBox(height: AppSpacing.lg),
+                _CompatCta(report: report),
+              ],
               const SizedBox(height: 16),
               _buildArchetypeCard(),
               const SizedBox(height: 20),

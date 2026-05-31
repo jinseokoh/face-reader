@@ -121,8 +121,11 @@ create policy "coins_self_read"
 -- 3. public.metrics — 관상 원본 + 공유 link payload
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 1 face capture = 1 metrics row (1 UUID = trace id, HOW-IT-WORKS §3.1).
--- body (text) 안에 schema (HOW-IT-WORKS §5.2) — thumbnailKey,
--- deepface*, rawValue, demographic 카테고리 등.
+-- body (text) = 분석 결과 payload (canonical): source·ethnicity·gender·ageGroup
+-- (demographics) · metrics rawValue · faceShape · thumbnailKey · deepface* 등.
+--   ↳ demographics 는 body 안에만 존재 (top-level 컬럼 아님). refine 가 body 파싱.
+-- 컬럼 = 관계/소유 메타 + 쿼리 키: user_id · alias(소유자 지정 이름) · is_my_face.
+--   ↳ is_my_face·alias 는 body 에 안 넣음 (toBodyJson 제외). 컬럼이 canonical.
 -- SELECT 는 anon 공개 (UUID 모르면 fetch 불가하므로 link-share 모델).
 -- INSERT 는 anon 도 허용 (publish 직통 UPSERT) — PII 값 RLS check 로 차단.
 -- views++ 는 increment_metrics_views (SECURITY DEFINER) RPC 만.
@@ -131,15 +134,12 @@ create table if not exists public.metrics (
   id           uuid        primary key default gen_random_uuid(),
   user_id      uuid        references auth.users(id) on delete set null,
   body         text        not null,
-  source       text        not null check (source in ('camera','album')),
-  ethnicity    text        not null,
-  gender       text        not null,
-  age_group    text        not null,
   alias        text,
-  expires_at   timestamptz not null,
+  is_my_face   boolean     not null default false,
   views        integer     not null default 0,
-  updated_at   timestamptz not null default now(),
-  created_at   timestamptz not null default now()
+  expires_at   timestamptz not null,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
 );
 
 create index if not exists idx_metrics_expires_at  on public.metrics (expires_at);
@@ -635,8 +635,8 @@ grant  execute on function public.ad_reward_record_view() to authenticated;
 -- declare sid uuid := gen_random_uuid(); v integer;
 -- begin
 --   -- metrics: insert (anon 가능) → views++ RPC → updated_at 자동 변화 → 삭제
---   insert into public.metrics (id, body, source, ethnicity, gender, age_group, expires_at)
---   values (sid, '{}', 'album', 'eastAsian', 'male', '20s', now() + interval '90 days');
+--   insert into public.metrics (id, body, expires_at)
+--   values (sid, '{}', now() + interval '90 days');
 --   perform public.increment_metrics_views(sid);
 --   select views into v from public.metrics where id = sid;
 --   raise notice 'views after rpc = %', v;  -- 1

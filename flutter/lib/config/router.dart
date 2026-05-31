@@ -1,19 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
-import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/app.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/domain/services/share/share_receive_service.dart';
-import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/screens/compatibility/compatibility_detail_screen.dart';
 import 'package:facely/presentation/screens/home/info_confirm_screen.dart';
 import 'package:facely/presentation/screens/home/report_page.dart';
 import 'package:facely/presentation/screens/ledger/ledger_page.dart';
-import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/domain/models/capture_result.dart';
 import 'package:facely/domain/models/face_metadata.dart';
 
@@ -135,67 +131,39 @@ extension CompatPushExtension on BuildContext {
 }
 
 /// 관상 deep-link wrapper — preloaded null 이면 Supabase 에서 fetch.
-///
-/// **Auto-register (채팅 매칭 후보)** — fetch 결과의 `autoRegisterEligible`
-/// (sender 측 camera + isMyFace) 가 true 이고 local history 에 같은 supabaseId
-/// 가 없으면 자동으로 앨범에 추가 + top snackbar 로 알림. preloaded (in-app
-/// push) 흐름은 외부 share 가 아니므로 적격성 false 로 wrap.
-class _ReportRouteWrapper extends ConsumerStatefulWidget {
+/// 공유 링크 열람만으로 history 에 자동 저장하지 않는다 (주체적 추가 정책).
+class _ReportRouteWrapper extends StatefulWidget {
   final String uuid;
   final FaceReadingReport? preloaded;
   const _ReportRouteWrapper({required this.uuid, this.preloaded});
 
   @override
-  ConsumerState<_ReportRouteWrapper> createState() =>
-      _ReportRouteWrapperState();
+  State<_ReportRouteWrapper> createState() => _ReportRouteWrapperState();
 }
 
-class _ReportRouteWrapperState extends ConsumerState<_ReportRouteWrapper> {
-  late final Future<ShareReceiveResult?> _future;
-  // FutureBuilder 가 부모 rebuild 마다 builder 를 재호출하므로 once-flag 로
-  // auto-register 가 한 번만 일어나도록 보호.
-  bool _autoRegisterChecked = false;
+class _ReportRouteWrapperState extends State<_ReportRouteWrapper> {
+  late final Future<FaceReadingReport?> _future;
 
   @override
   void initState() {
     super.initState();
     final preloaded = widget.preloaded;
     _future = preloaded != null
-        ? Future.value(
-            (report: preloaded, autoRegisterEligible: false))
+        ? Future.value(preloaded)
         : ShareReceiveService().fetchByUuid(widget.uuid);
-  }
-
-  void _maybeAutoRegister(FaceReadingReport report, bool eligible) {
-    if (_autoRegisterChecked) return;
-    _autoRegisterChecked = true;
-    if (!eligible) return;
-    final history = ref.read(historyProvider);
-    if (history.any((r) => r.supabaseId == report.supabaseId)) return;
-    ref.read(historyProvider.notifier).add(report);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      showTopSnackBar(
-        Overlay.of(context),
-        CompactSnackBar.success(
-          message: '내 앨범에 자동 추가했어요 — 궁합 분석에 사용됩니다',
-        ),
-      );
-    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<ShareReceiveResult?>(
+    return FutureBuilder<FaceReadingReport?>(
       future: _future,
       builder: (ctx, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
           return const _LoadingScaffold();
         }
-        final result = snap.data;
-        if (result == null) return const _ShareErrorScreen();
-        _maybeAutoRegister(result.report, result.autoRegisterEligible);
-        return ReportPage(report: result.report);
+        final report = snap.data;
+        if (report == null) return const _ShareErrorScreen();
+        return ReportPage(report: report);
       },
     );
   }
@@ -212,7 +180,7 @@ class _CompatRouteWrapper extends StatefulWidget {
 }
 
 class _CompatRouteWrapperState extends State<_CompatRouteWrapper> {
-  late final Future<List<ShareReceiveResult?>> _future;
+  late final Future<List<FaceReadingReport?>> _future;
 
   @override
   void initState() {
@@ -226,14 +194,14 @@ class _CompatRouteWrapperState extends State<_CompatRouteWrapper> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<ShareReceiveResult?>>(
+    return FutureBuilder<List<FaceReadingReport?>>(
       future: _future,
       builder: (ctx, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
           return const _LoadingScaffold();
         }
-        final my = snap.data?[0]?.report;
-        final album = snap.data?[1]?.report;
+        final my = snap.data?[0];
+        final album = snap.data?[1];
         if (my == null || album == null) return const _ShareErrorScreen();
         return CompatibilityDetailScreen(my: my, album: album);
       },

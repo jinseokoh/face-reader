@@ -96,15 +96,6 @@ export const DashboardPage = () => {
     .slice(0, 10);
   const userById = new Map<string, AppUser>(users.map((u) => [u.id, u]));
 
-  const sourceCounts = metrics.reduce<Record<string, number>>((acc, m) => {
-    acc[m.source] = (acc[m.source] ?? 0) + 1;
-    return acc;
-  }, {});
-  const genderCounts = metrics.reduce<Record<string, number>>((acc, m) => {
-    acc[m.gender] = (acc[m.gender] ?? 0) + 1;
-    return acc;
-  }, {});
-
   return (
     <Space direction="vertical" size={16} style={{ width: "100%" }}>
       <Title level={3} style={{ margin: 0 }}>
@@ -177,28 +168,6 @@ export const DashboardPage = () => {
             />
             <Text type="secondary" style={{ fontSize: 12 }}>
               users.coins SoT 합산
-            </Text>
-          </Card>
-        </Col>
-        <Col xs={12} md={6}>
-          <Card>
-            <Statistic
-              title="metric source"
-              value={`📷 ${sourceCounts.camera ?? 0} / 🖼️ ${sourceCounts.album ?? 0}`}
-            />
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              camera / album
-            </Text>
-          </Card>
-        </Col>
-        <Col xs={12} md={6}>
-          <Card>
-            <Statistic
-              title="metric 성별"
-              value={`♂ ${genderCounts.male ?? 0} / ♀ ${genderCounts.female ?? 0}`}
-            />
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              male / female
             </Text>
           </Card>
         </Col>

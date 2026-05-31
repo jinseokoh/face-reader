@@ -3,6 +3,7 @@ import { useMany } from "@refinedev/core";
 import { Avatar, Space, Table, Tag, Tooltip, Typography } from "antd";
 import { UserLink } from "../../components/user-link";
 import type { AppUser, MetricEntry } from "../../types";
+import { parseDemographics } from "../../types";
 
 const { Text } = Typography;
 
@@ -72,31 +73,42 @@ export const MetricList = () => {
         />
         <Table.Column<MetricEntry>
           title="source"
-          dataIndex="source"
-          filters={[
-            { text: "camera", value: "camera" },
-            { text: "album", value: "album" },
-          ]}
-          render={(v: string) => (
-            <Tag color={SOURCE_COLOR[v] ?? "default"}>{v}</Tag>
-          )}
+          dataIndex="body"
+          render={(_: unknown, record: MetricEntry) => {
+            const v = parseDemographics(record.body).source;
+            return v ? <Tag color={SOURCE_COLOR[v] ?? "default"}>{v}</Tag> : <Text type="secondary">-</Text>;
+          }}
         />
         <Table.Column<MetricEntry>
           title="성별"
-          dataIndex="gender"
-          filters={[
-            { text: "남", value: "male" },
-            { text: "여", value: "female" },
-          ]}
-          render={(v: string) => GENDER_LABEL[v] ?? v}
+          dataIndex="body"
+          render={(_: unknown, record: MetricEntry) => {
+            const v = parseDemographics(record.body).gender;
+            return v ? GENDER_LABEL[v] ?? v : <Text type="secondary">-</Text>;
+          }}
         />
-        <Table.Column<MetricEntry> title="연령대" dataIndex="age_group" />
+        <Table.Column<MetricEntry>
+          title="연령대"
+          dataIndex="body"
+          render={(_: unknown, record: MetricEntry) => {
+            const v = parseDemographics(record.body).ageGroup;
+            return v ?? <Text type="secondary">-</Text>;
+          }}
+        />
         <Table.Column<MetricEntry>
           title="ethnicity"
-          dataIndex="ethnicity"
-          render={(v: string) => (
-            <Text style={{ fontSize: 12 }}>{v}</Text>
-          )}
+          dataIndex="body"
+          render={(_: unknown, record: MetricEntry) => {
+            const v = parseDemographics(record.body).ethnicity;
+            return v ? <Text style={{ fontSize: 12 }}>{v}</Text> : <Text type="secondary">-</Text>;
+          }}
+        />
+        <Table.Column<MetricEntry>
+          title="본인"
+          dataIndex="is_my_face"
+          render={(_: unknown, record: MetricEntry) =>
+            record.is_my_face ? <Tag color="blue">본인</Tag> : <Text type="secondary">-</Text>
+          }
         />
         <Table.Column<MetricEntry>
           title="alias"

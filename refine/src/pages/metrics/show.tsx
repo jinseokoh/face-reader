@@ -3,6 +3,7 @@ import { useShow } from "@refinedev/core";
 import { Alert, Descriptions, Space, Tag, Typography } from "antd";
 import { useMemo } from "react";
 import type { MetricEntry } from "../../types";
+import { parseDemographics } from "../../types";
 import { runEngine, type EngineOutput } from "../../lib/share-engine";
 import { SoloHeroCard } from "./HeroCard";
 
@@ -39,12 +40,22 @@ export const MetricShow = () => {
                 {row.user_id ?? "anon"}
               </Text>
             </Descriptions.Item>
-            <Descriptions.Item label="source">
-              <Tag color={SOURCE_COLOR[row.source] ?? "default"}>{row.source}</Tag>
+            {(() => {
+              const d = parseDemographics(row.body);
+              return (
+                <>
+                  <Descriptions.Item label="source">
+                    <Tag color={SOURCE_COLOR[d.source ?? ""] ?? "default"}>{d.source ?? "-"}</Tag>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="ethnicity">{d.ethnicity ?? "-"}</Descriptions.Item>
+                  <Descriptions.Item label="성별">{GENDER_LABEL[d.gender ?? ""] ?? d.gender ?? "-"}</Descriptions.Item>
+                  <Descriptions.Item label="연령대">{d.ageGroup ?? "-"}</Descriptions.Item>
+                </>
+              );
+            })()}
+            <Descriptions.Item label="본인">
+              {row.is_my_face ? <Tag color="blue">본인</Tag> : "-"}
             </Descriptions.Item>
-            <Descriptions.Item label="ethnicity">{row.ethnicity}</Descriptions.Item>
-            <Descriptions.Item label="성별">{GENDER_LABEL[row.gender] ?? row.gender}</Descriptions.Item>
-            <Descriptions.Item label="연령대">{row.age_group}</Descriptions.Item>
             <Descriptions.Item label="alias">{row.alias ?? "-"}</Descriptions.Item>
             <Descriptions.Item label="조회수">{row.views}</Descriptions.Item>
             <Descriptions.Item label="created_at">{row.created_at}</Descriptions.Item>

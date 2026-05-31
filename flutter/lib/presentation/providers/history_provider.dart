@@ -117,9 +117,10 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
       try {
         final report = FaceReadingReport.fromJsonString(json);
         final alive = report.expiresAt.isAfter(now);
+        final isReceived = report.source == AnalysisSource.received;
         _log('reload entry $i PARSED: expiresAt=${report.expiresAt} '
-            'alive=$alive supabaseId=${report.supabaseId} alias=${report.alias}');
-        if (!alive) {
+            'alive=$alive isReceived=$isReceived supabaseId=${report.supabaseId} alias=${report.alias}');
+        if (!alive && !isReceived) {
           droppedExpired++;
           _log('reload DROP entry $i: expired (expiresAt=${report.expiresAt})');
           continue;
@@ -186,9 +187,16 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
       try {
         final report = FaceReadingReport.fromJsonString(json);
         final alive = report.expiresAt.isAfter(now);
+        // 받은 카드(source==received)는 만료돼도 삭제하지 않는다.
+        // 궁합 unlock 된 상대 카드일 수 있으며, unlock 결제 후 데이터가
+        // 사라지면 UX 문제. HistoryNotifier.build() 가 sync 이므로
+        // compatUnlocksProvider(async) 를 여기서 읽을 수 없어 received
+        // 전체를 보존하는 보수적 정책 적용.
+        // TODO: AsyncNotifier 전환 후 unlocked pair_key set 기반 정밀 prune
+        final isReceived = report.source == AnalysisSource.received;
         _log('load entry $i PARSED: expiresAt=${report.expiresAt} '
-            'alive=$alive supabaseId=${report.supabaseId}');
-        if (alive) {
+            'alive=$alive isReceived=$isReceived supabaseId=${report.supabaseId}');
+        if (alive || isReceived) {
           reports.add(report);
           survivorJson.add(json);
         } else {

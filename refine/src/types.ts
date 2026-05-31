@@ -25,22 +25,34 @@ export type CoinEntry = {
   created_at: string;
 };
 
-export type MetricSource = "camera" | "album";
-
 export type MetricEntry = {
   id: string;
   user_id: string | null;
   body: string;
-  source: MetricSource;
-  ethnicity: string;
-  gender: string;
-  age_group: string;
+  is_my_face: boolean;
   alias: string | null;
   expires_at: string;
   views: number;
   updated_at: string;
   created_at: string;
 };
+
+export type Demographics = {
+  source?: string;
+  gender?: string;
+  ethnicity?: string;
+  ageGroup?: string;
+};
+
+export function parseDemographics(body: string | null | undefined): Demographics {
+  if (!body) return {};
+  try {
+    const j = JSON.parse(body);
+    return { source: j.source, gender: j.gender, ethnicity: j.ethnicity, ageGroup: j.ageGroup };
+  } catch {
+    return {};
+  }
+}
 
 export type Ad = {
   id: string;
