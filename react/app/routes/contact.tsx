@@ -42,8 +42,8 @@ export default function Contact({ loaderData }: Route.ComponentProps) {
 
     const formData = new FormData(form)
     formData.append('access_key', accessKey)
-    formData.append('subject', '[Facely] 개인정보 삭제 요청')
-    formData.append('from_name', 'Facely 삭제 요청 폼')
+    formData.append('subject', '[관상은 과학이다] 개인정보 삭제 요청')
+    formData.append('from_name', '관상은 과학이다 삭제 요청 폼')
 
     try {
       const response = await fetch('https://api.web3forms.com/submit', {
@@ -124,7 +124,7 @@ export default function Contact({ loaderData }: Route.ComponentProps) {
             required
             autoComplete="username"
             className="form-input"
-            placeholder="Facely 계정 식별을 위해 필요합니다"
+            placeholder="관상은 과학이다 계정 식별을 위해 필요합니다"
           />
         </label>
 

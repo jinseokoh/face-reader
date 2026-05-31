@@ -1,8 +1,8 @@
 import type { Route } from './+types/_index'
 
 export function meta(_: Route.MetaArgs) {
-  const title = 'Facely — 관상은 과학이다'
-  const description = 'Facely, 계측 데이터 기반 인공지능 관상앱.'
+  const title = '관상은 과학이다'
+  const description = '안면 계측 데이터 기반 인공지능 관상앱'
   const ogImage = 'https://cdn.facely.kr/assets/800x420.png'
   const url = 'https://facely.kr'
   return [
@@ -17,7 +17,7 @@ export function meta(_: Route.MetaArgs) {
     { property: 'og:image', content: ogImage },
     { property: 'og:image:width', content: '800' },
     { property: 'og:image:height', content: '420' },
-    { property: 'og:site_name', content: 'Facely' },
+    { property: 'og:site_name', content: '관상은 과학이다' },
     { property: 'og:locale', content: 'ko_KR' },
     // Twitter / X
     { name: 'twitter:card', content: 'summary_large_image' },

@@ -3,17 +3,17 @@ import type {
   CompatPersonOutput,
   EngineOutput,
   RenderedShare,
-} from "../lib/types";
+} from '../lib/types'
 
 export function ShareCard({ data }: { data: RenderedShare }) {
   if (data.compat) {
     return (
       <CompatHeroCard
         compat={data.compat}
-        aThumbUrl={data.compatAThumbUrl ?? ""}
-        bThumbUrl={data.compatBThumbUrl ?? ""}
+        aThumbUrl={data.compatAThumbUrl ?? ''}
+        bThumbUrl={data.compatBThumbUrl ?? ''}
       />
-    );
+    )
   }
   if (data.solo) {
     return (
@@ -21,23 +21,23 @@ export function ShareCard({ data }: { data: RenderedShare }) {
         eng={data.solo}
         thumbUrl={data.soloThumbUrl ?? data.solo.portraitUrl}
       />
-    );
+    )
   }
-  return null;
+  return null
 }
 
 function SoloHeroCard({
   eng,
   thumbUrl,
 }: {
-  eng: EngineOutput;
-  thumbUrl: string;
+  eng: EngineOutput
+  thumbUrl: string
 }) {
   return (
     <article className="hero">
       <div className="hero-head-row">
         <header className="hero-head">
-          <p className="hero-eyebrow">Facely 관상 평가</p>
+          <p className="hero-eyebrow">관상은 과학이다</p>
           <h1 className="hero-title">{eng.primaryLabel}</h1>
           <p className="hero-subtitle">{eng.secondaryLabel} 기질</p>
           {eng.specialArchetype && (
@@ -65,7 +65,9 @@ function SoloHeroCard({
       <ul className="hero-chips">
         {eng.chips.map((c, i) => (
           <li key={i} className={`hero-chip hero-chip--${c.tone}`}>
-            <span className="hero-chip-icon">{c.tone === "warm" ? "👍" : "👎"}</span>
+            <span className="hero-chip-icon">
+              {c.tone === 'warm' ? '👍' : '👎'}
+            </span>
             <span className="hero-chip-label">{c.label}</span>
           </li>
         ))}
@@ -79,7 +81,9 @@ function SoloHeroCard({
             <div className="hero-rank-bar">
               <span
                 className="hero-rank-fill"
-                style={{ width: `${Math.max(0, Math.min(100, t.score * 10))}%` }}
+                style={{
+                  width: `${Math.max(0, Math.min(100, t.score * 10))}%`,
+                }}
               />
             </div>
             <p className="hero-rank-score">{t.score.toFixed(1)}</p>
@@ -87,7 +91,7 @@ function SoloHeroCard({
         ))}
       </div>
     </article>
-  );
+  )
 }
 
 function CompatHeroCard({
@@ -95,13 +99,13 @@ function CompatHeroCard({
   aThumbUrl,
   bThumbUrl,
 }: {
-  compat: CompatOutput;
-  aThumbUrl: string;
-  bThumbUrl: string;
+  compat: CompatOutput
+  aThumbUrl: string
+  bThumbUrl: string
 }) {
   return (
     <article className="hero hero--compat">
-      <p className="hero-eyebrow">Facely 궁합 평가</p>
+      <p className="hero-eyebrow">궁합도 과학이다</p>
 
       <h1 className="compat-title">
         {compat.labelKo}
@@ -118,7 +122,9 @@ function CompatHeroCard({
       <ul className="hero-chips compat-chips">
         {compat.chips.map((c, i) => (
           <li key={i} className={`hero-chip hero-chip--${c.tone}`}>
-            <span className="hero-chip-icon">{c.tone === "warm" ? "👍" : "👎"}</span>
+            <span className="hero-chip-icon">
+              {c.tone === 'warm' ? '👍' : '👎'}
+            </span>
             <span className="hero-chip-label">{c.label}</span>
           </li>
         ))}
@@ -126,15 +132,15 @@ function CompatHeroCard({
 
       <p className="compat-relation">{compat.relation}</p>
     </article>
-  );
+  )
 }
 
 function CompatSide({
   person,
   thumbUrl,
 }: {
-  person: CompatPersonOutput;
-  thumbUrl: string;
+  person: CompatPersonOutput
+  thumbUrl: string
 }) {
   // 메인 라벨 = archetype primary (e.g. "기업가형", "학자형") — 사용자에게
   // 의미 있는 personality. demographic sub-line 은 "{ageGroup} {gender}
@@ -146,15 +152,15 @@ function CompatSide({
       <p className="compat-side-alias">{person.primaryLabel}</p>
       <p className="compat-side-demo">{person.demographic}</p>
     </div>
-  );
+  )
 }
 
 function HeroLine({ label, line }: { label: string; line: string }) {
-  if (!line) return null;
+  if (!line) return null
   return (
     <p className="hero-line">
       <span className="hero-line-label">{label}</span>
       <span className="hero-line-text">{line}</span>
     </p>
-  );
+  )
 }

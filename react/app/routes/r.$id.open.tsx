@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import type { Route } from "./+types/r.$id.open";
+import { useEffect } from 'react'
+import type { Route } from './+types/r.$id.open'
 
 /**
  * `GET /r/:id/open` — **앱 진입 전용 nested bridge route**.
@@ -20,60 +20,60 @@ import type { Route } from "./+types/r.$id.open";
 
 export function meta(_: Route.MetaArgs) {
   return [
-    { title: "Facely 앱 여는 중…" },
-    { name: "robots", content: "noindex,nofollow" },
-  ];
+    { title: '관상은 과학이다 앱 여는 중…' },
+    { name: 'robots', content: 'noindex,nofollow' },
+  ]
 }
 
 export async function loader({ params, context }: Route.LoaderArgs) {
-  const env = context.cloudflare.env;
+  const env = context.cloudflare.env
   return {
     id: params.id,
     appStoreUrl: env.APP_STORE_URL,
     playStoreUrl: env.PLAY_STORE_URL,
     webappBase: env.WEBAPP_BASE,
-  };
+  }
 }
 
 export default function OpenBridge({ loaderData }: Route.ComponentProps) {
-  const { id, appStoreUrl, playStoreUrl, webappBase } = loaderData;
+  const { id, appStoreUrl, playStoreUrl, webappBase } = loaderData
 
   useEffect(() => {
-    const ua = navigator.userAgent;
-    const isIOS = /iPhone|iPad|iPod/.test(ua);
-    const isAndroid = /Android/.test(ua);
+    const ua = navigator.userAgent
+    const isIOS = /iPhone|iPad|iPod/.test(ua)
+    const isAndroid = /Android/.test(ua)
 
     // Desktop 등 unsupported 환경 — readable preview 로 redirect.
     if (!isIOS && !isAndroid) {
-      window.location.replace(`${webappBase}/r/${id}`);
-      return;
+      window.location.replace(`${webappBase}/r/${id}`)
+      return
     }
 
     // Universal/App Link target — `/r/{id}/open` 자체로 OS intercept.
     // AASA components 가 `/r/*` 와일드카드라 sub-path 도 매칭. 앱 설치돼 있으면
     // OS 가 가로채 Flutter 앱 launch, 미설치면 Safari 가 그대로 이 페이지에
     // 머물러 useEffect fallback timer 가 store 로 보낸다.
-    const universalLink = `${webappBase}/r/${id}/open`;
-    const storeUrl = isIOS ? appStoreUrl : playStoreUrl;
-    const startedAt = Date.now();
+    const universalLink = `${webappBase}/r/${id}/open`
+    const storeUrl = isIOS ? appStoreUrl : playStoreUrl
+    const startedAt = Date.now()
 
-    window.location.href = universalLink;
+    window.location.href = universalLink
 
     const fallback = window.setTimeout(() => {
       if (
         Date.now() - startedAt < 2500 &&
-        document.visibilityState === "visible"
+        document.visibilityState === 'visible'
       ) {
-        window.location.href = storeUrl;
+        window.location.href = storeUrl
       }
-    }, 1500);
+    }, 1500)
 
-    return () => window.clearTimeout(fallback);
-  }, [id, appStoreUrl, playStoreUrl, webappBase]);
+    return () => window.clearTimeout(fallback)
+  }, [id, appStoreUrl, playStoreUrl, webappBase])
 
   return (
     <main className="bridge">
-      <p className="bridge-text">Facely 앱을 여는 중…</p>
+      <p className="bridge-text">관상은 과학이다 앱을 여는 중…</p>
       <noscript>
         <p>JavaScript 가 비활성 상태입니다. 아래 link 로 앱을 받아주세요.</p>
         <a href={appStoreUrl}>App Store</a>
@@ -81,5 +81,5 @@ export default function OpenBridge({ loaderData }: Route.ComponentProps) {
         <a href={playStoreUrl}>Google Play</a>
       </noscript>
     </main>
-  );
+  )
 }
