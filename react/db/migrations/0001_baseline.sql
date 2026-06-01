@@ -231,8 +231,11 @@ grant execute on function public.increment_metrics_views(uuid) to anon, authenti
 create table if not exists public.unlocks (
   user_id    uuid        not null references auth.users(id) on delete cascade,
   pair_key   text        not null,
-  body       text,        -- 결제 시점 상대(album) metrics body 스냅샷.
-                          -- 상대가 metrics 를 삭제·만료해도 구매한 궁합 보존(SSOT).
+  owner_body   text,      -- 결제 시점 본인(pair_key 1번째 uuid) metrics body 스냅샷.
+  partner_body text,      -- 결제 시점 상대(pair_key 2번째 uuid) metrics body 스냅샷.
+                          -- 두 body 를 동결해 구매한 궁합을 self-contained 로 보존.
+                          -- metrics row·로컬 history 에 의존하지 않고 단독 복원/표시.
+  total_score real,       -- 해제 시점 궁합 총점(0~100). admin 콘솔 정렬·필터용.
   created_at timestamptz not null default now(),
   primary key (user_id, pair_key)
 );
@@ -434,7 +437,15 @@ end; $$;
 -- 이미 해제됐으면 idempotent — 잔액만 반환.
 -- 잔액 부족이면 -1.
 
-create or replace function public.unlock_compat(p_pair_key text)
+drop function if exists public.unlock_compat(text);
+drop function if exists public.unlock_compat(text, real);
+
+create or replace function public.unlock_compat(
+  p_pair_key     text,
+  p_total_score  real default null,
+  p_owner_body   text default null,
+  p_partner_body text default null
+)
 returns integer
 language plpgsql security definer set search_path = public
 as $$
@@ -463,14 +474,11 @@ begin
     returning coins into v_balance;
   if v_balance is null then return -1; end if;
 
-  -- 결제 확정 → 상대(album = pair_key 의 2번째 uuid) metrics body 스냅샷 저장.
-  -- 상대가 이후 metrics 를 지워도 구매한 궁합이 unlocks.body 로 영구 보존.
-  insert into unlocks (user_id, pair_key, body)
-    values (
-      v_uid,
-      p_pair_key,
-      (select body from metrics where id = split_part(p_pair_key, '~', 2)::uuid)
-    );
+  -- 결제 확정 → 본인·상대 두 body 를 클라이언트가 넘긴 그대로 동결 저장.
+  -- metrics row 존재 여부에 의존하지 않아 (업로드 누락·삭제·만료와 무관)
+  -- 구매한 궁합이 self-contained 로 영구 보존된다.
+  insert into unlocks (user_id, pair_key, owner_body, partner_body, total_score)
+    values (v_uid, p_pair_key, p_owner_body, p_partner_body, p_total_score);
 
   insert into coins (user_id, kind, amount, balance_after, reference_id, description)
     values (v_uid, 'spend', -1, v_balance, p_pair_key, 'compat-unlock');
@@ -483,12 +491,12 @@ end; $$;
 -- ─────────────────────────────────────────────────────────────────────────────
 revoke execute on function public.grant_coins(integer, text, text, text, text) from public, anon;
 revoke execute on function public.spend_coins(integer, text, text)              from public, anon;
-revoke execute on function public.unlock_compat(text)                            from public, anon;
+revoke execute on function public.unlock_compat(text, real, text, text)          from public, anon;
 revoke execute on function public.admin_grant_coins(uuid, integer, text)         from public, anon, authenticated;
 
 grant  execute on function public.grant_coins(integer, text, text, text, text) to authenticated;
 grant  execute on function public.spend_coins(integer, text, text)              to authenticated;
-grant  execute on function public.unlock_compat(text)                            to authenticated;
+grant  execute on function public.unlock_compat(text, real, text, text)          to authenticated;
 grant  execute on function public.admin_grant_coins(uuid, integer, text)         to service_role;
 
 -- ─────────────────────────────────────────────────────────────────────────────

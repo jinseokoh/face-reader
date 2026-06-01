@@ -19,46 +19,44 @@ class CompatUnlockService {
 
   /// 현 사용자의 unlock 된 pair_key 집합. 비로그인이면 빈 set.
   Future<Set<String>> list() async {
-    final data = await listWithBody();
-    return data.keys.toSet();
-  }
-
-  /// pair_key → body(JSON string, nullable) 맵. 비로그인이면 빈 맵.
-  Future<Map<String, String?>> listWithBody() async {
     if (_client.auth.currentUser == null) return const {};
     try {
-      final rows =
-          await _client.from('unlocks').select('pair_key, body');
-      return {
-        for (final r in rows)
-          r['pair_key'] as String: r['body'] as String?,
-      };
+      final rows = await _client.from('unlocks').select('pair_key');
+      return {for (final r in rows) r['pair_key'] as String};
     } catch (e) {
-      debugPrint('[CompatUnlock] listWithBody error: $e');
+      debugPrint('[CompatUnlock] list error: $e');
       return const {};
     }
   }
 
-  /// `listWithBody()` 의 non-null body 를 [FaceReadingReport] 로 복원.
+  /// unlocks 의 `partner_body`(결제 시점 상대 스냅샷)를 [FaceReadingReport] 로 복원.
   ///
-  /// body 는 `toBodyJson()` 출력이므로 supabaseId 가 빠져 있다.
-  /// pair_key(`myUuid~albumUuid`) 에서 album uuid 를 추출해 주입하고,
-  /// [ShareReceiveService.fetchByUuid] 와 동일하게 source/isMyFace/alias/
-  /// thumbnailPath 를 override 한 뒤 fromJsonString 으로 parse.
+  /// body 는 `toBodyJson()` 출력이라 supabaseId 가 빠져 있으므로 pair_key
+  /// (`ownerUuid~partnerUuid`) 의 2번째 uuid 를 supabaseId 로 주입하고,
+  /// source/isMyFace/alias/thumbnailPath 를 override 한 뒤 parse.
+  /// metrics row·로컬 history 에 의존하지 않는 self-contained 복원.
   Future<List<FaceReadingReport>> reconstructUnlockedPartners() async {
-    final data = await listWithBody();
+    if (_client.auth.currentUser == null) return const [];
+    final List<dynamic> rows;
+    try {
+      rows = await _client.from('unlocks').select('pair_key, partner_body');
+    } catch (e) {
+      debugPrint('[CompatUnlock] reconstruct fetch error: $e');
+      return const [];
+    }
     final results = <FaceReadingReport>[];
-    for (final entry in data.entries) {
-      final body = entry.value;
-      if (body == null || body.isEmpty) continue;
-      final parts = entry.key.split('~');
+    for (final r in rows) {
+      final pairKey = r['pair_key'] as String?;
+      final body = r['partner_body'] as String?;
+      if (pairKey == null || body == null || body.isEmpty) continue;
+      final parts = pairKey.split('~');
       if (parts.length != 2) continue;
-      final albumUuid = parts[1];
+      final partnerUuid = parts[1];
       try {
         final original = jsonDecode(body) as Map<String, dynamic>;
         final overridden = <String, dynamic>{
           ...original,
-          'supabaseId': albumUuid,
+          'supabaseId': partnerUuid,
           'source': AnalysisSource.received.name,
           'isMyFace': false,
           'alias': null,
@@ -68,14 +66,13 @@ class CompatUnlockService {
             FaceReadingReport.fromJsonString(jsonEncode(overridden));
         results.add(report);
       } catch (e) {
-        debugPrint('[CompatUnlock] reconstruct failed '
-            'pairKey=${entry.key}: $e');
+        debugPrint('[CompatUnlock] reconstruct failed pairKey=$pairKey: $e');
       }
     }
     return results;
   }
 
-  /// unlock_compat RPC 호출.
+  /// unlock_compat RPC 호출. owner/partner body 를 결제 시점 스냅샷으로 동결.
   ///
   /// 반환:
   ///   - `>= 0` : 새 잔액 (이미 해제된 경우는 차감 없이 현재 잔액)
@@ -83,10 +80,17 @@ class CompatUnlockService {
   ///
   /// RPC 자체가 실패하면 [Exception] 을 그대로 throw — 호출부에서 try/catch
   /// 로 감싸 사용자 피드백을 띄울 것.
-  Future<int> unlock(String pairKey, {double? totalScore}) async {
+  Future<int> unlock(
+    String pairKey, {
+    required String ownerBody,
+    required String partnerBody,
+    double? totalScore,
+  }) async {
     final result = await _client.rpc('unlock_compat', params: {
       'p_pair_key': pairKey,
-      if (totalScore != null) 'p_total_score': totalScore,
+      'p_total_score': ?totalScore,
+      'p_owner_body': ownerBody,
+      'p_partner_body': partnerBody,
     });
     debugPrint(
         '[CompatUnlock] unlock $pairKey → $result (${result.runtimeType})');

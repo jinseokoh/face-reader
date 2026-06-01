@@ -390,6 +390,8 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
     try {
       newBalance = await CompatUnlockService().unlock(
         key,
+        ownerBody: my.toBodyJson(),
+        partnerBody: album.toBodyJson(),
         totalScore: preBundle.report.total,
       );
     } catch (e, st) {

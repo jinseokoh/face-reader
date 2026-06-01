@@ -168,6 +168,8 @@ terraform/**/*.zip
 tools/datasets/kaggle_cache/
 # Face-shape ML training outputs (regenerate via tools/face_shape_ml/*.py)
 tools/face_shape_ml/out/
+# Downloaded face datasets (AAF zip + extracted images, recalibration source)
+tools/face_shape_ml/datasets/
 
 # ===== AI dev tool noise =====
 .claude/

@@ -12,7 +12,7 @@
 MediaPipe Face Mesh (468 landmarks · 정면 + 3/4 측면)
         │
         ▼
-FaceMetrics.computeAll()       → 17 frontal raw metric
+FaceMetrics.computeAll()       → 26 frontal raw metric
 LateralFaceMetrics.computeAll() → 8 lateral raw metric (옵션)
         │
         ▼
@@ -48,9 +48,9 @@ square/heart               10 attribute raw
 
 ---
 
-## 2. 17 Frontal + 8 Lateral Metric
+## 2. 26 Frontal + 8 Lateral Metric
 
-### 2.1 Frontal 17 (`face_metrics.dart::computeAll()`)
+### 2.1 Frontal 26 — 핵심 17 + 보조 9 (`face_metrics.dart::computeAll()`)
 
 | Category | Metric | 관상 의미 |
 |---|---|---|
@@ -104,7 +104,53 @@ yaw ∈ [0.70, 0.88] (3/4 view) 만 수락. East Asian baseline (인종 fallback
 
 - **전통**: 麻衣相法·柳莊相法·神相全編 3 대 고전의 부위별 metric.
 - **현대**: Farkas anthropometry (1994) + ICD meta-analysis (PMC9029890) + NIOSH dataset.
-- **재보정**: MediaPipe 좌표계 차이 흡수 위해 2026-04-12 경험적 재보정. N=14 East Asian female 30s 실사용자 empirical z 가 N(0,1) 에 수렴하도록 reference mean 19 metric 재조정 (engine v2.8).
+- **재보정 (v2.8)**: MediaPipe 좌표계 차이 흡수 위해 2026-04-12 경험적 재보정. N=14 East Asian female 30s 실사용자 empirical z 가 N(0,1) 에 수렴하도록 reference mean 19 metric 재조정.
+- **AAF 재보정 (2026-06-01, 현행)**: All-Age-Faces 실사진 11,800장(정면 yaw<18°, male=5361·female=6439)을 앱과 동일 파이프라인으로 측정한 metric별 empirical mean/std 로 `referenceData[eastAsian]` 26 metric 전면 교체. 추정치 reference 가 production z 를 +로 띄워 전 속성이 saturate 되던 문제([`DIAGNOSIS-score-saturation.md`](DIAGNOSIS-score-saturation.md)) 근본 해소. 검증: 실측 11,800장 재투입 시 점수 SD 1.0~1.5 회복, sensuality 1위 빈도 4.9% (편향 제거). 추출: `tools/face_shape_ml/extract_aaf.py`. 측면 8 metric 은 정면 표본으로 측정 불가 → 미변경.
+
+### 2.4 측정 명세 — landmark 기하 정의 + z 해석 (관상 해설의 근원)
+
+각 metric 의 z = (측정값 − μ) / σ. 모든 룰은 이 z 임계로 발동하므로 **μ/σ 가 "평균 이상/이하" 판정의 기준선**이고, 아래 z 해석이 곧 관상 해설의 1차 근거다. 좌표 기준: `faceWidth = dist(234,454)`, `faceHeight = dist(10,152)`. 대부분 비율이라 scale-invariant.
+
+코드 SSOT: `face_metrics.dart::computeAll()`. 재보정 운영 명세: `tools/face_shape_ml/RECALIBRATION-metrics-spec.md`.
+
+**A. 정면에서 측정 가능 (26개) — pooled 인간 표본으로 μ/σ 재보정 대상**
+
+> μ/σ 컬럼 = AAF 재보정 여성(N=6439) empirical 값 (남성 등 SSOT 는 `face_reference_data.dart`).
+
+| # | 항목 (id) | 측정 정의 (landmark · 공식) | 타입 | μ/σ (AAF♀) | z>0 (큼) 해석 | z<0 (작음) 해석 | 주 영향 |
+|---|---|---|---|---|---|---|---|
+| 1 | `faceAspectRatio` 얼굴 종횡비 | faceHeight / faceWidth | ratio | 1.223/0.066 | 세로로 긴 얼굴 → 부유·리더 | 가로로 넓음 | wealth·leadership (Z-FAR) |
+| 2 | `faceTaperRatio` 테이퍼 | dist(172,397)/faceWidth | ratio | 0.793/0.025 | 넓은 턱·강한 골격 | 좁은 턱(V) | 얼굴형 |
+| 3 | `lowerFaceFullness` 하단 풍만 | (jaw+jawLower+chinSide)/(3·faceWidth) | ratio | 0.507/0.020 | 볼살·턱살 풍만 | 갸름한 하단 | 얼굴형 |
+| 4 | `upperFaceRatio` 상안면 | dist(10,168)/faceHeight | ratio | 0.306/0.019 | 이마 큼 → 지성·신뢰 | 이마 좁음 | intelligence·trust (Z-FH) |
+| 5 | `midFaceRatio` 중안면 | dist(168,94)/faceHeight | ratio | 0.301/0.020 | 중정 긺 → 재물·사회성 | 중정 짧음 | wealth·sociability (Z-11) |
+| 6 | `lowerFaceRatio` 하안면 | dist(94,152)/faceHeight | ratio | 0.394/0.035 | 턱 긺 → 안정·신뢰 | 턱 짧음 → 감정 풍부 | stability·trust (Z-12/13) |
+| 7 | `gonialAngle` 하악각 | ∠(132·172·152) 평균 | 각° | 141.7/4.4 | 각진 턱 | 둥근 턱 | leadership·stability |
+| 8 | `intercanthalRatio` 눈 사이 | dist(133,362)/faceWidth | ratio | 0.257/0.015 | 눈 사이 넓음 → 카리스마 | 좁음 | leadership·wealth (Z-IC) |
+| 9 | `eyeFissureRatio` 눈 길이 | 양안 길이 평균/faceWidth | ratio | 0.189/0.011 | 눈 긺 → 매력·감정·통찰 | 눈 짧음 | eye node |
+| 10 | `eyeCanthalTilt` 눈꼬리 각 | 외안각 기울기° 평균 | 각° | 5.9/2.6 | 올라감 → 매력·관능 | 내려감 | attractiveness·sensuality (O-MM·P-06) |
+| 11 | `eyebrowThickness` 눈썹 두께 | 눈썹 3구간 두께/faceHeight | shape | 0.034/0.0026 | 두꺼움 → 정력·리더십 | 얇음 | libido·leadership |
+| 12 | `browEyeDistance` 눈썹-눈 | dist(105,159)/faceHeight | shape | 0.141/0.016 | 전택궁 넓음 | 가까움 | eyebrow node |
+| 13 | `nasalWidthRatio` 코 너비 | dist(98,327)/icd | ratio | 0.947/0.079 | 코 넓음 | 코 좁음 | nose (wealth) |
+| 14 | `nasalHeightRatio` 코 길이 | dist(168,1)/faceHeight | ratio | 0.274/0.024 | 콧대 긺 → 중년 재물 | 짧음 | wealth (A-M01) |
+| 15 | `mouthWidthRatio` 입 너비 | dist(61,291)/faceWidth | ratio | 0.386/0.047 | 입 넓음 → 사회성 | 작은 입(櫻桃) | sociability (Z-LFR/O-RL) |
+| 16 | `mouthCornerAngle` 입꼬리 각 | 입꼬리 vs 중앙 기울기° (부호) | 각° | 6.7/6.0 | 올라감(仰月口) | 내려감(俯月口) | mouth node |
+| 17 | `lipFullnessRatio` 입술 두께 | dist(0,17)/faceHeight | ratio | 0.129/0.032 | 두꺼움 → 관능·사회성 | 얇음 | sociability·attractiveness |
+| 18 | `philtrumLength` 인중 길이 | dist(94,0)/faceHeight | ratio | 0.086/0.017 | 긺 → 안정·신뢰 | 짧음 → 관능·정력 | O-PH2 vs O-PH1 |
+| 19 | `foreheadWidth` 이마 폭 | dist(54,284)/faceWidth | ratio | 0.848/0.032 | 넓음(天庭) → 관록 | 좁음 | forehead node |
+| 20 | `cheekboneWidth` 광대 폭 | dist(116,345)/faceWidth | ratio | 0.911/0.014 | 넓음 → 권력·자아 | 좁음 | leadership (O-CK); 過 시 O-CKE 매력− |
+| 21 | `chinAngle` 턱 각도 | ∠(148·152·377) | 각° | 169.5/2.5 | 둥근 턱(方頤) | 뾰족(尖頤) | chin node |
+| 22 | `eyeAspect` 눈 세로/가로 | 양안 세로/가로 평균 | ratio | 0.296/0.072 | 둥근 눈(圓眼) | 가는 눈(鳳眼) | eye node |
+| 23 | `eyebrowCurvature` 눈썹 곡률 | 중앙 솟음/faceHeight | shape | 0.039/0.0038 | 아치(彎眉) | 직선/처짐(八字) | eyebrow node |
+| 24 | `eyebrowTiltDirection` 눈썹 기울기 | (머리y−꼬리y)/faceHeight (부호) | shape | 0.002/0.014 | 올라감(劍眉) | 내려감(八字) → 관능·감성 | sensuality·emotionality (Z-EBT) |
+| 25 | `upperVsLowerLipRatio` 윗/아랫입술 | 윗입술두께/아랫입술두께 | ratio | 0.597/0.110 | 윗입술 두꺼움(情多) | 아랫입술 두꺼움 | mouth node |
+| 26 | `browSpacing` 미간 너비 | dist(55,285)/faceWidth | ratio | 0.193/0.012 | 印堂 넓음 → 관대·재물·매력 | 좁음 → 예민 | wealth·leadership·attractiveness (P-09·P-MJ vs P-09B) |
+
+> `computeAll()` 의 `eyebrowLength`·`noseBridgeRatio` 는 분류기 전용 — referenceData·weight matrix 미사용, 재보정 비대상.
+
+**B. 측면(3/4뷰) 필요 — 정면 표본으로는 측정 불가 (8개)**
+
+`dorsalConvexity`(코 직선도/매부리), `nasofrontalAngle`, `nasolabialAngle`, `facialConvexity`, `noseTipProjection`, `upperLipEline`, `lowerLipEline`, `mentolabialAngle`. 정면 사진엔 측면 기하(z깊이·E-line)가 없어 pooled 정면 재보정 대상에서 제외. §2.2 의 임상 anthropometry 추정값 유지.
 
 ---
 
@@ -323,7 +369,7 @@ raw → globalPct = _rawToPercentile(raw, attr, gender)   ← 21-point quantile 
 | sub | 이름 | weight | 입력 |
 |---|---|---|---|
 | `elementScore` (L1) | 五形和 | 0.20 | 얼굴형 metric 7개 + faceShape preset → 五行 분류 + 5×5 상생상극 matrix |
-| `palaceScore` (L2) | 宮位調 | 0.40 | 17+8 metric ~22개 → 12 궁 state + ~40 PalacePair rule |
+| `palaceScore` (L2) | 宮位調 | 0.40 | 26+8 metric ~22개 → 12 궁 state + ~40 PalacePair rule |
 | `qiScore` (L3) | 氣質合 | 0.25 | 五官 1:1 (0.55) + 三停 合刑 (0.25) + 陰陽 balance (0.20) |
 | `intimacyScore` (L4) | 性情諧 | 0.15 | 男女宮·妻妾宮·lip·eye. 모든 페어에서 항상 계산. narrative tone 만 분기. |
 
