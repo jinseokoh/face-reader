@@ -1,6 +1,23 @@
-# Face Shape Classifier — 재학습 · 배포 운영 가이드
+# face_shape_ml — 운영 가이드
 
-**최종 업데이트**: 2026-05-19
+**최종 업데이트**: 2026-06-02
+
+이 디렉토리에는 **서로 독립된 두 파이프라인**이 있다. 같은 landmark 추출 코드(`extract_landmarks.py::compute_ratios`)를 공유하지만 산출물·소비처가 완전히 다르다.
+
+| | ① 얼굴형 분류기 | ② referenceData 재보정 (AAF) |
+|---|---|---|
+| **하는 일** | 얼굴 사진 → 5-class (Heart/Oblong/Oval/Round/Square) | 26개 metric의 인구 평균 μ/σ 산출 |
+| **소비처** | `flutter/assets/ml/face_shape_ratios.tflite` (on-device 추론) | `shared/lib/data/constants/face_reference_data.dart::referenceData` (관상 룰 z-score 기준선) |
+| **데이터** | niten19 4000 (Kaggle) + user 57 East Asian | AAF (All-Age-Faces, East Asian) |
+| **상태** | **프로덕션 사용 중** | **최신 작업 (2026-06)** |
+| **핵심 스크립트** | `train_28feat_eastasian.py` → `export_tflite.py` | `extract_aaf.py` |
+| **가이드 위치** | 본 문서 §1–§9 | 본 문서 §10 + `RECALIBRATION-metrics-spec.md` |
+
+> 두 시스템은 별개다. ②(AAF)는 ①(분류기)를 **대체하지 않는다** — ②는 관상 metric 기준선을 동아시아 인구로 재보정한 것이고, ①은 그대로 살아 동작한다. `extract_aaf.py` 는 ①의 `extract_landmarks.py` 를 import 해 parity 를 재사용할 뿐이다.
+
+---
+
+## 파트 ① — 얼굴형 분류기 (face shape classifier)
 
 Flutter on-device 28-feature MLP 분류기의 학습 · 평가 · TFLite 배포 전체 파이프라인. East Asian deployment 정확도가 baseline 47.4% 에서 75.4% (train) / 47.6% (honest 5-fold CV) 로 정착된 현재 모델의 SSOT.
 
@@ -384,3 +401,60 @@ face shape 분류는 **경계가 흐릿한** 경우가 많다. 한 명을 한 ty
 | 2026-05-18 | niten19 only 학습 (초기)                    | East Asian 47.4%           |
 | 2026-05-18 | East Asian prior [0.4,0.6,2.5,1.0,0.5] 도입 | 47.4% (oblong 남발 해소)   |
 | 2026-05-19 | niten19 + user 57 mixed 학습, uniform prior | 75.4% (train) / 47.6% (CV) |
+
+---
+
+## 파트 ② — referenceData 재보정 (AAF)
+
+§1–§9 와 **무관한 독립 파이프라인**. 얼굴형 분류기(①)가 아니라, 관상 룰의 z-score 기준선인 `face_reference_data.dart::referenceData` 의 metric별 평균 μ / 표준편차 σ 를 **동아시아 인구**로 재보정한다.
+
+> 배경: 초기엔 niten19(Kaggle 일반 얼굴) + 한국 연예인/사용자 사진으로 baseline 을 잡았으나 둘 다 완전한 모집단이 못 됐다. 최종적으로 **AAF (All-Age-Faces Dataset, 동아시아)** 를 단일 모집단으로 채택했다 — 이 파트가 그 작업이다.
+
+측정 metric 의 의미·z 해석·관상 매핑은 `RECALIBRATION-metrics-spec.md` 가 SSOT. 본 절은 **실행 절차**만 다룬다.
+
+### 10.1 입력 데이터
+
+```
+tools/face_shape_ml/datasets/AAF/All-Age-Faces Dataset/original images/*.jpg
+```
+
+- 파일명 규칙 `%05dA%02d.jpg` 에서 person_id 추출 → **id ≤ 7380 female, 그 외 male** (`extract_aaf.py::gender_of`).
+- near-frontal 필터: facial transformation matrix 에서 추출한 `|yaw|, |pitch| < 18°` 만 통과. 측면/기울어진 샷 자동 제외.
+
+### 10.2 추출 실행
+
+```bash
+cd /Users/chuck/Code/face
+VENV=tools/.venv/bin/python
+
+# smoke test (id 범위 stride 샘플 80장, ~1분)
+$VENV tools/face_shape_ml/extract_aaf.py --limit 80
+
+# 전체 실행
+$VENV tools/face_shape_ml/extract_aaf.py
+```
+
+대상 metric 은 26개 — `FEATURE_NAMES` 에서 분류기 전용 2개(`eyebrowLength`, `noseBridgeRatio`)를 뺀 집합. landmark→ratio 는 ①의 `compute_ratios` 를 그대로 import 하므로 Flutter `face_metrics.dart::computeAll()` 과 parity 보장.
+
+> 측면(3/4뷰) 전용 8개 metric(`dorsalConvexity` 등)은 정면 AAF 로 측정 불가 — `RECALIBRATION-metrics-spec.md §B` 참조. 정면 재보정 대상에서 제외하고 기존 임상 추정값 유지.
+
+### 10.3 산출물 (`out/`)
+
+| 파일 | 내용 |
+| --- | --- |
+| `aaf_reference.json` | gender별 metric별 `{mean, sd, n}` |
+| `aaf_per_face.csv` | per-face raw ratio 벡터 (Dart end-to-end 검증용) |
+| `aaf_referenceData.dart.txt` | `referenceData` 의 `Ethnicity.eastAsian` cell 에 그대로 붙여넣는 Dart 블록 |
+
+### 10.4 배포
+
+1. `out/aaf_referenceData.dart.txt` 의 `Ethnicity.eastAsian: { ... }` 블록을 `shared/lib/data/constants/face_reference_data.dart::referenceData` 에 반영.
+   - pooled baseline 을 전 ethnicity cell 에 적용하되 **gender 는 분리 유지** (얼굴 dimorphism 이 커서 pooled 하면 부정확).
+2. 검증:
+
+```bash
+cd flutter
+flutter test test/calibration_test.dart   # quantile table 재생성 + saturation 해소 확인
+```
+
+3. 진단 harness 로 시나리오 A 패턴(점수 SD~1.2, 1위 속성 고른 분산) 회복 확인 (`RECALIBRATION-metrics-spec.md §C` 절차 7).

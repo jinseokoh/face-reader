@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Downloads the niten19/face-shape-dataset Kaggle dataset into the local
 # kagglehub cache, matching the path that
-# tools/face_shape_ml/extract_landmarks.py and train_cnn.py expect:
+# tools/face_shape_ml/extract_landmarks.py expects:
 #   tools/datasets/kaggle_cache/datasets/niten19/face-shape-dataset/versions/2/FaceShape Dataset
 #
 # Prerequisites:

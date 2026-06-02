@@ -2,7 +2,7 @@ name: facely
 description: '관상은 과학이다 — 안면 계측 데이터 기반 인공지능 관상앱 (MediaPipe Face Mesh + Google ML Kit Face Detection).'
 publish_to: 'none'
 
-version: 1.0.0+2
+version: 1.0.1+2
 
 environment:
   sdk: ^3.11.0
