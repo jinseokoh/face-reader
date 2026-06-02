@@ -11,6 +11,7 @@ import 'package:facely/data/services/face_shape_classifier.dart';
 import 'package:facely/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart';
@@ -19,6 +20,7 @@ import 'package:timeago/timeago.dart' as timeago;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   timeago.setLocaleMessages('ko', timeago.KoMessages());
   await dotenv.load(fileName: '.env');
   await Firebase.initializeApp(
