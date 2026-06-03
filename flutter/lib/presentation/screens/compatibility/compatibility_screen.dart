@@ -15,14 +15,13 @@ import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/data/services/analytics_service.dart';
 import 'package:facely/data/services/compat_unlock_service.dart';
-import 'package:facely/data/services/supabase_service.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:facely/presentation/providers/compat_unlock_provider.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
+import 'package:facely/presentation/providers/recent_unlock_focus_provider.dart';
 import 'package:facely/presentation/providers/tab_provider.dart';
+import 'package:facely/presentation/screens/compatibility/compat_unlock_action.dart';
 import 'package:facely/presentation/widgets/empty_state_placeholder.dart';
-import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
-import 'package:facely/presentation/widgets/purchase_sheet.dart';
 import 'package:facely/presentation/widgets/source_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -99,10 +98,19 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
     List<FaceReadingReport> reconstructed,
   ) {
     if (myFace == null) {
-      return const EmptyStatePlaceholder(
-        icon: FontAwesomeIcons.userPlus,
-        title: '내 관상이 등록되지 않았습니다',
-        detail: '궁합을 보려면 내 관상 등록이 필요합니다',
+      // 비교할 상대가 하나도 없으면 종전대로 빈 상태.
+      if (others.isEmpty) {
+        return const EmptyStatePlaceholder(
+          icon: FontAwesomeIcons.userPlus,
+          title: '내 관상이 등록되지 않았습니다',
+          detail: '궁합을 보려면 내 관상 등록이 필요합니다',
+        );
+      }
+      // 저장된 상대는 있는데 내 관상이 없으면 — "등록만 하면 이 사람들과 궁합을
+      // 볼 수 있다"를 비활성 프리뷰로 한눈에 보여준다(원인 즉시 이해).
+      return _InactiveCompatPreview(
+        others: others,
+        onRegister: () => ref.read(selectedTabProvider.notifier).selectTab(0),
       );
     }
 
@@ -171,6 +179,17 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
             });
     }
 
+    // 방금 결제한 항목(받은 카드 CTA 경유)을 정렬과 무관하게 '확인' 맨 위로
+    // 고정. 사용자가 정렬을 바꾸거나 카드를 누르면 해제(아래 콜백) → 일반 정렬.
+    final focusId = ref.watch(recentUnlockFocusProvider);
+    final unlockedPinned =
+        (focusId != null && unlockedSorted.any((r) => r.supabaseId == focusId))
+            ? <FaceReadingReport>[
+                ...unlockedSorted.where((r) => r.supabaseId == focusId),
+                ...unlockedSorted.where((r) => r.supabaseId != focusId),
+              ]
+            : unlockedSorted;
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       children: [
@@ -193,27 +212,33 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
                 ),
               )),
         ],
-        if (lockedList.isNotEmpty && unlockedSorted.isNotEmpty)
+        if (lockedList.isNotEmpty && unlockedPinned.isNotEmpty)
           const SizedBox(height: 20),
-        if (unlockedSorted.isNotEmpty) ...[
+        if (unlockedPinned.isNotEmpty) ...[
           _SectionHeader<_UnlockedSort>(
             title: '확인',
-            count: unlockedSorted.length,
+            count: unlockedPinned.length,
             value: _unlockedSort,
             values: _UnlockedSort.values,
             labelOf: (v) => v.label,
-            onChanged: (v) => setState(() => _unlockedSort = v),
+            onChanged: (v) => setState(() {
+              _unlockedSort = v;
+              ref.read(recentUnlockFocusProvider.notifier).clear();
+            }),
           ),
           const SizedBox(height: 8),
-          ...unlockedSorted.map((other) => Padding(
+          ...unlockedPinned.map((other) => Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: _CompatListCard(
                   my: myFace,
                   album: other,
                   onTap: () {
+                    ref.read(recentUnlockFocusProvider.notifier).clear();
                     AnalyticsService.instance.logClickCompat();
                     context.pushCompat(my: myFace, album: other);
                   },
+                  onDelete: () =>
+                      _confirmDeleteUnlock(context, ref, myFace, other),
                 ),
               )),
         ],
@@ -221,209 +246,78 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
     );
   }
 
-  /// 궁합 진입 시 metrics row 를 서버에 보장.
-  ///
-  /// - **본인 얼굴(isMyFace)**: 멀티디바이스 복원(로그인 후 `where user_id=나`)을
-  ///   위해 supabaseId 가 이미 있어도 **항상 upsert** (서버에 내 카드 보장).
-  ///   saveMetrics 는 upsert 라 idempotent.
-  /// - **그 외(상대/앨범)**: supabaseId 있으면 skip — 남의(받은) 카드를 내 user_id 로
-  ///   upload·claim 하지 않기 위함. null 일 때만 id 발급.
-  Future<void> _ensureSupabaseId(
-      WidgetRef ref, FaceReadingReport report) async {
-    if (!report.isMyFace && report.supabaseId != null) return;
-    final uuid = await SupabaseService().saveMetrics(report);
-    if (report.supabaseId != uuid) {
-      report.supabaseId = uuid;
-      await ref.read(historyProvider.notifier).updateHive();
-    }
-  }
-
-
+  /// 잠금 카드의 [궁합보기] → 공용 1코인 unlock 흐름(확인 다이얼로그 포함).
+  /// 성공 시 compatUnlocksProvider 가 invalidate 돼 카드가 '확인' 섹션으로
+  /// 자동 이동한다 (별도 네비게이션 없음).
   Future<void> _handleUnlockPressed(
     BuildContext context,
     WidgetRef ref,
     FaceReadingReport my,
     FaceReadingReport album,
   ) async {
-    AnalyticsService.instance.logClickCompat();
-    // 1. 로그인 확인.
-    final auth = ref.read(authProvider.notifier);
-    if (!auth.isLoggedIn) {
-      final ok = await showLoginBottomSheet(context, ref);
-      if (!ok || !context.mounted) return;
-    }
+    await runCompatUnlock(context, ref, my: my, album: album);
+  }
 
-    // 2. supabaseId 보장 — 없으면 saveMetrics 로 생성 후 Hive 갱신.
+  /// 확인 리스트 항목 삭제 — unlock 행 제거(서버). 파트너는 관상/북마크에 남고
+  /// 미확인으로 복귀한다. 코인 환불 없음.
+  Future<void> _confirmDeleteUnlock(
+    BuildContext context,
+    WidgetRef ref,
+    FaceReadingReport my,
+    FaceReadingReport album,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('궁합 삭제',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+        content: const Text(
+          '이 궁합을 목록에서 삭제할까요?\n사용한 코인은 환불되지 않습니다.',
+          style: TextStyle(
+              fontSize: 14, color: AppColors.textSecondary, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child:
+                const Text('삭제', style: TextStyle(color: AppColors.danger)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    // pair_key 는 방향성이 있어 정/역 둘 다 삭제 (어느 쪽으로 결제됐든 제거).
+    final keys = <String>[];
+    final fwd = tryPairKey(my, album);
+    final rev = tryPairKey(album, my);
+    if (fwd != null) keys.add(fwd);
+    if (rev != null) keys.add(rev);
     try {
-      await _ensureSupabaseId(ref, my);
-      await _ensureSupabaseId(ref, album);
+      await CompatUnlockService().deleteUnlock(keys);
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('저장 중 오류: $e'),
+            content: Text('삭제 중 오류: $e'),
             backgroundColor: Colors.red.shade700,
           ),
         );
       }
       return;
     }
-
-    final key = tryPairKey(my, album);
-    if (key == null) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('저장된 ID 를 찾을 수 없습니다. 잠시 후 다시 시도해 주세요.')),
-        );
-      }
-      return;
-    }
-
-    // 3. 잔액 확인.
-    final balance = auth.coins;
-    if (balance < 1) {
-      if (!context.mounted) return;
-      await PurchaseSheet.show(context, onPurchased: () async {
-        if (!context.mounted) return;
-        // 충전 성공 시 다시 시도.
-        await _handleUnlockPressed(context, ref, my, album);
-      });
-      return;
-    }
-
-    // 4. 확인 다이얼로그 — 카메라 path 의 frontal/lateral instructional modal 과
-    //    동일한 스타일 (compatibility.png + 타이틀 + 안내 + [취소] [궁합보기]).
-    if (!context.mounted) return;
-    final confirm = await showDialog<bool>(
-      context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.55),
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Image.asset(
-                'assets/images/compatibility.png',
-                height: 200,
-                fit: BoxFit.contain,
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                '궁합 보기',
-                style: TextStyle(
-                  color: Color(0xFF1F1F1F),
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.5,
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                '궁합을 보려면 1코인이 필요합니다.\n궁합을 보시겠습니까?',
-                style: TextStyle(
-                  color: Color(0xFF555555),
-                  fontSize: 14,
-                  height: 1.5,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: 48,
-                      child: TextButton(
-                        onPressed: () => Navigator.pop(ctx, false),
-                        style: TextButton.styleFrom(
-                          foregroundColor: const Color(0xFF555555),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: const Text(
-                          '취소',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    flex: 2,
-                    child: SizedBox(
-                      height: 48,
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pop(ctx, true),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1F1F1F),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: const Text(
-                          '궁합보기',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-    if (confirm != true) return;
-
-    // 5. RPC. unlock 직전에 분석을 실행해 total_score 를 함께 기록 — admin 콘솔
-    // (refine) 에서 점수별 정렬·필터 가능하도록.
-    final preBundle = analyzeCompatibilityFromReports(my: my, album: album);
-    final int newBalance;
-    try {
-      newBalance = await CompatUnlockService().unlock(
-        key,
-        ownerBody: my.toBodyJson(),
-        partnerBody: album.toBodyJson(),
-        totalScore: preBundle.report.total,
-      );
-    } catch (e, st) {
-      debugPrint('[CompatUnlock] unlock failed: $e\n$st');
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('해제 중 오류: $e'),
-          backgroundColor: Colors.red.shade700,
-        ),
-      );
-      return;
-    }
-    if (!context.mounted) return;
-    if (newBalance == -1) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('코인이 부족합니다.')),
-      );
-      return;
-    }
-
-    // 6. 갱신.
-    await auth.refreshCoins();
+    // unlock·복원 파트너 캐시 무효화 → 확인 리스트에서 사라지고, 로컬 파트너는
+    // 미확인으로 복귀.
+    ref.read(recentUnlockFocusProvider.notifier).clear();
     ref.invalidate(compatUnlocksProvider);
+    ref.invalidate(unlockedPartnerBodiesProvider);
   }
 
   void _showInfoDialog(BuildContext context) {
@@ -518,10 +412,12 @@ class _CompatListCard extends StatelessWidget {
   final FaceReadingReport my;
   final FaceReadingReport album;
   final VoidCallback onTap;
+  final VoidCallback onDelete;
   const _CompatListCard({
     required this.my,
     required this.album,
     required this.onTap,
+    required this.onDelete,
   });
 
   @override
@@ -633,6 +529,37 @@ class _CompatListCard extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
+                      // 결제한 궁합도 사용자가 직접 삭제 — 우상단 3-dot 메뉴
+                      // (관상 카드와 동일 패턴). InkWell onTap 과 충돌 없이 자체 처리.
+                      SizedBox(
+                        height: 24,
+                        width: 28,
+                        child: PopupMenuButton<String>(
+                          tooltip: '메뉴',
+                          padding: EdgeInsets.zero,
+                          iconSize: 16,
+                          icon: const FaIcon(
+                            FontAwesomeIcons.ellipsisVertical,
+                            color: AppColors.textHint,
+                            size: 16,
+                          ),
+                          color: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                          ),
+                          onSelected: (v) {
+                            if (v == 'delete') onDelete();
+                          },
+                          itemBuilder: (ctx) => [
+                            PopupMenuItem<String>(
+                              value: 'delete',
+                              child: Text('삭제',
+                                  style: AppText.body
+                                      .copyWith(color: AppColors.danger)),
+                            ),
+                          ],
+                        ),
+                      ),
                       Text(r.total.toStringAsFixed(0),
                           style: const TextStyle(
                               fontSize: 28,
@@ -692,10 +619,15 @@ class _CompatListCard extends StatelessWidget {
 
 class _CompatLockedCard extends ConsumerWidget {
   final FaceReadingReport album;
-  final VoidCallback onUnlockPressed;
+  final VoidCallback? onUnlockPressed;
+
+  /// 내 관상 미등록 상태에서 "이런 사람들과 궁합을 볼 수 있다"를 미리 보여주는
+  /// 비활성 모드. 결제 버튼·안내를 떼어낸 simplified 카드 + 흐릿하게(dim).
+  final bool inactive;
   const _CompatLockedCard({
     required this.album,
-    required this.onUnlockPressed,
+    this.onUnlockPressed,
+    this.inactive = false,
   });
 
   @override
@@ -716,7 +648,7 @@ class _CompatLockedCard extends ConsumerWidget {
         ? '1코인으로 궁합 보기'
         : '카카오 로그인하고 3 코인 받기';
 
-    return Container(
+    final card = Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppTheme.surface,
@@ -774,37 +706,179 @@ class _CompatLockedCard extends ConsumerWidget {
                   color: AppTheme.textHint, size: 18),
             ],
           ),
-          const SizedBox(height: 14),
-          Container(height: 1, color: AppTheme.border),
-          const SizedBox(height: 12),
-          Text(
-            isLoggedIn
-                ? '궁합 결과는 1 코인 지불 후 열어볼 수 있습니다.'
-                : '최초 로그인하면 가입 보너스 3 코인을 지급해 드립니다.',
-            style: const TextStyle(
-                fontSize: 12, color: AppTheme.textSecondary, height: 1.5),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            height: 44,
-            child: ElevatedButton(
-              onPressed: onUnlockPressed,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.accent,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                elevation: 0,
-              ),
-              child: Text(cta,
-                  style: const TextStyle(
-                      fontSize: 14, fontWeight: FontWeight.w600)),
+          // 비활성(미등록 프리뷰)에서는 결제 안내·버튼을 떼어낸 simplified 카드.
+          if (!inactive) ...[
+            const SizedBox(height: 14),
+            Container(height: 1, color: AppTheme.border),
+            const SizedBox(height: 12),
+            Text(
+              isLoggedIn
+                  ? '궁합 결과는 1 코인 지불 후 열어볼 수 있습니다.'
+                  : '최초 로그인하면 가입 보너스 3 코인을 지급해 드립니다.',
+              style: const TextStyle(
+                  fontSize: 12, color: AppTheme.textSecondary, height: 1.5),
             ),
-          ),
+            const SizedBox(height: 12),
+            // 받은(북마크) 카드 포함 모든 미확인 카드는 단일 "궁합보기" 버튼으로
+            // 통일. 상대 관상 열람은 관상 탭 > 북마크에서.
+            SizedBox(
+              width: double.infinity,
+              height: 44,
+              child: ElevatedButton(
+                onPressed: onUnlockPressed,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.accent,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  elevation: 0,
+                ),
+                child: Text(cta,
+                    style: const TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ],
         ],
       ),
+    );
+    // 비활성: 흐릿하게 + 터치 차단 — "지금은 못 보는 상태"임을 시각적으로 전달.
+    if (inactive) {
+      return IgnorePointer(child: Opacity(opacity: 0.45, child: card));
+    }
+    return card;
+  }
+}
+
+/// 내 관상 미등록 + 저장된 상대가 있을 때의 궁합 탭 — 등록 유도 배너 위에,
+/// "이런 분들과 볼 수 있다"는 비활성 프리뷰 리스트를 흐릿하게 보여준다.
+class _InactiveCompatPreview extends StatelessWidget {
+  final List<FaceReadingReport> others;
+  final VoidCallback onRegister;
+  const _InactiveCompatPreview({
+    required this.others,
+    required this.onRegister,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      children: [
+        _RegisterMyFaceBanner(onRegister: onRegister),
+        const SizedBox(height: AppSpacing.sm),
+        ...others.map((o) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _CompatLockedCard(album: o, inactive: true),
+            )),
+      ],
+    );
+  }
+}
+
+/// 내 관상 등록 유도 배너 — 검정 inverted. 아래로 펄싱하는 화살표로 "내 관상이
+/// 없어서 → 아래가 잠김"의 인과를 시각화한다.
+class _RegisterMyFaceBanner extends StatefulWidget {
+  final VoidCallback onRegister;
+  const _RegisterMyFaceBanner({required this.onRegister});
+
+  @override
+  State<_RegisterMyFaceBanner> createState() => _RegisterMyFaceBannerState();
+}
+
+class _RegisterMyFaceBannerState extends State<_RegisterMyFaceBanner>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1200),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          decoration: BoxDecoration(
+            color: AppColors.textPrimary,
+            borderRadius: BorderRadius.circular(AppRadius.xl),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const FaIcon(FontAwesomeIcons.userPlus,
+                      color: Colors.white, size: 18),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      '내 관상을 등록해 주세요',
+                      style:
+                          AppText.sectionTitle.copyWith(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                '등록만 하면 아래 분들과의 궁합을 바로 볼 수 있어요.',
+                style: AppText.caption.copyWith(color: Colors.white70),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: ElevatedButton(
+                  onPressed: widget.onRegister,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: AppColors.textPrimary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    '내 관상 등록하기',
+                    style: AppText.subTitle
+                        .copyWith(color: AppColors.textPrimary),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        AnimatedBuilder(
+          animation: _c,
+          builder: (context, child) => Opacity(
+            opacity: 0.45 + 0.55 * _c.value,
+            child: Transform.translate(
+              offset: Offset(0, 3 * _c.value),
+              child: child,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+            child: Column(
+              children: [
+                const FaIcon(FontAwesomeIcons.chevronDown,
+                    color: AppColors.textHint, size: 16),
+                const SizedBox(height: AppSpacing.xs),
+                Text('내 관상이 없어 아래 궁합이 잠겨 있어요', style: AppText.hint),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -24,6 +24,9 @@ import 'package:facely/domain/services/share/share_publisher.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:facely/presentation/providers/compat_unlock_provider.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
+import 'package:facely/presentation/providers/recent_unlock_focus_provider.dart';
+import 'package:facely/presentation/providers/tab_provider.dart';
+import 'package:facely/presentation/screens/compatibility/compat_unlock_action.dart';
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 import 'package:flutter/material.dart';
@@ -860,7 +863,28 @@ class _CompatCta extends ConsumerWidget {
         .cast<FaceReadingReport?>()
         .firstOrNull;
     if (myFace == null) {
-      return const SizedBox.shrink();
+      // 내 관상이 없으면 결제 여건이 안 된다 — 즉시 결제 대신 '저장'만. 받은
+      // 카드를 궁합 미확인 목록에 넣고 궁합 탭으로 이동(거기서 내 관상 등록을
+      // 유도). 결제·해제 복잡도는 궁합 탭 한 곳에만 둔다.
+      return SizedBox(
+        width: double.infinity,
+        height: 48,
+        child: ElevatedButton(
+          onPressed: () => _onSaveForCompat(context, ref),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.textPrimary,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            elevation: 0,
+          ),
+          child: Text(
+            '궁합을 볼 수 있도록 저장하기',
+            style: AppText.subTitle.copyWith(color: Colors.white),
+          ),
+        ),
+      );
     }
     // 받은 카드가 내 관상(같은 metrics UUID)이면 나 자신과의 궁합은 무의미 —
     // 버튼 대신 "내 관상입니다." 라벨로 대체.
@@ -887,9 +911,12 @@ class _CompatCta extends ConsumerWidget {
     }
     final unlocksAsync = ref.watch(compatUnlocksProvider);
     final unlocked = unlocksAsync.asData?.value ?? const <String>{};
-    final key = tryPairKey(myFace, report);
-    final isUnlocked = key != null && unlocked.contains(key);
-    final label = isUnlocked ? '궁합 결과 보기' : '나와의 궁합 보기';
+    // pair_key 는 방향성이 있어 정/역 모두 확인 (compat 리스트와 동일 규칙).
+    final keyFwd = tryPairKey(myFace, report);
+    final keyRev = tryPairKey(report, myFace);
+    final isUnlocked = (keyFwd != null && unlocked.contains(keyFwd)) ||
+        (keyRev != null && unlocked.contains(keyRev));
+    final label = isUnlocked ? '궁합 결과 보기' : '1코인으로 궁합 보기';
 
     return SizedBox(
       width: double.infinity,
@@ -912,21 +939,54 @@ class _CompatCta extends ConsumerWidget {
     );
   }
 
-  void _onTap(
-    BuildContext context,
-    WidgetRef ref,
-    FaceReadingReport myFace,
-    bool isUnlocked,
-  ) {
-    // 주체적 추가 — history 에 없으면 저장.
+  /// 내 관상 미설정 시 — 받은 카드를 궁합 미확인 목록에 저장하고 궁합 탭으로
+  /// 이동. 결제는 하지 않는다(여건 안 됨). 궁합 탭에서 내 관상 등록을 유도.
+  void _onSaveForCompat(BuildContext context, WidgetRef ref) {
     final history = ref.read(historyProvider);
     final alreadySaved = report.supabaseId != null &&
         history.any((r) => r.supabaseId == report.supabaseId);
     if (!alreadySaved) {
       ref.read(historyProvider.notifier).add(report);
     }
-    // 궁합 흐름으로 진입.
-    context.pushCompat(my: myFace, album: report);
+    ref.read(selectedTabProvider.notifier).selectTab(2);
+    context.go('/main');
+  }
+
+  Future<void> _onTap(
+    BuildContext context,
+    WidgetRef ref,
+    FaceReadingReport myFace,
+    bool isUnlocked,
+  ) async {
+    // 주체적 추가 — 받은 카드가 history 에 없으면 저장(궁합 리스트 노출에 필요).
+    final history = ref.read(historyProvider);
+    final alreadySaved = report.supabaseId != null &&
+        history.any((r) => r.supabaseId == report.supabaseId);
+    if (!alreadySaved) {
+      ref.read(historyProvider.notifier).add(report);
+    }
+
+    if (!isUnlocked) {
+      // 미결제 — 버튼이 비용을 고지했으므로 확인 다이얼로그 없이 1코인 결제.
+      final ok = await runCompatUnlock(
+        context,
+        ref,
+        my: myFace,
+        album: report,
+        confirm: false,
+      );
+      if (!ok || !context.mounted) return;
+      // 결제건을 '확인' 리스트 맨 위로 핀 + 궁합 탭으로 이동(상세는 열지 않음).
+      ref.read(recentUnlockFocusProvider.notifier).focus(report.supabaseId);
+      ref.read(selectedTabProvider.notifier).selectTab(2);
+      context.go('/main');
+      return;
+    }
+
+    // 이미 결제됨 — 궁합 탭으로 전환 후 상세를 바로 연다(닫으면 궁합 탭 복귀).
+    ref.read(recentUnlockFocusProvider.notifier).focus(report.supabaseId);
+    ref.read(selectedTabProvider.notifier).selectTab(2);
+    context.goCompat(my: myFace, album: report);
   }
 }
 

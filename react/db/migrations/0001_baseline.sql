@@ -246,6 +246,12 @@ drop policy if exists "unlocks_self_read" on public.unlocks;
 create policy "unlocks_self_read"
   on public.unlocks for select using (user_id = auth.uid());
 
+-- 사용자가 확인 리스트에서 "내 목록에서 제거" — 본인 unlock 행만 삭제 가능.
+-- (INSERT 는 여전히 unlock_compat RPC 만. 코인 환불 없음 — 단순 ledger 제거.)
+drop policy if exists "unlocks_self_delete" on public.unlocks;
+create policy "unlocks_self_delete"
+  on public.unlocks for delete using (user_id = auth.uid());
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 5. public.bonus_recipients — 가입 보너스 dedup ledger (영구)
 -- ─────────────────────────────────────────────────────────────────────────────

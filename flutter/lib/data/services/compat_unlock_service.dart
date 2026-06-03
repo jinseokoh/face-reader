@@ -100,4 +100,13 @@ class CompatUnlockService {
     throw StateError(
         'unlock_compat returned unexpected type: ${result.runtimeType} ($result)');
   }
+
+  /// 확인 리스트에서 "내 목록에서 제거" — unlock 행 삭제. RLS(`unlocks_self_delete`)
+  /// 가 user_id 로 스코프하므로 pair_key 만으로 본인 행만 지운다. pair_key 는
+  /// 방향성이 있어 정/역 둘 다 넘겨 어느 쪽으로 결제됐든 제거. 코인 환불 없음.
+  Future<void> deleteUnlock(List<String> pairKeys) async {
+    for (final key in pairKeys) {
+      await _client.from('unlocks').delete().eq('pair_key', key);
+    }
+  }
 }

@@ -174,7 +174,7 @@ class _CompatibilityDetailScreenState
       await SharePublisher.instance.publishCompatViaKakao(
         my: widget.my,
         album: widget.album,
-        title: '관상은 과학이다 — 궁합',
+        title: '궁합도 과학이다',
         description: desc,
         compositeCardPng: pngBytes,
       );
@@ -242,6 +242,7 @@ class _CompatShareSide extends StatelessWidget {
         _Thumb(
             path: report.thumbnailPath,
             thumbnailKey: report.thumbnailKey,
+            gender: report.gender,
             size: 56),
         const SizedBox(height: 8),
         Text(alias,
@@ -466,29 +467,36 @@ class _SubScorePanel extends StatelessWidget {
 class _Thumb extends StatelessWidget {
   final String? path;
   final String? thumbnailKey;
+  final Gender gender;
   final double size;
-  const _Thumb({required this.path, this.thumbnailKey, this.size = 44});
+  const _Thumb({
+    required this.path,
+    this.thumbnailKey,
+    required this.gender,
+    this.size = 44,
+  });
   @override
   Widget build(BuildContext context) {
-    // 로컬 thumbnailPath → CDN thumbnailKey → user 아이콘 placeholder.
+    // 로컬 thumbnailPath → CDN thumbnailKey → gender fallback(male/female png).
     final file = ThumbnailPaths.resolveFileSync(path);
     final hasFile = file != null && file.existsSync();
     final cdn = ThumbnailPaths.cdnUrl(thumbnailKey);
-    final placeholder = Center(
-      child: FaIcon(FontAwesomeIcons.user,
-          color: AppTheme.textHint, size: (size * 0.5).clamp(16, 26)),
-    );
+    final fallback = _genderFallback();
     final Widget child;
     if (hasFile) {
-      child = Image.file(file, width: size, height: size, fit: BoxFit.cover);
+      child = Image.file(file,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => fallback);
     } else if (cdn != null) {
       child = Image.network(cdn,
           width: size,
           height: size,
           fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => placeholder);
+          errorBuilder: (_, _, _) => fallback);
     } else {
-      child = placeholder;
+      child = fallback;
     }
     return Container(
       width: size,
@@ -500,6 +508,16 @@ class _Thumb extends StatelessWidget {
       ),
       child: child,
     );
+  }
+
+  /// thumbnail 없을 때 성별 기본 아바타 — 성별을 알고 있으므로 무성별 아이콘
+  /// 대신 male/female png 를 쓴다.
+  Widget _genderFallback() {
+    final asset = switch (gender) {
+      Gender.male => 'assets/icons/male.png',
+      Gender.female => 'assets/icons/female.png',
+    };
+    return Image.asset(asset, width: size, height: size, fit: BoxFit.cover);
   }
 }
 
@@ -542,7 +560,7 @@ class _TotalHeader extends StatelessWidget {
         children: [
           Align(
             alignment: Alignment.centerLeft,
-            child: Text('관상은 과학이다',
+            child: Text('궁합도 과학이다',
                 style: TextStyle(
                     color: _CompatPalette.sand,
                     fontSize: 12,
@@ -691,7 +709,8 @@ class _CompatShareCardComposite extends StatelessWidget {
                           children: [
                             _CompatThumb(
                                 path: my.thumbnailPath,
-                                thumbnailKey: my.thumbnailKey),
+                                thumbnailKey: my.thumbnailKey,
+                                gender: my.gender),
                             const SizedBox(width: 24),
                             const Text(
                               '×',
@@ -705,7 +724,8 @@ class _CompatShareCardComposite extends StatelessWidget {
                             const SizedBox(width: 24),
                             _CompatThumb(
                                 path: album.thumbnailPath,
-                                thumbnailKey: album.thumbnailKey),
+                                thumbnailKey: album.thumbnailKey,
+                                gender: album.gender),
                           ],
                         ),
                         const SizedBox(height: 28),
@@ -768,24 +788,35 @@ class _CompatIconLineRow extends StatelessWidget {
 class _CompatThumb extends StatelessWidget {
   final String? path;
   final String? thumbnailKey;
-  const _CompatThumb({required this.path, this.thumbnailKey});
+  final Gender gender;
+  const _CompatThumb({
+    required this.path,
+    this.thumbnailKey,
+    required this.gender,
+  });
 
   @override
   Widget build(BuildContext context) {
     // 관상 share card (_ShareCardComposite) thumb 와 동일 크기·radius 로
     // 통일 — 카카오 link preview hero 의 통일감 보장.
     const size = 180.0;
-    // 로컬 thumbnailPath → CDN thumbnailKey → face placeholder.
+    // 로컬 thumbnailPath → CDN thumbnailKey → gender fallback(male/female png).
     final file = ThumbnailPaths.resolveFileSync(path);
     final cdn = ThumbnailPaths.cdnUrl(thumbnailKey);
+    final genderAsset = switch (gender) {
+      Gender.male => 'assets/icons/male.png',
+      Gender.female => 'assets/icons/female.png',
+    };
     final placeholder = Container(
       width: size,
       height: size,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: const Color(0xFFF5F5F5),
         borderRadius: BorderRadius.circular(14),
       ),
-      child: const Icon(Icons.face, size: 96, color: Color(0xFFAAAAAA)),
+      child: Image.asset(genderAsset,
+          width: size, height: size, fit: BoxFit.cover),
     );
     if (file != null && file.existsSync()) {
       return ClipRRect(

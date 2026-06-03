@@ -329,13 +329,15 @@ class _PhysiognomyItem extends ConsumerWidget {
                 }
               },
               itemBuilder: (ctx) => [
-                PopupMenuItem<String>(
-                  value: isMyFace ? 'clearMyFace' : 'setMyFace',
-                  child: Text(
-                    isMyFace ? '내 관상으로 설정 취소' : '내 관상으로 설정',
-                    style: AppText.body,
+                // 받은(북마크) 카드는 남의 얼굴 — 내 관상으로 설정 불가.
+                if (report.source != AnalysisSource.received)
+                  PopupMenuItem<String>(
+                    value: isMyFace ? 'clearMyFace' : 'setMyFace',
+                    child: Text(
+                      isMyFace ? '내 관상으로 설정 취소' : '내 관상으로 설정',
+                      style: AppText.body,
+                    ),
                   ),
-                ),
                 const PopupMenuItem<String>(
                   value: 'rename',
                   child: Text('제목 변경', style: AppText.body),
@@ -536,19 +538,46 @@ class _PhysiognomyItem extends ConsumerWidget {
 
 class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
     with SingleTickerProviderStateMixin {
-  late final TabController _tabController;
+  // 북마크(받은 카드) 유무에 따라 탭 수가 2↔3 으로 바뀌므로 nullable + 동적 재생성.
+  TabController? _tabController;
   _SortOrder _sortOrder = _SortOrder.newest;
+
+  /// 탭 개수가 바뀔 때만 컨트롤러를 재생성 — 매 build 재생성 방지.
+  void _syncTabController(int length) {
+    final existing = _tabController;
+    if (existing != null && existing.length == length) return;
+    final int prevIndex = existing?.index ?? ref.read(historyTabProvider);
+    existing?.dispose();
+    final c = TabController(
+      length: length,
+      vsync: this,
+      initialIndex: prevIndex.clamp(0, length - 1),
+    );
+    c.addListener(() {
+      if (!c.indexIsChanging &&
+          ref.read(historyTabProvider) != c.index) {
+        ref.read(historyTabProvider.notifier).selectTab(c.index);
+      }
+    });
+    _tabController = c;
+  }
 
   @override
   Widget build(BuildContext context) {
     // Only react to actual provider changes (e.g. external selectTab calls
     // from album_preview after analysis). Avoid forcing on every rebuild.
+    final history = ref.watch(historyProvider);
+    // 북마크(받은 카드) 존재 시에만 3번째 탭 — 없으면 2탭. 개수 변화 시 재생성.
+    final hasBookmarks =
+        history.any((r) => r.source == AnalysisSource.received);
+    _syncTabController(hasBookmarks ? 3 : 2);
+    final tabController = _tabController!;
+
     ref.listen<int>(historyTabProvider, (prev, next) {
-      if (_tabController.index != next) {
-        _tabController.animateTo(next);
+      if (next < tabController.length && tabController.index != next) {
+        tabController.animateTo(next);
       }
     });
-    final history = ref.watch(historyProvider);
 
     // myFace 는 source 와 무관한 single-pick — SliverAppBar 헤더 1곳에서
     // 두 탭이 공유. _buildList 내부에서 따로 계산하지 않는다.
@@ -603,23 +632,26 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
                 ),
               ),
               bottom: TabBar(
-                controller: _tabController,
+                controller: tabController,
                 labelColor: AppColors.textPrimary,
                 unselectedLabelColor: AppColors.textHint,
                 indicatorColor: AppColors.textPrimary,
-                tabs: const [
-                  Tab(text: '카메라'),
-                  Tab(text: '앨범'),
+                tabs: [
+                  const Tab(text: '카메라'),
+                  const Tab(text: '앨범'),
+                  if (hasBookmarks) const Tab(text: '북마크'),
                 ],
               ),
             ),
           ),
         ],
         body: TabBarView(
-          controller: _tabController,
+          controller: tabController,
           children: [
             _buildList(history, const [AnalysisSource.camera], hasMyFace),
             _buildList(history, const [AnalysisSource.album], hasMyFace),
+            if (hasBookmarks)
+              _buildList(history, const [AnalysisSource.received], hasMyFace),
           ],
         ),
       ),
@@ -628,26 +660,17 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
 
   @override
   void dispose() {
-    _tabController.dispose();
+    _tabController?.dispose();
     super.dispose();
   }
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(
-      length: 2,
-      vsync: this,
-      initialIndex: ref.read(historyTabProvider),
-    );
-    // Sync tab changes back into the provider so external updates
-    // (e.g. alias rename rebuild) don't reset the tab.
-    _tabController.addListener(() {
-      if (!_tabController.indexIsChanging &&
-          ref.read(historyTabProvider) != _tabController.index) {
-        ref.read(historyTabProvider.notifier).selectTab(_tabController.index);
-      }
-    });
+    final history = ref.read(historyProvider);
+    final hasBookmarks =
+        history.any((r) => r.source == AnalysisSource.received);
+    _syncTabController(hasBookmarks ? 3 : 2);
   }
 
   /// 한 tab 의 내용을 그린다. sources 는 그 tab 에서 보일 source list.

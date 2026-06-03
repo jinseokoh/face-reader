@@ -134,6 +134,26 @@ extension CompatPushExtension on BuildContext {
     }
     push('/r/$a~$b', extra: _CompatExtras(my: my, album: album));
   }
+
+  /// pushCompat 의 `go` 버전 — 상세를 최상위 라우트로 띄워 (스택을 접어) 닫을 때
+  /// `/main` 으로 빠지게 한다. 받은 카드에서 궁합 탭으로 전환 후 상세를 열 때
+  /// 사용 — 닫으면 받은 카드가 아니라 궁합 탭으로 복귀.
+  void goCompat({
+    required FaceReadingReport my,
+    required FaceReadingReport album,
+  }) {
+    final a = my.supabaseId;
+    final b = album.supabaseId;
+    if (a == null || b == null) {
+      Navigator.of(this).push(
+        MaterialPageRoute(
+          builder: (_) => CompatibilityDetailScreen(my: my, album: album),
+        ),
+      );
+      return;
+    }
+    go('/r/$a~$b', extra: _CompatExtras(my: my, album: album));
+  }
 }
 
 /// 관상 deep-link wrapper — preloaded null 이면 Supabase 에서 fetch.
