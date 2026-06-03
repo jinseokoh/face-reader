@@ -267,12 +267,26 @@ class _TxLeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 로컬 thumbnailPath → CDN thumbnailKey → 거래 아이콘.
     final file = ThumbnailPaths.resolveFileSync(album?.thumbnailPath);
     if (file != null) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: Image.file(
           file,
+          width: 36,
+          height: 36,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _txIconAvatar(tx),
+        ),
+      );
+    }
+    final cdn = ThumbnailPaths.cdnUrl(album?.thumbnailKey);
+    if (cdn != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.network(
+          cdn,
           width: 36,
           height: 36,
           fit: BoxFit.cover,

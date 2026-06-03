@@ -1124,7 +1124,9 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _UserAvatar(thumbnailPath: report.thumbnailPath),
+                    _UserAvatar(
+                        thumbnailPath: report.thumbnailPath,
+                        thumbnailKey: report.thumbnailKey),
                     const SizedBox(height: 8),
                     Text(
                       '${report.ageGroup.labelKo} ${report.gender.labelKo} ${report.ethnicity.labelKo}',
@@ -1928,21 +1930,31 @@ class _TldrChipData {
 /// 원형 frame 에. thumbnail 이 없으면 user icon placeholder.
 class _UserAvatar extends StatelessWidget {
   final String? thumbnailPath;
-  const _UserAvatar({required this.thumbnailPath});
+  final String? thumbnailKey;
+  const _UserAvatar({required this.thumbnailPath, this.thumbnailKey});
 
   @override
   Widget build(BuildContext context) {
     const size = 50.0;
+    // 로컬 thumbnailPath → CDN thumbnailKey → user 아이콘.
     final file = ThumbnailPaths.resolveFileSync(thumbnailPath);
-    Widget inner = Container(
+    final cdn = ThumbnailPaths.cdnUrl(thumbnailKey);
+    final Widget placeholder = Container(
       color: Colors.white.withValues(alpha: 0.12),
       child: const Center(
         child: FaIcon(FontAwesomeIcons.user,
             color: Colors.white54, size: 18),
       ),
     );
+    Widget inner = placeholder;
     if (file != null && file.existsSync()) {
       inner = Image.file(file, width: size, height: size, fit: BoxFit.cover);
+    } else if (cdn != null) {
+      inner = Image.network(cdn,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => placeholder);
     }
     return Container(
       width: size,

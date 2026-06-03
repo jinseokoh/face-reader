@@ -239,7 +239,10 @@ class _CompatShareSide extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _Thumb(path: report.thumbnailPath, size: 56),
+        _Thumb(
+            path: report.thumbnailPath,
+            thumbnailKey: report.thumbnailKey,
+            size: 56),
         const SizedBox(height: 8),
         Text(alias,
             maxLines: 1,
@@ -462,26 +465,40 @@ class _SubScorePanel extends StatelessWidget {
 
 class _Thumb extends StatelessWidget {
   final String? path;
+  final String? thumbnailKey;
   final double size;
-  const _Thumb({required this.path, this.size = 44});
+  const _Thumb({required this.path, this.thumbnailKey, this.size = 44});
   @override
   Widget build(BuildContext context) {
+    // 로컬 thumbnailPath → CDN thumbnailKey → user 아이콘 placeholder.
     final file = ThumbnailPaths.resolveFileSync(path);
-    final hasImage = file != null && file.existsSync();
+    final hasFile = file != null && file.existsSync();
+    final cdn = ThumbnailPaths.cdnUrl(thumbnailKey);
+    final placeholder = Center(
+      child: FaIcon(FontAwesomeIcons.user,
+          color: AppTheme.textHint, size: (size * 0.5).clamp(16, 26)),
+    );
+    final Widget child;
+    if (hasFile) {
+      child = Image.file(file, width: size, height: size, fit: BoxFit.cover);
+    } else if (cdn != null) {
+      child = Image.network(cdn,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => placeholder);
+    } else {
+      child = placeholder;
+    }
     return Container(
       width: size,
       height: size,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: AppTheme.border,
         borderRadius: BorderRadius.circular(8),
-        image: hasImage
-            ? DecorationImage(image: FileImage(file), fit: BoxFit.cover)
-            : null,
       ),
-      child: hasImage
-          ? null
-          : FaIcon(FontAwesomeIcons.user,
-              color: AppTheme.textHint, size: (size * 0.5).clamp(16, 26)),
+      child: child,
     );
   }
 }
@@ -672,7 +689,9 @@ class _CompatShareCardComposite extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            _CompatThumb(path: my.thumbnailPath),
+                            _CompatThumb(
+                                path: my.thumbnailPath,
+                                thumbnailKey: my.thumbnailKey),
                             const SizedBox(width: 24),
                             const Text(
                               '×',
@@ -684,7 +703,9 @@ class _CompatShareCardComposite extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 24),
-                            _CompatThumb(path: album.thumbnailPath),
+                            _CompatThumb(
+                                path: album.thumbnailPath,
+                                thumbnailKey: album.thumbnailKey),
                           ],
                         ),
                         const SizedBox(height: 28),
@@ -746,21 +767,18 @@ class _CompatIconLineRow extends StatelessWidget {
 
 class _CompatThumb extends StatelessWidget {
   final String? path;
-  const _CompatThumb({required this.path});
+  final String? thumbnailKey;
+  const _CompatThumb({required this.path, this.thumbnailKey});
 
   @override
   Widget build(BuildContext context) {
     // 관상 share card (_ShareCardComposite) thumb 와 동일 크기·radius 로
     // 통일 — 카카오 link preview hero 의 통일감 보장.
     const size = 180.0;
+    // 로컬 thumbnailPath → CDN thumbnailKey → face placeholder.
     final file = ThumbnailPaths.resolveFileSync(path);
-    if (file != null && file.existsSync()) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(14),
-        child: Image.file(file, width: size, height: size, fit: BoxFit.cover),
-      );
-    }
-    return Container(
+    final cdn = ThumbnailPaths.cdnUrl(thumbnailKey);
+    final placeholder = Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
@@ -769,5 +787,22 @@ class _CompatThumb extends StatelessWidget {
       ),
       child: const Icon(Icons.face, size: 96, color: Color(0xFFAAAAAA)),
     );
+    if (file != null && file.existsSync()) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Image.file(file, width: size, height: size, fit: BoxFit.cover),
+      );
+    }
+    if (cdn != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Image.network(cdn,
+            width: size,
+            height: size,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => placeholder),
+      );
+    }
+    return placeholder;
   }
 }
