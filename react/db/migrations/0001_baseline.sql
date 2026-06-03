@@ -14,8 +14,9 @@
 --
 --     drop schema public cascade;
 --     create schema public;
---     grant usage on schema public to anon, authenticated, service_role;
---     grant all   on schema public to postgres, service_role;
+--
+--   (테이블/시퀀스 GRANT 는 baseline §11-1 이 재부여하므로 위 두 줄이면 충분.
+--    그 GRANT 를 빠뜨리면 로그인 직후 `42501 permission denied for table users`.)
 --
 --   주의:
 --     • auth.users 는 public 밖이라 위 drop 으로 안 지워진다 → 계정·코인까지
@@ -25,16 +26,15 @@
 --
 -- 포함:
 --   • tables    : users · coins · metrics · unlocks · bonus_recipients · ad_rewards
---                 (+ ads / ad_views — TODO 블록 참조)
+--                 · ad_videos (custom video, §11-0) · ad_images (홈 배너, §11-0b)
 --   • views     : admin_users (users + auth.users.email · service_role 전용)
 --   • triggers  : handle_new_user (auth.users → public.users + 보너스 3 코인)
 --                 touch_metrics_updated_at (views++ 시 updated_at 자동 갱신)
 --   • rpcs      : grant_coins · admin_grant_coins · spend_coins · unlock_compat
 --                 increment_metrics_views · ad_reward_status · ad_reward_record_view
---                 (+ claim_ad_reward — TODO)
 --   • rls       : 각 테이블 별 정책
 --   • indexes   : 운영 query 패턴 기반
---   • grants    : RPC 권한
+--   • grants    : RPC 권한 + 테이블/시퀀스 (§11-1)
 --
 -- SSOT for application contract:
 --   • Worker  : react/app/lib/supabase.ts (fetchMetrics / incrementMetricsViews)
@@ -622,48 +622,99 @@ grant  execute on function public.ad_reward_status()      to authenticated;
 grant  execute on function public.ad_reward_record_view() to authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 12. TODO — ads / ad_views / claim_ad_reward (custom video 트랙, dormant)
+-- 11-0. public.ad_videos — custom video 광고 (refine 등록, §11-1 grant 보다 앞)
 -- ─────────────────────────────────────────────────────────────────────────────
--- 보상형 광고 시스템. Flutter `lib/data/services/ad_service.dart` 가 참조하나
--- 본 baseline 작성 시점엔 운영 schema dump 가 없어 정확한 DDL 미반영.
---
--- 코드 시그니처에서 추정되는 형상:
---
---   create table public.ads (
---     id            uuid primary key default gen_random_uuid(),
---     title         text not null,
---     storage_path  text not null,        -- supabase storage 'ads' bucket 의 key
---     duration_sec  integer,
---     reward_coins  integer not null,
---     active        boolean not null default true,
---     created_at    timestamptz not null default now()
---   );
---
---   create table public.ad_views (
---     id         uuid primary key default gen_random_uuid(),
---     user_id    uuid not null references auth.users(id) on delete cascade,
---     ad_id      uuid not null references public.ads(id) on delete cascade,
---     created_at timestamptz not null default now()
---   );
---
---   -- function claim_ad_reward(p_ad_id uuid) returns integer
---   --   - 24h 내 5건 daily cap
---   --   - 24h 내 같은 ad 중복 차단
---   --   - ad active 확인 → reward_coins 만큼 grant + ad_views insert
---
--- 실제 DDL 은 Supabase 대시보드 → Database → Tables 에서 export 하여 본 블록에
--- 직접 채울 것. 또는:
---
---   pg_dump --schema public --table ads --table ad_views \
---           --function claim_ad_reward "$DB_URL" >> 0001_baseline.sql
+-- 데일리 무료코인 "광고 3편" 중 1편을 내 브랜드 영상으로 강제 노출(나머지 2편은
+-- AdMob). 활성 영상이 없으면 3편 전부 AdMob. refine 이 service_role 로 직접 CRUD,
+-- Flutter 가 active=true 행을 읽어 재생한다. 시청은 AdMob 과 동일하게
+-- ad_reward_record_view 로 카운트되므로 per-video reward_coins·dedup 불필요.
+create table if not exists public.ad_videos (
+  id            uuid        primary key default gen_random_uuid(),
+  title         text        not null,
+  storage_path  text        not null,   -- storage 'ad_videos' 버킷 key
+  duration_sec  integer,                 -- 브라우저 probe 결과 (null 가능)
+  active        boolean     not null default true,
+  created_at    timestamptz not null default now()
+);
+
+alter table public.ad_videos enable row level security;
+
+drop policy if exists "ad_videos_active_read" on public.ad_videos;
+-- 활성 영상은 누구나 읽기 (Flutter 재생). 쓰기는 refine(service_role, RLS bypass)만.
+create policy "ad_videos_active_read"
+  on public.ad_videos for select using (active = true);
+
+create index if not exists ad_videos_active_created_idx
+  on public.ad_videos (created_at desc) where active = true;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 13. Storage bucket — 'ads' (수동 생성)
+-- 11-0b. public.ad_images — 외부 광고주 배너 (홈 탭 타이틀 위, rotation 노출)
 -- ─────────────────────────────────────────────────────────────────────────────
--- Supabase 대시보드 → Storage → Create bucket
---   name: ads
---   public: true (Flutter 가 public URL 로 비디오 fetch)
--- 본 SQL 로는 buckets 메타테이블 직접 INSERT 가능하지만 dashboard 가 더 안전.
+-- 외부 광고주에게서 받은 배너. 홈 탭 "관상은 과학이다." 타이틀 위 영역에서
+-- 활성 배너들을 rotation(자동 순환)으로 노출하고, 탭하면 link_url 로 이동(외부
+-- 브라우저). 수익은 오프라인 정액 계약("배너만 얼마")이라 impression/click 측정은
+-- 하지 않는다(측정 컬럼 없음). 활성 배너가 없으면 앱이 정적 home.png 로 fallback.
+-- refine 이 service_role 로 직접 CRUD, Flutter 가 active=true 를 sort_order 순 rotation.
+create table if not exists public.ad_images (
+  id            uuid        primary key default gen_random_uuid(),
+  title         text        not null,
+  storage_path  text        not null,   -- storage 'ad_images' 버킷 key
+  link_url      text,                    -- 탭 시 이동 URL (null 이면 비탭 배너)
+  active        boolean     not null default true,
+  sort_order    integer     not null default 0,  -- 작을수록 우선
+  created_at    timestamptz not null default now()
+);
+
+alter table public.ad_images enable row level security;
+
+drop policy if exists "ad_images_active_read" on public.ad_images;
+create policy "ad_images_active_read"
+  on public.ad_images for select using (active = true);
+
+create index if not exists ad_images_active_sort_idx
+  on public.ad_images (sort_order, created_at desc) where active = true;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 11-1. 테이블/시퀀스 GRANT — drop schema 후에도 self-contained
+-- ─────────────────────────────────────────────────────────────────────────────
+-- `drop schema public cascade` 는 Supabase 가 깔아둔 anon/authenticated 기본
+-- 테이블 권한(default ACL)까지 지운다. 그 상태로 baseline 만 RUN 하면 테이블에
+-- GRANT 가 없어 로그인 직후 `42501 permission denied for table users` 가 난다.
+-- 따라서 여기서 테이블·시퀀스 권한을 명시 부여해 reset 후 self-contained 하게
+-- 만든다. row 접근은 각 테이블 RLS 정책이 통제하므로, GRANT 는 롤이 테이블에
+-- "닿을" 수만 있게 한다. (함수 권한은 위 RPC grant/revoke 가 SoT — 여기서
+-- routines 는 건드리지 않아 grant_coins 등의 revoke 가 유지된다.)
+grant usage on schema public to postgres, anon, authenticated, service_role;
+grant all on all tables    in schema public to anon, authenticated, service_role;
+grant all on all sequences in schema public to anon, authenticated, service_role;
+alter default privileges in schema public
+  grant all on tables    to anon, authenticated, service_role;
+alter default privileges in schema public
+  grant all on sequences to anon, authenticated, service_role;
+
+-- ⚠️ 위 `grant all on all tables` 는 뷰까지 포함한다. admin_users 뷰는
+-- owner(postgres) 권한으로 auth.users.email 을 읽으므로 anon/authenticated 에
+-- 새면 이메일 유출 — §1 의 revoke 를 일괄 grant 뒤에서 다시 적용해 좁힌다.
+revoke all on public.admin_users from anon, authenticated, public;
+grant select on public.admin_users to service_role;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 12. 광고 시스템 현황 메모 (모든 오브젝트 ad_* 네이밍)
+-- ─────────────────────────────────────────────────────────────────────────────
+-- • ad_videos (§11-0)  → custom video 광고. 무료코인 3편 중 1편으로 노출. refine CRUD.
+-- • ad_images (§11-0b) → 홈 배너 이미지. 탭 시 link_url 이동. refine CRUD.
+-- • 무료코인 카운터     → ad_rewards 테이블(§11) + ad_reward_status /
+--   ad_reward_record_view RPC(§11). AdMob·custom video 시청 모두 record_view 로 카운트,
+--   3편 누적 시 1코인. (과거 ad_views·claim_ad_reward 는 폐기 — 이 카운터로 흡수.)
+-- • Flutter: free_coin_service.dart (카운터) · ad_service.dart (custom video 재생).
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 13. Storage buckets — 'ad_videos' · 'ad_images' (대시보드 수동 생성)
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Supabase 대시보드 → Storage → Create bucket (둘 다 public: true)
+--   • ad_videos : custom video mp4 (Flutter 가 public URL 로 재생)
+--   • ad_images : 홈 배너 이미지 (Flutter 가 public URL 로 표시)
+-- buckets 메타테이블 직접 INSERT 도 가능하나 대시보드가 안전.
 
 -- ============================================================================
 -- 검증 스모크 (선택)
@@ -702,11 +753,8 @@ grant  execute on function public.ad_reward_record_view() to authenticated;
 -- create schema public;
 -- delete from auth.users;   -- auth.identities/sessions 로 cascade. storage 객체가 있으면 먼저 비울 것.
 --
--- grant usage on schema public to postgres, anon, authenticated, service_role;
--- grant all   on schema public to postgres, service_role;
--- alter default privileges in schema public grant all on tables    to postgres, anon, authenticated, service_role;
--- alter default privileges in schema public grant all on functions to postgres, anon, authenticated, service_role;
--- alter default privileges in schema public grant all on sequences to postgres, anon, authenticated, service_role;
+-- 그다음 이 파일 전체 RUN. 테이블/시퀀스 GRANT 는 §11-1 이 재부여하므로 별도
+-- 수동 grant 불필요. (빠뜨리면 로그인 직후 `42501 permission denied for table`.)
 
 -- ============================================================================
 -- 관리자(refine) 로그인 계정 생성
