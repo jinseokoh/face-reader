@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:facely/config/router.dart';
 import 'package:facely/core/hive/hive_setup.dart';
 import 'package:facely/core/storage/thumbnail_paths.dart';
@@ -60,22 +62,25 @@ void main() async {
   );
   await initHive();
   await ThumbnailPaths.initCache();
-  await CoinService().initialize();
-  // AdMob — 광고 SDK warm-up. 실패해도 앱 launch 자체는 막지 않음 (서비스 내부에서 swallow).
-  await AdMobService().initialize();
   await AuthService().initialize();
-  // Warm up face-shape TFLite classifier; failure is non-fatal (falls back
-  // to legacy LDA rule at call site).
-  try {
-    await FaceShapeClassifier.instance.load();
-  } catch (_) {
-    // intentionally swallowed — see classifier load() for logging
-  }
-  await AnalyticsService.instance.logAppOpen();
-  // face.kr universal/app link → ReportPage 라우팅. cold start + warm 양쪽.
-  // 라우팅 wire-up 은 share host 의 /api/decode 추가 후 마무리.
+  // 딥링크 pending 은 runApp 전에 준비돼야 MainApp initState 가 회수 가능.
   await DeepLinkService.instance.initialize();
+  // 무거운 비핵심 init(TFLite 분류기·AdMob·RevenueCat·analytics)은 첫 프레임을
+  // 막지 않도록 runApp 이후 백그라운드로 워밍업 — cold-start 흰 화면(3~4초) 단축.
+  // 받은 카드/홈 첫 화면은 이들에 의존하지 않고, 분석·광고·결제는 사용 시점까지
+  // 시간이 충분하다. 각 서비스는 내부적으로 실패를 swallow.
+  _warmUpNonCritical();
   runApp(const ProviderScope(child: MyApp()));
+}
+
+/// 첫 프레임 이후 백그라운드로 워밍업하는 비핵심 서비스들. 모두 fire-and-forget
+/// 이며 실패해도 무시 (필요 시점에 각 호출부가 재시도/fallback).
+void _warmUpNonCritical() {
+  unawaited(CoinService().initialize().catchError((Object _) {}));
+  unawaited(AdMobService().initialize().catchError((Object _) {}));
+  // face-shape TFLite — 분석 시점에만 필요. 실패 시 호출부가 legacy LDA fallback.
+  unawaited(FaceShapeClassifier.instance.load().catchError((Object _) {}));
+  unawaited(AnalyticsService.instance.logAppOpen().catchError((Object _) {}));
 }
 
 class MyApp extends StatelessWidget {
