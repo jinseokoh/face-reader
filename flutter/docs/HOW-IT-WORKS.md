@@ -1,6 +1,6 @@
 # HOW IT WORKS — 관상 엔진 기술 구현
 
-**최종 업데이트**: 2026-05-19
+**최종 업데이트**: 2026-06-03 (v1.0.1)
 **역할**: 얼굴 입력부터 리포트 본문까지, 엔진이 무엇을 어떻게 계산하는지의 SSOT.
 **관련**: 화면·폴더 구조는 [ARCHITECTURE.md](ARCHITECTURE.md), 디자인 토큰은 [DESIGN.md](DESIGN.md).
 
@@ -44,7 +44,20 @@ square/heart               10 attribute raw
                            (Hive 저장 + Supabase mirror)
 ```
 
-핵심 entry point: `lib/domain/models/face_analysis.dart::analyzeFaceReading()`.
+핵심 entry point: `flutter/lib/domain/models/face_analysis.dart::analyzeFaceReading()` (오케스트레이션).
+
+### 1.1 코드 위치 — `face_engine` 공유 패키지
+
+엔진 계산은 platform-free 순수 Dart 패키지 **`shared/`** (`package:face_engine`) 에 산다. Flutter 앱은 path dependency 로, React share host 는 `dart compile js -O1` 산출물로 **같은 엔진**을 돌린다 (룰·reference·quantile 은 `shared/` 한 곳에서만 바뀐다). landmark 측정·MediaPipe·Hive·UI 등 platform 의존부만 `flutter/lib/` 에 남는다.
+
+| 위치 | 파일 |
+|---|---|
+| **`shared/lib/`** (face_engine) | `physiognomy_tree` · `face_reading_report` · `metric_score`(raw→z) · `physiognomy_scoring` · `attribute_derivation` · `attribute_normalize` · `score_calibration` · `archetype` · `age_adjustment` · `yin_yang` · `compat/` · `face_reference_data` · enums · `archetype_catchphrase`/`compat_hashtags`/`ethnicity_factors` |
+| **`flutter/lib/`** (앱) | `face_analysis`(analyzeFaceReading) · `face_metrics`(+lateral, landmark→측정) · `life_question_narrative` · `report_assembler` · `node`/`rule`/`archetype`/`metric` text_blocks · `face_shape_classifier` |
+
+React JS export (`shared/lib/face_engine.dart`): `globalThis.runEngine(metricsJson)` → solo 카드, `globalThis.runCompat(jsonA, jsonB)` → 궁합 카드. 빌드 `cd react && pnpm build:shared` (`-O2` 금지 — RTI subtype check 깨짐). 산출물 `react/app/lib/shared/face_engine.js` 는 commit 안 함.
+
+아래 본문의 bare 파일명(`physiognomy_scoring.dart` 등) 은 위 표로 위치를 찾는다.
 
 ---
 
@@ -76,7 +89,7 @@ square/heart               10 attribute raw
 `lowerFaceFullness`, `eyeAspect`, `eyebrowCurvature`, `eyebrowTiltDirection`,
 `browSpacing`, `upperVsLowerLipRatio`, `chinAngle`, `foreheadWidth`, `cheekboneWidth`.
 
-전체 ID 목록 + 코드 SSOT: `lib/data/constants/face_reference_data.dart::metricInfoList`.
+전체 ID 목록 + 코드 SSOT: `shared/lib/data/constants/face_reference_data.dart::metricInfoList`.
 
 ### 2.2 Lateral 8 (`face_metrics_lateral.dart::computeAll()`)
 
@@ -172,7 +185,7 @@ face (root)
 - 메타데이터 태그 — **오관(五官)** / **오악(五嶽)** / **사독(四瀆)** / **십이궁(十二宮)**
 - `zone`: upper/middle/lower
 
-코드 SSOT: `lib/domain/models/physiognomy_tree.dart`.
+코드 SSOT: `shared/lib/domain/models/physiognomy_tree.dart`.
 `귀(ear)` 는 MediaPipe 정면 mesh 커버리지 부족으로 `unsupported=true` (v1).
 
 ### 3.2 Node Scoring
@@ -362,7 +375,7 @@ raw → globalPct = _rawToPercentile(raw, attr, gender)   ← 21-point quantile 
 
 ## 7. 궁합 엔진 (5 frame)
 
-관상 엔진과 **동등한 별도 엔진** — `lib/domain/services/compat/`. 입력은 두 개의 `FaceReadingReport` (capture만 의존, attributes/archetype 미의존 — double-interpretation 차단).
+관상 엔진과 **동등한 별도 엔진** — `shared/lib/domain/services/compat/`. 입력은 두 개의 `FaceReadingReport` (capture만 의존, attributes/archetype 미의존 — double-interpretation 차단).
 
 ### 7.1 4 sub-score
 
@@ -463,7 +476,7 @@ if (f.age.isOver30) parts.add('관능도', …);
 ```bash
 cd /Users/chuck/Code/face/flutter
 flutter pub get
-flutter test             # 149 test 전부 green
+flutter test             # 145 test 전부 green
 flutter analyze          # 0 issues
 flutter run              # 실기 (camera 는 simulator 불가)
 ```

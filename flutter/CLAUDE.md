@@ -2,7 +2,7 @@
 
 **최종 업데이트**: 2026-05-19
 
-관상 분석 Flutter 앱. MediaPipe Face Mesh 468 landmarks → 17 frontal + 8 lateral metric → 14-node tree → 10 attribute → archetype → 8 인생 질문 본문. 궁합은 별도 엔진(五行·十二宮·五官·三停·陰陽 기반).
+관상 분석 Flutter 앱. MediaPipe Face Mesh 468 landmarks → 26 frontal + 8 lateral metric → 14-node tree → 10 attribute → archetype → 8 인생 질문 본문. 궁합은 별도 엔진(五行·十二宮·五官·三停·陰陽 기반).
 
 ## ⛔ 절대 규칙
 
@@ -43,14 +43,13 @@
 
 ---
 
-## 📚 SSOT 4 파일
+## 📚 SSOT 3 파일
 
 | 문서 | 역할 |
 |---|---|
-| [`docs/HOW-IT-WORKS.md`](docs/HOW-IT-WORKS.md) | 엔진 기술 구현 — 17 metric · 14 node · 10 attribute · 5-stage pipeline · normalize · Hive capture-only · 궁합 5 frame · narrative · face shape classifier |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | 화면·폴더 구조 — 4-tab IndexedStack · lib/ layout · Riverpod 패턴 · 데이터 흐름 · 외부 인프라 (R2/Supabase/DeepFace/카카오) · 빌드 |
+| [`docs/HOW-IT-WORKS.md`](docs/HOW-IT-WORKS.md) | 엔진 기술 구현 — `face_engine` 패키지 위치 · 26+8 metric · 14 node · 10 attribute · 5-stage pipeline · normalize · Hive capture-only · 궁합 5 frame · narrative · face shape classifier |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | 화면·패키지 구조 — shared/face_engine 분리 · 4-tab IndexedStack · Riverpod 패턴 · 데이터 흐름 · 코인/궁합 경제 · 외부 인프라 (R2/Supabase/DeepFace/AdMob/카카오) · 빌드 |
 | [`docs/DESIGN.md`](docs/DESIGN.md) | 디자인 토큰 SSOT — AppColors · AppText · AppSpacing · AppRadius · 컴포넌트 레시피 |
-| [`docs/TODO.md`](docs/TODO.md) | 작업 큐 — 우선순위 P0/P1/P2 + 향후 로드맵 + 완료 이력 |
 
 추가 reference:
 - [`../tools/face_shape_ml/README.md`](../tools/face_shape_ml/README.md) — face shape classifier 재학습 · TFLite 배포 procedure
@@ -64,7 +63,7 @@
 cd /Users/chuck/Code/face/flutter
 flutter pub get
 flutter analyze          # 0 issues 기대
-flutter test             # 149 test 전부 green
+flutter test             # 145 test 전부 green
 flutter run              # 실기 (camera/MediaPipe simulator 불가)
 ```
 
@@ -79,7 +78,6 @@ flutter test test/archetype_fairness_test.dart test/score_distribution_test.dart
 
 ## 🚀 새 세션 시작 시
 
-1. `docs/TODO.md` — 현재 우선순위 확인
-2. `docs/HOW-IT-WORKS.md` 또는 `docs/ARCHITECTURE.md` — 작업 영역에 따라
-3. 변경 후 4 SSOT 중 영향 받는 문서 갱신
-4. 작업 완료 시 `docs/TODO.md` 의 §완료 이력에 한 줄 추가
+1. `docs/HOW-IT-WORKS.md` 또는 `docs/ARCHITECTURE.md` — 작업 영역에 따라
+2. 엔진(룰·reference·quantile·궁합) 변경은 `shared/` 한 곳에서만
+3. 변경 후 3 SSOT 중 영향 받는 문서 갱신
