@@ -5,14 +5,13 @@ import type { AdImage } from "../../types";
 
 const { Text } = Typography;
 
-const STORAGE_PUBLIC_BASE = (() => {
-  const url = (import.meta as { env: Record<string, string> }).env
-    .VITE_SUPABASE_URL;
-  return url ? `${url}/storage/v1/object/public/ad_images/` : "";
-})();
+// 배너는 R2(cdn.facely.kr)에 있다. storage_path 예: "banners/{uuid}.png".
+const CDN_BASE = (
+  (import.meta as { env: Record<string, string> }).env.VITE_R2_CDN_BASE ||
+  "https://cdn.facely.kr"
+).replace(/\/$/, "");
 
-const publicUrl = (storagePath: string) =>
-  `${STORAGE_PUBLIC_BASE}${storagePath.replace(/^ad_images\//, "")}`;
+const publicUrl = (storagePath: string) => `${CDN_BASE}/${storagePath}`;
 
 export const AdImageList = () => {
   const { tableProps, tableQuery } = useTable<AdImage>({
@@ -41,7 +40,7 @@ export const AdImageList = () => {
           title="미리보기"
           dataIndex="storage_path"
           render={(v: string) =>
-            STORAGE_PUBLIC_BASE ? (
+            CDN_BASE ? (
               <Image
                 src={publicUrl(v)}
                 width={80}

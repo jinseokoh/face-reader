@@ -5,11 +5,11 @@ import type { AdVideo } from "../../types";
 
 const { Text } = Typography;
 
-const STORAGE_PUBLIC_BASE = (() => {
-  const url = (import.meta as { env: Record<string, string> }).env
-    .VITE_SUPABASE_URL;
-  return url ? `${url}/storage/v1/object/public/ad_videos/` : "";
-})();
+// 영상은 R2(cdn.facely.kr)에 있다. storage_path 예: "banners/{uuid}.mp4".
+const CDN_BASE = (
+  (import.meta as { env: Record<string, string> }).env.VITE_R2_CDN_BASE ||
+  "https://cdn.facely.kr"
+).replace(/\/$/, "");
 
 export const AdVideoList = () => {
   const { tableProps, tableQuery } = useTable<AdVideo>({
@@ -47,9 +47,9 @@ export const AdVideoList = () => {
               <Text code style={{ fontSize: 11 }}>
                 {v}
               </Text>
-              {STORAGE_PUBLIC_BASE && (
+              {CDN_BASE && (
                 <a
-                  href={`${STORAGE_PUBLIC_BASE}${v.replace(/^ad_videos\//, "")}`}
+                  href={`${CDN_BASE}/${v}`}
                   target="_blank"
                   rel="noreferrer"
                   style={{ fontSize: 11 }}

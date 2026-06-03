@@ -1,5 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:facely/core/storage/thumbnail_paths.dart';
+
 /// 외부 광고주 배너 1건 — 홈 탭 상단 rotation 노출, 탭 시 linkUrl 이동.
 class AdImageBanner {
   final String id;
@@ -20,15 +22,9 @@ class AdImageBanner {
         linkUrl: r['link_url'] as String?,
       );
 
-  /// supabase storage 'ad_images' 버킷 public URL.
-  String get imageUrl {
-    final client = Supabase.instance.client;
-    const prefix = 'ad_images/';
-    final name = storagePath.startsWith(prefix)
-        ? storagePath.substring(prefix.length)
-        : storagePath;
-    return client.storage.from('ad_images').getPublicUrl(name);
-  }
+  /// R2 CDN(cdn.facely.kr) public URL — storagePath 는 `banners/xxx.png`.
+  /// 썸네일과 동일한 R2 CDN 을 쓴다.
+  String get imageUrl => ThumbnailPaths.cdnUrl(storagePath) ?? '';
 }
 
 class AdImageService {

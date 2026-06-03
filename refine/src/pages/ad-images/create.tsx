@@ -11,8 +11,20 @@ import {
   type UploadFile,
 } from "antd";
 import { InboxOutlined } from "@ant-design/icons";
+import { AwsClient } from "aws4fetch";
 import { useState } from "react";
 import { adminClient } from "../../providers/data";
+
+// 배너 이미지는 R2(facely/banners/)에 직접 PUT 한다 (모바일 썸네일과 동일하게
+// R2 직통). refine 는 로컬 전용 admin 이라 R2 키를 .env 에 둬도 노출 위험 없음.
+// 브라우저 PUT 이므로 R2 버킷 CORS 에 이 origin(PUT)을 허용해야 한다.
+const R2_ENV = (import.meta as { env: Record<string, string> }).env;
+const R2 = {
+  accountId: R2_ENV.VITE_R2_ACCOUNT_ID,
+  bucket: R2_ENV.VITE_R2_BUCKET_NAME || "facely",
+  accessKeyId: R2_ENV.VITE_R2_ACCESS_KEY_ID,
+  secretAccessKey: R2_ENV.VITE_R2_SECRET_ACCESS_KEY,
+};
 
 interface AdImageCreateValues {
   title: string;
@@ -32,25 +44,41 @@ export const AdImageCreate = () => {
       message.error("이미지 파일을 선택하세요");
       return;
     }
+    if (!R2.accountId || !R2.accessKeyId || !R2.secretAccessKey) {
+      message.error("R2 환경변수(VITE_R2_*)가 .env 에 설정되지 않았습니다");
+      return;
+    }
     setSubmitting(true);
     try {
-      // 1) storage upload — 'ad_images' 버킷
+      // 1) R2 직접 PUT — facely/banners/{uuid}.{ext}. host 만 서명(signQuery)하고
+      //    content-type 은 자유. key 를 ad_images.storage_path 로 저장.
       const fileObj = file.originFileObj;
-      const ext = fileObj.name.split(".").pop() ?? "jpg";
-      const storageName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-      const storagePath = `ad_images/${storageName}`;
-      const { error: upErr } = await adminClient.storage
-        .from("ad_images")
-        .upload(storageName, fileObj, {
-          contentType: fileObj.type || "image/jpeg",
-          upsert: false,
-        });
-      if (upErr) throw new Error(`storage upload: ${upErr.message}`);
+      const ext = (fileObj.name.split(".").pop() || "png").toLowerCase();
+      const key = `banners/${crypto.randomUUID()}.${ext}`;
+      const client = new AwsClient({
+        accessKeyId: R2.accessKeyId,
+        secretAccessKey: R2.secretAccessKey,
+        service: "s3",
+        region: "auto",
+      });
+      const objectUrl = `https://${R2.accountId}.r2.cloudflarestorage.com/${R2.bucket}/${key}`;
+      const signed = await client.sign(
+        new Request(objectUrl, { method: "PUT" }),
+        { aws: { signQuery: true } },
+      );
+      const putRes = await fetch(signed.url, {
+        method: "PUT",
+        body: fileObj,
+        headers: { "Content-Type": fileObj.type || "image/png" },
+      });
+      if (!putRes.ok) {
+        throw new Error(`R2 업로드 실패 (${putRes.status})`);
+      }
 
-      // 2) ad_images row insert
+      // 2) ad_images row insert (storage_path = R2 key)
       const { error: insErr } = await adminClient.from("ad_images").insert({
         title: values.title,
-        storage_path: storagePath,
+        storage_path: key,
         link_url: values.link_url?.trim() || null,
         sort_order: values.sort_order,
         active: values.active,
@@ -76,7 +104,7 @@ export const AdImageCreate = () => {
         type="info"
         showIcon
         style={{ marginBottom: 16 }}
-        message="이미지를 'ad_images' 버킷에 업로드하고 ad_images 테이블에 행을 추가합니다. 활성 배너는 홈 탭 상단에서 sort_order 순으로 rotation 노출되고, 탭하면 link_url 로 이동합니다."
+        message="이미지를 R2(facely/banners/)에 업로드하고 ad_images 테이블에 행을 추가합니다. 활성 배너는 홈 탭 상단에서 sort_order 순으로 rotation 노출되고, 탭하면 link_url 로 이동합니다."
       />
       <Form
         form={form}
@@ -129,7 +157,7 @@ export const AdImageCreate = () => {
             </p>
             <p className="ant-upload-text">이미지를 끌어다 놓거나 클릭해서 선택</p>
             <p className="ant-upload-hint" style={{ fontSize: 12 }}>
-              'ad_images' 버킷에 업로드되고 public URL 로 홈 배너에 표시됩니다.
+              R2(facely/banners/)에 업로드되고 cdn.facely.kr 로 홈 배너에 표시됩니다.
             </p>
           </Upload.Dragger>
         </Form.Item>

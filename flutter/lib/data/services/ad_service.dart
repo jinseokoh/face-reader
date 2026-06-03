@@ -1,5 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:facely/core/storage/thumbnail_paths.dart';
+
 /// custom video 광고 1건 — 무료코인 3편 중 1편으로 노출.
 class AdVideo {
   final String id;
@@ -20,14 +22,9 @@ class AdVideo {
         durationSec: (r['duration_sec'] as num?)?.toInt(),
       );
 
-  /// supabase storage 'ad_videos' 버킷 public URL.
-  String get videoUrl {
-    final client = Supabase.instance.client;
-    const prefix = 'ad_videos/';
-    final name =
-        storagePath.startsWith(prefix) ? storagePath.substring(prefix.length) : storagePath;
-    return client.storage.from('ad_videos').getPublicUrl(name);
-  }
+  /// R2 CDN(cdn.facely.kr) public URL — storagePath 는 `banners/xxx.mp4`
+  /// (배너 이미지와 같은 facely/banners/ 폴더 공유).
+  String get videoUrl => ThumbnailPaths.cdnUrl(storagePath) ?? '';
 }
 
 /// `ad_videos` 테이블 reader. 시청 카운트·코인 지급은 무료코인 카운터

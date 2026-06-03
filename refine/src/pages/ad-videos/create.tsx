@@ -10,8 +10,19 @@ import {
   type UploadFile,
 } from "antd";
 import { InboxOutlined } from "@ant-design/icons";
+import { AwsClient } from "aws4fetch";
 import { useState } from "react";
 import { adminClient } from "../../providers/data";
+
+// 영상도 배너와 같은 R2(facely/banners/)에 직접 PUT — banners/{uuid}.mp4.
+// refine 는 로컬 전용 admin 이라 R2 키를 .env 에 둬도 노출 위험 없음.
+const R2_ENV = (import.meta as { env: Record<string, string> }).env;
+const R2 = {
+  accountId: R2_ENV.VITE_R2_ACCOUNT_ID,
+  bucket: R2_ENV.VITE_R2_BUCKET_NAME || "facely",
+  accessKeyId: R2_ENV.VITE_R2_ACCESS_KEY_ID,
+  secretAccessKey: R2_ENV.VITE_R2_SECRET_ACCESS_KEY,
+};
 
 interface AdVideoCreateValues {
   title: string;
@@ -29,28 +40,43 @@ export const AdVideoCreate = () => {
       message.error("mp4 파일을 선택하세요");
       return;
     }
+    if (!R2.accountId || !R2.accessKeyId || !R2.secretAccessKey) {
+      message.error("R2 환경변수(VITE_R2_*)가 .env 에 설정되지 않았습니다");
+      return;
+    }
     setSubmitting(true);
     try {
-      // 1) storage upload — 'ad_videos' 버킷
+      // 1) R2 직접 PUT — facely/banners/{uuid}.{ext}. host 만 서명(signQuery).
       const fileObj = file.originFileObj;
-      const ext = fileObj.name.split(".").pop() ?? "mp4";
-      const storageName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-      const storagePath = `ad_videos/${storageName}`;
-      const { error: upErr } = await adminClient.storage
-        .from("ad_videos")
-        .upload(storageName, fileObj, {
-          contentType: fileObj.type || "video/mp4",
-          upsert: false,
-        });
-      if (upErr) throw new Error(`storage upload: ${upErr.message}`);
+      const ext = (fileObj.name.split(".").pop() || "mp4").toLowerCase();
+      const key = `banners/${crypto.randomUUID()}.${ext}`;
+      const client = new AwsClient({
+        accessKeyId: R2.accessKeyId,
+        secretAccessKey: R2.secretAccessKey,
+        service: "s3",
+        region: "auto",
+      });
+      const objectUrl = `https://${R2.accountId}.r2.cloudflarestorage.com/${R2.bucket}/${key}`;
+      const signed = await client.sign(
+        new Request(objectUrl, { method: "PUT" }),
+        { aws: { signQuery: true } },
+      );
+      const putRes = await fetch(signed.url, {
+        method: "PUT",
+        body: fileObj,
+        headers: { "Content-Type": fileObj.type || "video/mp4" },
+      });
+      if (!putRes.ok) {
+        throw new Error(`R2 업로드 실패 (${putRes.status})`);
+      }
 
       // 2) duration probe (browser HTMLVideoElement)
       const duration = await probeVideoDuration(fileObj).catch(() => null);
 
-      // 3) ad_videos row insert
+      // 3) ad_videos row insert (storage_path = R2 key)
       const { error: insErr } = await adminClient.from("ad_videos").insert({
         title: values.title,
-        storage_path: storagePath,
+        storage_path: key,
         duration_sec: duration,
         active: values.active,
       });
@@ -75,7 +101,7 @@ export const AdVideoCreate = () => {
         type="info"
         showIcon
         style={{ marginBottom: 16 }}
-        message="mp4 를 'ad_videos' 버킷에 업로드하고 ad_videos 테이블에 행을 추가합니다. 활성 영상은 데일리 무료코인 3편 중 1편으로 노출됩니다."
+        message="mp4 를 R2(facely/banners/)에 업로드하고 ad_videos 테이블에 행을 추가합니다. 활성 영상은 데일리 무료코인 3편 중 1편으로 노출됩니다."
       />
       <Form
         form={form}
@@ -111,7 +137,7 @@ export const AdVideoCreate = () => {
             </p>
             <p className="ant-upload-text">mp4 파일을 끌어다 놓거나 클릭해서 선택</p>
             <p className="ant-upload-hint" style={{ fontSize: 12 }}>
-              'ad_videos' 버킷에 업로드되고 public URL 로 Flutter 앱에서 재생됩니다.
+              R2(facely/banners/)에 업로드되고 cdn.facely.kr 로 Flutter 앱에서 재생됩니다.
             </p>
           </Upload.Dragger>
         </Form.Item>
