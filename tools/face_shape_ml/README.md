@@ -8,9 +8,9 @@
 |---|---|---|
 | **하는 일** | 얼굴 사진 → 5-class (Heart/Oblong/Oval/Round/Square) | 26개 metric의 인구 평균 μ/σ 산출 |
 | **소비처** | `flutter/assets/ml/face_shape_ratios.tflite` (on-device 추론) | `shared/lib/data/constants/face_reference_data.dart::referenceData` (관상 룰 z-score 기준선) |
-| **데이터** | niten19 4000 (Kaggle) + user 57 East Asian | AAF (All-Age-Faces, East Asian) |
+| **데이터** | niten19 4000 (Kaggle) + user 57 East Asian | EA: AAF (11,800) · 비-EA: niten19 (5,000) |
 | **상태** | **프로덕션 사용 중** | **최신 작업 (2026-06)** |
-| **핵심 스크립트** | `train_28feat_eastasian.py` → `export_tflite.py` | `extract_aaf.py` |
+| **핵심 스크립트** | `train_28feat_eastasian.py` → `export_tflite.py` | EA: `extract_aaf.py` · 비-EA: `extract_niten_reference.py` |
 | **가이드 위치** | 본 문서 §1–§9 | 본 문서 §10 + `RECALIBRATION-metrics-spec.md` |
 
 > 두 시스템은 별개다. ②(AAF)는 ①(분류기)를 **대체하지 않는다** — ②는 관상 metric 기준선을 동아시아 인구로 재보정한 것이고, ①은 그대로 살아 동작한다. `extract_aaf.py` 는 ①의 `extract_landmarks.py` 를 import 해 parity 를 재사용할 뿐이다.
@@ -448,8 +448,7 @@ $VENV tools/face_shape_ml/extract_aaf.py
 
 ### 10.4 배포
 
-1. `out/aaf_referenceData.dart.txt` 의 `Ethnicity.eastAsian: { ... }` 블록을 `shared/lib/data/constants/face_reference_data.dart::referenceData` 에 반영.
-   - pooled baseline 을 전 ethnicity cell 에 적용하되 **gender 는 분리 유지** (얼굴 dimorphism 이 커서 pooled 하면 부정확).
+1. `out/aaf_referenceData.dart.txt` 의 `Ethnicity.eastAsian: { ... }` 블록을 `shared/lib/data/constants/face_reference_data.dart::referenceData` 의 **eastAsian cell 에만** 반영. **gender 는 분리 유지** (얼굴 dimorphism 이 커서 pooled 하면 부정확). 비-EA 5 인종은 §10.5 의 niten19 baseline 사용.
 2. 검증:
 
 ```bash
@@ -458,3 +457,18 @@ flutter test test/calibration_test.dart   # quantile table 재생성 + saturatio
 ```
 
 3. 진단 harness 로 시나리오 A 패턴(점수 SD~1.2, 1위 속성 고른 분산) 회복 확인 (`RECALIBRATION-metrics-spec.md §C` 절차 7).
+
+### 10.5 비-EA frontal 재보정 (niten19, `extract_niten_reference.py`)
+
+eastAsian 만 AAF in-frame empirical 이고 나머지 5 인종(caucasian·african·southeastAsian·hispanic·middleEastern)은 임상 anthropometry 추정치였다 — 측정 frame 이 production proxy frame 과 달라(예: 임상 `gonialAngle` ~120° vs 우리 파이프라인 ~140°) 체계적 +z 편향을 일으켰다. 이를 **AAF 와 똑같은 파이프라인**으로 niten19 를 재측정해 교정한다.
+
+```bash
+cd /Users/chuck/Code/face
+tools/.venv/bin/python tools/face_shape_ml/extract_niten_reference.py --limit 80   # smoke
+tools/.venv/bin/python tools/face_shape_ml/extract_niten_reference.py              # full (~5000장, ~60s)
+```
+
+- `compute_ratios` + near-frontal 필터(yaw/pitch<18°)를 §10.2 와 공유 → Flutter parity 동일.
+- niten19 는 **인종·성별 라벨 없음** → 단일 pooled baseline, **gender-pooled(male=female)**. 얼굴형 균형 표본이라 SD 약간 inflated (conservative).
+- 산출 `out/niten_referenceData.dart.txt` 는 caucasian~middleEastern 5 블록 그대로 → `referenceData` 의 해당 cell 에 붙여넣기 (frontal 26 metric 만). **lateral 8 metric 은 정면 측정 불가 → 임상 추정 유지**.
+- 한계·근거는 `HOW-IT-WORKS.md §2.3` (niten19 비-EA 재보정) 참조. v1 은 비-EA 사용자가 소수라 fallback 으로 충분 — per-ethnicity 보정은 인종 라벨 데이터 확보 후.

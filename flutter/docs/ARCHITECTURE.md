@@ -2,7 +2,7 @@
 
 **최종 업데이트**: 2026-06-03 (v1.0.1)
 **역할**: 앱이 어떻게 조립되어 있는가 — 화면 구조, 2-package monorepo layout, Riverpod provider 패턴, 데이터 흐름, 코인/궁합 경제, 외부 인프라 연결.
-**관련**: 엔진 동작은 [HOW-IT-WORKS.md](HOW-IT-WORKS.md), 디자인 토큰은 [DESIGN.md](DESIGN.md), 출시 노트는 [RELEASE-v1.0.1.md](RELEASE-v1.0.1.md).
+**관련**: 엔진 동작은 [HOW-IT-WORKS.md](HOW-IT-WORKS.md), 디자인 토큰은 [DESIGN.md](DESIGN.md).
 
 ---
 
@@ -149,7 +149,8 @@ shared/lib/
 ├── data/
 │   ├── constants/
 │   │   ├── face_reference_data.dart   # 26 frontal + 8 lateral mean/sd × ethnicity × gender — SSOT
-│   │   │                              #   (v1.0.1: AAF 동아시아 11,800장 gendered baseline)
+│   │   │                              #   frontal: EA=AAF 11,800 gendered · 비-EA=niten19 5,000 pooled in-frame
+│   │   │                              #   lateral: 정면 측정 불가 → 임상 추정 유지
 │   │   ├── archetype_catchphrase.dart # archetype 카피 (share 카드 노출)
 │   │   ├── compat_hashtags.dart       # 궁합 해시태그 풀
 │   │   └── ethnicity_factors.dart     # 인종 보정 계수

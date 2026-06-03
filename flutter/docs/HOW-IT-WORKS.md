@@ -118,7 +118,8 @@ yaw ∈ [0.70, 0.88] (3/4 view) 만 수락. East Asian baseline (인종 fallback
 - **전통**: 麻衣相法·柳莊相法·神相全編 3 대 고전의 부위별 metric.
 - **현대**: Farkas anthropometry (1994) + ICD meta-analysis (PMC9029890) + NIOSH dataset.
 - **재보정 (v2.8)**: MediaPipe 좌표계 차이 흡수 위해 2026-04-12 경험적 재보정. N=14 East Asian female 30s 실사용자 empirical z 가 N(0,1) 에 수렴하도록 reference mean 19 metric 재조정.
-- **AAF 재보정 (2026-06-01, 현행)**: All-Age-Faces 실사진 11,800장(정면 yaw<18°, male=5361·female=6439)을 앱과 동일 파이프라인으로 측정한 metric별 empirical mean/std 로 `referenceData[eastAsian]` 26 metric 전면 교체. 추정치 reference 가 production z 를 +로 띄워 전 속성이 saturate 되던 문제([`DIAGNOSIS-score-saturation.md`](DIAGNOSIS-score-saturation.md)) 근본 해소. 검증: 실측 11,800장 재투입 시 점수 SD 1.0~1.5 회복, sensuality 1위 빈도 4.9% (편향 제거). 추출: `tools/face_shape_ml/extract_aaf.py`. 측면 8 metric 은 정면 표본으로 측정 불가 → 미변경.
+- **AAF 재보정 (2026-06-01, 현행)**: All-Age-Faces 실사진 11,800장(정면 yaw<18°, male=5361·female=6439)을 앱과 동일 파이프라인으로 측정한 metric별 empirical mean/std 로 `referenceData[eastAsian]` 26 metric 전면 교체. 추정치 reference 가 production z 를 +로 띄워 전 속성이 saturate 되던 문제 근본 해소. 검증: 실측 11,800장 재투입 시 점수 SD 1.0~1.5 회복, sensuality 1위 빈도 4.9% (편향 제거). 추출: `tools/face_shape_ml/extract_aaf.py`. 측면 8 metric 은 정면 표본으로 측정 불가 → 미변경.
+- **niten19 비-EA 재보정 (2026-06-03, 현행)**: 비-동아시아 5 인종(caucasian·african·southeastAsian·hispanic·middleEastern)의 frontal 26 metric 을 niten19 Kaggle FaceShape 5,000장으로 **AAF 와 동일 파이프라인**(MediaPipe 468 → compute_ratios, near-frontal yaw/pitch<18°) 재측정한 pooled empirical 값으로 교체. 동기: 임상 anthropometry 추정치가 우리 2D proxy frame 과 frame 이 달라(예: 임상 gonialAngle ~120° vs 우리 파이프라인 ~140°) 체계적 +z 편향을 일으켰음 — niten19 in-frame 재측정으로 EA·비-EA reference 가 같은 frame 에 정렬. 한계(의도적): niten19 는 인종·성별 라벨 없음 → 5 인종 공용 **단일 pooled baseline**, gender-pooled(male=female), 얼굴형 균형 표본이라 SD 약간 inflated. 한국 관상 앱 특성상 비-EA 사용자가 소수라 per-ethnicity 보정 전까지 fallback 으로 충분. 추출: `tools/face_shape_ml/extract_niten_reference.py`. 측면 8 metric 은 정면 표본 측정 불가 → 임상 추정 유지.
 
 ### 2.4 측정 명세 — landmark 기하 정의 + z 해석 (관상 해설의 근원)
 
@@ -163,7 +164,13 @@ yaw ∈ [0.70, 0.88] (3/4 view) 만 수락. East Asian baseline (인종 fallback
 
 **B. 측면(3/4뷰) 필요 — 정면 표본으로는 측정 불가 (8개)**
 
-`dorsalConvexity`(코 직선도/매부리), `nasofrontalAngle`, `nasolabialAngle`, `facialConvexity`, `noseTipProjection`, `upperLipEline`, `lowerLipEline`, `mentolabialAngle`. 정면 사진엔 측면 기하(z깊이·E-line)가 없어 pooled 정면 재보정 대상에서 제외. §2.2 의 임상 anthropometry 추정값 유지.
+`dorsalConvexity`(코 직선도/매부리), `nasofrontalAngle`, `nasolabialAngle`, `facialConvexity`, `noseTipProjection`, `upperLipEline`, `lowerLipEline`, `mentolabialAngle`. 정면 사진엔 측면 기하(z깊이·E-line)가 없어 AAF·niten19 정면 재보정 대상에서 제외. EA 측면은 proxy-frame empirical(2026-04-14), 비-EA 측면은 임상 anthropometry "EA 대비 delta" 추정값을 **의도적으로 유지** (인종 라벨 붙은 3/4 프로파일 데이터셋 확보 전까지). 정면 26 metric 만 전 인종 동일 frame 으로 통일된 상태.
+
+> **frontal vs lateral reference 출처 정리**
+> | | frontal 26 | lateral 8 |
+> |---|---|---|
+> | eastAsian | AAF 실측 (11,800) | proxy-frame empirical (2026-04-14) |
+> | 비-EA 5인종 | niten19 pooled in-frame (5,000) | 임상 추정 (의도적 유지) |
 
 ---
 
