@@ -862,6 +862,29 @@ class _CompatCta extends ConsumerWidget {
     if (myFace == null) {
       return const SizedBox.shrink();
     }
+    // 받은 카드가 내 관상(같은 metrics UUID)이면 나 자신과의 궁합은 무의미 —
+    // 버튼 대신 "내 관상입니다." 라벨로 대체.
+    final isMyOwn =
+        report.supabaseId != null && report.supabaseId == myFace.supabaseId;
+    if (isMyOwn) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+        alignment: Alignment.center,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const FaIcon(FontAwesomeIcons.circleCheck,
+                size: 14, color: AppColors.gold),
+            const SizedBox(width: AppSpacing.xs),
+            Text(
+              '내 관상입니다.',
+              style: AppText.subTitle.copyWith(color: AppColors.textHint),
+            ),
+          ],
+        ),
+      );
+    }
     final unlocksAsync = ref.watch(compatUnlocksProvider);
     final unlocked = unlocksAsync.asData?.value ?? const <String>{};
     final key = tryPairKey(myFace, report);
