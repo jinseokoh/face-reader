@@ -1,43 +1,45 @@
-import { Authenticated, Refine } from "@refinedev/core";
-import { DevtoolsPanel, DevtoolsProvider } from "@refinedev/devtools";
-import { RefineKbar, RefineKbarProvider } from "@refinedev/kbar";
+import { Authenticated, Refine } from '@refinedev/core'
+import { DevtoolsPanel, DevtoolsProvider } from '@refinedev/devtools'
+import { RefineKbar, RefineKbarProvider } from '@refinedev/kbar'
 
 import {
-  AuthPage,
-  ErrorComponent,
-  ThemedLayout,
-  ThemedSider,
-  useNotificationProvider,
-} from "@refinedev/antd";
-import "@refinedev/antd/dist/reset.css";
+    AuthPage,
+    ErrorComponent,
+    ThemedLayout,
+    ThemedSider,
+    useNotificationProvider,
+} from '@refinedev/antd'
+import '@refinedev/antd/dist/reset.css'
 
 import {
-  AppstoreOutlined,
-  DollarOutlined,
-  PlaySquareOutlined,
-  ScanOutlined,
-  TeamOutlined,
-  UnlockOutlined,
-} from "@ant-design/icons";
+    AppstoreOutlined,
+    DollarOutlined,
+    PictureOutlined,
+    PlaySquareOutlined,
+    ScanOutlined,
+    TeamOutlined,
+    UnlockOutlined,
+} from '@ant-design/icons'
 import routerProvider, {
-  CatchAllNavigate,
-  DocumentTitleHandler,
-  UnsavedChangesNotifier,
-} from "@refinedev/react-router";
-import { liveProvider } from "@refinedev/supabase";
-import { App as AntdApp } from "antd";
-import { BrowserRouter, Outlet, Route, Routes } from "react-router";
-import { Header } from "./components/header";
-import { ColorModeContextProvider } from "./contexts/color-mode";
-import { AdCreate, AdList } from "./pages/ads";
-import { CoinList } from "./pages/coins";
-import { DashboardPage } from "./pages/dashboard";
-import { MetricList, MetricShow } from "./pages/metrics";
-import { UnlockList, UnlockShow } from "./pages/unlocks";
-import { UserList, UserShow } from "./pages/users";
-import authProvider from "./providers/auth";
-import { dataProvider } from "./providers/data";
-import { supabaseClient } from "./providers/supabase-client";
+    CatchAllNavigate,
+    DocumentTitleHandler,
+    UnsavedChangesNotifier,
+} from '@refinedev/react-router'
+import { liveProvider } from '@refinedev/supabase'
+import { App as AntdApp } from 'antd'
+import { BrowserRouter, Outlet, Route, Routes } from 'react-router'
+import { Header } from './components/header'
+import { ColorModeContextProvider } from './contexts/color-mode'
+import { AdImageCreate, AdImageList } from './pages/ad-images'
+import { AdVideoCreate, AdVideoList } from './pages/ad-videos'
+import { CoinList } from './pages/coins'
+import { DashboardPage } from './pages/dashboard'
+import { MetricList, MetricShow } from './pages/metrics'
+import { UnlockList, UnlockShow } from './pages/unlocks'
+import { UserList, UserShow } from './pages/users'
+import authProvider from './providers/auth'
+import { dataProvider } from './providers/data'
+import { supabaseClient } from './providers/supabase-client'
 
 function App() {
   return (
@@ -54,45 +56,51 @@ function App() {
                 notificationProvider={useNotificationProvider}
                 resources={[
                   {
-                    name: "dashboard",
-                    list: "/",
-                    meta: { label: "대시보드", icon: <AppstoreOutlined /> },
+                    name: 'dashboard',
+                    list: '/',
+                    meta: { label: '대시보드', icon: <AppstoreOutlined /> },
                   },
                   {
-                    name: "users",
-                    list: "/users",
-                    show: "/users/show/:id",
-                    meta: { label: "사용자", icon: <TeamOutlined /> },
+                    name: 'users',
+                    list: '/users',
+                    show: '/users/show/:id',
+                    meta: { label: '사용자', icon: <TeamOutlined /> },
                   },
                   {
-                    name: "metrics",
-                    list: "/metrics",
-                    show: "/metrics/show/:id",
-                    meta: { label: "관상 업로드", icon: <ScanOutlined /> },
+                    name: 'metrics',
+                    list: '/metrics',
+                    show: '/metrics/show/:id',
+                    meta: { label: '관상 업로드', icon: <ScanOutlined /> },
                   },
                   {
-                    name: "coins",
-                    list: "/coins",
-                    meta: { label: "코인 ledger", icon: <DollarOutlined /> },
+                    name: 'coins',
+                    list: '/coins',
+                    meta: { label: '코인 ledger', icon: <DollarOutlined /> },
                   },
                   {
-                    name: "unlocks",
-                    list: "/unlocks",
-                    show: "/unlocks/show/:id",
-                    meta: { label: "궁합 unlock", icon: <UnlockOutlined /> },
+                    name: 'unlocks',
+                    list: '/unlocks',
+                    show: '/unlocks/show/:id',
+                    meta: { label: '궁합 unlock', icon: <UnlockOutlined /> },
                   },
                   {
-                    name: "ads",
-                    list: "/ads",
-                    create: "/ads/create",
-                    meta: { label: "광고", icon: <PlaySquareOutlined /> },
+                    name: 'ad_videos',
+                    list: '/ad-videos',
+                    create: '/ad-videos/create',
+                    meta: { label: '영상 광고', icon: <PlaySquareOutlined /> },
+                  },
+                  {
+                    name: 'ad_images',
+                    list: '/ad-images',
+                    create: '/ad-images/create',
+                    meta: { label: '배너 광고', icon: <PictureOutlined /> },
                   },
                 ]}
                 options={{
                   syncWithLocation: true,
                   warnWhenUnsavedChanges: true,
-                  projectId: "FjBVsV-7E0eT7-WY0LgR",
-                  title: { text: "Face Reader Admin" },
+                  projectId: 'FjBVsV-7E0eT7-WY0LgR',
+                  title: { text: 'Facely Admin' },
                 }}
               >
                 <Routes>
@@ -125,9 +133,13 @@ function App() {
                       <Route index element={<UnlockList />} />
                       <Route path="show/:id" element={<UnlockShow />} />
                     </Route>
-                    <Route path="/ads">
-                      <Route index element={<AdList />} />
-                      <Route path="create" element={<AdCreate />} />
+                    <Route path="/ad-videos">
+                      <Route index element={<AdVideoList />} />
+                      <Route path="create" element={<AdVideoCreate />} />
+                    </Route>
+                    <Route path="/ad-images">
+                      <Route index element={<AdImageList />} />
+                      <Route path="create" element={<AdImageCreate />} />
                     </Route>
                     <Route path="*" element={<ErrorComponent />} />
                   </Route>
@@ -146,7 +158,7 @@ function App() {
                       element={
                         <AuthPage
                           type="login"
-                          title="Face Reader Admin"
+                          title="Facely Admin"
                           formProps={{
                             initialValues: {},
                           }}
@@ -169,7 +181,7 @@ function App() {
         </ColorModeContextProvider>
       </RefineKbarProvider>
     </BrowserRouter>
-  );
+  )
 }
 
-export default App;
+export default App

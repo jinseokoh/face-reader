@@ -1,26 +1,26 @@
 import { CreateButton, DateField, List, useTable } from "@refinedev/antd";
-import { Space, Switch, Table, Tag, Typography, message } from "antd";
+import { Space, Switch, Table, Typography, message } from "antd";
 import { adminClient } from "../../providers/data";
-import type { Ad } from "../../types";
+import type { AdVideo } from "../../types";
 
 const { Text } = Typography;
 
 const STORAGE_PUBLIC_BASE = (() => {
-  // refine 의 supabase URL → public storage URL prefix.
   const url = (import.meta as { env: Record<string, string> }).env
     .VITE_SUPABASE_URL;
-  return url ? `${url}/storage/v1/object/public/ads/` : "";
+  return url ? `${url}/storage/v1/object/public/ad_videos/` : "";
 })();
 
-export const AdList = () => {
-  const { tableProps, tableQuery } = useTable<Ad>({
+export const AdVideoList = () => {
+  const { tableProps, tableQuery } = useTable<AdVideo>({
+    resource: "ad_videos",
     syncWithLocation: true,
     sorters: { initial: [{ field: "created_at", order: "desc" }] },
   });
 
   const toggleActive = async (id: string, active: boolean) => {
     const { error } = await adminClient
-      .from("ads")
+      .from("ad_videos")
       .update({ active })
       .eq("id", id);
     if (error) {
@@ -32,14 +32,14 @@ export const AdList = () => {
   };
 
   return (
-    <List title="광고 목록" headerButtons={<CreateButton>광고 추가</CreateButton>}>
+    <List title="영상 광고" headerButtons={<CreateButton>영상 추가</CreateButton>}>
       <Table {...tableProps} rowKey="id" size="middle">
-        <Table.Column<Ad>
+        <Table.Column<AdVideo>
           title="제목"
           dataIndex="title"
           render={(v: string) => <Text strong>{v}</Text>}
         />
-        <Table.Column<Ad>
+        <Table.Column<AdVideo>
           title="storage_path"
           dataIndex="storage_path"
           render={(v: string) => (
@@ -49,7 +49,7 @@ export const AdList = () => {
               </Text>
               {STORAGE_PUBLIC_BASE && (
                 <a
-                  href={`${STORAGE_PUBLIC_BASE}${v.replace(/^ads\//, "")}`}
+                  href={`${STORAGE_PUBLIC_BASE}${v.replace(/^ad_videos\//, "")}`}
                   target="_blank"
                   rel="noreferrer"
                   style={{ fontSize: 11 }}
@@ -60,22 +60,17 @@ export const AdList = () => {
             </Space>
           )}
         />
-        <Table.Column<Ad>
+        <Table.Column<AdVideo>
           title="길이"
           dataIndex="duration_sec"
           render={(v: number | null) =>
             v == null ? "-" : `${Math.floor(v / 60)}:${String(v % 60).padStart(2, "0")}`
           }
         />
-        <Table.Column<Ad>
-          title="보상"
-          dataIndex="reward_coins"
-          render={(v: number) => <Tag color="green">{v}🪙</Tag>}
-        />
-        <Table.Column<Ad>
+        <Table.Column<AdVideo>
           title="활성"
           dataIndex="active"
-          render={(v: boolean, row: Ad) => (
+          render={(v: boolean, row: AdVideo) => (
             <Switch
               checked={v}
               size="small"
@@ -83,7 +78,7 @@ export const AdList = () => {
             />
           )}
         />
-        <Table.Column<Ad>
+        <Table.Column<AdVideo>
           title="등록"
           dataIndex="created_at"
           sorter

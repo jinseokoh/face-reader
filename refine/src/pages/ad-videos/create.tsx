@@ -4,7 +4,6 @@ import {
   Alert,
   Form,
   Input,
-  InputNumber,
   Switch,
   Upload,
   message,
@@ -14,32 +13,31 @@ import { InboxOutlined } from "@ant-design/icons";
 import { useState } from "react";
 import { adminClient } from "../../providers/data";
 
-interface AdCreateValues {
+interface AdVideoCreateValues {
   title: string;
-  reward_coins: number;
   active: boolean;
 }
 
-export const AdCreate = () => {
+export const AdVideoCreate = () => {
   const { list } = useNavigation();
-  const [form] = Form.useForm<AdCreateValues>();
+  const [form] = Form.useForm<AdVideoCreateValues>();
   const [file, setFile] = useState<UploadFile | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = async (values: AdCreateValues) => {
+  const handleSubmit = async (values: AdVideoCreateValues) => {
     if (!file?.originFileObj) {
       message.error("mp4 파일을 선택하세요");
       return;
     }
     setSubmitting(true);
     try {
-      // 1) storage upload — supabase storage 의 ads bucket
+      // 1) storage upload — 'ad_videos' 버킷
       const fileObj = file.originFileObj;
       const ext = fileObj.name.split(".").pop() ?? "mp4";
       const storageName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-      const storagePath = `ads/${storageName}`;
+      const storagePath = `ad_videos/${storageName}`;
       const { error: upErr } = await adminClient.storage
-        .from("ads")
+        .from("ad_videos")
         .upload(storageName, fileObj, {
           contentType: fileObj.type || "video/mp4",
           upsert: false,
@@ -49,20 +47,19 @@ export const AdCreate = () => {
       // 2) duration probe (browser HTMLVideoElement)
       const duration = await probeVideoDuration(fileObj).catch(() => null);
 
-      // 3) ads row insert
-      const { error: insErr } = await adminClient.from("ads").insert({
+      // 3) ad_videos row insert
+      const { error: insErr } = await adminClient.from("ad_videos").insert({
         title: values.title,
         storage_path: storagePath,
         duration_sec: duration,
-        reward_coins: values.reward_coins,
         active: values.active,
       });
-      if (insErr) throw new Error(`ads insert: ${insErr.message}`);
+      if (insErr) throw new Error(`ad_videos insert: ${insErr.message}`);
 
-      message.success("광고 등록 완료");
-      list("ads");
+      message.success("영상 등록 완료");
+      list("ad_videos");
     } catch (e) {
-      console.error("[ads create] failed", e);
+      console.error("[ad_videos create] failed", e);
       message.error(e instanceof Error ? e.message : String(e));
     } finally {
       setSubmitting(false);
@@ -72,18 +69,18 @@ export const AdCreate = () => {
   return (
     <Create
       saveButtonProps={{ onClick: () => form.submit(), loading: submitting }}
-      title="광고 추가"
+      title="영상 광고 추가"
     >
       <Alert
         type="info"
         showIcon
         style={{ marginBottom: 16 }}
-        message="mp4 파일을 supabase storage 'ads' 버킷에 업로드하고 ads 테이블에 행을 추가합니다."
+        message="mp4 를 'ad_videos' 버킷에 업로드하고 ad_videos 테이블에 행을 추가합니다. 활성 영상은 데일리 무료코인 3편 중 1편으로 노출됩니다."
       />
       <Form
         form={form}
         layout="vertical"
-        initialValues={{ reward_coins: 1, active: true }}
+        initialValues={{ active: true }}
         onFinish={handleSubmit}
       >
         <Form.Item
@@ -91,15 +88,7 @@ export const AdCreate = () => {
           name="title"
           rules={[{ required: true, message: "제목을 입력하세요" }]}
         >
-          <Input placeholder="예: 봄맞이 30초 광고" />
-        </Form.Item>
-
-        <Form.Item
-          label="보상 (코인)"
-          name="reward_coins"
-          rules={[{ required: true, type: "integer", min: 1, max: 10 }]}
-        >
-          <InputNumber min={1} max={10} step={1} style={{ width: 120 }} />
+          <Input placeholder="예: 브랜드 30초 소개 영상" />
         </Form.Item>
 
         <Form.Item label="활성" name="active" valuePropName="checked">
@@ -122,7 +111,7 @@ export const AdCreate = () => {
             </p>
             <p className="ant-upload-text">mp4 파일을 끌어다 놓거나 클릭해서 선택</p>
             <p className="ant-upload-hint" style={{ fontSize: 12 }}>
-              storage 의 'ads' 버킷에 업로드되고 public URL 로 Flutter 앱에서 재생됩니다.
+              'ad_videos' 버킷에 업로드되고 public URL 로 Flutter 앱에서 재생됩니다.
             </p>
           </Upload.Dragger>
         </Form.Item>

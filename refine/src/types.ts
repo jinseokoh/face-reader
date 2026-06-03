@@ -53,13 +53,24 @@ export function parseDemographics(body: string | null | undefined): Demographics
   }
 }
 
-export type Ad = {
+// custom video 광고 — 무료코인 3편 중 1편으로 노출 (per-video reward 없음).
+export type AdVideo = {
   id: string;
   title: string;
   storage_path: string;
   duration_sec: number | null;
-  reward_coins: number;
   active: boolean;
+  created_at: string;
+};
+
+// 외부 광고주 배너 — 홈 탭 rotation 노출, 탭 시 link_url 이동. 측정 없음.
+export type AdImage = {
+  id: string;
+  title: string;
+  storage_path: string;
+  link_url: string | null;
+  active: boolean;
+  sort_order: number;
   created_at: string;
 };
 
