@@ -202,7 +202,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final compact = MediaQuery.of(context).size.height < 720;
     final imageHeight = compact ? 220.0 : 280.0;
     final topGap = compact ? AppSpacing.sm : AppSpacing.xxl;
-    final afterImage = compact ? AppSpacing.lg : 28.0;
     final afterTitle = compact ? AppSpacing.xs : 10.0;
     final bottomGap = compact ? AppSpacing.lg : AppSpacing.huge;
     final titleFontSize = compact ? 30.0 : 36.0;
@@ -220,7 +219,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     SizedBox(height: topGap),
                     // 활성 광고주 배너(ad_images) rotation. 없으면 banner.png fallback.
                     _HomeBanner(height: imageHeight),
-                    SizedBox(height: afterImage),
+                    // 타이틀+섭타이틀 블록을 배너와 버튼 사이 가운데로 — 위·아래
+                    // 동일 Spacer 로 감싸 여백을 even 하게.
+                    const Spacer(),
                     Text(
                       '관상은 과학이다.',
                       style: AppText.display.copyWith(
