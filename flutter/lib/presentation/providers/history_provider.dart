@@ -2,8 +2,11 @@ import 'dart:developer' as dev;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_ce_flutter/hive_ce_flutter.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 import 'package:facely/core/hive/hive_setup.dart';
+import 'package:facely/core/storage/thumbnail_paths.dart';
+import 'package:facely/data/services/r2_uploader.dart';
 import 'package:facely/data/services/supabase_service.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 
@@ -86,6 +89,40 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
 
   Future<void> updateHive() async {
     await _saveToHive();
+  }
+
+  /// lazy 자가치유 — thumbnailKey 가 비었지만 로컬 thumbnail 파일이 아직 있으면
+  /// R2 에 재업로드하고 key 를 채워 Hive·Supabase 에 영속화한다. 분석 당시
+  /// 썸네일 업로드가 일시 실패해 thumbnailKey 가 비었던 카드를, 재설치로 로컬
+  /// 파일이 소멸하기 전에 복구한다(재설치 후엔 소스가 없어 복구 불가 → Sentry
+  /// 가 그 빈도를 알려준다). 받은 카드·복원 파트너는 로컬 파일이 없어 자동 skip.
+  Future<void> backfillThumbnailIfMissing(FaceReadingReport report) async {
+    if (report.thumbnailKey != null) return;
+    final uuid = report.supabaseId;
+    if (uuid == null) return;
+    final idx = state.indexWhere((r) => r.supabaseId == uuid);
+    if (idx < 0) return; // 로컬 history 카드에 한함
+    final file = await ThumbnailPaths.resolveFile(report.thumbnailPath);
+    if (file == null || !await file.exists()) return;
+    try {
+      final bytes = await file.readAsBytes();
+      final up = await R2Uploader()
+          .upload(prefix: 'thumbnails', uuid: uuid, bytes: bytes);
+      state[idx].thumbnailKey = up.key;
+      state = [...state];
+      await _saveToHive();
+      await SupabaseService().upsertMetricsBody(state[idx]).catchError((e, st) {
+        _log('backfill supabase upsert error: $e');
+        Sentry.captureException(e, stackTrace: st);
+      });
+      _log('backfilled thumbnailKey uuid=$uuid → ${up.key}');
+    } catch (e, st) {
+      _log('backfill failed uuid=$uuid: $e');
+      await Sentry.captureException(e, stackTrace: st, withScope: (s) {
+        s.setTag('op', 'thumbnail_backfill');
+        s.setTag('uuid', uuid);
+      });
+    }
   }
 
   /// Pull-to-refresh 재계산 파이프라인:

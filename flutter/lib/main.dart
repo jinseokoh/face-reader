@@ -10,19 +10,37 @@ import 'package:facely/data/services/deep_link_service.dart';
 import 'package:facely/data/services/face_shape_classifier.dart';
 import 'package:facely/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // DSN 을 읽기 위해 dotenv 만 먼저 로드. 이후 모든 init·runApp 을 Sentry 로
+  // 감싸 cold-start init 단계의 예외까지 포착한다. DSN 미설정이면 Sentry 는
+  // no-op (앱 정상 동작).
+  await dotenv.load(fileName: '.env');
+  await SentryFlutter.init(
+    (options) {
+      options.dsn = dotenv.maybeGet('SENTRY_DSN') ?? '';
+      options.environment = kReleaseMode ? 'production' : 'debug';
+      options.tracesSampleRate = kReleaseMode ? 0.2 : 1.0;
+      // 얼굴 PII 가 흐르는 앱 — 기본 PII 자동수집 차단.
+      options.sendDefaultPii = false;
+    },
+    appRunner: _bootstrapAndRun,
+  );
+}
+
+Future<void> _bootstrapAndRun() async {
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   timeago.setLocaleMessages('ko', timeago.KoMessages());
-  await dotenv.load(fileName: '.env');
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );

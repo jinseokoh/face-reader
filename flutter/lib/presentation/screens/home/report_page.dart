@@ -932,6 +932,18 @@ class _ReportPageState extends ConsumerState<ReportPage> {
   FaceReadingReport get report => widget.report;
 
   @override
+  void initState() {
+    super.initState();
+    // 본인 카드인데 R2 thumbnailKey 가 비어있고 로컬 파일이 남아있으면 자가치유
+    // 업로드 (재설치로 로컬 파일이 사라지기 전에 영속 이미지 확보). 받은 카드는 skip.
+    if (report.source != AnalysisSource.received && report.thumbnailKey == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(historyProvider.notifier).backfillThumbnailIfMissing(report);
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final isReceived = report.source == AnalysisSource.received;
     // received 카드는 받는 사람 입장에서 1회용 view — bookmark icon 으로 내 Hive
