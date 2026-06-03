@@ -269,27 +269,24 @@ class _PhysiognomyItem extends ConsumerWidget {
                               color: AppColors.border,
                             ),
                             const SizedBox(height: AppSpacing.sm),
-                            _buildArchetypeBadges(),
+                            // 한 줄에 생성시간(좌) ↔ archetype 뱃지(우) — 수직 중앙 정렬.
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Text(
+                                  timeago.format(report.timestamp,
+                                      locale: 'ko'),
+                                  style: AppText.hint,
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                                Expanded(child: _buildArchetypeBadges()),
+                              ],
+                            ),
                           ],
                         ),
                       ),
                     ],
                   ),
-                ),
-              ),
-            ),
-            // 좌하단 absolute-positioned timestamp — avatar 아래 caption 자리.
-            Positioned(
-              bottom: 0,
-              left: 0,
-              child: Padding(
-                padding: const EdgeInsets.only(
-                  bottom: AppSpacing.sm,
-                  left: AppSpacing.md,
-                ),
-                child: Text(
-                  timeago.format(report.timestamp, locale: 'ko'),
-                  style: AppText.hint,
                 ),
               ),
             ),
@@ -374,6 +371,8 @@ class _PhysiognomyItem extends ConsumerWidget {
     }
 
     return Wrap(
+      alignment: WrapAlignment.end,
+      runAlignment: WrapAlignment.center,
       spacing: AppSpacing.xs,
       runSpacing: AppSpacing.xs,
       children: [
@@ -807,7 +806,7 @@ class _ProfileHintCard extends StatelessWidget {
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Text(
-              '내 관상을 설정하면 다른 사람과\n나와의 궁합을 분석해 볼 수 있어요',
+              '점3개 더보기 메뉴 버튼을 누르고, 내 관상을 설정하면 다른 사람과\n나와의 궁합을 분석해 볼 수 있어요',
               style: AppText.caption.copyWith(
                 fontWeight: FontWeight.w500,
                 color: AppColors.textPrimary,
