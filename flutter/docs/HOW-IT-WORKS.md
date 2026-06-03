@@ -401,7 +401,7 @@ total = clamp(50 + (rawTotal - 50) × 1.4, 5, 99)
 
 #### Intimacy tone 분기 (narrative 만)
 - `pure`: 동성 페어 OR 한쪽이라도 10대·70대 이상. 현재의 점잖은 산문체 (opener + 4 axis + closer).
-- `flirty`: 이성 페어 + 한쪽 20대 또는 60대. 인스타 릴스 자막 톤 (opener + closer).
+- `flirty`: 이성 페어 + 한쪽 20대 또는 60대. 짧은 SNS 영상 자막 톤 (opener + closer).
 - `spicy`: 이성 페어 + 양쪽 모두 30~50대. 들키면 안 되는 분위기 punch line (opener + closer).
 
 ### 7.2 Label 4-tier

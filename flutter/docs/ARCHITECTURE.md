@@ -95,7 +95,7 @@ DeepFace 추정값 (age/gender/ethnicity) 백그라운드 await
   ↓
 [분석 시작] → analyzeFaceReading() → 리포트 생성
   ↓
-thumbnail: ImageResizer.faceCenterSquareCropFromBytes (ML Kit bbox + 256 square JPG)
+thumbnail: ImageResizer.faceCenterSquareCropFromBytes (ML Kit bbox + 200 square JPG)
   ↓
 history.add(report) → Hive 저장 → 관상 탭 전환
   ↓
@@ -322,7 +322,7 @@ Screen → Provider (ref.watch / ref.read)
         ▼
 [공유 버튼]
    share_publisher.publishSolo(uuid)
-   ├─ R2 presign + PUT thumbnail 256 JPG
+   ├─ R2 presign + PUT thumbnail 200 JPG
    ├─ Supabase REST upsert /rest/v1/metrics
    └─ share_plus(https://facely.kr/r/{uuid})
         │
@@ -403,7 +403,7 @@ KST 자정 기준 reset. 진행도는 `freeCoinProvider` 가 `ad_reward_status` 
 | `/contact` · `/privacy` · `/terms` | 정적 문서 |
 | `.well-known/apple-app-site-association` | iOS Universal Link |
 | `.well-known/assetlinks.json` | Android App Link |
-| R2 bucket `thumbnails/` | 256 JPG face-centered thumbnail (영구) |
+| R2 bucket `thumbnails/` | 200 JPG face-centered thumbnail (영구) |
 | R2 bucket `temp/` | 720 JPG analyze 입력 (lifecycle 1일 자동 삭제) |
 
 엔진 산출물 `react/app/lib/shared/face_engine.js` 는 `pnpm build:shared` 로 생성 (commit 안 함). `react/app/lib/traits.ts` 가 로드 실패 시 명시적 에러로 fail-fast.
@@ -443,7 +443,7 @@ RLS 요점:
 
 - **Endpoint**: `POST /analyze {image_url}` (R2 temp/ presigned URL 입력)
 - **출력**: `{age: int, gender: "male"/"female", ethnicity: "eastAsian"/...}` — Flutter enum name 으로 정규화
-- **Flutter 호출**: `face_metadata_client.dart::analyze(File)` — 720 PUT → /analyze → 256 face-center JPG PUT → FaceMetadata 반환
+- **Flutter 호출**: `face_metadata_client.dart::analyze(File)` — 720 PUT → /analyze → 200 face-center JPG PUT → FaceMetadata 반환
 
 ### 6.4 AdMob (광고 수익화)
 

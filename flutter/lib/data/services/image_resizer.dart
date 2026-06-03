@@ -10,7 +10,7 @@ import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 /// Native HW-accelerated image resize. Used for two outputs of the analyze
 /// pipeline:
 ///   * 720px wide   — uploaded to R2 temp/, sent to Python /analyze
-///   * 256×256 sq   — face-centered crop, uploaded to R2 thumbnails/ after
+///   * 200×200 sq   — face-centered crop, uploaded to R2 thumbnails/ after
 ///                    analyze success
 ///
 /// JPEG output is the default since R2 storage cost matters and the analysis
