@@ -1,13 +1,19 @@
+import 'dart:async';
+
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:facely/config/router.dart';
 import 'package:facely/core/theme.dart';
+import 'package:facely/data/services/ad_image_service.dart';
 import 'package:facely/data/services/analytics_service.dart';
 import 'package:facely/domain/models/capture_result.dart';
+import 'package:facely/presentation/providers/ad_image_provider.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'album_capture_page.dart';
 import 'face_mesh_page.dart';
@@ -45,11 +51,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: Column(
                   children: [
                     SizedBox(height: topGap),
-                    Image.asset(
-                      'assets/images/home.png',
-                      height: imageHeight,
-                      fit: BoxFit.contain,
-                    ),
+                    // 활성 광고주 배너(ad_images) rotation. 없으면 home.png fallback.
+                    _HomeBanner(height: imageHeight),
                     SizedBox(height: afterImage),
                     Text(
                       '관상은 과학이다.',
@@ -245,6 +248,93 @@ class _HomeActionCardState extends State<_HomeActionCard>
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// 홈 상단 배너 — 활성 ad_images 를 sort_order 순으로 자동 rotation. 탭하면
+/// link_url 로 외부 브라우저 이동. 활성 배너가 없거나 로드 실패 시 정적 home.png.
+class _HomeBanner extends ConsumerStatefulWidget {
+  final double height;
+  const _HomeBanner({required this.height});
+
+  @override
+  ConsumerState<_HomeBanner> createState() => _HomeBannerState();
+}
+
+class _HomeBannerState extends ConsumerState<_HomeBanner> {
+  final PageController _pageController = PageController();
+  Timer? _timer;
+  int _count = 0;
+
+  void _syncRotation(int count) {
+    if (count == _count) return;
+    _count = count;
+    _timer?.cancel();
+    if (count <= 1) return;
+    _timer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (!mounted || !_pageController.hasClients) return;
+      final next = ((_pageController.page ?? 0).round() + 1) % _count;
+      _pageController.animateToPage(
+        next,
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeInOut,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _open(String? url) async {
+    if (url == null || url.trim().isEmpty) return;
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null) return;
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  Widget _fallback() => Image.asset(
+        'assets/images/home.png',
+        height: widget.height,
+        fit: BoxFit.contain,
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final banners =
+        ref.watch(adImagesProvider).asData?.value ?? const <AdImageBanner>[];
+    if (banners.isEmpty) {
+      // 로딩/없음/실패 모두 정적 이미지로 자리 유지 (레이아웃 안정).
+      _syncRotation(0);
+      return SizedBox(height: widget.height, child: _fallback());
+    }
+    // 배너 수에 맞춰 rotation 타이머 동기화 (build 중 setState 없이 안전).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncRotation(banners.length);
+    });
+    return SizedBox(
+      height: widget.height,
+      child: PageView.builder(
+        controller: _pageController,
+        itemCount: banners.length,
+        itemBuilder: (_, i) {
+          final b = banners[i];
+          return GestureDetector(
+            onTap: () => _open(b.linkUrl),
+            child: CachedNetworkImage(
+              imageUrl: b.imageUrl,
+              height: widget.height,
+              fit: BoxFit.contain,
+              placeholder: (_, _) => _fallback(),
+              errorWidget: (_, _, _) => _fallback(),
+            ),
+          );
+        },
       ),
     );
   }

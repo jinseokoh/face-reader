@@ -1,10 +1,12 @@
 import 'package:facely/core/theme.dart';
+import 'package:facely/data/services/ad_service.dart';
 import 'package:facely/data/services/admob_service.dart';
 import 'package:facely/data/services/analytics_service.dart';
 import 'package:facely/data/services/coin_service.dart';
 import 'package:facely/data/services/free_coin_service.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:facely/presentation/providers/free_coin_provider.dart';
+import 'package:facely/presentation/screens/ads/ad_reward_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -253,18 +255,41 @@ class _PurchaseSheetState extends ConsumerState<PurchaseSheet> {
 
   Future<void> _watchAd() async {
     setState(() => _watchingAd = true);
-    final earned = await AdMobService().showRewarded();
-    if (!mounted) {
-      return;
-    }
-    if (!earned) {
-      setState(() => _watchingAd = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('광고 시청이 완료되지 않았어요')),
-      );
-      return;
-    }
     try {
+      // 3편 중 첫 슬롯(progress==0)이고 활성 영상 광고가 있으면 내 브랜드 영상을
+      // 노출(나머지 슬롯·영상 없으면 AdMob). 어느 쪽이든 시청 완료는 동일하게
+      // recordView 로 카운트된다.
+      AdVideo? customVideo;
+      try {
+        final status = await FreeCoinService().status();
+        if (status.progress == 0) {
+          customVideo = await AdService().nextActiveVideo();
+        }
+      } catch (_) {
+        customVideo = null; // 영상 조회 실패 시 AdMob 으로 폴백.
+      }
+      if (!mounted) return;
+
+      final bool earned;
+      if (customVideo != null) {
+        final r = await Navigator.of(context, rootNavigator: true).push<bool>(
+          MaterialPageRoute(
+            builder: (_) => AdRewardScreen(video: customVideo!),
+            fullscreenDialog: true,
+          ),
+        );
+        earned = r == true;
+      } else {
+        earned = await AdMobService().showRewarded();
+      }
+      if (!mounted) return;
+      if (!earned) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('광고 시청이 완료되지 않았어요')),
+        );
+        return;
+      }
+
       final s = await FreeCoinService().recordView();
       if (!mounted) return;
       ref.invalidate(freeCoinStatusProvider);

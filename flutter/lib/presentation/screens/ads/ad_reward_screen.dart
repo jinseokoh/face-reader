@@ -1,34 +1,32 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:video_player/video_player.dart';
 
 import 'package:facely/core/theme.dart';
 import 'package:facely/data/services/ad_service.dart';
-import 'package:facely/presentation/providers/auth_provider.dart';
-import 'package:facely/presentation/providers/wallet_provider.dart';
 
-/// 광고 시청 → 보상 화면.
+/// custom video 광고 재생 화면 — 무료코인 3편 중 1편 슬롯.
 ///
 /// 흐름:
-///  1) 활성 광고 1건 fetch
-///  2) video_player 로 mp4 재생 (controls 노출, seek 막음)
-///  3) `onCompleted` 또는 position >= duration - 200ms 시점에 RPC 호출
-///  4) 성공 시 잔액 갱신 + snackbar + 화면 닫음
-class AdRewardScreen extends ConsumerStatefulWidget {
-  const AdRewardScreen({super.key});
+///  1) 전달받은 [video] 를 video_player 로 재생 (seek 막음)
+///  2) 끝까지 시청하면 `Navigator.pop(context, true)` 로 "시청 완료" 반환
+///  3) 중간에 닫으면 false/null 반환 (호출부가 무료코인 카운트 안 함)
+///
+/// 코인 지급·진행도 기록은 호출부(PurchaseSheet)가 AdMob 과 동일하게
+/// FreeCoinService.recordView() 로 처리한다 — 본 화면은 재생만 책임.
+class AdRewardScreen extends StatefulWidget {
+  final AdVideo video;
+  const AdRewardScreen({super.key, required this.video});
 
   @override
-  ConsumerState<AdRewardScreen> createState() => _AdRewardScreenState();
+  State<AdRewardScreen> createState() => _AdRewardScreenState();
 }
 
-class _AdRewardScreenState extends ConsumerState<AdRewardScreen> {
-  Ad? _ad;
+class _AdRewardScreenState extends State<AdRewardScreen> {
   VideoPlayerController? _controller;
-  bool _claimed = false;
+  bool _completed = false;
   String? _error;
-  bool _claiming = false;
-  // forward seek 차단용 — 정상 재생은 tick 당 ~16ms, 1초 이상 점프면 seek 으로 간주.
+  // forward seek 차단용 — 1초 이상 점프면 seek 으로 간주.
   Duration _lastPos = Duration.zero;
 
   @override
@@ -39,20 +37,12 @@ class _AdRewardScreenState extends ConsumerState<AdRewardScreen> {
 
   Future<void> _bootstrap() async {
     try {
-      final ad = await AdService().nextAd();
-      if (ad == null) {
-        setState(() => _error = '재생 가능한 광고가 없습니다.');
-        return;
-      }
-      final c = VideoPlayerController.networkUrl(Uri.parse(ad.videoUrl));
+      final c = VideoPlayerController.networkUrl(Uri.parse(widget.video.videoUrl));
       await c.initialize();
       c.addListener(_onTick);
       await c.play();
       if (!mounted) return;
-      setState(() {
-        _ad = ad;
-        _controller = c;
-      });
+      setState(() => _controller = c);
     } catch (e) {
       if (mounted) setState(() => _error = '광고 로드 실패: $e');
     }
@@ -60,13 +50,12 @@ class _AdRewardScreenState extends ConsumerState<AdRewardScreen> {
 
   void _onTick() {
     final c = _controller;
-    final ad = _ad;
-    if (c == null || ad == null || _claimed) return;
+    if (c == null || _completed) return;
     final pos = c.value.position;
     final dur = c.value.duration;
     if (dur == Duration.zero) return;
 
-    // forward seek 차단 — 1초 이상 앞으로 점프했으면 마지막 정상 position 으로 되돌림.
+    // forward seek 차단 — 1초 이상 앞으로 점프했으면 되돌림.
     if (pos - _lastPos > const Duration(seconds: 1)) {
       c.seekTo(_lastPos);
       return;
@@ -74,31 +63,8 @@ class _AdRewardScreenState extends ConsumerState<AdRewardScreen> {
     _lastPos = pos;
 
     if (pos >= dur - const Duration(milliseconds: 250)) {
-      _claimed = true;
-      _claim(ad.id);
-    }
-  }
-
-  Future<void> _claim(String adId) async {
-    setState(() => _claiming = true);
-    try {
-      final newBalance = await AdService().claim(adId);
-      await ref.read(authProvider.notifier).refreshCoins();
-      ref.invalidate(walletHistoryProvider);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('보상 ${_ad?.rewardCoins ?? 1}코인 지급 완료. 잔액 $newBalance'),
-          backgroundColor: const Color(0xFF2E7D32),
-        ),
-      );
-      Navigator.of(context).pop(true);
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _claiming = false;
-        _error = '보상 지급 실패: $e';
-      });
+      _completed = true;
+      if (mounted) Navigator.of(context).pop(true);
     }
   }
 
@@ -112,47 +78,32 @@ class _AdRewardScreenState extends ConsumerState<AdRewardScreen> {
   @override
   Widget build(BuildContext context) {
     final c = _controller;
-    final ad = _ad;
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
-        title: Text(ad?.title ?? '광고 보고 코인 받기'),
+        title: Text(widget.video.title),
       ),
       body: Center(
         child: _error != null
             ? _ErrorView(message: _error!)
             : (c == null || !c.value.isInitialized)
                 ? const CircularProgressIndicator(color: Colors.white)
-                : Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      AspectRatio(
-                        aspectRatio: c.value.aspectRatio,
-                        child: VideoPlayer(c),
-                      ),
-                      if (_claiming)
-                        Container(
-                          color: Colors.black54,
-                          child: const Center(
-                            child: CircularProgressIndicator(color: Colors.white),
-                          ),
-                        ),
-                    ],
+                : AspectRatio(
+                    aspectRatio: c.value.aspectRatio,
+                    child: VideoPlayer(c),
                   ),
       ),
-      bottomNavigationBar: ad == null
-          ? null
-          : Container(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-              color: Colors.black,
-              child: Text(
-                '끝까지 시청하면 ${ad.rewardCoins}코인이 지급됩니다.',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white70, fontSize: 13),
-              ),
-            ),
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        color: Colors.black,
+        child: const Text(
+          '끝까지 시청하면 광고 1편으로 카운트됩니다.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.white70, fontSize: 13),
+        ),
+      ),
     );
   }
 }
@@ -167,7 +118,8 @@ class _ErrorView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          FaIcon(FontAwesomeIcons.circleExclamation, color: AppTheme.textHint, size: 40),
+          FaIcon(FontAwesomeIcons.circleExclamation,
+              color: AppTheme.textHint, size: 40),
           const SizedBox(height: 12),
           Text(
             message,
