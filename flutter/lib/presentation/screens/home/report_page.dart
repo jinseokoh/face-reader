@@ -383,7 +383,7 @@ class _HeroTop3Cell extends StatelessWidget {
 /// in-app 디자인 토큰 비적용 (export medium). 본문 1줄 ellipsis 로 vertical
 /// overflow 방지 (canvas 400px 안 fixed fit).
 class _IconLineRow extends StatelessWidget {
-  final IconData icon;
+  final FaIconData icon;
   final Color tone;
   final String text;
   const _IconLineRow({

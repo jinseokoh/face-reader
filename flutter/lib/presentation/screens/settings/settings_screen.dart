@@ -185,7 +185,7 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   Widget _menuItem({
-    required IconData icon,
+    required FaIconData icon,
     required String title,
     String? subtitle,
     Color? titleColor,

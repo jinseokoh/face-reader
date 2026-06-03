@@ -17,7 +17,7 @@ class EmptyStatePlaceholder extends StatelessWidget {
   });
 
   /// FontAwesome icon. 56px / [AppColors.border] 로 렌더된다.
-  final IconData icon;
+  final FaIconData icon;
 
   /// 1차 메시지. [AppText.sectionTitle] w400 + [AppColors.textHint].
   final String title;

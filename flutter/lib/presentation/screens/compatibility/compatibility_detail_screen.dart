@@ -754,7 +754,7 @@ class _CompatShareCardComposite extends StatelessWidget {
 }
 
 /// 등급별 얼굴 아이콘 — 관계평(위) 줄에 사용. 등급이 좋을수록 더 환한 표정.
-IconData _gradeFaceIcon(CompatLabel l) => switch (l) {
+FaIconData _gradeFaceIcon(CompatLabel l) => switch (l) {
       CompatLabel.cheonjakjihap => FontAwesomeIcons.faceGrinBeam,
       CompatLabel.geumseulsanghwa => FontAwesomeIcons.faceSmileBeam,
       CompatLabel.mahapgaseong => FontAwesomeIcons.faceGrin,
@@ -764,7 +764,7 @@ IconData _gradeFaceIcon(CompatLabel l) => switch (l) {
 /// 궁합 share card 의 한줄평 row — 관상 카드 `_IconLineRow` 와 동일한
 /// icon(40) + text(42·w500·#333) 패턴. 위 등급별 얼굴(관계평) · 아래 venus-mars(오행평).
 class _CompatIconLineRow extends StatelessWidget {
-  final IconData icon;
+  final FaIconData icon;
   final String text;
   const _CompatIconLineRow({required this.icon, required this.text});
 

@@ -27,7 +27,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeActionCard extends StatefulWidget {
   final String label;
-  final IconData icon;
+  final FaIconData icon;
   final VoidCallback? onPressed;
   final bool reverse;
 

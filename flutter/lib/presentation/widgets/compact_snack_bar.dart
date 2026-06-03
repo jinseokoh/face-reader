@@ -4,7 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 class CompactSnackBar extends StatelessWidget {
   final String message;
   final Color backgroundColor;
-  final IconData icon;
+  final FaIconData icon;
 
   factory CompactSnackBar.error({required String message}) =>
       CompactSnackBar._(message: message, backgroundColor: const Color(0xFFE53935), icon: FontAwesomeIcons.circleExclamation);
