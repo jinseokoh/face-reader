@@ -16,7 +16,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart';
-import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:sentry/sentry.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
@@ -26,7 +26,10 @@ void main() async {
   // 감싸 cold-start init 단계의 예외까지 포착한다. DSN 미설정이면 Sentry 는
   // no-op (앱 정상 동작).
   await dotenv.load(fileName: '.env');
-  await SentryFlutter.init(
+  // 순수 Dart `sentry` 패키지 — 네이티브 Kotlin 모듈이 없어 build 충돌 없음.
+  // appRunner 가 runZonedGuarded 로 비포착 async 에러를 자동 수집. Flutter
+  // 프레임워크 에러는 아래 _bootstrapAndRun 에서 FlutterError.onError 로 연결.
+  await Sentry.init(
     (options) {
       options.dsn = dotenv.maybeGet('SENTRY_DSN') ?? '';
       options.environment = kReleaseMode ? 'production' : 'debug';
@@ -39,6 +42,11 @@ void main() async {
 }
 
 Future<void> _bootstrapAndRun() async {
+  // Flutter 프레임워크(build/layout/paint) 에러를 Sentry 로. 콘솔 출력도 유지.
+  FlutterError.onError = (details) {
+    Sentry.captureException(details.exception, stackTrace: details.stack);
+    FlutterError.presentError(details);
+  };
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   timeago.setLocaleMessages('ko', timeago.KoMessages());
   await Firebase.initializeApp(

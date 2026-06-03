@@ -62,7 +62,7 @@ dependencies:
   # Shared physiognomy engine (also consumed by react/ via dart compile js).
   face_engine:
     path: ../shared
-  sentry_flutter: ^8.14.2
+  sentry: ^9.21.0
 
 dev_dependencies:
   flutter_test:

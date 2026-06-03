@@ -2,7 +2,7 @@ import 'dart:developer' as dev;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_ce_flutter/hive_ce_flutter.dart';
-import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:sentry/sentry.dart';
 
 import 'package:facely/core/hive/hive_setup.dart';
 import 'package:facely/core/storage/thumbnail_paths.dart';

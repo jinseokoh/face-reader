@@ -7,7 +7,7 @@ import 'package:facely/data/services/r2_uploader.dart';
 import 'package:facely/domain/models/face_metadata.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
-import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:sentry/sentry.dart';
 import 'package:uuid/uuid.dart';
 
 /// 옵션 F (with 0 orphan strategy) 전체 파이프라인의 client-side orchestrator.
