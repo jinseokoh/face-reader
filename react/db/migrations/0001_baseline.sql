@@ -7,6 +7,22 @@
 -- 통째로 붙여 넣고 RUN. extension 외엔 모두 idempotent (DROP IF EXISTS + CREATE
 -- OR REPLACE).
 --
+-- ⚠️ 완전 초기화 (clean slate — 데이터까지 삭제):
+--   테이블이 `create table if not exists` 라, 이 파일을 그대로 RUN 하면
+--   policy·RPC·view·trigger 만 갱신되고 **기존 행 데이터는 보존**된다. 데이터까지
+--   비우려면 SQL Editor 에서 아래를 먼저 실행한 뒤 이 파일 전체를 붙여넣고 RUN:
+--
+--     drop schema public cascade;
+--     create schema public;
+--     grant usage on schema public to anon, authenticated, service_role;
+--     grant all   on schema public to postgres, service_role;
+--
+--   주의:
+--     • auth.users 는 public 밖이라 위 drop 으로 안 지워진다 → 계정·코인까지
+--       리셋하려면 대시보드 Authentication → Users 에서 별도 삭제. (재가입 시
+--       handle_new_user 트리거가 public.users + 보너스 3 코인 재생성)
+--     • R2(cdn.facely.kr) 썸네일 객체는 supabase 와 무관 — 별도로 남는다.
+--
 -- 포함:
 --   • tables    : users · coins · metrics · unlocks · bonus_recipients · ad_rewards
 --                 (+ ads / ad_views — TODO 블록 참조)
