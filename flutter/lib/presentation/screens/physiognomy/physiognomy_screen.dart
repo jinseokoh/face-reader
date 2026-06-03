@@ -64,7 +64,11 @@ class _HeaderAvatarPlaceholder extends StatelessWidget {
     return Container(
       color: AppColors.surface,
       child: const Center(
-        child: FaIcon(FontAwesomeIcons.userPlus, size: 18, color: AppColors.textHint),
+        child: FaIcon(
+          FontAwesomeIcons.userPlus,
+          size: 18,
+          color: AppColors.textHint,
+        ),
       ),
     );
   }
@@ -87,7 +91,7 @@ class _MyProfileHeader extends StatelessWidget {
     final isSet = mf != null;
     final titleText = isSet
         ? '${mf.ageGroup.labelKo} ${mf.gender.labelKo} '
-            '${mf.ethnicity.labelKo}'
+              '${mf.ethnicity.labelKo}'
         : '내 관상을 설정해주세요.';
     final captionText = isSet
         ? (mf.alias ?? mf.faceShape.korean)
@@ -95,9 +99,7 @@ class _MyProfileHeader extends StatelessWidget {
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.background,
-        border: Border(
-          bottom: BorderSide(color: AppColors.border, width: 0.5),
-        ),
+        border: Border(bottom: BorderSide(color: AppColors.border, width: 0.5)),
       ),
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.lg,
@@ -172,7 +174,8 @@ class _PhysiognomyItem extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final displayName = report.alias ??
+    final displayName =
+        report.alias ??
         (report.source == AnalysisSource.received
             ? '카톡으로 전달받은 카드'
             : report.faceShape.korean);
@@ -184,162 +187,172 @@ class _PhysiognomyItem extends ConsumerWidget {
         key: ValueKey(report.supabaseId ?? index),
         children: [
           Material(
-              color: AppColors.surface,
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            child: InkWell(
+              onTap: () => context.push(
+                '/r/${report.supabaseId ?? 'local'}',
+                extra: report,
+              ),
               borderRadius: BorderRadius.circular(AppRadius.lg),
-              child: InkWell(
-                onTap: () => context.push(
-                  '/r/${report.supabaseId ?? 'local'}',
-                  extra: report,
+              child: Padding(
+                // 우측 huge(32) — 우상단 absolute-positioned 3-dot 메뉴 자리 확보.
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  AppSpacing.md,
+                  AppSpacing.huge,
+                  AppSpacing.md,
                 ),
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-                child: Padding(
-                  // 우측 huge(32) — 우상단 absolute-positioned 3-dot 메뉴 자리 확보.
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.md,
-                    AppSpacing.md,
-                    AppSpacing.huge,
-                    AppSpacing.md,
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildLeadingIcon(),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Row(
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    // 헤더 §3.7 과 동일 포맷: 연령대 성별 인종 (가운데점 X).
-                                    '${report.ageGroup.labelKo} '
-                                    '${report.gender.labelKo} '
-                                    '${report.ethnicity.labelKo}',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: AppText.sectionTitle.copyWith(
-                                      fontWeight: FontWeight.w700,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // 상단: 아바타 + 데모그래픽/별칭 (아바타 옆 영역).
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildLeadingIcon(),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      // 헤더 §3.7 과 동일 포맷: 연령대 성별 인종 (가운데점 X).
+                                      '${report.ageGroup.labelKo} '
+                                      '${report.gender.labelKo} '
+                                      '${report.ethnicity.labelKo}',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppText.sectionTitle.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                if (isMyFace) ...[
-                                  const SizedBox(width: AppSpacing.xs),
-                                  const FaIcon(
-                                    FontAwesomeIcons.circleCheck,
-                                    size: 12,
-                                    color: AppColors.gold,
-                                  ),
-                                  const SizedBox(width: AppSpacing.xs),
-                                  Text(
-                                    '내 관상',
-                                    style: AppText.caption.copyWith(
-                                      fontWeight: FontWeight.w600,
+                                  if (isMyFace) ...[
+                                    const SizedBox(width: AppSpacing.xs),
+                                    const FaIcon(
+                                      FontAwesomeIcons.circleCheck,
+                                      size: 12,
                                       color: AppColors.gold,
+                                    ),
+                                    const SizedBox(width: AppSpacing.xs),
+                                    Text(
+                                      '내 관상',
+                                      style: AppText.caption.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.gold,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              const SizedBox(height: AppSpacing.xs),
+                              // 헤더 caption 자리: source badge + 별칭/얼굴형.
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  SourceBadge(source: report.source),
+                                  const SizedBox(width: AppSpacing.xs),
+                                  Flexible(
+                                    child: Text(
+                                      displayName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppText.caption.copyWith(
+                                        color: AppColors.textHint,
+                                      ),
                                     ),
                                   ),
                                 ],
-                              ],
-                            ),
-                            const SizedBox(height: AppSpacing.xs),
-                            // 헤더 caption 자리: source badge + 별칭/얼굴형.
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                SourceBadge(source: report.source),
-                                const SizedBox(width: AppSpacing.xs),
-                                Flexible(
-                                  child: Text(
-                                    displayName,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: AppText.caption.copyWith(
-                                      color: AppColors.textHint,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: AppSpacing.sm),
-                            const Divider(
-                              height: 1,
-                              thickness: 0.5,
-                              color: AppColors.border,
-                            ),
-                            const SizedBox(height: AppSpacing.sm),
-                            // 한 줄에 생성시간(좌) ↔ archetype 뱃지(우) — 수직 중앙 정렬.
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Text(
-                                  timeago.format(report.timestamp,
-                                      locale: 'ko'),
-                                  style: AppText.hint,
-                                ),
-                                const SizedBox(width: AppSpacing.sm),
-                                Expanded(child: _buildArchetypeBadges()),
-                              ],
-                            ),
-                          ],
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    const Divider(
+                      height: 1,
+                      thickness: 0.5,
+                      color: AppColors.border,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    // 카드 full-width 하단 바: 생성시간(좌) ↔ archetype 뱃지(우),
+                    // 수직 중앙. 아바타 폭까지 써서 1줄에 담아 wrapping 방지.
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          timeago.format(report.timestamp, locale: 'ko'),
+                          style: AppText.hint,
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(child: _buildArchetypeBadges()),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ),
-            // 우상단 absolute-positioned 3-dot 메뉴 — 모서리에 최대한 붙임.
-            Positioned(
-              top: 0,
-              right: 0,
-              child: PopupMenuButton<String>(
-                tooltip: '메뉴',
-                padding: EdgeInsets.zero,
-                iconSize: 18,
-                icon: const FaIcon(FontAwesomeIcons.ellipsisVertical,
-                    color: AppColors.textHint, size: 16),
-                color: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-                onSelected: (value) {
-                  if (value == 'rename') {
-                    _showAliasDialog(context, ref, displayName);
-                  } else if (value == 'setMyFace') {
-                    _setMyFace(context, ref);
-                  } else if (value == 'clearMyFace') {
-                    _clearMyFace(context, ref);
-                  } else if (value == 'delete') {
-                    _confirmDelete(context, ref);
-                  }
-                },
-                itemBuilder: (ctx) => [
-                  PopupMenuItem<String>(
-                    value: isMyFace ? 'clearMyFace' : 'setMyFace',
-                    child: Text(
-                      isMyFace ? '내 관상으로 설정 취소' : '내 관상으로 설정',
-                      style: AppText.body,
-                    ),
-                  ),
-                  const PopupMenuItem<String>(
-                    value: 'rename',
-                    child: Text('제목 변경', style: AppText.body),
-                  ),
-                  PopupMenuItem<String>(
-                    value: 'delete',
-                    child: Text(
-                      '삭제',
-                      style: AppText.body.copyWith(color: AppColors.danger),
-                    ),
-                  ),
-                ],
+          ),
+          // 우상단 absolute-positioned 3-dot 메뉴 — 모서리에 최대한 붙임.
+          Positioned(
+            top: 0,
+            right: 0,
+            child: PopupMenuButton<String>(
+              tooltip: '메뉴',
+              padding: EdgeInsets.zero,
+              iconSize: 18,
+              icon: const FaIcon(
+                FontAwesomeIcons.ellipsisVertical,
+                color: AppColors.textHint,
+                size: 16,
               ),
+              color: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              onSelected: (value) {
+                if (value == 'rename') {
+                  _showAliasDialog(context, ref, displayName);
+                } else if (value == 'setMyFace') {
+                  _setMyFace(context, ref);
+                } else if (value == 'clearMyFace') {
+                  _clearMyFace(context, ref);
+                } else if (value == 'delete') {
+                  _confirmDelete(context, ref);
+                }
+              },
+              itemBuilder: (ctx) => [
+                PopupMenuItem<String>(
+                  value: isMyFace ? 'clearMyFace' : 'setMyFace',
+                  child: Text(
+                    isMyFace ? '내 관상으로 설정 취소' : '내 관상으로 설정',
+                    style: AppText.body,
+                  ),
+                ),
+                const PopupMenuItem<String>(
+                  value: 'rename',
+                  child: Text('제목 변경', style: AppText.body),
+                ),
+                PopupMenuItem<String>(
+                  value: 'delete',
+                  child: Text(
+                    '삭제',
+                    style: AppText.body.copyWith(color: AppColors.danger),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      );
+          ),
+        ],
+      ),
+    );
   }
 
   /// Archetype 시각 검증용 뱃지 — primary / secondary / specialArchetype.
@@ -376,14 +389,18 @@ class _PhysiognomyItem extends ConsumerWidget {
       spacing: AppSpacing.xs,
       runSpacing: AppSpacing.xs,
       children: [
-        chip(primary,
-            bg: AppColors.textPrimary.withValues(alpha: 0.08),
-            fg: AppColors.textPrimary),
-        chip('$secondary 기질',
-            bg: Colors.transparent, fg: AppColors.textSecondary),
+        chip(
+          primary,
+          bg: AppColors.textPrimary.withValues(alpha: 0.08),
+          fg: AppColors.textPrimary,
+        ),
+        chip(
+          '$secondary 기질',
+          bg: Colors.transparent,
+          fg: AppColors.textSecondary,
+        ),
         if (special != null)
-          chip(special,
-              bg: Colors.indigo.shade50, fg: Colors.indigo.shade700),
+          chip(special, bg: Colors.indigo.shade50, fg: Colors.indigo.shade700),
       ],
     );
   }
@@ -395,12 +412,7 @@ class _PhysiognomyItem extends ConsumerWidget {
     if (file != null && file.existsSync()) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        child: Image.file(
-          file,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-        ),
+        child: Image.file(file, width: size, height: size, fit: BoxFit.cover),
       );
     }
     return Container(
@@ -431,7 +443,8 @@ class _PhysiognomyItem extends ConsumerWidget {
   }
 
   void _confirmDelete(BuildContext context, WidgetRef ref) {
-    final demographic = '${report.ageGroup.labelKo} '
+    final demographic =
+        '${report.ageGroup.labelKo} '
         '${report.gender.labelKo} '
         '${report.ethnicity.labelKo}';
     showDialog<void>(
@@ -441,17 +454,15 @@ class _PhysiognomyItem extends ConsumerWidget {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.xl),
         ),
-        title: Text('$demographic 기록을 삭제할까요?',
-            style: AppText.modalTitle),
-        content: const Text(
-          '이 작업은 되돌릴 수 없습니다.',
-          style: AppText.body,
-        ),
+        title: Text('$demographic 기록을 삭제할까요?', style: AppText.modalTitle),
+        content: const Text('이 작업은 되돌릴 수 없습니다.', style: AppText.body),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('취소',
-                style: TextStyle(color: AppColors.textHint)),
+            child: const Text(
+              '취소',
+              style: TextStyle(color: AppColors.textHint),
+            ),
           ),
           TextButton(
             onPressed: () {
@@ -462,8 +473,7 @@ class _PhysiognomyItem extends ConsumerWidget {
                 CompactSnackBar.success(message: '삭제되었습니다'),
               );
             },
-            child: const Text('삭제',
-                style: TextStyle(color: AppColors.danger)),
+            child: const Text('삭제', style: TextStyle(color: AppColors.danger)),
           ),
         ],
       ),
@@ -479,7 +489,10 @@ class _PhysiognomyItem extends ConsumerWidget {
   }
 
   void _showAliasDialog(
-      BuildContext context, WidgetRef ref, String currentName) {
+    BuildContext context,
+    WidgetRef ref,
+    String currentName,
+  ) {
     final controller = TextEditingController(text: currentName);
     showDialog(
       context: context,
@@ -498,8 +511,10 @@ class _PhysiognomyItem extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('취소',
-                style: TextStyle(color: AppColors.textHint)),
+            child: const Text(
+              '취소',
+              style: TextStyle(color: AppColors.textHint),
+            ),
           ),
           TextButton(
             onPressed: () {
@@ -508,14 +523,15 @@ class _PhysiognomyItem extends ConsumerWidget {
                   .updateAlias(index, controller.text.trim());
               Navigator.pop(ctx);
             },
-            child: const Text('저장',
-                style: TextStyle(color: AppColors.textPrimary)),
+            child: const Text(
+              '저장',
+              style: TextStyle(color: AppColors.textPrimary),
+            ),
           ),
         ],
       ),
     );
   }
-
 }
 
 class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
@@ -603,11 +619,7 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
           controller: _tabController,
           children: [
             _buildList(history, const [AnalysisSource.camera], hasMyFace),
-            _buildList(
-              history,
-              const [AnalysisSource.album],
-              hasMyFace,
-            ),
+            _buildList(history, const [AnalysisSource.album], hasMyFace),
           ],
         ),
       ),
@@ -633,9 +645,7 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging &&
           ref.read(historyTabProvider) != _tabController.index) {
-        ref
-            .read(historyTabProvider.notifier)
-            .selectTab(_tabController.index);
+        ref.read(historyTabProvider.notifier).selectTab(_tabController.index);
       }
     });
   }
@@ -646,9 +656,10 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
   ///     0 인 source 는 section 자체 hidden (dead-space 없음).
   /// 모든 source 가 비어있으면 단일 empty state.
   Widget _buildList(
-      List<FaceReadingReport> history,
-      List<AnalysisSource> sources,
-      bool hasMyFace) {
+    List<FaceReadingReport> history,
+    List<AnalysisSource> sources,
+    bool hasMyFace,
+  ) {
     final groups = <(AnalysisSource, List<(int, FaceReadingReport)>)>[];
     for (final s in sources) {
       final filtered = <(int, FaceReadingReport)>[];
@@ -709,7 +720,9 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
                   ),
                 ),
                 SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg,
+                  ),
                   sliver: SliverList.builder(
                     itemCount: groups[gi].$2.length,
                     itemBuilder: (ctx, i) {
@@ -725,8 +738,12 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
               ],
               if (!hasMyFace)
                 const SliverPadding(
-                  padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.xs,
-                      AppSpacing.lg, AppSpacing.xxl),
+                  padding: EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    AppSpacing.xs,
+                    AppSpacing.lg,
+                    AppSpacing.xxl,
+                  ),
                   sliver: SliverToBoxAdapter(child: _ProfileHintCard()),
                 )
               else
@@ -750,8 +767,10 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
     await ref.read(historyProvider.notifier).reloadFromHive();
     final after = ref.read(historyProvider).length;
     // ignore: avoid_print
-    print('[PhysiognomyScreen] pull-to-refresh reloadFromHive returned: '
-        'state before=$before → after=$after');
+    print(
+      '[PhysiognomyScreen] pull-to-refresh reloadFromHive returned: '
+      'state before=$before → after=$after',
+    );
     // 사용자 명시: snackbar 의미가 모호 — console log 로만 대체.
     await Future<void>.delayed(const Duration(milliseconds: 400));
     // ignore: avoid_print
@@ -785,7 +804,6 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
       },
     );
   }
-
 }
 
 class _ProfileHintCard extends StatelessWidget {
@@ -802,7 +820,11 @@ class _ProfileHintCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const FaIcon(FontAwesomeIcons.lightbulb, color: AppColors.gold, size: 18),
+          const FaIcon(
+            FontAwesomeIcons.lightbulb,
+            color: AppColors.gold,
+            size: 18,
+          ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Text(
@@ -837,17 +859,18 @@ class _RecentListHeader extends StatelessWidget {
   });
 
   String get _label => switch (source) {
-        AnalysisSource.camera => '카메라로 분석한 관상',
-        AnalysisSource.album => '앨범사진으로 분석한 관상',
-        AnalysisSource.received => '받은 카드',
-      };
+    AnalysisSource.camera => '카메라로 분석한 관상',
+    AnalysisSource.album => '앨범사진으로 분석한 관상',
+    AnalysisSource.received => '받은 카드',
+  };
 
   @override
   Widget build(BuildContext context) {
     // received section 에만 count 노출 — viral funnel UX: 받은 카드 갯수를
     // 사용자가 한 눈에 인지하도록.
-    final text =
-        source == AnalysisSource.received ? '$_label ($count)' : _label;
+    final text = source == AnalysisSource.received
+        ? '$_label ($count)'
+        : _label;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -856,36 +879,40 @@ class _RecentListHeader extends StatelessWidget {
           text,
           style: AppText.sectionTitle.copyWith(fontWeight: FontWeight.w700),
         ),
-        if (showSortToggle) PopupMenuButton<_SortOrder>(
-          tooltip: '정렬',
-          initialValue: order,
-          padding: EdgeInsets.zero,
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.md),
-          ),
-          onSelected: onChanged,
-          itemBuilder: (ctx) => _SortOrder.values
-              .map(
-                (o) => PopupMenuItem<_SortOrder>(
-                  value: o,
-                  child: Text(o.label, style: AppText.body),
+        if (showSortToggle)
+          PopupMenuButton<_SortOrder>(
+            tooltip: '정렬',
+            initialValue: order,
+            padding: EdgeInsets.zero,
+            color: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            onSelected: onChanged,
+            itemBuilder: (ctx) => _SortOrder.values
+                .map(
+                  (o) => PopupMenuItem<_SortOrder>(
+                    value: o,
+                    child: Text(o.label, style: AppText.body),
+                  ),
+                )
+                .toList(),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  order.label,
+                  style: AppText.caption.copyWith(color: AppColors.textHint),
                 ),
-              )
-              .toList(),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                order.label,
-                style: AppText.caption.copyWith(color: AppColors.textHint),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              const FaIcon(FontAwesomeIcons.chevronDown,
-                  size: 12, color: AppColors.textHint),
-            ],
+                const SizedBox(width: AppSpacing.sm),
+                const FaIcon(
+                  FontAwesomeIcons.chevronDown,
+                  size: 12,
+                  color: AppColors.textHint,
+                ),
+              ],
+            ),
           ),
-        ),
       ],
     );
   }
