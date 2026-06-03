@@ -79,8 +79,16 @@ class DeepLinkService {
         ? CompatShareLink(uuidA: parts[0], uuidB: parts[1])
         : SoloShareLink(uuid: parts[0]);
     debugPrint('[DeepLink] emit $link');
-    _pending = link;
-    _shareLinkController.add(link);
+    // 구독자(MainApp)가 이미 있으면 stream 으로 즉시 전달만 한다. _pending 은
+    // **cold-start 시 MainApp build 이전에 도착한 링크**를 버리지 않으려는
+    // 1회용 버퍼이므로, 구독자가 없을 때만 채운다. warm 흐름에서도 _pending 을
+    // 세팅하면 그 값이 계속 남아, X 로 닫은 뒤 MainApp state 가 재생성되며
+    // initState 가 stale _pending 을 재push → 같은 카드 2장 뜨는 버그.
+    if (_shareLinkController.hasListener) {
+      _shareLinkController.add(link);
+    } else {
+      _pending = link;
+    }
   }
 
   void dispose() {
