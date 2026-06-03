@@ -22,30 +22,28 @@ import 'package:timeago/timeago.dart' as timeago;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // DSN 을 읽기 위해 dotenv 만 먼저 로드. 이후 모든 init·runApp 을 Sentry 로
-  // 감싸 cold-start init 단계의 예외까지 포착한다. DSN 미설정이면 Sentry 는
-  // no-op (앱 정상 동작).
+  // DSN 을 읽기 위해 dotenv 먼저 로드. DSN 미설정이면 Sentry 는 no-op.
   await dotenv.load(fileName: '.env');
-  // 순수 Dart `sentry` 패키지 — 네이티브 Kotlin 모듈이 없어 build 충돌 없음.
-  // appRunner 가 runZonedGuarded 로 비포착 async 에러를 자동 수집. Flutter
-  // 프레임워크 에러는 아래 _bootstrapAndRun 에서 FlutterError.onError 로 연결.
-  await Sentry.init(
-    (options) {
-      options.dsn = dotenv.maybeGet('SENTRY_DSN') ?? '';
-      options.environment = kReleaseMode ? 'production' : 'debug';
-      options.tracesSampleRate = kReleaseMode ? 0.2 : 1.0;
-      // 얼굴 PII 가 흐르는 앱 — 기본 PII 자동수집 차단.
-      options.sendDefaultPii = false;
-    },
-    appRunner: _bootstrapAndRun,
-  );
-}
-
-Future<void> _bootstrapAndRun() async {
-  // Flutter 프레임워크(build/layout/paint) 에러를 Sentry 로. 콘솔 출력도 유지.
+  // 순수 Dart `sentry` — 네이티브 Kotlin 모듈 없어 build 충돌 없음.
+  // appRunner(runZonedGuarded) 는 binding init zone 과 runApp zone 을 어긋나게
+  // 해 "Zone mismatch" 를 유발하므로 쓰지 않는다. 대신 모든 init·runApp 을 한
+  // zone(root) 에 두고, 비포착 에러는 아래 두 핸들러로 Sentry 에 보낸다.
+  await Sentry.init((options) {
+    options.dsn = dotenv.maybeGet('SENTRY_DSN') ?? '';
+    options.environment = kReleaseMode ? 'production' : 'debug';
+    options.tracesSampleRate = kReleaseMode ? 0.2 : 1.0;
+    // 얼굴 PII 가 흐르는 앱 — 기본 PII 자동수집 차단.
+    options.sendDefaultPii = false;
+  });
+  // Flutter 프레임워크(build/layout/paint) 에러 → Sentry. 콘솔 출력도 유지.
   FlutterError.onError = (details) {
     Sentry.captureException(details.exception, stackTrace: details.stack);
     FlutterError.presentError(details);
+  };
+  // 비포착 async/platform 에러 → Sentry (Flutter 3.3+ 권장, runZonedGuarded 대체).
+  WidgetsBinding.instance.platformDispatcher.onError = (error, stack) {
+    Sentry.captureException(error, stackTrace: stack);
+    return true;
   };
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   timeago.setLocaleMessages('ko', timeago.KoMessages());
