@@ -78,6 +78,14 @@ class _MainAppState extends ConsumerState<MainApp> {
     }
     _lastSharePath = path;
     _lastShareAt = now;
+    // 최종 방어: 이미 같은 share 라우트가 최상단이면 push 금지. cold-start 의
+    // GoRouter native nav / app_links 이중 전달 등 소스·타이밍과 무관하게 중복
+    // ReportPage 를 차단 (2초 window 를 벗어난 재전달도 커버).
+    final currentUri = GoRouter.of(context).state.uri.toString();
+    if (currentUri == path) {
+      debugPrint('[ShareLink] already on $path, skip duplicate push');
+      return;
+    }
     context.push(path);
   }
 
