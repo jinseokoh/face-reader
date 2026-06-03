@@ -1,5 +1,5 @@
 import { CreateButton, DateField, List, useTable } from "@refinedev/antd";
-import { Image, Space, Switch, Table, Typography, message } from "antd";
+import { App, Image, Space, Switch, Table, Typography } from "antd";
 import { adminClient } from "../../providers/data";
 import type { AdImage } from "../../types";
 
@@ -14,6 +14,7 @@ const CDN_BASE = (
 const publicUrl = (storagePath: string) => `${CDN_BASE}/${storagePath}`;
 
 export const AdImageList = () => {
+  const { message } = App.useApp();
   const { tableProps, tableQuery } = useTable<AdImage>({
     resource: "ad_images",
     syncWithLocation: true,

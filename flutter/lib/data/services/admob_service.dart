@@ -40,6 +40,11 @@ class AdMobService {
   }
 
   String _rewardedUnitId() {
+    // debug 빌드는 항상 Google 공식 test 유닛 — 실 유닛은 debug/미등록 기기에서
+    // no-fill 이 잦고 정책 위반 위험이 있다. 실 유닛(.env)은 release 에서만 사용.
+    if (kDebugMode) {
+      return Platform.isIOS ? _testRewardedIdIos : _testRewardedIdAndroid;
+    }
     final envKey = Platform.isIOS
         ? 'ADMOB_REWARDED_UNIT_ID_IOS'
         : 'ADMOB_REWARDED_UNIT_ID_ANDROID';

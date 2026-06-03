@@ -51,13 +51,12 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
         .where((r) => r.isMyFace)
         .cast<FaceReadingReport?>()
         .firstOrNull;
-    final others =
-        history.where((r) => !r.isMyFace).toList(growable: false);
+    final others = history.where((r) => !r.isMyFace).toList(growable: false);
     final unlocksAsync = ref.watch(compatUnlocksProvider);
     final unlocked = unlocksAsync.asData?.value ?? const <String>{};
     final reconstructed =
         ref.watch(unlockedPartnerBodiesProvider).asData?.value ??
-            const <FaceReadingReport>[];
+        const <FaceReadingReport>[];
     final auth = ref.watch(authProvider);
 
     return Scaffold(
@@ -71,9 +70,8 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
               const SizedBox(width: AppSpacing.md),
               _CoinChip(
                 coins: auth.coins,
-                onTap: () => ref
-                    .read(selectedTabProvider.notifier)
-                    .selectTab(3),
+                onTap: () =>
+                    ref.read(selectedTabProvider.notifier).selectTab(3),
               ),
             ],
           ],
@@ -127,7 +125,8 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
       final keyFwd = tryPairKey(myFace, o);
       final keyRev = tryPairKey(o, myFace);
       if (o.supabaseId != null) localIds.add(o.supabaseId!);
-      final isUnlocked = (keyFwd != null && unlocked.contains(keyFwd)) ||
+      final isUnlocked =
+          (keyFwd != null && unlocked.contains(keyFwd)) ||
           (keyRev != null && unlocked.contains(keyRev));
       if (isUnlocked) {
         unlockedList.add(o);
@@ -152,31 +151,39 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
     }
 
     // 미확인 — 시간 기준 정렬만.
-    lockedList.sort((a, b) => switch (_lockedSort) {
-          _LockedSort.newest => b.timestamp.compareTo(a.timestamp),
-          _LockedSort.oldest => a.timestamp.compareTo(b.timestamp),
-        });
+    lockedList.sort(
+      (a, b) => switch (_lockedSort) {
+        _LockedSort.newest => b.timestamp.compareTo(a.timestamp),
+        _LockedSort.oldest => a.timestamp.compareTo(b.timestamp),
+      },
+    );
 
     // 확인 — score 정렬 시에만 pipeline 호출 (시간 정렬은 timestamp 만 비교).
     final List<FaceReadingReport> unlockedSorted;
     if (_unlockedSort == _UnlockedSort.score) {
-      final scored = unlockedList
-          .map((o) => (
-                report: o,
-                score: analyzeCompatibilityFromReports(my: myFace, album: o)
-                    .report
-                    .total,
-              ))
-          .toList()
-        ..sort((a, b) => b.score.compareTo(a.score));
+      final scored =
+          unlockedList
+              .map(
+                (o) => (
+                  report: o,
+                  score: analyzeCompatibilityFromReports(
+                    my: myFace,
+                    album: o,
+                  ).report.total,
+                ),
+              )
+              .toList()
+            ..sort((a, b) => b.score.compareTo(a.score));
       unlockedSorted = scored.map((e) => e.report).toList();
     } else {
       unlockedSorted = [...unlockedList]
-        ..sort((a, b) => switch (_unlockedSort) {
-              _UnlockedSort.newest => b.timestamp.compareTo(a.timestamp),
-              _UnlockedSort.oldest => a.timestamp.compareTo(b.timestamp),
-              _UnlockedSort.score => 0,
-            });
+        ..sort(
+          (a, b) => switch (_unlockedSort) {
+            _UnlockedSort.newest => b.timestamp.compareTo(a.timestamp),
+            _UnlockedSort.oldest => a.timestamp.compareTo(b.timestamp),
+            _UnlockedSort.score => 0,
+          },
+        );
     }
 
     // 방금 결제한 항목(받은 카드 CTA 경유)을 정렬과 무관하게 '확인' 맨 위로
@@ -184,11 +191,11 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
     final focusId = ref.watch(recentUnlockFocusProvider);
     final unlockedPinned =
         (focusId != null && unlockedSorted.any((r) => r.supabaseId == focusId))
-            ? <FaceReadingReport>[
-                ...unlockedSorted.where((r) => r.supabaseId == focusId),
-                ...unlockedSorted.where((r) => r.supabaseId != focusId),
-              ]
-            : unlockedSorted;
+        ? <FaceReadingReport>[
+            ...unlockedSorted.where((r) => r.supabaseId == focusId),
+            ...unlockedSorted.where((r) => r.supabaseId != focusId),
+          ]
+        : unlockedSorted;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -203,14 +210,16 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
             onChanged: (v) => setState(() => _lockedSort = v),
           ),
           const SizedBox(height: 8),
-          ...lockedList.map((other) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _CompatLockedCard(
-                  album: other,
-                  onUnlockPressed: () =>
-                      _handleUnlockPressed(context, ref, myFace, other),
-                ),
-              )),
+          ...lockedList.map(
+            (other) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _CompatLockedCard(
+                album: other,
+                onUnlockPressed: () =>
+                    _handleUnlockPressed(context, ref, myFace, other),
+              ),
+            ),
+          ),
         ],
         if (lockedList.isNotEmpty && unlockedPinned.isNotEmpty)
           const SizedBox(height: 20),
@@ -227,20 +236,22 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
             }),
           ),
           const SizedBox(height: 8),
-          ...unlockedPinned.map((other) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _CompatListCard(
-                  my: myFace,
-                  album: other,
-                  onTap: () {
-                    ref.read(recentUnlockFocusProvider.notifier).clear();
-                    AnalyticsService.instance.logClickCompat();
-                    context.pushCompat(my: myFace, album: other);
-                  },
-                  onDelete: () =>
-                      _confirmDeleteUnlock(context, ref, myFace, other),
-                ),
-              )),
+          ...unlockedPinned.map(
+            (other) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _CompatListCard(
+                my: myFace,
+                album: other,
+                onTap: () {
+                  ref.read(recentUnlockFocusProvider.notifier).clear();
+                  AnalyticsService.instance.logClickCompat();
+                  context.pushCompat(my: myFace, album: other);
+                },
+                onDelete: () =>
+                    _confirmDeleteUnlock(context, ref, myFace, other),
+              ),
+            ),
+          ),
         ],
       ],
     );
@@ -270,14 +281,18 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('궁합 삭제',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          '궁합 삭제',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+        ),
         content: const Text(
           '이 궁합을 목록에서 삭제할까요?\n사용한 코인은 환불되지 않습니다.',
           style: TextStyle(
-              fontSize: 14, color: AppColors.textSecondary, height: 1.5),
+            fontSize: 14,
+            color: AppColors.textSecondary,
+            height: 1.5,
+          ),
         ),
         actions: [
           TextButton(
@@ -286,8 +301,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child:
-                const Text('삭제', style: TextStyle(color: AppColors.danger)),
+            child: const Text('삭제', style: TextStyle(color: AppColors.danger)),
           ),
         ],
       ),
@@ -325,13 +339,15 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('궁합 분석에 대하여',
-            style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          '궁합 분석에 대하여',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textPrimary,
+          ),
+        ),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -348,11 +364,14 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
               ),
               const SizedBox(height: 18),
               // 등급 블록 — 4 갈래 breakdown 보다 먼저.
-              const Text('등급',
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textPrimary)),
+              const Text(
+                '등급',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
               const SizedBox(height: 10),
               const _LabelRow(label: CompatLabel.cheonjakjihap),
               const _LabelRow(label: CompatLabel.geumseulsanghwa),
@@ -366,11 +385,14 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
                   body: kind.descriptionKo,
                 ),
               const SizedBox(height: 18),
-              const Text('비중이 다른 이유',
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textPrimary)),
+              const Text(
+                '비중이 다른 이유',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
               const SizedBox(height: 10),
               const Text(
                 '정통 관상학에서 두 사람의 결을 볼 때는, 인생의 어느 자리에서 어떻게 부딪히는지를 따로따로 따져 무게를 둡니다. 네 차원의 비중도 그 가르침을 따른 것입니다.\n\n'
@@ -392,11 +414,14 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('닫기',
-                style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary)),
+            child: const Text(
+              '닫기',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimary,
+              ),
+            ),
           ),
         ],
       ),
@@ -427,169 +452,186 @@ class _CompatListCard extends StatelessWidget {
     final labelColor = _labelColor(r.label);
     final alias = album.alias;
     // 관상 list 와 동일 포맷 — DESIGN.md §0.0.1 통일성.
-    final demographic = '${album.ageGroup.labelKo} '
+    final demographic =
+        '${album.ageGroup.labelKo} '
         '${album.gender.labelKo} '
         '${album.ethnicity.labelKo}';
     final subtitle = alias ?? album.faceShape.korean;
 
-    return Material(
-      color: AppTheme.surface,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
+    return Stack(
+      children: [
+        Material(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            onTap: onTap,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppTheme.border),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppTheme.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // 관상 list item 과 동일 사이즈·token (DESIGN.md §0.0.1).
-                  _Thumb(
-                      path: album.thumbnailPath,
-                      thumbnailKey: album.thumbnailKey,
-                      size: 42,
-                      gender: album.gender),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          demographic,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppText.sectionTitle.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // 관상 list item 과 동일 사이즈·token (DESIGN.md §0.0.1).
+                      _Thumb(
+                        path: album.thumbnailPath,
+                        thumbnailKey: album.thumbnailKey,
+                        size: 42,
+                        gender: album.gender,
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            SourceBadge(source: album.source),
-                            const SizedBox(width: AppSpacing.xs),
-                            Flexible(
-                              child: Text(
-                                subtitle,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppText.caption.copyWith(
-                                  color: AppColors.textHint,
-                                ),
+                            Text(
+                              demographic,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppText.sectionTitle.copyWith(
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: labelColor.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _GradeStepper(label: r.label),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${r.label.korean} (${r.label.hanja})',
-                                style: TextStyle(
-                                    fontSize: 13,
-                                    color: labelColor,
-                                    letterSpacing: 1,
-                                    height: 1.2),
+                            const SizedBox(height: AppSpacing.xs),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SourceBadge(source: album.source),
+                                const SizedBox(width: AppSpacing.xs),
+                                Flexible(
+                                  child: Text(
+                                    subtitle,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AppText.caption.copyWith(
+                                      color: AppColors.textHint,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
                               ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          r.label.modernKo,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
-                            color: AppTheme.textHint,
-                            height: 1.4,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      // 결제한 궁합도 사용자가 직접 삭제 — 우상단 3-dot 메뉴
-                      // (관상 카드와 동일 패턴). InkWell onTap 과 충돌 없이 자체 처리.
-                      SizedBox(
-                        height: 24,
-                        width: 28,
-                        child: PopupMenuButton<String>(
-                          tooltip: '메뉴',
-                          padding: EdgeInsets.zero,
-                          iconSize: 16,
-                          icon: const FaIcon(
-                            FontAwesomeIcons.ellipsisVertical,
-                            color: AppColors.textHint,
-                            size: 16,
-                          ),
-                          color: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                          ),
-                          onSelected: (v) {
-                            if (v == 'delete') onDelete();
-                          },
-                          itemBuilder: (ctx) => [
-                            PopupMenuItem<String>(
-                              value: 'delete',
-                              child: Text('삭제',
-                                  style: AppText.body
-                                      .copyWith(color: AppColors.danger)),
+                              decoration: BoxDecoration(
+                                color: labelColor.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _GradeStepper(label: r.label),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${r.label.korean} (${r.label.hanja})',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: labelColor,
+                                      letterSpacing: 1,
+                                      height: 1.2,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              r.label.modernKo,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w400,
+                                color: AppTheme.textHint,
+                                height: 1.4,
+                              ),
                             ),
                           ],
                         ),
                       ),
-                      Text(r.total.toStringAsFixed(0),
-                          style: const TextStyle(
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            r.total.toStringAsFixed(0),
+                            style: const TextStyle(
                               fontSize: 28,
                               fontWeight: FontWeight.w300,
                               color: AppTheme.textPrimary,
-                              height: 1)),
-                      const SizedBox(height: 2),
-                      const Text('/ 100',
-                          style: TextStyle(
-                              fontSize: 10, color: AppTheme.textHint)),
+                              height: 1,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            '/ 100',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: AppTheme.textHint,
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
+                  const SizedBox(height: 14),
+                  Container(height: 1, color: AppTheme.border),
+                  const SizedBox(height: 12),
+                  Text(
+                    '${r.myElement.primary.korean} × ${r.albumElement.primary.korean}  ·  ${_relationKindKo(r.elementRelation.kind)}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.accent,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _MiniBars(report: r),
                 ],
               ),
-              const SizedBox(height: 14),
-              Container(height: 1, color: AppTheme.border),
-              const SizedBox(height: 12),
-              Text(
-                '${r.myElement.primary.korean} × ${r.albumElement.primary.korean}  ·  ${_relationKindKo(r.elementRelation.kind)}',
-                style: const TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.accent,
-                    letterSpacing: 1),
+            ),
+          ),
+        ),
+        // 결제한 궁합 삭제 — 우상단 절대위치 3-dot (관상 카드와 동일 패턴).
+        Positioned(
+          top: 4,
+          right: 4,
+          child: PopupMenuButton<String>(
+            tooltip: '메뉴',
+            padding: EdgeInsets.zero,
+            iconSize: 18,
+            icon: const FaIcon(
+              FontAwesomeIcons.ellipsisVertical,
+              color: AppColors.textHint,
+              size: 16,
+            ),
+            color: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            onSelected: (v) {
+              if (v == 'delete') onDelete();
+            },
+            itemBuilder: (ctx) => [
+              PopupMenuItem<String>(
+                value: 'delete',
+                child: Text(
+                  '삭제',
+                  style: AppText.body.copyWith(color: AppColors.danger),
+                ),
               ),
-              const SizedBox(height: 10),
-              _MiniBars(report: r),
             ],
           ),
         ),
-      ),
+      ],
     );
   }
 
@@ -637,16 +679,15 @@ class _CompatLockedCard extends ConsumerWidget {
     final alias = album.alias;
     // 관상 list 와 동일 포맷 (DESIGN.md §0.0.1 — 같은 정보 같은 포맷):
     //   "연령대 성별 인종" 공백 구분, 가운데점 X.
-    final demographic = '${album.ageGroup.labelKo} '
+    final demographic =
+        '${album.ageGroup.labelKo} '
         '${album.gender.labelKo} '
         '${album.ethnicity.labelKo}';
     final subtitle = alias ?? album.faceShape.korean;
 
     // 잔액(N코인 보유)은 AppBar 의 _CoinChip 이 single source of truth.
     // 카드마다 반복하지 않음 — 시각 노이즈 제거.
-    final cta = isLoggedIn
-        ? '1코인으로 궁합 보기'
-        : '카카오 로그인하고 3 코인 받기';
+    final cta = isLoggedIn ? '1코인으로 궁합 보기' : '카카오 로그인하고 3 코인 받기';
 
     final card = Container(
       padding: const EdgeInsets.all(16),
@@ -664,10 +705,11 @@ class _CompatLockedCard extends ConsumerWidget {
               // 관상 list item 과 동일 thumb 사이즈 (42) + 동일 title/subtitle
               // 토큰·간격 (DESIGN.md §0.0.1 통일성).
               _Thumb(
-                      path: album.thumbnailPath,
-                      thumbnailKey: album.thumbnailKey,
-                      size: 42,
-                      gender: album.gender),
+                path: album.thumbnailPath,
+                thumbnailKey: album.thumbnailKey,
+                size: 42,
+                gender: album.gender,
+              ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
@@ -702,8 +744,11 @@ class _CompatLockedCard extends ConsumerWidget {
                   ],
                 ),
               ),
-              const FaIcon(FontAwesomeIcons.lock,
-                  color: AppTheme.textHint, size: 18),
+              const FaIcon(
+                FontAwesomeIcons.lock,
+                color: AppTheme.textHint,
+                size: 18,
+              ),
             ],
           ),
           // 비활성(미등록 프리뷰)에서는 결제 안내·버튼을 떼어낸 simplified 카드.
@@ -716,7 +761,10 @@ class _CompatLockedCard extends ConsumerWidget {
                   ? '궁합 결과는 1 코인 지불 후 열어볼 수 있습니다.'
                   : '최초 로그인하면 가입 보너스 3 코인을 지급해 드립니다.',
               style: const TextStyle(
-                  fontSize: 12, color: AppTheme.textSecondary, height: 1.5),
+                fontSize: 12,
+                color: AppTheme.textSecondary,
+                height: 1.5,
+              ),
             ),
             const SizedBox(height: 12),
             // 받은(북마크) 카드 포함 모든 미확인 카드는 단일 "궁합보기" 버튼으로
@@ -734,9 +782,13 @@ class _CompatLockedCard extends ConsumerWidget {
                   ),
                   elevation: 0,
                 ),
-                child: Text(cta,
-                    style: const TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w600)),
+                child: Text(
+                  cta,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
           ],
@@ -768,10 +820,12 @@ class _InactiveCompatPreview extends StatelessWidget {
       children: [
         _RegisterMyFaceBanner(onRegister: onRegister),
         const SizedBox(height: AppSpacing.sm),
-        ...others.map((o) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _CompatLockedCard(album: o, inactive: true),
-            )),
+        ...others.map(
+          (o) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _CompatLockedCard(album: o, inactive: true),
+          ),
+        ),
       ],
     );
   }
@@ -816,14 +870,16 @@ class _RegisterMyFaceBannerState extends State<_RegisterMyFaceBanner>
             children: [
               Row(
                 children: [
-                  const FaIcon(FontAwesomeIcons.userPlus,
-                      color: Colors.white, size: 18),
+                  const FaIcon(
+                    FontAwesomeIcons.userPlus,
+                    color: Colors.white,
+                    size: 18,
+                  ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Text(
                       '내 관상을 등록해 주세요',
-                      style:
-                          AppText.sectionTitle.copyWith(color: Colors.white),
+                      style: AppText.sectionTitle.copyWith(color: Colors.white),
                     ),
                   ),
                 ],
@@ -849,8 +905,9 @@ class _RegisterMyFaceBannerState extends State<_RegisterMyFaceBanner>
                   ),
                   child: Text(
                     '내 관상 등록하기',
-                    style: AppText.subTitle
-                        .copyWith(color: AppColors.textPrimary),
+                    style: AppText.subTitle.copyWith(
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ),
               ),
@@ -870,8 +927,11 @@ class _RegisterMyFaceBannerState extends State<_RegisterMyFaceBanner>
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
             child: Column(
               children: [
-                const FaIcon(FontAwesomeIcons.chevronDown,
-                    color: AppColors.textHint, size: 16),
+                const FaIcon(
+                  FontAwesomeIcons.chevronDown,
+                  color: AppColors.textHint,
+                  size: 16,
+                ),
                 const SizedBox(height: AppSpacing.xs),
                 Text('내 관상이 없어 아래 궁합이 잠겨 있어요', style: AppText.hint),
               ],
@@ -903,20 +963,18 @@ class _GradeStepper extends StatelessWidget {
     final dots = <Widget>[];
     for (var i = 0; i < _order.length; i++) {
       final isActive = i == activeIdx;
-      dots.add(Container(
-        width: isActive ? 9 : 6,
-        height: isActive ? 9 : 6,
-        decoration: BoxDecoration(
-          color: isActive ? activeColor : AppTheme.textHint,
-          shape: BoxShape.circle,
+      dots.add(
+        Container(
+          width: isActive ? 9 : 6,
+          height: isActive ? 9 : 6,
+          decoration: BoxDecoration(
+            color: isActive ? activeColor : AppTheme.textHint,
+            shape: BoxShape.circle,
+          ),
         ),
-      ));
+      );
       if (i < _order.length - 1) {
-        dots.add(Container(
-          width: 6,
-          height: 1.5,
-          color: AppTheme.textHint,
-        ));
+        dots.add(Container(width: 6, height: 1.5, color: AppTheme.textHint));
       }
     }
     return Row(
@@ -928,8 +986,7 @@ class _GradeStepper extends StatelessWidget {
 
   // accent bar · 등급명 텍스트 · stepper dot 모두 한 셋 (Tailwind-600).
   // _CompatListCard._labelColor 와 반드시 동일 값 — 변경 시 동시 수정.
-  static Color _stepColor(CompatLabel l) =>
-      _CompatListCard._labelColor(l);
+  static Color _stepColor(CompatLabel l) => _CompatListCard._labelColor(l);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -940,8 +997,11 @@ class _InfoRow extends StatelessWidget {
   final String title;
   final String weight;
   final String body;
-  const _InfoRow(
-      {required this.title, required this.weight, required this.body});
+  const _InfoRow({
+    required this.title,
+    required this.weight,
+    required this.body,
+  });
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -954,26 +1014,35 @@ class _InfoRow extends StatelessWidget {
             textBaseline: TextBaseline.alphabetic,
             children: [
               Expanded(
-                child: Text(title,
-                    style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimary)),
-              ),
-              Text(weight,
+                child: Text(
+                  title,
                   style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w400,
-                      color: AppTheme.textHint)),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+              ),
+              Text(
+                weight,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                  color: AppTheme.textHint,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 4),
-          Text(body,
-              style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w400,
-                  color: AppTheme.textSecondary,
-                  height: 1.6)),
+          Text(
+            body,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+              color: AppTheme.textSecondary,
+              height: 1.6,
+            ),
+          ),
         ],
       ),
     );
@@ -1015,18 +1084,20 @@ class _LabelRow extends StatelessWidget {
                       child: RichText(
                         text: TextSpan(
                           style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: accent),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: accent,
+                          ),
                           children: [
                             TextSpan(text: label.korean),
                             const TextSpan(text: '  '),
                             TextSpan(
                               text: label.hanja,
                               style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w400,
-                                  color: AppTheme.textHint),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w400,
+                                color: AppTheme.textHint,
+                              ),
                             ),
                           ],
                         ),
@@ -1035,19 +1106,25 @@ class _LabelRow extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 4),
-                Text(pair.headline,
-                    style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimary,
-                        height: 1.5)),
+                Text(
+                  pair.headline,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimary,
+                    height: 1.5,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text(pair.detail,
-                    style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w400,
-                        color: AppTheme.textSecondary,
-                        height: 1.6)),
+                Text(
+                  pair.detail,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
+                    color: AppTheme.textSecondary,
+                    height: 1.6,
+                  ),
+                ),
               ],
             ),
           ),
@@ -1060,24 +1137,25 @@ class _LabelRow extends StatelessWidget {
     switch (l) {
       case CompatLabel.cheonjakjihap:
         return const _TaglinePair(
-            headline: '굳이 맞추지 않아도 흐름이 맞는 사이',
-            detail:
-                '얼굴이 보여주는 결이 너무나 잘 통합니다. 같이 있을수록 편해지고 다툼의 자리가 거의 생기지 않습니다.');
+          headline: '굳이 맞추지 않아도 흐름이 맞는 사이',
+          detail: '얼굴이 보여주는 결이 너무나 잘 통합니다. 같이 있을수록 편해지고 다툼의 자리가 거의 생기지 않습니다.',
+        );
       case CompatLabel.geumseulsanghwa:
         return const _TaglinePair(
-            headline: '서로 결이 잘 맞아 화목한 사이',
-            detail:
-                '얼굴이 보여주는 결이 잘 어울립니다. 함께 있으면 편안하고, 작은 표현만 꾸준히 더하면 오래 화목하게 갑니다.');
+          headline: '서로 결이 잘 맞아 화목한 사이',
+          detail:
+              '얼굴이 보여주는 결이 잘 어울립니다. 함께 있으면 편안하고, 작은 표현만 꾸준히 더하면 오래 화목하게 갑니다.',
+        );
       case CompatLabel.mahapgaseong:
         return const _TaglinePair(
-            headline: '시간을 들이면 좋은 짝이 되는 사이',
-            detail:
-                '처음엔 어색하고 박자가 어긋날 수 있습니다. 다만 서로 다듬어 가다 보면 단단한 관계가 됩니다.');
+          headline: '시간을 들이면 좋은 짝이 되는 사이',
+          detail: '처음엔 어색하고 박자가 어긋날 수 있습니다. 다만 서로 다듬어 가다 보면 단단한 관계가 됩니다.',
+        );
       case CompatLabel.hyeonggeuknanjo:
         return const _TaglinePair(
-            headline: '결이 달라 부딪힘이 잦은 사이',
-            detail:
-                '비슷한 점보다 다른 점이 먼저 보입니다. 한 번에 풀려고 하지 말고 천천히 거리감을 조절해야 합니다.');
+          headline: '결이 달라 부딪힘이 잦은 사이',
+          detail: '비슷한 점보다 다른 점이 먼저 보입니다. 한 번에 풀려고 하지 말고 천천히 거리감을 조절해야 합니다.',
+        );
     }
   }
 }
@@ -1090,8 +1168,7 @@ class _MiniBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final frac = (entry.value.clamp(0, 100) / 100.0).toDouble();
     final color = entry.muted ? AppTheme.textHint : AppTheme.accent;
-    final labelColor =
-        entry.muted ? AppTheme.textHint : AppTheme.textSecondary;
+    final labelColor = entry.muted ? AppTheme.textHint : AppTheme.textSecondary;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1104,18 +1181,20 @@ class _MiniBar extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                    fontSize: 10,
-                    color: labelColor,
-                    letterSpacing: 0),
+                  fontSize: 10,
+                  color: labelColor,
+                  letterSpacing: 0,
+                ),
               ),
             ),
             const SizedBox(width: 4),
-            Text(entry.muted ? '—' : entry.value.toStringAsFixed(0),
-                style: TextStyle(
-                    fontSize: 11,
-                    color: entry.muted
-                        ? AppTheme.textHint
-                        : AppTheme.textPrimary)),
+            Text(
+              entry.muted ? '—' : entry.value.toStringAsFixed(0),
+              style: TextStyle(
+                fontSize: 11,
+                color: entry.muted ? AppTheme.textHint : AppTheme.textPrimary,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 4),
@@ -1152,14 +1231,21 @@ class _MiniBars extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final entries = <_MiniEntry>[
-      _MiniEntry(CompatSubKind.element.modernKo,
-          subScoreToDisplay(CompatSubKind.element, report.sub.elementScore)!,
-          false),
-      _MiniEntry(CompatSubKind.palace.modernKo,
-          subScoreToDisplay(CompatSubKind.palace, report.sub.palaceScore)!,
-          false),
-      _MiniEntry(CompatSubKind.qi.modernKo,
-          subScoreToDisplay(CompatSubKind.qi, report.sub.qiScore)!, false),
+      _MiniEntry(
+        CompatSubKind.element.modernKo,
+        subScoreToDisplay(CompatSubKind.element, report.sub.elementScore)!,
+        false,
+      ),
+      _MiniEntry(
+        CompatSubKind.palace.modernKo,
+        subScoreToDisplay(CompatSubKind.palace, report.sub.palaceScore)!,
+        false,
+      ),
+      _MiniEntry(
+        CompatSubKind.qi.modernKo,
+        subScoreToDisplay(CompatSubKind.qi, report.sub.qiScore)!,
+        false,
+      ),
       _MiniEntry(
         CompatSubKind.intimacy.modernKo,
         subScoreToDisplay(CompatSubKind.intimacy, report.sub.intimacyScore)!,
@@ -1253,8 +1339,11 @@ class _Thumb extends StatelessWidget {
       return CircleAvatar(
         radius: radius,
         backgroundColor: AppTheme.border,
-        child: FaIcon(FontAwesomeIcons.user,
-            color: AppTheme.textHint, size: radius * 0.85),
+        child: FaIcon(
+          FontAwesomeIcons.user,
+          color: AppTheme.textHint,
+          size: radius * 0.85,
+        ),
       );
     }
     return CircleAvatar(
@@ -1334,8 +1423,11 @@ class _SectionHeader<T> extends StatelessWidget {
                 style: AppText.caption.copyWith(color: AppColors.textHint),
               ),
               const SizedBox(width: AppSpacing.sm),
-              const FaIcon(FontAwesomeIcons.chevronDown,
-                  size: 12, color: AppColors.textHint),
+              const FaIcon(
+                FontAwesomeIcons.chevronDown,
+                size: 12,
+                color: AppColors.textHint,
+              ),
             ],
           ),
         ),
@@ -1359,7 +1451,9 @@ class _CoinChip extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       child: Container(
         padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md, vertical: 4),
+          horizontal: AppSpacing.md,
+          vertical: 4,
+        ),
         decoration: BoxDecoration(
           color: AppTheme.surface,
           borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -1368,8 +1462,11 @@ class _CoinChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const FaIcon(FontAwesomeIcons.coins,
-                size: 12, color: AppTheme.textSecondary),
+            const FaIcon(
+              FontAwesomeIcons.coins,
+              size: 12,
+              color: AppTheme.textSecondary,
+            ),
             const SizedBox(width: AppSpacing.xs),
             Text(
               '$coins',
@@ -1384,4 +1481,3 @@ class _CoinChip extends StatelessWidget {
     );
   }
 }
-

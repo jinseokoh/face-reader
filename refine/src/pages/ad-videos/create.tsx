@@ -1,12 +1,12 @@
 import { Create } from "@refinedev/antd";
 import { useNavigation } from "@refinedev/core";
 import {
+  App,
   Alert,
   Form,
   Input,
   Switch,
   Upload,
-  message,
   type UploadFile,
 } from "antd";
 import { InboxOutlined } from "@ant-design/icons";
@@ -30,6 +30,7 @@ interface AdVideoCreateValues {
 }
 
 export const AdVideoCreate = () => {
+  const { message } = App.useApp();
   const { list } = useNavigation();
   const [form] = Form.useForm<AdVideoCreateValues>();
   const [file, setFile] = useState<UploadFile | null>(null);

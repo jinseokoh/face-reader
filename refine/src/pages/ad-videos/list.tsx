@@ -1,5 +1,5 @@
 import { CreateButton, DateField, List, useTable } from "@refinedev/antd";
-import { Space, Switch, Table, Typography, message } from "antd";
+import { App, Space, Switch, Table, Typography } from "antd";
 import { adminClient } from "../../providers/data";
 import type { AdVideo } from "../../types";
 
@@ -12,6 +12,7 @@ const CDN_BASE = (
 ).replace(/\/$/, "");
 
 export const AdVideoList = () => {
+  const { message } = App.useApp();
   const { tableProps, tableQuery } = useTable<AdVideo>({
     resource: "ad_videos",
     syncWithLocation: true,

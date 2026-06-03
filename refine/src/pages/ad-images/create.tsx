@@ -1,13 +1,13 @@
 import { Create } from "@refinedev/antd";
 import { useNavigation } from "@refinedev/core";
 import {
+  App,
   Alert,
   Form,
   Input,
   InputNumber,
   Switch,
   Upload,
-  message,
   type UploadFile,
 } from "antd";
 import { InboxOutlined } from "@ant-design/icons";
@@ -34,6 +34,7 @@ interface AdImageCreateValues {
 }
 
 export const AdImageCreate = () => {
+  const { message } = App.useApp();
   const { list } = useNavigation();
   const [form] = Form.useForm<AdImageCreateValues>();
   const [file, setFile] = useState<UploadFile | null>(null);
