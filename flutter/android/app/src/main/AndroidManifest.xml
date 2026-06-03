@@ -46,6 +46,13 @@ android:label="관상은 과학이다"
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- app_links(DeepLinkService) 가 /r/{uuid} 딥링크를 직접 처리한다.
+             Flutter 내장 딥링킹을 켜두면 GoRouter 가 같은 플랫폼 딥링크를 자체
+             navigate 해 ReportPage 가 2장 push 된다(X 두 번 닫기). 내장 딥링킹을
+             꺼 DeepLinkService 단독 처리로 통일. -->
+        <meta-data
+            android:name="flutter_deeplinking_enabled"
+            android:value="false" />
         <!-- AdMob app ID — production (com.scienceintegration.facely). -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
