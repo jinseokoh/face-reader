@@ -111,9 +111,17 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
     final unlockedList = <FaceReadingReport>[];
     final localIds = <String>{};
     for (final o in others) {
-      final key = tryPairKey(myFace, o);
+      // pair_key 는 `{myId}~{albumId}` 로 방향성이 있다. 내 관상을 바꾸면
+      // 과거 결제 키({옛 my}~{상대})와 어긋나므로, 양방향(정/역) 모두 확인해
+      // 같은 두 사람의 unlock 을 방향과 무관하게 인정한다. 이렇게 해야 로컬
+      // 파트너(실제 thumbnailPath 보유)가 unlocked 에 남아 서버 복원본으로
+      // 뒤집히지 않는다 (궁합 점수는 좌우 대칭).
+      final keyFwd = tryPairKey(myFace, o);
+      final keyRev = tryPairKey(o, myFace);
       if (o.supabaseId != null) localIds.add(o.supabaseId!);
-      if (key != null && unlocked.contains(key)) {
+      final isUnlocked = (keyFwd != null && unlocked.contains(keyFwd)) ||
+          (keyRev != null && unlocked.contains(keyRev));
+      if (isUnlocked) {
         unlockedList.add(o);
       } else {
         lockedList.add(o);
@@ -547,7 +555,11 @@ class _CompatListCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   // 관상 list item 과 동일 사이즈·token (DESIGN.md §0.0.1).
-                  _Thumb(path: album.thumbnailPath, size: 42, gender: album.gender),
+                  _Thumb(
+                      path: album.thumbnailPath,
+                      thumbnailKey: album.thumbnailKey,
+                      size: 42,
+                      gender: album.gender),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Column(
@@ -719,7 +731,11 @@ class _CompatLockedCard extends ConsumerWidget {
             children: [
               // 관상 list item 과 동일 thumb 사이즈 (42) + 동일 title/subtitle
               // 토큰·간격 (DESIGN.md §0.0.1 통일성).
-              _Thumb(path: album.thumbnailPath, size: 42, gender: album.gender),
+              _Thumb(
+                      path: album.thumbnailPath,
+                      thumbnailKey: album.thumbnailKey,
+                      size: 42,
+                      gender: album.gender),
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
@@ -1106,18 +1122,43 @@ class _TaglinePair {
 
 class _Thumb extends StatelessWidget {
   final String? path;
+  final String? thumbnailKey;
   final double size;
   final Gender? gender;
-  const _Thumb({required this.path, required this.size, this.gender});
+  const _Thumb({
+    required this.path,
+    required this.size,
+    this.thumbnailKey,
+    this.gender,
+  });
 
   @override
   Widget build(BuildContext context) {
     final radius = size / 2;
+    // 1순위 로컬 파일(thumbnailPath) → 2순위 CDN(thumbnailKey) → gender fallback.
+    // 받은 카드·결제 궁합 복원 파트너는 thumbnailPath=null 이지만 thumbnailKey 는
+    // 들고 있으므로 CDN 으로 실제 얼굴을 띄운다.
     final file = ThumbnailPaths.resolveFileSync(path);
-    if (file == null) return _genderFallback(radius);
+    final cdn = ThumbnailPaths.cdnUrl(thumbnailKey);
+    if (file != null) {
+      return ClipOval(
+        child: Image.file(
+          file,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _networkOrFallback(radius, cdn),
+        ),
+      );
+    }
+    return _networkOrFallback(radius, cdn);
+  }
+
+  Widget _networkOrFallback(double radius, String? cdn) {
+    if (cdn == null) return _genderFallback(radius);
     return ClipOval(
-      child: Image.file(
-        file,
+      child: Image.network(
+        cdn,
         width: size,
         height: size,
         fit: BoxFit.cover,

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// 관상 thumbnail 의 절대→상대 경로 마이그레이션 helper.
@@ -46,5 +47,22 @@ class ThumbnailPaths {
   static String _basenameOnly(String path) {
     final slashIdx = path.lastIndexOf('/');
     return slashIdx == -1 ? path : path.substring(slashIdx + 1);
+  }
+
+  /// R2 CDN 공개 read URL. `thumbnailKey`(예: `thumbnails/YYYYMMDD/{uuid}.jpg`)를
+  /// `cdn.facely.kr` base 와 조립. 로컬 thumbnail 파일이 없는 카드(받은 카드·
+  /// 결제 궁합 복원 파트너 등 thumbnailPath=null)의 이미지 fallback 용.
+  /// base 는 `.env` 의 `R2_CDN_BASE` override, 없으면 기본값.
+  static const _kCdnDefault = 'https://cdn.facely.kr';
+
+  static String get _cdnBase =>
+      dotenv.maybeGet('R2_CDN_BASE')?.trim().replaceAll(RegExp(r'/$'), '') ??
+      _kCdnDefault;
+
+  static String? cdnUrl(String? thumbnailKey) {
+    if (thumbnailKey == null || thumbnailKey.isEmpty) return null;
+    final key =
+        thumbnailKey.startsWith('/') ? thumbnailKey.substring(1) : thumbnailKey;
+    return '$_cdnBase/$key';
   }
 }
