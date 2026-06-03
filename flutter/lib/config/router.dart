@@ -28,6 +28,12 @@ import 'package:facely/domain/models/face_metadata.dart';
 /// 등록 안 함.
 final router = GoRouter(
   initialLocation: '/main',
+  // cold-start 시 GoRouter 가 플랫폼 딥링크(`/r/{uuid}`)를 자체 소비해 `/main`
+  // 없이 ReportPage 로 직행 + DeepLinkService(app_links)도 push → 같은 화면 2장
+  // (X 두 번 눌러야 main). 플랫폼 초기 location 을 무시하고 항상 `/main` 에서
+  // 시작하게 해 share 라우팅을 DeepLinkService 단독 책임으로 통일.
+  // (OAuth auth-callback 은 Supabase SDK 가 자체 처리하므로 영향 없음.)
+  overridePlatformDefaultLocation: true,
   // OAuth deep link 가로채기 — Supabase SDK 가 `facely://auth-callback/?code=…`
   // 를 받아 session 교환을 이미 처리하지만, Flutter engine 은 같은 URI 를
   // GoRouter 에도 전달한다. router 에 매칭 라우트가 없으면 "Page Not Found" 가
