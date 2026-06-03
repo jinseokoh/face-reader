@@ -155,7 +155,7 @@ void main() {
       '${totals.last.toStringAsFixed(2)}');
 
   // 10/30/30/30 목표 경계 — cheonjakjihap top 10% (p90),
-  // sangkyeongyeobin next 30% (p60 이상), mahapgaseong next 30% (p30 이상).
+  // geumseulsanghwa next 30% (p60 이상), mahapgaseong next 30% (p30 이상).
   final p90 = pct(totals, 0.90);
   final p60 = pct(totals, 0.60);
   final p30 = pct(totals, 0.30);
@@ -164,7 +164,7 @@ void main() {
   // ignore: avoid_print
   print('cheonjakjihap   = ${p90.toStringAsFixed(2)}');
   // ignore: avoid_print
-  print('sangkyeongyeobin= ${p60.toStringAsFixed(2)}');
+  print('geumseulsanghwa= ${p60.toStringAsFixed(2)}');
   // ignore: avoid_print
   print('mahapgaseong    = ${p30.toStringAsFixed(2)}');
 

@@ -171,7 +171,7 @@ Map<String, dynamic> _personSummary(FaceReadingReport r, FiveElement el) {
 
 String _labelTagline(CompatLabel l) => switch (l) {
       CompatLabel.cheonjakjihap => '하늘이 맺어 준 드문 자리',
-      CompatLabel.sangkyeongyeobin => '예를 지키며 오래가는 자리',
+      CompatLabel.geumseulsanghwa => '서로 잘 어우러져 화목한 자리',
       CompatLabel.mahapgaseong => '다듬으며 이루어 가는 자리',
       CompatLabel.hyeonggeuknanjo => '서로를 조심히 지켜 줘야 하는 자리',
     };

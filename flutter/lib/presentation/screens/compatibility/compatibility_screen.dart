@@ -453,7 +453,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
                       color: AppTheme.textPrimary)),
               const SizedBox(height: 10),
               const _LabelRow(label: CompatLabel.cheonjakjihap),
-              const _LabelRow(label: CompatLabel.sangkyeongyeobin),
+              const _LabelRow(label: CompatLabel.geumseulsanghwa),
               const _LabelRow(label: CompatLabel.mahapgaseong),
               const _LabelRow(label: CompatLabel.hyeonggeuknanjo),
               const SizedBox(height: 20),
@@ -662,7 +662,7 @@ class _CompatListCard extends StatelessWidget {
     switch (l) {
       case CompatLabel.cheonjakjihap:
         return const Color(0xFF16A34A); // green-600
-      case CompatLabel.sangkyeongyeobin:
+      case CompatLabel.geumseulsanghwa:
         return const Color(0xFF2563EB); // blue-600
       case CompatLabel.mahapgaseong:
         return const Color(0xFFEA580C); // orange-600
@@ -793,12 +793,12 @@ class _CompatLockedCard extends ConsumerWidget {
   }
 }
 
-/// 4 단계 stepper — cheonjakjihap(녹) → sangkyeongyeobin(파) → mahapgaseong(주) → hyeonggeuknanjo(빨).
+/// 4 단계 stepper — cheonjakjihap(녹) → geumseulsanghwa(파) → mahapgaseong(주) → hyeonggeuknanjo(빨).
 /// 활성 dot 만 해당 등급 vivid 컬러 채움 (이모지 🟢🔵🟠🔴 톤). 비활성 dot 과 dash 는 border 톤.
 class _GradeStepper extends StatelessWidget {
   static const _order = [
     CompatLabel.cheonjakjihap,
-    CompatLabel.sangkyeongyeobin,
+    CompatLabel.geumseulsanghwa,
     CompatLabel.mahapgaseong,
     CompatLabel.hyeonggeuknanjo,
   ];
@@ -973,11 +973,11 @@ class _LabelRow extends StatelessWidget {
             headline: '굳이 맞추지 않아도 흐름이 맞는 사이',
             detail:
                 '얼굴이 보여주는 결이 너무나 잘 통합니다. 같이 있을수록 편해지고 다툼의 자리가 거의 생기지 않습니다.');
-      case CompatLabel.sangkyeongyeobin:
+      case CompatLabel.geumseulsanghwa:
         return const _TaglinePair(
-            headline: '서로의 거리를 지키며 오래 가는 사이',
+            headline: '서로 결이 잘 맞아 화목한 사이',
             detail:
-                '같은 방향을 보지만 너무 가까이 붙지 않을 때 가장 잘 됩니다. 예의를 지키는 만큼 깊어집니다.');
+                '얼굴이 보여주는 결이 잘 어울립니다. 함께 있으면 편안하고, 작은 표현만 꾸준히 더하면 오래 화목하게 갑니다.');
       case CompatLabel.mahapgaseong:
         return const _TaglinePair(
             headline: '시간을 들이면 좋은 짝이 되는 사이',

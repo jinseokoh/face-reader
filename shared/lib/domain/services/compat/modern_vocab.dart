@@ -47,8 +47,8 @@ extension CompatLabelModern on CompatLabel {
     switch (this) {
       case CompatLabel.cheonjakjihap:
         return '굳이 맞추지 않아도 손발이 맞는 사이';
-      case CompatLabel.sangkyeongyeobin:
-        return '서로 존중하며 오래가는 사이';
+      case CompatLabel.geumseulsanghwa:
+        return '서로 잘 맞아 편안하고 화목한 사이';
       case CompatLabel.mahapgaseong:
         return '시간을 들이면 점점 빛나는 사이';
       case CompatLabel.hyeonggeuknanjo:
@@ -61,8 +61,8 @@ extension CompatLabelModern on CompatLabel {
     switch (this) {
       case CompatLabel.cheonjakjihap:
         return '굳이 노력하지 않아도 손발이 척척 맞는 사이';
-      case CompatLabel.sangkyeongyeobin:
-        return '서로의 거리를 존중하며 오래 갈 수 있는 사이';
+      case CompatLabel.geumseulsanghwa:
+        return '결이 잘 맞아 함께 있으면 편안한 사이';
       case CompatLabel.mahapgaseong:
         return '시간과 정성을 들이면 좋은 짝이 되는 사이';
       case CompatLabel.hyeonggeuknanjo:

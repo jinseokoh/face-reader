@@ -297,8 +297,8 @@ String _labelHeadline(CompatLabel l) {
   switch (l) {
     case CompatLabel.cheonjakjihap:
       return '얼굴로 읽으면 흔치 않게 궁합이 잘 맞는 관계';
-    case CompatLabel.sangkyeongyeobin:
-      return '서로 예의를 지키며 안정적으로 오래갈 관계';
+    case CompatLabel.geumseulsanghwa:
+      return '서로 결이 잘 맞아 자연스럽게 화목한 관계';
     case CompatLabel.mahapgaseong:
       return '노력해서 맞춰 가야 완성되는 관계';
     case CompatLabel.hyeonggeuknanjo:
@@ -310,7 +310,7 @@ int _labelTier(CompatLabel l) {
   switch (l) {
     case CompatLabel.cheonjakjihap:
       return 1;
-    case CompatLabel.sangkyeongyeobin:
+    case CompatLabel.geumseulsanghwa:
       return 2;
     case CompatLabel.mahapgaseong:
       return 3;
@@ -388,14 +388,14 @@ String _strategySection(
         rationale: '이 관계는 이미 유리한 기본값을 갖고 있어, 전략의 핵심은 "유지"입니다.',
       ));
       break;
-    case CompatLabel.sangkyeongyeobin:
+    case CompatLabel.geumseulsanghwa:
       items.add(const _StrategyItem(
         action:
-            '예의를 지키다 오히려 벽이 생기기 쉬운 관계입니다. '
-            '한 달에 한 번 정도는 형식을 깨는 솔직한 대화나 둘만의 여행을 의도적으로 만들어 두세요. '
-            '격을 유지하면서도 숨 쉴 틈을 만드는 것이 핵심입니다.',
+            '대체로 잘 맞는 사이라, 좋은 흐름이 익숙해지면 표현을 줄이기 쉬운 관계입니다. '
+            '가끔 박자가 어긋나는 순간엔 그냥 넘기지 말고 가볍게 짚고 넘어가세요. '
+            '잘 맞는 결을 오래 유지하는 비결은 표현의 빈도와 작은 조율입니다.',
         domain: null,
-        rationale: '격과 신뢰가 살아 있는 조합은 "언제 격을 내릴지" 합의가 관계 온도를 결정합니다.',
+        rationale: '기본 합이 좋은 조합은 큰 노력보다 "표현과 작은 조율"의 꾸준함이 관계 온도를 좌우합니다.',
       ));
       break;
     case CompatLabel.mahapgaseong:

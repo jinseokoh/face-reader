@@ -8,14 +8,14 @@ const { Text } = Typography;
 
 function scoreColor(s: number): string {
   if (s >= 90) return "magenta"; // 천작지합
-  if (s >= 78) return "geekblue"; // 상경여빈
+  if (s >= 78) return "geekblue"; // 금슬상화
   if (s >= 56) return "green"; // 마합가성
   return "default"; // 형극난조
 }
 
 function scoreLabel(s: number): string {
   if (s >= 90) return "천작지합";
-  if (s >= 78) return "상경여빈";
+  if (s >= 78) return "금슬상화";
   if (s >= 56) return "마합가성";
   return "형극난조";
 }
