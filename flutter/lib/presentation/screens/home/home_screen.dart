@@ -25,6 +25,173 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
+class _HomeActionCard extends StatefulWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback? onPressed;
+  final bool reverse;
+
+  const _HomeActionCard({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+    this.reverse = false,
+  });
+
+  @override
+  State<_HomeActionCard> createState() => _HomeActionCardState();
+}
+
+class _HomeActionCardState extends State<_HomeActionCard>
+    with SingleTickerProviderStateMixin {
+  static const _swingAmplitude = 0.05; // ≈ 2.9°
+  late final AnimationController _controller;
+  late final Animation<double> _rotation;
+
+  @override
+  Widget build(BuildContext context) {
+    return AspectRatio(
+      aspectRatio: 1,
+      child: AnimatedBuilder(
+        animation: _rotation,
+        builder: (_, child) => Transform.rotate(
+          angle: _rotation.value,
+          child: child,
+        ),
+        child: Material(
+          color: Colors.white,
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            side: BorderSide(color: AppColors.border, width: 1),
+          ),
+          child: InkWell(
+            onTap: widget.onPressed,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                FaIcon(widget.icon, size: 28, color: AppColors.textPrimary),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  widget.label,
+                  style: AppText.subTitle.copyWith(color: AppColors.textPrimary),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2600),
+    )..repeat(reverse: true);
+    final begin = widget.reverse ? _swingAmplitude : -_swingAmplitude;
+    final end = widget.reverse ? -_swingAmplitude : _swingAmplitude;
+    _rotation = Tween<double>(begin: begin, end: end)
+        .chain(CurveTween(curve: Curves.easeInOut))
+        .animate(_controller);
+  }
+}
+
+/// 홈 상단 배너 — 활성 ad_images 를 sort_order 순으로 자동 rotation. 탭하면
+/// link_url 로 외부 브라우저 이동. 활성 배너가 없거나 로드 실패 시 정적 banner.png.
+class _HomeBanner extends ConsumerStatefulWidget {
+  final double height;
+  const _HomeBanner({required this.height});
+
+  @override
+  ConsumerState<_HomeBanner> createState() => _HomeBannerState();
+}
+
+class _HomeBannerState extends ConsumerState<_HomeBanner> {
+  final PageController _pageController = PageController();
+  Timer? _timer;
+  int _count = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final banners =
+        ref.watch(adImagesProvider).asData?.value ?? const <AdImageBanner>[];
+    if (banners.isEmpty) {
+      // 로딩/없음/실패 모두 정적 이미지로 자리 유지 (레이아웃 안정).
+      _syncRotation(0);
+      return SizedBox(height: widget.height, child: _fallback());
+    }
+    // 배너 수에 맞춰 rotation 타이머 동기화 (build 중 setState 없이 안전).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncRotation(banners.length);
+    });
+    return SizedBox(
+      height: widget.height,
+      child: PageView.builder(
+        controller: _pageController,
+        itemCount: banners.length,
+        itemBuilder: (_, i) {
+          final b = banners[i];
+          return GestureDetector(
+            onTap: () => _open(b.linkUrl),
+            child: CachedNetworkImage(
+              imageUrl: b.imageUrl,
+              height: widget.height,
+              fit: BoxFit.contain,
+              placeholder: (_, _) => _fallback(),
+              errorWidget: (_, _, _) => _fallback(),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  Widget _fallback() => Image.asset(
+        'assets/images/banner.png',
+        height: widget.height,
+        fit: BoxFit.contain,
+      );
+
+  Future<void> _open(String? url) async {
+    if (url == null || url.trim().isEmpty) return;
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null) return;
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  void _syncRotation(int count) {
+    if (count == _count) return;
+    _count = count;
+    _timer?.cancel();
+    if (count <= 1) return;
+    _timer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (!mounted || !_pageController.hasClients) return;
+      final next = ((_pageController.page ?? 0).round() + 1) % _count;
+      _pageController.animateToPage(
+        next,
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeInOut,
+      );
+    });
+  }
+}
+
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
@@ -51,7 +218,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: Column(
                   children: [
                     SizedBox(height: topGap),
-                    // 활성 광고주 배너(ad_images) rotation. 없으면 home.png fallback.
+                    // 활성 광고주 배너(ad_images) rotation. 없으면 banner.png fallback.
                     _HomeBanner(height: imageHeight),
                     SizedBox(height: afterImage),
                     Text(
@@ -116,26 +283,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  /// 카메라 path — fullSize sheet 안에 FaceMeshPage 가 검정 AppBar
-  /// "얼굴 정면" / "얼굴 측면" 으로 동작.
-  Future<void> _openCamera() async {
-    AnalyticsService.instance.logCameraOpen();
-    final size = MediaQuery.of(context).size;
-    final result = await showModalBottomSheet<CaptureResult>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      constraints: BoxConstraints.tightFor(
-        width: size.width,
-        height: size.height,
-      ),
-      builder: (_) => const FaceMeshPage(),
-    );
-    if (!mounted || result == null) return;
-    await _pushDemographicConfirm(result);
-  }
-
   /// 앨범 path — 카메라와 동일한 fullSize sheet 에 AlbumCapturePage 를 띄움.
   /// AppBar 가 검정 + "얼굴 정면" / "얼굴 측면" 로 일관, 내부에서 picker 호출
   /// → preview → 측면 단계까지 wrapper 안에서 전부 처리.
@@ -162,179 +309,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     await _pushDemographicConfirm(result);
   }
 
+  /// 카메라 path — fullSize sheet 안에 FaceMeshPage 가 검정 AppBar
+  /// "얼굴 정면" / "얼굴 측면" 으로 동작.
+  Future<void> _openCamera() async {
+    AnalyticsService.instance.logCameraOpen();
+    final size = MediaQuery.of(context).size;
+    final result = await showModalBottomSheet<CaptureResult>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      constraints: BoxConstraints.tightFor(
+        width: size.width,
+        height: size.height,
+      ),
+      builder: (_) => const FaceMeshPage(),
+    );
+    if (!mounted || result == null) return;
+    await _pushDemographicConfirm(result);
+  }
+
   Future<void> _pushDemographicConfirm(CaptureResult result) async {
     await context.push(
       '/capture/confirm',
       extra: CaptureExtras(
         capture: result,
         metadataFuture: result.metadataFuture,
-      ),
-    );
-  }
-}
-
-class _HomeActionCard extends StatefulWidget {
-  final String label;
-  final IconData icon;
-  final VoidCallback? onPressed;
-  final bool reverse;
-
-  const _HomeActionCard({
-    required this.label,
-    required this.icon,
-    required this.onPressed,
-    this.reverse = false,
-  });
-
-  @override
-  State<_HomeActionCard> createState() => _HomeActionCardState();
-}
-
-class _HomeActionCardState extends State<_HomeActionCard>
-    with SingleTickerProviderStateMixin {
-  static const _swingAmplitude = 0.05; // ≈ 2.9°
-  late final AnimationController _controller;
-  late final Animation<double> _rotation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2600),
-    )..repeat(reverse: true);
-    final begin = widget.reverse ? _swingAmplitude : -_swingAmplitude;
-    final end = widget.reverse ? -_swingAmplitude : _swingAmplitude;
-    _rotation = Tween<double>(begin: begin, end: end)
-        .chain(CurveTween(curve: Curves.easeInOut))
-        .animate(_controller);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 1,
-      child: AnimatedBuilder(
-        animation: _rotation,
-        builder: (_, child) => Transform.rotate(
-          angle: _rotation.value,
-          child: child,
-        ),
-        child: Material(
-          color: Colors.white,
-          clipBehavior: Clip.antiAlias,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-            side: BorderSide(color: AppColors.border, width: 1),
-          ),
-          child: InkWell(
-            onTap: widget.onPressed,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                FaIcon(widget.icon, size: 28, color: AppColors.textPrimary),
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  widget.label,
-                  style: AppText.subTitle.copyWith(color: AppColors.textPrimary),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 홈 상단 배너 — 활성 ad_images 를 sort_order 순으로 자동 rotation. 탭하면
-/// link_url 로 외부 브라우저 이동. 활성 배너가 없거나 로드 실패 시 정적 home.png.
-class _HomeBanner extends ConsumerStatefulWidget {
-  final double height;
-  const _HomeBanner({required this.height});
-
-  @override
-  ConsumerState<_HomeBanner> createState() => _HomeBannerState();
-}
-
-class _HomeBannerState extends ConsumerState<_HomeBanner> {
-  final PageController _pageController = PageController();
-  Timer? _timer;
-  int _count = 0;
-
-  void _syncRotation(int count) {
-    if (count == _count) return;
-    _count = count;
-    _timer?.cancel();
-    if (count <= 1) return;
-    _timer = Timer.periodic(const Duration(seconds: 4), (_) {
-      if (!mounted || !_pageController.hasClients) return;
-      final next = ((_pageController.page ?? 0).round() + 1) % _count;
-      _pageController.animateToPage(
-        next,
-        duration: const Duration(milliseconds: 450),
-        curve: Curves.easeInOut,
-      );
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    _pageController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _open(String? url) async {
-    if (url == null || url.trim().isEmpty) return;
-    final uri = Uri.tryParse(url.trim());
-    if (uri == null) return;
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
-  }
-
-  Widget _fallback() => Image.asset(
-        'assets/images/home.png',
-        height: widget.height,
-        fit: BoxFit.contain,
-      );
-
-  @override
-  Widget build(BuildContext context) {
-    final banners =
-        ref.watch(adImagesProvider).asData?.value ?? const <AdImageBanner>[];
-    if (banners.isEmpty) {
-      // 로딩/없음/실패 모두 정적 이미지로 자리 유지 (레이아웃 안정).
-      _syncRotation(0);
-      return SizedBox(height: widget.height, child: _fallback());
-    }
-    // 배너 수에 맞춰 rotation 타이머 동기화 (build 중 setState 없이 안전).
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _syncRotation(banners.length);
-    });
-    return SizedBox(
-      height: widget.height,
-      child: PageView.builder(
-        controller: _pageController,
-        itemCount: banners.length,
-        itemBuilder: (_, i) {
-          final b = banners[i];
-          return GestureDetector(
-            onTap: () => _open(b.linkUrl),
-            child: CachedNetworkImage(
-              imageUrl: b.imageUrl,
-              height: widget.height,
-              fit: BoxFit.contain,
-              placeholder: (_, _) => _fallback(),
-              errorWidget: (_, _, _) => _fallback(),
-            ),
-          );
-        },
       ),
     );
   }
