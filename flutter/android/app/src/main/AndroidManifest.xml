@@ -1,14 +1,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-permission
+        android:name="android.permission.CAMERA"/>
     <application
-android:label="관상은 과학이다"
+        android:label="관상은 과학이다"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
-            android:screenOrientation="portrait"
             android:taskAffinity=""
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
@@ -19,40 +19,52 @@ android:label="관상은 과학이다"
                  while the Flutter UI initializes. After that, this theme continues
                  to determine the Window background behind the Flutter UI. -->
             <meta-data
-              android:name="io.flutter.embedding.android.NormalTheme"
-              android:resource="@style/NormalTheme"
-              />
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme"/>
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
             <!-- Supabase Auth deep link callback (Kakao OAuth PKCE + email verify) -->
-            <intent-filter android:autoVerify="false">
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="facely" android:host="auth-callback"/>
+            <intent-filter
+                android:autoVerify="false">
+                <action
+                    android:name="android.intent.action.VIEW"/>
+                <category
+                    android:name="android.intent.category.DEFAULT"/>
+                <category
+                    android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="facely"
+                    android:host="auth-callback"/>
             </intent-filter>
             <!-- facely.kr share host universal link — /r/{uuid} 또는 /r/{uuidA}~{uuidB} 진입 -->
-            <intent-filter android:autoVerify="true">
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="https" android:host="facely.kr" android:pathPrefix="/r/"/>
+            <intent-filter
+                android:autoVerify="true">
+                <action
+                    android:name="android.intent.action.VIEW"/>
+                <category
+                    android:name="android.intent.category.DEFAULT"/>
+                <category
+                    android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="https"
+                    android:host="facely.kr"
+                    android:pathPrefix="/r/"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
             android:name="flutterEmbedding"
-            android:value="2" />
+            android:value="2"/>
         <!-- app_links(DeepLinkService) 가 /r/{uuid} 딥링크를 직접 처리한다.
              Flutter 내장 딥링킹을 켜두면 GoRouter 가 같은 플랫폼 딥링크를 자체
              navigate 해 ReportPage 가 2장 push 된다(X 두 번 닫기). 내장 딥링킹을
              꺼 DeepLinkService 단독 처리로 통일. -->
         <meta-data
             android:name="flutter_deeplinking_enabled"
-            android:value="false" />
+            android:value="false"/>
         <!-- AdMob app ID — production (com.scienceintegration.facely). -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
@@ -65,13 +77,17 @@ android:label="관상은 과학이다"
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
         <intent>
-            <action android:name="android.intent.action.PROCESS_TEXT"/>
-            <data android:mimeType="text/plain"/>
+            <action
+                android:name="android.intent.action.PROCESS_TEXT"/>
+            <data
+                android:mimeType="text/plain"/>
         </intent>
         <!-- url_launcher: 배너 link_url(https) 외부 브라우저 오픈 (API 30+ 가시성). -->
         <intent>
-            <action android:name="android.intent.action.VIEW"/>
-            <data android:scheme="https"/>
+            <action
+                android:name="android.intent.action.VIEW"/>
+            <data
+                android:scheme="https"/>
         </intent>
     </queries>
 </manifest>

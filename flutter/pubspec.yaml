@@ -91,14 +91,11 @@ flutter_native_splash:
   color: '#FFFFFF'
   color_dark: '#FFFFFF'
   image: 'assets/images/splash.png'
-  ios_content_mode: scaleAspectFit
-  branding: 'assets/images/branding.png'
-  branding_mode: bottom
 
   android_12:
     color: '#FFFFFF'
     color_dark: '#FFFFFF'
-    image: 'assets/images/splash_icon_circle.png'
+    image: 'assets/images/splash.png'
 
 flutter:
   uses-material-design: true
