@@ -26,10 +26,10 @@ class CoinService {
   factory CoinService() => _instance;
   CoinService._();
 
-  static const _productIds = ['coin_3', 'coin_10'];
+  static const _productIds = ['coin_3', 'coin_14'];
   static const _coinMap = {
     'coin_3': 3,
-    'coin_10': 10,
+    'coin_14': 14,
   };
 
   bool _initialized = false;

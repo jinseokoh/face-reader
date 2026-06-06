@@ -542,26 +542,6 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
   TabController? _tabController;
   _SortOrder _sortOrder = _SortOrder.newest;
 
-  /// 탭 개수가 바뀔 때만 컨트롤러를 재생성 — 매 build 재생성 방지.
-  void _syncTabController(int length) {
-    final existing = _tabController;
-    if (existing != null && existing.length == length) return;
-    final int prevIndex = existing?.index ?? ref.read(historyTabProvider);
-    existing?.dispose();
-    final c = TabController(
-      length: length,
-      vsync: this,
-      initialIndex: prevIndex.clamp(0, length - 1),
-    );
-    c.addListener(() {
-      if (!c.indexIsChanging &&
-          ref.read(historyTabProvider) != c.index) {
-        ref.read(historyTabProvider.notifier).selectTab(c.index);
-      }
-    });
-    _tabController = c;
-  }
-
   @override
   Widget build(BuildContext context) {
     // Only react to actual provider changes (e.g. external selectTab calls
@@ -827,6 +807,26 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
       },
     );
   }
+
+  /// 탭 개수가 바뀔 때만 컨트롤러를 재생성 — 매 build 재생성 방지.
+  void _syncTabController(int length) {
+    final existing = _tabController;
+    if (existing != null && existing.length == length) return;
+    final int prevIndex = existing?.index ?? ref.read(historyTabProvider);
+    existing?.dispose();
+    final c = TabController(
+      length: length,
+      vsync: this,
+      initialIndex: prevIndex.clamp(0, length - 1),
+    );
+    c.addListener(() {
+      if (!c.indexIsChanging &&
+          ref.read(historyTabProvider) != c.index) {
+        ref.read(historyTabProvider.notifier).selectTab(c.index);
+      }
+    });
+    _tabController = c;
+  }
 }
 
 class _ProfileHintCard extends StatelessWidget {
@@ -851,8 +851,9 @@ class _ProfileHintCard extends StatelessWidget {
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Text(
-              '점3개 더보기 메뉴 버튼을 누르고, 내 관상을 설정하면 다른 사람과\n나와의 궁합을 분석해 볼 수 있어요',
+              '더보기 메뉴 (점3개) 버튼을 누르고, 내 관상을 설정하면 다른 사람과 나와의 궁합을 분석해 볼 수 있어요',
               style: AppText.caption.copyWith(
+                fontSize: 14,
                 fontWeight: FontWeight.w500,
                 color: AppColors.textPrimary,
               ),

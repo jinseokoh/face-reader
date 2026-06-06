@@ -18,3 +18,11 @@ final unlockedPartnerBodiesProvider =
   ref.watch(authProvider);
   return CompatUnlockService().reconstructUnlockedPartners();
 });
+
+/// `pair_key → 결제 시점 partner 스냅샷` 맵. ledger(코인 사용내역)가 로컬
+/// 히스토리 의존 없이 항상 상대 사진·인적정보를 띄우는 source. auth 변화에 재구독.
+final compatPartnerSnapshotsProvider =
+    FutureProvider.autoDispose<Map<String, FaceReadingReport>>((ref) async {
+  ref.watch(authProvider);
+  return CompatUnlockService().partnerSnapshotsByPairKey();
+});

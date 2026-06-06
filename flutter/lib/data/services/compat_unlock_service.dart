@@ -36,40 +36,48 @@ class CompatUnlockService {
   /// source/isMyFace/alias/thumbnailPath 를 override 한 뒤 parse.
   /// metrics row·로컬 history 에 의존하지 않는 self-contained 복원.
   Future<List<FaceReadingReport>> reconstructUnlockedPartners() async {
-    if (_client.auth.currentUser == null) return const [];
+    return (await partnerSnapshotsByPairKey()).values.toList();
+  }
+
+  /// `pair_key → 결제 시점 partner 스냅샷(FaceReadingReport)` 맵.
+  ///
+  /// `unlocks.partner_body` 만 디코드하므로 로컬 history·metrics row 에 의존하지
+  /// 않는다. ledger(코인 사용내역)·확인 리스트가 기기·재설치·eviction 무관하게
+  /// 항상 상대 사진/인적정보를 띄우는 source of truth. body 엔 alias 가 빠져
+  /// 있어(소유 메타) null override — 인적정보(성별·나이·얼굴형·thumbnailKey)는 포함.
+  Future<Map<String, FaceReadingReport>> partnerSnapshotsByPairKey() async {
+    if (_client.auth.currentUser == null) return const {};
     final List<dynamic> rows;
     try {
       rows = await _client.from('unlocks').select('pair_key, partner_body');
     } catch (e) {
-      debugPrint('[CompatUnlock] reconstruct fetch error: $e');
-      return const [];
+      debugPrint('[CompatUnlock] partner snapshot fetch error: $e');
+      return const {};
     }
-    final results = <FaceReadingReport>[];
+    final map = <String, FaceReadingReport>{};
     for (final r in rows) {
       final pairKey = r['pair_key'] as String?;
       final body = r['partner_body'] as String?;
       if (pairKey == null || body == null || body.isEmpty) continue;
       final parts = pairKey.split('~');
       if (parts.length != 2) continue;
-      final partnerUuid = parts[1];
       try {
         final original = jsonDecode(body) as Map<String, dynamic>;
         final overridden = <String, dynamic>{
           ...original,
-          'supabaseId': partnerUuid,
+          'supabaseId': parts[1],
           'source': AnalysisSource.received.name,
           'isMyFace': false,
           'alias': null,
           'thumbnailPath': null,
         };
-        final report =
-            FaceReadingReport.fromJsonString(jsonEncode(overridden));
-        results.add(report);
+        map[pairKey] = FaceReadingReport.fromJsonString(jsonEncode(overridden));
       } catch (e) {
-        debugPrint('[CompatUnlock] reconstruct failed pairKey=$pairKey: $e');
+        debugPrint(
+            '[CompatUnlock] partner snapshot decode failed pairKey=$pairKey: $e');
       }
     }
-    return results;
+    return map;
   }
 
   /// unlock_compat RPC 호출. owner/partner body 를 결제 시점 스냅샷으로 동결.

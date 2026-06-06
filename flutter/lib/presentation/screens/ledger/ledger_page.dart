@@ -2,11 +2,12 @@ import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/domain/models/coin_transaction.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
-import 'package:facely/presentation/providers/history_provider.dart';
+import 'package:facely/presentation/providers/compat_unlock_provider.dart';
 import 'package:facely/presentation/providers/wallet_provider.dart';
 import 'package:facely/presentation/widgets/login_entry_button.dart';
 import 'package:flutter/material.dart';
@@ -176,8 +177,11 @@ class _TransactionTile extends ConsumerWidget {
     final amountColor =
         isCredit ? const Color(0xFF2E7D32) : const Color(0xFFC62828);
 
-    final history = ref.watch(historyProvider);
-    final album = _resolveAlbum(history);
+    // 결제 시점 partner 스냅샷(unlocks.partner_body) 에서 해석 — 로컬 히스토리
+    // 의존 없이 기기·재설치 무관하게 사진·인적정보가 항상 뜬다.
+    final snapshots =
+        ref.watch(compatPartnerSnapshotsProvider).asData?.value ?? const {};
+    final album = _resolveAlbum(snapshots);
     final demographic = album == null
         ? null
         : '${album.gender.labelKo} · ${album.ageGroup.labelKo} · ${album.faceShape.korean}';
@@ -245,18 +249,12 @@ class _TransactionTile extends ConsumerWidget {
     );
   }
 
-  FaceReadingReport? _resolveAlbum(List<FaceReadingReport> history) {
+  FaceReadingReport? _resolveAlbum(Map<String, FaceReadingReport> snapshots) {
     if (tx.description != 'compat-unlock') return null;
+    // reference_id 는 곧 pair_key — 스냅샷 맵 직접 조회 (구분자 파싱 불필요).
     final ref = tx.referenceId;
     if (ref == null) return null;
-    final parts = ref.split('::');
-    if (parts.length != 2) return null;
-    final albumId = parts[1];
-    if (albumId.isEmpty) return null;
-    for (final r in history) {
-      if (r.supabaseId == albumId) return r;
-    }
-    return null;
+    return snapshots[ref];
   }
 }
 
@@ -267,33 +265,23 @@ class _TxLeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 로컬 thumbnailPath → CDN thumbnailKey → 거래 아이콘.
-    final file = ThumbnailPaths.resolveFileSync(album?.thumbnailPath);
-    if (file != null) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.file(
-          file,
-          width: 36,
-          height: 36,
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => _txIconAvatar(tx),
-        ),
-      );
-    }
+    // 결제 시점 partner 스냅샷의 R2 CDN 키로 항상 사진 노출(캐시). 키가 없거나
+    // 로드 실패 시에만 거래 아이콘.
     final cdn = ThumbnailPaths.cdnUrl(album?.thumbnailKey);
     if (cdn != null) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.network(
-          cdn,
-          width: 36,
-          height: 36,
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => _txIconAvatar(tx),
-        ),
-      );
+      return _frame(CachedNetworkImage(
+        imageUrl: cdn,
+        width: 36,
+        height: 36,
+        fit: BoxFit.cover,
+        placeholder: (_, _) =>
+            Container(width: 36, height: 36, color: AppTheme.surface),
+        errorWidget: (_, _, _) => _txIconAvatar(tx),
+      ));
     }
     return _txIconAvatar(tx);
   }
+
+  Widget _frame(Widget child) =>
+      ClipRRect(borderRadius: BorderRadius.circular(8), child: child);
 }

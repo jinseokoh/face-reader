@@ -485,15 +485,22 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
     final pngBytes = Uint8List.sublistView(pngData.buffer.asUint8List());
 
     final yaw = estimateYaw(result.landmarks);
-    debugPrint('[Album] processed image=${squareImage.width}x${squareImage.height} '
+    final outW = squareImage.width;
+    final outH = squareImage.height;
+    debugPrint('[Album] processed image=${outW}x$outH '
         '(orig=${origW}x$origH padOffset=${padOffsetX.toStringAsFixed(0)},${padOffsetY.toStringAsFixed(0)}) '
         'yaw=${yaw.toStringAsFixed(3)} class=${classifyYaw(yaw)}');
+
+    // square 분기에서는 squareImage == original 이라 이 한 번의 dispose 로 둘 다
+    // 해제된다. 미해제 시 사진당 full-res 네이티브 비트맵이 누적돼 궁합(2장
+    // 연속 분석) 같은 흐름에서 메모리 압박 → iOS jetsam kill 을 유발.
+    squareImage.dispose();
 
     return _AlbumPhoto(
       pngBytes: pngBytes,
       meshResult: result,
-      width: squareImage.width,
-      height: squareImage.height,
+      width: outW,
+      height: outH,
       yaw: yaw,
     );
   }

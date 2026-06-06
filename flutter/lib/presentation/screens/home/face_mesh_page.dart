@@ -122,8 +122,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
       return;
     }
     if (state == AppLifecycleState.inactive) {
-      _cameraController?.dispose();
-      _cameraController = null;
+      _detachAndDisposeController();
     } else if (state == AppLifecycleState.resumed) {
       _startCamera();
     }
@@ -432,17 +431,28 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
   }
 
   Future<void> _closeCamera() async {
-    try {
-      await _cameraController?.stopImageStream();
-    } catch (_) {}
-    await _cameraController?.dispose();
-    _cameraController = null;
+    await _detachAndDisposeController();
     _meshProcessor?.close();
     _meshProcessor = null;
     _meshResult = null;
     _prevLandmarks = null;
-    _isInitialized = false;
     _isProcessing = false;
+  }
+
+  /// 컨트롤러를 트리에서 먼저 떼어낸 뒤(placeholder 로 rebuild) dispose 한다.
+  /// dispose 만 하고 rebuild 하지 않으면 다음 프레임에 CameraPreview 가 disposed
+  /// controller 로 buildPreview() 를 호출 → CameraException → 네이티브 크래시
+  /// (EXC_BAD_ACCESS during drawFrame). null 화 + setState 로 같은 프레임에
+  /// 프리뷰를 떼어내는 게 핵심.
+  Future<void> _detachAndDisposeController() async {
+    final controller = _cameraController;
+    _cameraController = null;
+    _isInitialized = false;
+    if (mounted) setState(() {});
+    try {
+      await controller?.stopImageStream();
+    } catch (_) {}
+    await controller?.dispose();
   }
 
   Color _computeOverlayColor(FaceMeshResult result) {
@@ -800,8 +810,19 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
   Future<void> _startCamera() async {
     final camera = _cameras[_cameraIndex];
 
-    _cameraController?.dispose();
-    _cameraController = CameraController(
+    // 재시작(resumed·카메라 전환) 시 기존 컨트롤러를 트리에서 먼저 떼어내,
+    // init 중인(uninitialized) 또는 disposed controller 로 CameraPreview 가
+    // 빌드되는 걸 막는다.
+    final old = _cameraController;
+    _cameraController = null;
+    if (_isInitialized && mounted) {
+      setState(() => _isInitialized = false);
+    } else {
+      _isInitialized = false;
+    }
+    await old?.dispose();
+
+    final controller = CameraController(
       camera,
       ResolutionPreset.medium,
       enableAudio: false,
@@ -809,12 +830,17 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
           ? ImageFormatGroup.nv21
           : ImageFormatGroup.bgra8888,
     );
+    _cameraController = controller;
 
-    await _cameraController!.initialize();
+    await controller.initialize();
 
-    if (!mounted) return;
+    if (!mounted) {
+      await controller.dispose();
+      _cameraController = null;
+      return;
+    }
 
-    _cameraController!.startImageStream(_onCameraFrame);
+    controller.startImageStream(_onCameraFrame);
 
     setState(() {
       _isInitialized = true;

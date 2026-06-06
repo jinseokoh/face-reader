@@ -33,6 +33,11 @@ class AuthNotifier extends Notifier<AuthUser?> {
     }
   }
 
+  /// Apple Sign In (네이티브, iOS/macOS). 즉시 세션이 생성되므로 (ok, message).
+  Future<({bool ok, String? message})> loginWithApple() async {
+    return AuthService().loginWithApple();
+  }
+
   Future<({bool ok, String? message})> loginWithEmail(
       String email, String password) async {
     return AuthService().loginWithEmail(email, password);

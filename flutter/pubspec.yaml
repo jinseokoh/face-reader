@@ -2,7 +2,7 @@ name: facely
 description: '관상은 과학이다 — 안면 계측 데이터 기반 인공지능 관상앱 (MediaPipe Face Mesh + Google ML Kit Face Detection).'
 publish_to: 'none'
 
-version: 1.0.2+3
+version: 1.0.3+4
 
 environment:
   sdk: ^3.11.0
@@ -49,6 +49,7 @@ dependencies:
   flutter_image_compress: ^2.3.0
   top_snackbar_flutter: ^3.3.0
   kakao_flutter_sdk: ^2.0.0+1
+  sign_in_with_apple: ^6.1.4
   tflite_flutter: ^0.11.0
   share_plus: ^11.1.0
   app_links: ^6.4.0

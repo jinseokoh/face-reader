@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:facely/core/theme.dart';
 import 'package:facely/data/services/auth_service.dart' show SignUpOutcome;
 import 'package:facely/presentation/providers/auth_provider.dart';
@@ -42,6 +44,10 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
   bool _isLoading = false;
   bool _isSignUp = false;
   bool _obscurePassword = true;
+
+  // Apple 로그인 버튼은 iOS(아이폰)에서만 노출 — 그 외 플랫폼엔 Sign in with
+  // Apple 네이티브 시트가 없거나 대상이 아니다.
+  static final bool _isAppleDevice = Platform.isIOS;
   String? _errorMessage; // inline 표시 — snackbar 가 sheet 뒤로 가는 문제 회피.
 
   final _emailCtrl = TextEditingController();
@@ -116,8 +122,15 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
               // ── 카카오 (primary) — 모드 무관하게 가장 빠른 경로 ──────
               SizedBox(
                 height: 48,
-                child: ElevatedButton(
+                child: ElevatedButton.icon(
                   onPressed: _isLoading ? null : _kakaoLogin,
+                  icon: const FaIcon(FontAwesomeIcons.kakaoTalk,
+                      size: 18, color: Color(0xFF3C1E1E)),
+                  label: Text(
+                    isSignUp ? '카카오로 가입' : '카카오로 로그인',
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFEE500),
                     foregroundColor: const Color(0xFF3C1E1E),
@@ -128,13 +141,35 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
                     ),
                     elevation: 0,
                   ),
-                  child: Text(
-                    isSignUp ? '카카오로 가입' : '카카오로 로그인',
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
                 ),
               ),
+              // ── Apple (애플 기기 전용) — 카카오와 동일 버튼 형태 유지 ────
+              if (_isAppleDevice) ...[
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    onPressed: _isLoading ? null : _appleLogin,
+                    icon: const FaIcon(FontAwesomeIcons.apple,
+                        size: 18, color: Colors.white),
+                    label: Text(
+                      isSignUp ? 'Apple로 가입' : 'Apple로 로그인',
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.black,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor:
+                          Colors.black.withValues(alpha: 0.5),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 18),
               // ── divider with text ────────────────────────────────────
               Row(
@@ -406,6 +441,25 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
     final launched = await ref.read(authProvider.notifier).loginWithKakao();
     if (mounted) {
       Navigator.of(context).pop(launched);
+    }
+  }
+
+  /// Apple 네이티브 로그인 — Kakao(브라우저)와 달리 즉시 세션이 생성되므로
+  /// 성공 시 바로 pop(true). 취소면 message=null 이라 에러 표시 없이 복귀.
+  Future<void> _appleLogin() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    final res = await ref.read(authProvider.notifier).loginWithApple();
+    if (!mounted) return;
+    if (res.ok) {
+      Navigator.of(context).pop(true);
+    } else {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = res.message;
+      });
     }
   }
 

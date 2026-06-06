@@ -1,8 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:math';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:facely/core/hive/hive_setup.dart';
@@ -166,6 +170,60 @@ class AuthService {
       debugPrint('[Auth] kakao oauth error: $e\n$st');
       return false;
     }
+  }
+
+  /// Apple Sign In (네이티브) — iOS/macOS 전용. sign_in_with_apple 로 Apple ID
+  /// credential 을 받아 Supabase `signInWithIdToken` 으로 교환한다. Kakao 와
+  /// 달리 브라우저 없이 네이티브 시트로 즉시 세션이 생성되므로 (ok, message)
+  /// 반환. 사용자가 시트를 닫으면 (ok:false, message:null) — 에러 표시 없이 조용히.
+  Future<({bool ok, String? message})> loginWithApple() async {
+    debugPrint('[Auth] loginWithApple: requesting Apple ID credential');
+    try {
+      // replay 방어 nonce — raw 는 Supabase 로, sha256 해시는 Apple 로.
+      final rawNonce = _generateNonce();
+      final hashedNonce = sha256.convert(utf8.encode(rawNonce)).toString();
+
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: const [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+        nonce: hashedNonce,
+      );
+
+      final idToken = credential.identityToken;
+      if (idToken == null) {
+        debugPrint('[Auth] loginWithApple: identityToken null');
+        return (ok: false, message: 'Apple 인증 토큰을 받지 못했습니다');
+      }
+
+      await _client.auth.signInWithIdToken(
+        provider: OAuthProvider.apple,
+        idToken: idToken,
+        nonce: rawNonce,
+      );
+      debugPrint('[Auth] loginWithApple: signInWithIdToken OK');
+      return (ok: true, message: null);
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) {
+        debugPrint('[Auth] loginWithApple: user canceled');
+        return (ok: false, message: null);
+      }
+      debugPrint('[Auth] apple sign-in error: ${e.code} ${e.message}');
+      return (ok: false, message: 'Apple 로그인에 실패했습니다');
+    } catch (e, st) {
+      debugPrint('[Auth] apple sign-in error: $e\n$st');
+      return (ok: false, message: _humanizeAuthError(e));
+    }
+  }
+
+  /// Apple nonce 용 cryptographically secure 랜덤 문자열.
+  String _generateNonce([int length = 32]) {
+    const charset =
+        '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-._';
+    final random = Random.secure();
+    return List.generate(
+        length, (_) => charset[random.nextInt(charset.length)]).join();
   }
 
   /// Supabase Auth 의 exception 을 사용자가 이해할 수 있는 한국어 메시지로.
