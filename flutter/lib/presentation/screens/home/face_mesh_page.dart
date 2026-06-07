@@ -617,15 +617,17 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
       final h = swapped ? image.width.toDouble() : image.height.toDouble();
       _frameSize = Size(w, h);
       final ps = _cameraController?.value.previewSize;
-      final shorter = min(ps!.width, ps.height);
-      final longer = max(ps.width, ps.height);
-      // ignore: avoid_print
-      print('[FaceMesh] platform=${Platform.operatingSystem}  '
-          'rawFrame=${image.width}x${image.height}  '
-          'previewSize=$ps  aspectRatio=${(shorter / longer).toStringAsFixed(4)}  '
-          'bytesPerRow=${image.planes[0].bytesPerRow}  '
-          'sensorOrientation=$rot  rotationCompensation=$_rotationCompensation  '
-          'isFront=${_cameras[_cameraIndex].lensDirection == CameraLensDirection.front}');
+      if (ps != null) {
+        final shorter = min(ps.width, ps.height);
+        final longer = max(ps.width, ps.height);
+        // ignore: avoid_print
+        print('[FaceMesh] platform=${Platform.operatingSystem}  '
+            'rawFrame=${image.width}x${image.height}  '
+            'previewSize=$ps  aspectRatio=${(shorter / longer).toStringAsFixed(4)}  '
+            'bytesPerRow=${image.planes[0].bytesPerRow}  '
+            'sensorOrientation=$rot  rotationCompensation=$_rotationCompensation  '
+            'isFront=${_cameras[_cameraIndex].lensDirection == CameraLensDirection.front}');
+      }
     }
 
     _processFrame(image).then((result) {

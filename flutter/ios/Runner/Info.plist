@@ -48,10 +48,10 @@
 		<string>Camera access is needed for face mesh detection</string>
 		<key>NSPhotoLibraryUsageDescription</key>
 		<string>앨범에서 사진을 선택하여 관상 분석에 사용합니다</string>
-		<!-- AdMob iOS app ID — Google official test ID (phase 1).
-		     Release 전에 실 app ID 로 교체 + .env 의 ADMOB_REWARDED_UNIT_ID_IOS 도 교체. -->
+		<!-- AdMob iOS app ID (실 앱 ID). 광고 유닛 ID 는 .env 의
+		     ADMOB_REWARDED_UNIT_ID_IOS (slash 형식) 로 별도 관리. -->
 		<key>GADApplicationIdentifier</key>
-		<string>ca-app-pub-3940256099942544~1458002511</string>
+		<string>ca-app-pub-6207520648206097~9925492444</string>
 		<key>SKAdNetworkItems</key>
 		<array>
 			<dict>
