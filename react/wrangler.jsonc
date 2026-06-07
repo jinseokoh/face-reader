@@ -23,7 +23,7 @@
     // 이곳에서 제외한 7개 비공개 Secrets 는 아래 명령으로 확인 가능 
     // `pnpm wrangler secret list`
     "WEBAPP_BASE": "https://facely.kr",
-    "APP_STORE_URL": "https://apps.apple.com/app/idXXXXXXXXX",
+    "APP_STORE_URL": "https://apps.apple.com/app/id6776864670",
     "PLAY_STORE_URL": "https://play.google.com/store/apps/details?id=com.scienceintegration.facely",
     "APP_BUNDLE_ID_IOS": "com.scienceintegration.facely",
     "APP_BUNDLE_ID_ANDROID": "com.scienceintegration.facely",
