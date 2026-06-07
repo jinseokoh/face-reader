@@ -89,7 +89,7 @@ export default function Contact({ loaderData }: Route.ComponentProps) {
       <main className="doc">
         <h1>요청이 접수되었습니다</h1>
         <p>
-          영업일 기준 7일 이내에 처리 후 입력하신 이메일로 결과를 안내드립니다.
+          영업일 기준 7일 이내에 처리한 다음, 입력하신 이메일로 결과를 안내드립니다.
         </p>
         <p className="doc-back">
           <a href="/">← 홈으로</a>
@@ -104,7 +104,7 @@ export default function Contact({ loaderData }: Route.ComponentProps) {
     <main className="doc">
       <h1>데이터삭제 요청폼</h1>
       <p className="doc-lead">
-        관상은 과학이다 계정 및 분석 데이터의 삭제를 요청합니다. 처리 후
+        관상은 과학이다 계정 및 분석 데이터의 삭제를 요청합니다. 처리한 다음,
         입력하신 이메일로 결과를 회신드립니다.
       </p>
 
