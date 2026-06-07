@@ -10,6 +10,19 @@ import type { Route } from './+types/contact'
  * 실패 시 실제 원인이 화면에 표시됨.
  */
 
+/**
+ * 공유하기 기능을 쓸 때만 1건 생성되어 R2 에 저장되는 데이터 예시.
+ * 사용자 안심용으로 삭제 요청 폼에 그대로 노출한다 (90일 후 자동 삭제).
+ * raw JSON 을 파싱→prettify 해 전사 오류를 막는다.
+ */
+const STORED_SAMPLE = JSON.stringify(
+  JSON.parse(
+    '{"schemaVersion":1,"ethnicity":"eastAsian","gender":"male","ageGroup":"50s","timestamp":"2026-06-03T17:57:31.531888","source":"camera","thumbnailKey":"thumbnails/20260603/a53ae00b-2f48-40a2-b10f-ade2a4a4fa3b.jpg","metrics":{"faceAspectRatio":1.583152590136565,"faceTaperRatio":0.8204693681326711,"lowerFaceFullness":0.535534927595265,"upperFaceRatio":0.29172969852464936,"midFaceRatio":0.34017333637851627,"lowerFaceRatio":0.3681654370774055,"gonialAngle":142.55312961424286,"intercanthalRatio":0.28193897976673615,"eyeFissureRatio":0.21493680556103845,"eyeCanthalTilt":2.8479735430510416,"eyebrowThickness":0.03513082295332055,"browEyeDistance":0.14376208106290506,"nasalWidthRatio":1.1181850197575713,"nasalHeightRatio":0.31752206607074285,"mouthWidthRatio":0.4300998389276194,"mouthCornerAngle":4.897191139672551,"lipFullnessRatio":0.09187336226013933,"philtrumLength":0.09339543948884228,"foreheadWidth":0.8953820676868245,"cheekboneWidth":0.9564294500131548,"chinAngle":169.59828375487686,"eyeAspect":0.24419016422300677,"eyebrowCurvature":0.03412017824028422,"eyebrowTiltDirection":-0.015212046354978437,"upperVsLowerLipRatio":0.5810754911321435,"browSpacing":0.2167637482098117},"lateralMetrics":{"nasofrontalAngle":166.65202705066324,"nasolabialAngle":142.63314602611004,"facialConvexity":20.32894088044,"upperLipEline":0.008653900169832586,"lowerLipEline":-0.0005032992178926671,"mentolabialAngle":164.31306595793328,"noseTipProjection":0.29352445712388997,"dorsalConvexity":0.011327573016091589},"faceShapeLabel":"Oblong","faceShapeConfidence":0.9999735438373354,"faceShape":"oblong"}',
+  ),
+  null,
+  2,
+)
+
 export function meta(_: Route.MetaArgs) {
   return [
     { title: '관상은 과학이다 — 개인정보 삭제 요청' },
@@ -96,12 +109,31 @@ export default function Contact({ loaderData }: Route.ComponentProps) {
       </p>
 
       <form onSubmit={onSubmit} className="form">
+        <section className="privacy-panel">
+          <h2 className="privacy-panel-title">보관하는 정보는 이것이 전부입니다</h2>
+          <dl className="privacy-facts">
+            <div className="privacy-fact">
+              <dt>생성 시점</dt>
+              <dd>공유하기 기능을 사용할 때만 1건 생성됩니다.</dd>
+            </div>
+            <div className="privacy-fact">
+              <dt>보관 항목</dt>
+              <dd>
+                저해상도 200×200 썸네일 한 장과 아래 계측 수치값뿐입니다. 원본
+                고해상도 사진은 저장하지 않습니다.
+              </dd>
+            </div>
+            <div className="privacy-fact">
+              <dt>자동 삭제</dt>
+              <dd>생성 후 90일이 지나면 자동으로 삭제됩니다.</dd>
+            </div>
+          </dl>
+          <p className="privacy-sample-label">실제 저장 데이터 예시</p>
+          <pre className="privacy-sample">{STORED_SAMPLE}</pre>
+        </section>
+
         <ul className="form-note">
-          <li>
-            삭제되는 내용은 관상 기록 추적용 저해상도 200×200 썸네일과 안면 계측
-            데이터 파일 전부입니다.
-          </li>
-          <li>삭제이후 복원은 불가하므로 신중히 선택해 주세요.</li>
+          <li>삭제 이후에는 복원이 불가능하므로 신중히 선택해 주세요.</li>
         </ul>
 
         <label className="form-label">

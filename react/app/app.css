@@ -275,6 +275,71 @@ textarea.form-input {
   margin-bottom: 4px;
 }
 
+/* ─── /contact 데이터 안심 패널 ─── */
+.privacy-panel {
+  border: 1px solid #eee;
+  border-radius: 8px;
+  background: #fff;
+  padding: 16px;
+  margin: 0 0 16px;
+}
+
+.privacy-panel-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 12px;
+}
+
+.privacy-facts {
+  margin: 0 0 16px;
+}
+
+.privacy-fact {
+  display: flex;
+  gap: 14px;
+  padding: 9px 0;
+  border-top: 1px solid #eee;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.privacy-fact:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.privacy-fact dt {
+  flex: 0 0 64px;
+  color: #666;
+}
+
+.privacy-fact dd {
+  flex: 1;
+  margin: 0;
+  color: #1a1a1a;
+}
+
+.privacy-sample-label {
+  font-size: 12px;
+  color: #666;
+  margin: 0 0 6px;
+}
+
+.privacy-sample {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #666;
+  background: #f7f7f8;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin: 0;
+  max-height: 260px;
+  overflow: auto;
+  white-space: pre;
+}
+
 /* ─── /r/:id/open 앱 진입 bridge ─── */
 .bridge {
   max-width: 480px;
