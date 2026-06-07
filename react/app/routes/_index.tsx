@@ -45,6 +45,17 @@ export default function Index() {
         </a>
       </div>
 
+      <div className="landing-qr">
+        <img
+          src="/qr-code.svg"
+          alt="앱 다운로드 QR 코드"
+          width={168}
+          height={168}
+          className="landing-qr-img"
+        />
+        <p className="landing-qr-caption">카메라로 스캔해 앱 받기</p>
+      </div>
+
       <footer className="landing-footer">
         <a href="/terms">이용약관</a>
         <span aria-hidden="true">·</span>
