@@ -102,7 +102,7 @@ export default function Contact({ loaderData }: Route.ComponentProps) {
 
   return (
     <main className="doc">
-      <h1>개인정보 삭제 요청</h1>
+      <h1>개인정보삭제 요청폼</h1>
       <p className="doc-lead">
         관상은 과학이다 계정 및 분석 데이터의 삭제를 요청합니다. 처리 후
         입력하신 이메일로 결과를 회신드립니다.

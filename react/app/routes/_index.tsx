@@ -50,7 +50,7 @@ export default function Index() {
         <span aria-hidden="true">·</span>
         <a href="/privacy">개인정보처리방침</a>
         <span aria-hidden="true">·</span>
-        <a href="/contact">컨택</a>
+        <a href="/contact">요청폼</a>
       </footer>
     </main>
   )
