@@ -6,6 +6,7 @@ import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/data/services/image_resizer.dart';
+import 'package:facely/data/services/supabase_service.dart';
 import 'package:facely/domain/models/capture_result.dart';
 import 'package:facely/domain/models/face_analysis.dart';
 import 'package:facely/domain/models/face_metadata.dart';
@@ -276,6 +277,14 @@ class _InfoConfirmScreenState
 
       if (!mounted) return;
       ref.read(historyProvider.notifier).add(report);
+      // 분석을 마친 모든 카드는 기본으로 metrics row 생성 (썸네일은 analyze
+      // 시점에 이미 R2 업로드됨). 비로그인이면 user_id=null 로 익명 저장되고,
+      // 이후 로그인 시 HistoryNotifier 가 일괄 claim 한다. fire-and-forget —
+      // 네트워크/RLS 실패가 화면 전환을 막지 않도록 await 하지 않는다.
+      SupabaseService().saveMetrics(report).catchError((Object e) {
+        debugPrint('[InfoConfirm] saveMetrics error: $e');
+        return report.supabaseId ?? '';
+      });
       ref.read(historyTabProvider.notifier).selectTab(
           c.source == AnalysisSource.camera ? 0 : 1);
       ref.read(selectedTabProvider.notifier).selectTab(1);

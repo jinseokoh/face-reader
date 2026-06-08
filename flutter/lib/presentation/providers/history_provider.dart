@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer' as dev;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +7,7 @@ import 'package:sentry/sentry.dart';
 
 import 'package:facely/core/hive/hive_setup.dart';
 import 'package:facely/core/storage/thumbnail_paths.dart';
+import 'package:facely/data/services/auth_service.dart';
 import 'package:facely/data/services/r2_uploader.dart';
 import 'package:facely/data/services/supabase_service.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
@@ -27,10 +29,44 @@ final historyProvider =
 class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
   Box<String> get _box => Hive.box<String>(HiveBoxes.history);
 
+  StreamSubscription<AuthUser?>? _authSub;
+  // 같은 uid 로 중복 claim 방지 (profileStream 은 코인 갱신에도 발화).
+  String? _lastClaimedUid;
+
   @override
   List<FaceReadingReport> build() {
     _log('build() — initial load from Hive');
-    return _loadFromHive();
+    final reports = _loadFromHive();
+    _authSub = AuthService().profileStream.listen(_onAuthChanged);
+    ref.onDispose(() => _authSub?.cancel());
+    // 앱 시작 시 이미 로그인 상태면 즉시 1회 claim.
+    final existing = AuthService().currentUser;
+    if (existing != null) {
+      _lastClaimedUid = existing.id;
+      _claimAnonymousMetrics(reports);
+    }
+    return reports;
+  }
+
+  /// 로그인 전이 시 — 로컬 history 가 보유한 supabaseId 들의 익명 metrics row 를
+  /// 현재 사용자 소유로 일괄 귀속. logout/코인갱신/같은 uid 재발화는 skip.
+  void _onAuthChanged(AuthUser? user) {
+    final uid = user?.id;
+    if (uid == null) {
+      _lastClaimedUid = null;
+      return;
+    }
+    if (uid == _lastClaimedUid) return;
+    _lastClaimedUid = uid;
+    _claimAnonymousMetrics(state);
+  }
+
+  void _claimAnonymousMetrics(List<FaceReadingReport> reports) {
+    final ids = reports.map((r) => r.supabaseId).whereType<String>().toList();
+    if (ids.isEmpty) return;
+    SupabaseService().claimAnonymousMetrics(ids).catchError((Object e) {
+      _log('claim anon metrics error: $e');
+    });
   }
 
   Future<void> add(FaceReadingReport report) async {

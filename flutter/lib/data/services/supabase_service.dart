@@ -87,4 +87,23 @@ class SupabaseService {
     });
     debugPrint('[Supabase] upserted metrics id=$id');
   }
+
+  /// 로그인 직후 호출 — 비로그인(user_id=null) 상태로 만들어둔 metrics row 들을
+  /// 현재 사용자 소유로 한 번에 귀속한다.
+  ///
+  /// 범위를 [ids] (로컬 Hive history 가 보유한 supabaseId) 로 한정하는 것이
+  /// 핵심: `user_id is null` 인 row 는 다른 기기의 익명 분석에도 존재하므로,
+  /// id 범위 없이 갱신하면 남의 익명 카드까지 가로챈다. is null 필터까지 더해
+  /// 이미 소유된 행(받은 카드 등)은 건드리지 않는다. RLS metrics_owner_update
+  /// (USING user_id null|본인, WITH CHECK user_id = auth.uid) 가 이를 허용.
+  Future<void> claimAnonymousMetrics(List<String> ids) async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null || ids.isEmpty) return;
+    await _client
+        .from('metrics')
+        .update({'user_id': uid})
+        .inFilter('id', ids)
+        .isFilter('user_id', null);
+    debugPrint('[Supabase] claimed anon metrics → $uid (scope=${ids.length})');
+  }
 }
