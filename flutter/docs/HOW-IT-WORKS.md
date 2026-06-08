@@ -1,6 +1,6 @@
 # HOW IT WORKS — 관상 엔진 기술 구현
 
-**최종 업데이트**: 2026-06-03 (v1.0.1)
+**최종 업데이트**: 2026-06-08 (v1.0.1)
 **역할**: 얼굴 입력부터 리포트 본문까지, 엔진이 무엇을 어떻게 계산하는지의 SSOT.
 **관련**: 화면·폴더 구조는 [ARCHITECTURE.md](ARCHITECTURE.md), 디자인 토큰은 [DESIGN.md](DESIGN.md).
 
@@ -117,7 +117,6 @@ yaw ∈ [0.70, 0.88] (3/4 view) 만 수락. East Asian baseline (인종 fallback
 
 - **전통**: 麻衣相法·柳莊相法·神相全編 3 대 고전의 부위별 metric.
 - **현대**: Farkas anthropometry (1994) + ICD meta-analysis (PMC9029890) + NIOSH dataset.
-- **재보정 (v2.8)**: MediaPipe 좌표계 차이 흡수 위해 2026-04-12 경험적 재보정. N=14 East Asian female 30s 실사용자 empirical z 가 N(0,1) 에 수렴하도록 reference mean 19 metric 재조정.
 - **AAF 재보정 (2026-06-01, 현행)**: All-Age-Faces 실사진 11,800장(정면 yaw<18°, male=5361·female=6439)을 앱과 동일 파이프라인으로 측정한 metric별 empirical mean/std 로 `referenceData[eastAsian]` 26 metric 전면 교체. 추정치 reference 가 production z 를 +로 띄워 전 속성이 saturate 되던 문제 근본 해소. 검증: 실측 11,800장 재투입 시 점수 SD 1.0~1.5 회복, sensuality 1위 빈도 4.9% (편향 제거). 추출: `tools/face_shape_ml/extract_aaf.py`. 측면 8 metric 은 정면 표본으로 측정 불가 → 미변경.
 - **niten19 비-EA 재보정 (2026-06-03, 현행)**: 비-동아시아 5 인종(caucasian·african·southeastAsian·hispanic·middleEastern)의 frontal 26 metric 을 niten19 Kaggle FaceShape 5,000장으로 **AAF 와 동일 파이프라인**(MediaPipe 468 → compute_ratios, near-frontal yaw/pitch<18°) 재측정한 pooled empirical 값으로 교체. 동기: 임상 anthropometry 추정치가 우리 2D proxy frame 과 frame 이 달라(예: 임상 gonialAngle ~120° vs 우리 파이프라인 ~140°) 체계적 +z 편향을 일으켰음 — niten19 in-frame 재측정으로 EA·비-EA reference 가 같은 frame 에 정렬. 한계(의도적): niten19 는 인종·성별 라벨 없음 → 5 인종 공용 **단일 pooled baseline**, gender-pooled(male=female), 얼굴형 균형 표본이라 SD 약간 inflated. 한국 관상 앱 특성상 비-EA 사용자가 소수라 per-ethnicity 보정 전까지 fallback 으로 충분. 추출: `tools/face_shape_ml/extract_niten_reference.py`. 측면 8 metric 은 정면 표본 측정 불가 → 임상 추정 유지.
 
@@ -291,7 +290,7 @@ face (root)
 ```
 raw → globalPct = _rawToPercentile(raw, attr, gender)   ← 21-point quantile 보간
        rankPct = (9 - rank) / 9                          ← 얼굴 내 10 속성 desc
-       blend   = 0.40 × rankPct + 0.60 × globalPct
+       blend   = 0.35 × rankPct + 0.65 × globalPct
        score   = 5.0 + blend × 5.0                       ← [5.0, 10.0]
 ```
 
@@ -483,7 +482,7 @@ if (f.age.isOver30) parts.add('관능도', …);
 ```bash
 cd /Users/chuck/Code/face/flutter
 flutter pub get
-flutter test             # 145 test 전부 green
+flutter test             # 143 test 전부 green
 flutter analyze          # 0 issues
 flutter run              # 실기 (camera 는 simulator 불가)
 ```
@@ -507,7 +506,6 @@ flutter test test/archetype_fairness_test.dart test/score_distribution_test.dart
 | `score_distribution_test.dart` | spread invariant, saturation < 5% |
 | `evidence_snapshot_test.dart` | 고정 z-map 의 rule/score/contributor 완전 snapshot |
 | `face_shape_posterior_test.dart` | applyPosterior 수학 + posterior 합 = 1 |
-| `real_users_recalibration_test.dart` | N=14 실사용자 empirical z + archetype concentration |
 
 ### 주요 상수
 

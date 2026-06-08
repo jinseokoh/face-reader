@@ -1,6 +1,6 @@
 # ARCHITECTURE — 화면 · 패키지 · 데이터 흐름
 
-**최종 업데이트**: 2026-06-03 (v1.0.1)
+**최종 업데이트**: 2026-06-08 (v1.0.1)
 **역할**: 앱이 어떻게 조립되어 있는가 — 화면 구조, 2-package monorepo layout, Riverpod provider 패턴, 데이터 흐름, 코인/궁합 경제, 외부 인프라 연결.
 **관련**: 엔진 동작은 [HOW-IT-WORKS.md](HOW-IT-WORKS.md), 디자인 토큰은 [DESIGN.md](DESIGN.md).
 
@@ -485,7 +485,7 @@ pnpm build:shared          # shared/lib/face_engine.dart → react/app/lib/share
 cd /Users/chuck/Code/face/flutter
 flutter pub get
 flutter analyze            # 0 issues 기대
-flutter test               # test 25 파일 전부 green
+flutter test               # test 24 파일 전부 green
 flutter test test/calibration_test.dart   # Monte Carlo 재보정
 flutter run                # 실기 필수 — camera/MediaPipe simulator 불가
 ```

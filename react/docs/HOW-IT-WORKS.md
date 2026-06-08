@@ -1,6 +1,6 @@
 # HOW-IT-WORKS — facely
 
-**최종 업데이트**: 2026-06-03
+**최종 업데이트**: 2026-06-08
 
 `facely.kr` 의 Cloudflare Workers 앱. 책임:
 
@@ -331,7 +331,7 @@ life_question_narrative
 | (4) rule magnitude cap | ethnicity | `attribute_derivation.dart::_scaleRules` (Stage 2-5 전체) | `ethnicity_factors.dart::physiognomyCanonScale` | 한국 관상 전통 = 동아 canon (동남아 0.9 / 그 외 0.7 로 dampen) |
 | (4-age) age-banded rules | ageGroup | `attribute_derivation.dart::_ageRulesFor(band)` | `_youngAgeRules` / `_midAgeRules` / `_lateAgeRules` | 연령별 발복·노화 변곡점 (관상 전통 + 일반 commonsense) |
 | (4-lateral) flag cutoff | gender | `face_analysis.dart:177` 근방 | `_snubRawCutoff`, `_droopRawCutoff` inline | Sforza 2009 (남녀 nasolabial baseline ~5° gap) |
-| (5) normalize quantile | gender × shape | `attribute_normalize.dart` | `_attrQuantilesByShape` (MC 생성) | MC baseline: eastAsian × 30대 (CLAUDE.md N=14 cohort) |
+| (5) normalize quantile | gender × shape | `attribute_normalize.dart` | `_attrQuantilesByShape` (MC 생성) | MC baseline: eastAsian × 30대 (AAF reference 셀) |
 | (6) archetype classifier | gender | `archetype.dart::classifyArchetype` | `_genderPriors` | 한국 관상 전통 archetype 의 gender 함의 (장군·미인 등) |
 | (7) yin-yang balance | gender | `yin_yang.dart::computeYinYang` | `_yyGenderBaseline` | 한국 관상 전통: 남=양 base, 여=음 base |
 | (narrative) | gender | `life_question_narrative.dart` | `_romanceBeatsMale/Female` 등 pool | UX 자연스러움 |

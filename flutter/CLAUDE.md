@@ -1,6 +1,6 @@
 # Face Reader — Claude Code 오리엔테이션
 
-**최종 업데이트**: 2026-05-19
+**최종 업데이트**: 2026-06-08
 
 관상 분석 Flutter 앱. MediaPipe Face Mesh 468 landmarks → 26 frontal + 8 lateral metric → 14-node tree → 10 attribute → archetype → 8 인생 질문 본문. 궁합은 별도 엔진(五行·十二宮·五官·三停·陰陽 기반).
 
@@ -63,7 +63,7 @@
 cd /Users/chuck/Code/face/flutter
 flutter pub get
 flutter analyze          # 0 issues 기대
-flutter test             # 145 test 전부 green
+flutter test             # 143 test 전부 green
 flutter run              # 실기 (camera/MediaPipe simulator 불가)
 ```
 

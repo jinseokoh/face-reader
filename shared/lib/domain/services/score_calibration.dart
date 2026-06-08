@@ -27,9 +27,9 @@ import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/services/attribute_derivation.dart';
 import 'package:face_engine/domain/services/physiognomy_scoring.dart';
 
-/// MC baseline demographic — eastAsian + 30대 per CLAUDE.md §다음 작업 P0
-/// (N=14 empirical recalibration cohort = 동아 30대 여성). 타 인종·연령
-/// empirical N 누적 시 분화.
+/// MC baseline demographic — eastAsian + 30대. attribute quantile 은 이 셀의
+/// metric reference(eastAsian frontal = AAF 11,800 실측) 위에서 합성 분포를
+/// 만든다. 연령·인종 reference 가 셀별로 채워지면 baseline 분화.
 const _kMcEthnicity = Ethnicity.eastAsian;
 const _kMcAgeGroup = AgeGroup.thirties;
 
@@ -328,8 +328,8 @@ String formatMeanStd(Map<Attribute, ({double mean, double std})> male,
   return buf.toString();
 }
 
-// v2.8 (2026-04-19): N=14 real-user (eastAsian female 30s) empirical 재보정
-// 후 metric z 분포가 N(0, ~1) 로 수렴. ref 이동으로 "camera/selfie +bias"
-// 가정이 ref 에 흡수됐으므로 MC 도 bias=0.0, std=1.0 로 정렬한다.
+// MC sampler 입력 z 분포. eastAsian frontal reference(AAF 11,800 실측, 앱과
+// 동일 파이프라인 측정)가 production metric z 를 N(0,1) 로 센터링하므로
+// sampler 도 bias=0.0, std=1.0 으로 정렬한다.
 const double _inputMean = 0.0;
 const double _inputStd = 1.0;
