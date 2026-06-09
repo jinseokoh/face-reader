@@ -1,6 +1,6 @@
 # HOW IT WORKS — 관상 엔진 기술 구현
 
-**최종 업데이트**: 2026-06-08 (v1.0.1)
+**최종 업데이트**: 2026-06-09 (v1.0.1 · §5.1 Monte Carlo 재보정 + §8.4/§8.5 narrative tone & manner 반영)
 **역할**: 얼굴 입력부터 리포트 본문까지, 엔진이 무엇을 어떻게 계산하는지의 SSOT.
 **관련**: 화면·폴더 구조는 [ARCHITECTURE.md](ARCHITECTURE.md), 디자인 토큰은 [DESIGN.md](DESIGN.md).
 
@@ -297,12 +297,72 @@ raw → globalPct = _rawToPercentile(raw, attr, gender)   ← 21-point quantile 
 - **성별별 21-point quantile table** (`_attrQuantilesMale` / `_attrQuantilesFemale`). 상관 Monte Carlo 20,000 샘플(seed=42, bone/mid latent + 얼굴형 prior) 로 생성.
 - **per-shape × gender quantile** (Opt-D, v2.8): shape-conditional bias 근본 제거.
 - **재생성 명령**: `flutter test test/calibration_test.dart` → 출력 map 을 `attribute_normalize.dart` 에 붙여넣기.
+- **이 quantile table 이 어떻게 만들어지나** → §5.1 Monte Carlo 재보정.
 
 ### Invariant (test/score_distribution_test.dart)
 
 - spread (top-bottom) ≥ 2.0
 - 평균 ~ 7.0, std ~ 1.2
 - 상위 saturation (≥9.5 전부) < 5%
+
+### 5.1 Monte Carlo 재보정 — 점수의 "눈금자"를 만드는 오프라인 도구
+
+위 §5 의 `_rawToPercentile` 은 raw 점수를 "상위 몇 %냐"로 바꾼다. 그러려면 **"보통
+사람들의 점수 분포가 어떻게 생겼는지"를 적어 둔 눈금자(quantile table)** 가 필요하다.
+Monte Carlo 재보정은 그 눈금자를 만드는 작업이다.
+
+**비유**: 학교 시험의 등급컷과 같다. 한 학생의 원점수 73점이 1등급인지 5등급인지는,
+*그 학생만 봐서는* 모른다 — "전체 학생 점수 분포"가 있어야 줄을 세운다. 우리는 실제
+응시자 수십만 명을 모을 수 없으니, 대신 **그럴듯한 가짜 얼굴 2만 개를 컴퓨터로 지어내
+시험을 치르게 하고**, 그 점수 분포로 등급컷을 만든다. 이게 Monte Carlo(= "무작위로 많이
+돌려 본다")다.
+
+#### 어떻게 가짜 얼굴을 짓나 (`score_calibration.dart`)
+
+진짜 사람 얼굴은 부위가 **따로 놀지 않는다** — 뼈대가 큰 사람은 광대·턱·이마가 *함께* 큰
+경향이 있다. 그래서 각 부위 숫자를 완전히 따로 뽑지 않고, 얼굴마다 **공통 성향 두 개**를
+먼저 뽑는다:
+
+- "뼈대가 전체적으로 큰가/작은가" (bone)
+- "얼굴 가운데(코·광대 높이)가 발달했나" (mid)
+
+그다음 부위마다 = `이 공통 성향들 × 그 부위가 성향을 따르는 정도 + 그 부위만의 우연`
+으로 숫자를 만든다. 또 얼굴형(계란형 35%·긴형 18%·둥근 15%·각진 12%·하트 10%·미상 10%)을
+현실 비율대로 뽑아, 그 얼굴형다운 편향을 얹는다. 이렇게 하면 "한 부위만 뜬금없이 큰" 비현실적
+얼굴 대신 **사람 같은 얼굴 2만 개**가 만들어진다.
+
+#### 그다음
+
+```
+가짜 얼굴 2만 개  →  진짜 엔진에 그대로 통과(scoreTree → deriveAttributeScores)
+   →  10속성 점수 2만 벌 수집  →  정렬해서 21토막(0%,5%,…,100%)으로 자름
+   →  이게 눈금자(quantile table).  성별 2종 × 얼굴형 5종 따로 만든다.
+```
+
+#### 핵심: 이건 앱이 돌리는 게 아니다 (오프라인 codegen)
+
+- 이 2만 번 시뮬레이션은 **개발자가 자기 PC에서 한 번 돌리는 도구**다. 사용자 휴대폰은
+  절대 돌리지 않는다.
+- 만든 눈금자는 **숫자 표로 코드에 박아 넣는다**(`attribute_normalize.dart` 의
+  `_attrQuantilesMale` 등). 앱은 런타임에 이 박힌 표를 *읽기만* 한다.
+- 그래서 워크플로가 "**돌려서 출력 → 그 숫자를 복사해 코드에 붙여넣기**"다. 자동이 아니라
+  의도된 수동 단계 — 눈금자는 자주 바뀌면 안 되는 기준선이기 때문.
+
+```bash
+flutter test test/calibration_test.dart   # 2만 샘플 돌려 눈금자 출력
+# 출력된 const 블록을 attribute_normalize.dart 에 붙여넣기
+```
+
+**언제 다시 돌리나**: weight matrix·rule·reference 를 바꾸면 점수 분포가 달라지므로 눈금자도
+다시 만들어야 한다 (§10, §6.5 체크리스트). 안 그러면 "옛 분포 기준 등급컷"으로 새 점수를
+줄 세우게 되어 saturation·편향이 생긴다.
+
+#### 궁합에도 같은 도구가 따로 있다
+
+궁합 총점도 똑같이 가짜 쌍 2만 개를 돌려 분포를 보고 등급컷을 정한다
+(`compat_calibration_test.dart`). 그 결과가 `compat_label.dart` 의 4단계 라벨 경계
+(刑剋難調 / 磨合可成 / 琴瑟相和 / 天作之合)와 `compat_aggregator.dart` 의 사용자 점수
+변환 anchor(p30/p60/p90 → 56/78/90)에 박혀 있다. §7 참조.
 
 ---
 
@@ -442,12 +502,17 @@ _Frag = (predicate: double Function(_Features), variants: List<String>)
 - **soft predicate** (v2.9): `bool → double` 전환. band cliff 제거. 인접 z 가 fragment 선택에 연속 반영.
 - **face hash seed** (FNV): metrics + attributes + nodeScores 를 섞어 32-bit seed. 같은 얼굴 → 같은 본문 (결정론), 다른 얼굴 → 거의 유일.
 - **섹션/빗/슬롯 salting**: `beatSeed = seed ^ (beatSalt × 2654435761)` 로 독립 stream.
+- **`@__ONELINER__` 토큰 치환** (Step 0): fragment 를 고른 뒤 `_resolveText` 가 가장 먼저 이 토큰을 "관상가 한 줄 평"(§8.5)으로 바꾼다. 일반 `@{slot}` 치환보다 앞 단계.
 
 ### 8.2 슬롯 풀
 
-`@{slot}` 와 `{a|b|c}` 인라인 alternation. 45 카테고리 (수식 정도 · 인물 수식 · 십이궁 · 오악 · 오관 · 삼정 · 기·상 · 사자성어 등) × 슬롯당 3~6 변종.
+`@{slot}` 와 `{a|b|c}` 인라인 alternation. 카테고리 × 슬롯당 3~6 변종. 십이궁·오악 등의
+이름을 직접 노출하던 메타포 슬롯은 일상어로 치환(예: `palace_career` = "직장 운/일 운").
 
 성별 분기 슬롯: `_m`/`_f` 접미사 쌍. `_genderedKey()` 가 features.gender 로 분기.
+
+**`@{heard}` slot (2인칭 경험 예언)**: "…는 말을 @{heard}" 형태로 "들어 봤을/듣는" 등을
+채워, 독자가 실제로 들었을 법한 말을 끼워 넣는 장치. tone & manner 개편(§8.5)의 핵심 slot.
 
 ### 8.3 연령 게이팅
 
@@ -460,6 +525,35 @@ if (f.age.isOver30) parts.add('관능도', …);
 ### 8.4 14-node expandable UI (report_page)
 
 `node_text_blocks.dart` SSOT — 14 node × 3 band (high/mid/low) × shared|male|female 본문. report_page 에서 탭하면 펼침. 성별 분기 4 node (eye/nose/mouth/cheekbone).
+
+**톤 (2026-06-08)**: 본문을 한자 jargon 에서 현대 한국어로 전면 전환. 監察官·上停/中停/下停·
+早年發 같은 한자 단독 표기와 "관상학에서 ~라 부른다" 프레임을 제거하고, 부위를 가리키는 말도
+일상어(상정→이마, 중정→코·광대, 하정→입·턱)로 바꿨다. band 별 본문 최소 길이 floor 도 평범체
+기준으로 재보정(120/100 → 100/85자).
+
+### 8.5 tone & manner — 6 레버 (2026-06-08 개편)
+
+7 인생질문 섹션 본문을 "콕 집어 말해 주는" 톤으로 전면 재작성. 메타포·자기계발 jargon 을 빼고
+**평범한 한국어 단문**으로 직접 말하는 게 목표. 6 가지 장치를 쓴다:
+
+| 레버 | 무엇 | 예 |
+|---|---|---|
+| 1. 관찰 → 해석 | 먼저 얼굴에서 보이는 사실을 말하고, 그다음 의미로 넘어간다 | "입꼬리가 또렷이 올라가 있다 → 그래서 …" |
+| 2. 행동 vignette | 추상적 성격 대신 일상의 한 장면을 묘사 | "괜찮다 해놓고 돌아서서 곱씹은 적 있을 것" |
+| 3. 이중성 훅 | "겉은 A, 속은 B" 식 대비로 입체감 | "무뚝뚝한데 은근 챙긴다" |
+| 4. 2인칭 경험 예언 | 독자가 실제 들었을 법한 말을 `@{heard}` 로 끼움 (§8.2) | "…는 말을 들어 봤을 것" |
+| 5. 평범 단문 | 사자성어·관상 용어 대신 짧고 쉬운 문장 | — |
+| 6. 한 줄 평 | 종합 조언 끝에 인용 가능한 `@__ONELINER__` 한 줄 (§8.1) | "겉으론 차분한데 속은 뜨거운 사람" |
+
+**vignette beat 구조**: 섹션마다 `_Xvignette` beat pool 을 두어 레버 2(행동 장면)를 공급한다
+(`_healthVignette`·`_romanceVignette`·`_sensualVignette` 등). 기존 beat 흐름
+(opening/strength/shadow/advice)에 한 컷을 더 얹는 방식.
+
+**`@__ONELINER__` 엔진**: 상위 2 attribute 를 "겉은 X, 속은 Y" 대비로 묶어 한 문장으로 굳힌다.
+종합 조언 말미에서 `_resolveText` Step 0(§8.1)이 치환.
+
+**불변**: beat 선택 machinery(`_pickBeat`·`_resolveText`·seed)는 손대지 않았다 — 같은 얼굴이
+항상 같은 본문을 받는 결정론(§8.1)은 그대로다. 바뀐 건 fragment 텍스트와 slot 내용뿐.
 
 ---
 
