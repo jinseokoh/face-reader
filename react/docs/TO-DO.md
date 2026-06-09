@@ -9,7 +9,37 @@
 
 이 둘은 말은 비슷해 보여도 **수학적으로 완전히 다른 계산**이다. 이 문서는 왜 다른지,
 그리고 사용자 풀(pool)이 수십만 명으로 커져도 빠르게 돌리는 방법을 **고등학교 수학 지식만으로**
-이해할 수 있게 설명한다.
+이해할 수 있게 설명한다 (§0~§9).
+
+---
+
+## 현재 위치 (where we are) — 2026-06-09
+
+### 방금 한 일 (문서 동기화)
+
+- `react/docs/TO-DO.md`(이 문서) → 닮은꼴·궁합 vector 서비스 설계로 교체.
+- `flutter/docs/HOW-IT-WORKS.md` → §5.1 Monte Carlo 재보정 절 신설 + §8.4/§8.5 narrative
+  tone & manner(6 레버·`@__ONELINER__`·`@{heard}`·평범체 전환) 반영.
+
+### 줄기 A — 닮은꼴 / 궁합 vector 서비스 (이 문서)
+
+**상태: 설계 확정 단계, 코드 미착수.**
+
+- 확정: 닮은꼴 = 거리(`shape_vec` 26차원) / 궁합 = 카드 내적(`compat_vec`) + 엔진 재정렬 /
+  per-user 캐시(옵션 2)는 배제.
+- 미정 4건 → §9 열린 결정 (카드 생성법 distill vs 해석적 · z vs 원본비율 · 필터 컬럼 범위 · 카드 길이 R).
+- 다음 단계: 결정 확정 → `0001_baseline.sql` 스키마(§7) + distill·recall 검증 하니스(§8).
+
+### 줄기 B — 출시 차단 (P0) · 추적 복원
+
+> 아래는 이 문서 이전 버전의 체크리스트에 있던 항목. **명세 자체는
+> `react/docs/HOW-IT-WORKS.md` 에 살아 있으며**, 여기서는 추적 포인터만 복원한다.
+
+- [ ] **secret-as-token bypass 제거** — GA 전 마지노선. HOW-IT-WORKS §6.1.1.
+- [ ] **딥링크 `.well-known` 실값** — AASA `appIDs` / assetlinks SHA-256. HOW-IT-WORKS §4.2.
+- [ ] **privacy P0** — 분석 동의 화면 · privacy policy 페이지 · 권한 사유 문구 · 14세 미만 확인.
+  HOW-IT-WORKS §12.3.
+- [ ] **(backlog)** inactive 카드 정리 cron 미구현 — 현재 수동. HOW-IT-WORKS §12.2.
 
 ---
 
