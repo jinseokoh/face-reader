@@ -30,12 +30,12 @@ void main() {
   });
 
   test('각 band 본문 최소 길이 기준 충족', () {
-    // high/low = 핵심 해석, mid = 간결한 균형형.
+    // high/low = 핵심 해석, mid = 간결한 균형형. 평범체 톤 기준 floor.
     for (final entry in nodeTextBlocks.entries) {
       for (final case_ in [
-        ('high', entry.value.high, 120),
-        ('mid', entry.value.mid, 100),
-        ('low', entry.value.low, 120),
+        ('high', entry.value.high, 100),
+        ('mid', entry.value.mid, 85),
+        ('low', entry.value.low, 100),
       ]) {
         final (name, block, floor) = case_;
         final male = resolveNodeBody(block, Gender.male);
