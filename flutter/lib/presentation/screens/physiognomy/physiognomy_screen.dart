@@ -456,7 +456,11 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
               // 프로필 슬롯 102px — Android 는 94 로도 충분했으나 iPhone 의
               // safe-area·FlexibleSpaceBar 계산 차이로 inner Column 이 2.5px
               // overflow. 양 플랫폼 동일 layout 유지를 위해 8px 여유 추가.
-              expandedHeight: kToolbarHeight + 102 + kTextTabBarHeight,
+              // 미설정이면 프로필 슬롯을 접는다 — 등록 유도는 전 탭 공통
+              // nudge 배너(MyFaceNudgeBanner)가 맡는다 (static 안내 제거).
+              expandedHeight: hasMyFace
+                  ? kToolbarHeight + 102 + kTextTabBarHeight
+                  : null,
               title: const Text('관상'),
               actions: [
                 IconButton(
@@ -468,19 +472,21 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
               // 스크롤 시 background 가 fade 되며 condensed 상태에서는 title 만 남음.
               // background 는 expandedHeight 전체에 깔리므로 위로 toolbar,
               // 아래로 TabBar 만큼 padding 빼서 프로필이 두 chrome 사이에만 배치되게.
-              flexibleSpace: FlexibleSpaceBar(
-                collapseMode: CollapseMode.parallax,
-                background: SafeArea(
-                  bottom: false,
-                  child: Padding(
-                    padding: const EdgeInsets.only(
-                      top: kToolbarHeight,
-                      bottom: kTextTabBarHeight,
-                    ),
-                    child: MyFaceHeader(myFace: myFace),
-                  ),
-                ),
-              ),
+              flexibleSpace: hasMyFace
+                  ? FlexibleSpaceBar(
+                      collapseMode: CollapseMode.parallax,
+                      background: SafeArea(
+                        bottom: false,
+                        child: Padding(
+                          padding: const EdgeInsets.only(
+                            top: kToolbarHeight,
+                            bottom: kTextTabBarHeight,
+                          ),
+                          child: MyFaceHeader(myFace: myFace),
+                        ),
+                      ),
+                    )
+                  : null,
               bottom: TabBar(
                 controller: tabController,
                 labelColor: AppColors.textPrimary,

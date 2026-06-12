@@ -13,6 +13,7 @@ import 'package:facely/presentation/screens/compatibility/compatibility_screen.d
 import 'package:facely/presentation/screens/home/home_screen.dart';
 import 'package:facely/presentation/screens/physiognomy/physiognomy_screen.dart';
 import 'package:facely/presentation/screens/settings/settings_screen.dart';
+import 'package:facely/presentation/widgets/my_face_nudge_banner.dart';
 
 class MainApp extends ConsumerStatefulWidget {
   const MainApp({super.key});
@@ -140,13 +141,22 @@ class _MainAppState extends ConsumerState<MainApp> {
     final selectedIndex = ref.watch(selectedTabProvider);
 
     return Scaffold(
-      body: IndexedStack(
-        index: selectedIndex,
-        children: const [
-          HomeScreen(),
-          PhysiognomyScreen(),
-          CompatibilityScreen(),
-          SettingsScreen(),
+      body: Stack(
+        children: [
+          IndexedStack(
+            index: selectedIndex,
+            children: const [
+              HomeScreen(),
+              PhysiognomyScreen(),
+              CompatibilityScreen(),
+              SettingsScreen(),
+            ],
+          ),
+          // 내 관상 미설정 nudge — 홈/관상/궁합 탭 상단에 슬라이드-다운 오버레이.
+          const Align(
+            alignment: Alignment.topCenter,
+            child: MyFaceNudgeBanner(),
+          ),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(

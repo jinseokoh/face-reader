@@ -223,7 +223,7 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
                 child: Text(
                   canMatrix
                       ? '교감도 보기'
-                      : '${TeamRoom.kMinMembers}명부터 교감도을 볼 수 있어요',
+                      : '${TeamRoom.kMinMembers}명부터 교감도를 볼 수 있어요',
                   style: const TextStyle(
                       fontSize: 16, fontWeight: FontWeight.w600),
                 ),

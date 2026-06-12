@@ -12,6 +12,7 @@ import 'package:facely/presentation/providers/team_provider.dart';
 import 'package:facely/presentation/screens/team/team_create_sheet.dart';
 import 'package:facely/presentation/screens/team/team_room_screen.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
+import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
 import 'package:facely/presentation/widgets/my_face_header.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -248,22 +249,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     // ① 내 관상 컴팩트 헤더 — DESIGN.md §3.7 chrome (관상 탭
-                    // 헤더와 동일 공용 위젯). 미설정 시 탭 = 셀카 등록 플로우.
-                    MyFaceHeader(
-                      myFace: myFace,
-                      unsetCaption: '탭하면 셀카 한 장으로 등록됩니다.',
-                      onTap: () {
-                        final mf = myFace;
-                        if (mf == null) {
-                          _createMyFace();
-                          return;
-                        }
-                        context.push(
-                          '/r/${mf.supabaseId ?? 'local'}',
-                          extra: mf,
-                        );
-                      },
-                    ),
+                    // 헤더와 동일 공용 위젯). 미설정 시엔 숨김 — 전 탭 공통
+                    // nudge 배너(MyFaceNudgeBanner)가 등록 유도를 맡는다.
+                    if (myFace != null)
+                      MyFaceHeader(
+                        myFace: myFace,
+                        onTap: () => context.push(
+                          '/r/${myFace!.supabaseId ?? 'local'}',
+                          extra: myFace,
+                        ),
+                      ),
                     SizedBox(height: topGap),
                     // ② 교감도 영역 — 있으면 카드 리스트, 없으면 기본 배경
                     // (team-chemistry-map.png) + 첫 팀 안내 (A5).
@@ -280,7 +275,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 ),
                                 const SizedBox(height: AppSpacing.sm),
                                 Text(
-                                  '첫 교감도을 만들어 보세요',
+                                  '첫 교감도를 만들어 보세요',
                                   style: AppText.caption.copyWith(
                                     color: AppColors.textHint,
                                   ),
@@ -324,7 +319,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                         ),
                         child: const Text(
-                          '＋ 교감도 만들기',
+                          '＋ 교감도 방 만들기',
                           style: TextStyle(
                               fontSize: 16, fontWeight: FontWeight.w600),
                         ),
@@ -393,7 +388,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  /// [＋ 교감도 만들기] — 내 관상 선행 조건 게이트 (A5):
+  /// [＋ 교감도 방 만들기] — 내 관상 선행 조건 게이트 (A5):
   /// 미설정이면 먼저 [내 관상 만들기] 플로우, 완료 후 생성 시트로 복귀.
   Future<void> _createTeam() async {
     var myFace = _findMyFace();
@@ -417,40 +412,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return null;
   }
 
-  /// [내 관상 만들기] — 전면 카메라 즉시 오픈 (PIVOT A5 ①). 카메라 좌하단
-  /// 앨범 아이콘으로 보정해 둔 사진 등록 경로 제공, 선택 다이얼로그 없음.
-  /// 분석 완료 시 InfoConfirm 이 isMyFace 로 등록하고 홈에 남는다.
-  Future<void> _createMyFace() async {
-    AnalyticsService.instance.logCameraOpen();
-    final size = MediaQuery.of(context).size;
-    final result = await showModalBottomSheet<Object>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      constraints: BoxConstraints.tightFor(
-        width: size.width,
-        height: size.height,
-      ),
-      builder: (_) => const FaceMeshPage(albumShortcut: true),
-    );
-    if (!mounted || result == null) return;
-    if (result is FaceMeshAlbumRequest) {
-      // 앨범 경로는 기존 _openAlbum 과 동일하게 로그인 게이트 적용.
-      if (!ref.read(authProvider.notifier).isLoggedIn) {
-        final loggedIn = await showLoginBottomSheet(context, ref);
-        if (!loggedIn) return;
-        if (!mounted) return;
-      }
-      final albumResult = await _showAlbumSheet();
-      if (!mounted || albumResult == null) return;
-      await _pushDemographicConfirm(albumResult, asMyFace: true);
-      return;
-    }
-    if (result is CaptureResult) {
-      await _pushDemographicConfirm(result, asMyFace: true);
-    }
-  }
+  /// 내 관상 등록 — 공용 플로우 (nudge 배너와 동일 경로).
+  Future<void> _createMyFace() => startMyFaceCapture(context, ref);
 
   /// 앨범 path — 카메라와 동일한 fullSize sheet 에 AlbumCapturePage 를 띄움.
   Future<void> _openAlbum() async {

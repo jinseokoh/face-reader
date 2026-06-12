@@ -119,6 +119,20 @@ class _TeamMatrixScreenState extends ConsumerState<TeamMatrixScreen> {
                   caption: '풀이를 열면 정확한 점수를 볼 수 있어요',
                 ),
               ],
+              // 나와의 교감도 순위 — 잘 맞는 사람부터 어려운 사람 순.
+              // 보는 사람(내 관상)이 멤버일 때만. 무료 노출은 밴드 이모지만
+              // (점수·풀이는 페어 unlock 정책 그대로, A2).
+              if (_viewer != null) ...[
+                const SizedBox(height: AppSpacing.xl),
+                Text(
+                  '나와의 교감도 순위',
+                  style: AppText.caption.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                _buildViewerRanking(),
+              ],
               const SizedBox(height: AppSpacing.xl),
               _buildGrid(),
               const SizedBox(height: AppSpacing.lg),
@@ -138,6 +152,72 @@ class _TeamMatrixScreenState extends ConsumerState<TeamMatrixScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// 나와의 교감도 순위 — viewer 와 나머지 멤버의 페어를 총점 내림차순으로.
+  /// 행 = 순위 + 이름 + 밴드 이모지(무료), 탭 = 페어 시트(unlock 흐름).
+  Widget _buildViewerRanking() {
+    final v = _viewer!;
+    final ranked = <TeamPair>[];
+    for (final m in _matrix.members) {
+      if (m.supabaseId == v.supabaseId) continue;
+      final pair = _matrix.pairOf(v, m);
+      if (pair != null) ranked.add(pair);
+    }
+    ranked.sort((a, b) => b.total.compareTo(a.total));
+
+    FaceReadingReport otherOf(TeamPair p) =>
+        p.a.supabaseId == v.supabaseId ? p.b : p.a;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+      child: Column(
+        children: [
+          for (int i = 0; i < ranked.length; i++)
+            InkWell(
+              onTap: () => _showPairSheet(ranked[i]),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.lg,
+                  vertical: AppSpacing.md,
+                ),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 24,
+                      child: Text(
+                        '${i + 1}',
+                        style: AppText.caption.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        _nameOf(otherOf(ranked[i])),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppText.body.copyWith(
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      ranked[i].label.bandEmoji,
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
