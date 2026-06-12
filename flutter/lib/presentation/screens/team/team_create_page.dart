@@ -11,7 +11,7 @@ import 'package:facely/presentation/widgets/primary_button.dart';
 
 /// 교감도 방 생성 풀페이지 — PIVOT A6 채택안 B (2026-06-12 풀페이지 개정).
 /// 카메라 캡처와 동일한 바텀 슬라이드 풀페이지 패턴. 상단에 "교감도 모임 훅"
-/// 헤드라인(우리 팀/반/모임/동아리/가족 키워드 회전)을 크게 노출하고,
+/// 헤드라인(우리 팀/반/모임/조직/회사/크루/동아리/패밀리 키워드 회전)을 크게 노출하고,
 /// 생성은 여전히 모임명 한 줄 1스텝. 반환: 생성된 TeamRoom (취소 시 null).
 Future<TeamRoom?> showTeamCreatePage(
   BuildContext context,
@@ -43,8 +43,10 @@ class _TeamCreatePage extends ConsumerStatefulWidget {
 
 class _TeamCreatePageState extends ConsumerState<_TeamCreatePage> {
   // 교감도 모임 훅 — 회전 키워드. "우리 {키워드}에서 나랑 케미가 제일
-  // 잘 맞는 사람은?" 조사 충돌이 없는 단어만 (전부 받침 없음/에서 결합 자연).
-  static const _hookWords = ['팀', '반', '모임', '동아리', '가족'];
+  // 잘 맞는 사람은?" — 전부 "우리 ○에서" 결합이 자연스러운 단어.
+  static const _hookWords = [
+    '팀', '반', '모임', '조직', '회사', '크루', '동아리', '패밀리',
+  ];
   static const _suggestions = ['회식', 'MT', '동아리', '가족', '스터디'];
 
   final TextEditingController _controller = TextEditingController();
