@@ -36,8 +36,10 @@ Future<TeamRoom?> showTeamCreatePage(
 /// fade+slide 로 교체되는 훅 헤드라인. SongMyung display 토큰.
 class _HookHeadline extends StatelessWidget {
   final String word;
+  // true 면 회전 없이 [word] 로 고정 — 크로스페이드 없이 즉시 표시.
+  final bool locked;
 
-  const _HookHeadline({required this.word});
+  const _HookHeadline({required this.word, this.locked = false});
 
   @override
   Widget build(BuildContext context) {
@@ -47,20 +49,10 @@ class _HookHeadline extends StatelessWidget {
         Row(
           children: [
             Text('우리 ', style: AppText.display),
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 400),
-              switchInCurve: Curves.easeOutCubic,
-              switchOutCurve: Curves.easeInCubic,
-              // fade 만 사용 — slide(변환 레이어)는 글리프가 분수 픽셀에
-              // 래스터되어 키워드만 흐릿해 보이는 원인이었음.
-              transitionBuilder: (child, anim) =>
-                  FadeTransition(opacity: anim, child: child),
-              child: Text(
-                word,
-                key: ValueKey(word),
-                style: AppText.display,
-              ),
-            ),
+            if (locked)
+              Text(word, style: AppText.display)
+            else
+              _RotatingWord(word: word),
             Text('에서', style: AppText.display),
           ],
         ),
@@ -70,6 +62,69 @@ class _HookHeadline extends StatelessWidget {
         Text('잘 맞는 사람은?', style: AppText.display),
       ],
     );
+  }
+}
+
+/// 회전 키워드 — 전환 400ms 동안만 크로스페이드 Stack 을 쓰고, 정지
+/// 상태에선 래퍼 없는 평문 [Text] 로 렌더한다. 전환 위젯(opacity/transform
+/// 레이어) 안의 텍스트는 글리프 픽셀 스냅이 달라져 옆 글자보다 흐릿하게
+/// 보이는 문제가 있어, 화면에 머무는 시간(약 2.1초)에는 일반 텍스트와
+/// 동일한 렌더 경로를 보장한다.
+class _RotatingWord extends StatefulWidget {
+  final String word;
+
+  const _RotatingWord({required this.word});
+
+  @override
+  State<_RotatingWord> createState() => _RotatingWordState();
+}
+
+class _RotatingWordState extends State<_RotatingWord>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 400),
+  );
+  late String _current = widget.word;
+  String? _outgoing;
+
+  @override
+  Widget build(BuildContext context) {
+    final outgoing = _outgoing;
+    if (outgoing == null) {
+      // 정지 상태 — 평문 렌더 (레이어 0, 옆 글자와 동일 경로).
+      return Text(_current, style: AppText.display);
+    }
+    return Stack(
+      alignment: Alignment.bottomLeft,
+      children: [
+        FadeTransition(
+          opacity: ReverseAnimation(_controller),
+          child: Text(outgoing, style: AppText.display),
+        ),
+        FadeTransition(
+          opacity: _controller,
+          child: Text(_current, style: AppText.display),
+        ),
+      ],
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant _RotatingWord oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.word == widget.word) return;
+    _outgoing = _current;
+    _current = widget.word;
+    _controller.forward(from: 0).whenComplete(() {
+      if (mounted) setState(() => _outgoing = null);
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 }
 
@@ -88,23 +143,32 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage> {
   static const _hookWords = [
     '팀', '반', '모임', '조직', '회사', '부서', '좋소', '크루', '동아리', '패밀리',
   ];
-  // 모임 유형 select — 훅 문장 전체가 옵션. 회전 키워드에서 파생해
+  // 단체 유형 select — 훅 문장 전체가 옵션. 회전 키워드에서 파생해
   // 헤드라인과 select 가 항상 같은 어휘를 쓴다 + 직접입력.
   static final _typeOptions = [
-    for (final w in _hookWords) '우리 $w의 케미 도감',
+    for (final w in _hookWords) '우리 $w',
     '직접입력',
   ];
 
   final TextEditingController _controller = TextEditingController();
-  // 미선택(null) 이면 placeholder "모임의 유형을 선택하세요." 노출.
+  // 미선택(null) 이면 placeholder "단체 유형을 선택하세요." 노출.
   String? _selected;
-  // 예상 인원 — 권장 구간(4~8)의 중앙이 기본.
+  // 참여 인원 — 권장 구간(4~8)의 중앙이 기본.
   int _memberTarget = 6;
 
   Timer? _hookTimer;
   int _hookIndex = 0;
   bool _creating = false;
   bool get _isCustom => _selected == '직접입력';
+
+  /// 훅 문장 옵션을 선택하면 그 키워드로 헤드라인을 고정한다.
+  /// 직접입력·미선택이면 null — 회전 유지.
+  String? get _lockedWord {
+    final sel = _selected;
+    if (sel == null || sel == '직접입력') return null;
+    final i = _typeOptions.indexOf(sel);
+    return (i >= 0 && i < _hookWords.length) ? _hookWords[i] : null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -139,8 +203,12 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       const SizedBox(height: AppSpacing.lg),
-                      // 교감도 모임 훅 — 키워드 회전 헤드라인.
-                      _HookHeadline(word: _hookWords[_hookIndex]),
+                      // 교감도 모임 훅 — 선택 전엔 키워드 회전, 단체 유형을
+                      // 선택하는 순간 그 키워드로 즉시 고정 (애니메이션 없음).
+                      _HookHeadline(
+                        word: _lockedWord ?? _hookWords[_hookIndex],
+                        locked: _lockedWord != null,
+                      ),
                       const SizedBox(height: AppSpacing.xl),
                       Image.asset(
                         'assets/images/team-chemistry-map.png',
@@ -149,7 +217,7 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage> {
                       ),
                       const SizedBox(height: AppSpacing.xl),
                       PickerRow(
-                        value: _selected ?? '모임의 유형을 선택하세요.',
+                        value: _selected ?? '단체 유형을 선택하세요.',
                         placeholder: _selected == null,
                         onTap: _pickType,
                       ),
@@ -163,7 +231,7 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage> {
                             color: AppColors.textPrimary,
                           ),
                           decoration: InputDecoration(
-                            hintText: '우리 ___의 케미 도감',
+                            hintText: '단체명',
                             hintStyle: AppText.body.copyWith(
                               color: AppColors.textHint,
                             ),
@@ -197,11 +265,11 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage> {
                         ),
                       ],
                       const SizedBox(height: AppSpacing.xl),
-                      // 예상 인원 슬라이더 (3~12).
+                      // 참여 인원 슬라이더 (3~12).
                       Row(
                         children: [
                           Text(
-                            '예상 인원',
+                            '참여 인원',
                             style: AppText.caption.copyWith(
                               color: AppColors.textSecondary,
                             ),
@@ -273,7 +341,7 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage> {
   void initState() {
     super.initState();
     _hookTimer = Timer.periodic(const Duration(milliseconds: 2500), (_) {
-      if (!mounted) return;
+      if (!mounted || _lockedWord != null) return;
       setState(() => _hookIndex = (_hookIndex + 1) % _hookWords.length);
     });
   }
@@ -305,7 +373,7 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage> {
   Future<void> _pickType() async {
     final v = await showWheelPicker<String>(
       context,
-      title: '모임 유형 선택',
+      title: '단체 유형 선택',
       values: _typeOptions,
       current: _selected ?? _typeOptions.first,
       labelOf: (s) => s,

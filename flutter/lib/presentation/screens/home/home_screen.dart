@@ -248,7 +248,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     AppSpacing.xxl, AppSpacing.sm, AppSpacing.xxl,
                     AppSpacing.xl),
                 child: PrimaryButton(
-                  label: '＋ 단체 케미 알아내기',
+                  label: '진실의 방으로',
                   onPressed: _createTeam,
                 ),
               ),
@@ -331,6 +331,67 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  /// 내 관상 등록 — 공용 플로우 (nudge 배너와 동일 경로).
+  Future<void> _createMyFace() => startMyFaceCapture(context, ref);
+
+  /// [＋ 단체 케미 알아내기] — 내 관상 선행 조건 게이트 (A5):
+  /// 미설정이면 먼저 [내 관상 만들기] 플로우, 완료 후 생성 페이지로 복귀.
+  Future<void> _createTeam() async {
+    var myFace = _findMyFace();
+    if (myFace == null) {
+      await _createMyFace();
+      if (!mounted) return;
+      myFace = _findMyFace();
+      if (myFace == null) return;
+    }
+    final ownerId = myFace.supabaseId;
+    if (ownerId == null) return;
+    final room =
+        await showTeamCreatePage(context, ref, ownerReportId: ownerId);
+    if (!mounted || room == null) return;
+    _openRoom(room);
+  }
+
+  FaceReadingReport? _findMyFace() {
+    for (final r in ref.read(historyProvider)) {
+      if (r.isMyFace) return r;
+    }
+    return null;
+  }
+
+  /// 앨범 path — 카메라와 동일한 fullSize sheet 에 AlbumCapturePage 를 띄움.
+  Future<void> _openAlbum() async {
+    AnalyticsService.instance.logAlbumOpen();
+    if (!ref.read(authProvider.notifier).isLoggedIn) {
+      final loggedIn = await showLoginBottomSheet(context, ref);
+      if (!loggedIn) return;
+      if (!mounted) return;
+    }
+    final result = await _showAlbumSheet();
+    if (!mounted || result == null) return;
+    await _pushDemographicConfirm(result);
+  }
+
+  /// 카메라 path — fullSize sheet 안에 FaceMeshPage 가 검정 AppBar
+  /// "얼굴 정면" / "얼굴 측면" 으로 동작.
+  Future<void> _openCamera() async {
+    AnalyticsService.instance.logCameraOpen();
+    final size = MediaQuery.of(context).size;
+    final result = await showModalBottomSheet<CaptureResult>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      constraints: BoxConstraints.tightFor(
+        width: size.width,
+        height: size.height,
+      ),
+      builder: (_) => const FaceMeshPage(),
+    );
+    if (!mounted || result == null) return;
+    await _pushDemographicConfirm(result);
+  }
+
   void _openRoom(TeamRoom room) {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => TeamRoomScreen(roomId: room.id)),
@@ -365,67 +426,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       builder: (_) => const AlbumCapturePage(),
     );
   }
+}
 
-  /// [＋ 단체 케미 알아내기] — 내 관상 선행 조건 게이트 (A5):
-  /// 미설정이면 먼저 [내 관상 만들기] 플로우, 완료 후 생성 페이지로 복귀.
-  Future<void> _createTeam() async {
-    var myFace = _findMyFace();
-    if (myFace == null) {
-      await _createMyFace();
-      if (!mounted) return;
-      myFace = _findMyFace();
-      if (myFace == null) return;
-    }
-    final ownerId = myFace.supabaseId;
-    if (ownerId == null) return;
-    final room =
-        await showTeamCreatePage(context, ref, ownerReportId: ownerId);
-    if (!mounted || room == null) return;
-    _openRoom(room);
-  }
+/// 홈 섹션 sticky 헤더 — 스크롤해도 상단에 고정 (내가 만든 방 / 초대받은 방).
+class _StickySectionHeader extends SliverPersistentHeaderDelegate {
+  static const double _height = 40;
 
-  FaceReadingReport? _findMyFace() {
-    for (final r in ref.read(historyProvider)) {
-      if (r.isMyFace) return r;
-    }
-    return null;
-  }
+  final String title;
 
-  /// 내 관상 등록 — 공용 플로우 (nudge 배너와 동일 경로).
-  Future<void> _createMyFace() => startMyFaceCapture(context, ref);
+  const _StickySectionHeader({required this.title});
 
-  /// 앨범 path — 카메라와 동일한 fullSize sheet 에 AlbumCapturePage 를 띄움.
-  Future<void> _openAlbum() async {
-    AnalyticsService.instance.logAlbumOpen();
-    if (!ref.read(authProvider.notifier).isLoggedIn) {
-      final loggedIn = await showLoginBottomSheet(context, ref);
-      if (!loggedIn) return;
-      if (!mounted) return;
-    }
-    final result = await _showAlbumSheet();
-    if (!mounted || result == null) return;
-    await _pushDemographicConfirm(result);
-  }
+  @override
+  double get maxExtent => _height;
 
-  /// 카메라 path — fullSize sheet 안에 FaceMeshPage 가 검정 AppBar
-  /// "얼굴 정면" / "얼굴 측면" 으로 동작.
-  Future<void> _openCamera() async {
-    AnalyticsService.instance.logCameraOpen();
-    final size = MediaQuery.of(context).size;
-    final result = await showModalBottomSheet<CaptureResult>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      constraints: BoxConstraints.tightFor(
-        width: size.width,
-        height: size.height,
+  @override
+  double get minExtent => _height;
+
+  @override
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
+      alignment: Alignment.centerLeft,
+      child: Text(
+        title,
+        style: AppText.caption.copyWith(
+          fontWeight: FontWeight.w600,
+          color: AppColors.textSecondary,
+        ),
       ),
-      builder: (_) => const FaceMeshPage(),
     );
-    if (!mounted || result == null) return;
-    await _pushDemographicConfirm(result);
   }
+
+  @override
+  bool shouldRebuild(covariant _StickySectionHeader oldDelegate) =>
+      oldDelegate.title != title;
 }
 
 /// 홈 ② 팀 카드 — §3.2 리스트 아이템 토큰. 발표(마감) 후엔 🏆 베스트 페어
@@ -536,40 +572,4 @@ class _TeamCardState extends ConsumerState<_TeamCard> {
     _bestPreviewCache[key] = preview;
     _bestPreview = preview;
   }
-}
-
-/// 홈 섹션 sticky 헤더 — 스크롤해도 상단에 고정 (내가 만든 방 / 초대받은 방).
-class _StickySectionHeader extends SliverPersistentHeaderDelegate {
-  final String title;
-
-  const _StickySectionHeader({required this.title});
-
-  static const double _height = 40;
-
-  @override
-  double get minExtent => _height;
-
-  @override
-  double get maxExtent => _height;
-
-  @override
-  Widget build(
-      BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
-      alignment: Alignment.centerLeft,
-      child: Text(
-        title,
-        style: AppText.caption.copyWith(
-          fontWeight: FontWeight.w600,
-          color: AppColors.textSecondary,
-        ),
-      ),
-    );
-  }
-
-  @override
-  bool shouldRebuild(covariant _StickySectionHeader oldDelegate) =>
-      oldDelegate.title != title;
 }
