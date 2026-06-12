@@ -2,6 +2,7 @@ import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/config/router.dart';
 import 'package:facely/core/theme.dart';
+import 'package:facely/presentation/widgets/primary_button.dart';
 import 'package:facely/data/services/analytics_service.dart';
 import 'package:facely/domain/models/capture_result.dart';
 import 'package:facely/domain/models/team_room.dart';
@@ -306,23 +307,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(
                           horizontal: AppSpacing.xxl),
-                      child: ElevatedButton(
+                      child: PrimaryButton(
+                        label: '＋ 교감도 방 만들기',
                         onPressed: _createTeam,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.textPrimary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                              vertical: AppSpacing.lg),
-                          shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(AppRadius.md),
-                          ),
-                        ),
-                        child: const Text(
-                          '＋ 교감도 방 만들기',
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.w600),
-                        ),
                       ),
                     ),
                     const Spacer(),

@@ -19,6 +19,7 @@ import 'package:facely/presentation/screens/home/album_capture_page.dart';
 import 'package:facely/presentation/screens/home/face_mesh_page.dart';
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
+import 'package:facely/presentation/widgets/primary_button.dart';
 
 import 'team_matrix_screen.dart';
 
@@ -157,96 +158,39 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: ElevatedButton.icon(
+                      child: PrimaryButton(
+                        label: '직접 스캔',
+                        icon: FontAwesomeIcons.camera,
                         onPressed: count >= TeamRoom.kMaxMembers
                             ? null
                             : () => _scanLoop(room),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.textPrimary,
-                          foregroundColor: Colors.white,
-                          disabledBackgroundColor: AppColors.surface,
-                          padding: const EdgeInsets.symmetric(
-                              vertical: AppSpacing.lg),
-                          shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(AppRadius.md),
-                          ),
-                        ),
-                        icon: const FaIcon(FontAwesomeIcons.camera, size: 16),
-                        label: const Text(
-                          '직접 스캔',
-                          style: TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.w600),
-                        ),
                       ),
                     ),
                     const SizedBox(width: AppSpacing.md),
                     Expanded(
-                      child: ElevatedButton.icon(
-                        // P3(원격 경로)에서 활성화.
+                      // P3(원격 경로)에서 활성화.
+                      child: PrimaryButton(
+                        label: '카톡 초대 (준비 중)',
+                        icon: FontAwesomeIcons.comment,
                         onPressed: null,
-                        style: ElevatedButton.styleFrom(
-                          disabledBackgroundColor: AppColors.surface,
-                          disabledForegroundColor: AppColors.textHint,
-                          padding: const EdgeInsets.symmetric(
-                              vertical: AppSpacing.lg),
-                          shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(AppRadius.md),
-                          ),
-                        ),
-                        icon: const FaIcon(FontAwesomeIcons.comment, size: 16),
-                        label: const Text(
-                          '카톡 초대 (준비 중)',
-                          style: TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.w600),
-                        ),
                       ),
                     ),
                   ],
                 ),
               if (!room.isClosed) const SizedBox(height: AppSpacing.md),
               // 교감도 보기 — 3명부터 (A7: 부분 공개, 마감과 무관).
-              ElevatedButton(
+              PrimaryButton(
+                label: canMatrix
+                    ? '교감도 보기'
+                    : '${TeamRoom.kMinMembers}명부터 교감도를 볼 수 있어요',
                 onPressed: canMatrix ? () => _openMatrix(room) : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.textPrimary,
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: AppColors.surface,
-                  disabledForegroundColor: AppColors.textHint,
-                  padding:
-                      const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                  ),
-                ),
-                child: Text(
-                  canMatrix
-                      ? '교감도 보기'
-                      : '${TeamRoom.kMinMembers}명부터 교감도를 볼 수 있어요',
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w600),
-                ),
               ),
               if (!room.isClosed) ...[
                 const SizedBox(height: AppSpacing.md),
                 // 방장 [마감] — 두번째 강조 = outlined 검정 (3명 미만 비활성).
-                OutlinedButton(
+                SecondaryButton(
+                  label: '마감하고 베스트 페어 발표',
                   onPressed: canMatrix ? () => _confirmClose(room) : null,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.textPrimary,
-                    side: const BorderSide(color: AppColors.textPrimary),
-                    padding:
-                        const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                    ),
-                  ),
-                  child: const Text(
-                    '마감하고 베스트 페어 발표',
-                    style: TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.w600),
-                  ),
                 ),
               ],
             ],

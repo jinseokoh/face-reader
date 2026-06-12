@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:facely/core/theme.dart';
+import 'package:facely/presentation/widgets/primary_button.dart';
 import 'package:facely/domain/models/team_room.dart';
 import 'package:facely/presentation/providers/team_provider.dart';
 
@@ -121,21 +122,9 @@ class _TeamCreateSheetState extends ConsumerState<_TeamCreateSheet> {
             ],
           ),
           const SizedBox(height: AppSpacing.xl),
-          ElevatedButton(
+          PrimaryButton(
+            label: '만들기',
             onPressed: _creating ? null : _create,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.textPrimary,
-              foregroundColor: Colors.white,
-              disabledBackgroundColor: AppColors.surface,
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
-            ),
-            child: const Text(
-              '만들기',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
           ),
         ],
       ),

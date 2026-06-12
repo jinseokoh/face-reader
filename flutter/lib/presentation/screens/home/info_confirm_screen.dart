@@ -5,6 +5,7 @@ import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/core/theme.dart';
+import 'package:facely/presentation/widgets/primary_button.dart';
 import 'package:facely/data/services/image_resizer.dart';
 import 'package:facely/data/services/supabase_service.dart';
 import 'package:facely/domain/models/capture_result.dart';
@@ -152,32 +153,10 @@ class _InfoConfirmScreenState
                 textAlign: TextAlign.center,
               ),
               const Spacer(),
-              ElevatedButton(
-                onPressed: _isAnalyzing ? null : _runFullAnalysis,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.textPrimary,
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: AppColors.surface,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: _isAnalyzing
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : const Text(
-                        '분석 시작',
-                        style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w600),
-                      ),
+              PrimaryButton(
+                label: '분석 시작',
+                busy: _isAnalyzing,
+                onPressed: _runFullAnalysis,
               ),
               const SizedBox(height: 24),
             ],

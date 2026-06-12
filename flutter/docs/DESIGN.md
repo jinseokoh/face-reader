@@ -327,6 +327,37 @@ EmptyStatePlaceholder(
 
 예: `physiognomy_screen.dart` (분석 기록 없음), `compatibility_screen.dart` (내 관상 / 상대방 미등록 두 케이스).
 
+### 3.9 Full-width 주/보조 버튼 — PrimaryButton / SecondaryButton
+
+**화면 하단·시트의 full-width 행동 버튼은 `PrimaryButton` / `SecondaryButton` 한 쌍으로만 만든다.**
+화면별 inline `ElevatedButton`/`OutlinedButton` + 자체 TextStyle 조합은 즉시 폐기·재작업 사유
+(2026-06-12 실위반: 홈 생성 CTA 가 fontSize 16/pad 16/radius 10 으로 설정 탭 로그인 버튼
+(48px/subTitle 14/radius 12)과 disparate — 전부 본 위젯으로 통일).
+
+위치: `lib/presentation/widgets/primary_button.dart`. 호출 API:
+
+```dart
+PrimaryButton(label: '분석 시작', onPressed: _run, busy: _isAnalyzing)
+PrimaryButton(label: '직접 스캔', icon: FontAwesomeIcons.camera, onPressed: _scan)
+SecondaryButton(label: '마감하고 베스트 페어 발표', onPressed: _close)  // 두 번째 강조 = outlined
+```
+
+**잠긴 디자인 토큰 (호출부 override 불가):**
+
+| slot | 값 |
+|---|---|
+| 높이 | **48** 고정 (`SizedBox(height: 48)`) · width infinity |
+| 배경/전경 | Primary: `AppColors.textPrimary` bg + white / Secondary: outlined 검정 |
+| 비활성 | Primary: surface bg + textHint / Secondary: border 색 테두리 + textHint |
+| busy | 검정 bg 유지 + 흰 22px spinner ("진행 중인 주 행동"은 비활성과 다르다) |
+| radius | `AppRadius.md + 2` (12) — LoginEntryButton 과 동일 |
+| label | `AppText.subTitle` (14 / w600) |
+| icon | `FaIcon` 16px (FontAwesome only) |
+
+사용처: LoginEntryButton(로그인/가입) · info_confirm(분석 시작) · 홈(교감도 방 만들기) ·
+team_room(직접 스캔·카톡 초대·교감도 보기·마감) · team_create_sheet(만들기) ·
+team_matrix(1코인으로 풀이 보기).
+
 ---
 
 ## 4. 마이그레이션 가이드

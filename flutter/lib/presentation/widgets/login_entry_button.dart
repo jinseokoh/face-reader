@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:facely/core/theme.dart';
+import 'package:facely/presentation/widgets/primary_button.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 
 /// 비로그인 화면의 중립 로그인/가입 진입 버튼 — 탭 시 `LoginBottomSheet`
@@ -14,23 +14,9 @@ class LoginEntryButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return SizedBox(
-      width: double.infinity,
-      height: 48,
-      child: ElevatedButton(
-        onPressed: () => showLoginBottomSheet(context, ref),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.textPrimary,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.md + 2),
-          ),
-        ),
-        child: Text(
-          '로그인 / 가입',
-          style: AppText.subTitle.copyWith(color: Colors.white),
-        ),
-      ),
+    return PrimaryButton(
+      label: '로그인 / 가입',
+      onPressed: () => showLoginBottomSheet(context, ref),
     );
   }
 }

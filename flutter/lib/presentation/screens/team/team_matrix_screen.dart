@@ -9,6 +9,7 @@ import 'package:face_engine/domain/services/compat/compat_adapter.dart';
 import 'package:face_engine/domain/services/compat/compat_label.dart';
 import 'package:facely/config/router.dart';
 import 'package:facely/core/theme.dart';
+import 'package:facely/presentation/widgets/primary_button.dart';
 import 'package:facely/domain/services/team_matrix.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/providers/team_provider.dart';
@@ -345,20 +346,9 @@ class _TeamMatrixScreenState extends ConsumerState<TeamMatrixScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.xl),
-            ElevatedButton(
+            PrimaryButton(
+              label: '1코인으로 풀이 보기',
               onPressed: () => Navigator.pop(ctx, true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.textPrimary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-              ),
-              child: const Text(
-                '1코인으로 풀이 보기',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-              ),
             ),
           ],
         ),
