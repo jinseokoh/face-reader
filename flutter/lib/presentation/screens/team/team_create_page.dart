@@ -1,14 +1,13 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-
 import 'package:facely/core/theme.dart';
 import 'package:facely/domain/models/team_room.dart';
 import 'package:facely/presentation/providers/team_provider.dart';
 import 'package:facely/presentation/widgets/picker_row.dart';
 import 'package:facely/presentation/widgets/primary_button.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 /// 교감도 방 생성 풀페이지 — PIVOT A6 채택안 B (2026-06-12 풀페이지 개정).
 /// 카메라 캡처와 동일한 바텀 슬라이드 풀페이지 패턴. 상단에 "교감도 모임 훅"
@@ -33,6 +32,47 @@ Future<TeamRoom?> showTeamCreatePage(
   );
 }
 
+/// "우리 〔팀〕에서 나랑 케미가 제일 잘 맞는 사람은?" — 키워드만
+/// fade+slide 로 교체되는 훅 헤드라인. SongMyung display 토큰.
+class _HookHeadline extends StatelessWidget {
+  final String word;
+
+  const _HookHeadline({required this.word});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text('우리 ', style: AppText.display),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 400),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              // fade 만 사용 — slide(변환 레이어)는 글리프가 분수 픽셀에
+              // 래스터되어 키워드만 흐릿해 보이는 원인이었음.
+              transitionBuilder: (child, anim) =>
+                  FadeTransition(opacity: anim, child: child),
+              child: Text(
+                word,
+                key: ValueKey(word),
+                style: AppText.display,
+              ),
+            ),
+            Text('에서', style: AppText.display),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text('나랑 케미가 제일', style: AppText.display),
+        const SizedBox(height: AppSpacing.xs),
+        Text('잘 맞는 사람은?', style: AppText.display),
+      ],
+    );
+  }
+}
+
 class _TeamCreatePage extends ConsumerStatefulWidget {
   final String ownerReportId;
 
@@ -51,34 +91,20 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage> {
   // 모임 유형 select — 훅 문장 전체가 옵션. 회전 키워드에서 파생해
   // 헤드라인과 select 가 항상 같은 어휘를 쓴다 + 직접입력.
   static final _typeOptions = [
-    for (final w in _hookWords) '우리 $w에서 나랑 케미가 제일 잘 맞는 사람은?',
+    for (final w in _hookWords) '우리 $w의 케미 도감',
     '직접입력',
   ];
 
   final TextEditingController _controller = TextEditingController();
   // 미선택(null) 이면 placeholder "모임의 유형을 선택하세요." 노출.
   String? _selected;
+  // 예상 인원 — 권장 구간(4~8)의 중앙이 기본.
+  int _memberTarget = 6;
 
-  bool get _isCustom => _selected == '직접입력';
   Timer? _hookTimer;
   int _hookIndex = 0;
   bool _creating = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _hookTimer = Timer.periodic(const Duration(milliseconds: 2500), (_) {
-      if (!mounted) return;
-      setState(() => _hookIndex = (_hookIndex + 1) % _hookWords.length);
-    });
-  }
-
-  @override
-  void dispose() {
-    _hookTimer?.cancel();
-    _controller.dispose();
-    super.dispose();
-  }
+  bool get _isCustom => _selected == '직접입력';
 
   @override
   Widget build(BuildContext context) {
@@ -137,7 +163,7 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage> {
                             color: AppColors.textPrimary,
                           ),
                           decoration: InputDecoration(
-                            hintText: '나랑 케미가 제일 잘 맞는 사람은?',
+                            hintText: '우리 ___의 케미 도감',
                             hintStyle: AppText.body.copyWith(
                               color: AppColors.textHint,
                             ),
@@ -170,6 +196,36 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage> {
                           onSubmitted: (_) => _create(),
                         ),
                       ],
+                      const SizedBox(height: AppSpacing.xl),
+                      // 예상 인원 슬라이더 (3~12).
+                      Row(
+                        children: [
+                          Text(
+                            '예상 인원',
+                            style: AppText.caption.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            '$_memberTarget명',
+                            style: AppText.subTitle.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Slider(
+                        value: _memberTarget.toDouble(),
+                        min: TeamRoom.kMinMembers.toDouble(),
+                        max: TeamRoom.kMaxMembers.toDouble(),
+                        divisions:
+                            TeamRoom.kMaxMembers - TeamRoom.kMinMembers,
+                        activeColor: AppColors.textPrimary,
+                        inactiveColor: AppColors.border,
+                        onChanged: (v) =>
+                            setState(() => _memberTarget = v.round()),
+                      ),
                     ],
                   ),
                 ),
@@ -192,7 +248,7 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage> {
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     PrimaryButton(
-                      label: '단체 케미 알아내기',
+                      label: '케미 알아내기',
                       busy: _creating,
                       onPressed: _create,
                     ),
@@ -206,15 +262,20 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage> {
     );
   }
 
-  Future<void> _pickType() async {
-    final v = await showWheelPicker<String>(
-      context,
-      title: '모임 유형 선택',
-      values: _typeOptions,
-      current: _selected ?? _typeOptions.first,
-      labelOf: (s) => s,
-    );
-    if (v != null) setState(() => _selected = v);
+  @override
+  void dispose() {
+    _hookTimer?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _hookTimer = Timer.periodic(const Duration(milliseconds: 2500), (_) {
+      if (!mounted) return;
+      setState(() => _hookIndex = (_hookIndex + 1) % _hookWords.length);
+    });
   }
 
   Future<void> _create() async {
@@ -235,55 +296,20 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage> {
     final room = await ref.read(teamsProvider.notifier).create(
           title: title,
           ownerReportId: widget.ownerReportId,
+          memberTarget: _memberTarget,
         );
     if (!mounted) return;
     Navigator.of(context).pop(room);
   }
-}
 
-/// "우리 〔팀〕에서 나랑 케미가 제일 잘 맞는 사람은?" — 키워드만
-/// fade+slide 로 교체되는 훅 헤드라인. SongMyung display 토큰.
-class _HookHeadline extends StatelessWidget {
-  final String word;
-
-  const _HookHeadline({required this.word});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text('우리 ', style: AppText.display),
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 400),
-              switchInCurve: Curves.easeOutCubic,
-              switchOutCurve: Curves.easeInCubic,
-              transitionBuilder: (child, anim) => FadeTransition(
-                opacity: anim,
-                child: SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0, 0.6),
-                    end: Offset.zero,
-                  ).animate(anim),
-                  child: child,
-                ),
-              ),
-              child: Text(
-                word,
-                key: ValueKey(word),
-                style: AppText.display,
-              ),
-            ),
-            Text('에서', style: AppText.display),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        Text('나랑 케미가 제일', style: AppText.display),
-        const SizedBox(height: AppSpacing.xs),
-        Text('잘 맞는 사람은?', style: AppText.display),
-      ],
+  Future<void> _pickType() async {
+    final v = await showWheelPicker<String>(
+      context,
+      title: '모임 유형 선택',
+      values: _typeOptions,
+      current: _selected ?? _typeOptions.first,
+      labelOf: (s) => s,
     );
+    if (v != null) setState(() => _selected = v);
   }
 }

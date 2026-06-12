@@ -87,7 +87,7 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
               Row(
                 children: [
                   Text(
-                    '$count/${TeamRoom.kMaxMembers}명 참여',
+                    '$count/${room.memberTarget}명 참여',
                     style: AppText.subTitle,
                   ),
                   const SizedBox(width: AppSpacing.sm),
@@ -105,7 +105,7 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(AppRadius.sm),
                 child: LinearProgressIndicator(
-                  value: count / TeamRoom.kMaxMembers,
+                  value: count / room.memberTarget,
                   minHeight: 6,
                   backgroundColor: AppColors.surface,
                   valueColor:
@@ -131,8 +131,7 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
                           ? null
                           : () => _confirmRemove(room, members[i]),
                     ),
-                  if (!room.isClosed &&
-                      count < TeamRoom.kMaxMembers)
+                  if (!room.isClosed && count < room.memberTarget)
                     _AddChip(onTap: () => _scanLoop(room)),
                 ],
               ),
@@ -161,7 +160,7 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
                       child: PrimaryButton(
                         label: '직접 스캔',
                         icon: FontAwesomeIcons.camera,
-                        onPressed: count >= TeamRoom.kMaxMembers
+                        onPressed: count >= room.memberTarget
                             ? null
                             : () => _scanLoop(room),
                       ),
@@ -219,7 +218,7 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
     while (mounted) {
       final current = ref.read(teamsProvider.notifier).byId(room.id);
       if (current == null ||
-          current.memberReportIds.length >= TeamRoom.kMaxMembers) {
+          current.memberReportIds.length >= current.memberTarget) {
         return;
       }
       final report = await _captureOne();

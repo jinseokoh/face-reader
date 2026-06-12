@@ -35,11 +35,14 @@ class TeamsNotifier extends Notifier<List<TeamRoom>> {
   Future<TeamRoom> create({
     required String title,
     required String ownerReportId,
+    int memberTarget = TeamRoom.kMaxMembers,
   }) async {
     final now = DateTime.now();
     final room = TeamRoom(
       id: const Uuid().v4(),
       title: title,
+      memberTarget: memberTarget.clamp(
+          TeamRoom.kMinMembers, TeamRoom.kMaxMembers),
       memberReportIds: [ownerReportId],
       createdAt: now,
       updatedAt: now,
@@ -53,7 +56,7 @@ class TeamsNotifier extends Notifier<List<TeamRoom>> {
   Future<bool> addMember(String roomId, String reportId) async {
     final room = byId(roomId);
     if (room == null || room.isClosed) return false;
-    if (room.memberReportIds.length >= TeamRoom.kMaxMembers) return false;
+    if (room.memberReportIds.length >= room.memberTarget) return false;
     if (room.memberReportIds.contains(reportId)) return false;
     room.memberReportIds.add(reportId);
     room.updatedAt = DateTime.now();

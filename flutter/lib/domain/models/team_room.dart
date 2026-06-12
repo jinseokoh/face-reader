@@ -8,6 +8,8 @@ class TeamRoom {
 
   final String id;
   String title;
+  /// 생성 시 슬라이더로 정한 예상 인원 (3~12). 멤버 추가 상한·진행바 분모.
+  final int memberTarget;
   /// FaceReadingReport.supabaseId 목록. [0] = 방장(내 관상).
   final List<String> memberReportIds;
   final DateTime createdAt;
@@ -17,6 +19,7 @@ class TeamRoom {
   TeamRoom({
     required this.id,
     required this.title,
+    this.memberTarget = kMaxMembers,
     required this.memberReportIds,
     required this.createdAt,
     required this.updatedAt,
@@ -30,6 +33,8 @@ class TeamRoom {
     return TeamRoom(
       id: m['id'] as String,
       title: m['title'] as String,
+      // 필드 도입 이전에 만든 방은 최대 인원으로 간주.
+      memberTarget: (m['memberTarget'] as int?) ?? kMaxMembers,
       memberReportIds:
           (m['memberReportIds'] as List<dynamic>).cast<String>().toList(),
       createdAt: DateTime.parse(m['createdAt'] as String),
@@ -43,6 +48,7 @@ class TeamRoom {
   String toJsonString() => jsonEncode({
         'id': id,
         'title': title,
+        'memberTarget': memberTarget,
         'memberReportIds': memberReportIds,
         'createdAt': createdAt.toIso8601String(),
         'updatedAt': updatedAt.toIso8601String(),
