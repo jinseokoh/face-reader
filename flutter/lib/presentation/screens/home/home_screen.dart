@@ -293,7 +293,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: AppSpacing.xxl),
                       child: PrimaryButton(
-                        label: '＋ 교감도 방 만들기',
+                        label: '＋ 단체 케미 알아내기',
                         onPressed: _createTeam,
                       ),
                     ),
@@ -360,7 +360,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  /// [＋ 교감도 방 만들기] — 내 관상 선행 조건 게이트 (A5):
+  /// [＋ 단체 케미 알아내기] — 내 관상 선행 조건 게이트 (A5):
   /// 미설정이면 먼저 [내 관상 만들기] 플로우, 완료 후 생성 시트로 복귀.
   Future<void> _createTeam() async {
     var myFace = _findMyFace();

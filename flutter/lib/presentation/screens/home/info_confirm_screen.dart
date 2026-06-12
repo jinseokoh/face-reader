@@ -5,6 +5,7 @@ import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/core/theme.dart';
+import 'package:facely/presentation/widgets/picker_row.dart';
 import 'package:facely/presentation/widgets/primary_button.dart';
 import 'package:facely/data/services/image_resizer.dart';
 import 'package:facely/data/services/supabase_service.dart';
@@ -13,7 +14,6 @@ import 'package:facely/domain/models/face_analysis.dart';
 import 'package:facely/domain/models/face_metadata.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/providers/tab_provider.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -106,45 +106,54 @@ class _InfoConfirmScreenState
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
-              _PickerRow(
+              PickerRow(
                 label: '인종',
                 value: _ethnicity.labelKo,
                 inferring: _inferring && !_userTouched,
-                onTap: () => _showPicker<Ethnicity>(
-                  title: '인종 선택',
-                  values: Ethnicity.values,
-                  current: _ethnicity,
-                  labelOf: (e) => e.labelKo,
-                  onConfirm: (e) => _touchAndSet(() => _ethnicity = e),
-                ),
+                onTap: () async {
+                  final v = await showWheelPicker<Ethnicity>(
+                    context,
+                    title: '인종 선택',
+                    values: Ethnicity.values,
+                    current: _ethnicity,
+                    labelOf: (e) => e.labelKo,
+                  );
+                  if (v != null) _touchAndSet(() => _ethnicity = v);
+                },
               ),
               const SizedBox(height: 12),
-              _PickerRow(
+              PickerRow(
                 label: '성별',
                 value: _gender.labelKo,
                 inferring: _inferring && !_userTouched,
-                onTap: () => _showPicker<Gender>(
-                  title: '성별 선택',
-                  values: Gender.values,
-                  current: _gender,
-                  labelOf: (e) => e.labelKo,
-                  onConfirm: (e) => _touchAndSet(() => _gender = e),
-                ),
+                onTap: () async {
+                  final v = await showWheelPicker<Gender>(
+                    context,
+                    title: '성별 선택',
+                    values: Gender.values,
+                    current: _gender,
+                    labelOf: (e) => e.labelKo,
+                  );
+                  if (v != null) _touchAndSet(() => _gender = v);
+                },
               ),
               const SizedBox(height: 12),
-              _PickerRow(
+              PickerRow(
                 label: '나이대',
                 value: _ageGroup.labelKo,
                 inferring: _inferring && !_userTouched,
-                onTap: () => _showPicker<AgeGroup>(
-                  title: '나이대 선택',
-                  values: AgeGroup.values
-                      .where((e) => e.index <= AgeGroup.seventies.index)
-                      .toList(),
-                  current: _ageGroup,
-                  labelOf: (e) => e.labelKo,
-                  onConfirm: (e) => _touchAndSet(() => _ageGroup = e),
-                ),
+                onTap: () async {
+                  final v = await showWheelPicker<AgeGroup>(
+                    context,
+                    title: '나이대 선택',
+                    values: AgeGroup.values
+                        .where((e) => e.index <= AgeGroup.seventies.index)
+                        .toList(),
+                    current: _ageGroup,
+                    labelOf: (e) => e.labelKo,
+                  );
+                  if (v != null) _touchAndSet(() => _ageGroup = v);
+                },
               ),
               const SizedBox(height: 24),
               Text(
@@ -296,146 +305,11 @@ class _InfoConfirmScreenState
     }
   }
 
-  void _showPicker<T>({
-    required String title,
-    required List<T> values,
-    required T current,
-    required String Function(T) labelOf,
-    required void Function(T) onConfirm,
-  }) {
-    var tempIndex = values.indexOf(current);
-    showCupertinoModalPopup(
-      context: context,
-      builder: (_) => Container(
-        height: 280,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-        ),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  CupertinoButton(
-                    padding: EdgeInsets.zero,
-                    child: const Text('취소',
-                        style: TextStyle(color: AppColors.textHint)),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  Text(title,
-                      style: const TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600)),
-                  CupertinoButton(
-                    padding: EdgeInsets.zero,
-                    child: const Text('확인',
-                        style: TextStyle(
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.w600)),
-                    onPressed: () {
-                      onConfirm(values[tempIndex]);
-                      Navigator.pop(context);
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const Divider(color: AppColors.border, height: 1),
-            Expanded(
-              child: CupertinoPicker(
-                scrollController: FixedExtentScrollController(
-                    initialItem: values.indexOf(current)),
-                itemExtent: 40,
-                onSelectedItemChanged: (index) => tempIndex = index,
-                children: values
-                    .map((v) => Center(
-                          child: Text(labelOf(v),
-                              style: const TextStyle(
-                                  color: AppColors.textPrimary, fontSize: 18)),
-                        ))
-                    .toList(),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   /// picker 한 항목이 바뀌면 userTouched flag 켜고 setState 로 값 반영.
   void _touchAndSet(VoidCallback updater) {
     setState(() {
       _userTouched = true;
       updater();
     });
-  }
-}
-
-class _PickerRow extends StatelessWidget {
-  final String label;
-  final String value;
-  final VoidCallback onTap;
-  // DeepFace 결과 대기 중 — value 자리에 spinner + "추정 중..." 표시.
-  // default 값(eastAsian/female/thirties) 이 잠깐 보였다가 추정치로 깜빡이는
-  // 혼란을 차단. tap 은 허용 — 만지면 _userTouched=true 되어 추정값으로 덮지
-  // 않으므로 사용자 선택 존중 로직과 자연스럽게 연동.
-  final bool inferring;
-  const _PickerRow({
-    required this.label,
-    required this.value,
-    required this.onTap,
-    this.inferring = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(label,
-                style: AppText.body.copyWith(color: AppColors.textSecondary)),
-            Row(
-              children: [
-                if (inferring) ...[
-                  const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                          AppColors.textHint),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text('추정 중...',
-                      style: AppText.body.copyWith(
-                          color: AppColors.textHint,
-                          fontWeight: FontWeight.w500)),
-                ] else
-                  Text(value,
-                      style: AppText.body
-                          .copyWith(fontWeight: FontWeight.w600)),
-                const SizedBox(width: 6),
-                const FaIcon(FontAwesomeIcons.chevronDown,
-                    color: AppColors.textHint, size: 12),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
