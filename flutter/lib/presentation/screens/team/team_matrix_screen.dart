@@ -16,7 +16,7 @@ import 'package:facely/presentation/screens/compatibility/compat_unlock_action.d
 
 import 'team_band.dart';
 
-/// 교감 분석 지도 — N×N 밴드 매트릭스. PIVOT A4:
+/// 교감도 — N×N 밴드 매트릭스. PIVOT A4:
 /// 🏆/😲 요약 카드 → 밴드 이모지 그리드(보는 사람 행 최상단) → 밴드 범례.
 /// 무료 셀 = 밴드 이모지만 (점수 비노출, A2). 페어 탭 → 1🪙 unlock → 상세.
 class TeamMatrixScreen extends ConsumerStatefulWidget {
