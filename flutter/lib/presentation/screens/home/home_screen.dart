@@ -10,11 +10,10 @@ import 'package:facely/domain/services/team_matrix.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/providers/team_provider.dart';
-import 'package:facely/presentation/screens/team/team_create_sheet.dart';
+import 'package:facely/presentation/screens/team/team_create_page.dart';
 import 'package:facely/presentation/screens/team/team_room_screen.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
-import 'package:facely/presentation/widgets/my_face_header.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -228,14 +227,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final topGap = compact ? AppSpacing.sm : AppSpacing.xl;
     final bottomGap = compact ? AppSpacing.lg : AppSpacing.huge;
 
-    final history = ref.watch(historyProvider);
-    FaceReadingReport? myFace;
-    for (final r in history) {
-      if (r.isMyFace) {
-        myFace = r;
-        break;
-      }
-    }
+    // 팀 카드의 alias·썸네일이 history 변화에 반응하도록 watch 유지.
+    ref.watch(historyProvider);
     final teams = ref.watch(teamsProvider);
 
     return Scaffold(
@@ -249,17 +242,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // ① 내 관상 컴팩트 헤더 — DESIGN.md §3.7 chrome (관상 탭
-                    // 헤더와 동일 공용 위젯). 미설정 시엔 숨김 — 전 탭 공통
-                    // nudge 배너(MyFaceNudgeBanner)가 등록 유도를 맡는다.
-                    if (myFace != null)
-                      MyFaceHeader(
-                        myFace: myFace,
-                        onTap: () => context.push(
-                          '/r/${myFace!.supabaseId ?? 'local'}',
-                          extra: myFace,
-                        ),
-                      ),
+                    // 내 관상 헤더 제거 (2026-06-12) — 등록 상태는 nudge
+                    // 배너 유무가 전달하고, 내 리포트는 관상 탭(gold 배지
+                    // 카드)으로 진입. 홈은 교감도에 집중한다.
                     SizedBox(height: topGap),
                     // ② 교감도 영역 — 있으면 카드 리스트, 없으면 기본 배경
                     // (team-chemistry-map.png) + 첫 팀 안내 (A5).
@@ -387,7 +372,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
     final ownerId = myFace.supabaseId;
     if (ownerId == null) return;
-    final room = await showTeamCreateSheet(context, ref, ownerReportId: ownerId);
+    final room =
+        await showTeamCreatePage(context, ref, ownerReportId: ownerId);
     if (!mounted || room == null) return;
     _openRoom(room);
   }

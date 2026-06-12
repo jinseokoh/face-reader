@@ -308,30 +308,6 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
               ),
             ),
           ),
-        // 내 관상 만들기 경로 — 좌하단 앨범 진입 (보정해 둔 사진 등록 경로).
-        // 측면 단계로 넘어가면 캡처 세션이 진행 중이므로 숨긴다.
-        if (widget.albumShortcut && _phase == _CapturePhase.frontal)
-          Positioned(
-            left: 16,
-            bottom: 24,
-            child: Material(
-              color: Colors.black.withValues(alpha: 0.55),
-              shape: const CircleBorder(),
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: () =>
-                    Navigator.of(context).pop(const FaceMeshAlbumRequest()),
-                child: const Padding(
-                  padding: EdgeInsets.all(14),
-                  child: FaIcon(
-                    FontAwesomeIcons.image,
-                    color: Colors.white,
-                    size: 22,
-                  ),
-                ),
-              ),
-            ),
-          ),
         // Transient phase-title overlay (fires at page open and at
         // frontal→lateral transition) — card-flip animation. modal 일 땐
         // "측면 시작" 버튼 받게 IgnorePointer 비활성.
@@ -448,6 +424,49 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
             ),
           ),
         ),
+        // 내 관상 만들기 경로 — 하단 중앙 [앨범에서 선택] pill. 보정해 둔
+        // 사진 등록 경로. 정면 안내 모달 위에도 보이도록 Stack 최상단에 두고,
+        // 측면 단계로 넘어가면 캡처 세션이 진행 중이므로 숨긴다.
+        if (widget.albumShortcut && _phase == _CapturePhase.frontal)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 24,
+            child: Center(
+              child: Material(
+                color: Colors.black.withValues(alpha: 0.55),
+                borderRadius: BorderRadius.circular(999),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(999),
+                  onTap: () =>
+                      Navigator.of(context).pop(const FaceMeshAlbumRequest()),
+                  child: const Padding(
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        FaIcon(
+                          FontAwesomeIcons.image,
+                          color: Colors.white,
+                          size: 14,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          '앨범에서 선택',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }

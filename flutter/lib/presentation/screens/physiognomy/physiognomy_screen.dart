@@ -9,7 +9,6 @@ import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/providers/tab_provider.dart';
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/presentation/widgets/empty_state_placeholder.dart';
-import 'package:facely/presentation/widgets/my_face_header.dart';
 import 'package:facely/presentation/widgets/physiognomy_info_dialog.dart';
 import 'package:facely/presentation/widgets/source_badge.dart';
 import 'package:flutter/material.dart';
@@ -429,7 +428,7 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
       }
     });
 
-    // myFace 는 source 와 무관한 single-pick — SliverAppBar 헤더 1곳에서
+    // myFace 는 source 와 무관한 single-pick — 리스트 빈 상태 분기에서
     // 두 탭이 공유. _buildList 내부에서 따로 계산하지 않는다.
     FaceReadingReport? myFace;
     for (final r in history) {
@@ -448,19 +447,9 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
             handle: NestedScrollView.sliverOverlapAbsorberHandleFor(ctx),
             sliver: SliverAppBar(
               pinned: true,
-              // expandedHeight 는 SliverAppBar 의 total max extent — toolbar +
-              // flexibleSpace + bottom(TabBar) 모두 포함. 따라서 프로필 영역만이
-              // 아니라 TabBar 높이(kTextTabBarHeight=46)까지 더해야 한다.
-              // 안 그러면 background 가 TabBar 아래로 클리핑되어 label 끼리 겹침.
-              //
-              // 프로필 슬롯 102px — Android 는 94 로도 충분했으나 iPhone 의
-              // safe-area·FlexibleSpaceBar 계산 차이로 inner Column 이 2.5px
-              // overflow. 양 플랫폼 동일 layout 유지를 위해 8px 여유 추가.
-              // 미설정이면 프로필 슬롯을 접는다 — 등록 유도는 전 탭 공통
-              // nudge 배너(MyFaceNudgeBanner)가 맡는다 (static 안내 제거).
-              expandedHeight: hasMyFace
-                  ? kToolbarHeight + 102 + kTextTabBarHeight
-                  : null,
+              // 내 관상 프로필 슬롯 제거 (2026-06-12) — 등록 상태는 nudge 배너
+              // 유무가 전달하고, 리스트 카드의 gold '내 관상' 배지가 식별을
+              // 맡는다. 헤더는 타이틀 + TabBar 만.
               title: const Text('관상'),
               actions: [
                 IconButton(
@@ -468,25 +457,6 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
                   onPressed: () => _showInfoDialog(context),
                 ),
               ],
-              // DESIGN.md §3.7 — expanded 상태에서만 프로필 보임,
-              // 스크롤 시 background 가 fade 되며 condensed 상태에서는 title 만 남음.
-              // background 는 expandedHeight 전체에 깔리므로 위로 toolbar,
-              // 아래로 TabBar 만큼 padding 빼서 프로필이 두 chrome 사이에만 배치되게.
-              flexibleSpace: hasMyFace
-                  ? FlexibleSpaceBar(
-                      collapseMode: CollapseMode.parallax,
-                      background: SafeArea(
-                        bottom: false,
-                        child: Padding(
-                          padding: const EdgeInsets.only(
-                            top: kToolbarHeight,
-                            bottom: kTextTabBarHeight,
-                          ),
-                          child: MyFaceHeader(myFace: myFace),
-                        ),
-                      ),
-                    )
-                  : null,
               bottom: TabBar(
                 controller: tabController,
                 labelColor: AppColors.textPrimary,
