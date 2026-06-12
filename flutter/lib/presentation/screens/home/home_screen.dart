@@ -1,12 +1,8 @@
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:face_engine/data/enums/age_group.dart';
-import 'package:face_engine/data/enums/face_shape.dart';
-import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/config/router.dart';
-import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/data/services/ad_image_service.dart';
 import 'package:facely/data/services/analytics_service.dart';
@@ -15,6 +11,7 @@ import 'package:facely/presentation/providers/ad_image_provider.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
+import 'package:facely/presentation/widgets/my_face_header.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -198,155 +195,6 @@ class _HomeBannerState extends ConsumerState<_HomeBanner> {
   }
 }
 
-/// 홈 최상단 — 내 관상 컴팩트 헤더 (PIVOT A5 ①).
-/// 설정됨: 썸네일 + 원형 + 데모그래픽 한 줄, 탭 = 내 리포트.
-/// 미설정: [내 관상 만들기] 검정 CTA — 셀카 한 장이면 끝.
-class _MyFaceHeader extends StatelessWidget {
-  final FaceReadingReport? myFace;
-  final VoidCallback onCreate;
-
-  const _MyFaceHeader({required this.myFace, required this.onCreate});
-
-  @override
-  Widget build(BuildContext context) {
-    final report = myFace;
-    if (report == null) {
-      return Container(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(AppRadius.xl),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            ElevatedButton(
-              onPressed: onCreate,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.textPrimary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-              ),
-              child: Text(
-                '내 관상 만들기',
-                style: AppText.subTitle.copyWith(color: Colors.white),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              '셀카 한 장이면 끝',
-              style: AppText.caption.copyWith(color: AppColors.textHint),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(AppRadius.xl),
-      child: InkWell(
-        onTap: () => context.push(
-          '/r/${report.supabaseId ?? 'local'}',
-          extra: report,
-        ),
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Row(
-            children: [
-              _thumbnail(report),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            report.archetype.primaryLabel,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppText.sectionTitle.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.xs),
-                        const FaIcon(
-                          FontAwesomeIcons.circleCheck,
-                          size: 12,
-                          color: AppColors.gold,
-                        ),
-                        const SizedBox(width: AppSpacing.xs),
-                        Text(
-                          '내 관상',
-                          style: AppText.caption.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.gold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      // 관상 탭 리스트와 동일 포맷 (가운데점 X).
-                      '${report.ageGroup.labelKo} '
-                      '${report.gender.labelKo} '
-                      '${report.faceShape.korean}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppText.caption.copyWith(
-                        color: AppColors.textHint,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const FaIcon(
-                FontAwesomeIcons.chevronRight,
-                size: 14,
-                color: AppColors.textHint,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _thumbnail(FaceReadingReport report) {
-    // 관상 탭 리스트 아바타와 동일 사이즈 (42px).
-    const size = 42.0;
-    final file = ThumbnailPaths.resolveFileSync(report.thumbnailPath);
-    if (file != null && file.existsSync()) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        child: Image.file(file, width: size, height: size, fit: BoxFit.cover),
-      );
-    }
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: AppColors.border,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-      ),
-      child: const FaIcon(
-        FontAwesomeIcons.faceSmile,
-        color: AppColors.textSecondary,
-        size: 18,
-      ),
-    );
-  }
-}
-
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
@@ -379,16 +227,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    SizedBox(height: topGap),
-                    // ① 내 관상 컴팩트 헤더.
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.xxl),
-                      child: _MyFaceHeader(
-                        myFace: myFace,
-                        onCreate: _createMyFace,
-                      ),
+                    // ① 내 관상 컴팩트 헤더 — DESIGN.md §3.7 chrome (관상 탭
+                    // 헤더와 동일 공용 위젯). 미설정 시 탭 = 셀카 등록 플로우.
+                    MyFaceHeader(
+                      myFace: myFace,
+                      unsetCaption: '탭하면 셀카 한 장으로 등록됩니다.',
+                      onTap: () {
+                        final mf = myFace;
+                        if (mf == null) {
+                          _createMyFace();
+                          return;
+                        }
+                        context.push(
+                          '/r/${mf.supabaseId ?? 'local'}',
+                          extra: mf,
+                        );
+                      },
                     ),
+                    SizedBox(height: topGap),
                     const Spacer(),
                     // ② 케미 방 카드 영역 자리 — P1 은 광고 배너(수묵화 fallback)
                     // 비주얼만. 방 카드 리스트 + 생성 CTA 는 P2 에서 활성화.
