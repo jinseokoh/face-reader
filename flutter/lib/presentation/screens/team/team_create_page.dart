@@ -137,7 +137,7 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage> {
                             color: AppColors.textPrimary,
                           ),
                           decoration: InputDecoration(
-                            hintText: '예: 마케팅팀 회식',
+                            hintText: '나랑 케미가 제일 잘 맞는 사람은?',
                             hintStyle: AppText.body.copyWith(
                               color: AppColors.textHint,
                             ),
