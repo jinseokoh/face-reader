@@ -74,6 +74,7 @@ final router = GoRouter(
       builder: (ctx, state) => InfoConfirmScreen(
         capture: (state.extra! as CaptureExtras).capture,
         metadataFuture: (state.extra! as CaptureExtras).metadataFuture,
+        asMyFace: (state.extra! as CaptureExtras).asMyFace,
       ),
     ),
   ],
@@ -98,12 +99,18 @@ Widget _buildShareDestination(GoRouterState state) {
   return _ReportRouteWrapper(uuid: id, preloaded: preloaded);
 }
 
-/// 캡처 흐름 → InfoConfirmScreen 으로 넘기는 두 인자 묶음.
+/// 캡처 흐름 → InfoConfirmScreen 으로 넘기는 인자 묶음.
 /// router 의 `extra` 는 한 객체만 받으므로 wrapper.
+/// [asMyFace] — 홈 [내 관상 만들기] 경로. 분석 완료 즉시 내 관상으로 등록.
 class CaptureExtras {
   final CaptureResult capture;
   final Future<FaceMetadata?>? metadataFuture;
-  const CaptureExtras({required this.capture, this.metadataFuture});
+  final bool asMyFace;
+  const CaptureExtras({
+    required this.capture,
+    this.metadataFuture,
+    this.asMyFace = false,
+  });
 }
 
 /// 궁합 push 시 두 report 를 동시에 넘기는 wrapper.

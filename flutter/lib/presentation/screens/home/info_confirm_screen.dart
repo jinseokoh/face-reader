@@ -35,6 +35,9 @@ class InfoConfirmScreen extends ConsumerStatefulWidget {
   // DeepFace background 결과. resolve 되면 사용자가 picker 를 만지지 않은 한
   // 자동으로 prefill. null 이면 default 그대로 유지.
   final Future<FaceMetadata?>? metadataFuture;
+  // 홈 [내 관상 만들기] 경로 — 분석 완료 즉시 내 관상으로 등록하고,
+  // 관상 탭으로 전환하지 않고 홈에 남아 헤더로 확인하게 한다.
+  final bool asMyFace;
 
   const InfoConfirmScreen({
     super.key,
@@ -43,6 +46,7 @@ class InfoConfirmScreen extends ConsumerStatefulWidget {
     this.initialGender = Gender.female,
     this.initialAgeGroup = AgeGroup.thirties,
     this.metadataFuture,
+    this.asMyFace = false,
   });
 
   @override
@@ -276,6 +280,9 @@ class _InfoConfirmScreenState
       }
 
       if (!mounted) return;
+      // 내 관상 경로 — add() 가 기존 isMyFace 지정을 해제하고 이 카드를 단일
+      // 내 관상으로 등록한다.
+      report.isMyFace = widget.asMyFace;
       ref.read(historyProvider.notifier).add(report);
       // 분석을 마친 모든 카드는 기본으로 metrics row 생성 (썸네일은 analyze
       // 시점에 이미 R2 업로드됨). 비로그인이면 user_id=null 로 익명 저장되고,
@@ -285,9 +292,14 @@ class _InfoConfirmScreenState
         debugPrint('[InfoConfirm] saveMetrics error: $e');
         return report.supabaseId ?? '';
       });
-      ref.read(historyTabProvider.notifier).selectTab(
-          c.source == AnalysisSource.camera ? 0 : 1);
-      ref.read(selectedTabProvider.notifier).selectTab(1);
+      if (widget.asMyFace) {
+        // 홈에 남아 내 관상 헤더로 결과를 확인 — 탭 전환 없음.
+        ref.read(selectedTabProvider.notifier).selectTab(0);
+      } else {
+        ref.read(historyTabProvider.notifier).selectTab(
+            c.source == AnalysisSource.camera ? 0 : 1);
+        ref.read(selectedTabProvider.notifier).selectTab(1);
+      }
 
       if (!mounted) return;
       Navigator.of(context).pop();

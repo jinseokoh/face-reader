@@ -71,7 +71,14 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
 
   Future<void> add(FaceReadingReport report) async {
     _log('add: supabaseId=${report.supabaseId} alias=${report.alias} '
-        'faceShape=${report.faceShape.name} metrics=${report.metrics.length}');
+        'faceShape=${report.faceShape.name} metrics=${report.metrics.length} '
+        'isMyFace=${report.isMyFace}');
+    // 내 관상은 항상 1장 — isMyFace 로 들어오는 카드가 기존 지정을 대체.
+    if (report.isMyFace) {
+      for (final r in state) {
+        r.isMyFace = false;
+      }
+    }
     state = [report, ...state];
     await _saveToHive();
   }

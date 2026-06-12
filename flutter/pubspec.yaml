@@ -85,18 +85,18 @@ flutter_launcher_icons:
   min_sdk_android: 21 # android min sdk min:16, default 21
   remove_alpha_ios: true
 
+# native splash 는 백지(흰색) placeholder — 수묵화·타이틀은 in-app 스플래시
+# (main.dart BootstrapApp) 로 이주. PIVOT.md A5 스플래시 스펙.
 flutter_native_splash:
   android: true
   ios: true
 
   color: '#FFFFFF'
   color_dark: '#FFFFFF'
-  image: 'assets/images/splash.png'
 
   android_12:
     color: '#FFFFFF'
     color_dark: '#FFFFFF'
-    image: 'assets/images/splash.png'
 
 flutter:
   uses-material-design: true

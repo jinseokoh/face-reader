@@ -18,8 +18,19 @@ import 'package:path_provider/path_provider.dart';
 
 import 'face_mesh_painter.dart';
 
+/// [FaceMeshPage] 가 앨범 전환 요청으로 닫혔음을 알리는 sentinel.
+/// 홈 [내 관상 만들기] 경로에서 카메라 좌하단 앨범 아이콘을 누르면 이 값으로
+/// pop 되고, 호출부가 AlbumCapturePage 모달로 이어간다.
+class FaceMeshAlbumRequest {
+  const FaceMeshAlbumRequest();
+}
+
 class FaceMeshPage extends ConsumerStatefulWidget {
-  const FaceMeshPage({super.key});
+  /// true 면 정면 단계에서 좌하단 앨범 진입 아이콘 노출 (내 관상 만들기 경로).
+  /// 탭 시 [FaceMeshAlbumRequest] 로 pop — 선택 다이얼로그 없이 앨범으로 전환.
+  final bool albumShortcut;
+
+  const FaceMeshPage({super.key, this.albumShortcut = false});
 
   @override
   ConsumerState<FaceMeshPage> createState() => _FaceMeshPageState();
@@ -292,6 +303,30 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
                         ),
                       ),
                     ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        // 내 관상 만들기 경로 — 좌하단 앨범 진입 (보정해 둔 사진 등록 경로).
+        // 측면 단계로 넘어가면 캡처 세션이 진행 중이므로 숨긴다.
+        if (widget.albumShortcut && _phase == _CapturePhase.frontal)
+          Positioned(
+            left: 16,
+            bottom: 24,
+            child: Material(
+              color: Colors.black.withValues(alpha: 0.55),
+              shape: const CircleBorder(),
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: () =>
+                    Navigator.of(context).pop(const FaceMeshAlbumRequest()),
+                child: const Padding(
+                  padding: EdgeInsets.all(14),
+                  child: FaIcon(
+                    FontAwesomeIcons.image,
+                    color: Colors.white,
+                    size: 22,
                   ),
                 ),
               ),

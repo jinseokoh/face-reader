@@ -1,13 +1,19 @@
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:face_engine/data/enums/age_group.dart';
+import 'package:face_engine/data/enums/face_shape.dart';
+import 'package:face_engine/data/enums/gender.dart';
+import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/config/router.dart';
+import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/data/services/ad_image_service.dart';
 import 'package:facely/data/services/analytics_service.dart';
 import 'package:facely/domain/models/capture_result.dart';
 import 'package:facely/presentation/providers/ad_image_provider.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
+import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -192,6 +198,155 @@ class _HomeBannerState extends ConsumerState<_HomeBanner> {
   }
 }
 
+/// 홈 최상단 — 내 관상 컴팩트 헤더 (PIVOT A5 ①).
+/// 설정됨: 썸네일 + 원형 + 데모그래픽 한 줄, 탭 = 내 리포트.
+/// 미설정: [내 관상 만들기] 검정 CTA — 셀카 한 장이면 끝.
+class _MyFaceHeader extends StatelessWidget {
+  final FaceReadingReport? myFace;
+  final VoidCallback onCreate;
+
+  const _MyFaceHeader({required this.myFace, required this.onCreate});
+
+  @override
+  Widget build(BuildContext context) {
+    final report = myFace;
+    if (report == null) {
+      return Container(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ElevatedButton(
+              onPressed: onCreate,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.textPrimary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+              ),
+              child: Text(
+                '내 관상 만들기',
+                style: AppText.subTitle.copyWith(color: Colors.white),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              '셀카 한 장이면 끝',
+              style: AppText.caption.copyWith(color: AppColors.textHint),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(AppRadius.xl),
+      child: InkWell(
+        onTap: () => context.push(
+          '/r/${report.supabaseId ?? 'local'}',
+          extra: report,
+        ),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Row(
+            children: [
+              _thumbnail(report),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            report.archetype.primaryLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppText.sectionTitle.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        const FaIcon(
+                          FontAwesomeIcons.circleCheck,
+                          size: 12,
+                          color: AppColors.gold,
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Text(
+                          '내 관상',
+                          style: AppText.caption.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.gold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      // 관상 탭 리스트와 동일 포맷 (가운데점 X).
+                      '${report.ageGroup.labelKo} '
+                      '${report.gender.labelKo} '
+                      '${report.faceShape.korean}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.caption.copyWith(
+                        color: AppColors.textHint,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const FaIcon(
+                FontAwesomeIcons.chevronRight,
+                size: 14,
+                color: AppColors.textHint,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _thumbnail(FaceReadingReport report) {
+    // 관상 탭 리스트 아바타와 동일 사이즈 (42px).
+    const size = 42.0;
+    final file = ThumbnailPaths.resolveFileSync(report.thumbnailPath);
+    if (file != null && file.existsSync()) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: Image.file(file, width: size, height: size, fit: BoxFit.cover),
+      );
+    }
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: AppColors.border,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: const FaIcon(
+        FontAwesomeIcons.faceSmile,
+        color: AppColors.textSecondary,
+        size: 18,
+      ),
+    );
+  }
+}
+
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
@@ -200,11 +355,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // SingleChildScrollView 로 fallback scroll → 어떤 height 에도 overflow
     // 안 함. tall device 는 Spacer 가 정상 작동해 기존 디자인 유지.
     final compact = MediaQuery.of(context).size.height < 720;
-    final imageHeight = compact ? 220.0 : 280.0;
-    final topGap = compact ? AppSpacing.sm : AppSpacing.xxl;
-    final afterTitle = compact ? AppSpacing.xs : 10.0;
+    final imageHeight = compact ? 200.0 : 260.0;
+    final topGap = compact ? AppSpacing.sm : AppSpacing.xl;
     final bottomGap = compact ? AppSpacing.lg : AppSpacing.huge;
-    final titleFontSize = compact ? 30.0 : 36.0;
+
+    final history = ref.watch(historyProvider);
+    FaceReadingReport? myFace;
+    for (final r in history) {
+      if (r.isMyFace) {
+        myFace = r;
+        break;
+      }
+    }
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -215,32 +377,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               constraints: BoxConstraints(minHeight: constraints.maxHeight),
               child: IntrinsicHeight(
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     SizedBox(height: topGap),
-                    // 활성 광고주 배너(ad_images) rotation. 없으면 banner.png fallback.
+                    // ① 내 관상 컴팩트 헤더.
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.xxl),
+                      child: _MyFaceHeader(
+                        myFace: myFace,
+                        onCreate: _createMyFace,
+                      ),
+                    ),
+                    const Spacer(),
+                    // ② 케미 방 카드 영역 자리 — P1 은 광고 배너(수묵화 fallback)
+                    // 비주얼만. 방 카드 리스트 + 생성 CTA 는 P2 에서 활성화.
                     _HomeBanner(height: imageHeight),
-                    // 타이틀+섭타이틀 블록을 배너와 버튼 사이 가운데로 — 위·아래
-                    // 동일 Spacer 로 감싸 여백을 even 하게.
                     const Spacer(),
-                    Text(
-                      '관상은 과학이다.',
-                      style: AppText.display.copyWith(
-                        fontSize: titleFontSize,
-                        fontWeight: FontWeight.w700,
-                        height: 1.15,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: afterTitle),
-                    Text(
-                      '안면 계측 데이터 기반 인공지능 관상앱',
-                      style: AppText.body.copyWith(
-                        color: AppTheme.textSecondary,
-                        height: 1.5,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const Spacer(),
+                    // ④ 다른 사람 관상 보기 — 보조 영역 (현행 2버튼 유지).
                     Padding(
                       padding: const EdgeInsets.symmetric(
                           horizontal: AppSpacing.xxl),
@@ -251,23 +405,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           borderRadius:
                               BorderRadius.circular(AppRadius.xl),
                         ),
-                        child: Row(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: _HomeActionCard(
-                                label: '카메라로 촬영',
-                                icon: FontAwesomeIcons.camera,
-                                onPressed: _openCamera,
+                            Text(
+                              '다른 사람 관상 보기',
+                              style: AppText.caption.copyWith(
+                                color: AppColors.textSecondary,
                               ),
                             ),
-                            const SizedBox(width: AppSpacing.md),
-                            Expanded(
-                              child: _HomeActionCard(
-                                label: '앨범에서 선택',
-                                icon: FontAwesomeIcons.image,
-                                onPressed: _openAlbum,
-                                reverse: true,
-                              ),
+                            const SizedBox(height: AppSpacing.md),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _HomeActionCard(
+                                    label: '카메라로 촬영',
+                                    icon: FontAwesomeIcons.camera,
+                                    onPressed: _openCamera,
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpacing.md),
+                                Expanded(
+                                  child: _HomeActionCard(
+                                    label: '앨범에서 선택',
+                                    icon: FontAwesomeIcons.image,
+                                    onPressed: _openAlbum,
+                                    reverse: true,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -284,6 +450,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  /// [내 관상 만들기] — 전면 카메라 즉시 오픈 (PIVOT A5 ①). 카메라 좌하단
+  /// 앨범 아이콘으로 보정해 둔 사진 등록 경로 제공, 선택 다이얼로그 없음.
+  /// 분석 완료 시 InfoConfirm 이 isMyFace 로 등록하고 홈에 남는다.
+  Future<void> _createMyFace() async {
+    AnalyticsService.instance.logCameraOpen();
+    final size = MediaQuery.of(context).size;
+    final result = await showModalBottomSheet<Object>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      constraints: BoxConstraints.tightFor(
+        width: size.width,
+        height: size.height,
+      ),
+      builder: (_) => const FaceMeshPage(albumShortcut: true),
+    );
+    if (!mounted || result == null) return;
+    if (result is FaceMeshAlbumRequest) {
+      // 앨범 경로는 기존 _openAlbum 과 동일하게 로그인 게이트 적용.
+      if (!ref.read(authProvider.notifier).isLoggedIn) {
+        final loggedIn = await showLoginBottomSheet(context, ref);
+        if (!loggedIn) return;
+        if (!mounted) return;
+      }
+      final albumResult = await _showAlbumSheet();
+      if (!mounted || albumResult == null) return;
+      await _pushDemographicConfirm(albumResult, asMyFace: true);
+      return;
+    }
+    if (result is CaptureResult) {
+      await _pushDemographicConfirm(result, asMyFace: true);
+    }
+  }
+
   /// 앨범 path — 카메라와 동일한 fullSize sheet 에 AlbumCapturePage 를 띄움.
   /// AppBar 가 검정 + "얼굴 정면" / "얼굴 측면" 로 일관, 내부에서 picker 호출
   /// → preview → 측면 단계까지 wrapper 안에서 전부 처리.
@@ -294,8 +495,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       if (!loggedIn) return;
       if (!mounted) return;
     }
+    final result = await _showAlbumSheet();
+    if (!mounted || result == null) return;
+    await _pushDemographicConfirm(result);
+  }
+
+  Future<CaptureResult?> _showAlbumSheet() {
     final size = MediaQuery.of(context).size;
-    final result = await showModalBottomSheet<CaptureResult>(
+    return showModalBottomSheet<CaptureResult>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -306,8 +513,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
       builder: (_) => const AlbumCapturePage(),
     );
-    if (!mounted || result == null) return;
-    await _pushDemographicConfirm(result);
   }
 
   /// 카메라 path — fullSize sheet 안에 FaceMeshPage 가 검정 AppBar
@@ -330,12 +535,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     await _pushDemographicConfirm(result);
   }
 
-  Future<void> _pushDemographicConfirm(CaptureResult result) async {
+  Future<void> _pushDemographicConfirm(
+    CaptureResult result, {
+    bool asMyFace = false,
+  }) async {
     await context.push(
       '/capture/confirm',
       extra: CaptureExtras(
         capture: result,
         metadataFuture: result.metadataFuture,
+        asMyFace: asMyFace,
       ),
     );
   }
