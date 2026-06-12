@@ -87,6 +87,9 @@ flutter_launcher_icons:
 
 # native splash 는 백지(흰색) placeholder — 수묵화·타이틀은 in-app 스플래시
 # (main.dart BootstrapApp) 로 이주. PIVOT.md A5 스플래시 스펙.
+# Android 12+ 는 OS 가 앱 아이콘을 스플래시에 강제로 그리므로, 투명 PNG 로
+# 아이콘 자리를 비워 시스템 스플래시를 순수 백지로 만든다 — 사용자 눈에는
+# in-app 수묵화 스플래시가 첫 화면. (아이콘→수묵화 2단 갈아끼움 제거)
 flutter_native_splash:
   android: true
   ios: true
@@ -97,6 +100,7 @@ flutter_native_splash:
   android_12:
     color: '#FFFFFF'
     color_dark: '#FFFFFF'
+    image: 'assets/images/transparent.png'
 
 flutter:
   uses-material-design: true
