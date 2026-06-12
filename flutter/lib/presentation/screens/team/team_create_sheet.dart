@@ -5,7 +5,7 @@ import 'package:facely/core/theme.dart';
 import 'package:facely/domain/models/team_room.dart';
 import 'package:facely/presentation/providers/team_provider.dart';
 
-/// 팀 케미 맵 생성 바텀시트 — PIVOT A6 채택안 B.
+/// 교감 분석 지도 생성 바텀시트 — PIVOT A6 채택안 B.
 /// 모임명 한 줄 + 제안 칩 → [만들기] → 즉시 팀 생성. 모드 선택 없음.
 /// 반환: 생성된 TeamRoom (취소 시 null).
 Future<TeamRoom?> showTeamCreateSheet(
@@ -59,7 +59,7 @@ class _TeamCreateSheetState extends ConsumerState<_TeamCreateSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('팀 케미 맵 만들기', style: AppText.modalTitle),
+          const Text('교감 분석 지도 만들기', style: AppText.modalTitle),
           const SizedBox(height: AppSpacing.lg),
           TextField(
             controller: _controller,

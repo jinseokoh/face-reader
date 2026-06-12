@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-/// 팀 케미 방 — PIVOT A6/A7. capture-only 원칙: 멤버는 supabaseId 참조만
+/// 교감 분석 지도 팀(방) — PIVOT A6/A7. capture-only 원칙: 멤버는 supabaseId 참조만
 /// 저장하고 표시·계산은 매번 history 의 FaceReadingReport 로 resolve 한다.
 class TeamRoom {
   static const int kMinMembers = 3; // A3 — 2명은 기존 1:1 궁합으로.

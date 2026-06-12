@@ -22,10 +22,10 @@ import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 
 import 'team_matrix_screen.dart';
 
-/// 팀 케미 맵 — 팀(방) 화면. PIVOT A6 방 화면 스펙:
+/// 교감 분석 지도 — 팀(방) 화면. PIVOT A6 방 화면 스펙:
 /// 모임명 · 참여 n/12 진행 · 멤버 칩 그리드(👑/+) · [📷 직접 스캔] ·
 /// [💬 카톡으로 초대](P3 활성화) · 방장 [마감](3명 미만 비활성) ·
-/// [팀 케미 맵 보기](3명↑).
+/// [교감 분석 지도 보기](3명↑).
 class TeamRoomScreen extends ConsumerStatefulWidget {
   final String roomId;
 
@@ -146,7 +146,7 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
-                  '멤버를 스캔하면 팀 케미 맵이 채워져요',
+                  '멤버를 스캔하면 교감 분석 지도이 채워져요',
                   style: AppText.caption.copyWith(color: AppColors.textHint),
                   textAlign: TextAlign.center,
                 ),
@@ -206,7 +206,7 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
                   ],
                 ),
               if (!room.isClosed) const SizedBox(height: AppSpacing.md),
-              // 팀 케미 맵 보기 — 3명부터 (A7: 부분 공개, 마감과 무관).
+              // 교감 분석 지도 보기 — 3명부터 (A7: 부분 공개, 마감과 무관).
               ElevatedButton(
                 onPressed: canMatrix ? () => _openMatrix(room) : null,
                 style: ElevatedButton.styleFrom(
@@ -222,8 +222,8 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
                 ),
                 child: Text(
                   canMatrix
-                      ? '팀 케미 맵 보기'
-                      : '${TeamRoom.kMinMembers}명부터 팀 케미 맵을 볼 수 있어요',
+                      ? '교감 분석 지도 보기'
+                      : '${TeamRoom.kMinMembers}명부터 교감 분석 지도을 볼 수 있어요',
                   style: const TextStyle(
                       fontSize: 16, fontWeight: FontWeight.w600),
                 ),

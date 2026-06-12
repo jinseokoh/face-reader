@@ -265,7 +265,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       },
                     ),
                     SizedBox(height: topGap),
-                    // ② 팀 케미 맵 영역 — 있으면 카드 리스트, 없으면 기본 배경
+                    // ② 교감 분석 지도 영역 — 있으면 카드 리스트, 없으면 기본 배경
                     // (team-chemistry-map.png) + 첫 팀 안내 (A5).
                     Padding(
                       padding: const EdgeInsets.symmetric(
@@ -280,7 +280,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 ),
                                 const SizedBox(height: AppSpacing.sm),
                                 Text(
-                                  '첫 팀 케미 맵을 만들어 보세요',
+                                  '첫 교감 분석 지도을 만들어 보세요',
                                   style: AppText.caption.copyWith(
                                     color: AppColors.textHint,
                                   ),
@@ -292,7 +292,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  '진행 중인 팀 케미 맵',
+                                  '진행 중인 교감 분석 지도',
                                   style: AppText.caption.copyWith(
                                     color: AppColors.textSecondary,
                                   ),
@@ -324,7 +324,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                         ),
                         child: const Text(
-                          '＋ 팀 케미 맵 만들기',
+                          '＋ 교감 분석 지도 만들기',
                           style: TextStyle(
                               fontSize: 16, fontWeight: FontWeight.w600),
                         ),
@@ -393,7 +393,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  /// [＋ 팀 케미 맵 만들기] — 내 관상 선행 조건 게이트 (A5):
+  /// [＋ 교감 분석 지도 만들기] — 내 관상 선행 조건 게이트 (A5):
   /// 미설정이면 먼저 [내 관상 만들기] 플로우, 완료 후 생성 시트로 복귀.
   Future<void> _createTeam() async {
     var myFace = _findMyFace();

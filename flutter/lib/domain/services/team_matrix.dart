@@ -3,7 +3,7 @@ import 'package:face_engine/domain/services/compat/compat_adapter.dart';
 import 'package:face_engine/domain/services/compat/compat_label.dart';
 import 'package:face_engine/domain/services/compat/compat_pipeline.dart';
 
-/// 팀 케미 매트릭스 계산 — PIVOT A4/A7.
+/// 교감 분석 지도 매트릭스 계산 — PIVOT A4/A7.
 ///
 /// 기존 궁합 엔진을 멤버 모든 쌍 N(N-1)/2 회 호출하는 순수 함수 래퍼.
 /// total 은 엔진이 대칭을 보장(§8.2 #3)하므로 (a,b)와 (b,a)는 같은 값 —
