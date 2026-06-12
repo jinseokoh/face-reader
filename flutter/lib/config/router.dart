@@ -75,6 +75,7 @@ final router = GoRouter(
         capture: (state.extra! as CaptureExtras).capture,
         metadataFuture: (state.extra! as CaptureExtras).metadataFuture,
         asMyFace: (state.extra! as CaptureExtras).asMyFace,
+        popWithReport: (state.extra! as CaptureExtras).popWithReport,
       ),
     ),
   ],
@@ -102,14 +103,18 @@ Widget _buildShareDestination(GoRouterState state) {
 /// 캡처 흐름 → InfoConfirmScreen 으로 넘기는 인자 묶음.
 /// router 의 `extra` 는 한 객체만 받으므로 wrapper.
 /// [asMyFace] — 홈 [내 관상 만들기] 경로. 분석 완료 즉시 내 관상으로 등록.
+/// [popWithReport] — 팀 스캔 루프 경로. 탭 전환 없이 분석 완료된 리포트를
+/// 결과값으로 pop — 호출부(방 화면)가 받아 멤버로 추가한다.
 class CaptureExtras {
   final CaptureResult capture;
   final Future<FaceMetadata?>? metadataFuture;
   final bool asMyFace;
+  final bool popWithReport;
   const CaptureExtras({
     required this.capture,
     this.metadataFuture,
     this.asMyFace = false,
+    this.popWithReport = false,
   });
 }
 

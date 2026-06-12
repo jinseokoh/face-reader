@@ -38,6 +38,8 @@ class InfoConfirmScreen extends ConsumerStatefulWidget {
   // 홈 [내 관상 만들기] 경로 — 분석 완료 즉시 내 관상으로 등록하고,
   // 관상 탭으로 전환하지 않고 홈에 남아 헤더로 확인하게 한다.
   final bool asMyFace;
+  // 팀 스캔 루프 경로 — 탭 전환 없이 리포트를 결과값으로 pop.
+  final bool popWithReport;
 
   const InfoConfirmScreen({
     super.key,
@@ -47,6 +49,7 @@ class InfoConfirmScreen extends ConsumerStatefulWidget {
     this.initialAgeGroup = AgeGroup.thirties,
     this.metadataFuture,
     this.asMyFace = false,
+    this.popWithReport = false,
   });
 
   @override
@@ -292,6 +295,12 @@ class _InfoConfirmScreenState
         debugPrint('[InfoConfirm] saveMetrics error: $e');
         return report.supabaseId ?? '';
       });
+      if (widget.popWithReport) {
+        // 팀 스캔 루프 — 탭 그대로, 리포트를 들고 방 화면으로 복귀.
+        if (!mounted) return;
+        Navigator.of(context).pop(report);
+        return;
+      }
       if (widget.asMyFace) {
         // 홈에 남아 내 관상 헤더로 결과를 확인 — 탭 전환 없음.
         ref.read(selectedTabProvider.notifier).selectTab(0);
