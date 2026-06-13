@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-import 'package:face_engine/data/constants/compat_hashtags.dart';
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
-import 'package:face_engine/domain/services/compat/compat_adapter.dart';
 import 'package:face_engine/domain/services/compat/compat_label.dart';
 import 'package:facely/config/router.dart';
+import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
+import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:facely/presentation/widgets/primary_button.dart';
 import 'package:facely/domain/services/team_matrix.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
@@ -34,16 +35,13 @@ class _TeamMatrixScreenState extends ConsumerState<TeamMatrixScreen> {
   late final TeamMatrix _matrix;
   late final List<FaceReadingReport> _ordered; // 보는 사람(나) 행 최상단.
   FaceReadingReport? _viewer;
-  // 🏆 베스트 페어 무료 공개분 — 한 줄 풀이 + 해시태그 (A2).
-  late final String _bestOneLiner;
-  late final String _bestHashtag;
 
   @override
   void initState() {
     super.initState();
     final room = ref.read(teamsProvider.notifier).byId(widget.roomId)!;
     _title = room.title;
-    final members = ref.read(teamsProvider.notifier).resolveMembers(room);
+    final members = ref.read(teamsProvider.notifier).scannedReports(room);
     // 엔진이 결정론적·대칭이라 매번 재계산 (capture-only 원칙).
     _matrix = computeTeamMatrix(members);
 
@@ -66,21 +64,6 @@ class _TeamMatrixScreenState extends ConsumerState<TeamMatrixScreen> {
             .firstWhere((m) => m.supabaseId == v.supabaseId),
       );
     }
-
-    // 베스트 페어의 무료 공개분 — narrative summary 첫 문장 + warm 해시태그 1개.
-    final bundle = analyzeCompatibilityFromReports(
-      my: _matrix.best.a,
-      album: _matrix.best.b,
-    );
-    _bestOneLiner = _firstSentence(bundle.narrative.summary);
-    final chips = chipsForCompat(bundle.report);
-    _bestHashtag = chips.isNotEmpty ? chips.first.label : '#케미';
-  }
-
-  static String _firstSentence(String text) {
-    final idx = text.indexOf('.');
-    if (idx < 0) return text.trim();
-    return text.substring(0, idx + 1).trim();
   }
 
   String _nameOf(FaceReadingReport r) {
@@ -104,20 +87,20 @@ class _TeamMatrixScreenState extends ConsumerState<TeamMatrixScreen> {
             children: [
               // 🏆 베스트 페어 — 점수 + 한 줄 무료 (A2 도파민 모먼트).
               _SummaryCard(
-                eyebrow: '🏆 베스트 케미',
-                title:
-                    '${_nameOf(best.a)} ×× ${_nameOf(best.b)}  ${best.total.round()}',
-                caption: _bestOneLiner,
-                hashtag: _bestHashtag,
+                eyebrow: '🥳 베스트 케미',
+                headline: _pairHeadline(best.a, best.b, best.label),
+                caption: '얼굴 관상으로 분석한 두사람의 호흡이 '
+                    '현재 조직내에서 최고 수준입니다.',
               ),
               if (surprise != null) ...[
                 const SizedBox(height: AppSpacing.md),
-                // 😲 의외의 조합 — 2위 페어. 점수는 잠금 (밴드만).
+                // 😲 버금가는 케미 — 2위 페어.
                 _SummaryCard(
-                  eyebrow: '😲 의외의 조합',
-                  title:
-                      '${_nameOf(surprise.a)} ×× ${_nameOf(surprise.b)}  ${surprise.label.bandEmoji}',
-                  caption: '풀이를 열면 정확한 점수를 볼 수 있어요',
+                  eyebrow: '😲 버금가는 케미',
+                  headline:
+                      _pairHeadline(surprise.a, surprise.b, surprise.label),
+                  caption: '얼굴 관상으로 분석한 두사람의 호흡이 '
+                      '현재 조직내에서 두번째 최고 수준입니다.',
                 ),
               ],
               // 나와의 교감도 순위 — 잘 맞는 사람부터 어려운 사람 순.
@@ -126,7 +109,7 @@ class _TeamMatrixScreenState extends ConsumerState<TeamMatrixScreen> {
               if (_viewer != null) ...[
                 const SizedBox(height: AppSpacing.xl),
                 Text(
-                  '나와의 교감도 순위',
+                  '나와의 궁합도 순위',
                   style: AppText.caption.copyWith(
                     color: AppColors.textSecondary,
                   ),
@@ -135,18 +118,39 @@ class _TeamMatrixScreenState extends ConsumerState<TeamMatrixScreen> {
                 _buildViewerRanking(),
               ],
               const SizedBox(height: AppSpacing.xl),
+              Text(
+                '상호 궁합도 맵',
+                style: AppText.caption.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
               _buildGrid(),
               const SizedBox(height: AppSpacing.lg),
-              // 밴드 범례.
+              // 밴드 범례 — 매트릭스와 동일한 색깔 닷 + 라벨.
               Wrap(
                 spacing: AppSpacing.md,
                 runSpacing: AppSpacing.xs,
                 children: [
                   for (final label in CompatLabel.values)
-                    Text(
-                      '${label.bandEmoji} ${label.bandLabel}',
-                      style:
-                          AppText.caption.copyWith(color: AppColors.textHint),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: label.bandColor,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Text(
+                          label.bandLabel,
+                          style: AppText.caption
+                              .copyWith(color: AppColors.textHint),
+                        ),
+                      ],
                     ),
                 ],
               ),
@@ -200,6 +204,8 @@ class _TeamMatrixScreenState extends ConsumerState<TeamMatrixScreen> {
                         ),
                       ),
                     ),
+                    _rankAvatar(otherOf(ranked[i])),
+                    const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: Text(
                         _nameOf(otherOf(ranked[i])),
@@ -207,12 +213,25 @@ class _TeamMatrixScreenState extends ConsumerState<TeamMatrixScreen> {
                         overflow: TextOverflow.ellipsis,
                         style: AppText.body.copyWith(
                           color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
                     Text(
-                      ranked[i].label.bandEmoji,
-                      style: const TextStyle(fontSize: 16),
+                      '${ranked[i].total.round()}점',
+                      style: AppText.body.copyWith(
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    // 매트릭스와 동일한 밴드 색깔 닷.
+                    Container(
+                      width: 16,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: ranked[i].label.bandColor,
+                      ),
                     ),
                   ],
                 ),
@@ -223,56 +242,151 @@ class _TeamMatrixScreenState extends ConsumerState<TeamMatrixScreen> {
     );
   }
 
+  /// 원형 thumbnail 아바타 — 사람 구분용. 사진 없으면 사람 아이콘.
+  Widget _rankAvatar(FaceReadingReport r, {double size = 28}) {
+    final file = ThumbnailPaths.resolveFileSync(r.thumbnailPath);
+    if (file != null && file.existsSync()) {
+      return ClipOval(
+        child: Image.file(file, width: size, height: size, fit: BoxFit.cover),
+      );
+    }
+    return Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: AppColors.border,
+      ),
+      child: Center(
+        child: FaIcon(FontAwesomeIcons.user,
+            size: size * 0.45, color: AppColors.textHint),
+      ),
+    );
+  }
+
+  /// 요약 카드 헤드라인 — 닷 + 밴드 라벨 + 아바타·이름 페어.
+  Widget _pairHeadline(
+      FaceReadingReport a, FaceReadingReport b, CompatLabel label) {
+    return Row(
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: label.bandColor,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.xs),
+        Text(
+          label.bandLabel,
+          style: AppText.body.copyWith(color: AppColors.textPrimary),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Flexible(child: _personInline(a)),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+          child: Text('×', style: AppText.body),
+        ),
+        Flexible(child: _personInline(b)),
+      ],
+    );
+  }
+
+  /// 아바타 + 이름 (한 줄, 이름 굵게).
+  Widget _personInline(FaceReadingReport r) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _rankAvatar(r, size: 24),
+        const SizedBox(width: AppSpacing.xs),
+        Flexible(
+          child: Text(
+            _nameOf(r),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppText.body.copyWith(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 페어 시트용 세로 인물 — 큰 아바타 + 이름 + 나이·성별.
+  Widget _personColumn(FaceReadingReport r) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _rankAvatar(r, size: 64),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          _nameOf(r),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppText.body.copyWith(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          '${r.ageGroup.labelKo} ${r.gender.labelKo}',
+          style: AppText.caption.copyWith(color: AppColors.textHint),
+        ),
+      ],
+    );
+  }
+
   Widget _buildGrid() {
     const nameWidth = 72.0;
     const cellSize = 44.0;
     final n = _ordered.length;
-
-    Widget nameCell(String text, {bool bold = false}) => SizedBox(
-          width: nameWidth,
-          height: cellSize,
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              text,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppText.caption.copyWith(
-                color: AppColors.textSecondary,
-                fontWeight: bold ? FontWeight.w600 : FontWeight.w400,
-              ),
-            ),
-          ),
-        );
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 헤더 행 — 열 이름.
+          // 헤더 행 — 열 아바타.
           Row(
             children: [
-              nameCell(''),
+              const SizedBox(width: nameWidth, height: cellSize),
               for (int j = 0; j < n; j++)
                 SizedBox(
                   width: cellSize,
                   height: cellSize,
-                  child: Center(
-                    child: Text(
-                      _nameOf(_ordered[j]),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppText.hint,
-                    ),
-                  ),
+                  child: Center(child: _rankAvatar(_ordered[j])),
                 ),
             ],
           ),
           for (int i = 0; i < n; i++)
             Row(
               children: [
-                nameCell(_nameOf(_ordered[i]), bold: i == 0 && _viewer != null),
+                // 행 헤더 — 아바타 + 이름.
+                SizedBox(
+                  width: nameWidth,
+                  height: cellSize,
+                  child: Row(
+                    children: [
+                      _rankAvatar(_ordered[i]),
+                      const SizedBox(width: AppSpacing.xs),
+                      Expanded(
+                        child: Text(
+                          _nameOf(_ordered[i]),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppText.caption.copyWith(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 for (int j = 0; j < n; j++) _cell(i, j),
               ],
             ),
@@ -305,10 +419,16 @@ class _TeamMatrixScreenState extends ConsumerState<TeamMatrixScreen> {
         decoration: BoxDecoration(
           border: Border.all(color: AppColors.surface, width: 0.5),
         ),
-        // 무료 셀 = 밴드 이모지만. 점수·라벨 비노출 (A2).
+        // 무료 셀 = 밴드 색깔 닷만. 점수·라벨 비노출 (A2).
         child: Center(
-          child: Text(pair.label.bandEmoji,
-              style: const TextStyle(fontSize: 18)),
+          child: Container(
+            width: 16,
+            height: 16,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: pair.label.bandColor,
+            ),
+          ),
         ),
       ),
     );
@@ -322,37 +442,101 @@ class _TeamMatrixScreenState extends ConsumerState<TeamMatrixScreen> {
         borderRadius:
             BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
       ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(AppSpacing.xxl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              '${_nameOf(pair.a)} ×× ${_nameOf(pair.b)}',
-              style: AppText.modalTitle,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              '${pair.label.bandEmoji} ${pair.label.bandLabel}',
-              style: AppText.body,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              '정확한 점수와 상세 풀이는 코인으로 열 수 있어요',
-              style: AppText.caption.copyWith(color: AppColors.textHint),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            PrimaryButton(
-              label: '1코인으로 풀이 보기',
-              onPressed: () => Navigator.pop(ctx, true),
-            ),
-          ],
-        ),
-      ),
+      builder: (ctx) {
+        final coins = ref.read(authProvider)?.coins ?? 0;
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.xxl,
+            AppSpacing.md,
+            AppSpacing.xxl,
+            AppSpacing.xxl,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // 닫기.
+              Align(
+                alignment: Alignment.centerRight,
+                child: IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () => Navigator.pop(ctx, false),
+                  icon: const FaIcon(FontAwesomeIcons.xmark,
+                      size: 20, color: AppColors.textSecondary),
+                ),
+              ),
+              // 밴드 닷 + 라벨 + 점수.
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 14,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: pair.label.bandColor,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Text(
+                    '${pair.label.bandLabel} (${pair.total.round()}점)',
+                    style: AppText.body,
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              // 두 인물 — 큰 아바타 + 이름 + 나이·성별.
+              Row(
+                children: [
+                  Expanded(child: _personColumn(pair.a)),
+                  const Padding(
+                    padding:
+                        EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                    child: Text('×',
+                        style: TextStyle(color: AppColors.textHint)),
+                  ),
+                  Expanded(child: _personColumn(pair.b)),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              // 잠금 안내 박스.
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Row(
+                  children: [
+                    const FaIcon(FontAwesomeIcons.lock,
+                        size: 13, color: AppColors.textHint),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        '상세 풀이는 1코인 지불 후 확인가능합니다.',
+                        style: AppText.caption
+                            .copyWith(color: AppColors.textSecondary),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              PrimaryButton(
+                label: '1코인으로 풀이 보기',
+                onPressed: () => Navigator.pop(ctx, true),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                '보유 코인 $coins개',
+                style: AppText.caption.copyWith(color: AppColors.textHint),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        );
+      },
     );
     if (unlock != true || !mounted) return;
     // 기존 1:1 unlock 흐름 그대로 — 로그인·잔액·중복 unlock 전부 처리.
@@ -371,15 +555,13 @@ class _TeamMatrixScreenState extends ConsumerState<TeamMatrixScreen> {
 /// 🏆/😲 요약 카드 — §3.2 카드 토큰.
 class _SummaryCard extends StatelessWidget {
   final String eyebrow;
-  final String title;
+  final Widget headline;
   final String caption;
-  final String? hashtag;
 
   const _SummaryCard({
     required this.eyebrow,
-    required this.title,
+    required this.headline,
     required this.caption,
-    this.hashtag,
   });
 
   @override
@@ -401,28 +583,7 @@ class _SummaryCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.xs),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppText.subTitle.copyWith(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              if (hashtag != null)
-                Text(
-                  hashtag!,
-                  style: AppText.caption.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-            ],
-          ),
+          headline,
           const SizedBox(height: AppSpacing.xs),
           Text(
             caption,

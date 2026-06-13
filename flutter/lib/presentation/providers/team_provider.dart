@@ -31,19 +31,24 @@ class TeamsNotifier extends Notifier<List<TeamRoom>> {
     return rooms;
   }
 
-  /// 방 생성 — 방장(내 관상)이 첫 멤버로 자동 합류 (A7).
+  /// 방 생성 — 방장(내 관상)이 첫 멤버(스캔 완료)로 자동 합류 (A7).
+  /// [pendingNames] = 생성 시 칩 입력으로 미리 깐 대기 멤버 이름 (미스캔).
   Future<TeamRoom> create({
     required String title,
     required String ownerReportId,
-    int memberTarget = TeamRoom.kMaxMembers,
+    List<String> pendingNames = const [],
   }) async {
     final now = DateTime.now();
+    final names = pendingNames
+        .take(TeamRoom.kMaxMembers - 1) // 방장 1 + 대기 (하드캡 12)
+        .toList();
     final room = TeamRoom(
       id: const Uuid().v4(),
       title: title,
-      memberTarget: memberTarget.clamp(
-          TeamRoom.kMinMembers, TeamRoom.kMaxMembers),
-      memberReportIds: [ownerReportId],
+      members: [
+        TeamMember(name: '나', reportId: ownerReportId),
+        for (final n in names) TeamMember(name: n),
+      ],
       createdAt: now,
       updatedAt: now,
     );
@@ -52,28 +57,45 @@ class TeamsNotifier extends Notifier<List<TeamRoom>> {
     return room;
   }
 
-  /// 멤버 추가 — cap 12 + 중복 차단. 성공 시 true.
-  Future<bool> addMember(String roomId, String reportId) async {
+  /// 대기 슬롯을 스캔 결과로 채운다 — [index] 멤버에 reportId 부여.
+  /// 이미 다른 슬롯이 같은 reportId 면 거부(중복 스캔). 성공 시 true.
+  Future<bool> fillSlot(String roomId, int index, String reportId) async {
     final room = byId(roomId);
     if (room == null || room.isClosed) return false;
-    if (room.memberReportIds.length >= room.memberTarget) return false;
-    if (room.memberReportIds.contains(reportId)) return false;
-    room.memberReportIds.add(reportId);
+    if (index < 0 || index >= room.members.length) return false;
+    if (room.members.any((m) => m.reportId == reportId)) return false;
+    room.members[index].reportId = reportId;
+    _autoCloseIfComplete(room);
     room.updatedAt = DateTime.now();
     _resort();
     await _save();
     return true;
   }
 
-  Future<void> removeMember(String roomId, String reportId) async {
+  /// 명단에 없던 새 멤버를 스캔으로 추가 (walk-in). cap 12 + 중복 차단.
+  Future<bool> addScannedMember(
+    String roomId, {
+    required String name,
+    required String reportId,
+  }) async {
+    final room = byId(roomId);
+    if (room == null || room.isClosed) return false;
+    if (room.members.length >= TeamRoom.kMaxMembers) return false;
+    if (room.members.any((m) => m.reportId == reportId)) return false;
+    room.members.add(TeamMember(name: name, reportId: reportId));
+    _autoCloseIfComplete(room);
+    room.updatedAt = DateTime.now();
+    _resort();
+    await _save();
+    return true;
+  }
+
+  /// 멤버 제거 — 방장(index 0)은 불가.
+  Future<void> removeMemberAt(String roomId, int index) async {
     final room = byId(roomId);
     if (room == null || room.isClosed) return;
-    // 방장(첫 멤버)은 제거 불가.
-    if (room.memberReportIds.isNotEmpty &&
-        room.memberReportIds.first == reportId) {
-      return;
-    }
-    room.memberReportIds.remove(reportId);
+    if (index <= 0 || index >= room.members.length) return;
+    room.members.removeAt(index);
     room.updatedAt = DateTime.now();
     _resort();
     await _save();
@@ -86,6 +108,16 @@ class TeamsNotifier extends Notifier<List<TeamRoom>> {
     room.updatedAt = DateTime.now();
     _resort();
     await _save();
+  }
+
+  /// 빈자리 없이 전원 스캔되면 자동 마감 — 교감도는 최소 3명부터 성립.
+  /// 더는 채울 사람이 없으므로 수동 마감 단계를 생략한다.
+  void _autoCloseIfComplete(TeamRoom room) {
+    if (room.isClosed) return;
+    final scanned = room.members.where((m) => m.isScanned).length;
+    if (scanned >= TeamRoom.kMinMembers && scanned == room.members.length) {
+      room.closedAt = DateTime.now();
+    }
   }
 
   /// 마감 — 🏆 발표 상태로 전환 (A6 방 화면 스펙).
@@ -110,18 +142,25 @@ class TeamsNotifier extends Notifier<List<TeamRoom>> {
     return null;
   }
 
-  /// 멤버 reportId → history 의 FaceReadingReport resolve.
-  /// history 에서 삭제된 카드는 자동 제외된다 (dangling 참조 무해화).
-  List<FaceReadingReport> resolveMembers(TeamRoom room) {
-    final history = ref.read(historyProvider);
-    final byId = <String, FaceReadingReport>{
-      for (final r in history)
-        if (r.supabaseId != null) r.supabaseId!: r,
-    };
-    return [
-      for (final id in room.memberReportIds)
-        if (byId.containsKey(id)) byId[id]!,
-    ];
+  /// 스캔된 멤버 한 명의 FaceReadingReport resolve (대기·삭제 카드는 null).
+  FaceReadingReport? reportFor(TeamMember member) {
+    final id = member.reportId;
+    if (id == null) return null;
+    for (final r in ref.read(historyProvider)) {
+      if (r.supabaseId == id) return r;
+    }
+    return null;
+  }
+
+  /// 스캔이 끝난 멤버들의 리포트 목록 — 매트릭스·프리뷰용.
+  /// history 에서 삭제된 카드는 자동 제외(dangling 무해화).
+  List<FaceReadingReport> scannedReports(TeamRoom room) {
+    final out = <FaceReadingReport>[];
+    for (final m in room.members) {
+      final r = reportFor(m);
+      if (r != null) out.add(r);
+    }
+    return out;
   }
 
   void _resort() {

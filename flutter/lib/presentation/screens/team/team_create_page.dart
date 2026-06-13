@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:facely/core/theme.dart';
 import 'package:facely/domain/models/team_room.dart';
 import 'package:facely/presentation/providers/team_provider.dart';
-import 'package:facely/presentation/widgets/picker_row.dart';
 import 'package:facely/presentation/widgets/primary_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -34,38 +33,23 @@ Future<TeamRoom?> showTeamCreatePage(
 
 /// "우리 〔팀〕에서 나랑 케미가 제일 잘 맞는 사람은?" — 키워드만
 /// fade+slide 로 교체되는 훅 헤드라인. SongMyung display 토큰.
-/// 인원 선택 후엔 꼬리말이 "에서" → " 〔n〕명 중에서" 로 바뀐다.
 class _HookHeadline extends StatelessWidget {
   final String word;
-  // true 면 회전 없이 [word] 로 고정 — 크로스페이드 없이 즉시 표시.
-  final bool locked;
-  // 인원 선택 시 non-null — 첫 줄 꼬리말이 " 〔n〕명 중에서" 로 변경.
-  final int? memberCount;
 
-  const _HookHeadline({
-    required this.word,
-    this.locked = false,
-    this.memberCount,
-  });
-
-  String get _tail => memberCount == null ? '에서' : ' $memberCount명 중에서';
+  const _HookHeadline({required this.word});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (locked)
-          // 고정 단어 — 회전 레이어 없이 한 줄로 (인원 꼬리말 포함, 줄바꿈 허용).
-          Text('우리 $word$_tail', style: AppText.display)
-        else
-          Row(
-            children: [
-              Text('우리 ', style: AppText.display),
-              _RotatingWord(word: word),
-              Text(_tail, style: AppText.display),
-            ],
-          ),
+        Row(
+          children: [
+            Text('우리 ', style: AppText.display),
+            _RotatingWord(word: word),
+            Text('에서', style: AppText.display),
+          ],
+        ),
         const SizedBox(height: AppSpacing.xs),
         Text('나랑 케미가 제일', style: AppText.display),
         const SizedBox(height: AppSpacing.xs),
@@ -75,10 +59,56 @@ class _HookHeadline extends StatelessWidget {
   }
 }
 
+/// 멤버 이름 칩 — 명단 입력용 단일 톤 pill (§3.3). onRemove 없으면 X 없음(나).
+class _MemberChip extends StatelessWidget {
+  final String name;
+  final VoidCallback? onRemove;
+
+  const _MemberChip({required this.name, this.onRemove});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.xs + 1,
+        onRemove != null ? AppSpacing.sm : AppSpacing.md,
+        AppSpacing.xs + 1,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            name,
+            style: AppText.body.copyWith(color: AppColors.textPrimary),
+          ),
+          if (onRemove != null) ...[
+            const SizedBox(width: AppSpacing.xs),
+            InkWell(
+              onTap: onRemove,
+              customBorder: const CircleBorder(),
+              child: const Padding(
+                padding: EdgeInsets.all(2),
+                child: FaIcon(FontAwesomeIcons.xmark,
+                    size: 12, color: AppColors.textHint),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 /// 회전 키워드 — 전환 400ms 동안만 크로스페이드 Stack 을 쓰고, 정지
 /// 상태에선 래퍼 없는 평문 [Text] 로 렌더한다. 전환 위젯(opacity/transform
 /// 레이어) 안의 텍스트는 글리프 픽셀 스냅이 달라져 옆 글자보다 흐릿하게
-/// 보이는 문제가 있어, 화면에 머무는 시간(약 2.1초)에는 일반 텍스트와
+/// 보이는 문제가 있어, 화면에 머무는 시간(약 1.1초)에는 일반 텍스트와
 /// 동일한 렌더 경로를 보장한다.
 class _RotatingWord extends StatefulWidget {
   final String word;
@@ -153,53 +183,26 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage> {
   static const _hookWords = [
     '팀', '반', '모임', '조직', '회사', '부서', '좋소', '크루', '동아리', '패밀리',
   ];
-  // 단체 유형 select — 훅 문장 전체가 옵션. 회전 키워드에서 파생해
-  // 헤드라인과 select 가 항상 같은 어휘를 쓴다 + 직접입력.
-  static final _typeOptions = [
-    for (final w in _hookWords) '우리 $w',
-    '직접입력',
-  ];
 
-  final TextEditingController _controller = TextEditingController();
-  // 미선택(null) 이면 placeholder "단체 유형을 선택하세요." 노출.
-  String? _selected;
-  // 참여 인원 — 미선택(null) 이면 placeholder "참여인원을 선택하세요." 노출.
-  int? _memberTarget;
+  static const int _maxNames = TeamRoom.kMaxMembers - 1; // 나 포함 12
+  // 멤버 이름 칩 — 방장(나) 제외 대기 멤버. 하드캡 12 → 최대 11명.
+  final TextEditingController _nameController = TextEditingController();
+  final FocusNode _nameFocus = FocusNode();
 
-  // 단계 reveal 슬롯 — 'type' → 'members' → 'done'. 각 전환은 2초 fade-out
-  // 후 2초 fade-in 으로 순차 진행 (겹치지 않음).
-  static const _slotAnim = Duration(seconds: 2);
-  String _slot = 'type';
-  bool _slotShown = true;
-  Timer? _slotTimer;
+  final List<String> _names = [];
+
+  /// 입장 최소 인원 — 나 포함 3명(교감도 성립 최소 단위).
+  static const int _minMembers = 3;
 
   Timer? _hookTimer;
   int _hookIndex = 0;
   bool _creating = false;
-  bool get _isCustom => _selected == '직접입력';
 
-  /// 훅 문장 옵션을 선택하면 그 키워드로 헤드라인을 고정한다.
-  /// 직접입력·미선택이면 null — 회전 유지.
-  String? get _lockedWord {
-    final sel = _selected;
-    if (sel == null || sel == '직접입력') return null;
-    final i = _typeOptions.indexOf(sel);
-    return (i >= 0 && i < _hookWords.length) ? _hookWords[i] : null;
-  }
+  /// 인원 미달 검증 에러 — 나 포함 3명 미만으로 입장 시도 시 노출.
+  String? _error;
 
-  /// 직접입력에 입력된 단체명 (공백 제거, 비면 null).
-  String? get _customWord {
-    final t = _controller.text.trim();
-    return t.isEmpty ? null : t;
-  }
-
-  /// 헤드라인에 박을 단어 — preset 키워드 / 직접입력 텍스트 / (미정) 회전.
-  String get _headlineWord =>
-      (_isCustom ? _customWord : _lockedWord) ?? _hookWords[_hookIndex];
-
-  /// 단어가 고정됐는지 — preset 선택 또는 직접입력 텍스트가 있을 때.
-  bool get _headlineLocked =>
-      _isCustom ? _customWord != null : _lockedWord != null;
+  /// 방 제목 — 입장 시점 헤드라인 키워드 스냅샷 ("우리 팀" 등). 방 화면 기어로 변경.
+  String get _title => '우리 ${_hookWords[_hookIndex]}';
 
   @override
   Widget build(BuildContext context) {
@@ -234,44 +237,21 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       const SizedBox(height: AppSpacing.lg),
-                      // 교감도 모임 훅 — 단체 유형 선택 시 키워드 고정,
-                      // 인원 선택 시 꼬리말이 " 〔n〕명 중에서" 로 바뀐다.
-                      _HookHeadline(
-                        word: _headlineWord,
-                        locked: _headlineLocked,
-                        memberCount: _memberTarget,
-                      ),
+                      // 교감도 모임 훅 — 회전 키워드 헤드라인 (장식).
+                      _HookHeadline(word: _hookWords[_hookIndex]),
                       const SizedBox(height: AppSpacing.xl),
                       Image.asset(
                         'assets/images/team-chemistry-map.png',
                         height: 180,
                         fit: BoxFit.contain,
                       ),
-                      const SizedBox(height: AppSpacing.xl),
-                      // 직접입력 단체명 — 선택 직후부터 계속 노출 (focus 유지).
-                      if (_isCustom) ...[
-                        _customNameField(),
-                        const SizedBox(height: AppSpacing.md),
-                      ],
-                      // 단계 reveal — 단체 유형 select 가 2초 fade-out 된 뒤
-                      // 참여 인원 select 가 2초 fade-in (스르르 순차 전환).
-                      AnimatedSlide(
-                        duration: _slotAnim,
-                        curve: Curves.easeInOut,
-                        offset:
-                            _slotShown ? Offset.zero : const Offset(0, 0.3),
-                        child: AnimatedOpacity(
-                          duration: _slotAnim,
-                          curve: Curves.easeInOut,
-                          opacity: _slotShown ? 1 : 0,
-                          child: _slotBox(),
-                        ),
-                      ),
+                      // 멤버 이름 칩 입력 — 처음부터 노출.
+                      _inviteSection(),
                     ],
                   ),
                 ),
               ),
-              // 하단 고정 — 인원 선택 전엔 힌트, 선택 완료 시 CTA 가 올라온다.
+              // 하단 고정 CTA.
               Padding(
                 padding: const EdgeInsets.fromLTRB(
                   AppSpacing.xxl,
@@ -279,12 +259,10 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage> {
                   AppSpacing.xxl,
                   AppSpacing.lg,
                 ),
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 500),
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  transitionBuilder: _slideFade,
-                  child: _bottomAction(),
+                child: PrimaryButton(
+                  label: '진실의 방 입장하기',
+                  busy: _creating,
+                  onPressed: _enterRoom,
                 ),
               ),
             ],
@@ -297,179 +275,156 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage> {
   @override
   void dispose() {
     _hookTimer?.cancel();
-    _slotTimer?.cancel();
-    _controller.dispose();
+    _nameController.dispose();
+    _nameFocus.dispose();
     super.dispose();
   }
 
   @override
   void initState() {
     super.initState();
-    _hookTimer = Timer.periodic(const Duration(milliseconds: 2500), (_) {
-      if (!mounted || _lockedWord != null) return;
+    _hookTimer = Timer.periodic(const Duration(milliseconds: 1500), (_) {
+      if (!mounted) return;
       setState(() => _hookIndex = (_hookIndex + 1) % _hookWords.length);
     });
   }
 
-  Future<void> _create() async {
+  /// 이름 칩 추가 — 공백 제거·중복 차단·11명 상한.
+  void _addName([String? raw]) {
+    final name = (raw ?? _nameController.text).trim();
+    _nameController.clear();
+    if (name.isEmpty) return;
+    if (_names.length >= _maxNames) return;
+    if (name == '나' || _names.contains(name)) {
+      // 중복·예약어는 무시하고 입력만 비운다.
+      _nameFocus.requestFocus();
+      return;
+    }
+    setState(() {
+      _names.add(name);
+      _error = null;
+    });
+    _nameFocus.requestFocus(); // 연속 입력.
+  }
+
+  /// 방 입장 — 명단(칩)으로 방을 만들고 방 화면으로.
+  Future<void> _enterRoom() async {
     if (_creating) return;
-    final selected = _selected;
-    if (selected == null) {
-      // 미선택이면 선택으로 유도.
-      _pickType();
-      return;
-    }
-    final title = _isCustom ? _controller.text.trim() : selected;
-    if (title.isEmpty) {
-      // 직접입력에서 비어 있으면 입력으로 유도 — 유일한 필수 입력.
+    if (_title.isEmpty) {
       FocusScope.of(context).unfocus();
       return;
     }
-    final memberTarget = _memberTarget;
-    if (memberTarget == null) {
-      // 인원 미선택이면 선택으로 유도.
+    // 입력 중이던 이름이 남아 있으면 칩으로 흡수.
+    if (_nameController.text.trim().isNotEmpty) _addName();
+    // 나 포함 3명 미만이면 입장 차단 — 교감도는 최소 3명부터 성립.
+    if (_names.length + 1 < _minMembers) {
       FocusScope.of(context).unfocus();
-      _pickMembers();
+      setState(() => _error = '나 포함 3명부터 입장할 수 있어요.');
       return;
     }
-    setState(() => _creating = true);
+    setState(() {
+      _error = null;
+      _creating = true;
+    });
     final room = await ref.read(teamsProvider.notifier).create(
-          title: title,
+          title: _title,
           ownerReportId: widget.ownerReportId,
-          memberTarget: memberTarget,
+          pendingNames: List<String>.from(_names),
         );
     if (!mounted) return;
     Navigator.of(context).pop(room);
   }
 
-  /// 단계 전환 공통 — 아래에서 슬라이드 + 페이드.
-  Widget _slideFade(Widget child, Animation<double> anim) => FadeTransition(
-        opacity: anim,
-        child: SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0, 0.3),
-            end: Offset.zero,
-          ).animate(anim),
-          child: child,
+  /// 멤버 이름 칩 입력 reveal — 이름을 입력하면 빈 아바타 슬롯이 하나씩 쌓인다.
+  Widget _inviteSection() {
+    final canAddMore = _names.length < _maxNames;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: AppSpacing.xl),
+        Text(
+          '함께할 멤버 이름을 입력하세요',
+          style: AppText.subTitle,
+          textAlign: TextAlign.center,
         ),
-      );
-
-  /// 현재 슬롯이 보여줄 select 박스.
-  Widget _slotBox() {
-    switch (_slot) {
-      case 'type':
-        return PickerRow(
-          value: '단체 유형을 선택하세요.',
-          placeholder: true,
-          onTap: _pickType,
-        );
-      case 'members':
-        return PickerRow(
-          value: '참여 인원을 선택하세요.',
-          placeholder: true,
-          onTap: _pickMembers,
-        );
-      default:
-        return const SizedBox.shrink();
-    }
-  }
-
-  /// 슬롯 순차 전환 — 현재 박스를 2초 fade-out 한 뒤 [next] 로 교체,
-  /// 빈 슬롯이 아니면 다시 2초 fade-in. (겹치지 않는 순차 애니메이션)
-  void _advanceSlot(String next) {
-    _slotTimer?.cancel();
-    setState(() => _slotShown = false); // 현재 박스 fade-out 시작.
-    _slotTimer = Timer(_slotAnim, () {
-      if (!mounted) return;
-      setState(() => _slot = next); // 교체 (아직 숨김 상태).
-      if (next == 'done') return; // 빈 슬롯이면 그대로 숨김 유지.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _slotShown = true); // fade-in.
-      });
-    });
-  }
-
-  /// 하단 액션: 인원 선택 전엔 힌트, 슬롯이 done 에 도달하면 CTA.
-  Widget _bottomAction() {
-    if (_slot == 'done') {
-      return PrimaryButton(
-        key: const ValueKey('cta'),
-        label: '방 만들기',
-        busy: _creating,
-        onPressed: _create,
-      );
-    }
-    if (_slot == 'members') {
-      return Text(
-        '최소 3명부터 최대 12명까지 참여 가능합니다.',
-        key: const ValueKey('hint'),
-        style: AppText.hint,
-        textAlign: TextAlign.center,
-      );
-    }
-    return const SizedBox.shrink(key: ValueKey('empty'));
-  }
-
-  /// 직접입력 단체명 필드 — 입력 시 헤드라인 단어가 따라 바뀐다.
-  Widget _customNameField() {
-    return TextField(
-      controller: _controller,
-      autofocus: true,
-      maxLength: 20,
-      style: AppText.body.copyWith(color: AppColors.textPrimary),
-      onChanged: (_) => setState(() {}),
-      decoration: InputDecoration(
-        hintText: '단체명',
-        hintStyle: AppText.body.copyWith(color: AppColors.textHint),
-        counterText: '',
-        filled: true,
-        fillColor: AppColors.surface,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.lg,
-          vertical: AppSpacing.md,
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          '이름을 입력하면 자리가 하나씩 생겨요.',
+          style: AppText.hint,
+          textAlign: TextAlign.center,
         ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: const BorderSide(color: AppColors.border),
+        const SizedBox(height: AppSpacing.lg),
+        // 멤버 슬롯 — 나 + 입력한 이름 칩 (X 로 개별 삭제).
+        Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
+          children: [
+            _MemberChip(name: '나'),
+            for (final n in _names)
+              _MemberChip(name: n, onRemove: () => _removeName(n)),
+          ],
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: const BorderSide(color: AppColors.border),
+        const SizedBox(height: AppSpacing.md),
+        if (canAddMore)
+          TextField(
+            controller: _nameController,
+            focusNode: _nameFocus,
+            textInputAction: TextInputAction.done,
+            maxLength: 10,
+            style: AppText.body.copyWith(color: AppColors.textPrimary),
+            decoration: InputDecoration(
+              hintText: '이름 입력 후 엔터',
+              hintStyle: AppText.body.copyWith(color: AppColors.textHint),
+              counterText: '',
+              filled: true,
+              fillColor: AppColors.surface,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.md,
+              ),
+              suffixIcon: IconButton(
+                icon: const FaIcon(FontAwesomeIcons.plus, size: 16),
+                color: AppColors.textPrimary,
+                onPressed: () => _addName(),
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                borderSide: const BorderSide(color: AppColors.textPrimary),
+              ),
+            ),
+            onSubmitted: _addName,
+          ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          canAddMore
+              ? '최대 12명까지 채울 수 있어요. (빈자리: ${_maxNames - _names.length})'
+              : '최대 12명까지 채울 수 있어요',
+          style: AppText.hint,
+          textAlign: TextAlign.center,
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: const BorderSide(color: AppColors.textPrimary),
-        ),
-      ),
-      onSubmitted: (_) => _create(),
-    );
-  }
-
-  Future<void> _pickType() async {
-    final v = await showWheelPicker<String>(
-      context,
-      title: '단체 유형 선택',
-      values: _typeOptions,
-      current: _selected ?? _typeOptions.first,
-      labelOf: (s) => s,
-    );
-    if (v == null) return;
-    setState(() => _selected = v);
-    if (_slot == 'type') _advanceSlot('members'); // 유형 → 인원 select.
-  }
-
-  Future<void> _pickMembers() async {
-    final v = await showWheelPicker<int>(
-      context,
-      title: '참여 인원 선택',
-      values: [
-        for (var n = TeamRoom.kMinMembers; n <= TeamRoom.kMaxMembers; n++) n,
+        if (_error != null) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            _error!,
+            style: AppText.hint.copyWith(color: AppColors.danger),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ],
-      current: _memberTarget ?? TeamRoom.kMinMembers,
-      labelOf: (n) => '$n명',
     );
-    if (v == null) return;
-    setState(() => _memberTarget = v); // 헤드라인 즉시 갱신.
-    if (_slot == 'members') _advanceSlot('done'); // 인원 select → 사라짐 + CTA.
   }
+
+  void _removeName(String name) => setState(() {
+        _names.remove(name);
+        _error = null;
+      });
+
 }

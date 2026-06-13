@@ -687,7 +687,7 @@ class _CompatLockedCard extends ConsumerWidget {
 
     // 잔액(N코인 보유)은 AppBar 의 _CoinChip 이 single source of truth.
     // 카드마다 반복하지 않음 — 시각 노이즈 제거.
-    final cta = isLoggedIn ? '1코인으로 궁합 보기' : '카카오 로그인하고 3 코인 받기';
+    final cta = isLoggedIn ? '1코인으로 풀이 보기' : '카카오 로그인하고 3 코인 받기';
 
     final card = Container(
       padding: const EdgeInsets.all(16),
@@ -758,7 +758,7 @@ class _CompatLockedCard extends ConsumerWidget {
             const SizedBox(height: 12),
             Text(
               isLoggedIn
-                  ? '궁합 결과는 1 코인 지불 후 열어볼 수 있습니다.'
+                  ? '상세 풀이는 1코인 지불 후 확인가능합니다.'
                   : '최초 로그인하면 가입 보너스 3 코인을 지급해 드립니다.',
               style: const TextStyle(
                 fontSize: 12,

@@ -180,6 +180,31 @@ class SharePublisher {
     await ShareClient.instance.shareDefault(template: template);
   }
 
+  /// 진실의 방 초대 — 카카오 공유 시트. friends scope 불필요 (받을 친구는
+  /// 카톡 안에서 사용자가 직접 고른다). 카톡 미설치면 OS 공유 시트로 fallback.
+  /// 받는 사람의 합류 처리(/g/{id} 라우트 + 서버 groups)는 P3 — 현재는 링크 전송까지.
+  String teamInviteUrl(String roomId) => '$_hostBase/g/$roomId';
+
+  Future<void> publishTeamInvite({
+    required String teamTitle,
+    required String roomId,
+  }) async {
+    final url = teamInviteUrl(roomId);
+    final text = '[$teamTitle] 진실의 방에 초대합니다. 링크를 눌러 참여하세요.';
+    if (await isKakaoTalkInstalled()) {
+      final link = Link(webUrl: Uri.parse(url), mobileWebUrl: Uri.parse(url));
+      await ShareClient.instance.shareDefault(
+        template: TextTemplate(
+          text: text,
+          link: link,
+          buttonTitle: '참여하기',
+        ),
+      );
+    } else {
+      await SharePlus.instance.share(ShareParams(text: '$text\n$url'));
+    }
+  }
+
   Future<void> _shareFile({
     required Uint8List pngBytes,
     required String url,

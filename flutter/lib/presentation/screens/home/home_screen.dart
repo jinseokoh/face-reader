@@ -127,9 +127,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final owned = <TeamRoom>[];
     final invited = <TeamRoom>[];
     for (final t in teams) {
-      if (myId != null &&
-          t.memberReportIds.isNotEmpty &&
-          t.memberReportIds.first != myId) {
+      final ownerId = t.members.isNotEmpty ? t.members.first.reportId : null;
+      if (myId != null && ownerId != null && ownerId != myId) {
         invited.add(t);
       } else {
         owned.add(t);
@@ -236,6 +235,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 sliver: SliverList.builder(
                   itemCount: owned.length,
                   itemBuilder: (_, i) => _TeamCard(
+                    key: ValueKey(owned[i].id),
                     room: owned[i],
                     onTap: () => _openRoom(owned[i]),
                   ),
@@ -248,7 +248,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     AppSpacing.xxl, AppSpacing.sm, AppSpacing.xxl,
                     AppSpacing.xl),
                 child: PrimaryButton(
-                  label: '진실의 방으로',
+                  label: '진실의 방 만들기',
                   onPressed: _createTeam,
                 ),
               ),
@@ -273,6 +273,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 sliver: SliverList.builder(
                   itemCount: invited.length,
                   itemBuilder: (_, i) => _TeamCard(
+                    key: ValueKey(invited[i].id),
                     room: invited[i],
                     onTap: () => _openRoom(invited[i]),
                   ),
@@ -334,7 +335,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// 내 관상 등록 — 공용 플로우 (nudge 배너와 동일 경로).
   Future<void> _createMyFace() => startMyFaceCapture(context, ref);
 
-  /// [＋ 단체 케미 알아내기] — 내 관상 선행 조건 게이트 (A5):
+  /// [진실의 방 만들기] — 내 관상 선행 조건 게이트 (A5):
   /// 미설정이면 먼저 [내 관상 만들기] 플로우, 완료 후 생성 페이지로 복귀.
   Future<void> _createTeam() async {
     var myFace = _findMyFace();
@@ -471,7 +472,7 @@ class _TeamCard extends ConsumerStatefulWidget {
   final TeamRoom room;
   final VoidCallback onTap;
 
-  const _TeamCard({required this.room, required this.onTap});
+  const _TeamCard({super.key, required this.room, required this.onTap});
 
   @override
   ConsumerState<_TeamCard> createState() => _TeamCardState();
@@ -485,7 +486,6 @@ class _TeamCardState extends ConsumerState<_TeamCard> {
   @override
   Widget build(BuildContext context) {
     final room = widget.room;
-    final count = room.memberReportIds.length;
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Material(
@@ -494,54 +494,111 @@ class _TeamCardState extends ConsumerState<_TeamCard> {
         child: InkWell(
           onTap: widget.onTap,
           borderRadius: BorderRadius.circular(AppRadius.lg),
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // 좌측 상태 아바타 — 모집중 / 모집끝 아이콘으로 구분.
+                    _statusAvatar(room.isClosed),
+                    const SizedBox(width: AppSpacing.md),
                     Expanded(
-                      child: Text(
-                        room.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppText.subTitle.copyWith(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      room.isClosed ? '발표 ✓' : '모집 중',
-                      style: AppText.caption.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: room.isClosed
-                            ? AppColors.gold
-                            : AppColors.textSecondary,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // 우상단 더보기 버튼과 안 겹치도록 첫 줄 우측 여백.
+                          Padding(
+                            padding: const EdgeInsets.only(right: AppSpacing.lg),
+                            child: Text(
+                              room.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppText.subTitle.copyWith(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            '${room.scannedCount}/${room.members.length}명 스캔',
+                            style: AppText.caption
+                                .copyWith(color: AppColors.textHint),
+                          ),
+                          if (_bestPreview != null) ...[
+                            const SizedBox(height: AppSpacing.xs),
+                            Text(
+                              _bestPreview!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppText.caption.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  '$count/${room.memberTarget}명 참여',
-                  style: AppText.caption.copyWith(color: AppColors.textHint),
-                ),
-                if (_bestPreview != null) ...[
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    _bestPreview!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppText.caption.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
+              ),
+              // 우상단 더보기 — 삭제 메뉴. 카드 모서리에 바짝 붙인 절대 배치.
+              Positioned(
+                top: AppSpacing.xs,
+                right: AppSpacing.xs,
+                child: PopupMenuButton<String>(
+                  tooltip: '더보기',
+                  padding: EdgeInsets.zero,
+                  position: PopupMenuPosition.under,
+                  constraints: const BoxConstraints(),
+                  icon: const FaIcon(
+                    FontAwesomeIcons.ellipsisVertical,
+                    size: 16,
+                    color: AppColors.textHint,
                   ),
-                ],
-              ],
-            ),
+                  onSelected: (value) {
+                    if (value == 'delete') _confirmDelete(room);
+                  },
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Text(
+                        '삭제',
+                        style: AppText.body.copyWith(
+                          color: AppColors.danger,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
+        ),
+      ),
+    );
+  }
+
+  /// 좌측 상태 아바타 — 모집중(사람 모으는 중)과 모집끝(발표 완료)을
+  /// 아이콘·톤으로 구분. 모집끝은 🏆 베스트 페어 프리뷰와 같은 gold 계열.
+  Widget _statusAvatar(bool isClosed) {
+    const double size = 44;
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: isClosed ? AppColors.goldSoft : Colors.white,
+        border: Border.all(
+          color: isClosed ? AppColors.gold : AppColors.border,
+        ),
+      ),
+      child: Center(
+        child: FaIcon(
+          isClosed ? FontAwesomeIcons.trophy : FontAwesomeIcons.userPlus,
+          size: 16,
+          color: isClosed ? AppColors.gold : AppColors.textSecondary,
         ),
       ),
     );
@@ -553,6 +610,34 @@ class _TeamCardState extends ConsumerState<_TeamCard> {
     _computeBestPreview();
   }
 
+  /// 방 삭제 — 되돌릴 수 없어 확인 다이얼로그 후 제거.
+  Future<void> _confirmDelete(TeamRoom room) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('방을 삭제할까요?', style: AppText.subTitle),
+        content: Text(
+          '‘${room.title}’ 방이 사라지고 되돌릴 수 없어요.',
+          style: AppText.body.copyWith(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('취소',
+                style: AppText.body.copyWith(color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text('삭제',
+                style: AppText.body.copyWith(color: AppColors.danger)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await ref.read(teamsProvider.notifier).delete(room.id);
+  }
+
   void _computeBestPreview() {
     final room = widget.room;
     if (!room.isClosed) return;
@@ -562,12 +647,12 @@ class _TeamCardState extends ConsumerState<_TeamCard> {
       _bestPreview = cached;
       return;
     }
-    final members = ref.read(teamsProvider.notifier).resolveMembers(room);
+    final members = ref.read(teamsProvider.notifier).scannedReports(room);
     if (members.length < 2) return;
     final matrix = computeTeamMatrix(members);
     String nameOf(FaceReadingReport r) => r.alias ?? r.faceShape.korean;
     final preview =
-        '🏆 ${nameOf(matrix.best.a)} ×× ${nameOf(matrix.best.b)} '
+        '🏆 ${nameOf(matrix.best.a)} × ${nameOf(matrix.best.b)} '
         '${matrix.best.total.round()}';
     _bestPreviewCache[key] = preview;
     _bestPreview = preview;

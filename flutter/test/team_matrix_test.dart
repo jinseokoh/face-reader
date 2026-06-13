@@ -182,14 +182,14 @@ void main() {
     expect(matrix.allPairs.length, 3);
   });
 
-  test('밴드 표기 — 4단 라벨이 고유한 이모지·현대 한국어 라벨로 매핑', () {
+  test('밴드 표기 — 4단 라벨이 고유한 이모지·한글 라벨로 매핑', () {
     final emojis = CompatLabel.values.map((l) => l.bandEmoji).toSet();
     final labels = CompatLabel.values.map((l) => l.bandLabel).toSet();
     expect(emojis.length, 4);
     expect(labels.length, 4);
-    // 하위 밴드는 "보완 조합" 프레임 (A4) — 부정 표현 금지.
-    expect(CompatLabel.hyeonggeuknanjo.bandLabel, '보완 조합');
-    // 라벨에 한자 표기 없음 (현대 한국어 only).
+    // 하위 밴드 — 전통 사자성어 한글 표기.
+    expect(CompatLabel.hyeonggeuknanjo.bandLabel, '형극난조');
+    // 라벨은 한글 표기만 (한자 단독 금지).
     for (final l in labels) {
       expect(RegExp(r'[一-鿿]').hasMatch(l), isFalse);
     }

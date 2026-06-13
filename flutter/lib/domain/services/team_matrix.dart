@@ -30,7 +30,7 @@ class TeamMatrix {
   /// 🏆 베스트 페어 — 최고 총점 (점수+한 줄 무료 공개, A2).
   final TeamPair best;
 
-  /// 😲 의외의 조합 — 2위 페어. "베스트 다음으로 터진 조합" 프레임.
+  /// 😲 버금가는 케미 — 2위 페어. "베스트 다음으로 터진 조합" 프레임.
   final TeamPair? surprise;
 
   const TeamMatrix._({

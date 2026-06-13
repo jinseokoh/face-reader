@@ -849,7 +849,7 @@ class _ReceivedBookmarkAction extends ConsumerWidget {
 
 /// 받은 카드 ReportPage 의 궁합 CTA.
 /// 내 관상(isMyFace) 이 설정돼 있으면 "나와의 궁합 보기" 또는 (이미 unlock 된
-/// 경우) "궁합 결과 보기" 버튼을 노출한다. 탭 시 이 받은 카드를 history 에
+/// 경우) "궁합 풀이 보기" 버튼을 노출한다. 탭 시 이 받은 카드를 history 에
 /// 저장(주체적 추가)하고 궁합 흐름으로 진입한다.
 class _CompatCta extends ConsumerWidget {
   final FaceReadingReport report;
@@ -916,7 +916,7 @@ class _CompatCta extends ConsumerWidget {
     final keyRev = tryPairKey(report, myFace);
     final isUnlocked = (keyFwd != null && unlocked.contains(keyFwd)) ||
         (keyRev != null && unlocked.contains(keyRev));
-    final label = isUnlocked ? '궁합 결과 보기' : '1코인으로 궁합 보기';
+    final label = isUnlocked ? '궁합 풀이 보기' : '1코인으로 풀이 보기';
 
     return SizedBox(
       width: double.infinity,

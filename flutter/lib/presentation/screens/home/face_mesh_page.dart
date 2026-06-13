@@ -3,7 +3,6 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:camera/camera.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/data/services/face_metadata_client.dart';
 import 'package:facely/domain/models/capture_result.dart';
@@ -13,6 +12,7 @@ import 'package:facely/domain/services/face_metrics_lateral.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:mediapipe_face_mesh/mediapipe_face_mesh.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -493,22 +493,6 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
     _isProcessing = false;
   }
 
-  /// 컨트롤러를 트리에서 먼저 떼어낸 뒤(placeholder 로 rebuild) dispose 한다.
-  /// dispose 만 하고 rebuild 하지 않으면 다음 프레임에 CameraPreview 가 disposed
-  /// controller 로 buildPreview() 를 호출 → CameraException → 네이티브 크래시
-  /// (EXC_BAD_ACCESS during drawFrame). null 화 + setState 로 같은 프레임에
-  /// 프리뷰를 떼어내는 게 핵심.
-  Future<void> _detachAndDisposeController() async {
-    final controller = _cameraController;
-    _cameraController = null;
-    _isInitialized = false;
-    if (mounted) setState(() {});
-    try {
-      await controller?.stopImageStream();
-    } catch (_) {}
-    await controller?.dispose();
-  }
-
   Color _computeOverlayColor(FaceMeshResult result) {
     final landmarks = result.landmarks;
     if (landmarks.isEmpty) return Colors.redAccent;
@@ -572,6 +556,22 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
     }
 
     return null;
+  }
+
+  /// 컨트롤러를 트리에서 먼저 떼어낸 뒤(placeholder 로 rebuild) dispose 한다.
+  /// dispose 만 하고 rebuild 하지 않으면 다음 프레임에 CameraPreview 가 disposed
+  /// controller 로 buildPreview() 를 호출 → CameraException → 네이티브 크래시
+  /// (EXC_BAD_ACCESS during drawFrame). null 화 + setState 로 같은 프레임에
+  /// 프리뷰를 떼어내는 게 핵심.
+  Future<void> _detachAndDisposeController() async {
+    final controller = _cameraController;
+    _cameraController = null;
+    _isInitialized = false;
+    if (mounted) setState(() {});
+    try {
+      await controller?.stopImageStream();
+    } catch (_) {}
+    await controller?.dispose();
   }
 
   void _dismissPhaseTitle() {
@@ -741,7 +741,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
     if (title.contains('정면')) {
       return '안면 계측 점선이 녹색으로 변할 때까지 조정 후 3초 이상 유지하면 자동 촬영됩니다.';
     }
-    return '한쪽 귀가 살짝 안 보일 때까지\n고개를 천천히 옆으로 돌려주세요.';
+    return '한쪽 귀가 살짝 안 보일 때까지\n고개를 45도 정도 옆으로 돌려주세요.';
   }
 
   /// Asset path for the guide image that accompanies a phase title.
