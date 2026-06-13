@@ -158,16 +158,32 @@ void main() {
     expect(b.best.total, a.best.total);
   });
 
-  test('베스트 = 최고 총점, 의외(2위) = 두 번째 총점', () {
+  test('베스트 = 1위 점수 그룹, 버금가는 = 2위 점수 그룹 (동점자 모두)', () {
     final matrix = computeTeamMatrix(_members(6));
-    final totals = matrix.allPairs.map((p) => p.total).toList()
-      ..sort((x, y) => y.compareTo(x));
-    expect(matrix.best.total, totals[0]);
-    expect(matrix.surprise, isNotNull);
-    expect(matrix.surprise!.total, totals[1]);
+    final topScore = matrix.best.total.round();
+    // 베스트 대표 = 최고 총점.
     for (final p in matrix.allPairs) {
       expect(p.total <= matrix.best.total, isTrue);
     }
+    // 베스트 그룹은 모두 같은 표시 점수.
+    for (final p in matrix.bests) {
+      expect(p.total.round(), topScore);
+    }
+    // 버금가는 그룹은 모두 같은 표시 점수이고 베스트보다 낮다.
+    expect(matrix.surprises, isNotEmpty);
+    final secondScore = matrix.surprises.first.total.round();
+    expect(secondScore < topScore, isTrue);
+    for (final p in matrix.surprises) {
+      expect(p.total.round(), secondScore);
+    }
+  });
+
+  test('동점자(같은 표시 점수)는 베스트 그룹에 모두 포함', () {
+    final matrix = computeTeamMatrix(_members(6));
+    final topScore = matrix.best.total.round();
+    final tiedAtTop =
+        matrix.allPairs.where((p) => p.total.round() == topScore).length;
+    expect(matrix.bests.length, tiedAtTop);
   });
 
   test('supabaseId 없는 멤버는 매트릭스에서 제외', () {

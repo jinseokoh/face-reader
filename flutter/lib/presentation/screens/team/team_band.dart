@@ -26,16 +26,17 @@ extension TeamBand on CompatLabel {
     }
   }
 
+  /// 밴드 등급 색 동그라미 이모지 — bandColor 와 매칭 (녹색→파랑→오렌지→빨강).
   String get bandEmoji {
     switch (this) {
       case CompatLabel.cheonjakjihap:
-        return '💞';
+        return '🟢';
       case CompatLabel.geumseulsanghwa:
-        return '🔥';
+        return '🔵';
       case CompatLabel.mahapgaseong:
-        return '🤝';
+        return '🟠';
       case CompatLabel.hyeonggeuknanjo:
-        return '🌧';
+        return '🔴';
     }
   }
 

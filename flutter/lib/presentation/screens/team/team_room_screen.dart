@@ -273,12 +273,10 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
                   Text('$scanned/$total명 스캔', style: AppText.subTitle),
                   const SizedBox(width: AppSpacing.sm),
                   if (room.isClosed)
-                    Text(
-                      '발표 완료',
-                      style: AppText.caption.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.gold,
-                      ),
+                    const FaIcon(
+                      FontAwesomeIcons.trophy,
+                      size: 16,
+                      color: AppColors.gold,
                     ),
                 ],
               ),

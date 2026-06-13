@@ -73,8 +73,8 @@ class _TeamMatrixScreenState extends ConsumerState<TeamMatrixScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final best = _matrix.best;
-    final surprise = _matrix.surprise;
+    final bests = _matrix.bests;
+    final surprises = _matrix.surprises;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -85,20 +85,19 @@ class _TeamMatrixScreenState extends ConsumerState<TeamMatrixScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 🏆 베스트 페어 — 점수 + 한 줄 무료 (A2 도파민 모먼트).
+              // 🏆 베스트 — 1위 점수 그룹(동점자 모두) + 한 줄 무료 (A2 도파민 모먼트).
               _SummaryCard(
                 eyebrow: '🥳 베스트 케미',
-                headline: _pairHeadline(best.a, best.b, best.label),
+                headline: _pairHeadlines(bests),
                 caption: '얼굴 관상으로 분석한 두사람의 호흡이 '
                     '현재 조직내에서 최고 수준입니다.',
               ),
-              if (surprise != null) ...[
+              if (surprises.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.md),
-                // 😲 버금가는 케미 — 2위 페어.
+                // 😲 버금가는 케미 — 2위 점수 그룹(동점자 모두).
                 _SummaryCard(
                   eyebrow: '😲 버금가는 케미',
-                  headline:
-                      _pairHeadline(surprise.a, surprise.b, surprise.label),
+                  headline: _pairHeadlines(surprises),
                   caption: '얼굴 관상으로 분석한 두사람의 호흡이 '
                       '현재 조직내에서 두번째 최고 수준입니다.',
                 ),
@@ -217,20 +216,20 @@ class _TeamMatrixScreenState extends ConsumerState<TeamMatrixScreen> {
                         ),
                       ),
                     ),
+                    // 점수 → 이모지 → 라벨 순. xx점 (이모지) 형극난조.
                     Text(
                       '${ranked[i].total.round()}점',
                       style: AppText.body.copyWith(
                         color: AppColors.textPrimary,
                       ),
                     ),
-                    const SizedBox(width: AppSpacing.sm),
-                    // 매트릭스와 동일한 밴드 색깔 닷.
-                    Container(
-                      width: 16,
-                      height: 16,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: ranked[i].label.bandColor,
+                    const SizedBox(width: AppSpacing.xs),
+                    Text(ranked[i].label.bandEmoji, style: AppText.body),
+                    const SizedBox(width: AppSpacing.xs),
+                    Text(
+                      ranked[i].label.bandLabel,
+                      style: AppText.body.copyWith(
+                        color: AppColors.textPrimary,
                       ),
                     ),
                   ],
@@ -265,18 +264,30 @@ class _TeamMatrixScreenState extends ConsumerState<TeamMatrixScreen> {
   }
 
   /// 요약 카드 헤드라인 — 닷 + 밴드 라벨 + 아바타·이름 페어.
+  /// 동점 페어 그룹을 세로로 쌓는다 — 같은 점수면 모두 한 카드에.
+  Widget _pairHeadlines(List<TeamPair> pairs) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (int i = 0; i < pairs.length; i++) ...[
+          if (i > 0) const SizedBox(height: AppSpacing.xs),
+          _pairHeadline(pairs[i].a, pairs[i].b, pairs[i].label, pairs[i].total),
+        ],
+      ],
+    );
+  }
+
   Widget _pairHeadline(
-      FaceReadingReport a, FaceReadingReport b, CompatLabel label) {
+      FaceReadingReport a, FaceReadingReport b, CompatLabel label, double total) {
     return Row(
       children: [
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: label.bandColor,
-          ),
+        // 점수 → 이모지 → 라벨 순. xx점 (이모지) 마합가성.
+        Text(
+          '${total.round()}점',
+          style: AppText.body.copyWith(color: AppColors.textPrimary),
         ),
+        const SizedBox(width: AppSpacing.xs),
+        Text(label.bandEmoji, style: AppText.body),
         const SizedBox(width: AppSpacing.xs),
         Text(
           label.bandLabel,
@@ -490,11 +501,14 @@ class _TeamMatrixScreenState extends ConsumerState<TeamMatrixScreen> {
               Row(
                 children: [
                   Expanded(child: _personColumn(pair.a)),
-                  const Padding(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm),
                     child: Text('×',
-                        style: TextStyle(color: AppColors.textHint)),
+                        style: AppText.body.copyWith(
+                          color: AppColors.textHint,
+                          fontSize: AppText.body.fontSize! * 2,
+                        )),
                   ),
                   Expanded(child: _personColumn(pair.b)),
                 ],

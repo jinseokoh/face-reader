@@ -27,18 +27,24 @@ class TeamMatrix {
   final List<FaceReadingReport> members;
   final Map<String, TeamPair> _pairs;
 
-  /// 🏆 베스트 페어 — 최고 총점 (점수+한 줄 무료 공개, A2).
-  final TeamPair best;
+  /// 🏆 베스트 — 최고 표시 점수(xx점) 그룹. 동점자 모두 포함, 점수 내림차순.
+  final List<TeamPair> bests;
 
-  /// 😲 버금가는 케미 — 2위 페어. "베스트 다음으로 터진 조합" 프레임.
-  final TeamPair? surprise;
+  /// 😲 버금가는 케미 — 두 번째 표시 점수 그룹. 동점자 모두 포함. 없으면 빈 리스트.
+  final List<TeamPair> surprises;
 
   const TeamMatrix._({
     required this.members,
     required Map<String, TeamPair> pairs,
-    required this.best,
-    required this.surprise,
+    required this.bests,
+    required this.surprises,
   }) : _pairs = pairs;
+
+  /// 베스트 대표(최고 총점) — 홈 티저 등 단일 페어가 필요한 곳.
+  TeamPair get best => bests.first;
+
+  /// 버금가는 대표 — 없으면 null.
+  TeamPair? get surprise => surprises.isEmpty ? null : surprises.first;
 
   static String _keyOf(String idA, String idB) =>
       idA.compareTo(idB) <= 0 ? '$idA~$idB' : '$idB~$idA';
@@ -63,8 +69,7 @@ TeamMatrix computeTeamMatrix(List<FaceReadingReport> members) {
   assert(valid.length >= 2, 'team matrix 는 멤버 2명 이상 필요');
 
   final pairs = <String, TeamPair>{};
-  TeamPair? best;
-  TeamPair? surprise;
+  final all = <TeamPair>[];
   for (int i = 0; i < valid.length; i++) {
     for (int j = i + 1; j < valid.length; j++) {
       final a = valid[i];
@@ -80,18 +85,29 @@ TeamMatrix computeTeamMatrix(List<FaceReadingReport> members) {
         label: report.label,
       );
       pairs[TeamMatrix._keyOf(a.supabaseId!, b.supabaseId!)] = pair;
-      if (best == null || pair.total > best.total) {
-        surprise = best;
-        best = pair;
-      } else if (surprise == null || pair.total > surprise.total) {
-        surprise = pair;
-      }
+      all.add(pair);
+    }
+  }
+  all.sort((x, y) => y.total.compareTo(x.total));
+
+  // 표시 점수(xx점 = total 반올림) 기준 그룹핑 — 같은 점수 동점자는 모두 포함.
+  // 베스트 = 1위 점수 그룹, 버금가는 = 2위(그보다 낮은 첫) 점수 그룹.
+  int scoreOf(TeamPair p) => p.total.round();
+  final bests = <TeamPair>[];
+  final surprises = <TeamPair>[];
+  if (all.isNotEmpty) {
+    final topScore = scoreOf(all.first);
+    bests.addAll(all.where((p) => scoreOf(p) == topScore));
+    final rest = all.where((p) => scoreOf(p) < topScore).toList();
+    if (rest.isNotEmpty) {
+      final secondScore = scoreOf(rest.first);
+      surprises.addAll(rest.where((p) => scoreOf(p) == secondScore));
     }
   }
   return TeamMatrix._(
     members: valid,
     pairs: pairs,
-    best: best!,
-    surprise: surprise,
+    bests: bests,
+    surprises: surprises,
   );
 }
