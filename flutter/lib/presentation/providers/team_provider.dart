@@ -110,10 +110,34 @@ class TeamsNotifier extends Notifier<List<TeamRoom>> {
     await _save();
   }
 
+  /// 그룹 설정 저장 — 제목과 대기(미스캔) 명단을 한 번에 갱신.
+  /// 방장(0)·스캔 완료 멤버는 [isScanned] 로 보존하고, 대기 슬롯만
+  /// [pendingNames] 로 통째 교체한다 (명수 편집). 하드캡 12.
+  Future<void> updateRoster(
+    String roomId, {
+    required String title,
+    required List<String> pendingNames,
+  }) async {
+    final room = byId(roomId);
+    if (room == null || room.isClosed) return;
+    room.title = title;
+    room.members.removeWhere((m) => !m.isScanned);
+    for (final raw in pendingNames) {
+      if (room.members.length >= TeamRoom.kMaxMembers) break;
+      final name = raw.trim();
+      if (name.isEmpty || name == '나') continue;
+      if (room.members.any((m) => m.name == name)) continue;
+      room.members.add(TeamMember(name: name));
+    }
+    room.updatedAt = DateTime.now();
+    _resort();
+    await _save();
+  }
+
   /// 빈자리 없이 전원 스캔되면 자동 마감 — 교감도는 최소 3명부터 성립.
   /// 더는 채울 사람이 없으므로 수동 마감 단계를 생략한다.
   void _autoCloseIfComplete(TeamRoom room) {
-    if (room.isClosed) return;
+    if (room.closedAt != null) return;
     final scanned = room.members.where((m) => m.isScanned).length;
     if (scanned >= TeamRoom.kMinMembers && scanned == room.members.length) {
       room.closedAt = DateTime.now();

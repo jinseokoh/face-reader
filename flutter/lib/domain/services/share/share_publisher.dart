@@ -190,7 +190,7 @@ class SharePublisher {
     required String roomId,
   }) async {
     final url = teamInviteUrl(roomId);
-    final text = '[$teamTitle] 진실의 방에 초대합니다. 링크를 눌러 참여하세요.';
+    final text = '[$teamTitle] 케미 그룹에 초대합니다. 링크를 눌러 참여하세요.';
     if (await isKakaoTalkInstalled()) {
       final link = Link(webUrl: Uri.parse(url), mobileWebUrl: Uri.parse(url));
       await ShareClient.instance.shareDefault(

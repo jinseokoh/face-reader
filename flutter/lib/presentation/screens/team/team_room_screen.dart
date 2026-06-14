@@ -62,46 +62,6 @@ class _DashedCirclePainter extends CustomPainter {
   bool shouldRepaint(covariant _DashedCirclePainter oldDelegate) => false;
 }
 
-/// 빈 자리 — 점선 원 + "빈 자리". 탭 = 스캔 루프 (A6).
-class _EmptySlot extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _EmptySlot({super.key, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: 60,
-            height: 60,
-            child: CustomPaint(
-              painter: _DashedCirclePainter(),
-              child: const Center(
-                child: FaIcon(
-                  FontAwesomeIcons.plus,
-                  size: 16,
-                  color: AppColors.textHint,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            '빈 자리',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppText.caption.copyWith(color: AppColors.textHint),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 /// 멤버 셀 — 스캔 완료면 얼굴 아바타, 대기(미스캔)면 이름 + 점선 빈 원(탭→스캔).
 /// 방장은 gold 테두리 + 좌상단 "나" 배지. 길게 눌러 제거(방장 제외).
 class _MemberCell extends StatelessWidget {
@@ -251,8 +211,8 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
         actions: [
           if (!room.isClosed)
             IconButton(
-              tooltip: '모임명 변경',
-              onPressed: () => _showRenameDialog(room),
+              tooltip: '그룹 설정',
+              onPressed: () => _showGroupSettings(room),
               icon: const FaIcon(
                 FontAwesomeIcons.gear,
                 size: 18,
@@ -270,13 +230,24 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
               // 스캔 진행 — 명단 중 몇 명을 찍었나.
               Row(
                 children: [
-                  Text('$scanned/$total명 스캔', style: AppText.subTitle),
+                  Text('$scanned/$total명 등록', style: AppText.subTitle),
                   const SizedBox(width: AppSpacing.sm),
+                  // 마감 = "완료" 금색 뱃지 ("나" 배지와 동일 idiom).
                   if (room.isClosed)
-                    const FaIcon(
-                      FontAwesomeIcons.trophy,
-                      size: 16,
-                      color: AppColors.gold,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.sm, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: AppColors.gold,
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                      ),
+                      child: Text(
+                        '완료',
+                        style: AppText.hint.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                 ],
               ),
@@ -317,19 +288,13 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
                           ? null
                           : () => _confirmRemove(room, i),
                     ),
-                  // walk-in 추가 자리 — 점선 [+], 탭 = 새 멤버 스캔.
-                  if (canAddMore)
-                    _EmptySlot(
-                      key: const ValueKey('add-slot'),
-                      onTap: () => _scanNewMember(room),
-                    ),
                 ],
               ),
               const SizedBox(height: AppSpacing.huge),
               // 액션 — 풀폭 스택.
               if (!room.isClosed) ...[
                 PrimaryButton(
-                  label: '멤버 직접 스캔',
+                  label: '멤버 직접 등록',
                   icon: FontAwesomeIcons.camera,
                   onPressed: canAddMore ? () => _scanNewMember(room) : null,
                 ),
@@ -342,18 +307,29 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
                 ),
                 const SizedBox(height: AppSpacing.md),
               ],
-              // 교감도 보기 — 스캔 3명부터 (A7: 부분 공개, 마감과 무관).
-              PrimaryButton(
-                label: canMatrix
-                    ? '교감도 보기'
-                    : '${TeamRoom.kMinMembers}명 스캔하면 교감도를 볼 수 있어요',
-                onPressed: canMatrix ? () => _openMatrix(room) : null,
-              ),
+              // 그룹 케미 보기 — 스캔 3명부터 (A7: 부분 공개, 마감과 무관).
+              // 인원 미달이면 버튼 대신 배경 없는 작은 안내 텍스트.
+              if (canMatrix)
+                PrimaryButton(
+                  label: '그룹 케미 보기',
+                  onPressed: () => _openMatrix(room),
+                )
+              else
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                  child: Text(
+                    '${TeamRoom.kMinMembers}명 모두 등록하면 그룹 케미를 볼 수 있어요',
+                    textAlign: TextAlign.center,
+                    style:
+                        AppText.caption.copyWith(color: AppColors.textHint),
+                  ),
+                ),
               // 수동 마감 — 전원 스캔 완료 전에만. 완료 시 자동 마감되므로 숨김.
               if (!room.isClosed && scanned < total) ...[
                 const SizedBox(height: AppSpacing.md),
                 SecondaryButton(
-                  label: '마감하고 베스트 페어 발표',
+                  label: '마감하고 결과 발표',
                   onPressed: canMatrix ? () => _confirmClose(room) : null,
                 ),
               ],
@@ -624,48 +600,82 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
     return ok ?? false;
   }
 
-  Future<void> _showRenameDialog(TeamRoom room) async {
-    final name = await showDialog<String>(
+  /// 그룹 설정 — 그룹명 + 멤버 명단(명수) 편집. 방장·스캔 완료는 보존,
+  /// 대기 이름만 추가/삭제. 저장 시 provider 가 명단을 통째 갱신.
+  Future<void> _showGroupSettings(TeamRoom room) async {
+    final scannedNames = [
+      for (final m in room.members)
+        if (m.isScanned) m.name,
+    ];
+    final pending = [
+      for (final m in room.members)
+        if (!m.isScanned) m.name,
+    ];
+    final result = await showDialog<({String title, List<String> pending})>(
       context: context,
-      builder: (_) => _TextInputDialog(
-        title: '모임명 변경',
-        initialText: room.title,
-        maxLength: 20,
+      builder: (_) => _GroupSettingsDialog(
+        initialTitle: room.title,
+        scannedNames: scannedNames,
+        initialPending: pending,
       ),
     );
-    if (name != null && name.isNotEmpty) {
-      await ref.read(teamsProvider.notifier).rename(room.id, name);
-    }
+    if (result == null || !mounted) return;
+    final title = result.title.isEmpty ? room.title : result.title;
+    await ref
+        .read(teamsProvider.notifier)
+        .updateRoster(room.id, title: title, pendingNames: result.pending);
   }
 }
 
-/// 다이얼로그 텍스트 입력 — 컨트롤러 수명을 위젯에 묶어 dispose 타이밍 버그를
-/// 차단한다. showDialog 가 끝나도 닫힘 애니메이션 동안 트리에 남아 있으므로
-/// 컨트롤러는 이 State 의 dispose 에서만 해제한다. 취소=null, 저장=trim 텍스트.
-class _TextInputDialog extends StatefulWidget {
-  final String title;
-  final String? initialText;
-  final int maxLength;
+/// 그룹 설정 다이얼로그 — 그룹명 + 멤버 명단(명수) 편집. 방장·스캔 완료
+/// 멤버는 제거 불가 칩(얼굴 보유, 그리드 길게눌러 제거)으로 표시하고, 대기
+/// 이름만 X 로 빼거나 새로 추가한다. 컨트롤러는 이 State 의 dispose 에서만
+/// 해제 (닫힘 애니메이션 중 재사용 방지). 취소=null, 저장=(제목, 대기명단).
+class _GroupSettingsDialog extends StatefulWidget {
+  final String initialTitle;
+  final List<String> scannedNames;
+  final List<String> initialPending;
 
-  const _TextInputDialog({
-    required this.title,
-    this.initialText,
-    required this.maxLength,
+  const _GroupSettingsDialog({
+    required this.initialTitle,
+    required this.scannedNames,
+    required this.initialPending,
   });
 
   @override
-  State<_TextInputDialog> createState() => _TextInputDialogState();
+  State<_GroupSettingsDialog> createState() => _GroupSettingsDialogState();
 }
 
-class _TextInputDialogState extends State<_TextInputDialog> {
-  late final TextEditingController _controller =
-      TextEditingController(text: widget.initialText);
+class _GroupSettingsDialogState extends State<_GroupSettingsDialog> {
+  late final TextEditingController _titleController =
+      TextEditingController(text: widget.initialTitle);
+  final TextEditingController _nameController = TextEditingController();
+  late final List<String> _pending = [...widget.initialPending];
+
+  int get _total => widget.scannedNames.length + _pending.length;
+  bool get _canAddMore => _total < TeamRoom.kMaxMembers;
 
   @override
   void dispose() {
-    _controller.dispose();
+    _titleController.dispose();
+    _nameController.dispose();
     super.dispose();
   }
+
+  /// 대기 이름 추가 — 공백·중복(스캔/대기·예약어 '나')·하드캡 12 차단.
+  void _addName([String? raw]) {
+    final name = (raw ?? _nameController.text).trim();
+    _nameController.clear();
+    if (name.isEmpty || !_canAddMore) return;
+    if (name == '나' ||
+        _pending.contains(name) ||
+        widget.scannedNames.contains(name)) {
+      return;
+    }
+    setState(() => _pending.add(name));
+  }
+
+  void _removeName(String name) => setState(() => _pending.remove(name));
 
   @override
   Widget build(BuildContext context) {
@@ -674,26 +684,114 @@ class _TextInputDialogState extends State<_TextInputDialog> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.xl),
       ),
-      title: Text(widget.title, style: AppText.modalTitle),
-      content: TextField(
-        controller: _controller,
-        autofocus: true,
-        maxLength: widget.maxLength,
-        style: AppText.body.copyWith(color: AppColors.textPrimary),
-        decoration: const InputDecoration(counterText: ''),
+      title: const Text('그룹 설정', style: AppText.modalTitle),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('그룹명',
+                style: AppText.caption.copyWith(color: AppColors.textHint)),
+            const SizedBox(height: AppSpacing.sm),
+            TextField(
+              controller: _titleController,
+              maxLength: 20,
+              style: AppText.body.copyWith(color: AppColors.textPrimary),
+              decoration: const InputDecoration(counterText: ''),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Text('멤버 ($_total/${TeamRoom.kMaxMembers})',
+                style: AppText.caption.copyWith(color: AppColors.textHint)),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              children: [
+                for (final n in widget.scannedNames) _chip(n, null),
+                for (final n in _pending) _chip(n, () => _removeName(n)),
+              ],
+            ),
+            if (_canAddMore) ...[
+              const SizedBox(height: AppSpacing.md),
+              TextField(
+                controller: _nameController,
+                textInputAction: TextInputAction.done,
+                maxLength: 10,
+                style: AppText.body.copyWith(color: AppColors.textPrimary),
+                decoration: InputDecoration(
+                  hintText: '이름 입력 후 엔터',
+                  hintStyle: AppText.body.copyWith(color: AppColors.textHint),
+                  counterText: '',
+                  suffixIcon: IconButton(
+                    icon: const FaIcon(FontAwesomeIcons.plus, size: 16),
+                    color: AppColors.textPrimary,
+                    onPressed: () => _addName(),
+                  ),
+                ),
+                onSubmitted: _addName,
+              ),
+            ],
+          ],
+        ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('취소',
-              style: TextStyle(color: AppColors.textHint)),
+          child:
+              const Text('취소', style: TextStyle(color: AppColors.textHint)),
         ),
         TextButton(
-          onPressed: () => Navigator.pop(context, _controller.text.trim()),
+          onPressed: () {
+            if (_nameController.text.trim().isNotEmpty) _addName();
+            Navigator.pop(
+              context,
+              (
+                title: _titleController.text.trim(),
+                pending: List<String>.from(_pending),
+              ),
+            );
+          },
           child: const Text('저장',
               style: TextStyle(color: AppColors.textPrimary)),
         ),
       ],
+    );
+  }
+
+  /// 단일톤 멤버 칩 — 생성 페이지 _MemberChip 과 동일 토큰. onRemove 없으면
+  /// 제거 불가(방장·스캔 완료).
+  Widget _chip(String name, VoidCallback? onRemove) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.xs + 1,
+        onRemove != null ? AppSpacing.sm : AppSpacing.md,
+        AppSpacing.xs + 1,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(name,
+              style: AppText.body.copyWith(color: AppColors.textPrimary)),
+          if (onRemove != null) ...[
+            const SizedBox(width: AppSpacing.xs),
+            InkWell(
+              onTap: onRemove,
+              customBorder: const CircleBorder(),
+              child: const Padding(
+                padding: EdgeInsets.all(2),
+                child: FaIcon(FontAwesomeIcons.xmark,
+                    size: 12, color: AppColors.textHint),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

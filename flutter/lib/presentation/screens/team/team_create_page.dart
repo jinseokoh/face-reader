@@ -260,7 +260,7 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage> {
                   AppSpacing.lg,
                 ),
                 child: PrimaryButton(
-                  label: '진실의 방 입장하기',
+                  label: '케미 그룹 입장하기',
                   busy: _creating,
                   onPressed: _enterRoom,
                 ),

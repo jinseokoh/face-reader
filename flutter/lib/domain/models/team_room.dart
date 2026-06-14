@@ -36,6 +36,11 @@ class TeamRoom {
   DateTime updatedAt;
   DateTime? closedAt;
 
+  /// 이 기기 사용자가 방장(생성자)인가 — 생성 시점에 고정. 홈의 내가 만든/
+  /// 초대받은 분류 기준. 변경 가능한 내 관상 id 와 비교하지 않는다(재등록해도
+  /// 소유가 흔들리지 않게). P3 원격 합류 방은 false 로 들어온다.
+  final bool ownedByMe;
+
   TeamRoom({
     required this.id,
     required this.title,
@@ -43,9 +48,17 @@ class TeamRoom {
     required this.createdAt,
     required this.updatedAt,
     this.closedAt,
+    this.ownedByMe = true,
   });
 
-  bool get isClosed => closedAt != null;
+  /// 발표(마감) 상태 — 방장이 일찍 닫았거나(closedAt) 빈자리 없이 전원
+  /// 스캔돼 자동 마감된(isFull) 방. 저장된 stamp 에 의존하지 않고 매번 파생해,
+  /// 정원이 찼는데도 열려 보이는 상태가 구조적으로 생기지 않게 한다.
+  bool get isClosed => closedAt != null || isFull;
+
+  /// 빈 슬롯 없이 전원 스캔(≥최소 인원) — 더 채울 수 없어 사실상 마감.
+  bool get isFull =>
+      scannedCount >= kMinMembers && scannedCount == members.length;
 
   /// 얼굴 스캔이 끝난 멤버 수 (매트릭스 참여 가능 인원).
   int get scannedCount => members.where((m) => m.isScanned).length;
@@ -63,6 +76,8 @@ class TeamRoom {
       closedAt: m['closedAt'] == null
           ? null
           : DateTime.parse(m['closedAt'] as String),
+      // 기존 그룹은 전부 로컬 생성(내 것) — 누락 시 true.
+      ownedByMe: m['ownedByMe'] as bool? ?? true,
     );
   }
 
@@ -73,5 +88,6 @@ class TeamRoom {
         'createdAt': createdAt.toIso8601String(),
         'updatedAt': updatedAt.toIso8601String(),
         'closedAt': closedAt?.toIso8601String(),
+        'ownedByMe': ownedByMe,
       });
 }
