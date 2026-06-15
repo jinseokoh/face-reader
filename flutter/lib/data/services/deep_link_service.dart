@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
 
-/// `https://facely.kr/r/{id}` universal/app link 수신.
+/// `https://facely.kr/r/{id}` (관상·궁합) · `/g/{teamId}` (교감도 그룹 초대)
+/// universal/app link 수신.
 ///
-/// `{id}` 는:
+/// `/r/{id}` 의 `{id}` 는:
 ///   - 단일 UUID 36자       → 관상 카드 (`SoloShareLink`)
 ///   - `{uuidA}~{uuidB}` 73자 → 궁합 카드 (`CompatShareLink`)
+/// `/g/{teamId}` 단일 UUID → 그룹 초대 (`TeamJoinShareLink`).
 ///
 /// SEP 은 `PAIR_SEP = "~"` — Worker `app/lib/share-id.ts` 의 같은 상수와 일치.
 /// 변경 시 양쪽 동시 PR.
@@ -57,11 +59,25 @@ class DeepLinkService {
     debugPrint('[DeepLink] received: $uri');
     if (uri.host != _host) return;
     final segs = uri.pathSegments;
+    if (segs.isEmpty) return;
+
+    // `/g/{teamId}` — 교감도 그룹 초대 (P3). 단일 UUID.
+    if (segs[0] == 'g') {
+      if (segs.length != 2) return;
+      final teamId = segs[1];
+      if (!_uuidRe.hasMatch(teamId)) {
+        debugPrint('[DeepLink] malformed uuid in /g/$teamId');
+        return;
+      }
+      _emit(TeamJoinShareLink(teamId: teamId.toLowerCase()));
+      return;
+    }
+
     // 2-seg `/r/{id}` (readable preview) or 3-seg `/r/{id}/open` (CTA bridge).
     // 둘 다 같은 SoloShareLink/CompatShareLink emit — Flutter 입장에서 동일
     // 라우팅. open sub-path 는 Safari same-URL guard 회피용 web 측 trick 일
     // 뿐 native handler 에선 구분 의미 없음.
-    if (segs.isEmpty || segs[0] != 'r') return;
+    if (segs[0] != 'r') return;
     if (segs.length == 3 && segs[2] != 'open') return;
     if (segs.length != 2 && segs.length != 3) return;
 
@@ -78,12 +94,16 @@ class DeepLinkService {
     final link = parts.length == 2
         ? CompatShareLink(uuidA: parts[0], uuidB: parts[1])
         : SoloShareLink(uuid: parts[0]);
+    _emit(link);
+  }
+
+  /// 구독자(MainApp)가 이미 있으면 stream 으로 즉시 전달만 한다. _pending 은
+  /// **cold-start 시 MainApp build 이전에 도착한 링크**를 버리지 않으려는
+  /// 1회용 버퍼이므로, 구독자가 없을 때만 채운다. warm 흐름에서도 _pending 을
+  /// 세팅하면 그 값이 계속 남아, X 로 닫은 뒤 MainApp state 가 재생성되며
+  /// initState 가 stale _pending 을 재push → 같은 화면 2장 뜨는 버그.
+  void _emit(ShareLink link) {
     debugPrint('[DeepLink] emit $link');
-    // 구독자(MainApp)가 이미 있으면 stream 으로 즉시 전달만 한다. _pending 은
-    // **cold-start 시 MainApp build 이전에 도착한 링크**를 버리지 않으려는
-    // 1회용 버퍼이므로, 구독자가 없을 때만 채운다. warm 흐름에서도 _pending 을
-    // 세팅하면 그 값이 계속 남아, X 로 닫은 뒤 MainApp state 가 재생성되며
-    // initState 가 stale _pending 을 재push → 같은 카드 2장 뜨는 버그.
     if (_shareLinkController.hasListener) {
       _shareLinkController.add(link);
     } else {
@@ -117,4 +137,13 @@ final class CompatShareLink extends ShareLink {
 
   @override
   String toString() => 'CompatShareLink($uuidA, $uuidB)';
+}
+
+/// `/g/{teamId}` — 교감도 그룹 초대 (P3). 구독자가 TeamJoinScreen 으로 라우팅.
+final class TeamJoinShareLink extends ShareLink {
+  final String teamId;
+  const TeamJoinShareLink({required this.teamId});
+
+  @override
+  String toString() => 'TeamJoinShareLink($teamId)';
 }

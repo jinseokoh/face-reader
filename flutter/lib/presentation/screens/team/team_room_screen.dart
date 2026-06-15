@@ -183,6 +183,19 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
   bool _inviting = false;
 
   @override
+  void initState() {
+    super.initState();
+    // 입장 시 서버 폴링 (P3) — push 된 그룹이면 합류자·마감을 끌어온다.
+    // 로컬 전용 그룹은 fetch 가 null 이라 no-op. best-effort.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref
+          .read(teamsProvider.notifier)
+          .refreshFromServer(widget.roomId)
+          .catchError((_) => null);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     // teams/history 양쪽 변화에 반응 — 멤버 추가·별칭 변경 즉시 반영.
     final rooms = ref.watch(teamsProvider);
@@ -222,17 +235,25 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
         ],
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.xxl),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+        child: RefreshIndicator(
+          // 당겨서 새로고침 — push 된 그룹이면 합류자·마감을 서버에서 끌어온다.
+          onRefresh: () async {
+            await ref
+                .read(teamsProvider.notifier)
+                .refreshFromServer(widget.roomId);
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(AppSpacing.xxl),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
               // 스캔 진행 — 명단 중 몇 명을 찍었나.
               Row(
                 children: [
                   Text('$scanned/$total명 등록', style: AppText.subTitle),
                   const SizedBox(width: AppSpacing.sm),
-                  // 마감 = "완료" 금색 뱃지 ("나" 배지와 동일 idiom).
+                  // 마감 = "마감" 금색 뱃지 ("나" 배지와 동일 idiom).
                   if (room.isClosed)
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -242,7 +263,7 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
                         borderRadius: BorderRadius.circular(AppRadius.sm),
                       ),
                       child: Text(
-                        '완료',
+                        '마감',
                         style: AppText.hint.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,
@@ -307,6 +328,15 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
                 ),
                 const SizedBox(height: AppSpacing.md),
               ],
+              // 마감된 그룹이면 버튼 위에 작은 안내 라벨.
+              if (room.isClosed) ...[
+                Text(
+                  '이미 마감된 그룹입니다.',
+                  textAlign: TextAlign.center,
+                  style: AppText.caption.copyWith(color: AppColors.textHint),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+              ],
               // 그룹 케미 보기 — 스캔 3명부터 (A7: 부분 공개, 마감과 무관).
               // 인원 미달이면 버튼 대신 배경 없는 작은 안내 텍스트.
               if (canMatrix)
@@ -319,7 +349,7 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
                   padding:
                       const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                   child: Text(
-                    '${TeamRoom.kMinMembers}명 모두 등록하면 그룹 케미를 볼 수 있어요',
+                    '앞으로 ${total - scanned}명 더 등록하면 마감됩니다',
                     textAlign: TextAlign.center,
                     style:
                         AppText.caption.copyWith(color: AppColors.textHint),
@@ -334,6 +364,7 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
                 ),
               ],
             ],
+            ),
           ),
         ),
       ),
@@ -471,11 +502,27 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
     return ok;
   }
 
-  /// 카카오 공유 시트로 초대 — 방 링크를 카톡으로 보낸다 (합류는 P3).
+  /// 카카오 공유 시트로 초대 — 원격 합류은 서버 그룹이 전제라, 로그인 게이트 후
+  /// 그룹을 서버로 push 하고 링크를 보낸다 (lazy sync, P3).
   Future<void> _inviteViaKakao(TeamRoom room) async {
     if (_inviting) return;
+    if (!ref.read(authProvider.notifier).isLoggedIn) {
+      final ok = await showLoginBottomSheet(context, ref);
+      if (!ok || !mounted) return;
+    }
     setState(() => _inviting = true);
     try {
+      final pushed =
+          await ref.read(teamsProvider.notifier).pushToServer(room.id);
+      if (!pushed) {
+        if (mounted) {
+          showTopSnackBar(
+            Overlay.of(context),
+            CompactSnackBar.success(message: '로그인이 필요해요'),
+          );
+        }
+        return;
+      }
       await SharePublisher.instance
           .publishTeamInvite(teamTitle: room.title, roomId: room.id);
     } finally {

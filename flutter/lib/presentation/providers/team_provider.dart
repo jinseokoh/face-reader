@@ -1,11 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/core/hive/hive_setup.dart';
+import 'package:facely/data/services/team_sync_service.dart';
 import 'package:facely/domain/models/team_room.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
+import 'package:facely/presentation/screens/team/team_band.dart';
 
 final teamsProvider = NotifierProvider<TeamsNotifier, List<TeamRoom>>(
   TeamsNotifier.new,
@@ -13,6 +17,12 @@ final teamsProvider = NotifierProvider<TeamsNotifier, List<TeamRoom>>(
 
 class TeamsNotifier extends Notifier<List<TeamRoom>> {
   Box<String> get _box => Hive.box<String>(HiveBoxes.teams);
+
+  final TeamSyncService _sync = TeamSyncService();
+
+  /// 원격(서버) 멤버 리포트 캐시 — 로컬 history 에 없는 합류자를 매트릭스에서
+  /// 쓰려고 pull 시 채운다. [reportFor] 가 history 다음으로 여기서 resolve.
+  final Map<String, FaceReadingReport> _remoteCache = {};
 
   @override
   List<TeamRoom> build() {
@@ -65,10 +75,11 @@ class TeamsNotifier extends Notifier<List<TeamRoom>> {
     if (index < 0 || index >= room.members.length) return false;
     if (room.members.any((m) => m.reportId == reportId)) return false;
     room.members[index].reportId = reportId;
-    _autoCloseIfComplete(room);
+    final justClosed = _autoCloseIfComplete(room);
     room.updatedAt = DateTime.now();
     _resort();
     await _save();
+    if (justClosed) unawaited(_syncClose(room));
     return true;
   }
 
@@ -83,10 +94,11 @@ class TeamsNotifier extends Notifier<List<TeamRoom>> {
     if (room.members.length >= TeamRoom.kMaxMembers) return false;
     if (room.members.any((m) => m.reportId == reportId)) return false;
     room.members.add(TeamMember(name: name, reportId: reportId));
-    _autoCloseIfComplete(room);
+    final justClosed = _autoCloseIfComplete(room);
     room.updatedAt = DateTime.now();
     _resort();
     await _save();
+    if (justClosed) unawaited(_syncClose(room));
     return true;
   }
 
@@ -135,16 +147,19 @@ class TeamsNotifier extends Notifier<List<TeamRoom>> {
   }
 
   /// 빈자리 없이 전원 스캔되면 자동 마감 — 교감도는 최소 3명부터 성립.
-  /// 더는 채울 사람이 없으므로 수동 마감 단계를 생략한다.
-  void _autoCloseIfComplete(TeamRoom room) {
-    if (room.closedAt != null) return;
+  /// 더는 채울 사람이 없으므로 수동 마감 단계를 생략한다. 방금 닫혔으면 true.
+  bool _autoCloseIfComplete(TeamRoom room) {
+    if (room.closedAt != null) return false;
     final scanned = room.members.where((m) => m.isScanned).length;
     if (scanned >= TeamRoom.kMinMembers && scanned == room.members.length) {
       room.closedAt = DateTime.now();
+      return true;
     }
+    return false;
   }
 
-  /// 마감 — 🏆 발표 상태로 전환 (A6 방 화면 스펙).
+  /// 마감 — 🏆 발표 상태로 전환 (A6 방 화면 스펙). 서버 push 된 그룹이면
+  /// 매트릭스 payload 와 함께 마감 반영 (best-effort).
   Future<void> close(String roomId) async {
     final room = byId(roomId);
     if (room == null || room.isClosed) return;
@@ -152,6 +167,124 @@ class TeamsNotifier extends Notifier<List<TeamRoom>> {
     room.updatedAt = room.closedAt!;
     _resort();
     await _save();
+    await _syncClose(room);
+  }
+
+  /// 마감을 서버에 반영 — 매트릭스 payload(이름+밴드만) 동봉. push 안 됐거나
+  /// 비로그인이면 owner 불일치로 0행 update (무해). 네트워크 실패도 무시.
+  Future<void> _syncClose(TeamRoom room) async {
+    try {
+      await _sync.closeTeam(room.id, matrixPayload: _buildPayload(room));
+    } catch (_) {
+      // 로컬 마감은 이미 반영됨 — 서버 반영 실패는 다음 동기화에서 재시도.
+    }
+  }
+
+  /// 마감 그룹의 web 쇼케이스용 payload. 멤버 표시 이름은 그룹 명단 우선.
+  Map<String, dynamic>? _buildPayload(TeamRoom room) {
+    final nameById = <String, String>{
+      for (final m in room.members)
+        if (m.reportId != null) m.reportId!: m.name,
+    };
+    return buildTeamMatrixPayload(
+      title: room.title,
+      reports: scannedReports(room),
+      nameOf: (r) => nameById[r.supabaseId] ?? r.alias ?? '익명',
+    );
+  }
+
+  // ── 원격 동기화 (P3) ─────────────────────────────────────────────
+
+  /// owner 가 그룹을 서버로 push (초대·마감 직전). 로그인 안 됐으면 false.
+  Future<bool> pushToServer(String roomId) async {
+    final room = byId(roomId);
+    if (room == null) return false;
+    return _sync.pushTeam(room);
+  }
+
+  /// 서버에서 그룹 1건을 미리보기로 fetch (합류 화면용, 로컬 병합 없음).
+  Future<RemoteTeam?> peekRemoteTeam(String teamId) => _sync.fetchTeam(teamId);
+
+  /// 초대받은 그룹 합류 — 서버에 내 등록 추가 후 pull 해서 로컬에 반영.
+  /// 성공 시 invited 그룹(ownedByMe=false), 실패(비로그인 등) 시 null.
+  Future<TeamRoom?> joinRemoteTeam(
+    String teamId, {
+    required String myReportId,
+    required String myName,
+  }) async {
+    final ok = await _sync.joinTeam(
+      teamId: teamId,
+      metricsId: myReportId,
+      name: myName.isEmpty ? '게스트' : myName,
+    );
+    if (!ok) return null;
+    return refreshFromServer(teamId);
+  }
+
+  /// 서버에서 그룹 pull → 로컬 state 병합 + 멤버 리포트 캐시. owned(내 그룹)면
+  /// 로컬 대기 명단을 유지하며 새 합류자만 추가하고, invited 면 서버 뷰로
+  /// 구성한다. 없으면 null.
+  Future<TeamRoom?> refreshFromServer(String teamId) async {
+    final remote = await _sync.fetchTeam(teamId);
+    if (remote == null) return null;
+
+    // 원격 멤버 리포트 캐시 (매트릭스용).
+    final ids =
+        remote.members.map((m) => m.metricsId).whereType<String>().toList();
+    if (ids.isNotEmpty) {
+      _remoteCache.addAll(await _sync.fetchMemberReports(ids));
+    }
+
+    final mine = _sync.myUid != null && remote.ownerId == _sync.myUid;
+    final existing = byId(teamId);
+
+    if (mine && existing != null) {
+      // 내 그룹 — 로컬 명단 유지하며 서버의 합류를 병합.
+      final known =
+          existing.members.map((m) => m.reportId).whereType<String>().toSet();
+      for (final m in remote.members) {
+        final mid = m.metricsId;
+        if (mid == null || m.isOwner || known.contains(mid)) continue;
+        // 같은 이름의 로컬 **대기 슬롯**이 있으면 그 슬롯을 채운다(원격 claim 반영).
+        // 없으면 새 합류자로 추가.
+        final slot = existing.members
+            .where((lm) => lm.reportId == null && lm.name == m.name)
+            .firstOrNull;
+        if (slot != null) {
+          slot.reportId = mid;
+        } else {
+          existing.members.add(TeamMember(name: m.name, reportId: mid));
+        }
+      }
+      if (remote.closedAt != null) existing.closedAt = remote.closedAt;
+      existing.updatedAt = DateTime.now();
+      _resort();
+      await _save();
+      return existing;
+    }
+
+    // 초대받은 그룹(또는 로컬에 없던 내 그룹) — 서버 뷰로 구성. 방장 먼저.
+    final ordered = [
+      ...remote.members.where((m) => m.isOwner),
+      ...remote.members.where((m) => !m.isOwner),
+    ];
+    final room = TeamRoom(
+      id: teamId,
+      title: remote.title,
+      members: [
+        for (final m in ordered)
+          TeamMember(name: m.name, reportId: m.metricsId),
+      ],
+      createdAt: existing?.createdAt ?? DateTime.now(),
+      updatedAt: DateTime.now(),
+      closedAt: remote.closedAt,
+      ownedByMe: mine,
+    );
+    final next = [room, ...state.where((r) => r.id != teamId)];
+    next.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    state = next;
+    await _save();
+    return room;
   }
 
   Future<void> delete(String roomId) async {
@@ -173,7 +306,8 @@ class TeamsNotifier extends Notifier<List<TeamRoom>> {
     for (final r in ref.read(historyProvider)) {
       if (r.supabaseId == id) return r;
     }
-    return null;
+    // 로컬에 없으면 원격 pull 캐시 (합류자 등).
+    return _remoteCache[id];
   }
 
   /// 스캔이 끝난 멤버들의 리포트 목록 — 매트릭스·프리뷰용.

@@ -27,6 +27,7 @@
 -- 포함:
 --   • tables    : users · coins · metrics · unlocks · bonus_recipients · ad_rewards
 --                 · ad_videos (custom video, §11-0) · ad_images (홈 배너, §11-0b)
+--                 · teams · team_members (교감도 그룹 원격 경로, §11-2/11-3, P3)
 --   • views     : admin_users (users + auth.users.email · service_role 전용)
 --   • triggers  : handle_new_user (auth.users → public.users + 보너스 3 코인)
 --                 touch_metrics_updated_at (views++ 시 updated_at 자동 갱신)
@@ -673,6 +674,125 @@ create policy "ad_images_active_read"
 
 create index if not exists ad_images_active_sort_idx
   on public.ad_images (sort_order, created_at desc) where active = true;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 11-2. public.teams — 교감도 그룹 (원격 경로, P3)
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 그룹 1개 = 1 row. 멤버는 public.team_members (metrics_id 참조).
+-- lazy sync: 그룹은 로컬(Hive) 우선 생성되고, [카톡 초대]·[마감] 등 원격 행동
+-- 시점에만 서버로 push 된다 (현장 경로의 무마찰 유지).
+-- title·closed_at 은 owner 관리. matrix_payload(jsonb) = 마감 시 앱이 계산한
+-- 밴드 매트릭스 (이름+밴드만, 점수·landmark 없음 — react 는 그리기만).
+-- 읽기 = groupId(UUID) 아는 사람 (link-share 모델, metrics 와 동일). 쓰기 = owner
+-- (원격 그룹은 안정적 소유 식별이 필요해 anon 소유 불가 — push 시 로그인 게이트).
+create table if not exists public.teams (
+  id             uuid        primary key default gen_random_uuid(),
+  owner_id       uuid        references auth.users(id) on delete set null,
+  title          text        not null,
+  closed_at      timestamptz,
+  matrix_payload jsonb,
+  created_at     timestamptz not null default now(),
+  updated_at     timestamptz not null default now()
+);
+
+create index if not exists idx_teams_owner on public.teams (owner_id, updated_at desc);
+
+alter table public.teams enable row level security;
+
+drop policy if exists "teams_public_read" on public.teams;
+drop policy if exists "teams_owner_insert" on public.teams;
+drop policy if exists "teams_owner_update" on public.teams;
+drop policy if exists "teams_owner_delete" on public.teams;
+
+-- 읽기: UUID 모르면 접근 불가 (link-share). 초대장·쇼케이스가 anon 으로 읽는다.
+create policy "teams_public_read"
+  on public.teams for select using (true);
+-- 생성·수정·삭제: owner 본인(auth 필요)만.
+create policy "teams_owner_insert"
+  on public.teams for insert with check (owner_id = auth.uid());
+create policy "teams_owner_update"
+  on public.teams for update using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+create policy "teams_owner_delete"
+  on public.teams for delete using (owner_id = auth.uid());
+
+-- 어떤 UPDATE 든 updated_at 자동 touch (pull-to-refresh 폴링 변경 감지용).
+create or replace function public.touch_teams_updated_at()
+returns trigger language plpgsql as $$
+begin new.updated_at := now(); return new; end;
+$$;
+
+drop trigger if exists teams_touch on public.teams;
+create trigger teams_touch
+  before update on public.teams
+  for each row execute procedure public.touch_teams_updated_at();
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 11-3. public.team_members — 그룹 멤버 (metrics_id 참조)
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 멤버 = (team_id, metrics_id). name = 그룹 안 표시 이름(방장이 깐 이름 또는
+-- 본인 alias). 대기(미등록) 슬롯은 metrics_id null + name 만, 등록되면 채운다.
+-- 한 그룹에 같은 metrics_id 1회 (등록 중복 차단, 부분 unique).
+create table if not exists public.team_members (
+  id         uuid        primary key default gen_random_uuid(),
+  team_id    uuid        not null references public.teams(id) on delete cascade,
+  metrics_id uuid        references public.metrics(id) on delete set null,
+  name       text        not null,
+  is_owner   boolean     not null default false,
+  joined_at  timestamptz not null default now()
+);
+
+create index        if not exists idx_team_members_team    on public.team_members (team_id);
+-- (team_id, metrics_id) unique — 등록 중복 차단 + upsert onConflict 추론 대상.
+-- 비부분(non-partial) 이라야 ON CONFLICT 가 추론한다. metrics_id NULL 행(대기·
+-- metrics 삭제로 set null)은 PG 기본 NULL-distinct 라 여러 개 허용돼 무해.
+create unique index if not exists idx_team_members_metrics on public.team_members (team_id, metrics_id);
+-- (team_id, name) unique — 그룹 안 이름이 슬롯 키. 합류자가 방장이 깐 대기
+-- 이름("까불이")으로 upsert 하면 그 대기 행이 채워진다(claim by name). 등록·대기
+-- 모두 한 이름당 한 행.
+create unique index if not exists idx_team_members_name on public.team_members (team_id, name);
+
+alter table public.team_members enable row level security;
+
+drop policy if exists "team_members_public_read" on public.team_members;
+drop policy if exists "team_members_insert"      on public.team_members;
+drop policy if exists "team_members_update"      on public.team_members;
+drop policy if exists "team_members_claim_slot"  on public.team_members;
+drop policy if exists "team_members_delete"      on public.team_members;
+
+-- 읽기: 그룹과 동일 link-share (team UUID 아는 사람).
+create policy "team_members_public_read"
+  on public.team_members for select using (true);
+
+-- 쓰기(insert): owner 가 멤버를 깔거나, 합류자가 자기 자신(metrics 소유)을 넣는다.
+create policy "team_members_insert"
+  on public.team_members for insert with check (
+       exists (select 1 from public.teams t   where t.id = team_id    and t.owner_id  = auth.uid())
+    or exists (select 1 from public.metrics m where m.id = metrics_id and m.user_id   = auth.uid())
+  );
+
+-- 수정: owner 만 (명단 관리·슬롯 채움).
+create policy "team_members_update"
+  on public.team_members for update using (
+    exists (select 1 from public.teams t where t.id = team_id and t.owner_id = auth.uid())
+  );
+
+-- 슬롯 claim: 합류자가 **대기 슬롯(metrics_id null)** 을 자기 metrics 로 채운다.
+-- USING = 빈 슬롯만(기존 점유 행은 못 가로챔), WITH CHECK = 새 metrics_id 가
+-- 본인 소유. team_members_update(owner) 와 OR 로 합쳐져, 합류자도 빈 이름 슬롯에
+-- 한해 채울 수 있다.
+create policy "team_members_claim_slot"
+  on public.team_members for update
+    using (metrics_id is null)
+    with check (
+      exists (select 1 from public.metrics m where m.id = metrics_id and m.user_id = auth.uid())
+    );
+
+-- 삭제: owner(멤버 제거) 또는 본인(그룹 나가기).
+create policy "team_members_delete"
+  on public.team_members for delete using (
+       exists (select 1 from public.teams t   where t.id = team_id    and t.owner_id  = auth.uid())
+    or exists (select 1 from public.metrics m where m.id = metrics_id and m.user_id   = auth.uid())
+  );
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 11-1. 테이블/시퀀스 GRANT — drop schema 후에도 self-contained

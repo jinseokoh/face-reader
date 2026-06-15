@@ -29,86 +29,6 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeActionCard extends StatefulWidget {
-  final String label;
-  final FaIconData icon;
-  final VoidCallback? onPressed;
-  final bool reverse;
-
-  const _HomeActionCard({
-    required this.label,
-    required this.icon,
-    required this.onPressed,
-    this.reverse = false,
-  });
-
-  @override
-  State<_HomeActionCard> createState() => _HomeActionCardState();
-}
-
-class _HomeActionCardState extends State<_HomeActionCard>
-    with SingleTickerProviderStateMixin {
-  static const _swingAmplitude = 0.05; // ≈ 2.9°
-  late final AnimationController _controller;
-  late final Animation<double> _rotation;
-
-  @override
-  Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 1,
-      child: AnimatedBuilder(
-        animation: _rotation,
-        builder: (_, child) => Transform.rotate(
-          angle: _rotation.value,
-          child: child,
-        ),
-        child: Material(
-          color: Colors.white,
-          clipBehavior: Clip.antiAlias,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-            side: BorderSide(color: AppColors.border, width: 1),
-          ),
-          child: InkWell(
-            onTap: widget.onPressed,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                FaIcon(widget.icon, size: 28, color: AppColors.textPrimary),
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  widget.label,
-                  style: AppText.subTitle.copyWith(color: AppColors.textPrimary),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2600),
-    )..repeat(reverse: true);
-    final begin = widget.reverse ? _swingAmplitude : -_swingAmplitude;
-    final end = widget.reverse ? -_swingAmplitude : _swingAmplitude;
-    _rotation = Tween<double>(begin: begin, end: end)
-        .chain(CurveTween(curve: Curves.easeInOut))
-        .animate(_controller);
-  }
-}
-
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
@@ -189,8 +109,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ],
       ),
       body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
+        child: RefreshIndicator(
+          onRefresh: _refreshGroups,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
             SliverToBoxAdapter(child: SizedBox(height: topGap)),
             // 내가 만든 방 — sticky 섹션 헤더.
             const SliverPersistentHeader(
@@ -255,9 +178,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             if (invited.isEmpty)
               const SliverToBoxAdapter(
                 child: EmptyStatePlaceholder(
-                  icon: FontAwesomeIcons.envelopeOpen,
+                  icon: FontAwesomeIcons.peoplePulling,
                   title: '초대받은 그룹이 없습니다',
-                  detail: '카톡 초대 기능이 곧 열려요',
+                  detail: '카톡으로 초대할 수 있어요',
                 ),
               )
             else
@@ -273,57 +196,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 ),
               ),
-            // ④ 다른 사람 관상 보기 — 보조 영역.
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.xxl, AppSpacing.xl, AppSpacing.xxl, 0),
-                child: Container(
-                  padding: const EdgeInsets.all(AppSpacing.lg),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(AppRadius.xl),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '다른 사람 관상 보기',
-                        style: AppText.caption.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _HomeActionCard(
-                              label: '카메라로 촬영',
-                              icon: FontAwesomeIcons.camera,
-                              onPressed: _openCamera,
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.md),
-                          Expanded(
-                            child: _HomeActionCard(
-                              label: '앨범에서 선택',
-                              icon: FontAwesomeIcons.image,
-                              onPressed: _openAlbum,
-                              reverse: true,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+            // 다른 사람 관상 보기는 AppBar 우상단 버튼(카메라/앨범)으로 일원화 —
+            // 하단 중복 보조 컨테이너 제거.
             SliverToBoxAdapter(child: SizedBox(height: bottomGap)),
-          ],
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  /// 당겨서 새로고침 — push 된 그룹의 합류자·마감을 서버에서 끌어온다.
+  /// 로컬 전용 그룹은 fetch 가 null 이라 no-op.
+  Future<void> _refreshGroups() async {
+    final ids = ref.read(teamsProvider).map((r) => r.id).toList();
+    for (final id in ids) {
+      try {
+        await ref.read(teamsProvider.notifier).refreshFromServer(id);
+      } catch (_) {
+        // 개별 실패는 무시 — 나머지 그룹은 계속 갱신.
+      }
+    }
   }
 
   /// 내 관상 등록 — 공용 플로우 (nudge 배너와 동일 경로).
@@ -591,7 +484,7 @@ class _TeamCardState extends ConsumerState<_TeamCard> {
             ? ClipRRect(
                 borderRadius: BorderRadius.circular(AppRadius.lg),
                 child: Banner(
-                  message: '완료',
+                  message: '마감',
                   location: BannerLocation.topStart,
                   color: AppColors.gold,
                   textStyle: AppText.hint.copyWith(

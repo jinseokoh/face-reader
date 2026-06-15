@@ -69,6 +69,7 @@ class _MainAppState extends ConsumerState<MainApp> {
     final path = switch (link) {
       SoloShareLink(:final uuid) => '/r/$uuid',
       CompatShareLink(:final uuidA, :final uuidB) => '/r/$uuidA~$uuidB',
+      TeamJoinShareLink(:final teamId) => '/g/$teamId',
     };
     // 동일 link 이중 전달 무시 (2초 내 같은 path) → 화면 1장만.
     final now = DateTime.now();

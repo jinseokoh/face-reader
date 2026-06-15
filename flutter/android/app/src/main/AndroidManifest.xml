@@ -38,7 +38,8 @@
                     android:scheme="facely"
                     android:host="auth-callback"/>
             </intent-filter>
-            <!-- facely.kr share host universal link — /r/{uuid} 또는 /r/{uuidA}~{uuidB} 진입 -->
+            <!-- facely.kr share host universal link — /r/{uuid}·/r/{uuidA}~{uuidB}
+                 (관상·궁합) 및 /g/{teamId} (교감도 그룹 초대, P3) 진입 -->
             <intent-filter
                 android:autoVerify="true">
                 <action
@@ -51,6 +52,10 @@
                     android:scheme="https"
                     android:host="facely.kr"
                     android:pathPrefix="/r/"/>
+                <data
+                    android:scheme="https"
+                    android:host="facely.kr"
+                    android:pathPrefix="/g/"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

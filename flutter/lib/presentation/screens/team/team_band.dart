@@ -1,4 +1,6 @@
+import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/services/compat/compat_label.dart';
+import 'package:facely/domain/services/team_matrix.dart';
 import 'package:flutter/material.dart';
 
 // 밴드 색상 스케일 — best→worst. matrix 셀 색깔 닷 전용 (화면-국지 상수).
@@ -53,3 +55,52 @@ extension TeamBand on CompatLabel {
     }
   }
 }
+
+/// 마감 시 서버 `teams.matrix_payload` 로 올릴 JSON — **이름 + 밴드만**(점수·
+/// landmark 없음, web 공개 안전). react `/g/:id` 쇼케이스가 그대로 렌더한다.
+/// 멤버 2명 미만이면 null. [nameOf] 로 표시 이름을 주입(그룹 명단 이름 우선).
+Map<String, dynamic>? buildTeamMatrixPayload({
+  required String title,
+  required List<FaceReadingReport> reports,
+  required String Function(FaceReadingReport) nameOf,
+}) {
+  if (reports.length < 2) return null;
+  final matrix = computeTeamMatrix(reports);
+  final members = matrix.members;
+  final idxOf = <String?, int>{
+    for (int i = 0; i < members.length; i++) members[i].supabaseId: i,
+  };
+  final names = [for (final m in members) nameOf(m)];
+
+  final pairs = <Map<String, dynamic>>[];
+  for (final p in matrix.allPairs) {
+    final ai = idxOf[p.a.supabaseId];
+    final bi = idxOf[p.b.supabaseId];
+    if (ai == null || bi == null) continue;
+    pairs.add({
+      'a': ai < bi ? ai : bi,
+      'b': ai < bi ? bi : ai,
+      'e': p.label.bandEmoji,
+      'l': p.label.bandLabel,
+      'c': _bandHex(p.label.bandColor),
+    });
+  }
+
+  List<Map<String, int>> highlight(List<TeamPair> ps) => [
+        for (final p in ps)
+          if (idxOf[p.a.supabaseId] != null && idxOf[p.b.supabaseId] != null)
+            {'a': idxOf[p.a.supabaseId]!, 'b': idxOf[p.b.supabaseId]!},
+      ];
+
+  return {
+    'v': 1,
+    'title': title,
+    'members': names,
+    'pairs': pairs,
+    'best': highlight(matrix.bests),
+    'surprises': highlight(matrix.surprises),
+  };
+}
+
+String _bandHex(Color c) =>
+    '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';

@@ -1,0 +1,206 @@
+import type { Route } from "./+types/g.$id";
+import { CTA } from "../components/CTA";
+import { fetchTeam, type TeamPayload } from "../lib/supabase";
+
+/**
+ * `GET /g/:id` — 교감도 그룹 (P3). 한 라우트, 두 얼굴:
+ *   - 마감 전 = 초대장 (참여자 칩 + "당신 자리가 비어 있어요" + 앱 유도)
+ *   - 마감 후 = 결과 쇼케이스 (이름 + 밴드 이모지 매트릭스, 사진/점수 없음)
+ *
+ * teams.matrix_payload 가 있으면 결과, 없으면 초대장. 밴드는 색 대신 이모지
+ * (🟢🔵🟠🔴) 로만 표기해 웹 4색 팔레트를 지킨다.
+ */
+export async function loader({ params, request, context }: Route.LoaderArgs) {
+  const env = context.cloudflare.env;
+  const team = await fetchTeam(env, params.id);
+  if (!team) throw new Response("Not Found", { status: 404 });
+  const origin = env.WEBAPP_BASE ?? new URL(request.url).origin;
+  return {
+    team,
+    appOpenUrl: `${origin}/g/${params.id}`,
+    appStoreUrl: env.APP_STORE_URL,
+    playStoreUrl: env.PLAY_STORE_URL,
+    canonicalUrl: `${origin}/g/${params.id}`,
+  };
+}
+
+export function meta({ data }: Route.MetaArgs) {
+  if (!data) return [{ title: "그룹을 찾을 수 없습니다" }];
+  const t = data.team;
+  const title = t.closed
+    ? `${t.title} — 케미 결과`
+    : `${t.title} — 케미 그룹 초대`;
+  const desc = t.closed
+    ? "관상으로 풀어본 우리 그룹의 케미 결과"
+    : `${t.memberNames.length}명이 참여 중 · 당신 자리가 비어 있어요`;
+  return [
+    { title },
+    { name: "description", content: desc },
+    // 멤버 이름이 노출되므로 검색엔진 indexing 차단.
+    { name: "robots", content: "noindex,nofollow" },
+    { property: "og:type", content: "website" },
+    { property: "og:title", content: title },
+    { property: "og:description", content: desc },
+    { property: "og:url", content: data.canonicalUrl },
+  ];
+}
+
+export default function Group({ loaderData }: Route.ComponentProps) {
+  const { team } = loaderData;
+  return (
+    <main className="share">
+      {team.closed && team.payload ? (
+        <Showcase payload={team.payload} />
+      ) : (
+        <Invite title={team.title} names={team.memberNames} />
+      )}
+      <CTA
+        appOpenUrl={loaderData.appOpenUrl}
+        appStoreUrl={loaderData.appStoreUrl}
+        playStoreUrl={loaderData.playStoreUrl}
+      />
+    </main>
+  );
+}
+
+function Invite({ title, names }: { title: string; names: string[] }) {
+  return (
+    <section style={{ textAlign: "center", padding: "24px 16px" }}>
+      <h1 style={{ fontSize: 24, color: "#1a1a1a", margin: 0 }}>{title}</h1>
+      <p style={{ color: "#666", fontSize: 14, marginTop: 8 }}>
+        {names.length}명이 참여 중 · 당신 자리가 비어 있어요
+      </p>
+      {names.length > 0 && (
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 8,
+            justifyContent: "center",
+            marginTop: 16,
+          }}
+        >
+          {names.map((n, i) => (
+            <Chip key={i} label={n} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function Showcase({ payload }: { payload: TeamPayload }) {
+  const { members, pairs, best } = payload;
+  const bandOf = (i: number, j: number) => {
+    const a = Math.min(i, j);
+    const b = Math.max(i, j);
+    return pairs.find((p) => p.a === a && p.b === b) ?? null;
+  };
+
+  return (
+    <section style={{ padding: "24px 16px" }}>
+      <h1
+        style={{
+          fontSize: 24,
+          color: "#1a1a1a",
+          textAlign: "center",
+          margin: 0,
+        }}
+      >
+        {payload.title}
+      </h1>
+      <p
+        style={{
+          color: "#666",
+          fontSize: 13,
+          textAlign: "center",
+          marginTop: 4,
+        }}
+      >
+        케미 결과 발표
+      </p>
+
+      {best.length > 0 && (
+        <div
+          style={{
+            background: "#f7f7f8",
+            borderRadius: 12,
+            padding: 16,
+            marginTop: 16,
+          }}
+        >
+          {best.map((h, k) => {
+            const band = bandOf(h.a, h.b);
+            return (
+              <div key={k} style={{ fontSize: 16, color: "#1a1a1a" }}>
+                🏆 {members[h.a]} × {members[h.b]}
+                {band ? ` ${band.e} ${band.l}` : ""}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div style={{ overflowX: "auto", marginTop: 16 }}>
+        <table style={{ borderCollapse: "collapse", margin: "0 auto" }}>
+          <thead>
+            <tr>
+              <th />
+              {members.map((n, j) => (
+                <th key={j} style={head}>
+                  {n}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {members.map((n, i) => (
+              <tr key={i}>
+                <th style={{ ...head, textAlign: "right", paddingRight: 8 }}>
+                  {n}
+                </th>
+                {members.map((_, j) => (
+                  <td key={j} style={cell}>
+                    {i === j ? "·" : (bandOf(i, j)?.e ?? "")}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function Chip({ label }: { label: string }) {
+  return (
+    <span
+      style={{
+        background: "#f7f7f8",
+        borderRadius: 10,
+        padding: "4px 12px",
+        fontSize: 14,
+        color: "#1a1a1a",
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
+const head: React.CSSProperties = {
+  fontSize: 12,
+  color: "#666",
+  fontWeight: 400,
+  padding: 4,
+  whiteSpace: "nowrap",
+};
+
+const cell: React.CSSProperties = {
+  width: 36,
+  height: 36,
+  textAlign: "center",
+  fontSize: 16,
+  border: "1px solid #f7f7f8",
+};

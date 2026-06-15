@@ -19,6 +19,65 @@
 
 ---
 
+# 🔄 현재 상태 & 재개 가이드 (2026-06-15)
+
+> **컨텍스트 초기화/재부팅 후 이 섹션부터 읽는다.** 재개에 필요한 전부.
+
+## Phase 상태
+- **P1** ✅ 완료 (기기 검증 통과)
+- **P2** 🔶 코드 완료 — **기기 검증 대기**
+- **P3** 🔶 코드 완료 (M1~M6, `flutter analyze`·`tsc` 내 변경분 clean) — **외부 인프라 미적용 + 2기기 검증 대기**
+- **P4** ☐ 대기
+
+## ⛔ 외부 인프라 (2/3 적용 — **DB·웹 배포 완료**, 앱 빌드 남음)
+
+P3 코드는 다 짰고 **Supabase DB(2026-06-15 RUN) + react 배포(2026-06-15) 완료**.
+남은 건 **앱 재빌드** 하나 — 그래야 `/g/` 딥링크가 앱에서 열린다 (그 전엔 카톡
+링크가 웹으로만 열림).
+
+1. **[x] Supabase DB 마이그레이션 — 완료 (2026-06-15 baseline.sql RUN)**
+   - ⚠️ **이건 "전체 초기화"가 아니다.** baseline 은 idempotent (`create table if not exists` + `drop policy if exists` + `create or replace`) — RUN 해도 **기존 행 데이터는 보존**되고, 없는 `teams`·`team_members` 만 새로 생긴다. 파일에 `drop table`·`delete`·`truncate` 없음. 진짜 초기화는 맨 끝 `DEV ONLY reset`(`drop schema`) 블록을 직접 주석 해제할 때만 → **그건 손대지 말 것.**
+   - **방법 A (컨벤션·안전)**: Supabase 대시보드 → SQL Editor → `react/db/migrations/0001_baseline.sql` **전체** 붙여넣고 RUN. (§11-1 이 새 테이블 GRANT 까지 처리.)
+   - **방법 B (최소 변경)**: 새로 추가된 **§11-2 `teams` + §11-3 `team_members` 블록만** 붙여넣어 RUN. 단 이 경우 권한 한 줄 추가 실행:
+     ```sql
+     grant all on public.teams, public.team_members to anon, authenticated, service_role;
+     ```
+   - 새로 생기는 것: `teams`·`team_members` 테이블 + RLS + touch 트리거 (§11-2/11-3). 신규 RPC·Storage bucket·env 키 **없음** (teams read 는 기존 anon 키 + RLS public read).
+   - 검증: SQL Editor 에서 `select count(*) from team_members;` 가 에러 없이 0 → 생성 확인.
+
+2. **[x] react (Cloudflare Workers) 배포 — 완료 (2026-06-15, version `2c8caf73`)**
+   - 실행: `pnpm run build:shared && pnpm run build && pnpm run deploy`.
+   - ⚠️ **`build` 를 빼먹지 말 것**: `pnpm run deploy`(=`wrangler deploy`)는 **기존 `build/` 산출물을 올릴 뿐 재빌드 안 한다**. `react-router build` 를 먼저 안 돌리면 stale 코드가 배포된다(첫 배포 때 `/g/*` 누락·옛 AASA(TEAMID placeholder)가 올라간 실수). 스크립트명도 `pnpm run deploy` (`pnpm deploy` 는 내장 명령과 충돌).
+   - 배포물: `/g/:id` 라우트(`g.$id.tsx`) + AASA `/g/*` (Team ID `TDP4V3QVVM`). facely.kr·www.facely.kr.
+   - vite 빌드는 tsc 안 함 → `contact.tsx` 의 `WEB3FORMS_ACCESS_KEY` tsc 오류(기존 이슈)는 배포 무관.
+   - 검증 완료: live AASA 에 `/g/*` 확인, `GET /g/{없는UUID}` → 404(loader 가 DB 조회 후 정상 처리).
+
+3. **[ ] 앱 재빌드** ← **여기부터 (마지막 단계)** (Android manifest `/g/` intent-filter + 딥링크 코드 반영)
+   - 참고: built-in Kotlin 마이그레이션은 **시도했다 되돌림** — 이 Flutter 버전은 아직 미지원이라 Kotlin 2.0.0 으로 떨어져 firebase/play-services(2.2.x) 와 충돌·빌드 실패. `settings.gradle.kts` 의 `org.jetbrains.kotlin.android 2.2.20` 명시 유지가 정답. "KGP 적용" 경고는 *미래* 대비 deprecation 이라 무시.
+   - `flutter build appbundle` (Android) / iOS 빌드. iOS associated domains(`applinks:facely.kr`)는 기존 `/r/` 용이 이미 있으면 재빌드만.
+   - 카카오 콘솔/도메인 신규 작업 **없음** (facely.kr·ShareClient 기존 설정 재사용).
+
+## 다음 작업 (순서)
+1. 위 **인프라 3단계** 적용.
+2. **P3 2기기 검증** (P3 "완료 기준"): A폰 그룹 생성 → [카톡 초대] → B폰 링크 탭 → 합류 → 양쪽 매트릭스 → A폰 마감 → `facely.kr/g/{id}` 웹 쇼케이스(사진·점수 없음, 이름+밴드만) 렌더.
+3. **P2 기기 검증** (병행 가능): 그룹 생성→4명 등록→매트릭스(🏆 무료·내 행 최상단)→페어 1🪙 unlock→상세.
+4. 이후 **P4** (운영·스토어 재제출).
+
+## P3 변경/신규 파일 (코드 위치 상세 = [`KAKAO.md`](KAKAO.md) §7)
+- **신규**: `flutter/lib/data/services/team_sync_service.dart` · `flutter/lib/presentation/screens/team/team_join_screen.dart` · `react/app/routes/g.$id.tsx` · `KAKAO.md`
+- **수정(미커밋, working tree)**: `team_provider.dart` · `team_room_screen.dart` · `team_band.dart` · `deep_link_service.dart` · `app.dart` · `config/router.dart` · `share_publisher.dart` · `AndroidManifest.xml` · `react/app/{routes.ts,lib/supabase.ts}` · `react/db/migrations/0001_baseline.sql` · `react/public/.well-known/apple-app-site-association`
+- **이미 커밋됨** (`8fc6bace wip`): 홈 카드·완료 리본·`ownedByMe`·용어(그룹/등록)·그룹 설정 등 초반 UI 작업.
+- ⚠️ P3 working-tree 변경은 **미커밋**이다. 재부팅으론 안 사라지지만, 안전하게 `git add -A && git commit` 권장.
+
+## 알려진 한계/주의 (상세 KAKAO.md §5)
+- 미설치자: 웹 안내 페이지(`/g/{id}`)·스토어 유도는 **됨**(M5). 단 **설치 직후 자동 입장(deferred)** 없음 — "카톡 재탭" 수동.
+- **실시간 아님** — 폴링 기반. 합류는 그룹 재입장(자동) 또는 **당겨서 새로고침**(홈·그룹 화면 pull-to-refresh)으로 반영.
+- 원격 합류 = **로그인 필수**. 합류자가 방장이 깐 빈 슬롯("까불이")을 골라 채우는 **슬롯 claim 구현됨**(이름이 키, `(team_id,name)`). 단 점유된 이름은 못 가로채고, 방장이 합류 후 이름 변경 시 매칭 깨질 수 있음.
+- 링크 read = public(UUID 아는 사람) — 유출 시 그룹명·멤버 이름 노출.
+- **48h 자동 마감(서버 cron) 미구현** — 현재 자동 마감은 "전원 등록 시" 로컬 트리거만 (P4 운영에서).
+
+---
+
 # Part A — 확정 결정 (불변 스펙)
 
 ## A1. 왜 이것인가 (기각 이력)
@@ -231,7 +290,7 @@ flutter/CLAUDE.md §0 토큰 테이블 준수 — SongMyung · 기존 흑백 팔
 |---|---|---|---|---|
 | **P1** | 홈 개편 + 내 관상 셀프 등록 (팀 기능 없이 단독 배포 가능) | — | 없음 | ✅ 완료 (2026-06-12, 기기 검증 통과) |
 | **P2** | 교감도 코어 — 현장 경로 (로컬 완결) | P1 | 없음 | 🔶 구현 완료 (2026-06-12) · UI 정련·용어·소유 모델 수정 (2026-06-14) — 기기 검증 대기 |
-| **P3** | 원격 경로 — 서버·딥링크·웹 쇼케이스 | P2 | 있음 | ☐ 대기 |
+| **P3** | 원격 경로 — 서버·딥링크·웹 쇼케이스 | P2 | 있음 | 🔶 구현 완료 (2026-06-15, M1~M6) — baseline.sql 배포 + 2기기 검증 대기 |
 | **P4** | 운영 + 스토어 재제출 | P3 | 소 | ☐ 대기 |
 
 ## P1 — 홈 개편 + 내 관상 셀프 등록
@@ -304,15 +363,17 @@ A5 홈의 ②③(그룹 카드 리스트 + 생성 CTA)을 활성화한다.
 | 5 | react `/g/:id` 라우트 — 마감 전 초대장(참여 현황+스토어 유도) / 마감 후 쇼케이스(`matrix_payload` 렌더, **이름+밴드만**, 썸네일 방장 옵트인) | `react/app/routes` | 신규 |
 | 6 | 마감 플로우 — 방장 [마감]/48h 자동 → matrix_payload 업로드 → 결과 발표 화면 → 쇼케이스 전환 | flutter + react | 신규 |
 
-**현재 구현 현황 (2026-06-14 코드 확인 — 전 항목 미착수):**
+**구현 현황 (2026-06-15 — M1~M6 코드 완료, `flutter analyze`·`tsc` clean. 배포·2기기 검증 대기):**
 
-- DB: `0001_baseline.sql` 에 `teams`/`team_members` 없음. Flutter `teamsProvider` 는 Hive 로컬 전용(서버 호출 0).
-- 초대 링크: `share_publisher.teamInviteUrl` 이 `…/g/{id}` 문자열 생성·카톡 전송까지만. `deep_link_service` 는 `/r/` 만 라우팅(`/g/` 없음). react 에 `/g/:id` 라우트 없음.
-- 마감: `close()`·자동마감은 로컬 `closedAt` 만, `matrix_payload` 업로드 없음.
-- **선결 설계 숙제**: 현재 멤버 모델은 "내 기기 history 의 reportId" 전제 → 원격 합류자는 history 에 없음.
-  `team_members` 는 metrics_id 참조로 두고, 멤버 = (metrics_id + 이름 + 썸네일 opt-in)로 확장하고
-  매트릭스 계산 위치(각 클라가 metrics pull 후 부분 계산 vs 서버 `matrix_payload`)를 먼저 정해야 한다.
-- 소유 모델은 이미 반영됨(A5) — 합류 화면(#3)에서 그룹을 `ownedByMe=false` 로 생성하면 홈 "초대받은 그룹" 분류가 자동으로 맞는다.
+- **M1 DB**: `0001_baseline.sql` §11-2/11-3 `teams`·`team_members` + RLS(public read / owner write / 합류자 self-insert·슬롯 claim) + touch 트리거. **✅ Supabase RUN 완료 (2026-06-15)**
+- **M2 sync 서비스**: `team_sync_service.dart` — push/join/close/fetch + 원격 멤버 metrics 복원(`ShareReceiveService` 재사용). lazy sync, 비파괴 upsert.
+- **M3 provider+합류**: `team_provider` 에 push/join/refresh + 원격 리포트 캐시(`reportFor` fallback). `team_join_screen` 신규. 초대 시 로그인 게이트+push, 입장 시 폴링. 소유는 `ownedByMe`(A5).
+- **M4 딥링크**: `/g/{teamId}` → `TeamJoinShareLink` → `/g/:id` GoRoute → `TeamJoinScreen`. AASA·Android manifest 에 `/g/*` 추가. **(react 배포 + 앱 재빌드 필요)**
+- **M5 web**: react `/g/:id` (`g.$id.tsx`) — 마감 전 초대장 / 마감 후 쇼케이스(이름+밴드 이모지 매트릭스, 사진·점수 없음). `fetchTeam` (teams+team_members anon read).
+- **M6 마감 payload**: `buildTeamMatrixPayload`(team_band.dart, 이름+밴드만) → `close()`·자동마감이 `teams.matrix_payload` 업로드 → web 쇼케이스 렌더.
+- **M3.5 슬롯 claim (A안)**: 서버 멤버 키 = `(team_id, name)`. push 가 대기 이름도 올리고(insert-only, claim 보호), 합류자가 참여 화면에서 빈 슬롯("까불이")을 골라 그 행을 채운다. RLS `team_members_claim_slot`(빈 슬롯→본인 metrics). owner pull 시 같은 이름 로컬 대기 슬롯을 이름 매칭으로 채움.
+- **pull-to-refresh**: 홈 그룹 리스트 + 그룹 상세 화면 둘 다 당겨서 새로고침 → 합류자·마감 반영.
+- 자세한 동작·전제·한계: [`KAKAO.md`](KAKAO.md).
 
 **완료 기준 (verify)**:
 

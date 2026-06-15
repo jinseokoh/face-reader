@@ -89,6 +89,78 @@ export async function incrementMetricsViews(env: Env, id: string): Promise<void>
   }
 }
 
+// ── 교감도 그룹 (P3) — /g/:id 쇼케이스/초대장 ──────────────────────────────
+
+/** 마감 시 앱이 올린 매트릭스 — 이름 + 밴드만 (점수·landmark 없음). */
+export type TeamPayload = {
+  v: number;
+  title: string;
+  members: string[]; // 표시 이름 (방장 먼저)
+  pairs: { a: number; b: number; e: string; l: string; c: string }[]; // a<b 인덱스
+  best: { a: number; b: number }[];
+  surprises: { a: number; b: number }[];
+};
+
+export type TeamShowcase = {
+  id: string;
+  title: string;
+  closed: boolean;
+  memberNames: string[]; // 마감 전 참여자 칩 (team_members, 방장 먼저)
+  payload: TeamPayload | null; // 마감 후 결과
+};
+
+/** teams + team_members 를 anon 으로 read (link-share, RLS public read). */
+export async function fetchTeam(
+  env: Env,
+  id: string,
+): Promise<TeamShowcase | null> {
+  if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) return null;
+  const headers = {
+    apikey: env.SUPABASE_ANON_KEY,
+    authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
+  };
+  const q = encodeURIComponent(id);
+
+  const tRes = await fetch(
+    `${env.SUPABASE_URL}/rest/v1/teams?id=eq.${q}` +
+      `&select=id,title,closed_at,matrix_payload`,
+    { headers },
+  );
+  if (!tRes.ok) {
+    console.error("[fetchTeam] teams status", tRes.status, await tRes.text());
+    return null;
+  }
+  const teams = (await tRes.json()) as Array<{
+    id: string;
+    title: string;
+    closed_at: string | null;
+    matrix_payload: TeamPayload | null;
+  }>;
+  if (teams.length === 0) return null;
+  const t = teams[0];
+
+  const mRes = await fetch(
+    `${env.SUPABASE_URL}/rest/v1/team_members?team_id=eq.${q}` +
+      `&select=name,is_owner,joined_at&order=joined_at`,
+    { headers },
+  );
+  const members = mRes.ok
+    ? ((await mRes.json()) as Array<{ name: string; is_owner: boolean }>)
+    : [];
+  const names = [
+    ...members.filter((m) => m.is_owner),
+    ...members.filter((m) => !m.is_owner),
+  ].map((m) => m.name);
+
+  return {
+    id: t.id,
+    title: t.title,
+    closed: t.closed_at != null,
+    memberNames: names,
+    payload: t.matrix_payload ?? null,
+  };
+}
+
 function demoRow(id: string): MetricsRow {
   // 마지막 글자로 demo persona 분기 — '1' 은 여성/30대/계란형, '2' 는 남성/40대/긴얼굴.
   // 솔로 데모는 A (id 끝 1), compat 데모는 A × B (남녀 페어) 로 보이도록.

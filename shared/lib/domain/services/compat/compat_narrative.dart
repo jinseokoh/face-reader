@@ -325,21 +325,6 @@ String _pickVariant(List<String> variants, int seed) {
   return variants[idx];
 }
 
-String _relationShort(ElementRelationKind k) {
-  switch (k) {
-    case ElementRelationKind.generating:
-      return '내가 상대에게 활력을 주는';
-    case ElementRelationKind.generated:
-      return '상대가 나를 받쳐 주는';
-    case ElementRelationKind.overcoming:
-      return '내가 상대의 페이스를 잡아 주는';
-    case ElementRelationKind.overcome:
-      return '상대가 나를 단련시키는';
-    case ElementRelationKind.identity:
-      return '닮은꼴 케미의';
-  }
-}
-
 // ─────────────── section 5 — 점수 + 이유 ───────────────
 
 String _scoreSection(CompatibilityReport r) {
@@ -513,12 +498,37 @@ String _summarySection(CompatibilityReport r, List<CompatFinding> findings) {
 
   final myEl = r.myElement.primary.korean;
   final alEl = r.albumElement.primary.korean;
-  final dir = _relationShort(r.elementRelation.kind);
 
-  return '$headline입니다. '
-      '$total점으로 ${r.label.korean}(네 등급 중 ${_labelTier(r.label)}번째)에 해당하고, '
-      '얼굴 전체의 기본 성향은 $myEl과 $alEl이 만나 $dir 구도를 이룹니다. '
-      '이 조합이 일상에서 어떤 모습으로 나타나는지 아래에서 구체적으로 살펴보겠습니다.';
+  // 한 줄평 — 인용 가능한 이중성 펀치 라인(관찰 + "좋은데 이게 위험"). 관계의
+  // 핵심 역학(element relation)으로 결정론적 생성. 가장 먼저 읽히는 줄.
+  // 관계 역학은 _oneLiner 가 행동으로 보여 주므로, 추상 단정("활력을 주는 구도")
+  // 은 빼고 element 만 사실로 적는다 (voice 일관성).
+  return '${_oneLiner(r.elementRelation.kind)} '
+      '$headline입니다. '
+      '$total점, ${r.label.korean}(네 등급 중 ${_labelTier(r.label)}번째). '
+      '얼굴 전체의 기본 성향은 $myEl과 $alEl의 만남이에요.';
+}
+
+/// 두 사람을 한 줄로 — 관계 역학별 펀치 라인. "이렇게 좋은데, 이게 위험"의
+/// 이중성을 한 문장에 담아 인용 가능하게. 추상어·한자·미사여구 없이 행동으로.
+String _oneLiner(ElementRelationKind kind) {
+  switch (kind) {
+    case ElementRelationKind.generating:
+      return '한 줄로 말하면, 내가 먼저 움직이면 상대가 따라 살아나는 사이예요. '
+          '끌고 가는 맛이 있는 대신, 내가 손을 놓으면 둘 다 가라앉습니다.';
+    case ElementRelationKind.generated:
+      return '한 줄로 말하면, 상대가 판을 깔아 주면 내가 편하게 빛나는 사이예요. '
+          '받는 게 자연스러운 대신, 고마움을 표현 안 하면 상대가 먼저 지칩니다.';
+    case ElementRelationKind.overcoming:
+      return '한 줄로 말하면, 내가 방향을 잡고 상대가 맞춰 주는 사이예요. '
+          '결정이 빠른 대신, 내가 세게 쥐면 상대가 할 말을 삼킵니다.';
+    case ElementRelationKind.overcome:
+      return '한 줄로 말하면, 상대가 나를 다잡아 주는 사이예요. '
+          '배우는 건 많은 대신, 잔소리로 들리는 순간 자존심이 긁힙니다.';
+    case ElementRelationKind.identity:
+      return '한 줄로 말하면, 닮은 둘이라 말 안 해도 통하는 사이예요. '
+          '편한 대신, 똑같은 약점에서 똑같이 걸려 넘어집니다.';
+  }
 }
 
 String _weakestLayer(CompatibilityReport r) {
