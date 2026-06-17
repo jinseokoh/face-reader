@@ -57,13 +57,30 @@ class DeepLinkService {
 
   void _handle(Uri uri) {
     debugPrint('[DeepLink] received: $uri');
+
+    // 카카오 메시지 '참여하기'의 앱 직접 실행 — `kakao{appkey}://kakaolink?g={teamId}`.
+    // 카톡 인앱 브라우저를 거치지 않고 앱을 바로 띄운다 (Link.androidExecutionParams
+    // / iosExecutionParams). 그룹 합류는 https `/g/` 와 동일하게 TeamJoinShareLink 로.
+    if (uri.scheme.startsWith('kakao') && uri.host == 'kakaolink') {
+      final teamId = uri.queryParameters['g'];
+      if (teamId != null && _uuidRe.hasMatch(teamId)) {
+        _emit(TeamJoinShareLink(teamId: teamId.toLowerCase()));
+      } else {
+        debugPrint('[DeepLink] kakaolink missing/bad g param: $uri');
+      }
+      return;
+    }
+
     if (uri.host != _host) return;
     final segs = uri.pathSegments;
     if (segs.isEmpty) return;
 
-    // `/g/{teamId}` — 교감도 그룹 초대 (P3). 단일 UUID.
+    // 2-seg `/g/{teamId}` 또는 3-seg `/g/{teamId}/open` (CTA bridge) — 교감도
+    // 그룹 초대 (P3). App Link 검증 상태에선 OS 가 `/open` 까지 앱으로 직접
+    // 라우팅하므로 `/r/` 와 동일하게 3-seg 도 받아야 화면 전환이 된다.
     if (segs[0] == 'g') {
-      if (segs.length != 2) return;
+      if (segs.length == 3 && segs[2] != 'open') return;
+      if (segs.length != 2 && segs.length != 3) return;
       final teamId = segs[1];
       if (!_uuidRe.hasMatch(teamId)) {
         debugPrint('[DeepLink] malformed uuid in /g/$teamId');

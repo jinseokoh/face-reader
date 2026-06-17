@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui' show Rect;
 
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/data/services/supabase_service.dart';
@@ -188,12 +189,21 @@ class SharePublisher {
   Future<void> publishTeamInvite({
     required String teamTitle,
     required String roomId,
+    Rect? sharePositionOrigin,
   }) async {
     final url = teamInviteUrl(roomId);
     final text =
         '[$teamTitle] 관상학으로 풀어보는 우리 그룹내에서 나랑 가장 케미가 좋은 사람찾기에 참여해 보세요.';
     if (await isKakaoTalkInstalled()) {
-      final link = Link(webUrl: Uri.parse(url), mobileWebUrl: Uri.parse(url));
+      // executionParams: 앱 설치 시 '참여하기' 가 카톡 인앱 브라우저를 거치지 않고
+      // 앱을 바로 실행한다 (`kakao{appkey}://kakaolink?g={roomId}`). 미설치면
+      // mobileWebUrl 로 fallback. 받는 처리는 DeepLinkService 의 kakaolink 분기.
+      final link = Link(
+        webUrl: Uri.parse(url),
+        mobileWebUrl: Uri.parse(url),
+        androidExecutionParams: {'g': roomId},
+        iosExecutionParams: {'g': roomId},
+      );
       await ShareClient.instance.shareDefault(
         template: TextTemplate(
           text: text,
@@ -202,7 +212,14 @@ class SharePublisher {
         ),
       );
     } else {
-      await SharePlus.instance.share(ShareParams(text: '$text\n$url'));
+      // iOS 는 공유 시트(popover) anchor 로 sharePositionOrigin 을 요구한다.
+      // 누락 시 PlatformException 으로 시트가 안 뜬다.
+      await SharePlus.instance.share(
+        ShareParams(
+          text: '$text\n$url',
+          sharePositionOrigin: sharePositionOrigin,
+        ),
+      );
     }
   }
 

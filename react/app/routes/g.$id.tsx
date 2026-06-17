@@ -17,7 +17,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   const origin = env.WEBAPP_BASE ?? new URL(request.url).origin;
   return {
     team,
-    appOpenUrl: `${origin}/g/${params.id}`,
+    appOpenUrl: `${origin}/g/${params.id}/open`,
     appStoreUrl: env.APP_STORE_URL,
     playStoreUrl: env.PLAY_STORE_URL,
     canonicalUrl: `${origin}/g/${params.id}`,

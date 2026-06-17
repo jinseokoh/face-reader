@@ -57,6 +57,20 @@
                     android:host="facely.kr"
                     android:pathPrefix="/g/"/>
             </intent-filter>
+            <!-- 카카오 메시지 '참여하기' 앱 직접 실행(executionParams) 수신 —
+                 kakao{NATIVE_APP_KEY}://kakaolink. 카톡 인앱 브라우저를 거치지
+                 않고 앱을 바로 띄운다. DeepLinkService 의 kakaolink 분기가 처리. -->
+            <intent-filter>
+                <action
+                    android:name="android.intent.action.VIEW"/>
+                <category
+                    android:name="android.intent.category.DEFAULT"/>
+                <category
+                    android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="kakao6d20884c9c77d031bc710f1135a7d4a0"
+                    android:host="kakaolink"/>
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

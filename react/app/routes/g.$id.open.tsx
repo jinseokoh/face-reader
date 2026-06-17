@@ -1,8 +1,9 @@
-import type { Route } from './+types/r.$id.open'
+import type { Route } from './+types/g.$id.open'
 import { OpenBridge } from '../components/OpenBridge'
 
 /**
- * `GET /r/:id/open` — 공유 카드(관상·궁합) 앱 진입 bridge. 로직은 OpenBridge 공용.
+ * `GET /g/:id/open` — 교감도 그룹 초대 앱 진입 bridge. 로직은 OpenBridge 공용.
+ * 카톡 '참여하기' 가 가리키는 곳 — 인앱 브라우저에서 앱으로 빠져나간다.
  */
 
 export function meta(_: Route.MetaArgs) {
@@ -23,5 +24,5 @@ export async function loader({ params, context }: Route.LoaderArgs) {
 }
 
 export default function Open({ loaderData }: Route.ComponentProps) {
-  return <OpenBridge seg="r" {...loaderData} />
+  return <OpenBridge seg="g" {...loaderData} />
 }

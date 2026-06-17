@@ -39,9 +39,32 @@
 					<string>facely</string>
 				</array>
 			</dict>
+			<!-- 카카오 메시지 '참여하기' 앱 직접 실행(executionParams) 수신용 스킴.
+			     kakao{NATIVE_APP_KEY}://kakaolink → DeepLinkService 가 처리. -->
+			<dict>
+				<key>CFBundleTypeRole</key>
+				<string>Editor</string>
+				<key>CFBundleURLName</key>
+				<string>com.scienceintegration.facely.kakaolink</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>kakao6d20884c9c77d031bc710f1135a7d4a0</string>
+				</array>
+			</dict>
 		</array>
 		<key>CFBundleVersion</key>
 		<string>$(FLUTTER_BUILD_NUMBER)</string>
+		<!-- 카카오 SDK 가 카톡 설치 여부(canOpenURL)를 묻고, 카카오톡 공유/로그인
+		     으로 전환할 때 필요한 scheme 화이트리스트. 빠지면 iOS 가
+		     isKakaoTalkSharingAvailable() 에 무조건 false 를 돌려줘 공유 시트가
+		     안 뜬다. -->
+		<key>LSApplicationQueriesSchemes</key>
+		<array>
+			<string>kakaokompassauth</string>
+			<string>kakaotalk</string>
+			<string>kakaolink</string>
+			<string>kakaoplus</string>
+		</array>
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
 		<key>NSCameraUsageDescription</key>

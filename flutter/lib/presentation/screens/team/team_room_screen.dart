@@ -300,7 +300,7 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
                       key: ValueKey(room.members[i].reportId ??
                           'pending:${room.members[i].name}'),
                       member: room.members[i],
-                      report: notifier.reportFor(room.members[i]),
+                      report: notifier.reportForInRoom(room, i),
                       isOwner: i == 0,
                       onTap: room.isClosed || room.members[i].isScanned
                           ? null
@@ -506,6 +506,11 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
   /// 그룹을 서버로 push 하고 링크를 보낸다 (lazy sync, P3).
   Future<void> _inviteViaKakao(TeamRoom room) async {
     if (_inviting) return;
+    // iOS 공유 시트 anchor — async gap 전에 미리 계산해 둔다.
+    final box = context.findRenderObject() as RenderBox?;
+    final shareOrigin = box != null && box.hasSize
+        ? box.localToGlobal(Offset.zero) & box.size
+        : null;
     if (!ref.read(authProvider.notifier).isLoggedIn) {
       final ok = await showLoginBottomSheet(context, ref);
       if (!ok || !mounted) return;
@@ -523,8 +528,11 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
         }
         return;
       }
-      await SharePublisher.instance
-          .publishTeamInvite(teamTitle: room.title, roomId: room.id);
+      await SharePublisher.instance.publishTeamInvite(
+        teamTitle: room.title,
+        roomId: room.id,
+        sharePositionOrigin: shareOrigin,
+      );
     } finally {
       if (mounted) setState(() => _inviting = false);
     }
