@@ -4,6 +4,7 @@ import 'dart:ui' show Rect;
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/data/services/supabase_service.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart' hide Gender;
 import 'package:path_provider/path_provider.dart';
@@ -204,11 +205,22 @@ class SharePublisher {
         androidExecutionParams: {'g': roomId},
         iosExecutionParams: {'g': roomId},
       );
+      // 카드 hero — FACELY 얼굴 모자이크 배너(800x400, 카카오 권장 2:1). asset 을
+      // 카카오 image CDN 에 올려 FeedTemplate imageUrl 로. 텍스트만 보내면 밋밋
+      // 하고 신뢰도가 떨어져 FeedTemplate(제목·이미지·설명·버튼) 으로 보낸다.
+      final banner = await rootBundle.load('assets/images/800x400.png');
+      final upload = await ShareClient.instance
+          .uploadImage(byteData: banner.buffer.asUint8List());
       await ShareClient.instance.shareDefault(
-        template: TextTemplate(
-          text: text,
-          link: link,
-          buttonTitle: '참여하기',
+        template: FeedTemplate(
+          content: Content(
+            title: teamTitle,
+            description:
+                '관상학으로 풀어보는 우리 그룹내에서 나랑 가장 케미가 좋은 사람찾기에 참여해 보세요.',
+            imageUrl: Uri.parse(upload.infos.original.url),
+            link: link,
+          ),
+          buttons: [Button(title: '참여하기', link: link)],
         ),
       );
     } else {
