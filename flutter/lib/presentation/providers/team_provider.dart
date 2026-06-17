@@ -196,9 +196,18 @@ class TeamsNotifier extends Notifier<List<TeamRoom>> {
   // ── 원격 동기화 (P3) ─────────────────────────────────────────────
 
   /// owner 가 그룹을 서버로 push (초대·마감 직전). 로그인 안 됐으면 false.
+  /// push 전에 방장 슬롯을 현재 내 관상으로 rebind — 내 사진 교체가 서버
+  /// team_members 의 내 metrics_id 에도 반영되게 한다(내쪽 live).
   Future<bool> pushToServer(String roomId) async {
     final room = byId(roomId);
     if (room == null) return false;
+    if (room.ownedByMe && room.members.isNotEmpty) {
+      final myId = _currentMyFace()?.supabaseId;
+      if (myId != null && room.members[0].reportId != myId) {
+        room.members[0].reportId = myId;
+        await _save();
+      }
+    }
     return _sync.pushTeam(room);
   }
 
@@ -310,12 +319,31 @@ class TeamsNotifier extends Notifier<List<TeamRoom>> {
     return _remoteCache[id];
   }
 
-  /// 스캔이 끝난 멤버들의 리포트 목록 — 매트릭스·프리뷰용.
-  /// history 에서 삭제된 카드는 자동 제외(dangling 무해화).
+  /// 현재 내 관상 (isMyFace). 없으면 null.
+  FaceReadingReport? _currentMyFace() {
+    for (final r in ref.read(historyProvider)) {
+      if (r.isMyFace) return r;
+    }
+    return null;
+  }
+
+  /// 그룹 맥락 멤버 resolve — **내가 만든 그룹의 방장 슬롯(index 0)은 저장된
+  /// reportId(생성 당시 스냅샷) 대신 현재 내 관상으로 live resolve**. 내 사진을
+  /// 바꾸면 그룹 매트릭스·썸네일이 즉시 새 사진으로 갱신된다. 타인 멤버·초대받은
+  /// 그룹은 동결 스냅샷(reportFor) 유지.
+  FaceReadingReport? reportForInRoom(TeamRoom room, int index) {
+    if (room.ownedByMe && index == 0) {
+      return _currentMyFace() ?? reportFor(room.members[index]);
+    }
+    return reportFor(room.members[index]);
+  }
+
+  /// 스캔이 끝난 멤버들의 리포트 목록 — 매트릭스·프리뷰용. 방장 슬롯은 live
+  /// (reportForInRoom). history 에서 삭제된 카드는 자동 제외(dangling 무해화).
   List<FaceReadingReport> scannedReports(TeamRoom room) {
     final out = <FaceReadingReport>[];
-    for (final m in room.members) {
-      final r = reportFor(m);
+    for (int i = 0; i < room.members.length; i++) {
+      final r = reportForInRoom(room, i);
       if (r != null) out.add(r);
     }
     return out;

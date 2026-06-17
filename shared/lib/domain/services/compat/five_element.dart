@@ -7,6 +7,47 @@
 /// 설계 SSOT: `docs/compat/FRAMEWORK.md` §2.
 library;
 
+/// L1 최종 산출물 — `ElementRelation`.
+///
+/// 두 `FiveElements` (my·album) 의 primary 와 secondary 를 모두 고려한
+/// blended 점수 + 상생·상극 kind 라벨.
+class ElementRelation {
+  final FiveElements my;
+  final FiveElements album;
+
+  /// §2.5 blend 공식 결과. 5~99 clamp.
+  final double score;
+
+  /// my.primary × album.primary 의 관계 kind (narrative 에서 라벨 근거).
+  final ElementRelationKind kind;
+
+  const ElementRelation({
+    required this.my,
+    required this.album,
+    required this.score,
+    required this.kind,
+  });
+}
+
+/// 5×5 관계 분류. 자기 자신은 `identity`, 상생 고리는 `generating`/`generated`,
+/// 상극 대각은 `overcoming`/`overcome`.
+enum ElementRelationKind {
+  /// 比和 — 같은 五形 (e.g. 木×木).
+  identity,
+
+  /// 生(출력) — 내가 상대를 낳음 (e.g. 木→火).
+  generating,
+
+  /// 被生 — 상대가 나를 낳음 (e.g. 水→木).
+  generated,
+
+  /// 剋(출력) — 내가 상대를 극함 (e.g. 木→土).
+  overcoming,
+
+  /// 被剋 — 상대가 나를 극함 (e.g. 金→木).
+  overcome,
+}
+
 /// 五行. 木火土金水 + `unknown` (classifier fallback).
 enum FiveElement {
   /// 木形 — 길쭉·骨格 선명, 상정 길고 중·하정 얇음. 木主仁.
@@ -23,38 +64,6 @@ enum FiveElement {
 
   /// 水形 — 둥글·살집·부드러움, 하정 풍부. 水主智.
   water,
-}
-
-extension FiveElementLabel on FiveElement {
-  String get hanja {
-    switch (this) {
-      case FiveElement.wood:
-        return '木';
-      case FiveElement.fire:
-        return '火';
-      case FiveElement.earth:
-        return '土';
-      case FiveElement.metal:
-        return '金';
-      case FiveElement.water:
-        return '水';
-    }
-  }
-
-  String get korean {
-    switch (this) {
-      case FiveElement.wood:
-        return '목형';
-      case FiveElement.fire:
-        return '화형';
-      case FiveElement.earth:
-        return '토형';
-      case FiveElement.metal:
-        return '금형';
-      case FiveElement.water:
-        return '수형';
-    }
-  }
 }
 
 /// 체형 분류 결과 — primary/secondary + confidence + 정규화 score map.
@@ -80,27 +89,13 @@ class FiveElements {
     required this.scores,
   });
 
+  /// 사용자 표기 — 뚜렷하면 단일("나무"), 애매하면(isHybrid) primary·secondary
+  /// 겸형("나무·흙 겸형"). 가운데 separator 는 `·`.
+  String get displayKorean =>
+      isHybrid ? '${primary.korean}·${secondary.korean} 겸형' : primary.korean;
+
   /// 겸형(兼形) 여부. confidence < 0.08.
   bool get isHybrid => confidence < 0.08;
-}
-
-/// 5×5 관계 분류. 자기 자신은 `identity`, 상생 고리는 `generating`/`generated`,
-/// 상극 대각은 `overcoming`/`overcome`.
-enum ElementRelationKind {
-  /// 比和 — 같은 五形 (e.g. 木×木).
-  identity,
-
-  /// 生(출력) — 내가 상대를 낳음 (e.g. 木→火).
-  generating,
-
-  /// 被生 — 상대가 나를 낳음 (e.g. 水→木).
-  generated,
-
-  /// 剋(출력) — 내가 상대를 극함 (e.g. 木→土).
-  overcoming,
-
-  /// 被剋 — 상대가 나를 극함 (e.g. 金→木).
-  overcome,
 }
 
 extension ElementRelationKindLabel on ElementRelationKind {
@@ -137,6 +132,38 @@ extension ElementRelationKindLabel on ElementRelationKind {
   }
 }
 
+extension FiveElementLabel on FiveElement {
+  String get hanja {
+    switch (this) {
+      case FiveElement.wood:
+        return '木';
+      case FiveElement.fire:
+        return '火';
+      case FiveElement.earth:
+        return '土';
+      case FiveElement.metal:
+        return '金';
+      case FiveElement.water:
+        return '水';
+    }
+  }
+
+  String get korean {
+    switch (this) {
+      case FiveElement.wood:
+        return '나무';
+      case FiveElement.fire:
+        return '불';
+      case FiveElement.earth:
+        return '흙';
+      case FiveElement.metal:
+        return '쇠';
+      case FiveElement.water:
+        return '물';
+    }
+  }
+}
+
 extension FiveElementTraits on FiveElement {
   /// 체형·성정의 한 문장 묘사. 해설 본문 "나의 형"·"상대의 형" 소개에 쓴다.
   String get traitKo {
@@ -153,26 +180,4 @@ extension FiveElementTraits on FiveElement {
         return '둥글고 살집 있는 물의 결, 지혜와 수용을 품은 성정';
     }
   }
-}
-
-/// L1 최종 산출물 — `ElementRelation`.
-///
-/// 두 `FiveElements` (my·album) 의 primary 와 secondary 를 모두 고려한
-/// blended 점수 + 상생·상극 kind 라벨.
-class ElementRelation {
-  final FiveElements my;
-  final FiveElements album;
-
-  /// §2.5 blend 공식 결과. 5~99 clamp.
-  final double score;
-
-  /// my.primary × album.primary 의 관계 kind (narrative 에서 라벨 근거).
-  final ElementRelationKind kind;
-
-  const ElementRelation({
-    required this.my,
-    required this.album,
-    required this.score,
-    required this.kind,
-  });
 }

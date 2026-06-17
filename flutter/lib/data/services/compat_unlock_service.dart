@@ -59,13 +59,12 @@ class CompatUnlockService {
       final pairKey = r['pair_key'] as String?;
       final body = r['partner_body'] as String?;
       if (pairKey == null || body == null || body.isEmpty) continue;
-      final parts = pairKey.split('~');
-      if (parts.length != 2) continue;
+      // pair_key 가 곧 상대 supabaseId (partner-only 키).
       try {
         final original = jsonDecode(body) as Map<String, dynamic>;
         final overridden = <String, dynamic>{
           ...original,
-          'supabaseId': parts[1],
+          'supabaseId': pairKey,
           'source': AnalysisSource.received.name,
           'isMyFace': false,
           'alias': null,

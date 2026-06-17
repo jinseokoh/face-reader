@@ -544,7 +544,7 @@ class _TotalHeader extends StatelessWidget {
     final albumDemographic =
         '${album.gender.labelKo} · ${album.ageGroup.labelKo} · ${album.faceShape.korean}';
     final relation =
-        '${report.myElement.primary.korean} × ${report.albumElement.primary.korean}  ·  ${_relationKindKo(report.elementRelation.kind)}';
+        '${report.myElement.displayKorean} × ${report.albumElement.displayKorean}  ·  ${_relationKindKo(report.elementRelation.kind)}';
     return Container(
       decoration: BoxDecoration(
         gradient: const LinearGradient(

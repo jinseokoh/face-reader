@@ -911,11 +911,9 @@ class _CompatCta extends ConsumerWidget {
     }
     final unlocksAsync = ref.watch(compatUnlocksProvider);
     final unlocked = unlocksAsync.asData?.value ?? const <String>{};
-    // pair_key 는 방향성이 있어 정/역 모두 확인 (compat 리스트와 동일 규칙).
-    final keyFwd = tryPairKey(myFace, report);
-    final keyRev = tryPairKey(report, myFace);
-    final isUnlocked = (keyFwd != null && unlocked.contains(keyFwd)) ||
-        (keyRev != null && unlocked.contains(keyRev));
+    // pair_key = 상대 supabaseId 단독 (내 사진 교체와 무관).
+    final key = tryPairKey(myFace, report);
+    final isUnlocked = key != null && unlocked.contains(key);
     final label = isUnlocked ? '궁합 풀이 보기' : '1코인으로 풀이 보기';
 
     return SizedBox(

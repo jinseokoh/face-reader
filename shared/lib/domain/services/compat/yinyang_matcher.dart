@@ -61,23 +61,23 @@ YinYangMatch matchYinYang({
   if ((myYang && aYin) || (myYin && aYang)) {
     delta = 18;
     kind = YinYangPatternKind.yangYinIdeal;
-    verdict = '한 분은 추진하는 양의 기운, 다른 분은 받쳐 주는 음의 기운이라 고전적으로 가장 안정된 짝입니다.';
+    verdict = '한 분은 앞장서 밀고 나가고 다른 분은 한발 물러나 받쳐 주는 구도라, 서로 부딪힐 일이 적은 안정된 짝입니다.';
   } else if (myYang && aYang) {
     delta = -12;
     kind = YinYangPatternKind.yangYang;
-    verdict = '두 분 모두 추진하는 양의 기운이 강해, 같은 자리를 놓고 부딪히는 일이 잦을 수 있습니다.';
+    verdict = '두 분 다 앞장서 밀고 나가는 성향이라, 같은 자리를 놓고 부딪히는 일이 잦을 수 있습니다.';
   } else if (myYin && aYin) {
     delta = -8;
     kind = YinYangPatternKind.yinYin;
-    verdict = '두 분 모두 받아 주는 음의 기운이라 서로 편하게 기대지만, 먼저 나서는 힘이 부족해 결정이 자꾸 미뤄집니다.';
+    verdict = '두 분 다 한발 물러나 받아 주는 성향이라 서로 편하게 기대지만, 먼저 나서는 사람이 없어 결정이 자꾸 미뤄집니다.';
   } else if (myBal && aBal) {
     delta = 2;
     kind = YinYangPatternKind.balancedBoth;
-    verdict = '두 분 모두 음양이 중용 쪽에 있어, 큰 파고 없이 잔잔한 조화가 유지됩니다.';
+    verdict = '두 분 다 밀고 받는 힘이 한쪽으로 치우치지 않아, 큰 마찰 없이 잔잔하게 흘러갑니다.';
   } else {
     delta = 2;
     kind = YinYangPatternKind.oneBalanced;
-    verdict = '한 분은 중용, 다른 분은 한쪽으로 살짝 기운 구도라, 중심 잡힌 쪽이 완충 역할을 합니다.';
+    verdict = '한 분은 균형이 잡혀 있고 다른 분은 한쪽으로 살짝 치우친 구도라, 중심 잡힌 쪽이 완충 역할을 합니다.';
   }
 
   // 성별 기대 어긋남 overlay (남陰 · 여陽 조합). modern cross — 낙인 아닌 서술.

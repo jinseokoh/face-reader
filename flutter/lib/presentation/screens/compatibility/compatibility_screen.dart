@@ -117,17 +117,11 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
     final unlockedList = <FaceReadingReport>[];
     final localIds = <String>{};
     for (final o in others) {
-      // pair_key 는 `{myId}~{albumId}` 로 방향성이 있다. 내 관상을 바꾸면
-      // 과거 결제 키({옛 my}~{상대})와 어긋나므로, 양방향(정/역) 모두 확인해
-      // 같은 두 사람의 unlock 을 방향과 무관하게 인정한다. 이렇게 해야 로컬
-      // 파트너(실제 thumbnailPath 보유)가 unlocked 에 남아 서버 복원본으로
-      // 뒤집히지 않는다 (궁합 점수는 좌우 대칭).
-      final keyFwd = tryPairKey(myFace, o);
-      final keyRev = tryPairKey(o, myFace);
+      // pair_key = 상대 supabaseId 단독. 내 사진을 바꿔도 같은 상대면 키가
+      // 동일해 unlock 이 유지된다(재결제 없음). 점수는 현재 내 관상으로 재계산.
+      final key = tryPairKey(myFace, o);
       if (o.supabaseId != null) localIds.add(o.supabaseId!);
-      final isUnlocked =
-          (keyFwd != null && unlocked.contains(keyFwd)) ||
-          (keyRev != null && unlocked.contains(keyRev));
+      final isUnlocked = key != null && unlocked.contains(key);
       if (isUnlocked) {
         unlockedList.add(o);
       } else {
@@ -308,12 +302,10 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
     );
     if (confirmed != true) return;
 
-    // pair_key 는 방향성이 있어 정/역 둘 다 삭제 (어느 쪽으로 결제됐든 제거).
+    // pair_key = 상대 supabaseId 단독.
     final keys = <String>[];
-    final fwd = tryPairKey(my, album);
-    final rev = tryPairKey(album, my);
-    if (fwd != null) keys.add(fwd);
-    if (rev != null) keys.add(rev);
+    final key = tryPairKey(my, album);
+    if (key != null) keys.add(key);
     try {
       await CompatUnlockService().deleteUnlock(keys);
     } catch (e) {
@@ -586,7 +578,7 @@ class _CompatListCard extends StatelessWidget {
                   Container(height: 1, color: AppTheme.border),
                   const SizedBox(height: 12),
                   Text(
-                    '${r.myElement.primary.korean} × ${r.albumElement.primary.korean}  ·  ${_relationKindKo(r.elementRelation.kind)}',
+                    '${r.myElement.displayKorean} × ${r.albumElement.displayKorean}  ·  ${_relationKindKo(r.elementRelation.kind)}',
                     style: const TextStyle(
                       fontSize: 12,
                       color: AppTheme.accent,

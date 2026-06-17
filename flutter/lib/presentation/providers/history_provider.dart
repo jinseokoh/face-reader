@@ -37,6 +37,13 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
   List<FaceReadingReport> build() {
     _log('build() — initial load from Hive');
     final reports = _loadFromHive();
+    // 내 관상 싱글톤 강제 — 불변식을 쓰기 시점에만 지키면, 과거 데이터·중단된
+    // 저장으로 isMyFace 가 2개 이상 박힌 경우 영구히 남는다. 로드 때 정규화해
+    // "나"가 항상 정확히 1개이게 한다 (궁합·케미가 live "나" 를 모호함 없이 resolve).
+    if (_normalizeMyFace(reports)) {
+      // build 중엔 state 미할당 — 다음 틱에 정규화 결과를 영속화.
+      Future(() => _saveToHive());
+    }
     _authSub = AuthService().profileStream.listen(_onAuthChanged);
     ref.onDispose(() => _authSub?.cancel());
     // 앱 시작 시 이미 로그인 상태면 즉시 1회 claim.
@@ -46,6 +53,24 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
       _claimAnonymousMetrics(reports);
     }
     return reports;
+  }
+
+  /// 내 관상 싱글톤 정규화 — isMyFace=true 가 2개 이상이면 **첫 번째(최신, 리스트는
+  /// newest-first)만 유지**하고 나머지는 false 로. 하나 이상 바꿨으면 true.
+  bool _normalizeMyFace(List<FaceReadingReport> reports) {
+    var seen = false;
+    var changed = false;
+    for (final r in reports) {
+      if (!r.isMyFace) continue;
+      if (seen) {
+        r.isMyFace = false;
+        changed = true;
+      } else {
+        seen = true;
+      }
+    }
+    if (changed) _log('normalizeMyFace — 중복 내 관상 정리됨');
+    return changed;
   }
 
   /// 로그인 전이 시 — 로컬 history 가 보유한 supabaseId 들의 익명 metrics row 를
@@ -214,6 +239,15 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
     }
     _log('reload SUMMARY parsed=${parsed.length} '
         'null=$droppedNull failed=$failedCount nextJson=${nextJson.length}');
+
+    // 내 관상 싱글톤 정규화 — 실패 엔트리가 없으면 nextJson 이 parsed 와 1:1 이라
+    // 정규화 후 재직렬화해 Hive 에도 반영. 실패가 있으면 index 가 어긋나므로
+    // 건너뛰고 다음 실행의 build() 가 치유한다.
+    if (failedCount == 0 && _normalizeMyFace(parsed)) {
+      nextJson
+        ..clear()
+        ..addAll(parsed.map((r) => r.toJsonString()));
+    }
 
     // 방어: parsed 가 0 인데 기존 state 가 비어있지 않다면 box 재기록 금지.
     // Hive 가 async flush race 로 비어보이는 경우 전부 날려버리지 않도록.

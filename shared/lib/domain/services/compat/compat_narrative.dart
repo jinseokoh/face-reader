@@ -496,17 +496,18 @@ String _summarySection(CompatibilityReport r, List<CompatFinding> findings) {
   final total = r.total.toStringAsFixed(0);
   final headline = _labelHeadline(r.label);
 
-  final myEl = r.myElement.primary.korean;
-  final alEl = r.albumElement.primary.korean;
+  final myEl = r.myElement.displayKorean;
+  final alEl = r.albumElement.displayKorean;
 
   // 한 줄평 — 인용 가능한 이중성 펀치 라인(관찰 + "좋은데 이게 위험"). 관계의
   // 핵심 역학(element relation)으로 결정론적 생성. 가장 먼저 읽히는 줄.
   // 관계 역학은 _oneLiner 가 행동으로 보여 주므로, 추상 단정("활력을 주는 구도")
-  // 은 빼고 element 만 사실로 적는다 (voice 일관성).
+  // 은 빼고 element 만 사실로 적는다 (voice 일관성). element 표기는 × 로 연결해
+  // 네이티브 한국어("나무")·겸형("나무·흙 겸형")의 조사 문제를 피한다.
   return '${_oneLiner(r.elementRelation.kind)} '
       '$headline입니다. '
       '$total점, ${r.label.korean}(네 등급 중 ${_labelTier(r.label)}번째). '
-      '얼굴 전체의 기본 성향은 $myEl과 $alEl의 만남이에요.';
+      '얼굴 전체의 기본 성향은 $myEl × $alEl 구도예요.';
 }
 
 /// 두 사람을 한 줄로 — 관계 역학별 펀치 라인. "이렇게 좋은데, 이게 위험"의

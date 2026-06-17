@@ -158,9 +158,9 @@ extension ElementRelationKindModern on ElementRelationKind {
       case ElementRelationKind.identity:
         return '닮은꼴 케미의 조합';
       case ElementRelationKind.generating:
-        return '활력을 주는 상생의 조합';
+        return '내가 먼저 챙기고 제안하는 조합';
       case ElementRelationKind.generated:
-        return '든든하게 받쳐주는 상생의 조합';
+        return '상대가 먼저 방향을 잡아 주는 조합';
       case ElementRelationKind.overcoming:
         return '관계의 주도권이 내쪽으로 흐르기 쉬운 조합';
       case ElementRelationKind.overcome:

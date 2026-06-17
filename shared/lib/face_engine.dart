@@ -116,8 +116,8 @@ Map<String, dynamic> _composeCompatOutput(
   final narrative = bundle.narrative;
   final label = report.label;
 
-  final relation = '${report.myElement.primary.korean} × '
-      '${report.albumElement.primary.korean}  ·  '
+  final relation = '${report.myElement.displayKorean} × '
+      '${report.albumElement.displayKorean}  ·  '
       '${_relationKindKo(report.elementRelation.kind)}';
 
   final chips = chipsForCompat(report)

@@ -39,7 +39,7 @@ const Map<String, double> _domainWeight = {
 
 const Map<ElementRelationKind, _FindingTemplate> _elementTemplate = {
   ElementRelationKind.generating: _FindingTemplate(
-    title: '내가 상대에게 활력을 주는 관계',
+    title: '내가 먼저 챙기고 제안하는 관계',
     domain: '성향·대화',
     meaning:
         '내 쪽 얼굴형({my})이 상대 얼굴형({album})에게 힘을 실어 주는 구도입니다. '
@@ -63,7 +63,7 @@ const Map<ElementRelationKind, _FindingTemplate> _elementTemplate = {
         '그 대답이 구체적일수록 관계의 온도가 유지됩니다.',
   ),
   ElementRelationKind.generated: _FindingTemplate(
-    title: '상대가 나를 든든하게 받쳐 주는 관계',
+    title: '상대가 먼저 방향을 잡아 주는 관계',
     domain: '성향·대화',
     meaning:
         '상대 얼굴형({album})이 내 얼굴형({my})을 받쳐 주는 구도입니다. '
@@ -87,7 +87,7 @@ const Map<ElementRelationKind, _FindingTemplate> _elementTemplate = {
         '작은 주도권이라도 내가 쥐는 경험이 쌓이면 관계가 대등해집니다.',
   ),
   ElementRelationKind.overcoming: _FindingTemplate(
-    title: '내가 상대의 페이스를 잡아 주는 관계',
+    title: '내가 결정을 끌고 가는 관계',
     domain: '성향·대화',
     meaning:
         '내 쪽 얼굴형({my})이 상대 얼굴형({album})의 속도를 조율하는 구도입니다. '
@@ -115,7 +115,7 @@ const Map<ElementRelationKind, _FindingTemplate> _elementTemplate = {
         '상대의 선택이 틀렸더라도 결과를 같이 받아들이는 태도가 신뢰를 만듭니다.',
   ),
   ElementRelationKind.overcome: _FindingTemplate(
-    title: '상대가 나를 단련시키는 관계',
+    title: '상대 의견이 먼저 서는 관계',
     domain: '성향·대화',
     meaning:
         '상대 얼굴형({album})이 내 얼굴형({my})의 속도를 조율하는 구도입니다. '

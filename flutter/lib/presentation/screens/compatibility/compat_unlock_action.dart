@@ -63,11 +63,11 @@ Future<bool> runCompatUnlock(
     return false;
   }
 
-  // 이미 unlock 된 pair 면 재결제 없이 통과 (pair_key 는 방향성이 있어 정/역 확인).
+  // 이미 unlock 된 상대면 재결제 없이 통과 (pair_key = 상대 id 단독, 내 사진
+  // 교체와 무관하게 유지).
   final already =
       ref.read(compatUnlocksProvider).asData?.value ?? const <String>{};
-  final keyRev = tryPairKey(album, my);
-  if (already.contains(key) || (keyRev != null && already.contains(keyRev))) {
+  if (already.contains(key)) {
     return true;
   }
 
