@@ -235,6 +235,24 @@ class SharePublisher {
     }
   }
 
+  /// 초대 링크를 OS 공유 시트로 — 카톡 친구가 아닌 상대에게도 아무 채널(문자·DM·
+  /// 복사)로 보낼 수 있다. 카톡 단축은 [publishTeamInvite] 가 담당.
+  Future<void> shareTeamInviteLink({
+    required String teamTitle,
+    required String roomId,
+    Rect? sharePositionOrigin,
+  }) async {
+    final url = teamInviteUrl(roomId);
+    final text =
+        '[$teamTitle] 관상학으로 풀어보는 우리 그룹내에서 나랑 가장 케미가 좋은 사람찾기에 참여해 보세요.';
+    await SharePlus.instance.share(
+      ShareParams(
+        text: '$text\n$url',
+        sharePositionOrigin: sharePositionOrigin,
+      ),
+    );
+  }
+
   Future<void> _shareFile({
     required Uint8List pngBytes,
     required String url,

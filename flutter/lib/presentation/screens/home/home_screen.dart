@@ -165,7 +165,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     AppSpacing.xxl, AppSpacing.sm, AppSpacing.xxl,
                     AppSpacing.xl),
                 child: PrimaryButton(
-                  label: '케미 그룹 만들기',
+                  label: '그룹 케미 알아보기',
                   onPressed: _createTeam,
                 ),
               ),

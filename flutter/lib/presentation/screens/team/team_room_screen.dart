@@ -14,6 +14,7 @@ import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 import 'package:facely/presentation/widgets/primary_button.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
@@ -180,7 +181,9 @@ class _MemberCell extends StatelessWidget {
 class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
   // 동의 안내(A9)는 방 세션당 1회만.
   bool _consentShown = false;
-  bool _inviting = false;
+
+  /// 진행 중인 초대 액션 라벨(타일 스피너·중복 차단용). null = idle.
+  String? _busyInvite;
 
   @override
   void initState() {
@@ -320,11 +323,33 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
                   onPressed: canAddMore ? () => _scanNewMember(room) : null,
                 ),
                 const SizedBox(height: AppSpacing.md),
-                PrimaryButton(
-                  label: '카카오톡으로 초대',
-                  icon: FontAwesomeIcons.comment,
-                  busy: _inviting,
-                  onPressed: () => _inviteViaKakao(room),
+                // 초대 3종 — 카톡(친구) · 링크 공유(아무 채널/비연락처) · 복사.
+                Row(
+                  children: [
+                    Expanded(
+                      child: _inviteTile(
+                        icon: FontAwesomeIcons.kakaoTalk,
+                        label: '카톡 초대',
+                        onTap: () => _inviteViaKakao(room),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: _inviteTile(
+                        icon: FontAwesomeIcons.shareNodes,
+                        label: '링크 공유',
+                        onTap: () => _shareInviteLink(room),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: _inviteTile(
+                        icon: FontAwesomeIcons.link,
+                        label: '링크 복사',
+                        onTap: () => _copyInviteLink(room),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: AppSpacing.md),
               ],
@@ -502,40 +527,129 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
     return ok;
   }
 
-  /// 카카오 공유 시트로 초대 — 원격 합류은 서버 그룹이 전제라, 로그인 게이트 후
-  /// 그룹을 서버로 push 하고 링크를 보낸다 (lazy sync, P3).
-  Future<void> _inviteViaKakao(TeamRoom room) async {
-    if (_inviting) return;
-    // iOS 공유 시트 anchor — async gap 전에 미리 계산해 둔다.
-    final box = context.findRenderObject() as RenderBox?;
-    final shareOrigin = box != null && box.hasSize
-        ? box.localToGlobal(Offset.zero) & box.size
-        : null;
+  /// 초대 게이트 — 원격 합류은 서버 그룹이 전제라, 로그인 후 그룹을 서버로 push
+  /// (lazy sync, P3). 통과해야 초대 링크가 살아있다. 복사·공유·카톡 공통.
+  Future<bool> _ensureInviteReady(TeamRoom room) async {
     if (!ref.read(authProvider.notifier).isLoggedIn) {
       final ok = await showLoginBottomSheet(context, ref);
-      if (!ok || !mounted) return;
+      if (!ok || !mounted) return false;
     }
-    setState(() => _inviting = true);
+    final pushed = await ref.read(teamsProvider.notifier).pushToServer(room.id);
+    if (!pushed) {
+      if (mounted) {
+        showTopSnackBar(
+          Overlay.of(context),
+          CompactSnackBar.success(message: '로그인이 필요해요'),
+        );
+      }
+      return false;
+    }
+    return true;
+  }
+
+  /// 초대 액션 공통 러너 — 게이트 통과 후 [deliver] 실행. [label] 타일에 스피너.
+  Future<void> _runInvite(
+    TeamRoom room,
+    String label,
+    Future<void> Function(Rect? origin) deliver,
+  ) async {
+    if (_busyInvite != null) return;
+    // iOS 공유 시트 anchor — async gap 전에 미리 계산해 둔다.
+    final box = context.findRenderObject() as RenderBox?;
+    final origin = box != null && box.hasSize
+        ? box.localToGlobal(Offset.zero) & box.size
+        : null;
+    setState(() => _busyInvite = label);
     try {
-      final pushed =
-          await ref.read(teamsProvider.notifier).pushToServer(room.id);
-      if (!pushed) {
+      if (!await _ensureInviteReady(room)) return;
+      await deliver(origin);
+    } finally {
+      if (mounted) setState(() => _busyInvite = null);
+    }
+  }
+
+  void _inviteViaKakao(TeamRoom room) => _runInvite(
+        room,
+        '카톡 초대',
+        (origin) => SharePublisher.instance.publishTeamInvite(
+          teamTitle: room.title,
+          roomId: room.id,
+          sharePositionOrigin: origin,
+        ),
+      );
+
+  void _shareInviteLink(TeamRoom room) => _runInvite(
+        room,
+        '링크 공유',
+        (origin) => SharePublisher.instance.shareTeamInviteLink(
+          teamTitle: room.title,
+          roomId: room.id,
+          sharePositionOrigin: origin,
+        ),
+      );
+
+  void _copyInviteLink(TeamRoom room) => _runInvite(room, '링크 복사', (_) async {
+        await Clipboard.setData(
+          ClipboardData(text: SharePublisher.instance.teamInviteUrl(room.id)),
+        );
         if (mounted) {
           showTopSnackBar(
             Overlay.of(context),
-            CompactSnackBar.success(message: '로그인이 필요해요'),
+            CompactSnackBar.success(message: '링크를 복사했어요'),
           );
         }
-        return;
-      }
-      await SharePublisher.instance.publishTeamInvite(
-        teamTitle: room.title,
-        roomId: room.id,
-        sharePositionOrigin: shareOrigin,
-      );
-    } finally {
-      if (mounted) setState(() => _inviting = false);
-    }
+      });
+
+  /// 초대 아이콘 타일 — 등폭 모노톤(브랜드색 금지, §UI 통일). 진행 중이면 스피너,
+  /// 다른 타일은 흐려서 비활성 표시.
+  Widget _inviteTile({
+    required FaIconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    final busy = _busyInvite == label;
+    final disabled = _busyInvite != null;
+    return Opacity(
+      opacity: disabled && !busy ? 0.4 : 1,
+      child: InkWell(
+        onTap: disabled ? null : onTap,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            children: [
+              SizedBox(
+                height: 22,
+                child: Center(
+                  child: busy
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              AppColors.textPrimary,
+                            ),
+                          ),
+                        )
+                      : FaIcon(icon, size: 20, color: AppColors.textPrimary),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                label,
+                style: AppText.caption.copyWith(color: AppColors.textPrimary),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _openMatrix(TeamRoom room) {

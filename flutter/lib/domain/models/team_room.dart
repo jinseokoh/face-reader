@@ -41,6 +41,10 @@ class TeamRoom {
   /// 소유가 흔들리지 않게). P3 원격 합류 방은 false 로 들어온다.
   final bool ownedByMe;
 
+  /// 방장(나)이 참가자 명단에 포함되는가. true 면 members[0] = 내 관상,
+  /// false 면 내 얼굴을 빼고 참가자끼리만 본다(index 0 도 일반 참가자).
+  final bool includeOwner;
+
   TeamRoom({
     required this.id,
     required this.title,
@@ -49,6 +53,7 @@ class TeamRoom {
     required this.updatedAt,
     this.closedAt,
     this.ownedByMe = true,
+    this.includeOwner = true,
   });
 
   /// 발표(마감) 상태 — 방장이 일찍 닫았거나(closedAt) 빈자리 없이 전원
@@ -78,6 +83,7 @@ class TeamRoom {
           : DateTime.parse(m['closedAt'] as String),
       // 기존 그룹은 전부 로컬 생성(내 것) — 누락 시 true.
       ownedByMe: m['ownedByMe'] as bool? ?? true,
+      includeOwner: m['includeOwner'] as bool? ?? true,
     );
   }
 
@@ -89,5 +95,6 @@ class TeamRoom {
         'updatedAt': updatedAt.toIso8601String(),
         'closedAt': closedAt?.toIso8601String(),
         'ownedByMe': ownedByMe,
+        'includeOwner': includeOwner,
       });
 }

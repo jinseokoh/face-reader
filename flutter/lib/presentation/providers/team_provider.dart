@@ -47,20 +47,23 @@ class TeamsNotifier extends Notifier<List<TeamRoom>> {
     required String title,
     required String ownerReportId,
     List<String> pendingNames = const [],
+    bool includeOwner = true,
   }) async {
     final now = DateTime.now();
+    // 나 포함이면 방장 1 자리를 빼고, 미포함이면 전부 참가자(하드캡 12).
     final names = pendingNames
-        .take(TeamRoom.kMaxMembers - 1) // 방장 1 + 대기 (하드캡 12)
+        .take(includeOwner ? TeamRoom.kMaxMembers - 1 : TeamRoom.kMaxMembers)
         .toList();
     final room = TeamRoom(
       id: const Uuid().v4(),
       title: title,
       members: [
-        TeamMember(name: '나', reportId: ownerReportId),
+        if (includeOwner) TeamMember(name: '나', reportId: ownerReportId),
         for (final n in names) TeamMember(name: n),
       ],
       createdAt: now,
       updatedAt: now,
+      includeOwner: includeOwner,
     );
     state = [room, ...state];
     await _save();
@@ -201,7 +204,7 @@ class TeamsNotifier extends Notifier<List<TeamRoom>> {
   Future<bool> pushToServer(String roomId) async {
     final room = byId(roomId);
     if (room == null) return false;
-    if (room.ownedByMe && room.members.isNotEmpty) {
+    if (room.ownedByMe && room.includeOwner && room.members.isNotEmpty) {
       final myId = _currentMyFace()?.supabaseId;
       if (myId != null && room.members[0].reportId != myId) {
         room.members[0].reportId = myId;
@@ -332,7 +335,7 @@ class TeamsNotifier extends Notifier<List<TeamRoom>> {
   /// 바꾸면 그룹 매트릭스·썸네일이 즉시 새 사진으로 갱신된다. 타인 멤버·초대받은
   /// 그룹은 동결 스냅샷(reportFor) 유지.
   FaceReadingReport? reportForInRoom(TeamRoom room, int index) {
-    if (room.ownedByMe && index == 0) {
+    if (room.ownedByMe && room.includeOwner && index == 0) {
       return _currentMyFace() ?? reportFor(room.members[index]);
     }
     return reportFor(room.members[index]);
