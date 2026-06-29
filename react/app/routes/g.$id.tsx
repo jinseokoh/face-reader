@@ -1,5 +1,6 @@
 import type { Route } from "./+types/g.$id";
 import { CTA } from "../components/CTA";
+import { CameraTeaser } from "../components/CameraTeaser";
 import { fetchTeam, type TeamPayload } from "../lib/supabase";
 
 /**
@@ -52,7 +53,16 @@ export default function Group({ loaderData }: Route.ComponentProps) {
       {team.closed && team.payload ? (
         <Showcase payload={team.payload} />
       ) : (
-        <Invite title={team.title} names={team.memberNames} />
+        <>
+          <Invite title={team.title} names={team.memberNames} />
+          {/* 비연락처 설치 전 티저 — 정면 1장으로 미리보기 → 설치 유도. */}
+          <CameraTeaser
+            team={team}
+            appOpenUrl={loaderData.appOpenUrl}
+            appStoreUrl={loaderData.appStoreUrl}
+            playStoreUrl={loaderData.playStoreUrl}
+          />
+        </>
       )}
       <CTA
         appOpenUrl={loaderData.appOpenUrl}

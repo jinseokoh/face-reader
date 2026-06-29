@@ -12,6 +12,7 @@
     "build:shared": "cd ../shared && dart compile js -O1 lib/face_engine.dart -o ../react/app/lib/shared/face_engine.js"
   },
   "dependencies": {
+    "@mediapipe/tasks-vision": "^0.10.18",
     "aws4fetch": "^1.0.20",
     "isbot": "^5.1.17",
     "react": "^19.0.0",

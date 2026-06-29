@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { openInExternalBrowser } from '../lib/inapp'
 
 /**
  * 앱 진입 bridge — `/r/:id/open`(공유 카드) · `/g/:id/open`(교감도 그룹) 공용.
@@ -12,13 +13,9 @@ import { useEffect, useState } from 'react'
  *
  * ⚠️ self-loop 금지: readable(`/{seg}/{id}`) 과 bridge(`/{seg}/{id}/open`) 는
  * 서로 다른 path 라 location.href 무한 루프가 없다.
+ *
+ * 탈출 함수(openInExternalBrowser)는 lib/inapp 에서 공유 — CameraTeaser 도 사용.
  */
-
-/// 카카오톡 인앱 브라우저 → 기본 브라우저로 [url] 재오픈. iOS·Android 공통.
-function openInExternalBrowser(url: string) {
-  window.location.href =
-    `kakaotalk://web/openExternal?url=${encodeURIComponent(url)}`
-}
 
 export function OpenBridge({
   seg,
