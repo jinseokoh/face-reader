@@ -709,7 +709,7 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage>
               children: [
                 _HookHeadline(word: _frozenWord ?? _hookWords[_hookIndex]),
                 const SizedBox(height: AppSpacing.md),
-                Text('이름만 적으면 한 명씩 케미를 봐줄게요.', style: AppText.body),
+                Text('준비 되었으면 시작하기 버튼을 누르세요.', style: AppText.body),
                 const SizedBox(height: AppSpacing.xl),
                 Image.asset(
                   'assets/images/team-chemistry-map.png',
@@ -761,19 +761,19 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage>
               key: const ValueKey('owner-active'),
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _question('참가자에 나도 포함할까요?', '내 얼굴까지 함께 케미를 보려면 포함하세요.'),
+                _question('참가자에 나도 포함할까요?', '내가 참여할지 결정하세요'),
                 const SizedBox(height: AppSpacing.xl),
                 _choiceCard(
                   selected: _includeOwner == true,
-                  title: '네, 저도 포함할게요',
-                  subtitle: '내 관상도 매트릭스에 들어가요',
+                  title: '네, 나도 참여합니다.',
+                  subtitle: '내 관상이 그룹에 포함됩니다.',
                   onTap: () => _selectIncludeOwner(true),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 _choiceCard(
                   selected: _includeOwner == false,
-                  title: '아니요, 이 사람들만 볼게요',
-                  subtitle: '나는 빼고 참가자끼리만 봐요',
+                  title: '아니오, 나는 참여하지 않습니다.',
+                  subtitle: '내 관상이 그룹에 포함되지 않습니다.',
                   onTap: () => _selectIncludeOwner(false),
                 ),
               ],

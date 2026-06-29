@@ -318,7 +318,7 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
               // 액션 — 풀폭 스택.
               if (!room.isClosed) ...[
                 PrimaryButton(
-                  label: '멤버 직접 등록',
+                  label: '카메라로 측정',
                   icon: FontAwesomeIcons.camera,
                   onPressed: canAddMore ? () => _scanNewMember(room) : null,
                 ),
