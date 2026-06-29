@@ -107,6 +107,9 @@ export type TeamShowcase = {
   closed: boolean;
   memberNames: string[]; // 마감 전 참여자 칩 (team_members, 방장 먼저)
   payload: TeamPayload | null; // 마감 후 결과
+  // 웹 티저용 — 방장의 이름 + raw 메트릭. 방장 미참여/미스캔이면 null
+  // (그 경우 티저는 solo 관상 한 입으로 fallback).
+  owner: { name: string; raw: RawMetrics } | null;
 };
 
 /** teams + team_members 를 anon 으로 read (link-share, RLS public read). */
@@ -141,16 +144,28 @@ export async function fetchTeam(
 
   const mRes = await fetch(
     `${env.SUPABASE_URL}/rest/v1/team_members?team_id=eq.${q}` +
-      `&select=name,is_owner,joined_at&order=joined_at`,
+      `&select=name,is_owner,metrics_id,joined_at&order=joined_at`,
     { headers },
   );
   const members = mRes.ok
-    ? ((await mRes.json()) as Array<{ name: string; is_owner: boolean }>)
+    ? ((await mRes.json()) as Array<{
+        name: string;
+        is_owner: boolean;
+        metrics_id: string | null;
+      }>)
     : [];
   const names = [
     ...members.filter((m) => m.is_owner),
     ...members.filter((m) => !m.is_owner),
   ].map((m) => m.name);
+
+  // 방장 raw 메트릭 — 웹 티저 "나 ↔ 방장" 점수 계산용.
+  const ownerRow = members.find((m) => m.is_owner);
+  let owner: { name: string; raw: RawMetrics } | null = null;
+  if (ownerRow?.metrics_id) {
+    const [row] = await fetchMetrics(env, [ownerRow.metrics_id]);
+    if (row) owner = { name: ownerRow.name, raw: row.raw };
+  }
 
   return {
     id: t.id,
@@ -158,6 +173,7 @@ export async function fetchTeam(
     closed: t.closed_at != null,
     memberNames: names,
     payload: t.matrix_payload ?? null,
+    owner,
   };
 }
 

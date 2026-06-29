@@ -31,12 +31,16 @@ import 'package:face_engine/domain/services/compat/compat_adapter.dart';
 import 'package:face_engine/domain/services/compat/compat_label.dart';
 import 'package:face_engine/domain/services/compat/five_element.dart';
 import 'package:face_engine/domain/services/compat/modern_vocab.dart';
+import 'package:face_engine/domain/services/face_metrics_web.dart';
 
 @JS('runEngine')
 external set _setRunEngine(JSFunction fn);
 
 @JS('runCompat')
 external set _setRunCompat(JSFunction fn);
+
+@JS('runMetrics')
+external set _setRunMetrics(JSFunction fn);
 
 void main() {
   _setRunEngine = ((String metricsJson) {
@@ -49,6 +53,17 @@ void main() {
     final b = FaceReadingReport.fromJsonString(metricsJsonB);
     final bundle = analyzeCompatibilityFromReports(my: a, album: b);
     return jsonEncode(_composeCompatOutput(a, b, bundle));
+  }).toJS;
+
+  // 웹 티저 — MediaPipe 468 landmarks([[x,y],...] JSON) → 26 정면 raw 메트릭.
+  // 측면·z-score 는 안 함(report 로 감싸 runCompat/runEngine 이 처리).
+  _setRunMetrics = ((String landmarksJson) {
+    final raw = jsonDecode(landmarksJson) as List;
+    final pts = [
+      for (final p in raw)
+        [(p[0] as num).toDouble(), (p[1] as num).toDouble()],
+    ];
+    return jsonEncode(WebFaceMetrics(pts).computeAll());
   }).toJS;
 }
 
