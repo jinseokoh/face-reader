@@ -515,9 +515,13 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
       final faceWidth = (landmarks[454].x - landmarks[234].x).abs();
       final largEnough = faceWidth > 0.25;
 
+      // 측면: 45-80° 포용 (3/4 + near-profile). 60-80°(profile)는 far-side mesh
+      // 노이즈가 약간 늘지만 측면은 soft 신호라 허용 — frontal(<45°)·true
+      // profile(>80°, mesh 깨짐)만 거부해 멍청한 각도도 시스템이 받아준다.
       final yawOk = _phase == _CapturePhase.frontal
           ? _currentYawClass == YawClass.frontal
-          : _currentYawClass == YawClass.threeQuarter;
+          : _currentYawClass == YawClass.threeQuarter ||
+              _currentYawClass == YawClass.profile;
 
       if (highConfidence && stable && largEnough && yawOk) {
         return Colors.greenAccent;
@@ -972,7 +976,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
 
   void _startCountdown() {
     _countdownTimer?.cancel();
-    setState(() => _countdownRemaining = 3);
+    setState(() => _countdownRemaining = 2);
     _countdownTimer =
         Timer.periodic(const Duration(milliseconds: 800), (timer) {
       if (!mounted) {
