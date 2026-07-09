@@ -289,10 +289,9 @@ class _InfoConfirmScreenState
         Navigator.of(context).pop(report);
         return;
       }
-      if (widget.asMyFace) {
-        // 홈에 남아 내 관상 헤더로 결과를 확인 — 탭 전환 없음.
-        ref.read(selectedTabProvider.notifier).selectTab(0);
-      } else {
+      // 내 관상 등록은 시작한 탭(홈/관상/궁합)에 그대로 남는다 — 탭 전환 없음.
+      // 궁합 탭에서 등록하면 그 자리에서 잠긴 리스트가 열리는 흐름.
+      if (!widget.asMyFace) {
         ref.read(historyTabProvider.notifier).selectTab(
             c.source == AnalysisSource.camera ? 0 : 1);
         ref.read(selectedTabProvider.notifier).selectTab(1);

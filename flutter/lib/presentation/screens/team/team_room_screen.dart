@@ -24,7 +24,7 @@ import 'team_matrix_screen.dart';
 
 /// 교감도 — 팀(방) 화면. PIVOT A6 방 화면 스펙:
 /// 모임명 · 스캔 진행(scanned/total) · 멤버 그리드(스캔 완료=얼굴 / 대기=이름+
-/// 점선 탭→스캔, walk-in [+]) · [멤버 직접 스캔] · [카카오톡으로 초대](공유 시트) ·
+/// 점선 탭→스캔, walk-in [+]) · [직접촬영] · [카카오톡으로 초대](공유 시트) ·
 /// [교감도 보기](스캔 3명↑) · 방장 [마감].
 class TeamRoomScreen extends ConsumerStatefulWidget {
   final String roomId;
@@ -318,7 +318,7 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
               // 액션 — 풀폭 스택.
               if (!room.isClosed) ...[
                 PrimaryButton(
-                  label: '카메라로 측정',
+                  label: '직접촬영',
                   icon: FontAwesomeIcons.camera,
                   onPressed: canAddMore ? () => _scanNewMember(room) : null,
                 ),
@@ -684,7 +684,7 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
     }
   }
 
-  /// 멤버 직접 스캔 → 빈자리 이름 칩에서 고르거나 직접 입력 → 슬롯 채움 or 추가.
+  /// 직접촬영 → 빈자리 이름 칩에서 고르거나 직접 입력 → 슬롯 채움 or 추가.
   Future<void> _scanNewMember(TeamRoom room) async {
     if (!await _ensureConsent() || !mounted) return;
     final report = await _captureOne();
@@ -965,7 +965,7 @@ class _GroupSettingsDialogState extends State<_GroupSettingsDialog> {
   }
 }
 
-/// 멤버 직접 스캔 후 이름 선택 결과 — [slotIndex] 가 있으면 기존 빈자리를 고른
+/// 직접촬영 후 이름 선택 결과 — [slotIndex] 가 있으면 기존 빈자리를 고른
 /// 것(그 슬롯을 채움), null 이면 직접 입력한 새 멤버(walk-in).
 class _NameChoice {
   final int? slotIndex;

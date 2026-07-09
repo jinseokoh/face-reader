@@ -327,6 +327,12 @@ EmptyStatePlaceholder(
 
 예: `physiognomy_screen.dart` (분석 기록 없음), `compatibility_screen.dart` (내 관상 / 상대방 미등록 두 케이스).
 
+**일러스트 변형 (홈 그룹 섹션 전용)**: 홈의 "내가 만든 그룹"/"초대받은 그룹" 두 섹션 빈 상태는
+아이콘 대신 라인아트 일러스트를 쓴다 — 두 섹션이 **동일 패턴**을 공유해야 한다:
+`Padding(horizontal: AppSpacing.xxl)` > `Column[ SizedBox(sm), Image.asset(height: imageHeight 160/200 · BoxFit.contain), SizedBox(sm), Text(캡션 1줄, AppText.caption.copyWith(color: textHint), center) ]`.
+캡션은 상태 한 줄, 마침표 없음. 일러스트는 compatibility.png 문법(흰 배경·검정 라인아트·점선/반짝이 액센트·배경 소품 없음)만.
+사용처: `home_screen.dart` — team-chemistry-map.png(내가 만든 그룹) · shrug.png(초대받은 그룹).
+
 ### 3.9 Full-width 주/보조 버튼 — PrimaryButton / SecondaryButton
 
 **화면 하단·시트의 full-width 행동 버튼은 `PrimaryButton` / `SecondaryButton` 한 쌍으로만 만든다.**
@@ -338,7 +344,7 @@ EmptyStatePlaceholder(
 
 ```dart
 PrimaryButton(label: '분석 시작', onPressed: _run, busy: _isAnalyzing)
-PrimaryButton(label: '직접 스캔', icon: FontAwesomeIcons.camera, onPressed: _scan)
+PrimaryButton(label: '직접촬영', icon: FontAwesomeIcons.camera, onPressed: _scan)
 SecondaryButton(label: '마감하고 베스트 페어 발표', onPressed: _close)  // 두 번째 강조 = outlined
 ```
 
@@ -355,7 +361,7 @@ SecondaryButton(label: '마감하고 베스트 페어 발표', onPressed: _close
 | icon | `FaIcon` 16px (FontAwesome only) |
 
 사용처: LoginEntryButton(로그인/가입) · info_confirm(분석 시작) · 홈(교감도 방 만들기) ·
-team_room(직접 스캔·카톡 초대·교감도 보기·마감) · team_create_sheet(만들기) ·
+team_room(직접촬영·카톡 초대·교감도 보기·마감) · team_create_sheet(만들기) ·
 team_matrix(1코인으로 풀이 보기).
 
 ---

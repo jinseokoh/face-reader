@@ -16,16 +16,24 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 ///   - eyebrow: gold / title: textPrimary / caption: textHint
 /// [onTap] — 홈에서 설정 시 내 리포트, 미설정 시 셀카 등록 플로우 진입.
 /// [unsetCaption] — 미설정 안내 한 줄 (화면별 진입 경로가 달라 인자로 받음).
+/// [padding] — 기본은 §3.7 스펙. nudge 배너처럼 위계가 다른 컨테이너만 override.
 class MyFaceHeader extends StatelessWidget {
   final FaceReadingReport? myFace;
   final VoidCallback? onTap;
   final String unsetCaption;
+  final EdgeInsetsGeometry padding;
 
   const MyFaceHeader({
     super.key,
     required this.myFace,
     this.onTap,
     this.unsetCaption = '더보기 메뉴를 통해 설정 가능합니다.',
+    this.padding = const EdgeInsets.fromLTRB(
+      AppSpacing.lg,
+      AppSpacing.md,
+      AppSpacing.lg,
+      AppSpacing.md,
+    ),
   });
 
   @override
@@ -42,12 +50,7 @@ class MyFaceHeader extends StatelessWidget {
         color: AppColors.background,
         border: Border(bottom: BorderSide(color: AppColors.border, width: 0.5)),
       ),
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        AppSpacing.md,
-        AppSpacing.lg,
-        AppSpacing.md,
-      ),
+      padding: padding,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -58,25 +61,28 @@ class MyFaceHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const FaIcon(
-                      FontAwesomeIcons.circleCheck,
-                      size: 12,
-                      color: AppColors.gold,
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
-                    Text(
-                      '내 관상',
-                      style: AppText.caption.copyWith(
-                        fontWeight: FontWeight.w600,
+                // eyebrow 는 설정된 정체성에만 — 미설정 nudge 는 문구가 곧 제목.
+                if (isSet) ...[
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const FaIcon(
+                        FontAwesomeIcons.circleCheck,
+                        size: 12,
                         color: AppColors.gold,
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.xs),
+                      const SizedBox(width: AppSpacing.xs),
+                      Text(
+                        '내 관상',
+                        style: AppText.caption.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.gold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                ],
                 Text(
                   titleText,
                   maxLines: 1,
@@ -116,6 +122,15 @@ class _HeaderAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     // §3.7 — 다크 hero 의 84px 절반.
     const size = 42.0;
+    // 미설정 — 사진 찍는 점술가를 원형 chrome 없이 2배(84) 크기로.
+    if (myFace == null) {
+      return Image.asset(
+        'assets/images/emotion-photo.png',
+        width: size * 2,
+        height: size * 2,
+        fit: BoxFit.contain,
+      );
+    }
     Widget inner = const _HeaderAvatarPlaceholder();
     final file = ThumbnailPaths.resolveFileSync(myFace?.thumbnailPath);
     if (file != null && file.existsSync()) {
@@ -138,15 +153,7 @@ class _HeaderAvatarPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.surface,
-      child: const Center(
-        child: FaIcon(
-          FontAwesomeIcons.userPlus,
-          size: 18,
-          color: AppColors.textHint,
-        ),
-      ),
-    );
+    // 미설정 상태 — 어깨를 으쓱하는 점술가 (설정 상태의 사진 아바타와 동일 문법).
+    return Image.asset('assets/images/shrug.png', fit: BoxFit.cover);
   }
 }

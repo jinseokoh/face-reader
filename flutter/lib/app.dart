@@ -153,11 +153,9 @@ class _MainAppState extends ConsumerState<MainApp> {
               SettingsScreen(),
             ],
           ),
-          // 내 관상 미설정 nudge — 홈/관상/궁합 탭 상단에 슬라이드-다운 오버레이.
-          const Align(
-            alignment: Alignment.topCenter,
-            child: MyFaceNudgeBanner(),
-          ),
+          // 내 관상 미설정 nudge — 홈/관상/궁합 탭 상단에 top_snackbar 오버레이.
+          // Positioned.fill 로컬 Overlay 호스트 — entry 없으면 hit-test 통과.
+          const Positioned.fill(child: MyFaceNudgeBanner()),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(

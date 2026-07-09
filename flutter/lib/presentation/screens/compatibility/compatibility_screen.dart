@@ -22,6 +22,7 @@ import 'package:facely/presentation/providers/recent_unlock_focus_provider.dart'
 import 'package:facely/presentation/providers/tab_provider.dart';
 import 'package:facely/presentation/screens/compatibility/compat_unlock_action.dart';
 import 'package:facely/presentation/widgets/empty_state_placeholder.dart';
+import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
 import 'package:facely/presentation/widgets/source_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -106,9 +107,10 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
       }
       // 저장된 상대는 있는데 내 관상이 없으면 — "등록만 하면 이 사람들과 궁합을
       // 볼 수 있다"를 비활성 프리뷰로 한눈에 보여준다(원인 즉시 이해).
+      // 등록은 탭 이동 없이 그 자리에서 촬영 시트 — 완료 즉시 아래 리스트가 열린다.
       return _InactiveCompatPreview(
         others: others,
-        onRegister: () => ref.read(selectedTabProvider.notifier).selectTab(0),
+        onRegister: () => startMyFaceCapture(context, ref),
       );
     }
 

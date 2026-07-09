@@ -10,7 +10,6 @@ import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/providers/team_provider.dart';
 import 'package:facely/presentation/screens/team/team_create_page.dart';
 import 'package:facely/presentation/screens/team/team_room_screen.dart';
-import 'package:facely/presentation/widgets/empty_state_placeholder.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
 import 'package:facely/presentation/widgets/primary_button.dart';
@@ -176,11 +175,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               delegate: _StickySectionHeader(title: '초대받은 그룹'),
             ),
             if (invited.isEmpty)
-              const SliverToBoxAdapter(
-                child: EmptyStatePlaceholder(
-                  icon: FontAwesomeIcons.peoplePulling,
-                  title: '초대받은 그룹이 없습니다',
-                  detail: '카톡으로 초대할 수 있어요',
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.xxl),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: AppSpacing.sm),
+                      Image.asset(
+                        'assets/images/shrug.png',
+                        height: imageHeight,
+                        fit: BoxFit.contain,
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        '초대받은 그룹이 없습니다',
+                        style: AppText.caption.copyWith(
+                          color: AppColors.textHint,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
                 ),
               )
             else
