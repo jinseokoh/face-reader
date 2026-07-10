@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:facely/core/theme.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/providers/tab_provider.dart';
@@ -67,6 +69,10 @@ class _MyFaceNudgeBannerState extends ConsumerState<MyFaceNudgeBanner>
 
   bool _visible = false;
   int? _shownTab; // 배너가 떠 있는 탭
+
+  /// 진행 중인 닫힘의 완료 신호 — 패키지 onDismissed(entry 제거 시점)가 푼다.
+  /// 애니메이션 TickerFuture 는 중도 정지(cancel) 시 완료되지 않으므로 못 쓴다.
+  Completer<void>? _snackDismissed;
 
   @override
   void initState() {
@@ -141,14 +147,20 @@ class _MyFaceNudgeBannerState extends ConsumerState<MyFaceNudgeBanner>
     _barrier.value = 0;
   }
 
-  /// 배너 본체 탭 / dim 탭 공용 — 슬라이드-업 + 페이드-아웃으로 닫는다.
-  void _dismissByUser() {
+  /// 배너 본체 탭 / dim 탭 / CTA 공용 — 슬라이드-업 + 페이드-아웃으로 닫는다.
+  /// 반환 Future 는 스낵바 entry 가 실제로 걷힌 뒤(onDismissed) 완료된다.
+  /// 순서 불변: reverse 를 먼저 걸어야 dismiss() 가 발화시키는 _sync 의
+  /// hide 분기가 (status==reverse 가드로) 애니메이션을 죽이지 않는다.
+  Future<void> _dismissByUser() async {
     final snack = _snackController;
     final tab = _shownTab;
     if (snack == null || tab == null) return; // entry 교체 직후 레이스 가드
+    _snackDismissed ??= Completer<void>();
+    final done = _snackDismissed!.future;
     snack.reverse();
     _barrier.reverse();
     ref.read(nudgeDismissedTabProvider.notifier).dismiss(tab);
+    await done;
   }
 
   void _show(int tab) {
@@ -191,7 +203,12 @@ class _MyFaceNudgeBannerState extends ConsumerState<MyFaceNudgeBanner>
                 ),
                 child: PrimaryButton(
                   label: '내 관상 등록하기',
-                  onPressed: () => startMyFaceCapture(context, ref),
+                  // 스낵바·dim 닫힘 애니메이션이 완전히 끝난 뒤 등록 페이지 진입.
+                  onPressed: () async {
+                    await _dismissByUser();
+                    if (!mounted) return;
+                    await startMyFaceCapture(context, ref);
+                  },
                 ),
               ),
             ],
@@ -220,6 +237,8 @@ class _MyFaceNudgeBannerState extends ConsumerState<MyFaceNudgeBanner>
         _visible = false;
         _snackController = null;
         _removeBarrier();
+        _snackDismissed?.complete();
+        _snackDismissed = null;
       },
     );
   }

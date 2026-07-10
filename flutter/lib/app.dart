@@ -169,11 +169,11 @@ class _MainAppState extends ConsumerState<MainApp> {
         elevation: 8,
         items: const [
           BottomNavigationBarItem(
-            icon: FaIcon(FontAwesomeIcons.eye, size: 22),
+            icon: FaIcon(FontAwesomeIcons.person, size: 22),
             label: '관상',
           ),
           BottomNavigationBarItem(
-            icon: FaIcon(FontAwesomeIcons.handshake, size: 22),
+            icon: FaIcon(FontAwesomeIcons.peoplePulling, size: 22),
             label: '궁합',
           ),
           BottomNavigationBarItem(

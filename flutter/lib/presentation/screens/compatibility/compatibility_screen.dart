@@ -22,7 +22,7 @@ import 'package:facely/presentation/providers/recent_unlock_focus_provider.dart'
 import 'package:facely/presentation/providers/tab_provider.dart';
 import 'package:facely/presentation/screens/compatibility/compat_unlock_action.dart';
 import 'package:facely/presentation/widgets/empty_state_placeholder.dart';
-import 'package:facely/presentation/widgets/my_face_nudge_banner.dart';
+import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
 import 'package:facely/presentation/widgets/source_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -818,9 +818,8 @@ class _InactiveCompatPreview extends StatelessWidget {
   }
 }
 
-/// 내 관상 등록 안내 — 등록 유도 CTA 는 nudge 스낵바가 전담하므로 (중복 제거)
-/// 여기는 배경 없는 안내 한 줄 + "내 관상이 없어서 → 아래가 잠김"의 인과를
-/// 시각화하는 펄싱 화살표만 남긴다. 안내 라벨 탭 = 닫았던 스낵바 재소환.
+/// 내 관상 등록 안내 — 등록 pill + "등록 전까지 잠김"을 알리는 펄싱 안내 한 줄.
+/// pill 탭 = 관상 등록 팝업(촬영 시트) 직행.
 class _RegisterMyFaceBanner extends ConsumerStatefulWidget {
   const _RegisterMyFaceBanner();
 
@@ -848,13 +847,12 @@ class _RegisterMyFaceBannerState extends ConsumerState<_RegisterMyFaceBanner>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // 흰색+1px border stadium pill — 본문 CTA 규칙 (검정 invert 는 오버레이
-        // 전용). 설정 탭 [충전하기] 와 동일 레시피. 탭 = 닫았던 스낵바 재소환.
+        // 전용). 설정 탭 [충전하기] 와 동일 레시피. 탭 = 관상 등록 팝업 직행.
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
           child: Center(
             child: GestureDetector(
-              onTap: () =>
-                  ref.read(nudgeDismissedTabProvider.notifier).restore(),
+              onTap: () => startMyFaceCapture(context, ref),
               child: Container(
                 padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.md, vertical: 6),
@@ -876,7 +874,7 @@ class _RegisterMyFaceBannerState extends ConsumerState<_RegisterMyFaceBanner>
                         ),
                       ),
                     ),
-                    const SizedBox(width: AppSpacing.xs),
+                    const SizedBox(width: AppSpacing.sm),
                     const FaIcon(
                       FontAwesomeIcons.chevronRight,
                       size: 12,
@@ -899,16 +897,10 @@ class _RegisterMyFaceBannerState extends ConsumerState<_RegisterMyFaceBanner>
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-            child: Column(
-              children: [
-                const FaIcon(
-                  FontAwesomeIcons.chevronDown,
-                  color: AppColors.textHint,
-                  size: 16,
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text('내 관상이 없어 아래 궁합이 잠겨 있어요', style: AppText.hint),
-              ],
+            child: Text(
+              '나의 관상이 등록되기 전까지는 궁합이 잠겨있게 됩니다.',
+              textAlign: TextAlign.center,
+              style: AppText.hint,
             ),
           ),
         ),
