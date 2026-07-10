@@ -21,6 +21,7 @@ import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/providers/recent_unlock_focus_provider.dart';
 import 'package:facely/presentation/providers/tab_provider.dart';
 import 'package:facely/presentation/screens/compatibility/compat_unlock_action.dart';
+import 'package:facely/presentation/widgets/coin_chip.dart';
 import 'package:facely/presentation/widgets/empty_state_placeholder.dart';
 import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
 import 'package:facely/presentation/widgets/source_badge.dart';
@@ -69,7 +70,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
             const Text('궁합'),
             if (auth != null) ...[
               const SizedBox(width: AppSpacing.md),
-              _CoinChip(
+              CoinChip(
                 coins: auth.coins,
                 onTap: () =>
                     ref.read(selectedTabProvider.notifier).selectTab(3),
@@ -1402,48 +1403,4 @@ class _SectionHeader<T> extends StatelessWidget {
   }
 }
 
-/// 잔액 chip — AppBar 의 '궁합' 타이틀 옆에 들어가는 단일 source of truth.
-/// 카드마다 반복되던 "(N코인 보유)" 노이즈를 제거하고, tap 시 설정 탭으로
-/// 보낸다 (코인 구매는 설정 탭의 PurchaseSheet 진입로).
-class _CoinChip extends StatelessWidget {
-  final int coins;
-  final VoidCallback onTap;
-  const _CoinChip({required this.coins, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: 4,
-        ),
-        decoration: BoxDecoration(
-          color: AppTheme.surface,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          border: Border.all(color: AppTheme.border),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const FaIcon(
-              FontAwesomeIcons.coins,
-              size: 12,
-              color: AppTheme.textSecondary,
-            ),
-            const SizedBox(width: AppSpacing.xs),
-            Text(
-              '$coins',
-              style: AppText.caption.copyWith(
-                color: AppTheme.textPrimary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+// 잔액 chip 은 공용 CoinChip (presentation/widgets/coin_chip.dart) — 궁합·교감 공유.

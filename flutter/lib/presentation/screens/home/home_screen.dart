@@ -8,8 +8,10 @@ import 'package:facely/domain/services/team_matrix.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/providers/team_provider.dart';
+import 'package:facely/presentation/providers/tab_provider.dart';
 import 'package:facely/presentation/screens/team/team_create_page.dart';
 import 'package:facely/presentation/screens/team/team_room_screen.dart';
+import 'package:facely/presentation/widgets/coin_chip.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
 import 'package:facely/presentation/widgets/primary_button.dart';
@@ -38,6 +40,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     // 팀 카드의 alias·썸네일이 history 변화에 반응하도록 watch 유지.
     ref.watch(historyProvider);
+    final auth = ref.watch(authProvider);
     final teams = ref.watch(teamsProvider);
     // 소유는 생성 시점에 고정된 ownedByMe 로 판정 — 변경 가능한 내 관상 id 와
     // 비교하지 않는다(재등록해도 내 그룹이 초대받은 그룹으로 새지 않게).
@@ -53,7 +56,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       // 관상 탭과 동일 규격 AppBar — 타이틀은 테마의 SongMyung appBarTitle.
       // 탭 라벨(교감)과 동일 표기 — 탭≡AppBar 타이틀 규칙.
       appBar: AppBar(
-        title: const Text('교감'),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('교감'),
+            // 궁합 탭과 동일한 잔액 chip (공용 CoinChip) — tap = 설정 탭.
+            if (auth != null) ...[
+              const SizedBox(width: AppSpacing.md),
+              CoinChip(
+                coins: auth.coins,
+                onTap: () =>
+                    ref.read(selectedTabProvider.notifier).selectTab(3),
+              ),
+            ],
+          ],
+        ),
         actions: [
           PopupMenuButton<String>(
             tooltip: '다른 사람 관상보기',
@@ -92,15 +109,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
             ],
+            // 설정 [충전하기]·궁합 등록 pill 과 동일 outlined stadium 레시피.
             child: Padding(
               padding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.lg),
               child: Center(
-                child: Text(
-                  '다른 사람 관상보기',
-                  style: AppText.caption.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    border: Border.all(color: AppColors.textPrimary),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '다른 사람 관상보기',
+                    style: AppText.caption.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ),
               ),
