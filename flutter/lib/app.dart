@@ -144,16 +144,17 @@ class _MainAppState extends ConsumerState<MainApp> {
     return Scaffold(
       body: Stack(
         children: [
+          // 탭 순서 = 인원수 위계: 1인 관상 → 2인 궁합 → 다인 교감 → 설정.
           IndexedStack(
             index: selectedIndex,
             children: const [
-              HomeScreen(),
               PhysiognomyScreen(),
               CompatibilityScreen(),
+              HomeScreen(),
               SettingsScreen(),
             ],
           ),
-          // 내 관상 미설정 nudge — 홈/관상/궁합 탭 상단에 top_snackbar 오버레이.
+          // 내 관상 미설정 nudge — 관상/궁합/교감 탭 상단에 top_snackbar 오버레이.
           // Positioned.fill 로컬 Overlay 호스트 — entry 없으면 hit-test 통과.
           const Positioned.fill(child: MyFaceNudgeBanner()),
         ],
@@ -168,16 +169,16 @@ class _MainAppState extends ConsumerState<MainApp> {
         elevation: 8,
         items: const [
           BottomNavigationBarItem(
-            icon: FaIcon(FontAwesomeIcons.house, size: 22),
-            label: '홈',
-          ),
-          BottomNavigationBarItem(
             icon: FaIcon(FontAwesomeIcons.eye, size: 22),
             label: '관상',
           ),
           BottomNavigationBarItem(
             icon: FaIcon(FontAwesomeIcons.handshake, size: 22),
             label: '궁합',
+          ),
+          BottomNavigationBarItem(
+            icon: FaIcon(FontAwesomeIcons.peopleGroup, size: 22),
+            label: '교감',
           ),
           BottomNavigationBarItem(
             icon: FaIcon(FontAwesomeIcons.userGear, size: 22),

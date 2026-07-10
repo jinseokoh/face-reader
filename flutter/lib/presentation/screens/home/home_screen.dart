@@ -51,8 +51,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       // 관상 탭과 동일 규격 AppBar — 타이틀은 테마의 SongMyung appBarTitle.
+      // 탭 라벨(교감)과 동일 표기 — 탭≡AppBar 타이틀 규칙.
       appBar: AppBar(
-        title: const Text('케미'),
+        title: const Text('교감'),
         actions: [
           PopupMenuButton<String>(
             tooltip: '다른 사람 관상보기',
@@ -163,7 +164,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 padding: const EdgeInsets.fromLTRB(
                     AppSpacing.xxl, AppSpacing.sm, AppSpacing.xxl,
                     AppSpacing.xl),
-                child: PrimaryButton(
+                // 본문 CTA 는 흰색+1px border — 검정 invert 는 오버레이(스낵바) 전용.
+                child: SecondaryButton(
                   label: '그룹 케미 알아보기',
                   onPressed: _createTeam,
                 ),
@@ -182,9 +184,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: Column(
                     children: [
                       const SizedBox(height: AppSpacing.sm),
+                      // nudge 스낵바의 emotion-photo(84) 와 동일 크기 — 같은
+                      // emotion 일러스트 패밀리는 같은 스케일로.
                       Image.asset(
-                        'assets/images/shrug.png',
-                        height: imageHeight,
+                        'assets/images/emotion-shrug.png',
+                        width: 84,
+                        height: 84,
                         fit: BoxFit.contain,
                       ),
                       const SizedBox(height: AppSpacing.sm),

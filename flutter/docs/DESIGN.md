@@ -328,10 +328,12 @@ EmptyStatePlaceholder(
 예: `physiognomy_screen.dart` (분석 기록 없음), `compatibility_screen.dart` (내 관상 / 상대방 미등록 두 케이스).
 
 **일러스트 변형 (홈 그룹 섹션 전용)**: 홈의 "내가 만든 그룹"/"초대받은 그룹" 두 섹션 빈 상태는
-아이콘 대신 라인아트 일러스트를 쓴다 — 두 섹션이 **동일 패턴**을 공유해야 한다:
-`Padding(horizontal: AppSpacing.xxl)` > `Column[ SizedBox(sm), Image.asset(height: imageHeight 160/200 · BoxFit.contain), SizedBox(sm), Text(캡션 1줄, AppText.caption.copyWith(color: textHint), center) ]`.
-캡션은 상태 한 줄, 마침표 없음. 일러스트는 compatibility.png 문법(흰 배경·검정 라인아트·점선/반짝이 액센트·배경 소품 없음)만.
-사용처: `home_screen.dart` — team-chemistry-map.png(내가 만든 그룹) · shrug.png(초대받은 그룹).
+아이콘 대신 라인아트 일러스트를 쓴다 — 레이아웃 패턴은 동일:
+`Padding(horizontal: AppSpacing.xxl)` > `Column[ SizedBox(sm), Image.asset(BoxFit.contain), SizedBox(sm), Text(캡션 1줄, AppText.caption.copyWith(color: textHint), center) ]`.
+이미지 크기 위계: 내가 만든 그룹 = imageHeight(160/200, 대표 비주얼) / 초대받은 그룹 = **84**
+(emotion 일러스트 패밀리 공통 크기 — nudge 배너의 emotion-photo 와 동일 스케일).
+캡션은 상태 한 줄, 마침표 없음. 일러스트는 흰 배경·검정 라인아트·배경 소품 없음.
+사용처: `home_screen.dart` — team-chemistry-map.png(내가 만든 그룹) · emotion-shrug.png(초대받은 그룹).
 
 ### 3.9 Full-width 주/보조 버튼 — PrimaryButton / SecondaryButton
 
@@ -363,6 +365,12 @@ SecondaryButton(label: '마감하고 베스트 페어 발표', onPressed: _close
 사용처: LoginEntryButton(로그인/가입) · info_confirm(분석 시작) · 홈(교감도 방 만들기) ·
 team_room(직접촬영·카톡 초대·교감도 보기·마감) · team_create_sheet(만들기) ·
 team_matrix(1코인으로 풀이 보기).
+
+**검정/흰색 위계 (2026-07-10)**: 탭 본문 스크롤 콘텐츠 안의 CTA(버튼·pill)는 **흰색 배경 +
+1px textPrimary border** (SecondaryButton 또는 outlined pill)만 쓴다. 검정 invert (PrimaryButton
+·검정 pill)는 **오버레이(스낵바)·바텀시트·페이지 하단 고정 주행동 전용** — 본문 안에 검정 덩어리가
+반복되면 화면이 지저분해진다. 실사용: 홈 [그룹 케미 알아보기]=Secondary, 설정 [충전하기]·궁합
+재소환 pill=outlined stadium, nudge 스낵바 [내 관상 등록하기]=Primary.
 
 ---
 

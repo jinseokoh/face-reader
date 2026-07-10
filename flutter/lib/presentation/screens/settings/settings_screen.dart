@@ -112,12 +112,13 @@ class SettingsScreen extends ConsumerWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
-                            color: AppColors.textPrimary,
+                            color: AppColors.background,
+                            border: Border.all(color: AppColors.textPrimary),
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text('충전하기',
                               style: TextStyle(
-                                  color: Colors.white,
+                                  color: AppColors.textPrimary,
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700)),
                         ),

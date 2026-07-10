@@ -294,7 +294,7 @@ class _InfoConfirmScreenState
       if (!widget.asMyFace) {
         ref.read(historyTabProvider.notifier).selectTab(
             c.source == AnalysisSource.camera ? 0 : 1);
-        ref.read(selectedTabProvider.notifier).selectTab(1);
+        ref.read(selectedTabProvider.notifier).selectTab(0); // 관상 탭
       }
 
       if (!mounted) return;

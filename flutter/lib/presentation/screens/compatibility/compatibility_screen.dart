@@ -22,7 +22,7 @@ import 'package:facely/presentation/providers/recent_unlock_focus_provider.dart'
 import 'package:facely/presentation/providers/tab_provider.dart';
 import 'package:facely/presentation/screens/compatibility/compat_unlock_action.dart';
 import 'package:facely/presentation/widgets/empty_state_placeholder.dart';
-import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
+import 'package:facely/presentation/widgets/my_face_nudge_banner.dart';
 import 'package:facely/presentation/widgets/source_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -107,11 +107,8 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
       }
       // 저장된 상대는 있는데 내 관상이 없으면 — "등록만 하면 이 사람들과 궁합을
       // 볼 수 있다"를 비활성 프리뷰로 한눈에 보여준다(원인 즉시 이해).
-      // 등록은 탭 이동 없이 그 자리에서 촬영 시트 — 완료 즉시 아래 리스트가 열린다.
-      return _InactiveCompatPreview(
-        others: others,
-        onRegister: () => startMyFaceCapture(context, ref),
-      );
+      // 등록 CTA 는 nudge 스낵바 [내 관상 등록하기]가 전담 (중복 제거).
+      return _InactiveCompatPreview(others: others);
     }
 
     // 두 섹션 분리 — 로컬 history 기반.
@@ -801,18 +798,14 @@ class _CompatLockedCard extends ConsumerWidget {
 /// "이런 분들과 볼 수 있다"는 비활성 프리뷰 리스트를 흐릿하게 보여준다.
 class _InactiveCompatPreview extends StatelessWidget {
   final List<FaceReadingReport> others;
-  final VoidCallback onRegister;
-  const _InactiveCompatPreview({
-    required this.others,
-    required this.onRegister,
-  });
+  const _InactiveCompatPreview({required this.others});
 
   @override
   Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       children: [
-        _RegisterMyFaceBanner(onRegister: onRegister),
+        const _RegisterMyFaceBanner(),
         const SizedBox(height: AppSpacing.sm),
         ...others.map(
           (o) => Padding(
@@ -825,17 +818,18 @@ class _InactiveCompatPreview extends StatelessWidget {
   }
 }
 
-/// 내 관상 등록 유도 배너 — 검정 inverted. 아래로 펄싱하는 화살표로 "내 관상이
-/// 없어서 → 아래가 잠김"의 인과를 시각화한다.
-class _RegisterMyFaceBanner extends StatefulWidget {
-  final VoidCallback onRegister;
-  const _RegisterMyFaceBanner({required this.onRegister});
+/// 내 관상 등록 안내 — 등록 유도 CTA 는 nudge 스낵바가 전담하므로 (중복 제거)
+/// 여기는 배경 없는 안내 한 줄 + "내 관상이 없어서 → 아래가 잠김"의 인과를
+/// 시각화하는 펄싱 화살표만 남긴다. 안내 라벨 탭 = 닫았던 스낵바 재소환.
+class _RegisterMyFaceBanner extends ConsumerStatefulWidget {
+  const _RegisterMyFaceBanner();
 
   @override
-  State<_RegisterMyFaceBanner> createState() => _RegisterMyFaceBannerState();
+  ConsumerState<_RegisterMyFaceBanner> createState() =>
+      _RegisterMyFaceBannerState();
 }
 
-class _RegisterMyFaceBannerState extends State<_RegisterMyFaceBanner>
+class _RegisterMyFaceBannerState extends ConsumerState<_RegisterMyFaceBanner>
     with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
     vsync: this,
@@ -853,59 +847,45 @@ class _RegisterMyFaceBannerState extends State<_RegisterMyFaceBanner>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          padding: const EdgeInsets.all(AppSpacing.xl),
-          decoration: BoxDecoration(
-            color: AppColors.textPrimary,
-            borderRadius: BorderRadius.circular(AppRadius.xl),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const FaIcon(
-                    FontAwesomeIcons.userPlus,
-                    color: Colors.white,
-                    size: 18,
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      '내 관상을 등록해 주세요',
-                      style: AppText.sectionTitle.copyWith(color: Colors.white),
+        // 흰색+1px border stadium pill — 본문 CTA 규칙 (검정 invert 는 오버레이
+        // 전용). 설정 탭 [충전하기] 와 동일 레시피. 탭 = 닫았던 스낵바 재소환.
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+          child: Center(
+            child: GestureDetector(
+              onTap: () =>
+                  ref.read(nudgeDismissedTabProvider.notifier).restore(),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  border: Border.all(color: AppColors.textPrimary),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        '나의 관상을 등록하면 궁합을 볼 수 있습니다.',
+                        textAlign: TextAlign.center,
+                        style: AppText.caption.copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                '등록만 하면 아래 분들과의 궁합을 바로 볼 수 있어요.',
-                style: AppText.caption.copyWith(color: Colors.white70),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: ElevatedButton(
-                  onPressed: widget.onRegister,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: AppColors.textPrimary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: Text(
-                    '내 관상 등록하기',
-                    style: AppText.subTitle.copyWith(
+                    const SizedBox(width: AppSpacing.xs),
+                    const FaIcon(
+                      FontAwesomeIcons.chevronRight,
+                      size: 12,
                       color: AppColors.textPrimary,
                     ),
-                  ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
         ),
         AnimatedBuilder(

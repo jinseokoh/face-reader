@@ -153,7 +153,7 @@ class _HeaderAvatarPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 미설정 상태 — 어깨를 으쓱하는 점술가 (설정 상태의 사진 아바타와 동일 문법).
-    return Image.asset('assets/images/shrug.png', fit: BoxFit.cover);
+    // 썸네일 유실 — 어깨를 으쓱하는 점술가 (설정 상태의 사진 아바타와 동일 문법).
+    return Image.asset('assets/images/emotion-shrug.png', fit: BoxFit.cover);
   }
 }

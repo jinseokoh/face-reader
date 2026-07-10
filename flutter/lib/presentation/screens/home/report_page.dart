@@ -946,7 +946,7 @@ class _CompatCta extends ConsumerWidget {
     if (!alreadySaved) {
       ref.read(historyProvider.notifier).add(report);
     }
-    ref.read(selectedTabProvider.notifier).selectTab(2);
+    ref.read(selectedTabProvider.notifier).selectTab(1); // 궁합 탭
     context.go('/main');
   }
 
@@ -976,14 +976,14 @@ class _CompatCta extends ConsumerWidget {
       if (!ok || !context.mounted) return;
       // 결제건을 '확인' 리스트 맨 위로 핀 + 궁합 탭으로 이동(상세는 열지 않음).
       ref.read(recentUnlockFocusProvider.notifier).focus(report.supabaseId);
-      ref.read(selectedTabProvider.notifier).selectTab(2);
+      ref.read(selectedTabProvider.notifier).selectTab(1); // 궁합 탭
       context.go('/main');
       return;
     }
 
     // 이미 결제됨 — 궁합 탭으로 전환 후 상세를 바로 연다(닫으면 궁합 탭 복귀).
     ref.read(recentUnlockFocusProvider.notifier).focus(report.supabaseId);
-    ref.read(selectedTabProvider.notifier).selectTab(2);
+    ref.read(selectedTabProvider.notifier).selectTab(1); // 궁합 탭
     context.goCompat(my: myFace, album: report);
   }
 }
