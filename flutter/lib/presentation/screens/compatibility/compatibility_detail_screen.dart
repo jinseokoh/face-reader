@@ -142,7 +142,7 @@ class _CompatibilityDetailScreenState
     );
   }
 
-  /// 로그인 가드 — 비로그인이면 home_screen 의 "앨범에서 선택" 과 동일한
+  /// 로그인 가드 — 비로그인이면 chemistry_screen 의 "앨범에서 선택" 과 동일한
   /// login bottom sheet 띄움. true = 로그인 완료(또는 이미 로그인), false =
   /// 사용자가 취소.
   Future<bool> _ensureLoggedIn(BuildContext context) async {

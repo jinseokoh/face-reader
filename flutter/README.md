@@ -36,7 +36,7 @@ MediaPipe Face Mesh 468 landmarks → 26 frontal + 8 lateral metric → 14-node 
 | # | 항목 | 개선 방향 · 완료 기준 |
 |---|---|---|
 | 1 | **맛보기 촬영 데이터 재사용 (신규 요구사항, PRD §4.1)** — 웹 티저에서 찍은 사람이 앱 설치 후 또 찍어야 함. React 앱에 로그인 없음, CameraTeaser 는 runMetrics 결과를 화면 표시 후 버림 | ① React 카카오 로그인(Supabase Auth OAuth, 앱과 같은 프로젝트) ② **DeepFace 웹 연동** — 촬영 프레임을 R2 `temp/`(기존 `/api/r2/presign`) PUT → `analyze.facely.kr /analyze` 로 성별·연령 default 추정(자동 prefill, 수정 허용. FastAPI CORS 에 facely.kr origin 허용 필요) ③ 티저 capture(정면 26 metric + 추정 demographics, **측면 metrics 없이 — 엔진에서 옵션이라 그대로 fallback**)를 `metrics` 에 `user_id` 귀속 `is_my_face=true` upsert ④ 앱 로그인 rehydrate 가 그 capture 를 내 관상으로 복원. 검증: 웹 촬영+로그인 → 앱 설치 → 같은 계정 로그인 → **재촬영 없이** 그룹 원탭 합류 |
-| 2 | **방장 대기 명단 원격 삭제 안 됨** — push 가 insert-only 라 로컬에서 지운 대기 이름이 서버 슬롯에 남아 다음 합류자에게 노출 | push 시 서버 대기 슬롯(미점유 행)과 로컬 명단 diff → 미점유 행만 delete. 점유(claim)된 행은 보존. 검증: 방장이 대기 이름 삭제 후 합류자 화면에서 그 슬롯 안 보임 |
+| 2 | **방장 대기 명단 원격 삭제 안 됨** — 구현됨(2026-07-11, `pushTeam` 이 upsert 전에 서버 diff 로 유령 행 제거: 미점유 슬롯 + 개명된 옛 방장 행. 점유(claim)된 행은 보존) | 검증: 방장이 대기 이름 삭제(또는 프로필명 변경) 후 재초대 → 웹 초대장에서 옛 슬롯 안 보임 |
 | 3 | **매트릭스 멤버 metrics N회 개별 fetch** — 인원 많으면 로딩 지연, pull-to-refresh 는 그룹 수×멤버 수 호출 | `metrics` `in (...)` batch 조회 1회로 통합. 검증: 12명 그룹 새로고침 시 metrics 요청 1회 |
 | 4 | **이름이 슬롯 키** — 동명이인은 한 슬롯만, 방장이 합류 후 이름 변경 시 매칭 깨짐 | 서버 키를 `(team_id, slot_id)` 로 바꾸고 name 은 표시 속성으로 격하 검토. `0001_baseline.sql` 직접 수정(신규 마이그레이션 파일 금지) |
 | 5 | **폴링 반영 마찰** — 합류가 방장 화면에 즉시 안 뜨고 재입장/당겨서 새로고침 의존 | 그룹 화면 체류 중 주기 폴링(예: 15s) 또는 Supabase realtime 구독 검토. 검증: B폰 합류 후 A폰 그룹 화면이 손 안 대고 갱신 |

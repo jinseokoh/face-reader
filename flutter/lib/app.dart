@@ -10,7 +10,7 @@ import 'package:facely/data/services/auth_service.dart';
 import 'package:facely/data/services/deep_link_service.dart';
 import 'package:facely/presentation/providers/tab_provider.dart';
 import 'package:facely/presentation/screens/compatibility/compatibility_screen.dart';
-import 'package:facely/presentation/screens/home/home_screen.dart';
+import 'package:facely/presentation/screens/chemistry/chemistry_screen.dart';
 import 'package:facely/presentation/screens/physiognomy/physiognomy_screen.dart';
 import 'package:facely/presentation/screens/settings/settings_screen.dart';
 import 'package:facely/presentation/widgets/my_face_nudge_banner.dart';
@@ -150,7 +150,7 @@ class _MainAppState extends ConsumerState<MainApp> {
             children: const [
               PhysiognomyScreen(),
               CompatibilityScreen(),
-              HomeScreen(),
+              ChemistryScreen(),
               SettingsScreen(),
             ],
           ),

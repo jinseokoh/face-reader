@@ -11,7 +11,7 @@ import 'package:facely/data/services/face_metadata_client.dart';
 import 'package:facely/domain/models/capture_result.dart';
 import 'package:facely/domain/models/face_metadata.dart';
 import 'package:facely/domain/services/face_metrics_lateral.dart';
-import 'package:facely/presentation/screens/home/face_mesh_painter.dart';
+import 'package:facely/presentation/screens/chemistry/face_mesh_painter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
@@ -367,7 +367,7 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
   }
 
   /// ML Kit FaceDetector → MediaPipe FaceMesh → yaw 계산 까지 한 사진을
-  /// 분석 입력으로 변환. home_screen 의 이전 _processAlbumPhoto 와 동일 로직.
+  /// 분석 입력으로 변환. chemistry_screen 의 이전 _processAlbumPhoto 와 동일 로직.
   Future<_AlbumPhoto> _processAlbumPhoto(String path) async {
     final inputImage = InputImage.fromFilePath(path);
     final faceDetector = FaceDetector(

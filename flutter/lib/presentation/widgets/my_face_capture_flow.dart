@@ -6,8 +6,8 @@ import 'package:facely/config/router.dart';
 import 'package:facely/data/services/analytics_service.dart';
 import 'package:facely/domain/models/capture_result.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
-import 'package:facely/presentation/screens/home/album_capture_page.dart';
-import 'package:facely/presentation/screens/home/face_mesh_page.dart';
+import 'package:facely/presentation/screens/chemistry/album_capture_page.dart';
+import 'package:facely/presentation/screens/chemistry/face_mesh_page.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 
 /// 내 관상 등록 공용 플로우 — 홈 헤더와 전 탭 nudge 배너가 공유.

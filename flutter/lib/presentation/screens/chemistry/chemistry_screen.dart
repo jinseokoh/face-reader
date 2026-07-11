@@ -1,13 +1,13 @@
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/services/compat/compat_label.dart';
 import 'package:facely/core/theme.dart';
-import 'package:facely/presentation/screens/team/team_band.dart';
 import 'package:facely/domain/models/team_room.dart';
 import 'package:facely/domain/services/team_matrix.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
-import 'package:facely/presentation/providers/team_provider.dart';
 import 'package:facely/presentation/providers/tab_provider.dart';
+import 'package:facely/presentation/providers/team_provider.dart';
+import 'package:facely/presentation/screens/team/team_band.dart';
 import 'package:facely/presentation/screens/team/team_create_page.dart';
 import 'package:facely/presentation/screens/team/team_room_screen.dart';
 import 'package:facely/presentation/widgets/coin_chip.dart';
@@ -18,18 +18,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 
-class HomeScreen extends ConsumerStatefulWidget {
-  const HomeScreen({super.key});
+class ChemistryScreen extends ConsumerStatefulWidget {
+  const ChemistryScreen({super.key});
 
   @override
-  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<ChemistryScreen> createState() => _ChemistryScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
+class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
   @override
   Widget build(BuildContext context) {
     final compact = MediaQuery.of(context).size.height < 720;
-    final imageHeight = compact ? 160.0 : 200.0;
     final topGap = compact ? AppSpacing.sm : AppSpacing.xl;
     final bottomGap = compact ? AppSpacing.lg : AppSpacing.huge;
 
@@ -96,14 +95,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: Column(
                     children: [
                       const SizedBox(height: AppSpacing.sm),
+                      // 초대받은 그룹 빈 상태와 동일 규격 — emotion 패밀리 84.
                       Image.asset(
-                        'assets/images/team-chemistry-map.png',
-                        height: imageHeight,
+                        'assets/images/emotion-laugh.png',
+                        width: 84,
+                        height: 84,
                         fit: BoxFit.contain,
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       Text(
-                        '첫 케미 그룹을 만들어 보세요',
+                        '내가 만든 케미 그룹이 없소이다.',
                         style: AppText.caption.copyWith(
                           color: AppColors.textHint,
                         ),
@@ -195,6 +196,53 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  /// 내 관상 등록 — 공용 플로우 (nudge 배너와 동일 경로).
+  Future<void> _createMyFace() => startMyFaceCapture(context, ref);
+
+  /// [진실의 방 만들기] — 내 관상 선행 조건 게이트 (A5):
+  /// 미설정이면 먼저 [내 관상 만들기] 플로우, 완료 후 생성 페이지로 복귀.
+  Future<void> _createTeam() async {
+    var myFace = _findMyFace();
+    if (myFace == null) {
+      await _createMyFace();
+      if (!mounted) return;
+      myFace = _findMyFace();
+      if (myFace == null) return;
+    }
+    final ownerId = myFace.supabaseId;
+    if (ownerId == null) return;
+    final room =
+        await showTeamCreatePage(context, ref, ownerReportId: ownerId);
+    if (!mounted || room == null) return;
+    _openRoom(room);
+  }
+
+  FaceReadingReport? _findMyFace() {
+    for (final r in ref.read(historyProvider)) {
+      if (r.isMyFace) return r;
+    }
+    return null;
+  }
+
+  void _openRoom(TeamRoom room) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => TeamRoomScreen(roomId: room.id)),
+    );
+  }
+
+  /// 당겨서 새로고침 — push 된 그룹의 합류자·마감을 서버에서 끌어온다.
+  /// 로컬 전용 그룹은 fetch 가 null 이라 no-op.
+  Future<void> _refreshGroups() async {
+    final ids = ref.read(teamsProvider).map((r) => r.id).toList();
+    for (final id in ids) {
+      try {
+        await ref.read(teamsProvider.notifier).refreshFromServer(id);
+      } catch (_) {
+        // 개별 실패는 무시 — 나머지 그룹은 계속 갱신.
+      }
+    }
+  }
+
   /// 교감도 안내 — 궁합 탭 info 다이얼로그와 동일한 형태 (AlertDialog · 흰 배경
   /// · radius 16 · 섹션 헤딩 + 본문 · [닫기]).
   void _showInfoDialog(BuildContext context) {
@@ -265,53 +313,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  /// 당겨서 새로고침 — push 된 그룹의 합류자·마감을 서버에서 끌어온다.
-  /// 로컬 전용 그룹은 fetch 가 null 이라 no-op.
-  Future<void> _refreshGroups() async {
-    final ids = ref.read(teamsProvider).map((r) => r.id).toList();
-    for (final id in ids) {
-      try {
-        await ref.read(teamsProvider.notifier).refreshFromServer(id);
-      } catch (_) {
-        // 개별 실패는 무시 — 나머지 그룹은 계속 갱신.
-      }
-    }
-  }
-
-  /// 내 관상 등록 — 공용 플로우 (nudge 배너와 동일 경로).
-  Future<void> _createMyFace() => startMyFaceCapture(context, ref);
-
-  /// [진실의 방 만들기] — 내 관상 선행 조건 게이트 (A5):
-  /// 미설정이면 먼저 [내 관상 만들기] 플로우, 완료 후 생성 페이지로 복귀.
-  Future<void> _createTeam() async {
-    var myFace = _findMyFace();
-    if (myFace == null) {
-      await _createMyFace();
-      if (!mounted) return;
-      myFace = _findMyFace();
-      if (myFace == null) return;
-    }
-    final ownerId = myFace.supabaseId;
-    if (ownerId == null) return;
-    final room =
-        await showTeamCreatePage(context, ref, ownerReportId: ownerId);
-    if (!mounted || room == null) return;
-    _openRoom(room);
-  }
-
-  FaceReadingReport? _findMyFace() {
-    for (final r in ref.read(historyProvider)) {
-      if (r.isMyFace) return r;
-    }
-    return null;
-  }
-
-  void _openRoom(TeamRoom room) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => TeamRoomScreen(roomId: room.id)),
     );
   }
 
@@ -506,34 +507,30 @@ class _TeamCardState extends ConsumerState<_TeamCard> {
     );
   }
 
-  /// 좌측 상태 아바타 — 모집중과 모집끝 모두 동일한 peopleGroup 아이콘.
-  /// 모집끝은 톤만 gold 계열(goldSoft 바탕 + gold 아이콘)로 구분한다.
-  Widget _statusAvatar(bool isClosed) {
-    const double size = 44;
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: isClosed ? AppColors.goldSoft : Colors.white,
-        border: Border.all(
-          color: isClosed ? AppColors.gold : AppColors.border,
-        ),
-      ),
-      child: Center(
-        child: FaIcon(
-          FontAwesomeIcons.peopleGroup,
-          size: 16,
-          color: isClosed ? AppColors.gold : AppColors.textSecondary,
-        ),
-      ),
-    );
-  }
-
   @override
   void initState() {
     super.initState();
     _computeBestPreview();
+  }
+
+  void _computeBestPreview() {
+    final room = widget.room;
+    if (!room.isClosed) return;
+    final key = '${room.id}:${room.updatedAt.millisecondsSinceEpoch}';
+    final cached = _bestPreviewCache[key];
+    if (cached != null) {
+      _bestPreview = cached;
+      return;
+    }
+    final members = ref.read(teamsProvider.notifier).scannedReports(room);
+    if (members.length < 2) return;
+    final matrix = computeTeamMatrix(members);
+    final runnerUp = matrix.surprises.length;
+    final preview = runnerUp > 0
+        ? '베스트 케미 ${matrix.bests.length}쌍, 버금가는 케미 $runnerUp쌍'
+        : '베스트 케미 ${matrix.bests.length}쌍';
+    _bestPreviewCache[key] = preview;
+    _bestPreview = preview;
   }
 
   /// 방 삭제 — 되돌릴 수 없어 확인 다이얼로그 후 제거.
@@ -567,26 +564,30 @@ class _TeamCardState extends ConsumerState<_TeamCard> {
   /// 모집중 방의 3번째 줄 — 발표(전원 등록 자동 마감)까지 남은 수. 3명 부분
   /// 공개 로직 폐기로 카운트가 빈 슬롯 수와 항상 일치한다.
   String _recruitHint(TeamRoom room) {
-    return '${room.members.length - room.scannedCount}명 더 등록하면 그룹 케미 발표';
+    return '${room.members.length - room.scannedCount}명 더 등록하면 그룹 케미 발표 가능';
   }
 
-  void _computeBestPreview() {
-    final room = widget.room;
-    if (!room.isClosed) return;
-    final key = '${room.id}:${room.updatedAt.millisecondsSinceEpoch}';
-    final cached = _bestPreviewCache[key];
-    if (cached != null) {
-      _bestPreview = cached;
-      return;
-    }
-    final members = ref.read(teamsProvider.notifier).scannedReports(room);
-    if (members.length < 2) return;
-    final matrix = computeTeamMatrix(members);
-    final runnerUp = matrix.surprises.length;
-    final preview = runnerUp > 0
-        ? '베스트 케미 ${matrix.bests.length}쌍, 버금가는 케미 $runnerUp쌍'
-        : '베스트 케미 ${matrix.bests.length}쌍';
-    _bestPreviewCache[key] = preview;
-    _bestPreview = preview;
+  /// 좌측 상태 아바타 — 모집중과 모집끝 모두 동일한 peopleGroup 아이콘.
+  /// 모집끝은 톤만 gold 계열(goldSoft 바탕 + gold 아이콘)로 구분한다.
+  Widget _statusAvatar(bool isClosed) {
+    const double size = 44;
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: isClosed ? AppColors.goldSoft : Colors.white,
+        border: Border.all(
+          color: isClosed ? AppColors.gold : AppColors.border,
+        ),
+      ),
+      child: Center(
+        child: FaIcon(
+          FontAwesomeIcons.peopleGroup,
+          size: 16,
+          color: isClosed ? AppColors.gold : AppColors.textSecondary,
+        ),
+      ),
+    );
   }
 }

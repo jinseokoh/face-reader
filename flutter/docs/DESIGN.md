@@ -330,10 +330,10 @@ EmptyStatePlaceholder(
 **일러스트 변형 (홈 그룹 섹션 전용)**: 홈의 "내가 만든 그룹"/"초대받은 그룹" 두 섹션 빈 상태는
 아이콘 대신 라인아트 일러스트를 쓴다 — 레이아웃 패턴은 동일:
 `Padding(horizontal: AppSpacing.xxl)` > `Column[ SizedBox(sm), Image.asset(BoxFit.contain), SizedBox(sm), Text(캡션 1줄, AppText.caption.copyWith(color: textHint), center) ]`.
-이미지 크기 위계: 내가 만든 그룹 = imageHeight(160/200, 대표 비주얼) / 초대받은 그룹 = **84**
-(emotion 일러스트 패밀리 공통 크기 — nudge 배너의 emotion-photo 와 동일 스케일).
-캡션은 상태 한 줄, 마침표 없음. 일러스트는 흰 배경·검정 라인아트·배경 소품 없음.
-사용처: `home_screen.dart` — team-chemistry-map.png(내가 만든 그룹) · emotion-shrug.png(초대받은 그룹) /
+이미지 크기: 두 섹션 모두 **84** (emotion 일러스트 패밀리 공통 크기 — nudge 배너의
+emotion-photo 와 동일 스케일).
+캡션은 상태 한 줄. 일러스트는 흰 배경·검정 라인아트·배경 소품 없음.
+사용처: `chemistry_screen.dart` — emotion-laugh.png(내가 만든 그룹) · emotion-shrug.png(초대받은 그룹) /
 `physiognomy_screen.dart` — emotion-anger.png(기록 0개) · emotion-sad.png(내 관상 미설정 안내, 리스트 하단) /
 nudge 배너 — emotion-photo.png. **emotion 패밀리는 항상 84px 로 통일.**
 

@@ -731,7 +731,8 @@ textarea.form-input {
   display: block;
   background: var(--ink);
   color: #fff;
-  padding: 16px;
+  /* 세로 12px — CameraTeaser 의 primaryBtn(12px 20px)과 버튼 높이 통일 */
+  padding: 12px 16px;
   border-radius: 12px;
   text-decoration: none;
   font-weight: 600;

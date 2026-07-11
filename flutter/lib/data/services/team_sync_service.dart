@@ -63,6 +63,43 @@ class TeamSyncService {
         };
         (id == null ? pendingRows : memberRows).add(row);
       }
+
+      // 유령 행 제거 — push 가 insert-only 라 로컬에서 사라진(삭제·개명) 이름이
+      // 서버 슬롯으로 남아 초대장에 계속 노출된다 (예: 방장 표기 '나' 가
+      // nickname 으로 바뀐 뒤 남은 옛 '나' 슬롯). upsert 전에 지워야 옛 방장
+      // 행의 (team_id, metrics_id) unique 와 새 이름 insert 가 충돌하지 않는다.
+      // 합류자가 점유한 행은 로컬 병합 전일 수 있으므로 절대 지우지 않는다 —
+      // 미점유 행 + (점유돼도 나 자신인) 옛 방장 행만.
+      final localNames = {
+        ...memberRows.map((r) => r['name'] as String),
+        ...pendingRows.map((r) => r['name'] as String),
+      };
+      final serverRows = await _client
+          .from('team_members')
+          .select('id, name, metrics_id, is_owner')
+          .eq('team_id', room.id);
+      final unclaimedStale = <String>[];
+      final ownerStale = <String>[];
+      for (final r in (serverRows as List).cast<Map<String, dynamic>>()) {
+        if (localNames.contains(r['name'] as String)) continue;
+        if (r['metrics_id'] == null) {
+          unclaimedStale.add(r['id'] as String);
+        } else if (r['is_owner'] == true) {
+          ownerStale.add(r['id'] as String);
+        }
+      }
+      if (unclaimedStale.isNotEmpty) {
+        // metrics_id null 재확인 — fetch 이후 누가 claim 한 행 오삭제 방지.
+        await _client
+            .from('team_members')
+            .delete()
+            .inFilter('id', unclaimedStale)
+            .isFilter('metrics_id', null);
+      }
+      if (ownerStale.isNotEmpty) {
+        await _client.from('team_members').delete().inFilter('id', ownerStale);
+      }
+
       if (memberRows.isNotEmpty) {
         await _client
             .from('team_members')

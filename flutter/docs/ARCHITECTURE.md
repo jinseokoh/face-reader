@@ -33,7 +33,7 @@
 
 | Tab | Screen | 역할 |
 |---|---|---|
-| 0 | `HomeScreen` | 카메라/앨범 진입 + illustration |
+| 0 | `ChemistryScreen` | 카메라/앨범 진입 + illustration |
 | 1 | `PhysiognomyScreen` | 내 관상 + 히스토리 (카메라/앨범 리스트) + 14-node expandable |
 | 2 | `CompatibilityScreen` | 궁합 (compat) — 두 리포트 짝지어 매칭 + 코인 결제 unlock |
 | 3 | `SettingsScreen` | 설정 · 약관 · 로그인/로그아웃 · 계정 삭제 |
@@ -42,10 +42,10 @@
 
 **세로 고정**: `main.dart` 에서 `SystemChrome.setPreferredOrientations([portraitUp])`. 가로 미지원 — 카메라 mesh overlay·radar·hero 카드 레이아웃이 세로 전제.
 
-### 1.2 진입 화면 (HomeScreen)
+### 1.2 진입 화면 (ChemistryScreen)
 
 ```
-[HomeScreen]
+[ChemistryScreen]
   └─ Image.asset('assets/images/home.png') + "관상은 과학이다." 타이틀
   ├─ [카메라로 촬영] → fullSize sheet → FaceMeshPage
   └─ [앨범에서 선택]  → fullSize sheet → AlbumCapturePage
@@ -224,7 +224,7 @@ lib/
 └── presentation/
     ├── providers/                     # Riverpod: history · auth · tab · wallet · free_coin · compat_unlock · di
     ├── screens/
-    │   ├── home/                      # HomeScreen · FaceMeshPage(+painter) · AlbumCapturePage · InfoConfirmScreen · ReportPage
+    │   ├── home/                      # ChemistryScreen · FaceMeshPage(+painter) · AlbumCapturePage · InfoConfirmScreen · ReportPage
     │   ├── physiognomy/               # 관상 탭 (히스토리 + 부위 expand UI)
     │   ├── compatibility/             # CompatibilityScreen · CompatibilityDetailScreen
     │   ├── ads/                       # AdRewardScreen

@@ -8,8 +8,8 @@ import 'package:facely/domain/services/share/share_publisher.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/providers/team_provider.dart';
-import 'package:facely/presentation/screens/home/album_capture_page.dart';
-import 'package:facely/presentation/screens/home/face_mesh_page.dart';
+import 'package:facely/presentation/screens/chemistry/album_capture_page.dart';
+import 'package:facely/presentation/screens/chemistry/face_mesh_page.dart';
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 import 'package:facely/presentation/widgets/primary_button.dart';
@@ -33,6 +33,123 @@ class TeamRoomScreen extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<TeamRoomScreen> createState() => _TeamRoomScreenState();
+}
+
+/// 이름 정하기 다이얼로그 — 아직 안 찍힌 빈자리 이름을 칩으로 먼저 보여주고,
+/// 원하는 이름이 없을 때만 [+ 직접 입력] 으로 텍스트 필드를 연다. 컨트롤러는
+/// 이 State 의 dispose 에서만 해제 (닫힘 애니메이션 중 재사용 방지).
+class _AssignNameDialog extends StatefulWidget {
+  final List<({int index, String name})> pending;
+
+  const _AssignNameDialog({required this.pending});
+
+  @override
+  State<_AssignNameDialog> createState() => _AssignNameDialogState();
+}
+
+class _AssignNameDialogState extends State<_AssignNameDialog> {
+  final TextEditingController _controller = TextEditingController();
+  // 빈자리가 없으면 처음부터 직접 입력만 노출.
+  late bool _typing = widget.pending.isEmpty;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasPending = widget.pending.isNotEmpty;
+    return AlertDialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+      ),
+      title: const Text('누구인가요?', style: AppText.modalTitle),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (hasPending) ...[
+            Text(
+              '명단에서 고르기',
+              style: AppText.caption.copyWith(color: AppColors.textHint),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              children: [
+                for (final p in widget.pending)
+                  _pill(
+                    p.name,
+                    () => Navigator.pop(
+                        context, _NameChoice.slot(p.index, p.name)),
+                  ),
+                if (!_typing)
+                  _pill('+ 직접 입력', () => setState(() => _typing = true)),
+              ],
+            ),
+          ],
+          if (_typing) ...[
+            if (hasPending) const SizedBox(height: AppSpacing.lg),
+            TextField(
+              controller: _controller,
+              autofocus: true,
+              maxLength: 10,
+              style: AppText.body.copyWith(color: AppColors.textPrimary),
+              decoration: InputDecoration(
+                hintText: '예) 성주',
+                hintStyle: AppText.body.copyWith(color: AppColors.textHint),
+                counterText: '',
+              ),
+            ),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, const _NameChoice.fresh('')),
+          child: const Text('건너뛰기',
+              style: TextStyle(color: AppColors.textHint)),
+        ),
+        if (_typing)
+          TextButton(
+            onPressed: () => Navigator.pop(
+                context, _NameChoice.fresh(_controller.text.trim())),
+            child: const Text('저장',
+                style: TextStyle(color: AppColors.textPrimary)),
+          ),
+      ],
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  /// 단일톤 선택 pill (§3.3) — 명단 이름·직접입력 토글 공용.
+  Widget _pill(String label, VoidCallback onTap) {
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.xs + 1,
+          ),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Text(
+            label,
+            style: AppText.body.copyWith(color: AppColors.textPrimary),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// 빈 자리 점선 원 — Flutter 기본 위젯엔 점선 테두리가 없어 직접 그린다.
@@ -61,6 +178,175 @@ class _DashedCirclePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _DashedCirclePainter oldDelegate) => false;
+}
+
+/// 그룹 설정 다이얼로그 — 그룹명 + 멤버 명단(명수) 편집. 방장·스캔 완료
+/// 멤버는 제거 불가 칩(얼굴 보유, 그리드 길게눌러 제거)으로 표시하고, 대기
+/// 이름만 X 로 빼거나 새로 추가한다. 컨트롤러는 이 State 의 dispose 에서만
+/// 해제 (닫힘 애니메이션 중 재사용 방지). 취소=null, 저장=(제목, 대기명단).
+class _GroupSettingsDialog extends StatefulWidget {
+  final String initialTitle;
+  final List<String> scannedNames;
+  final List<String> initialPending;
+
+  const _GroupSettingsDialog({
+    required this.initialTitle,
+    required this.scannedNames,
+    required this.initialPending,
+  });
+
+  @override
+  State<_GroupSettingsDialog> createState() => _GroupSettingsDialogState();
+}
+
+class _GroupSettingsDialogState extends State<_GroupSettingsDialog> {
+  late final TextEditingController _titleController =
+      TextEditingController(text: widget.initialTitle);
+  final TextEditingController _nameController = TextEditingController();
+  late final List<String> _pending = [...widget.initialPending];
+
+  bool get _canAddMore => _total < TeamRoom.kMaxMembers;
+  int get _total => widget.scannedNames.length + _pending.length;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+      ),
+      title: const Text('그룹 설정', style: AppText.modalTitle),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('그룹명',
+                style: AppText.caption.copyWith(color: AppColors.textHint)),
+            const SizedBox(height: AppSpacing.sm),
+            TextField(
+              controller: _titleController,
+              maxLength: 20,
+              style: AppText.body.copyWith(color: AppColors.textPrimary),
+              decoration: const InputDecoration(counterText: ''),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Text('멤버 ($_total/${TeamRoom.kMaxMembers})',
+                style: AppText.caption.copyWith(color: AppColors.textHint)),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              children: [
+                for (final n in widget.scannedNames) _chip(n, null),
+                for (final n in _pending) _chip(n, () => _removeName(n)),
+              ],
+            ),
+            if (_canAddMore) ...[
+              const SizedBox(height: AppSpacing.md),
+              TextField(
+                controller: _nameController,
+                textInputAction: TextInputAction.done,
+                maxLength: 10,
+                style: AppText.body.copyWith(color: AppColors.textPrimary),
+                decoration: InputDecoration(
+                  hintText: '이름 입력 후 엔터',
+                  hintStyle: AppText.body.copyWith(color: AppColors.textHint),
+                  counterText: '',
+                  suffixIcon: IconButton(
+                    icon: const FaIcon(FontAwesomeIcons.plus, size: 16),
+                    color: AppColors.textPrimary,
+                    onPressed: () => _addName(),
+                  ),
+                ),
+                onSubmitted: _addName,
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child:
+              const Text('취소', style: TextStyle(color: AppColors.textHint)),
+        ),
+        TextButton(
+          onPressed: () {
+            if (_nameController.text.trim().isNotEmpty) _addName();
+            Navigator.pop(
+              context,
+              (
+                title: _titleController.text.trim(),
+                pending: List<String>.from(_pending),
+              ),
+            );
+          },
+          child: const Text('저장',
+              style: TextStyle(color: AppColors.textPrimary)),
+        ),
+      ],
+    );
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  /// 대기 이름 추가 — 공백·중복(스캔/대기·예약어 '나')·하드캡 12 차단.
+  void _addName([String? raw]) {
+    final name = (raw ?? _nameController.text).trim();
+    _nameController.clear();
+    if (name.isEmpty || !_canAddMore) return;
+    if (name == '나' ||
+        _pending.contains(name) ||
+        widget.scannedNames.contains(name)) {
+      return;
+    }
+    setState(() => _pending.add(name));
+  }
+
+  /// 단일톤 멤버 칩 — 생성 페이지 _MemberChip 과 동일 토큰. onRemove 없으면
+  /// 제거 불가(방장·스캔 완료).
+  Widget _chip(String name, VoidCallback? onRemove) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.xs + 1,
+        onRemove != null ? AppSpacing.sm : AppSpacing.md,
+        AppSpacing.xs + 1,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(name,
+              style: AppText.body.copyWith(color: AppColors.textPrimary)),
+          if (onRemove != null) ...[
+            const SizedBox(width: AppSpacing.xs),
+            InkWell(
+              onTap: onRemove,
+              customBorder: const CircleBorder(),
+              child: const Padding(
+                padding: EdgeInsets.all(2),
+                child: FaIcon(FontAwesomeIcons.xmark,
+                    size: 12, color: AppColors.textHint),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _removeName(String name) => setState(() => _pending.remove(name));
 }
 
 /// 멤버 셀 — 스캔 완료면 얼굴 아바타, 대기(미스캔)면 이름 + 점선 빈 원(탭→스캔).
@@ -178,25 +464,21 @@ class _MemberCell extends StatelessWidget {
   }
 }
 
+/// 직접촬영 후 이름 선택 결과 — [slotIndex] 가 있으면 기존 빈자리를 고른
+/// 것(그 슬롯을 채움), null 이면 직접 입력한 새 멤버(walk-in).
+class _NameChoice {
+  final int? slotIndex;
+  final String name;
+  const _NameChoice.fresh(this.name) : slotIndex = null;
+  const _NameChoice.slot(this.slotIndex, this.name);
+}
+
 class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
   // 동의 안내(A9)는 방 세션당 1회만.
   bool _consentShown = false;
 
   /// 진행 중인 초대 액션 라벨(타일 스피너·중복 차단용). null = idle.
   String? _busyInvite;
-
-  @override
-  void initState() {
-    super.initState();
-    // 입장 시 서버 폴링 (P3) — push 된 그룹이면 합류자·마감을 끌어온다.
-    // 로컬 전용 그룹은 fetch 가 null 이라 no-op. best-effort.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref
-          .read(teamsProvider.notifier)
-          .refreshFromServer(widget.roomId)
-          .catchError((_) => null);
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -374,7 +656,7 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
                   padding:
                       const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                   child: Text(
-                    '${total - scanned}명 더 등록하면 그룹 케미 발표',
+                    '${total - scanned}명 더 등록하면 그룹 케미 발표 가능',
                     textAlign: TextAlign.center,
                     style:
                         AppText.caption.copyWith(color: AppColors.textHint),
@@ -383,7 +665,7 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
                 // 조기 마감 — 3명 이상 등록 시 방장이 기다리지 않고 발표 가능.
                 const SizedBox(height: AppSpacing.md),
                 SecondaryButton(
-                  label: '지금 발표하기',
+                  label: '발표하기',
                   onPressed: canMatrix ? () => _confirmClose(room) : null,
                 ),
               ],
@@ -395,14 +677,17 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
     );
   }
 
-  /// walk-in 스캔 후 이름 정하기 — 아직 안 찍힌 빈자리(이름만 있는 슬롯)를
-  /// 칩으로 먼저 고르게 하고, 거기 없을 때만 직접 입력. 반환: 빈자리 선택 시
-  /// 그 인덱스+이름, 직접 입력 시 인덱스 null+입력 이름. 취소(barrier)면 null.
-  Future<_NameChoice?> _chooseMemberName(List<({int index, String name})> pending) {
-    return showDialog<_NameChoice>(
-      context: context,
-      builder: (_) => _AssignNameDialog(pending: pending),
-    );
+  @override
+  void initState() {
+    super.initState();
+    // 입장 시 서버 폴링 (P3) — push 된 그룹이면 합류자·마감을 끌어온다.
+    // 로컬 전용 그룹은 fetch 가 null 이라 no-op. best-effort.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref
+          .read(teamsProvider.notifier)
+          .refreshFromServer(widget.roomId)
+          .catchError((_) => null);
+    });
   }
 
   /// 한 명 캡처 — 홈 [내 관상 만들기]와 동일한 카메라(좌하단 앨범 숏컷) 재사용.
@@ -451,6 +736,16 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
       ),
     );
     return popped is FaceReadingReport ? popped : null;
+  }
+
+  /// walk-in 스캔 후 이름 정하기 — 아직 안 찍힌 빈자리(이름만 있는 슬롯)를
+  /// 칩으로 먼저 고르게 하고, 거기 없을 때만 직접 입력. 반환: 빈자리 선택 시
+  /// 그 인덱스+이름, 직접 입력 시 인덱스 null+입력 이름. 취소(barrier)면 null.
+  Future<_NameChoice?> _chooseMemberName(List<({int index, String name})> pending) {
+    return showDialog<_NameChoice>(
+      context: context,
+      builder: (_) => _AssignNameDialog(pending: pending),
+    );
   }
 
   Future<void> _confirmClose(TeamRoom room) async {
@@ -519,6 +814,18 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
     }
   }
 
+  void _copyInviteLink(TeamRoom room) => _runInvite(room, '링크 복사', (_) async {
+        await Clipboard.setData(
+          ClipboardData(text: SharePublisher.instance.teamInviteUrl(room.id)),
+        );
+        if (mounted) {
+          showTopSnackBar(
+            Overlay.of(context),
+            CompactSnackBar.success(message: '링크를 복사했어요'),
+          );
+        }
+      });
+
   Future<bool> _ensureConsent() async {
     if (_consentShown) return true;
     final ok = await _showConsentDialog();
@@ -544,93 +851,6 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
       return false;
     }
     return true;
-  }
-
-  /// 초대 액션 공통 러너 — 게이트 통과 후 [deliver] 실행. [label] 타일에 스피너.
-  Future<void> _runInvite(
-    TeamRoom room,
-    String label,
-    Future<void> Function(Rect? origin) deliver,
-  ) async {
-    if (_busyInvite != null) return;
-    // iOS 공유 시트 anchor — async gap 전에 미리 계산해 둔다.
-    final box = context.findRenderObject() as RenderBox?;
-    final origin = box != null && box.hasSize
-        ? box.localToGlobal(Offset.zero) & box.size
-        : null;
-    setState(() => _busyInvite = label);
-    try {
-      if (!await _ensureInviteReady(room)) return;
-      await deliver(origin);
-    } finally {
-      if (mounted) setState(() => _busyInvite = null);
-    }
-  }
-
-  void _inviteViaKakao(TeamRoom room) => _runInvite(
-        room,
-        '카톡 초대',
-        (origin) => SharePublisher.instance.publishTeamInvite(
-          teamTitle: room.title,
-          roomId: room.id,
-          sharePositionOrigin: origin,
-        ),
-      );
-
-  void _shareInviteLink(TeamRoom room) => _runInvite(
-        room,
-        '링크 공유',
-        (origin) => SharePublisher.instance.shareTeamInviteLink(
-          teamTitle: room.title,
-          roomId: room.id,
-          sharePositionOrigin: origin,
-        ),
-      );
-
-  void _copyInviteLink(TeamRoom room) => _runInvite(room, '링크 복사', (_) async {
-        await Clipboard.setData(
-          ClipboardData(text: SharePublisher.instance.teamInviteUrl(room.id)),
-        );
-        if (mounted) {
-          showTopSnackBar(
-            Overlay.of(context),
-            CompactSnackBar.success(message: '링크를 복사했어요'),
-          );
-        }
-      });
-
-  /// 초대 아이콘 타일 — 등폭 모노톤(브랜드색 금지, §UI 통일). 진행 중이면 스피너,
-  /// 다른 타일은 흐려서 비활성 표시.
-  /// 직접촬영 — 초대 타일(_inviteTile)과 동일한 surface+border 디자인의
-  /// 풀폭 타일 버튼. 같은 행동 패밀리 = 같은 시각 언어.
-  Widget _scanTile({required bool enabled, required VoidCallback onTap}) {
-    return Opacity(
-      opacity: enabled ? 1 : 0.4,
-      child: InkWell(
-        onTap: enabled ? onTap : null,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        child: Container(
-          height: 48,
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const FaIcon(
-                FontAwesomeIcons.solidCamera, // fill — regular(outline) 금지
-                size: 16,
-                color: AppColors.textPrimary,
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              const Text('직접촬영', style: AppText.subTitle),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 
   Widget _inviteTile({
@@ -683,12 +903,43 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
     );
   }
 
+  void _inviteViaKakao(TeamRoom room) => _runInvite(
+        room,
+        '카톡 초대',
+        (origin) => SharePublisher.instance.publishTeamInvite(
+          teamTitle: room.title,
+          roomId: room.id,
+          sharePositionOrigin: origin,
+        ),
+      );
+
   void _openMatrix(TeamRoom room) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => TeamMatrixScreen(roomId: room.id),
       ),
     );
+  }
+
+  /// 초대 액션 공통 러너 — 게이트 통과 후 [deliver] 실행. [label] 타일에 스피너.
+  Future<void> _runInvite(
+    TeamRoom room,
+    String label,
+    Future<void> Function(Rect? origin) deliver,
+  ) async {
+    if (_busyInvite != null) return;
+    // iOS 공유 시트 anchor — async gap 전에 미리 계산해 둔다.
+    final box = context.findRenderObject() as RenderBox?;
+    final origin = box != null && box.hasSize
+        ? box.localToGlobal(Offset.zero) & box.size
+        : null;
+    setState(() => _busyInvite = label);
+    try {
+      if (!await _ensureInviteReady(room)) return;
+      await deliver(origin);
+    } finally {
+      if (mounted) setState(() => _busyInvite = null);
+    }
   }
 
   /// 대기 슬롯(이름만) 을 스캔으로 채운다 — 동의 1회 → 촬영 → 해당 슬롯에 부여.
@@ -770,6 +1021,50 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
     }
   }
 
+  /// 초대 아이콘 타일 — 등폭 모노톤(브랜드색 금지, §UI 통일). 진행 중이면 스피너,
+  /// 다른 타일은 흐려서 비활성 표시.
+  /// 직접촬영 — 초대 타일(_inviteTile)과 동일한 surface+border 디자인의
+  /// 풀폭 타일 버튼. 같은 행동 패밀리 = 같은 시각 언어.
+  Widget _scanTile({required bool enabled, required VoidCallback onTap}) {
+    return Opacity(
+      opacity: enabled ? 1 : 0.4,
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: Container(
+          height: 48,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const FaIcon(
+                FontAwesomeIcons.solidCamera, // fill — regular(outline) 금지
+                size: 16,
+                color: AppColors.textPrimary,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              const Text('직접촬영', style: AppText.subTitle),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _shareInviteLink(TeamRoom room) => _runInvite(
+        room,
+        '링크 공유',
+        (origin) => SharePublisher.instance.shareTeamInviteLink(
+          teamTitle: room.title,
+          roomId: room.id,
+          sharePositionOrigin: origin,
+        ),
+      );
+
   Future<bool> _showConsentDialog() async {
     final ok = await showDialog<bool>(
       context: context,
@@ -824,300 +1119,5 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
     await ref
         .read(teamsProvider.notifier)
         .updateRoster(room.id, title: title, pendingNames: result.pending);
-  }
-}
-
-/// 그룹 설정 다이얼로그 — 그룹명 + 멤버 명단(명수) 편집. 방장·스캔 완료
-/// 멤버는 제거 불가 칩(얼굴 보유, 그리드 길게눌러 제거)으로 표시하고, 대기
-/// 이름만 X 로 빼거나 새로 추가한다. 컨트롤러는 이 State 의 dispose 에서만
-/// 해제 (닫힘 애니메이션 중 재사용 방지). 취소=null, 저장=(제목, 대기명단).
-class _GroupSettingsDialog extends StatefulWidget {
-  final String initialTitle;
-  final List<String> scannedNames;
-  final List<String> initialPending;
-
-  const _GroupSettingsDialog({
-    required this.initialTitle,
-    required this.scannedNames,
-    required this.initialPending,
-  });
-
-  @override
-  State<_GroupSettingsDialog> createState() => _GroupSettingsDialogState();
-}
-
-class _GroupSettingsDialogState extends State<_GroupSettingsDialog> {
-  late final TextEditingController _titleController =
-      TextEditingController(text: widget.initialTitle);
-  final TextEditingController _nameController = TextEditingController();
-  late final List<String> _pending = [...widget.initialPending];
-
-  int get _total => widget.scannedNames.length + _pending.length;
-  bool get _canAddMore => _total < TeamRoom.kMaxMembers;
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _nameController.dispose();
-    super.dispose();
-  }
-
-  /// 대기 이름 추가 — 공백·중복(스캔/대기·예약어 '나')·하드캡 12 차단.
-  void _addName([String? raw]) {
-    final name = (raw ?? _nameController.text).trim();
-    _nameController.clear();
-    if (name.isEmpty || !_canAddMore) return;
-    if (name == '나' ||
-        _pending.contains(name) ||
-        widget.scannedNames.contains(name)) {
-      return;
-    }
-    setState(() => _pending.add(name));
-  }
-
-  void _removeName(String name) => setState(() => _pending.remove(name));
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-      ),
-      title: const Text('그룹 설정', style: AppText.modalTitle),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('그룹명',
-                style: AppText.caption.copyWith(color: AppColors.textHint)),
-            const SizedBox(height: AppSpacing.sm),
-            TextField(
-              controller: _titleController,
-              maxLength: 20,
-              style: AppText.body.copyWith(color: AppColors.textPrimary),
-              decoration: const InputDecoration(counterText: ''),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Text('멤버 ($_total/${TeamRoom.kMaxMembers})',
-                style: AppText.caption.copyWith(color: AppColors.textHint)),
-            const SizedBox(height: AppSpacing.sm),
-            Wrap(
-              spacing: AppSpacing.sm,
-              runSpacing: AppSpacing.sm,
-              children: [
-                for (final n in widget.scannedNames) _chip(n, null),
-                for (final n in _pending) _chip(n, () => _removeName(n)),
-              ],
-            ),
-            if (_canAddMore) ...[
-              const SizedBox(height: AppSpacing.md),
-              TextField(
-                controller: _nameController,
-                textInputAction: TextInputAction.done,
-                maxLength: 10,
-                style: AppText.body.copyWith(color: AppColors.textPrimary),
-                decoration: InputDecoration(
-                  hintText: '이름 입력 후 엔터',
-                  hintStyle: AppText.body.copyWith(color: AppColors.textHint),
-                  counterText: '',
-                  suffixIcon: IconButton(
-                    icon: const FaIcon(FontAwesomeIcons.plus, size: 16),
-                    color: AppColors.textPrimary,
-                    onPressed: () => _addName(),
-                  ),
-                ),
-                onSubmitted: _addName,
-              ),
-            ],
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child:
-              const Text('취소', style: TextStyle(color: AppColors.textHint)),
-        ),
-        TextButton(
-          onPressed: () {
-            if (_nameController.text.trim().isNotEmpty) _addName();
-            Navigator.pop(
-              context,
-              (
-                title: _titleController.text.trim(),
-                pending: List<String>.from(_pending),
-              ),
-            );
-          },
-          child: const Text('저장',
-              style: TextStyle(color: AppColors.textPrimary)),
-        ),
-      ],
-    );
-  }
-
-  /// 단일톤 멤버 칩 — 생성 페이지 _MemberChip 과 동일 토큰. onRemove 없으면
-  /// 제거 불가(방장·스캔 완료).
-  Widget _chip(String name, VoidCallback? onRemove) {
-    return Container(
-      padding: EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        AppSpacing.xs + 1,
-        onRemove != null ? AppSpacing.sm : AppSpacing.md,
-        AppSpacing.xs + 1,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(name,
-              style: AppText.body.copyWith(color: AppColors.textPrimary)),
-          if (onRemove != null) ...[
-            const SizedBox(width: AppSpacing.xs),
-            InkWell(
-              onTap: onRemove,
-              customBorder: const CircleBorder(),
-              child: const Padding(
-                padding: EdgeInsets.all(2),
-                child: FaIcon(FontAwesomeIcons.xmark,
-                    size: 12, color: AppColors.textHint),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-/// 직접촬영 후 이름 선택 결과 — [slotIndex] 가 있으면 기존 빈자리를 고른
-/// 것(그 슬롯을 채움), null 이면 직접 입력한 새 멤버(walk-in).
-class _NameChoice {
-  final int? slotIndex;
-  final String name;
-  const _NameChoice.slot(this.slotIndex, this.name);
-  const _NameChoice.fresh(this.name) : slotIndex = null;
-}
-
-/// 이름 정하기 다이얼로그 — 아직 안 찍힌 빈자리 이름을 칩으로 먼저 보여주고,
-/// 원하는 이름이 없을 때만 [+ 직접 입력] 으로 텍스트 필드를 연다. 컨트롤러는
-/// 이 State 의 dispose 에서만 해제 (닫힘 애니메이션 중 재사용 방지).
-class _AssignNameDialog extends StatefulWidget {
-  final List<({int index, String name})> pending;
-
-  const _AssignNameDialog({required this.pending});
-
-  @override
-  State<_AssignNameDialog> createState() => _AssignNameDialogState();
-}
-
-class _AssignNameDialogState extends State<_AssignNameDialog> {
-  final TextEditingController _controller = TextEditingController();
-  // 빈자리가 없으면 처음부터 직접 입력만 노출.
-  late bool _typing = widget.pending.isEmpty;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final hasPending = widget.pending.isNotEmpty;
-    return AlertDialog(
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-      ),
-      title: const Text('누구인가요?', style: AppText.modalTitle),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (hasPending) ...[
-            Text(
-              '명단에서 고르기',
-              style: AppText.caption.copyWith(color: AppColors.textHint),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Wrap(
-              spacing: AppSpacing.sm,
-              runSpacing: AppSpacing.sm,
-              children: [
-                for (final p in widget.pending)
-                  _pill(
-                    p.name,
-                    () => Navigator.pop(
-                        context, _NameChoice.slot(p.index, p.name)),
-                  ),
-                if (!_typing)
-                  _pill('+ 직접 입력', () => setState(() => _typing = true)),
-              ],
-            ),
-          ],
-          if (_typing) ...[
-            if (hasPending) const SizedBox(height: AppSpacing.lg),
-            TextField(
-              controller: _controller,
-              autofocus: true,
-              maxLength: 10,
-              style: AppText.body.copyWith(color: AppColors.textPrimary),
-              decoration: InputDecoration(
-                hintText: '예) 성주',
-                hintStyle: AppText.body.copyWith(color: AppColors.textHint),
-                counterText: '',
-              ),
-            ),
-          ],
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, const _NameChoice.fresh('')),
-          child: const Text('건너뛰기',
-              style: TextStyle(color: AppColors.textHint)),
-        ),
-        if (_typing)
-          TextButton(
-            onPressed: () => Navigator.pop(
-                context, _NameChoice.fresh(_controller.text.trim())),
-            child: const Text('저장',
-                style: TextStyle(color: AppColors.textPrimary)),
-          ),
-      ],
-    );
-  }
-
-  /// 단일톤 선택 pill (§3.3) — 명단 이름·직접입력 토글 공용.
-  Widget _pill(String label, VoidCallback onTap) {
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(AppRadius.md),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.xs + 1,
-          ),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Text(
-            label,
-            style: AppText.body.copyWith(color: AppColors.textPrimary),
-          ),
-        ),
-      ),
-    );
   }
 }
