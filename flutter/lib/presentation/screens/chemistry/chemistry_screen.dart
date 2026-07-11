@@ -136,23 +136,10 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen>
                   _groupTab(invited, _invitedEmpty, topGap, bottomGap),
                 ],
               )
-            // 내 관상 미등록 — 탭 없이 sticky 섹션 헤더로 두 그룹을 한 스크롤에.
-            : _groupScroll(
-                [
-                  const SliverPersistentHeader(
-                    pinned: true,
-                    delegate: _StickySectionHeader(title: '내가 만든 그룹'),
-                  ),
-                  ..._sectionSlivers(owned, _ownedEmpty),
-                  // 초대받은 방 — P3 원격 합류 방이 들어온다.
-                  const SliverPersistentHeader(
-                    pinned: true,
-                    delegate: _StickySectionHeader(title: '초대받은 그룹'),
-                  ),
-                  ..._sectionSlivers(invited, _invitedEmpty),
-                ],
-                topGap,
-                bottomGap,
+            // 내 관상 미등록 — 관상·궁합 탭 초기 화면과 동일한 §3.8 안내.
+            : const EmotionEmptyState(
+                asset: 'assets/images/emotion-shrug.png',
+                message: '내 관상없이는 참여가 불가능하오.',
               ),
       ),
     );
@@ -205,21 +192,6 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen>
       );
     }
     return _groupScroll([_roomListSliver(rooms)], topGap, bottomGap);
-  }
-
-  /// 미등록 모드의 섹션 sliver — sticky 헤더 아래 빈 상태 또는 카드 리스트.
-  List<Widget> _sectionSlivers(List<TeamRoom> rooms, EmotionEmptyState empty) {
-    if (rooms.isEmpty) {
-      return [
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.only(top: AppSpacing.sm),
-            child: empty,
-          ),
-        ),
-      ];
-    }
-    return [_roomListSliver(rooms)];
   }
 
   Widget _roomListSliver(List<TeamRoom> rooms) {
@@ -357,42 +329,6 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen>
     );
   }
 
-}
-
-/// 홈 섹션 sticky 헤더 — 스크롤해도 상단에 고정 (내가 만든 방 / 초대받은 방).
-class _StickySectionHeader extends SliverPersistentHeaderDelegate {
-  static const double _height = 40;
-
-  final String title;
-
-  const _StickySectionHeader({required this.title});
-
-  @override
-  double get maxExtent => _height;
-
-  @override
-  double get minExtent => _height;
-
-  @override
-  Widget build(
-      BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
-      alignment: Alignment.centerLeft,
-      child: Text(
-        title,
-        style: AppText.caption.copyWith(
-          fontWeight: FontWeight.w600,
-          color: AppColors.textSecondary,
-        ),
-      ),
-    );
-  }
-
-  @override
-  bool shouldRebuild(covariant _StickySectionHeader oldDelegate) =>
-      oldDelegate.title != title;
 }
 
 /// 홈 ② 팀 카드 — §3.2 리스트 아이템 토큰. 발표(마감) 후엔 🏆 베스트 페어
