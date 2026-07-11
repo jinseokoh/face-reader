@@ -58,7 +58,11 @@ class _PhysiognomyItem extends ConsumerWidget {
         children: [
           Material(
             color: AppColors.surface,
-            borderRadius: BorderRadius.circular(AppRadius.lg),
+            // 궁합 카드와 동일한 1px border (§0.0.1 같은 역할 = 같은 chrome).
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              side: const BorderSide(color: AppColors.border),
+            ),
             child: InkWell(
               onTap: () => context.push(
                 '/r/${report.supabaseId ?? 'local'}',

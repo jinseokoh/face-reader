@@ -5,6 +5,10 @@
   "compatibility_flags": ["nodejs_compat"],
   "main": "./workers/app.ts",
   "observability": { "enabled": true },
+  // Cron Triggers — workers/app.ts 의 `scheduled` 핸들러를 Cloudflare 가 호출.
+  // 매시 정각: 48h 자동 발표 / 매일 18:00 UTC (KST 03시): 90일 metrics ·
+  // 30일 teams 정리 (workers/cron.ts).
+  "triggers": { "crons": ["0 * * * *", "0 18 * * *"] },
   "assets": {
     "directory": "./build/client",
     "binding": "ASSETS"

@@ -149,7 +149,7 @@ create policy "coins_self_read"
 
 create table if not exists public.metrics (
   id           uuid        primary key default gen_random_uuid(),
-  user_id      uuid        references auth.users(id) on delete set null,
+  user_id      uuid        references auth.users(id) on delete cascade,
   body         text        not null,
   alias        text,
   is_my_face   boolean     not null default false,
@@ -157,6 +157,14 @@ create table if not exists public.metrics (
   created_at   timestamptz not null default now(),
   updated_at   timestamptz not null default now()
 );
+
+-- on delete cascade 반영 (기존 DB 용 — create table if not exists 는 이미 있는
+-- 테이블의 FK 를 못 바꾼다). 탈퇴 시 익명화된 고아 row 가 남지 않도록 유저
+-- 삭제에 metrics 도 딸려 지운다. 탈퇴 endpoint 의 명시적 DELETE 는 R2 썸네일
+-- 정리·순서 보장용으로 유지 — cascade 는 endpoint 우회 경로의 안전망.
+alter table public.metrics drop constraint if exists metrics_user_id_fkey;
+alter table public.metrics add constraint metrics_user_id_fkey
+  foreign key (user_id) references auth.users(id) on delete cascade;
 
 -- updated_at 인덱스: refine "90일+ 미활동 삭제" 정리 쿼리용.
 create index if not exists idx_metrics_updated_at  on public.metrics (updated_at);

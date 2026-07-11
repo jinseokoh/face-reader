@@ -256,7 +256,7 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
                 children: [
                   Text('$scanned/$total명 등록', style: AppText.subTitle),
                   const SizedBox(width: AppSpacing.sm),
-                  // 마감 = "마감" 금색 뱃지 ("나" 배지와 동일 idiom).
+                  // 마감 = "발표" 금색 뱃지 ("나" 배지와 동일 idiom).
                   if (room.isClosed)
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -266,7 +266,7 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
                         borderRadius: BorderRadius.circular(AppRadius.sm),
                       ),
                       child: Text(
-                        '마감',
+                        '발표',
                         style: AppText.hint.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,
@@ -356,7 +356,7 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
               // 마감된 그룹이면 버튼 위에 작은 안내 라벨.
               if (room.isClosed) ...[
                 Text(
-                  '이미 마감된 그룹입니다.',
+                  '이미 발표가 끝난 그룹입니다.',
                   textAlign: TextAlign.center,
                   style: AppText.caption.copyWith(color: AppColors.textHint),
                 ),
@@ -383,7 +383,7 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
                 // 조기 마감 — 3명 이상 등록 시 방장이 기다리지 않고 발표 가능.
                 const SizedBox(height: AppSpacing.md),
                 SecondaryButton(
-                  label: '마감하고 결과 발표',
+                  label: '지금 발표하기',
                   onPressed: canMatrix ? () => _confirmClose(room) : null,
                 ),
               ],
@@ -461,9 +461,9 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.xl),
         ),
-        title: const Text('마감할까요?', style: AppText.modalTitle),
+        title: const Text('지금 발표할까요?', style: AppText.modalTitle),
         content: const Text(
-          '마감하면 멤버를 더 추가할 수 없고 베스트 페어가 발표됩니다.',
+          '발표하면 멤버를 더 추가할 수 없고 베스트 페어가 공개됩니다.',
           style: AppText.body,
         ),
         actions: [
@@ -474,7 +474,7 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('마감',
+            child: const Text('발표',
                 style: TextStyle(color: AppColors.textPrimary)),
           ),
         ],

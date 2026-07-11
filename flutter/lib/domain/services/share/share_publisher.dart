@@ -4,7 +4,6 @@ import 'dart:ui' show Rect;
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/data/services/supabase_service.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart' hide Gender;
 import 'package:path_provider/path_provider.dart';
@@ -32,6 +31,11 @@ class SharePublisher {
   String get _hostBase =>
       dotenv.env['WEBAPP_BASE']?.trim().replaceAll(RegExp(r'/$'), '') ??
       'https://facely.kr';
+
+  /// 카카오톡 설치 여부. 호출부가 share 버튼을 누른 사용자에게 미설치 안내를
+  /// 띄우거나, 합성 카드 생성 같은 비용 큰 작업을 피하기 위해 사전 체크.
+  Future<bool> isKakaoTalkInstalled() =>
+      ShareClient.instance.isKakaoTalkSharingAvailable();
 
   Future<void> publishCompat({
     required FaceReadingReport my,
@@ -93,11 +97,6 @@ class SharePublisher {
     );
   }
 
-  /// 카카오톡 설치 여부. 호출부가 share 버튼을 누른 사용자에게 미설치 안내를
-  /// 띄우거나, 합성 카드 생성 같은 비용 큰 작업을 피하기 위해 사전 체크.
-  Future<bool> isKakaoTalkInstalled() =>
-      ShareClient.instance.isKakaoTalkSharingAvailable();
-
   /// Solo 공유 — KakaoLink Feed 발송.
   ///
   /// `compositeCardPng` 가 link preview 의 hero 이미지로 들어간다. 호출부가
@@ -140,6 +139,77 @@ class SharePublisher {
   // (제목·설명·이미지·CTA 버튼) 를 보여주려면 KakaoLink Feed template 필수.
   // imageUrl 은 R2 영구 thumbnail (`cdn.facely.kr/{thumbnailKey}`) 또는 fallback.
 
+  Future<void> publishTeamInvite({
+    required String teamTitle,
+    required String roomId,
+    Rect? sharePositionOrigin,
+  }) async {
+    final url = teamInviteUrl(roomId);
+    final text =
+        '[$teamTitle] 관상학으로 풀어보는 나와 케미가 좋은 사람찾기에 참여해 보세요.';
+    if (await isKakaoTalkInstalled()) {
+      // executionParams: 앱 설치 시 '참여하기' 가 카톡 인앱 브라우저를 거치지 않고
+      // 앱을 바로 실행한다 (`kakao{appkey}://kakaolink?g={roomId}`). 미설치면
+      // mobileWebUrl 로 fallback. 받는 처리는 DeepLinkService 의 kakaolink 분기.
+      final link = Link(
+        webUrl: Uri.parse(url),
+        mobileWebUrl: Uri.parse(url),
+        androidExecutionParams: {'g': roomId},
+        iosExecutionParams: {'g': roomId},
+      );
+      // 카드 hero — 웹 OG(/g/:id)와 같은 CDN 배너 한 장을 직접 참조.
+      // imageUrl 은 공개 URL 이면 충분 — 카카오 CDN 업로드는 기기에만 있는
+      // (합성) 이미지용이라, 정적 배너엔 업로드 왕복·보관기간 제한이 낭비.
+      // 크기 힌트 필수 — 없으면 카톡이 기본 박스로 center-crop 해 잘려 보인다.
+      await ShareClient.instance.shareDefault(
+        template: FeedTemplate(
+          content: Content(
+            title: teamTitle,
+            description:
+                '관상학으로 풀어보는 나와 케미가 좋은 사람찾기에 참여해 보세요.',
+            imageUrl: Uri.parse('https://cdn.facely.kr/assets/og.png'),
+            imageWidth: 800,
+            imageHeight: 420,
+            link: link,
+          ),
+          buttons: [Button(title: '참여하기', link: link)],
+        ),
+      );
+    } else {
+      // iOS 는 공유 시트(popover) anchor 로 sharePositionOrigin 을 요구한다.
+      // 누락 시 PlatformException 으로 시트가 안 뜬다.
+      await SharePlus.instance.share(
+        ShareParams(
+          text: '$text\n$url',
+          sharePositionOrigin: sharePositionOrigin,
+        ),
+      );
+    }
+  }
+
+  /// 초대 링크를 OS 공유 시트로 — 카톡 친구가 아닌 상대에게도 아무 채널(문자·DM·
+  /// 복사)로 보낼 수 있다. 카톡 단축은 [publishTeamInvite] 가 담당.
+  Future<void> shareTeamInviteLink({
+    required String teamTitle,
+    required String roomId,
+    Rect? sharePositionOrigin,
+  }) async {
+    final url = teamInviteUrl(roomId);
+    final text =
+        '[$teamTitle] 관상학으로 풀어보는 나와 케미가 좋은 사람찾기에 참여해 보세요.';
+    await SharePlus.instance.share(
+      ShareParams(
+        text: '$text\n$url',
+        sharePositionOrigin: sharePositionOrigin,
+      ),
+    );
+  }
+
+  /// 진실의 방 초대 — 카카오 공유 시트. friends scope 불필요 (받을 친구는
+  /// 카톡 안에서 사용자가 직접 고른다). 카톡 미설치면 OS 공유 시트로 fallback.
+  /// 받는 사람의 합류 처리(/g/{id} 라우트 + 서버 groups)는 P3 — 현재는 링크 전송까지.
+  String teamInviteUrl(String roomId) => '$_hostBase/g/$roomId';
+
   /// share 시점에 metrics row 가 반드시 Supabase 에 존재하도록 보장.
   ///
   /// 로컬 report.supabaseId 만으로는 충분하지 않다 — analyze 시점에 UUID 가
@@ -180,77 +250,6 @@ class SharePublisher {
     );
     debugPrint('[SharePublisher.kakao] $tag url=$webUrl image=$imageUrl');
     await ShareClient.instance.shareDefault(template: template);
-  }
-
-  /// 진실의 방 초대 — 카카오 공유 시트. friends scope 불필요 (받을 친구는
-  /// 카톡 안에서 사용자가 직접 고른다). 카톡 미설치면 OS 공유 시트로 fallback.
-  /// 받는 사람의 합류 처리(/g/{id} 라우트 + 서버 groups)는 P3 — 현재는 링크 전송까지.
-  String teamInviteUrl(String roomId) => '$_hostBase/g/$roomId';
-
-  Future<void> publishTeamInvite({
-    required String teamTitle,
-    required String roomId,
-    Rect? sharePositionOrigin,
-  }) async {
-    final url = teamInviteUrl(roomId);
-    final text =
-        '[$teamTitle] 관상학으로 풀어보는 우리 그룹내에서 나랑 가장 케미가 좋은 사람찾기에 참여해 보세요.';
-    if (await isKakaoTalkInstalled()) {
-      // executionParams: 앱 설치 시 '참여하기' 가 카톡 인앱 브라우저를 거치지 않고
-      // 앱을 바로 실행한다 (`kakao{appkey}://kakaolink?g={roomId}`). 미설치면
-      // mobileWebUrl 로 fallback. 받는 처리는 DeepLinkService 의 kakaolink 분기.
-      final link = Link(
-        webUrl: Uri.parse(url),
-        mobileWebUrl: Uri.parse(url),
-        androidExecutionParams: {'g': roomId},
-        iosExecutionParams: {'g': roomId},
-      );
-      // 카드 hero — FACELY 얼굴 모자이크 배너(800x400, 카카오 권장 2:1). asset 을
-      // 카카오 image CDN 에 올려 FeedTemplate imageUrl 로. 텍스트만 보내면 밋밋
-      // 하고 신뢰도가 떨어져 FeedTemplate(제목·이미지·설명·버튼) 으로 보낸다.
-      final banner = await rootBundle.load('assets/images/800x400.png');
-      final upload = await ShareClient.instance
-          .uploadImage(byteData: banner.buffer.asUint8List());
-      await ShareClient.instance.shareDefault(
-        template: FeedTemplate(
-          content: Content(
-            title: teamTitle,
-            description:
-                '관상학으로 풀어보는 우리 그룹내에서 나랑 가장 케미가 좋은 사람찾기에 참여해 보세요.',
-            imageUrl: Uri.parse(upload.infos.original.url),
-            link: link,
-          ),
-          buttons: [Button(title: '참여하기', link: link)],
-        ),
-      );
-    } else {
-      // iOS 는 공유 시트(popover) anchor 로 sharePositionOrigin 을 요구한다.
-      // 누락 시 PlatformException 으로 시트가 안 뜬다.
-      await SharePlus.instance.share(
-        ShareParams(
-          text: '$text\n$url',
-          sharePositionOrigin: sharePositionOrigin,
-        ),
-      );
-    }
-  }
-
-  /// 초대 링크를 OS 공유 시트로 — 카톡 친구가 아닌 상대에게도 아무 채널(문자·DM·
-  /// 복사)로 보낼 수 있다. 카톡 단축은 [publishTeamInvite] 가 담당.
-  Future<void> shareTeamInviteLink({
-    required String teamTitle,
-    required String roomId,
-    Rect? sharePositionOrigin,
-  }) async {
-    final url = teamInviteUrl(roomId);
-    final text =
-        '[$teamTitle] 관상학으로 풀어보는 우리 그룹내에서 나랑 가장 케미가 좋은 사람찾기에 참여해 보세요.';
-    await SharePlus.instance.share(
-      ShareParams(
-        text: '$text\n$url',
-        sharePositionOrigin: sharePositionOrigin,
-      ),
-    );
   }
 
   Future<void> _shareFile({

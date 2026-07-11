@@ -27,7 +27,7 @@ MediaPipe Face Mesh 468 landmarks → 26 frontal + 8 lateral metric → 14-node 
 | 2 | **P3 2기기 검증** | A폰 그룹 생성 → [카톡 초대] → B폰 링크 탭 → 원탭 합류(또는 빈 슬롯 claim) → 양쪽 매트릭스 갱신 → A폰 마감 → `facely.kr/g/{id}` 쇼케이스 렌더(사진·점수 없음, 이름+밴드만) |
 | 3 | **P2 현장 경로 기기 검증** | 그룹 생성(스텝 플로우) → 4명 연속 등록 → 매트릭스(🏆 무료·내 행 최상단 고정) → 페어 탭 → 1🪙 unlock → 상세 풀이 |
 | 4 | **웹 티저 실기기 검증** (ad2f1d23 커밋이 "실기기 검증 남음" 명시) | 카톡 인앱 브라우저에서 `/g/{id}` 티저 시작 → 외부 브라우저 탈출 → getUserMedia 카메라 → runMetrics/runCompat 결과 → 앱 설치 유도 |
-| 5 | **48h 자동 마감 서버 cron** — 미구현. 현재 자동 마감은 "전원 등록 시" 로컬 트리거(`_autoCloseIfComplete`)뿐이라, 안 들어오는 멤버가 있으면 그룹이 영원히 열려 있음 | Supabase scheduled function(또는 pg_cron)이 `created_at + 48h` 경과 그룹을 close + `matrix_payload` 없으면 마감만. 웹 쇼케이스 전환 확인 |
+| 5 | **48h 자동 마감 서버 cron** — 구현됨(2026-07-11, `react/workers/cron.ts` Cloudflare Cron Triggers 매시). owner 앱이 다음 refresh 에서 `matrix_payload` backfill, 3명 미만은 웹 "인원 미달 종료" 렌더 | `pnpm run build && pnpm deploy` 후 Workers 대시보드에서 cron 실행 이력 확인 + 48h 경과 테스트 그룹의 웹 전환 확인 |
 
 ## 🟠 우선순위 2 — 초대 퍼널 완성 + 원격 경로 한계 해소
 
@@ -47,7 +47,7 @@ MediaPipe Face Mesh 468 landmarks → 26 frontal + 8 lateral metric → 14-node 
 
 | # | 작업 | 완료 기준 |
 |---|---|---|
-| 1 | **그룹 수명주기** — 발표 후 30일 보관 → 만료. 웹 쇼케이스 만료 안내 포함. `metrics` 90일+ 미활동 정리도 cron 실제 스케줄 확인 | 만료 그룹이 홈 "보관"으로 이동, `/g/{id}` 가 만료 안내 렌더, 정리 쿼리 동작 확인 |
+| 1 | **그룹 수명주기** — 서버 측 구현됨(2026-07-11, `react/workers/cron.ts` 매일: 발표 후 30일 teams 실삭제 + `metrics` 90일 미활동 anon 정리). 남은 것: 클라이언트 만료 *표시* — 홈 "보관" 이동, `/g/{id}` 만료 안내 렌더 (`closed_at+30일` 계산형) | 만료 그룹이 홈 "보관"으로 이동, `/g/{id}` 가 만료 안내 렌더 |
 | 2 | **신고·차단** — 그룹 단위 신고 + 방장의 멤버 제거 + 부적절 그룹명 필터 | 신고 접수 경로 + 제거 시 매트릭스 재계산 확인 |
 | 3 | **시즌 템플릿** — 신학기·명절·연말 제안 칩/이벤트 배너 (ad_images 활용) | 배너 노출·생성 플로우 연결 |
 | 4 | **스토어 패키지** — 앱 이름·부제·스크린샷을 교감도 전면으로, App Review notes(온디바이스 468 landmark 측정 기술 + 데모 영상), Android 선출시 → iOS 4.3(b) 재제출 | Android 프로덕션 출시, iOS 제출 |

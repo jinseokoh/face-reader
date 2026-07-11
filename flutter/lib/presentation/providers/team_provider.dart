@@ -268,7 +268,16 @@ class TeamsNotifier extends Notifier<List<TeamRoom>> {
           existing.members.add(TeamMember(name: m.name, reportId: mid));
         }
       }
-      if (remote.closedAt != null) existing.closedAt = remote.closedAt;
+      if (remote.closedAt != null) {
+        existing.closedAt = remote.closedAt;
+        // 서버(48h cron)가 닫은 방은 matrix_payload 가 없다 — owner 의 다음
+        // refresh 에서 웹 쇼케이스용 payload 를 backfill. 3명 미만이면 매트릭스
+        // 불성립이라 생략 (웹이 "인원 미달 종료" 렌더).
+        final scanned = existing.members.where((m) => m.isScanned).length;
+        if (remote.matrixPayload == null && scanned >= TeamRoom.kMinMembers) {
+          unawaited(_syncClose(existing));
+        }
+      }
       existing.updatedAt = DateTime.now();
       _resort();
       await _save();

@@ -54,7 +54,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('교감'),
+            const Text('케미'),
             // 궁합 탭과 동일한 잔액 chip (공용 CoinChip) — tap = 설정 탭.
             if (auth != null) ...[
               const SizedBox(width: AppSpacing.md),
@@ -71,7 +71,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           // 궁합 탭과 동일 형태의 info 버튼 + 다이얼로그.
           IconButton(
             icon: const FaIcon(FontAwesomeIcons.circleInfo, size: 20),
-            tooltip: '교감도에 대하여',
+            tooltip: '그룹 케미에 대하여',
             onPressed: () => _showInfoDialog(context),
           ),
         ],
@@ -103,7 +103,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       Text(
-                        '첫 교감도를 만들어 보세요',
+                        '첫 케미 그룹을 만들어 보세요',
                         style: AppText.caption.copyWith(
                           color: AppColors.textHint,
                         ),
@@ -209,7 +209,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('교감도에 대하여', style: AppText.modalTitle),
+        title: const Text('그룹 케미에 대하여', style: AppText.modalTitle),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -238,7 +238,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               const Text(
                 '그룹을 만들고 직접촬영 또는 카톡 초대로 멤버를 등록합니다. '
                 '전원이 등록되면 그룹 케미가 발표됩니다. 3명 이상 모이면 '
-                '기다리지 않고 마감해 먼저 발표할 수도 있습니다.',
+                '기다리지 않고 먼저 발표할 수 있습니다.',
                 style: AppText.body,
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -376,7 +376,11 @@ class _TeamCardState extends ConsumerState<_TeamCard> {
     final room = widget.room;
     final card = Material(
       color: AppColors.surface,
-      borderRadius: BorderRadius.circular(AppRadius.lg),
+      // 궁합 카드와 동일한 1px border (§0.0.1 같은 역할 = 같은 chrome).
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        side: const BorderSide(color: AppColors.border),
+      ),
       child: InkWell(
         onTap: widget.onTap,
         borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -479,13 +483,14 @@ class _TeamCardState extends ConsumerState<_TeamCard> {
             ),
           ],
         ),
-        // 마감 카드 좌상단 대각선 "완료" 리본 — 새 색 없이 gold 바탕 + 흰 텍스트.
+        // 마감 카드 좌상단 대각선 "발표" 리본 — 새 색 없이 gold 바탕 + 흰 텍스트.
         // 카드 radius 로 ClipRRect 해 리본 끝이 모서리에 맞춰 잘린다.
+        // UI 카피는 "발표" 통일 — "마감" 은 코드·스키마 내부 용어로만.
         child: room.isClosed
             ? ClipRRect(
                 borderRadius: BorderRadius.circular(AppRadius.lg),
                 child: Banner(
-                  message: '마감',
+                  message: '발표',
                   location: BannerLocation.topStart,
                   color: AppColors.gold,
                   textStyle: AppText.hint.copyWith(

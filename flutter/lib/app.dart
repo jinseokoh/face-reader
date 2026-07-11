@@ -178,7 +178,7 @@ class _MainAppState extends ConsumerState<MainApp> {
           ),
           BottomNavigationBarItem(
             icon: FaIcon(FontAwesomeIcons.peopleGroup, size: 22),
-            label: '교감',
+            label: '케미',
           ),
           BottomNavigationBarItem(
             icon: FaIcon(FontAwesomeIcons.userGear, size: 22),
