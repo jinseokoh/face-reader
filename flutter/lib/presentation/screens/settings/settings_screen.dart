@@ -61,8 +61,23 @@ class SettingsScreen extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(user.nickname ?? '사용자',
-                                style: AppText.sectionTitle),
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(user.nickname ?? '사용자',
+                                      style: AppText.sectionTitle,
+                                      overflow: TextOverflow.ellipsis),
+                                ),
+                                const SizedBox(width: 8),
+                                // 카카오 로그인이 준 기본 이름 수정 진입점.
+                                GestureDetector(
+                                  onTap: () => _showNicknameDialog(
+                                      context, ref, user.nickname ?? ''),
+                                  child: FaIcon(FontAwesomeIcons.pen,
+                                      size: 12, color: AppTheme.textHint),
+                                ),
+                              ],
+                            ),
                             const SizedBox(height: 2),
                             Text(
                                 switch (user.provider) {
@@ -224,6 +239,59 @@ class SettingsScreen extends ConsumerWidget {
 
   void _showPurchaseSheet(BuildContext context, WidgetRef ref) {
     PurchaseSheet.show(context);
+  }
+
+  /// 프로필 이름 변경 — 관상 탭 '이름 변경' 다이얼로그와 동일 레시피.
+  void _showNicknameDialog(
+    BuildContext context,
+    WidgetRef ref,
+    String currentName,
+  ) {
+    final controller = TextEditingController(text: currentName);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+        ),
+        title: const Text('이름 변경', style: AppText.modalTitle),
+        content: TextField(
+          controller: controller,
+          maxLength: 64,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: '이름을 입력하세요'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              '취소',
+              style: AppText.body.copyWith(color: AppColors.textHint),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              final name = controller.text.trim();
+              Navigator.pop(ctx);
+              if (name.isEmpty || name == currentName) return;
+              final ok = await ref
+                  .read(authProvider.notifier)
+                  .updateNickname(name);
+              if (!ok && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('이름 변경에 실패했습니다')),
+                );
+              }
+            },
+            child: Text(
+              '저장',
+              style: AppText.body.copyWith(color: AppColors.textPrimary),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _confirmLogout(BuildContext context, WidgetRef ref) {

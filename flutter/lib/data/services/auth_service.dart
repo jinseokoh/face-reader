@@ -37,10 +37,10 @@ class AuthUser {
     this.provider,
   });
 
-  AuthUser copyWith({int? coins}) => AuthUser(
+  AuthUser copyWith({int? coins, String? nickname}) => AuthUser(
         id: id,
         kakaoUserId: kakaoUserId,
-        nickname: nickname,
+        nickname: nickname ?? this.nickname,
         profileImageUrl: profileImageUrl,
         coins: coins ?? this.coins,
         signupBonusSkipped: signupBonusSkipped,
@@ -399,6 +399,23 @@ class AuthService {
     } catch (e) {
       debugPrint('[Auth] refreshCoins error: $e');
       return _currentUser?.coins ?? 0;
+    }
+  }
+
+  /// 프로필 이름 변경 — 카카오 로그인 시 받아온 기본 nickname 을 사용자가
+  /// 직접 수정. RLS users_self_update 로 본인 row 만 갱신 가능.
+  Future<bool> updateNickname(String nickname) async {
+    final user = _currentUser;
+    if (user == null) return false;
+    try {
+      await _client
+          .from('users')
+          .update({'nickname': nickname}).eq('id', user.id);
+      _setUser(user.copyWith(nickname: nickname));
+      return true;
+    } catch (e) {
+      debugPrint('[Auth] updateNickname error: $e');
+      return false;
     }
   }
 

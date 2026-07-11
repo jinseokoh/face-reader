@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:face_engine/domain/models/face_reading_report.dart';
+import 'package:facely/data/services/auth_service.dart';
 
 class SupabaseService {
   static final SupabaseService _instance = SupabaseService._();
@@ -24,10 +25,20 @@ class SupabaseService {
   Future<String> saveMetrics(FaceReadingReport report) async {
     final id = report.supabaseId ?? _uuid.v4();
 
+    // alias 컬럼 = 소유자 지정 이름 (RLS 는 body 안의 alias 만 금지 — 컬럼 OK).
+    // 내 관상의 로컬 전용 표기 '나' 는 서버 밖에선 무의미 — 설정에서 수정
+    // 가능한 프로필 nickname 을 fallback 으로 올린다. 상대방 row 는 내가
+    // 지정한 이름 그대로 (nickname 은 내 이름이라 fallback 대상 아님).
+    final alias = report.isMyFace &&
+            (report.alias == null || report.alias == '나')
+        ? AuthService().currentUser?.nickname
+        : report.alias;
+
     final data = {
       'id': id,
       'user_id': _client.auth.currentUser?.id,
       'body': report.toBodyJson(),
+      'alias': alias,
       'is_my_face': report.isMyFace,
     };
 

@@ -69,6 +69,10 @@ class AuthNotifier extends Notifier<AuthUser?> {
     await AuthService().refreshCoins();
   }
 
+  Future<bool> updateNickname(String nickname) async {
+    return AuthService().updateNickname(nickname);
+  }
+
   Future<bool> deductCoins(int amount, {String? description}) async {
     return AuthService().deductCoins(amount, description: description);
   }

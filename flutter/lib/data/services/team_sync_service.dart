@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:face_engine/domain/models/face_reading_report.dart';
+import 'package:facely/data/services/auth_service.dart';
 import 'package:facely/domain/models/team_room.dart';
 import 'package:facely/domain/services/share/share_receive_service.dart';
 
@@ -47,10 +48,17 @@ class TeamSyncService {
       final pendingRows = <Map<String, dynamic>>[];
       for (int i = 0; i < room.members.length; i++) {
         final id = room.members[i].reportId;
+        // 방장 슬롯의 로컬 전용 표기 '나' 는 웹 초대장·쇼케이스에 그대로
+        // 노출되면 안 된다 — 프로필 nickname 으로 치환해 올린다 (로컬 화면은
+        // '나' 유지).
+        var name = room.members[i].name;
+        if (i == 0 && name == '나') {
+          name = AuthService().currentUser?.nickname ?? name;
+        }
         final row = {
           'team_id': room.id,
           'metrics_id': id,
-          'name': room.members[i].name,
+          'name': name,
           'is_owner': i == 0,
         };
         (id == null ? pendingRows : memberRows).add(row);

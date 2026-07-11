@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/core/hive/hive_setup.dart';
+import 'package:facely/data/services/auth_service.dart';
 import 'package:facely/data/services/team_sync_service.dart';
 import 'package:facely/domain/models/team_room.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
@@ -184,10 +185,14 @@ class TeamsNotifier extends Notifier<List<TeamRoom>> {
   }
 
   /// 마감 그룹의 web 쇼케이스용 payload. 멤버 표시 이름은 그룹 명단 우선.
+  /// 방장의 로컬 전용 표기 '나' 는 웹에 그대로 노출되면 안 된다 — 프로필
+  /// nickname 으로 치환 (로컬 매트릭스 화면은 '나' 유지).
   Map<String, dynamic>? _buildPayload(TeamRoom room) {
+    final myNickname = AuthService().currentUser?.nickname;
     final nameById = <String, String>{
       for (final m in room.members)
-        if (m.reportId != null) m.reportId!: m.name,
+        if (m.reportId != null)
+          m.reportId!: m.name == '나' ? (myNickname ?? m.name) : m.name,
     };
     return buildTeamMatrixPayload(
       title: room.title,
