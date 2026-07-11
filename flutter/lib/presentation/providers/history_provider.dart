@@ -55,21 +55,38 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
     return reports;
   }
 
+  /// 내 관상의 기본 별칭. 지정 시 별칭이 없으면 자동 부여, 해제 시 자동
+  /// 부여분('나')만 되돌린다 — 사용자가 직접 지은 별칭은 건드리지 않는다.
+  static const _kMyFaceAlias = '나';
+
+  /// 내 관상 ↔ 별칭 '나' 동기화. 별칭이 바뀌었으면 true.
+  bool _syncMyFaceAlias(FaceReadingReport r) {
+    if (r.isMyFace && r.alias == null) {
+      r.alias = _kMyFaceAlias;
+      return true;
+    }
+    if (!r.isMyFace && r.alias == _kMyFaceAlias) {
+      r.alias = null;
+      return true;
+    }
+    return false;
+  }
+
   /// 내 관상 싱글톤 정규화 — isMyFace=true 가 2개 이상이면 **첫 번째(최신, 리스트는
   /// newest-first)만 유지**하고 나머지는 false 로. 하나 이상 바꿨으면 true.
   bool _normalizeMyFace(List<FaceReadingReport> reports) {
     var seen = false;
     var changed = false;
     for (final r in reports) {
-      if (!r.isMyFace) continue;
-      if (seen) {
+      if (r.isMyFace && seen) {
         r.isMyFace = false;
         changed = true;
-      } else {
+      } else if (r.isMyFace) {
         seen = true;
       }
+      if (_syncMyFaceAlias(r)) changed = true;
     }
-    if (changed) _log('normalizeMyFace — 중복 내 관상 정리됨');
+    if (changed) _log('normalizeMyFace — 중복 내 관상/별칭 정리됨');
     return changed;
   }
 
@@ -102,8 +119,10 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
     if (report.isMyFace) {
       for (final r in state) {
         r.isMyFace = false;
+        _syncMyFaceAlias(r); // 자동 별칭 '나' 회수
       }
     }
+    _syncMyFaceAlias(report); // 지정 카드에 기본 별칭 '나'
     state = [report, ...state];
     await _saveToHive();
   }
@@ -126,6 +145,7 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
     for (int i = 0; i < state.length; i++) {
       final r = state[i];
       r.isMyFace = (i == index);
+      _syncMyFaceAlias(r);
       updated.add(r);
     }
     state = [...updated];
@@ -136,6 +156,7 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
     final updated = <FaceReadingReport>[];
     for (final r in state) {
       r.isMyFace = false;
+      _syncMyFaceAlias(r);
       updated.add(r);
     }
     state = [...updated];

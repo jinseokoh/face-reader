@@ -8,8 +8,8 @@ import 'package:facely/core/theme.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/providers/tab_provider.dart';
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
+import 'package:facely/presentation/widgets/emotion_empty_state.dart';
 import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
-import 'package:facely/presentation/widgets/empty_state_placeholder.dart';
 import 'package:facely/presentation/widgets/physiognomy_info_dialog.dart';
 import 'package:facely/presentation/widgets/source_badge.dart';
 import 'package:flutter/material.dart';
@@ -289,20 +289,20 @@ class _PhysiognomyItem extends ConsumerWidget {
 
   Widget _buildLeadingIcon() {
     // §3.7 — 내 관상 프로필 헤더 avatar 42px 와 동일 사이즈.
+    // 아바타는 전 탭 공통 circle (rounded square 금지 — 통일감).
     const size = 42.0;
     final file = ThumbnailPaths.resolveFileSync(report.thumbnailPath);
     if (file != null && file.existsSync()) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadius.md),
+      return ClipOval(
         child: Image.file(file, width: size, height: size, fit: BoxFit.cover),
       );
     }
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.border,
-        borderRadius: BorderRadius.circular(AppRadius.md),
+        shape: BoxShape.circle,
       ),
       child: FaIcon(
         switch (report.source) {
@@ -512,29 +512,55 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
                   onPressed: () => _showInfoDialog(context),
                 ),
               ],
-              bottom: TabBar(
-                controller: tabController,
-                labelColor: AppColors.textPrimary,
-                unselectedLabelColor: AppColors.textHint,
-                indicatorColor: AppColors.textPrimary,
-                tabs: [
-                  const Tab(text: '카메라'),
-                  const Tab(text: '앨범'),
-                  if (hasBookmarks) const Tab(text: '공유받음'),
-                ],
-              ),
+              // 궁합 탭과 동일 규칙 — 내부 탭은 내 관상 등록 후에만 나타난다.
+              // 미등록 상태에선 탭 없이 단일 리스트 (카드별 SourceBadge 가
+              // 소스를 전달). 탭 라벨엔 개수 노출 (스크롤 없이 존재 여부 인지).
+              bottom: hasMyFace
+                  ? TabBar(
+                      controller: tabController,
+                      labelColor: AppColors.textPrimary,
+                      unselectedLabelColor: AppColors.textHint,
+                      indicatorColor: AppColors.textPrimary,
+                      tabs: [
+                        Tab(
+                          text: '카메라 '
+                              '(${history.where((r) => r.source == AnalysisSource.camera).length})',
+                        ),
+                        Tab(
+                          text: '앨범 '
+                              '(${history.where((r) => r.source == AnalysisSource.album).length})',
+                        ),
+                        if (hasBookmarks)
+                          Tab(
+                            text: '공유받음 '
+                                '(${history.where((r) => r.source == AnalysisSource.received).length})',
+                          ),
+                      ],
+                    )
+                  : null,
             ),
           ),
         ],
-        body: TabBarView(
-          controller: tabController,
-          children: [
-            _buildList(history, const [AnalysisSource.camera], hasMyFace),
-            _buildList(history, const [AnalysisSource.album], hasMyFace),
-            if (hasBookmarks)
-              _buildList(history, const [AnalysisSource.received], hasMyFace),
-          ],
-        ),
+        body: hasMyFace
+            ? TabBarView(
+                controller: tabController,
+                children: [
+                  _buildList(history, const [AnalysisSource.camera], hasMyFace),
+                  _buildList(history, const [AnalysisSource.album], hasMyFace),
+                  if (hasBookmarks)
+                    _buildList(
+                        history, const [AnalysisSource.received], hasMyFace),
+                ],
+              )
+            : _buildList(
+                history,
+                const [
+                  AnalysisSource.camera,
+                  AnalysisSource.album,
+                  AnalysisSource.received,
+                ],
+                hasMyFace,
+              ),
       ),
     );
   }
@@ -595,12 +621,12 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
               handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
             ),
             if (allEmpty)
+              // §3.8 일러스트 빈 상태 — 궁합 탭과 동일한 공용 EmotionEmptyState.
               const SliverFillRemaining(
                 hasScrollBody: false,
-                child: EmptyStatePlaceholder(
-                  icon: FontAwesomeIcons.clockRotateLeft,
-                  title: '분석 기록이 없습니다',
-                  detail: '홈 탭 이동 후 관상을 분석해 보세요',
+                child: EmotionEmptyState(
+                  asset: 'assets/images/emotion-anger.png',
+                  message: '아직 관상을 등록하지 않았다니!',
                 ),
               )
             else ...[
@@ -616,8 +642,6 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
                     child: _RecentListHeader(
                       order: _sortOrder,
                       onChanged: (v) => setState(() => _sortOrder = v),
-                      source: groups[gi].$1,
-                      count: groups[gi].$2.length,
                       // sort popup 은 첫 section 에만 — 한 tab 당 1개.
                       showSortToggle: gi == 0,
                     ),
@@ -730,80 +754,40 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
   }
 }
 
+/// 내 관상 미설정 안내 — 공용 EmotionEmptyState (§3.8) 재사용.
+/// 아이템이 있는 리스트 하단에서 "등록 또는 기존 사진으로 변경" 경로를 안내.
 class _ProfileHintCard extends StatelessWidget {
   const _ProfileHintCard();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-      ),
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          const FaIcon(
-            FontAwesomeIcons.lightbulb,
-            color: AppColors.gold,
-            size: 18,
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Text(
-              '더보기 메뉴 (점3개) 버튼을 누르고, 내 관상을 설정하면 다른 사람과 나와의 궁합을 분석해 볼 수 있어요',
-              style: AppText.caption.copyWith(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Text('💕', style: AppText.hint.copyWith(fontSize: 22)),
-        ],
-      ),
+    return const EmotionEmptyState(
+      asset: 'assets/images/emotion-sad.png',
+      message: '점3개 (더보기 메뉴) 버튼을 누르면 이미 등록한\n'
+          '사진을 내 관상으로 변경할 수 도 있습니다. ',
     );
   }
 }
 
+/// 탭 리스트 상단 정렬 셀렉터 — 섹션 라벨·개수는 탭 라벨이 담당하므로
+/// (같은 정보 중복 금지, 궁합 탭과 동일 패턴) 우측 정렬 selector 만.
 class _RecentListHeader extends StatelessWidget {
   final _SortOrder order;
   final ValueChanged<_SortOrder> onChanged;
-  final AnalysisSource source;
-  final int count;
   final bool showSortToggle;
 
   const _RecentListHeader({
     required this.order,
     required this.onChanged,
-    required this.source,
-    required this.count,
     this.showSortToggle = true,
   });
 
-  String get _label => switch (source) {
-    AnalysisSource.camera => '카메라로 분석한 관상',
-    AnalysisSource.album => '앨범사진으로 분석한 관상',
-    AnalysisSource.received => '공유받은 카드',
-  };
-
   @override
   Widget build(BuildContext context) {
-    // received section 에만 count 노출 — viral funnel UX: 받은 카드 갯수를
-    // 사용자가 한 눈에 인지하도록.
-    final text = source == AnalysisSource.received
-        ? '$_label ($count)'
-        : _label;
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      mainAxisAlignment: MainAxisAlignment.end,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text(
-          text,
-          style: AppText.sectionTitle.copyWith(fontWeight: FontWeight.w700),
-        ),
         if (showSortToggle)
           PopupMenuButton<_SortOrder>(
             tooltip: '정렬',

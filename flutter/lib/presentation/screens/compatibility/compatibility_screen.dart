@@ -22,7 +22,7 @@ import 'package:facely/presentation/providers/recent_unlock_focus_provider.dart'
 import 'package:facely/presentation/providers/tab_provider.dart';
 import 'package:facely/presentation/screens/compatibility/compat_unlock_action.dart';
 import 'package:facely/presentation/widgets/coin_chip.dart';
-import 'package:facely/presentation/widgets/empty_state_placeholder.dart';
+import 'package:facely/presentation/widgets/emotion_empty_state.dart';
 import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
 import 'package:facely/presentation/widgets/source_badge.dart';
 import 'package:flutter/material.dart';
@@ -39,12 +39,24 @@ class CompatibilityScreen extends ConsumerStatefulWidget {
       _CompatibilityScreenState();
 }
 
-class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
+class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
+    with SingleTickerProviderStateMixin {
   // 미확인 카드는 점수가 노출되지 않으므로 시간 기준 정렬만 의미 있음.
   _LockedSort _lockedSort = _LockedSort.newest;
   // 확인 카드는 점수까지 노출되므로 score 정렬을 기본값으로 (가장 흥미로운
   // 매치를 먼저 보여줌).
   _UnlockedSort _unlockedSort = _UnlockedSort.score;
+
+  // 미확인/확인 2탭 — 관상 탭과 동일한 inner-tab 구성. 탭 라벨의 개수로
+  // 스크롤 없이 존재 여부가 보인다.
+  late final TabController _tabController =
+      TabController(length: 2, vsync: this);
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,6 +72,42 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
         ref.watch(unlockedPartnerBodiesProvider).asData?.value ??
         const <FaceReadingReport>[];
     final auth = ref.watch(authProvider);
+
+    // 받은 카드 CTA 결제 직후 — '확인' 탭으로 자동 전환 (핀 고정과 결합).
+    ref.listen<String?>(recentUnlockFocusProvider, (prev, next) {
+      if (next != null && _tabController.index != 1) {
+        _tabController.animateTo(1);
+      }
+    });
+
+    // 두 섹션 분리 — 로컬 history 기반. (탭 라벨 개수 계산을 위해 build 에서.)
+    final lockedList = <FaceReadingReport>[];
+    final unlockedList = <FaceReadingReport>[];
+    if (myFace != null) {
+      final localIds = <String>{};
+      for (final o in others) {
+        // pair_key = 상대 supabaseId 단독. 내 사진을 바꿔도 같은 상대면 키가
+        // 동일해 unlock 이 유지된다(재결제 없음). 점수는 현재 내 관상으로 재계산.
+        final key = tryPairKey(myFace, o);
+        if (o.supabaseId != null) localIds.add(o.supabaseId!);
+        final isUnlocked = key != null && unlocked.contains(key);
+        if (isUnlocked) {
+          unlockedList.add(o);
+        } else {
+          lockedList.add(o);
+        }
+      }
+      // 로컬에 없는 복원 파트너를 unlocked 에 추가 (gap fill).
+      for (final r in reconstructed) {
+        if (r.supabaseId != null && !localIds.contains(r.supabaseId)) {
+          unlockedList.add(r);
+        }
+      }
+    }
+
+    // 탭은 실제 데이터가 있을 때만 — 내 관상 미설정·전체 0건은 안내 화면.
+    final showTabs =
+        myFace != null && !(others.isEmpty && unlockedList.isEmpty);
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -85,25 +133,41 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
             onPressed: () => _showInfoDialog(context),
           ),
         ],
+        bottom: showTabs
+            ? TabBar(
+                controller: _tabController,
+                labelColor: AppColors.textPrimary,
+                unselectedLabelColor: AppColors.textHint,
+                indicatorColor: AppColors.textPrimary,
+                tabs: [
+                  Tab(text: '미확인 (${lockedList.length})'),
+                  Tab(text: '확인 (${unlockedList.length})'),
+                ],
+              )
+            : null,
       ),
-      body: _body(context, myFace, others, unlocked, reconstructed),
+      body: showTabs
+          ? TabBarView(
+              controller: _tabController,
+              children: [
+                _lockedTab(context, myFace, lockedList),
+                _unlockedTab(context, myFace, unlockedList),
+              ],
+            )
+          : _guideBody(others),
     );
   }
 
-  Widget _body(
-    BuildContext context,
-    FaceReadingReport? myFace,
-    List<FaceReadingReport> others,
-    Set<String> unlocked,
-    List<FaceReadingReport> reconstructed,
-  ) {
-    if (myFace == null) {
-      // 비교할 상대가 하나도 없으면 종전대로 빈 상태.
+  /// 탭 없이 표시되는 안내 화면 — 내 관상 미설정 / 상대 0명.
+  Widget _guideBody(List<FaceReadingReport> others) {
+    final history = ref.read(historyProvider);
+    final hasMyFace = history.any((r) => r.isMyFace);
+    if (!hasMyFace) {
+      // 비교할 상대가 하나도 없으면 빈 상태 — 관상 탭과 동일한 §3.8 레시피.
       if (others.isEmpty) {
-        return const EmptyStatePlaceholder(
-          icon: FontAwesomeIcons.userPlus,
-          title: '내 관상이 등록되지 않았습니다',
-          detail: '궁합을 보려면 내 관상 등록이 필요합니다',
+        return const EmotionEmptyState(
+          asset: 'assets/images/emotion-sad.png',
+          message: '궁합을 보려면 내 관상 등록이 필요합니다.',
         );
       }
       // 저장된 상대는 있는데 내 관상이 없으면 — "등록만 하면 이 사람들과 궁합을
@@ -111,46 +175,70 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
       // 등록 CTA 는 nudge 스낵바 [내 관상 등록하기]가 전담 (중복 제거).
       return _InactiveCompatPreview(others: others);
     }
+    return const EmotionEmptyState(
+      asset: 'assets/images/emotion-shrug.png',
+      message: '카메라나 앨범으로 상대방의 관상을 추가하세요.',
+    );
+  }
 
-    // 두 섹션 분리 — 로컬 history 기반.
-    final lockedList = <FaceReadingReport>[];
-    final unlockedList = <FaceReadingReport>[];
-    final localIds = <String>{};
-    for (final o in others) {
-      // pair_key = 상대 supabaseId 단독. 내 사진을 바꿔도 같은 상대면 키가
-      // 동일해 unlock 이 유지된다(재결제 없음). 점수는 현재 내 관상으로 재계산.
-      final key = tryPairKey(myFace, o);
-      if (o.supabaseId != null) localIds.add(o.supabaseId!);
-      final isUnlocked = key != null && unlocked.contains(key);
-      if (isUnlocked) {
-        unlockedList.add(o);
-      } else {
-        lockedList.add(o);
-      }
-    }
-
-    // 로컬에 없는 복원 파트너를 unlocked 에 추가 (gap fill).
-    for (final r in reconstructed) {
-      if (r.supabaseId != null && !localIds.contains(r.supabaseId)) {
-        unlockedList.add(r);
-      }
-    }
-
-    if (others.isEmpty && unlockedList.isEmpty) {
-      return const EmptyStatePlaceholder(
-        icon: FontAwesomeIcons.peoplePulling,
-        title: '상대방의 관상을 등록하세요',
-        detail: '카메라나 앨범으로 상대방의 관상을 추가하세요',
+  /// 미확인 탭 — 시간 정렬 + 잠금 카드 리스트.
+  Widget _lockedTab(
+    BuildContext context,
+    FaceReadingReport myFace,
+    List<FaceReadingReport> lockedList,
+  ) {
+    if (lockedList.isEmpty) {
+      // 탭이 떠 있는데 미확인 0 = 전부 확인함 — happy.
+      return const EmotionEmptyState(
+        asset: 'assets/images/emotion-happy.png',
+        message: '미확인 궁합이 없습니다.',
       );
     }
 
     // 미확인 — 시간 기준 정렬만.
-    lockedList.sort(
+    final sorted = [...lockedList]..sort(
       (a, b) => switch (_lockedSort) {
         _LockedSort.newest => b.timestamp.compareTo(a.timestamp),
         _LockedSort.oldest => a.timestamp.compareTo(b.timestamp),
       },
     );
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      children: [
+        _SortSelector<_LockedSort>(
+          value: _lockedSort,
+          values: _LockedSort.values,
+          labelOf: (v) => v.label,
+          onChanged: (v) => setState(() => _lockedSort = v),
+        ),
+        const SizedBox(height: 8),
+        ...sorted.map(
+          (other) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _CompatLockedCard(
+              album: other,
+              onUnlockPressed: () =>
+                  _handleUnlockPressed(context, ref, myFace, other),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 확인 탭 — score/시간 정렬 + 결제 직후 항목 핀 고정.
+  Widget _unlockedTab(
+    BuildContext context,
+    FaceReadingReport myFace,
+    List<FaceReadingReport> unlockedList,
+  ) {
+    if (unlockedList.isEmpty) {
+      return const EmotionEmptyState(
+        asset: 'assets/images/emotion-anger.png',
+        message: '아직 궁합을 보지 않았다니!',
+      );
+    }
 
     // 확인 — score 정렬 시에만 pipeline 호출 (시간 정렬은 timestamp 만 비교).
     final List<FaceReadingReport> unlockedSorted;
@@ -180,8 +268,8 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
         );
     }
 
-    // 방금 결제한 항목(받은 카드 CTA 경유)을 정렬과 무관하게 '확인' 맨 위로
-    // 고정. 사용자가 정렬을 바꾸거나 카드를 누르면 해제(아래 콜백) → 일반 정렬.
+    // 방금 결제한 항목(받은 카드 CTA 경유)을 정렬과 무관하게 맨 위로 고정.
+    // 사용자가 정렬을 바꾸거나 카드를 누르면 해제(아래 콜백) → 일반 정렬.
     final focusId = ref.watch(recentUnlockFocusProvider);
     final unlockedPinned =
         (focusId != null && unlockedSorted.any((r) => r.supabaseId == focusId))
@@ -194,59 +282,32 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       children: [
-        if (lockedList.isNotEmpty) ...[
-          _SectionHeader<_LockedSort>(
-            title: '미확인',
-            count: lockedList.length,
-            value: _lockedSort,
-            values: _LockedSort.values,
-            labelOf: (v) => v.label,
-            onChanged: (v) => setState(() => _lockedSort = v),
-          ),
-          const SizedBox(height: 8),
-          ...lockedList.map(
-            (other) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _CompatLockedCard(
-                album: other,
-                onUnlockPressed: () =>
-                    _handleUnlockPressed(context, ref, myFace, other),
-              ),
+        _SortSelector<_UnlockedSort>(
+          value: _unlockedSort,
+          values: _UnlockedSort.values,
+          labelOf: (v) => v.label,
+          onChanged: (v) => setState(() {
+            _unlockedSort = v;
+            ref.read(recentUnlockFocusProvider.notifier).clear();
+          }),
+        ),
+        const SizedBox(height: 8),
+        ...unlockedPinned.map(
+          (other) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _CompatListCard(
+              my: myFace,
+              album: other,
+              onTap: () {
+                ref.read(recentUnlockFocusProvider.notifier).clear();
+                AnalyticsService.instance.logClickCompat();
+                context.pushCompat(my: myFace, album: other);
+              },
+              onDelete: () =>
+                  _confirmDeleteUnlock(context, ref, myFace, other),
             ),
           ),
-        ],
-        if (lockedList.isNotEmpty && unlockedPinned.isNotEmpty)
-          const SizedBox(height: 20),
-        if (unlockedPinned.isNotEmpty) ...[
-          _SectionHeader<_UnlockedSort>(
-            title: '확인',
-            count: unlockedPinned.length,
-            value: _unlockedSort,
-            values: _UnlockedSort.values,
-            labelOf: (v) => v.label,
-            onChanged: (v) => setState(() {
-              _unlockedSort = v;
-              ref.read(recentUnlockFocusProvider.notifier).clear();
-            }),
-          ),
-          const SizedBox(height: 8),
-          ...unlockedPinned.map(
-            (other) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _CompatListCard(
-                my: myFace,
-                album: other,
-                onTap: () {
-                  ref.read(recentUnlockFocusProvider.notifier).clear();
-                  AnalyticsService.instance.logClickCompat();
-                  context.pushCompat(my: myFace, album: other);
-                },
-                onDelete: () =>
-                    _confirmDeleteUnlock(context, ref, myFace, other),
-              ),
-            ),
-          ),
-        ],
+        ),
       ],
     );
   }
@@ -1232,16 +1293,14 @@ enum _UnlockedSort {
 
 /// 섹션 헤더 — 타이틀(N) + 정렬 토글. 관상 탭의 sort selector 와 동일 패턴
 /// (DESIGN.md §0.0.1 통일성). T 는 각 섹션의 enum 타입.
-class _SectionHeader<T> extends StatelessWidget {
-  final String title;
-  final int count;
+/// 탭 리스트 상단의 정렬 셀렉터 — 섹션 타이틀·개수는 탭 라벨이 담당하므로
+/// (같은 정보 중복 금지) 우측 정렬 selector 만 남긴다.
+class _SortSelector<T> extends StatelessWidget {
   final T value;
   final List<T> values;
   final String Function(T) labelOf;
   final ValueChanged<T> onChanged;
-  const _SectionHeader({
-    required this.title,
-    required this.count,
+  const _SortSelector({
     required this.value,
     required this.values,
     required this.labelOf,
@@ -1251,12 +1310,8 @@ class _SectionHeader<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        Text(
-          '$title ($count)',
-          style: AppText.sectionTitle.copyWith(fontWeight: FontWeight.w700),
-        ),
         PopupMenuButton<T>(
           tooltip: '정렬',
           initialValue: value,

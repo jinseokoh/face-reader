@@ -43,7 +43,7 @@ class MyFaceHeader extends StatelessWidget {
     final titleText = isSet
         ? '${mf.ageGroup.labelKo} ${mf.gender.labelKo} '
               '${mf.ethnicity.labelKo}'
-        : '내 관상을 설정해주세요.';
+        : '내 관상이 필요합니다.';
     final captionText = isSet ? (mf.alias ?? mf.faceShape.korean) : unsetCaption;
     final content = Container(
       decoration: const BoxDecoration(
