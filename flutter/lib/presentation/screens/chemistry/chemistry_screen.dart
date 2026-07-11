@@ -11,8 +11,8 @@ import 'package:facely/presentation/screens/team/team_band.dart';
 import 'package:facely/presentation/screens/team/team_create_page.dart';
 import 'package:facely/presentation/screens/team/team_room_screen.dart';
 import 'package:facely/presentation/widgets/coin_chip.dart';
+import 'package:facely/presentation/widgets/emotion_empty_state.dart';
 import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
-import 'package:facely/presentation/widgets/primary_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -25,7 +25,18 @@ class ChemistryScreen extends ConsumerStatefulWidget {
   ConsumerState<ChemistryScreen> createState() => _ChemistryScreenState();
 }
 
-class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
+class _ChemistryScreenState extends ConsumerState<ChemistryScreen>
+    with SingleTickerProviderStateMixin {
+  // 탭 수는 2 고정 (내가 만든 / 초대받은) — 동적 재생성 불필요.
+  late final TabController _tabController =
+      TabController(length: 2, vsync: this);
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final compact = MediaQuery.of(context).size.height < 720;
@@ -33,7 +44,9 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
     final bottomGap = compact ? AppSpacing.lg : AppSpacing.huge;
 
     // 팀 카드의 alias·썸네일이 history 변화에 반응하도록 watch 유지.
-    ref.watch(historyProvider);
+    final history = ref.watch(historyProvider);
+    // 관상·궁합 탭과 동일 규칙 — 내부 탭은 내 관상 등록 후에만 나타난다.
+    final hasMyFace = history.any((r) => r.isMyFace);
     final auth = ref.watch(authProvider);
     final teams = ref.watch(teamsProvider);
     // 소유는 생성 시점에 고정된 ownedByMe 로 판정 — 변경 가능한 내 관상 id 와
@@ -67,6 +80,32 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
         ),
         // 다른 사람 관상보기 pill 은 관상 탭 AppBar 로 이관 (2026-07-10).
         actions: [
+          // [케미 그룹 시작] — 궁합 [상대방 관상 추가] pill 과 동일한
+          // outlined stadium 레시피 (§2.5). 내 관상 등록 후에만 노출.
+          if (hasMyFace)
+            Center(
+              child: GestureDetector(
+                onTap: _createTeam,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    border: Border.all(color: AppColors.textPrimary),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '케미 그룹 시작',
+                    style: AppText.caption.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           // 궁합 탭과 동일 형태의 info 버튼 + 다이얼로그.
           IconButton(
             icon: const FaIcon(FontAwesomeIcons.circleInfo, size: 20),
@@ -74,123 +113,125 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
             onPressed: () => _showInfoDialog(context),
           ),
         ],
+        // 관상 탭과 동일 속성의 TabBar (labelColor·indicator·라벨 개수 표기).
+        bottom: hasMyFace
+            ? TabBar(
+                controller: _tabController,
+                labelColor: AppColors.textPrimary,
+                unselectedLabelColor: AppColors.textHint,
+                indicatorColor: AppColors.textPrimary,
+                tabs: [
+                  Tab(text: '내가 만든 케미 그룹 (${owned.length})'),
+                  Tab(text: '초대받은 케미 그룹 (${invited.length})'),
+                ],
+              )
+            : null,
       ),
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _refreshGroups,
-          child: CustomScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            slivers: [
-            SliverToBoxAdapter(child: SizedBox(height: topGap)),
-            // 내가 만든 방 — sticky 섹션 헤더.
-            const SliverPersistentHeader(
-              pinned: true,
-              delegate: _StickySectionHeader(title: '내가 만든 그룹'),
-            ),
-            if (owned.isEmpty)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.xxl),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: AppSpacing.sm),
-                      // 초대받은 그룹 빈 상태와 동일 규격 — emotion 패밀리 84.
-                      Image.asset(
-                        'assets/images/emotion-laugh.png',
-                        width: 84,
-                        height: 84,
-                        fit: BoxFit.contain,
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        '내가 만든 케미 그룹이 없소이다.',
-                        style: AppText.caption.copyWith(
-                          color: AppColors.textHint,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
+        child: hasMyFace
+            ? TabBarView(
+                controller: _tabController,
+                children: [
+                  _groupTab(owned, _ownedEmpty, topGap, bottomGap),
+                  _groupTab(invited, _invitedEmpty, topGap, bottomGap),
+                ],
               )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.xxl, AppSpacing.md, AppSpacing.xxl, 0),
-                sliver: SliverList.builder(
-                  itemCount: owned.length,
-                  itemBuilder: (_, i) => _TeamCard(
-                    key: ValueKey(owned[i].id),
-                    room: owned[i],
-                    onTap: () => _openRoom(owned[i]),
+            // 내 관상 미등록 — 탭 없이 sticky 섹션 헤더로 두 그룹을 한 스크롤에.
+            : _groupScroll(
+                [
+                  const SliverPersistentHeader(
+                    pinned: true,
+                    delegate: _StickySectionHeader(title: '내가 만든 그룹'),
                   ),
-                ),
-              ),
-            // ③ 생성 CTA — 내가 만든 방 섹션 바로 아래.
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.xxl, AppSpacing.sm, AppSpacing.xxl,
-                    AppSpacing.xl),
-                // 본문 CTA 는 흰색+1px border — 검정 invert 는 오버레이(스낵바) 전용.
-                child: SecondaryButton(
-                  label: '그룹 케미 시작하기',
-                  onPressed: _createTeam,
-                ),
-              ),
-            ),
-            // 초대받은 방 — sticky 섹션 헤더. P3 원격 합류 방이 들어온다.
-            const SliverPersistentHeader(
-              pinned: true,
-              delegate: _StickySectionHeader(title: '초대받은 그룹'),
-            ),
-            if (invited.isEmpty)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.xxl),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: AppSpacing.sm),
-                      // nudge 스낵바의 emotion-photo(84) 와 동일 크기 — 같은
-                      // emotion 일러스트 패밀리는 같은 스케일로.
-                      Image.asset(
-                        'assets/images/emotion-shrug.png',
-                        width: 84,
-                        height: 84,
-                        fit: BoxFit.contain,
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        '초대받은 그룹이 없습니다',
-                        style: AppText.caption.copyWith(
-                          color: AppColors.textHint,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
+                  ..._sectionSlivers(owned, _ownedEmpty),
+                  // 초대받은 방 — P3 원격 합류 방이 들어온다.
+                  const SliverPersistentHeader(
+                    pinned: true,
+                    delegate: _StickySectionHeader(title: '초대받은 그룹'),
                   ),
-                ),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.xxl, AppSpacing.md, AppSpacing.xxl, 0),
-                sliver: SliverList.builder(
-                  itemCount: invited.length,
-                  itemBuilder: (_, i) => _TeamCard(
-                    key: ValueKey(invited[i].id),
-                    room: invited[i],
-                    onTap: () => _openRoom(invited[i]),
-                  ),
-                ),
+                  ..._sectionSlivers(invited, _invitedEmpty),
+                ],
+                topGap,
+                bottomGap,
               ),
-            // 다른 사람 관상 보기는 AppBar 우상단 버튼(카메라/앨범)으로 일원화 —
-            // 하단 중복 보조 컨테이너 제거.
-            SliverToBoxAdapter(child: SizedBox(height: bottomGap)),
-            ],
+      ),
+    );
+  }
+
+  /// 당겨서 새로고침이 붙은 그룹 스크롤 — 탭 본문과 미등록 단일 스크롤 공용.
+  Widget _groupScroll(List<Widget> slivers, double topGap, double bottomGap) {
+    return RefreshIndicator(
+      onRefresh: _refreshGroups,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverToBoxAdapter(child: SizedBox(height: topGap)),
+          ...slivers,
+          // 다른 사람 관상 보기는 AppBar 우상단 버튼(카메라/앨범)으로 일원화 —
+          // 하단 중복 보조 컨테이너 제거.
+          SliverToBoxAdapter(child: SizedBox(height: bottomGap)),
+        ],
+      ),
+    );
+  }
+
+  // §3.8 공용 빈 상태 — 탭 본문(세로 중앙)과 미등록 섹션이 공유.
+  static const _ownedEmpty = EmotionEmptyState(
+    asset: 'assets/images/emotion-laugh.png',
+    message: '내가 만든 케미 그룹이 없소이다.',
+  );
+  static const _invitedEmpty = EmotionEmptyState(
+    asset: 'assets/images/emotion-shrug.png',
+    message: '초대받은 그룹이 없습니다',
+  );
+
+  /// 탭 본문 — 빈 리스트는 관상 빈 탭과 동일하게 SliverFillRemaining 으로
+  /// 화면 세로 중앙 정렬.
+  Widget _groupTab(
+    List<TeamRoom> rooms,
+    EmotionEmptyState empty,
+    double topGap,
+    double bottomGap,
+  ) {
+    if (rooms.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _refreshGroups,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverFillRemaining(hasScrollBody: false, child: empty),
+          ],
+        ),
+      );
+    }
+    return _groupScroll([_roomListSliver(rooms)], topGap, bottomGap);
+  }
+
+  /// 미등록 모드의 섹션 sliver — sticky 헤더 아래 빈 상태 또는 카드 리스트.
+  List<Widget> _sectionSlivers(List<TeamRoom> rooms, EmotionEmptyState empty) {
+    if (rooms.isEmpty) {
+      return [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.sm),
+            child: empty,
           ),
+        ),
+      ];
+    }
+    return [_roomListSliver(rooms)];
+  }
+
+  Widget _roomListSliver(List<TeamRoom> rooms) {
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.xxl, AppSpacing.md, AppSpacing.xxl, 0),
+      sliver: SliverList.builder(
+        itemCount: rooms.length,
+        itemBuilder: (_, i) => _TeamCard(
+          key: ValueKey(rooms[i].id),
+          room: rooms[i],
+          onTap: () => _openRoom(rooms[i]),
         ),
       ),
     );
