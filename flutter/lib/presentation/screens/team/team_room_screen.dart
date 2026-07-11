@@ -362,26 +362,25 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
                 ),
                 const SizedBox(height: AppSpacing.sm),
               ],
-              // 그룹 케미 보기 — 스캔 3명부터 (A7: 부분 공개, 마감과 무관).
-              // 인원 미달이면 버튼 대신 배경 없는 작은 안내 텍스트.
-              if (canMatrix)
+              // 케미는 발표(마감) 후에만 — 3명 부분 공개 로직 폐기. 카운트는
+              // 빈 슬롯 수와 항상 일치해 "N명이면 N명" 기대 그대로 동작한다.
+              if (room.isClosed)
                 SecondaryButton(
                   label: '그룹 케미 보기',
                   onPressed: () => _openMatrix(room),
                 )
-              else
+              else ...[
                 Padding(
                   padding:
                       const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                   child: Text(
-                    '${TeamRoom.kMinMembers - scanned}명 더 등록하면 그룹 케미 발표',
+                    '${total - scanned}명 더 등록하면 그룹 케미 발표',
                     textAlign: TextAlign.center,
                     style:
                         AppText.caption.copyWith(color: AppColors.textHint),
                   ),
                 ),
-              // 수동 마감 — 전원 스캔 완료 전에만. 완료 시 자동 마감되므로 숨김.
-              if (!room.isClosed && scanned < total) ...[
+                // 조기 마감 — 3명 이상 등록 시 방장이 기다리지 않고 발표 가능.
                 const SizedBox(height: AppSpacing.md),
                 SecondaryButton(
                   label: '마감하고 결과 발표',

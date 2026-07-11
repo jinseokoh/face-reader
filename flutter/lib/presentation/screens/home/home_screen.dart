@@ -237,7 +237,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               const SizedBox(height: AppSpacing.sm),
               const Text(
                 '그룹을 만들고 직접촬영 또는 카톡 초대로 멤버를 등록합니다. '
-                '3명부터 그룹 케미가 공개되고, 전원 등록되면 발표로 전환됩니다.',
+                '전원이 등록되면 그룹 케미가 발표됩니다. 3명 이상 모이면 '
+                '기다리지 않고 마감해 먼저 발표할 수도 있습니다.',
                 style: AppText.body,
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -558,11 +559,9 @@ class _TeamCardState extends ConsumerState<_TeamCard> {
     await ref.read(teamsProvider.notifier).delete(room.id);
   }
 
-  /// 모집중 방의 3번째 줄 — 발표(자동 마감)까지 남은 스캔 수를 사실 그대로.
+  /// 모집중 방의 3번째 줄 — 발표(전원 등록 자동 마감)까지 남은 수. 3명 부분
+  /// 공개 로직 폐기로 카운트가 빈 슬롯 수와 항상 일치한다.
   String _recruitHint(TeamRoom room) {
-    if (room.members.length < TeamRoom.kMinMembers) {
-      return '최소 ${TeamRoom.kMinMembers}명부터 발표';
-    }
     return '${room.members.length - room.scannedCount}명 더 등록하면 그룹 케미 발표';
   }
 
