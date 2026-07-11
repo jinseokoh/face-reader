@@ -248,16 +248,13 @@ class _CompatShareSide extends StatelessWidget {
         Text(alias,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w700)),
+            style: AppText.caption.copyWith(
+                color: Colors.white, fontWeight: FontWeight.w700)),
         const SizedBox(height: 2),
         Text(demographic,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-                color: _CompatPalette.sand, fontSize: 10.5, height: 1.3)),
+            style: AppText.hint.copyWith(color: _CompatPalette.sand)),
       ],
     );
   }
@@ -283,16 +280,12 @@ class _NarrativeCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title,
-              style: const TextStyle(
+              style: AppText.modalTitle.copyWith(
                   color: AppColors.darkBrown,
-                  fontSize: 19,
-                  fontWeight: FontWeight.bold)),
+                  fontWeight: FontWeight.w700)),
           const SizedBox(height: AppSpacing.md),
           Text(body,
-              style: const TextStyle(
-                  fontSize: 15,
-                  color: AppColors.darkBrown,
-                  height: 1.7)),
+              style: AppText.body.copyWith(color: AppColors.darkBrown)),
         ],
       ),
     );
@@ -348,9 +341,8 @@ class _ShareHashtag extends StatelessWidget {
         border: Border.all(color: border),
       ),
       child: Text('$prefix${chip.label}',
-          style: TextStyle(
+          style: AppText.caption.copyWith(
               color: fg,
-              fontSize: 13,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.2)),
     );
@@ -370,9 +362,8 @@ class _SubBar extends StatelessWidget {
           SizedBox(
             width: 76,
             child: Text(row.label,
-                style: const TextStyle(
-                    fontSize: 13,
-                    color: AppTheme.textPrimary)),
+                style: AppText.caption.copyWith(
+                    color: AppColors.textPrimary)),
           ),
           const SizedBox(width: 6),
           Expanded(
@@ -408,18 +399,13 @@ class _SubBar extends StatelessWidget {
               children: [
                 Text(
                   row.value.toStringAsFixed(0),
-                  style: const TextStyle(
-                    fontSize: 15,
+                  style: AppText.subTitle.copyWith(
                     fontWeight: FontWeight.w700,
-                    color: AppTheme.textPrimary,
                   ),
                 ),
-                const Text(
+                Text(
                   ' / 100',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: AppTheme.textHint,
-                  ),
+                  style: AppText.hint.copyWith(fontSize: 10),
                 ),
               ],
             ),
@@ -561,9 +547,8 @@ class _TotalHeader extends StatelessWidget {
           Align(
             alignment: Alignment.centerLeft,
             child: Text('궁합도 과학이다',
-                style: TextStyle(
+                style: AppText.hint.copyWith(
                     color: _CompatPalette.sand,
-                    fontSize: 12,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 1)),
           ),
@@ -574,19 +559,16 @@ class _TotalHeader extends StatelessWidget {
             children: [
               Text(
                 label.korean,
-                style: const TextStyle(
-                  fontFamily: 'SongMyung',
+                style: AppText.display.copyWith(
                   color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
                   height: 1.0,
                 ),
               ),
               const SizedBox(width: 4),
               Text(
                 '(${label.hanja})',
-                style: TextStyle(
-                  fontFamily: 'SongMyung',
+                // display 짝 한자 — display anchor + 명시적 크기 유지.
+                style: AppText.display.copyWith(
                   color: _CompatPalette.sand,
                   fontSize: 22,
                   fontWeight: FontWeight.w400,
@@ -598,9 +580,8 @@ class _TotalHeader extends StatelessWidget {
           const SizedBox(height: 6),
           Text(_labelTagline(label),
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: AppText.caption.copyWith(
                   color: _CompatPalette.sand,
-                  fontSize: 13,
                   letterSpacing: 1)),
           const SizedBox(height: 18),
           Row(
@@ -611,13 +592,15 @@ class _TotalHeader extends StatelessWidget {
                       report: my,
                       alias: myAlias,
                       demographic: myDemographic)),
-              const Padding(
-                padding: EdgeInsets.only(top: 24),
+              Padding(
+                padding: const EdgeInsets.only(top: 24),
+                // 데이터 glyph — 토큰 anchor + 명시적 크기 유지.
                 child: Text('×',
-                    style: TextStyle(
+                    style: AppText.sectionTitle.copyWith(
                         color: Colors.white,
                         fontSize: 32,
-                        fontWeight: FontWeight.w300)),
+                        fontWeight: FontWeight.w300,
+                        height: 1.0)),
               ),
               Expanded(
                   child: _CompatShareSide(
@@ -641,9 +624,8 @@ class _TotalHeader extends StatelessWidget {
             ),
             child: Text(relation,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: AppText.hint.copyWith(
                     color: Colors.white,
-                    fontSize: 12,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 1)),
           ),
@@ -661,8 +643,8 @@ class _TotalHeader extends StatelessWidget {
 // **구성**: 상단 400px = assets/images/800x400.png banner (full-bleed),
 // 하단 400px = my thumb × album thumb + 4-tier stepper + label + summary.
 //
-// share card 는 export medium 이라 in-app design token 과 별개의 inline
-// TextStyle 을 허용 (font size 가 in-app 토큰보다 한참 크다).
+// share card 는 export medium 이라 font size 가 in-app 토큰보다 한참 크다 —
+// 토큰 anchor + 명시적 fontSize copyWith 로 구성.
 class _CompatShareCardComposite extends StatelessWidget {
   final FaceReadingReport my;
   final FaceReadingReport album;
@@ -712,12 +694,12 @@ class _CompatShareCardComposite extends StatelessWidget {
                                 thumbnailKey: my.thumbnailKey,
                                 gender: my.gender),
                             const SizedBox(width: 24),
-                            const Text(
+                            Text(
                               '×',
-                              style: TextStyle(
+                              style: AppText.sectionTitle.copyWith(
                                 fontSize: 60,
                                 fontWeight: FontWeight.w300,
-                                color: Color(0xFF777777),
+                                color: AppColors.textSecondary,
                                 height: 1,
                               ),
                             ),
@@ -780,10 +762,9 @@ class _CompatIconLineRow extends StatelessWidget {
             text,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: AppText.sectionTitle.copyWith(
               fontSize: 42,
               fontWeight: FontWeight.w500,
-              color: Color(0xFF333333),
               height: 1.4,
             ),
           ),

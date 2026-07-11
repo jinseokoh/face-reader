@@ -113,11 +113,7 @@ Future<T?> showWheelPicker<T>(
                       style: TextStyle(color: AppColors.textHint)),
                   onPressed: () => Navigator.pop(ctx),
                 ),
-                Text(title,
-                    style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600)),
+                Text(title, style: AppText.sectionTitle),
                 CupertinoButton(
                   padding: EdgeInsets.zero,
                   child: const Text('확인',

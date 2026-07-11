@@ -50,10 +50,7 @@ class _PhysiognomyInfoDialogState extends State<PhysiognomyInfoDialog>
     return AlertDialog(
       backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: const Text('관상 분석에 대하여',
-          style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600)),
+      title: const Text('관상 분석에 대하여', style: AppText.modalTitle),
       content: SizedBox(
         height: widget.maxHeight - 140,
         child: AnimatedBuilder(
@@ -71,11 +68,7 @@ class _PhysiognomyInfoDialogState extends State<PhysiognomyInfoDialog>
                           bottom: i < _paragraphs.length - 1 ? 20 : 0),
                       child: Text(
                         _paragraphs[i],
-                        style: const TextStyle(
-                          fontSize: 15,
-                          height: 1.8,
-                          color: AppTheme.textSecondary,
-                        ),
+                        style: AppText.body.copyWith(height: 1.8),
                       ),
                     ),
                   ),
@@ -88,11 +81,7 @@ class _PhysiognomyInfoDialogState extends State<PhysiognomyInfoDialog>
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('닫기',
-              style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.textPrimary)),
+          child: const Text('닫기', style: AppText.subTitle),
         ),
       ],
     );

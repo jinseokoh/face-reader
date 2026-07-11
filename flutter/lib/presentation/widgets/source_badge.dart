@@ -23,7 +23,7 @@ class SourceBadge extends StatelessWidget {
         switch (source) {
           AnalysisSource.camera => '카메라',
           AnalysisSource.album => '앨범',
-          AnalysisSource.received => '받음',
+          AnalysisSource.received => '공유받음',
         },
         style: AppText.hint.copyWith(color: AppColors.textHint),
       ),

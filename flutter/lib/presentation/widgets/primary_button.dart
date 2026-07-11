@@ -4,10 +4,10 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:facely/core/theme.dart';
 
 /// full-width 주 버튼 SSOT — DESIGN.md §3.9.
-/// 토큰 잠금: 높이 48 · 검정 inverted (textPrimary bg + white fg) ·
-/// radius 12 (AppRadius.md + 2) · label = AppText.subTitle (14 / w600).
-/// 화면별 인라인 ElevatedButton 으로 폰트·패딩·radius 가 흩어지는 것을 차단한다
-/// (LoginEntryButton 과 동일 규격 — 설정 탭 로그인/가입 버튼이 기준).
+/// 토큰 잠금: 높이 48 · 흰색 배경 + 1px textPrimary border (2026-07-10 전면
+/// 전환 — 검정 inverted CTA 폐기) · radius 12 (AppRadius.md + 2) ·
+/// label = AppText.subTitle (14 / w600).
+/// 화면별 인라인 ElevatedButton 으로 폰트·패딩·radius 가 흩어지는 것을 차단한다.
 class PrimaryButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
@@ -25,25 +25,31 @@ class PrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final enabled = onPressed != null && !busy;
     final style = ElevatedButton.styleFrom(
-      backgroundColor: AppColors.textPrimary,
-      foregroundColor: Colors.white,
-      // busy 는 "진행 중인 주 행동" — 검정 유지 + 흰 spinner. 진짜 비활성만 surface.
-      disabledBackgroundColor: busy ? AppColors.textPrimary : AppColors.surface,
+      backgroundColor: AppColors.background,
+      foregroundColor: AppColors.textPrimary,
+      disabledBackgroundColor: AppColors.background,
       disabledForegroundColor: AppColors.textHint,
+      elevation: 0,
+      // busy 는 "진행 중인 주 행동" — 검정 테두리 유지 + 어두운 spinner.
+      // 진짜 비활성만 border 톤 테두리.
+      side: BorderSide(
+        color: enabled || busy ? AppColors.textPrimary : AppColors.border,
+      ),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.md + 2),
       ),
     );
-    final enabled = onPressed != null && !busy;
-    final labelColor = enabled ? Colors.white : AppColors.textHint;
+    final labelColor = enabled ? AppColors.textPrimary : AppColors.textHint;
     final child = busy
         ? const SizedBox(
             width: 22,
             height: 22,
             child: CircularProgressIndicator(
               strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              valueColor:
+                  AlwaysStoppedAnimation<Color>(AppColors.textPrimary),
             ),
           )
         : Text(label, style: AppText.subTitle.copyWith(color: labelColor));

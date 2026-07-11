@@ -65,11 +65,7 @@ class LedgerPage extends ConsumerWidget {
                   FaIcon(FontAwesomeIcons.coins,
                       color: AppTheme.textPrimary, size: 15),
                   const SizedBox(width: 6),
-                  Text('${user.coins}개',
-                      style: TextStyle(
-                          color: AppTheme.textPrimary,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600)),
+                  Text('${user.coins}개', style: AppText.subTitle),
                 ],
               ),
             ),
@@ -90,11 +86,7 @@ class LedgerPage extends ConsumerWidget {
                 children: [
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Text('거래 내역',
-                        style: TextStyle(
-                            color: AppTheme.textPrimary,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600)),
+                    child: Text('거래 내역', style: AppText.subTitle),
                   ),
                   const SizedBox(height: 8),
                   history.when(
@@ -113,8 +105,8 @@ class LedgerPage extends ConsumerWidget {
                       padding: const EdgeInsets.symmetric(vertical: 32),
                       child: Center(
                         child: Text('거래 내역을 불러오지 못했습니다\n$e',
-                            style: TextStyle(
-                                color: AppTheme.textHint, fontSize: 13),
+                            style: AppText.caption
+                                .copyWith(color: AppColors.textHint),
                             textAlign: TextAlign.center),
                       ),
                     ),
@@ -135,7 +127,7 @@ class _EmptyHistory extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 32),
       child: Center(
         child: Text('아직 거래 내역이 없습니다',
-            style: TextStyle(color: AppTheme.textHint, fontSize: 13)),
+            style: AppText.caption.copyWith(color: AppColors.textHint)),
       ),
     );
   }
@@ -209,23 +201,20 @@ class _TransactionTile extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(_describeTx(tx),
-                      style: TextStyle(
-                          color: AppTheme.textPrimary,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500)),
+                      style: AppText.subTitle
+                          .copyWith(fontWeight: FontWeight.w500)),
                   if (subtitle != null) ...[
                     const SizedBox(height: 2),
                     Text(subtitle,
-                        style: const TextStyle(
-                            color: AppTheme.textSecondary, fontSize: 12),
+                        style: AppText.hint
+                            .copyWith(color: AppColors.textSecondary),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis),
                   ],
                   const SizedBox(height: 2),
                   Text(
                     timeago.format(tx.createdAt, locale: 'ko'),
-                    style:
-                        TextStyle(color: AppTheme.textHint, fontSize: 12),
+                    style: AppText.hint,
                   ),
                 ],
               ),
@@ -234,13 +223,8 @@ class _TransactionTile extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text('$sign${tx.amount}',
-                    style: TextStyle(
-                        color: amountColor,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600)),
-                Text('잔액 ${tx.balanceAfter}',
-                    style: TextStyle(
-                        color: AppTheme.textHint, fontSize: 11)),
+                    style: AppText.subTitle.copyWith(color: amountColor)),
+                Text('잔액 ${tx.balanceAfter}', style: AppText.hint),
               ],
             ),
           ],

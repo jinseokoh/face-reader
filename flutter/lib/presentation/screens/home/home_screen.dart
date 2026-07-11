@@ -1,8 +1,7 @@
 import 'package:face_engine/domain/models/face_reading_report.dart';
-import 'package:facely/config/router.dart';
+import 'package:face_engine/domain/services/compat/compat_label.dart';
 import 'package:facely/core/theme.dart';
-import 'package:facely/data/services/analytics_service.dart';
-import 'package:facely/domain/models/capture_result.dart';
+import 'package:facely/presentation/screens/team/team_band.dart';
 import 'package:facely/domain/models/team_room.dart';
 import 'package:facely/domain/services/team_matrix.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
@@ -12,16 +11,12 @@ import 'package:facely/presentation/providers/tab_provider.dart';
 import 'package:facely/presentation/screens/team/team_create_page.dart';
 import 'package:facely/presentation/screens/team/team_room_screen.dart';
 import 'package:facely/presentation/widgets/coin_chip.dart';
-import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
 import 'package:facely/presentation/widgets/primary_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:go_router/go_router.dart';
 
-import 'album_capture_page.dart';
-import 'face_mesh_page.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -71,67 +66,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ],
           ],
         ),
+        // 다른 사람 관상보기 pill 은 관상 탭 AppBar 로 이관 (2026-07-10).
         actions: [
-          PopupMenuButton<String>(
-            tooltip: '다른 사람 관상보기',
-            color: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.md),
-            ),
-            onSelected: (value) {
-              if (value == 'camera') {
-                _openCamera();
-              } else if (value == 'album') {
-                _openAlbum();
-              }
-            },
-            itemBuilder: (ctx) => const [
-              PopupMenuItem<String>(
-                value: 'camera',
-                child: Row(
-                  children: [
-                    FaIcon(FontAwesomeIcons.camera,
-                        size: 16, color: AppColors.textPrimary),
-                    SizedBox(width: AppSpacing.md),
-                    Text('카메라로 촬영', style: AppText.body),
-                  ],
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'album',
-                child: Row(
-                  children: [
-                    FaIcon(FontAwesomeIcons.image,
-                        size: 16, color: AppColors.textPrimary),
-                    SizedBox(width: AppSpacing.md),
-                    Text('앨범에서 선택', style: AppText.body),
-                  ],
-                ),
-              ),
-            ],
-            // 설정 [충전하기]·궁합 등록 pill 과 동일 outlined stadium 레시피.
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.lg),
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.background,
-                    border: Border.all(color: AppColors.textPrimary),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    '다른 사람 관상보기',
-                    style: AppText.caption.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-              ),
-            ),
+          // 궁합 탭과 동일 형태의 info 버튼 + 다이얼로그.
+          IconButton(
+            icon: const FaIcon(FontAwesomeIcons.circleInfo, size: 20),
+            tooltip: '교감도에 대하여',
+            onPressed: () => _showInfoDialog(context),
           ),
         ],
       ),
@@ -193,7 +134,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     AppSpacing.xl),
                 // 본문 CTA 는 흰색+1px border — 검정 invert 는 오버레이(스낵바) 전용.
                 child: SecondaryButton(
-                  label: '그룹 케미 알아보기',
+                  label: '그룹 케미 시작하기',
                   onPressed: _createTeam,
                 ),
               ),
@@ -254,6 +195,78 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  /// 교감도 안내 — 궁합 탭 info 다이얼로그와 동일한 형태 (AlertDialog · 흰 배경
+  /// · radius 16 · 섹션 헤딩 + 본문 · [닫기]).
+  void _showInfoDialog(BuildContext context) {
+    const bands = [
+      CompatLabel.cheonjakjihap,
+      CompatLabel.geumseulsanghwa,
+      CompatLabel.mahapgaseong,
+      CompatLabel.hyeonggeuknanjo,
+    ];
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('교감도에 대하여', style: AppText.modalTitle),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                '그룹(3~12명) 멤버 전원의 얼굴 측정값으로 두 사람씩 모든 짝의 '
+                '케미를 계산해 한 장의 표로 보여줍니다. 짝별 계산 기준은 궁합 '
+                '분석과 동일합니다.',
+                style: AppText.body,
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              const Text('등급', style: AppText.sectionTitle),
+              const SizedBox(height: AppSpacing.sm),
+              for (final l in bands)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                  child: Text(
+                    '${l.bandEmoji} ${l.bandLabel}',
+                    style: AppText.body,
+                  ),
+                ),
+              const SizedBox(height: AppSpacing.lg),
+              const Text('진행 방식', style: AppText.sectionTitle),
+              const SizedBox(height: AppSpacing.sm),
+              const Text(
+                '그룹을 만들고 직접촬영 또는 카톡 초대로 멤버를 등록합니다. '
+                '3명부터 그룹 케미가 공개되고, 전원 등록되면 발표로 전환됩니다.',
+                style: AppText.body,
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              const Text('무료와 코인', style: AppText.sectionTitle),
+              const SizedBox(height: AppSpacing.sm),
+              const Text(
+                '그룹 만들기·멤버 등록·등급 표시는 무료입니다. 짝별 정확한 '
+                '점수와 상세 풀이는 1코인으로 열 수 있습니다.',
+                style: AppText.body,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              '닫기',
+              style: AppText.body.copyWith(
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// 당겨서 새로고침 — push 된 그룹의 합류자·마감을 서버에서 끌어온다.
   /// 로컬 전용 그룹은 fetch 가 null 이라 no-op.
   Future<void> _refreshGroups() async {
@@ -295,73 +308,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return null;
   }
 
-  /// 앨범 path — 카메라와 동일한 fullSize sheet 에 AlbumCapturePage 를 띄움.
-  Future<void> _openAlbum() async {
-    AnalyticsService.instance.logAlbumOpen();
-    if (!ref.read(authProvider.notifier).isLoggedIn) {
-      final loggedIn = await showLoginBottomSheet(context, ref);
-      if (!loggedIn) return;
-      if (!mounted) return;
-    }
-    final result = await _showAlbumSheet();
-    if (!mounted || result == null) return;
-    await _pushDemographicConfirm(result);
-  }
-
-  /// 카메라 path — fullSize sheet 안에 FaceMeshPage 가 검정 AppBar
-  /// "얼굴 정면" / "얼굴 측면" 으로 동작.
-  Future<void> _openCamera() async {
-    AnalyticsService.instance.logCameraOpen();
-    final size = MediaQuery.of(context).size;
-    final result = await showModalBottomSheet<CaptureResult>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      constraints: BoxConstraints.tightFor(
-        width: size.width,
-        height: size.height,
-      ),
-      builder: (_) => const FaceMeshPage(),
-    );
-    if (!mounted || result == null) return;
-    await _pushDemographicConfirm(result);
-  }
-
   void _openRoom(TeamRoom room) {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => TeamRoomScreen(roomId: room.id)),
     );
   }
 
-  Future<void> _pushDemographicConfirm(
-    CaptureResult result, {
-    bool asMyFace = false,
-  }) async {
-    await context.push(
-      '/capture/confirm',
-      extra: CaptureExtras(
-        capture: result,
-        metadataFuture: result.metadataFuture,
-        asMyFace: asMyFace,
-      ),
-    );
-  }
-
-  Future<CaptureResult?> _showAlbumSheet() {
-    final size = MediaQuery.of(context).size;
-    return showModalBottomSheet<CaptureResult>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      constraints: BoxConstraints.tightFor(
-        width: size.width,
-        height: size.height,
-      ),
-      builder: (_) => const AlbumCapturePage(),
-    );
-  }
 }
 
 /// 홈 섹션 sticky 헤더 — 스크롤해도 상단에 고정 (내가 만든 방 / 초대받은 방).
@@ -457,7 +409,7 @@ class _TeamCardState extends ConsumerState<_TeamCard> {
                         Text(
                           '${room.scannedCount}/${room.members.length}명 등록',
                           style: AppText.caption
-                              .copyWith(color: AppColors.textHint),
+                              .copyWith(color: AppColors.textSecondary),
                         ),
                         const SizedBox(height: AppSpacing.xs),
                         // 3번째 줄 고정 — 마감 방은 케미 등급별 쌍 수, 모집중
@@ -469,7 +421,7 @@ class _TeamCardState extends ConsumerState<_TeamCard> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: AppText.caption.copyWith(
-                            color: AppColors.textSecondary,
+                            color: AppColors.textHint,
                           ),
                         ),
                       ],
@@ -611,7 +563,7 @@ class _TeamCardState extends ConsumerState<_TeamCard> {
     if (room.members.length < TeamRoom.kMinMembers) {
       return '최소 ${TeamRoom.kMinMembers}명부터 발표';
     }
-    return '${room.members.length - room.scannedCount}명 더 등록하면 발표';
+    return '${room.members.length - room.scannedCount}명 더 등록하면 그룹 케미 발표';
   }
 
   void _computeBestPreview() {

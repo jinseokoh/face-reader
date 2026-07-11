@@ -355,9 +355,9 @@ SecondaryButton(label: '마감하고 베스트 페어 발표', onPressed: _close
 | slot | 값 |
 |---|---|
 | 높이 | **48** 고정 (`SizedBox(height: 48)`) · width infinity |
-| 배경/전경 | Primary: `AppColors.textPrimary` bg + white / Secondary: outlined 검정 |
-| 비활성 | Primary: surface bg + textHint / Secondary: border 색 테두리 + textHint |
-| busy | 검정 bg 유지 + 흰 22px spinner ("진행 중인 주 행동"은 비활성과 다르다) |
+| 배경/전경 | Primary·Secondary 공통: **흰 배경 + 1px textPrimary border + textPrimary label** (2026-07-10 검정 invert CTA 전면 폐기). Primary 는 busy·icon 지원 |
+| 비활성 | 흰 bg + `AppColors.border` 톤 테두리 + textHint (양쪽 동일) |
+| busy | 테두리 유지 + textPrimary 22px spinner ("진행 중인 주 행동"은 비활성과 다르다) |
 | radius | `AppRadius.md + 2` (12) — LoginEntryButton 과 동일 |
 | label | `AppText.subTitle` (14 / w600) |
 | icon | `FaIcon` 16px (FontAwesome only) |
@@ -366,11 +366,10 @@ SecondaryButton(label: '마감하고 베스트 페어 발표', onPressed: _close
 team_room(직접촬영·카톡 초대·교감도 보기·마감) · team_create_sheet(만들기) ·
 team_matrix(1코인으로 풀이 보기).
 
-**검정/흰색 위계 (2026-07-10)**: 탭 본문 스크롤 콘텐츠 안의 CTA(버튼·pill)는 **흰색 배경 +
-1px textPrimary border** (SecondaryButton 또는 outlined pill)만 쓴다. 검정 invert (PrimaryButton
-·검정 pill)는 **오버레이(스낵바)·바텀시트·페이지 하단 고정 주행동 전용** — 본문 안에 검정 덩어리가
-반복되면 화면이 지저분해진다. 실사용: 홈 [그룹 케미 알아보기]=Secondary, 설정 [충전하기]·궁합
-재소환 pill=outlined stadium, nudge 스낵바 [내 관상 등록하기]=Primary.
+**검정 invert CTA 전면 폐기 (2026-07-10)**: 위치 불문(본문·오버레이·시트·페이지 하단) 모든
+CTA 버튼·pill 은 **흰색 배경 + 1px textPrimary border**. 검정 배경 invert 버튼을 새로 만들면
+즉시 재작업 사유. 유일한 예외는 서드파티 브랜드 버튼(카카오 yellow) — Apple 로그인도 white-outline
+공식 변형을 쓴다. 검정 덩어리 CTA 의 반복은 화면을 지저분하게 만든다는 UX 판단이 근거.
 
 ---
 

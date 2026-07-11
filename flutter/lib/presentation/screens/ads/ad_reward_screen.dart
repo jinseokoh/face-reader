@@ -98,10 +98,10 @@ class _AdRewardScreenState extends State<AdRewardScreen> {
       bottomNavigationBar: Container(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         color: Colors.black,
-        child: const Text(
+        child: Text(
           '끝까지 시청하면 광고 1편으로 카운트됩니다.',
           textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.white70, fontSize: 13),
+          style: AppText.caption.copyWith(color: Colors.white70),
         ),
       ),
     );
@@ -124,7 +124,7 @@ class _ErrorView extends StatelessWidget {
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.white70, fontSize: 14),
+            style: AppText.body.copyWith(color: Colors.white70),
           ),
         ],
       ),

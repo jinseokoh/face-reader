@@ -8,6 +8,7 @@ import 'package:facely/core/theme.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/providers/tab_provider.dart';
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
+import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
 import 'package:facely/presentation/widgets/empty_state_placeholder.dart';
 import 'package:facely/presentation/widgets/physiognomy_info_dialog.dart';
 import 'package:facely/presentation/widgets/source_badge.dart';
@@ -46,7 +47,7 @@ class _PhysiognomyItem extends ConsumerWidget {
     final displayName =
         report.alias ??
         (report.source == AnalysisSource.received
-            ? '카톡으로 전달받은 카드'
+            ? '공유받은 카드'
             : report.faceShape.korean);
     final isMyFace = report.isMyFace;
 
@@ -103,18 +104,28 @@ class _PhysiognomyItem extends ConsumerWidget {
                                     ),
                                   ),
                                   if (isMyFace) ...[
-                                    const SizedBox(width: AppSpacing.xs),
-                                    const FaIcon(
-                                      FontAwesomeIcons.circleCheck,
-                                      size: 12,
-                                      color: AppColors.gold,
-                                    ),
-                                    const SizedBox(width: AppSpacing.xs),
-                                    Text(
-                                      '내 관상',
-                                      style: AppText.caption.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.gold,
+                                    const SizedBox(width: AppSpacing.sm),
+                                    // SourceBadge 와 동일 chrome 의 outlined
+                                    // badge — 정체성(내 관상)만 gold 톤.
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: AppSpacing.sm,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                          color: AppColors.gold,
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                          AppRadius.sm,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        '내 관상',
+                                        style: AppText.hint.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.gold,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -330,9 +341,9 @@ class _PhysiognomyItem extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text(
+            child: Text(
               '취소',
-              style: TextStyle(color: AppColors.textHint),
+              style: AppText.body.copyWith(color: AppColors.textHint),
             ),
           ),
           TextButton(
@@ -344,7 +355,8 @@ class _PhysiognomyItem extends ConsumerWidget {
                 CompactSnackBar.success(message: '삭제되었습니다'),
               );
             },
-            child: const Text('삭제', style: TextStyle(color: AppColors.danger)),
+            child: Text('삭제',
+                style: AppText.body.copyWith(color: AppColors.danger)),
           ),
         ],
       ),
@@ -382,9 +394,9 @@ class _PhysiognomyItem extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text(
+            child: Text(
               '취소',
-              style: TextStyle(color: AppColors.textHint),
+              style: AppText.body.copyWith(color: AppColors.textHint),
             ),
           ),
           TextButton(
@@ -394,9 +406,9 @@ class _PhysiognomyItem extends ConsumerWidget {
                   .updateAlias(index, controller.text.trim());
               Navigator.pop(ctx);
             },
-            child: const Text(
+            child: Text(
               '저장',
-              style: TextStyle(color: AppColors.textPrimary),
+              style: AppText.body.copyWith(color: AppColors.textPrimary),
             ),
           ),
         ],
@@ -410,6 +422,11 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
   // 북마크(받은 카드) 유무에 따라 탭 수가 2↔3 으로 바뀌므로 nullable + 동적 재생성.
   TabController? _tabController;
   _SortOrder _sortOrder = _SortOrder.newest;
+
+  // 카메라/앨범 default 탭 — 내 관상이 있으면 내 관상이 사는 탭에서 시작.
+  // 최초 1회만: 이후엔 사용자의 명시적 선택과 분석 후 이동(info_confirm)이
+  // 우선이라 다시 강제하지 않는다.
+  bool _appliedMyFaceDefault = false;
 
   @override
   Widget build(BuildContext context) {
@@ -439,6 +456,20 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
     }
     final hasMyFace = myFace != null;
 
+    // 내 관상이 앨범 소스면 default 를 앨범 탭으로 (히스토리 hydrate 후 1회).
+    // provider 가 아직 초기값(0)일 때만 — 이미 다른 흐름이 탭을 정했으면 존중.
+    if (!_appliedMyFaceDefault && myFace != null) {
+      _appliedMyFaceDefault = true;
+      if (myFace.source == AnalysisSource.album &&
+          ref.read(historyTabProvider) == 0) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            ref.read(historyTabProvider.notifier).selectTab(1);
+          }
+        });
+      }
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: NestedScrollView(
@@ -452,6 +483,30 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
               // 맡는다. 헤더는 타이틀 + TabBar 만.
               title: const Text('관상'),
               actions: [
+                // 다른 사람 관상보기 — 탭 = 즉시 카메라 (내 관상 등록과 동일
+                // UX, 앨범은 카메라 화면 안 숏컷). 사전 팝업 메뉴 없음.
+                // 설정 [충전하기]·궁합 등록 pill 과 동일 outlined stadium 레시피.
+                Center(
+                  child: GestureDetector(
+                    onTap: () => startOtherFaceCapture(context, ref),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.background,
+                        border: Border.all(color: AppColors.textPrimary),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        '다른 사람 관상보기',
+                        style: AppText.caption.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
                 IconButton(
                   icon: const FaIcon(FontAwesomeIcons.circleInfo, size: 20),
                   onPressed: () => _showInfoDialog(context),
@@ -465,7 +520,7 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
                 tabs: [
                   const Tab(text: '카메라'),
                   const Tab(text: '앨범'),
-                  if (hasBookmarks) const Tab(text: '북마크'),
+                  if (hasBookmarks) const Tab(text: '공유받음'),
                 ],
               ),
             ),
@@ -731,7 +786,7 @@ class _RecentListHeader extends StatelessWidget {
   String get _label => switch (source) {
     AnalysisSource.camera => '카메라로 분석한 관상',
     AnalysisSource.album => '앨범사진으로 분석한 관상',
-    AnalysisSource.received => '받은 카드',
+    AnalysisSource.received => '공유받은 카드',
   };
 
   @override

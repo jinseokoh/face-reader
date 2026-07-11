@@ -1,6 +1,7 @@
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/services/compat/compat_adapter.dart';
 import 'package:face_engine/domain/services/compat/compat_pair_key.dart';
+import 'package:facely/core/theme.dart';
 import 'package:facely/data/services/analytics_service.dart';
 import 'package:facely/data/services/compat_unlock_service.dart';
 import 'package:facely/data/services/supabase_service.dart';
@@ -164,21 +165,20 @@ Future<bool?> _showConfirmDialog(BuildContext context) {
               fit: BoxFit.contain,
             ),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               '궁합 보기',
-              style: TextStyle(
-                color: Color(0xFF1F1F1F),
+              style: AppText.modalTitle.copyWith(
+                color: const Color(0xFF1F1F1F),
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 1.5,
               ),
             ),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               '궁합을 보려면 1코인이 필요합니다.\n궁합을 보시겠습니까?',
-              style: TextStyle(
-                color: Color(0xFF555555),
-                fontSize: 14,
+              style: AppText.body.copyWith(
+                color: AppColors.accent,
                 height: 1.5,
               ),
               textAlign: TextAlign.center,
@@ -197,11 +197,10 @@ Future<bool?> _showConfirmDialog(BuildContext context) {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text(
+                      child: Text(
                         '취소',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
+                        style: AppText.subTitle.copyWith(
+                          color: AppColors.accent,
                         ),
                       ),
                     ),
@@ -221,11 +220,10 @@ Future<bool?> _showConfirmDialog(BuildContext context) {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text(
+                      child: Text(
                         '궁합보기',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
+                        style: AppText.subTitle.copyWith(
+                          color: Colors.white,
                         ),
                       ),
                     ),

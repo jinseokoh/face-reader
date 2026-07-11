@@ -4,6 +4,7 @@ import 'package:facely/core/theme.dart';
 import 'package:facely/data/services/auth_service.dart' show SignUpOutcome;
 import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:facely/presentation/widgets/otp_verification_sheet.dart';
+import 'package:facely/presentation/widgets/primary_button.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -103,11 +104,7 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
               Text(
                 isSignUp ? '새 계정 만들기' : '로그인',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: AppText.modalTitle,
               ),
               const SizedBox(height: 8),
               Text(
@@ -115,8 +112,7 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
                     ? '가입 후 모든 기능을 사용할 수 있습니다.'
                     : '로그인이 필요합니다.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                    color: AppTheme.textSecondary, fontSize: 14, height: 1.5),
+                style: AppText.body,
               ),
               const SizedBox(height: 24),
               // ── 카카오 (primary) — 모드 무관하게 가장 빠른 경로 ──────
@@ -128,8 +124,8 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
                       size: 18, color: Color(0xFF3C1E1E)),
                   label: Text(
                     isSignUp ? '카카오로 가입' : '카카오로 로그인',
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.w600),
+                    style: AppText.subTitle
+                        .copyWith(color: const Color(0xFF3C1E1E)),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFEE500),
@@ -148,20 +144,22 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
                 const SizedBox(height: 10),
                 SizedBox(
                   height: 48,
+                  // Apple 공식 white-outline 변형 — 검정 invert CTA 전면 폐기.
                   child: ElevatedButton.icon(
                     onPressed: _isLoading ? null : _appleLogin,
                     icon: const FaIcon(FontAwesomeIcons.apple,
-                        size: 18, color: Colors.white),
+                        size: 18, color: AppColors.textPrimary),
                     label: Text(
                       isSignUp ? 'Apple로 가입' : 'Apple로 로그인',
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.w600),
+                      style: AppText.subTitle
+                          .copyWith(color: AppColors.textPrimary),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor:
-                          Colors.black.withValues(alpha: 0.5),
+                      backgroundColor: AppColors.background,
+                      foregroundColor: AppColors.textPrimary,
+                      disabledBackgroundColor: AppColors.background,
+                      disabledForegroundColor: AppColors.textHint,
+                      side: const BorderSide(color: AppColors.textPrimary),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -181,8 +179,7 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: Text(
                       '또는 이메일로',
-                      style: TextStyle(
-                          color: AppTheme.textHint, fontSize: 12),
+                      style: AppText.hint,
                     ),
                   ),
                   Expanded(
@@ -243,33 +240,10 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
                 ),
               ),
               const SizedBox(height: 16),
-              SizedBox(
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: (_isLoading || !_canSubmit) ? null : _emailSubmit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.textPrimary,
-                    foregroundColor: Colors.white,
-                    disabledBackgroundColor: AppColors.surface,
-                    disabledForegroundColor: AppColors.textHint,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
-                        )
-                      : Text(
-                          isSignUp ? '가입하기' : '로그인',
-                          style: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.w600),
-                        ),
-                ),
+              PrimaryButton(
+                label: isSignUp ? '가입하기' : '로그인',
+                busy: _isLoading,
+                onPressed: _canSubmit ? _emailSubmit : null,
               ),
               // 인라인 에러 — modal sheet 위 영역에 표시되므로 snackbar 처럼
               // 가려질 일 없음. AppColors.danger 살짝 tint 한 box + icon.
@@ -297,11 +271,8 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
                       Expanded(
                         child: Text(
                           _errorMessage!,
-                          style: TextStyle(
-                            color: AppColors.danger,
-                            fontSize: 13,
-                            height: 1.4,
-                          ),
+                          style: AppText.caption
+                              .copyWith(color: AppColors.danger),
                         ),
                       ),
                     ],
@@ -317,20 +288,18 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
                 Text(
                   '🎁 첫 가입 시 3코인 지급',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                      color: AppTheme.textHint, fontSize: 12, height: 1.5),
+                  style: AppText.hint,
                 )
               else
                 Text.rich(
                   TextSpan(
-                    style: TextStyle(
-                        color: AppTheme.textHint, fontSize: 12, height: 1.5),
+                    style: AppText.hint,
                     children: [
                       const TextSpan(text: '처음이신가요? '),
                       TextSpan(
                         text: '가입으로 이동',
-                        style: TextStyle(
-                          color: AppTheme.textPrimary,
+                        style: AppText.hint.copyWith(
+                          color: AppColors.textPrimary,
                           fontWeight: FontWeight.w600,
                           decoration: TextDecoration.underline,
                         ),
@@ -519,9 +488,8 @@ class _ModeSegmented extends StatelessWidget {
         alignment: Alignment.center,
         child: Text(
           label,
-          style: TextStyle(
-            color: selected ? Colors.white : AppTheme.textSecondary,
-            fontSize: 14,
+          style: AppText.subTitle.copyWith(
+            color: selected ? Colors.white : AppColors.textSecondary,
             fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
           ),
         ),

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:facely/core/theme.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
+import 'package:facely/presentation/widgets/primary_button.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -79,24 +80,17 @@ class _OtpSheetState extends ConsumerState<_OtpSheet> {
               Text(
                 '이메일 인증',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: AppText.modalTitle,
               ),
               const SizedBox(height: 12),
               Text.rich(
                 TextSpan(
-                  style: TextStyle(
-                      color: AppTheme.textSecondary,
-                      fontSize: 14,
-                      height: 1.5),
+                  style: AppText.body,
                   children: [
                     TextSpan(
                       text: widget.email,
-                      style: TextStyle(
-                          color: AppTheme.textPrimary,
+                      style: AppText.body.copyWith(
+                          color: AppColors.textPrimary,
                           fontWeight: FontWeight.w600),
                     ),
                     const TextSpan(text: ' 으로 코드를 보냈습니다.'),
@@ -118,11 +112,7 @@ class _OtpSheetState extends ConsumerState<_OtpSheet> {
                 autofillHints: const [AutofillHints.oneTimeCode],
                 textInputAction: TextInputAction.done,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 4,
-                ),
+                style: AppText.modalTitle.copyWith(letterSpacing: 4),
                 decoration: InputDecoration(
                   hintText: '0' * _kOtpLength,
                   hintStyle: TextStyle(
@@ -147,29 +137,10 @@ class _OtpSheetState extends ConsumerState<_OtpSheet> {
                 onSubmitted: _isLoading ? null : (_) => _verify(),
               ),
               const SizedBox(height: 16),
-              SizedBox(
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _verify,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.textPrimary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Text('인증하기',
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.w600)),
-                ),
+              PrimaryButton(
+                label: '인증하기',
+                busy: _isLoading,
+                onPressed: _verify,
               ),
               const SizedBox(height: 4),
               // 재전송 · 취소 한 Row — 보조 액션 둘이 같은 무게라 같은 줄.
@@ -184,11 +155,10 @@ class _OtpSheetState extends ConsumerState<_OtpSheet> {
                       _resendCooldownSec > 0
                           ? '재전송 가능까지 $_resendCooldownSec 초'
                           : '이메일 재전송',
-                      style: TextStyle(
+                      style: AppText.caption.copyWith(
                         color: _resendCooldownSec > 0
-                            ? AppTheme.textHint
-                            : AppTheme.textSecondary,
-                        fontSize: 13,
+                            ? AppColors.textHint
+                            : AppColors.textSecondary,
                       ),
                     ),
                   ),
@@ -200,7 +170,7 @@ class _OtpSheetState extends ConsumerState<_OtpSheet> {
                     child: Text(
                       '취소',
                       style:
-                          TextStyle(color: AppTheme.textHint, fontSize: 13),
+                          AppText.caption.copyWith(color: AppColors.textHint),
                     ),
                   ),
                 ],
@@ -212,14 +182,13 @@ class _OtpSheetState extends ConsumerState<_OtpSheet> {
               const SizedBox(height: 8),
               Text.rich(
                 TextSpan(
-                  style: TextStyle(
-                      color: AppTheme.textHint, fontSize: 12, height: 1.5),
+                  style: AppText.hint,
                   children: [
                     const TextSpan(text: '이미 가입했나요? '),
                     TextSpan(
                       text: '로그인으로 이동',
-                      style: TextStyle(
-                        color: AppTheme.textPrimary,
+                      style: AppText.hint.copyWith(
+                        color: AppColors.textPrimary,
                         fontWeight: FontWeight.w600,
                         decoration: TextDecoration.underline,
                       ),
@@ -238,7 +207,7 @@ class _OtpSheetState extends ConsumerState<_OtpSheet> {
                 '메일이 오지 않으면 스팸함을 확인하거나 재전송 버튼을 눌러주세요.\n'
                 '이미 가입된 이메일이면 코드가 발송되지 않을 수 있습니다.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: AppTheme.textHint, fontSize: 11),
+                style: AppText.hint,
               ),
             ],
           ),

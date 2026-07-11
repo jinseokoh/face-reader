@@ -14,7 +14,20 @@ import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 /// 전면 카메라 즉시 오픈(좌하단 앨범 숏컷, 보정 사진 등록 경로) → 정보 확인 →
 /// InfoConfirm 이 isMyFace 로 등록 (PIVOT A5 ①). 앨범 경로는 기존 정책과
 /// 동일하게 로그인 게이트.
-Future<void> startMyFaceCapture(BuildContext context, WidgetRef ref) async {
+Future<void> startMyFaceCapture(BuildContext context, WidgetRef ref) =>
+    _startCapture(context, ref, asMyFace: true);
+
+/// 다른 사람 관상 플로우 — 내 관상 등록과 완전히 동일한 UX (카메라 즉시 오픈
+/// + 카메라 안 앨범 숏컷). "어디서"는 카메라 화면 안에서 묻는다는 원칙 —
+/// 사전 팝업 메뉴 없음. isMyFace 로 등록하지 않는 것만 다르다.
+Future<void> startOtherFaceCapture(BuildContext context, WidgetRef ref) =>
+    _startCapture(context, ref, asMyFace: false);
+
+Future<void> _startCapture(
+  BuildContext context,
+  WidgetRef ref, {
+  required bool asMyFace,
+}) async {
   AnalyticsService.instance.logCameraOpen();
   final size = MediaQuery.of(context).size;
   final result = await showModalBottomSheet<Object>(
@@ -57,7 +70,7 @@ Future<void> startMyFaceCapture(BuildContext context, WidgetRef ref) async {
     extra: CaptureExtras(
       capture: capture,
       metadataFuture: capture.metadataFuture,
-      asMyFace: true,
+      asMyFace: asMyFace,
     ),
   );
 }

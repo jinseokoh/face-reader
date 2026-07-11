@@ -62,10 +62,7 @@ class SettingsScreen extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(user.nickname ?? '사용자',
-                                style: TextStyle(
-                                    color: AppTheme.textPrimary,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600)),
+                                style: AppText.sectionTitle),
                             const SizedBox(height: 2),
                             Text(
                                 switch (user.provider) {
@@ -74,16 +71,16 @@ class SettingsScreen extends ConsumerWidget {
                                   'google' => '구글 계정으로 로그인됨',
                                   _ => '로그인됨',
                                 },
-                                style: TextStyle(
-                                    color: AppTheme.textHint, fontSize: 13)),
+                                style: AppText.caption
+                                    .copyWith(color: AppColors.textHint)),
                           ],
                         ),
                       ),
                       GestureDetector(
                         onTap: () => _confirmLogout(context, ref),
                         child: Text('로그아웃',
-                            style: TextStyle(
-                                color: AppTheme.textHint, fontSize: 13)),
+                            style: AppText.caption
+                                .copyWith(color: AppColors.textHint)),
                       ),
                     ],
                   ),
@@ -95,15 +92,12 @@ class SettingsScreen extends ConsumerWidget {
                           color: AppTheme.textSecondary, size: 22),
                       const SizedBox(width: 12),
                       Text('남은 코인',
-                          style: TextStyle(
-                              color: AppTheme.textPrimary, fontSize: 15)),
+                          style: AppText.body
+                              .copyWith(color: AppColors.textPrimary)),
                       const SizedBox(width: 8),
                       Text(
                         '${user.coins}개',
-                        style: TextStyle(
-                            color: AppTheme.textPrimary,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600),
+                        style: AppText.sectionTitle,
                       ),
                       const Spacer(),
                       GestureDetector(
@@ -117,9 +111,8 @@ class SettingsScreen extends ConsumerWidget {
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text('충전하기',
-                              style: TextStyle(
+                              style: AppText.caption.copyWith(
                                   color: AppColors.textPrimary,
-                                  fontSize: 13,
                                   fontWeight: FontWeight.w700)),
                         ),
                       ),
@@ -167,12 +160,12 @@ class SettingsScreen extends ConsumerWidget {
                         FaIcon(FontAwesomeIcons.circleInfo, color: AppTheme.textSecondary, size: 20),
                         const SizedBox(width: 16),
                         Text('앱 정보',
-                            style: TextStyle(
-                                color: AppTheme.textPrimary, fontSize: 15)),
+                            style: AppText.body
+                                .copyWith(color: AppColors.textPrimary)),
                         const Spacer(),
                         Text(version,
-                            style: TextStyle(
-                                color: AppTheme.textHint, fontSize: 13)),
+                            style: AppText.caption
+                                .copyWith(color: AppColors.textHint)),
                       ],
                     ),
                   ),
@@ -211,13 +204,12 @@ class SettingsScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(title,
-                          style: TextStyle(
-                              color: titleColor ?? AppTheme.textPrimary,
-                              fontSize: 15)),
+                          style: AppText.body.copyWith(
+                              color: titleColor ?? AppColors.textPrimary)),
                       if (subtitle != null)
                         Text(subtitle,
-                            style: TextStyle(
-                                color: AppTheme.textHint, fontSize: 13)),
+                            style: AppText.caption
+                                .copyWith(color: AppColors.textHint)),
                     ],
                   ),
                 ),

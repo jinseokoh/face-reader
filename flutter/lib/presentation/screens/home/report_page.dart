@@ -24,6 +24,7 @@ import 'package:facely/domain/services/share/share_publisher.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:facely/presentation/providers/compat_unlock_provider.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
+import 'package:facely/presentation/widgets/primary_button.dart';
 import 'package:facely/presentation/providers/recent_unlock_focus_provider.dart';
 import 'package:facely/presentation/providers/tab_provider.dart';
 import 'package:facely/presentation/screens/compatibility/compat_unlock_action.dart';
@@ -163,10 +164,8 @@ class _ExpandableAttributeBarState extends State<_ExpandableAttributeBar> {
               SizedBox(
                 width: 80,
                 child: Text(widget.attribute.labelKo,
-                    style: TextStyle(
-                        color: AppTheme.textPrimary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500)),
+                    style: AppText.sectionTitle
+                        .copyWith(fontWeight: FontWeight.w500)),
               ),
               Expanded(
                 child: Container(
@@ -192,10 +191,8 @@ class _ExpandableAttributeBarState extends State<_ExpandableAttributeBar> {
                 width: 36,
                 child: Text(widget.score.toStringAsFixed(1),
                     textAlign: TextAlign.right,
-                    style: TextStyle(
-                        color: _Palette.darkBrown,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w400)),
+                    style: AppText.body
+                        .copyWith(color: _Palette.darkBrown)),
               ),
               FaIcon(
                 _expanded
@@ -232,19 +229,16 @@ class _ExpandableAttributeBarState extends State<_ExpandableAttributeBar> {
                     width: 120,
                     child: Text(
                       _contributorLabel(c.id),
-                      style: TextStyle(
-                          color: _Palette.warmBrown,
-                          fontSize: 13),
+                      style: AppText.caption
+                          .copyWith(color: _Palette.warmBrown),
                     ),
                   ),
                   Text(
                     '${c.value >= 0 ? '+' : ''}${c.value.toStringAsFixed(2)}',
-                    style: TextStyle(
+                    style: AppText.caption.copyWith(
                       color: c.value >= 0
                           ? const Color(0xFFC0392B)
                           : const Color(0xFF2C5AA0),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w400,
                     ),
                   ),
                 ],
@@ -285,18 +279,14 @@ class _HeroLine extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label,
-            style: TextStyle(
+            style: AppText.caption.copyWith(
                 color: tagColor,
-                fontSize: 13.5,
-                fontWeight: FontWeight.w700,
-                height: 1.45)),
+                fontWeight: FontWeight.w700)),
         const SizedBox(width: 8),
         Expanded(
           child: Text(line,
-              style: const TextStyle(
+              style: AppText.caption.copyWith(
                   color: Colors.white,
-                  fontSize: 13.5,
-                  height: 1.45,
                   fontWeight: FontWeight.w500)),
         ),
       ],
@@ -340,16 +330,14 @@ class _HeroTop3Cell extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('$rank순위',
-              style: TextStyle(
+              style: AppText.hint.copyWith(
                   color: _Palette.sand,
-                  fontSize: 10,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.5)),
           const SizedBox(height: 4),
           Text(entry.key.labelKo,
-              style: const TextStyle(
+              style: AppText.subTitle.copyWith(
                   color: Colors.white,
-                  fontSize: 14,
                   fontWeight: FontWeight.w700)),
           const SizedBox(height: 6),
           ClipRRect(
@@ -369,9 +357,8 @@ class _HeroTop3Cell extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(entry.value.toStringAsFixed(1),
-              style: TextStyle(
+              style: AppText.hint.copyWith(
                   color: _Palette.sand,
-                  fontSize: 11,
                   fontWeight: FontWeight.w600)),
         ],
       ),
@@ -473,9 +460,8 @@ class _NodeBar extends StatelessWidget {
                     ),
                     child: Text(
                       label.trim(),
-                      style: TextStyle(
+                      style: AppText.caption.copyWith(
                         color: isLeaf ? _Palette.darkBrown : _Palette.cream,
-                        fontSize: 13,
                         fontWeight: FontWeight.w500,
                         letterSpacing: 0.2,
                       ),
@@ -490,11 +476,10 @@ class _NodeBar extends StatelessWidget {
                 child: Text(
                   '${z >= 0 ? '+' : ''}${z.toStringAsFixed(2)}',
                   textAlign: TextAlign.right,
-                  style: TextStyle(
+                  style: AppText.subTitle.copyWith(
                     color: z >= 0
                         ? const Color(0xFFC0392B)
                         : const Color(0xFF2C5AA0),
-                    fontSize: 14,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
@@ -552,9 +537,8 @@ class _NodeBar extends StatelessWidget {
                     Expanded(
                       child: Text(
                         label,
-                        style: TextStyle(
+                        style: AppText.subTitle.copyWith(
                           color: _Palette.darkBrown,
-                          fontSize: 14,
                           fontWeight: FontWeight.w400,
                         ),
                       ),
@@ -562,9 +546,8 @@ class _NodeBar extends StatelessWidget {
                     const SizedBox(width: 6),
                     Text(
                       '${zm >= 0 ? '+' : ''}${zm.toStringAsFixed(2)}',
-                      style: TextStyle(
+                      style: AppText.subTitle.copyWith(
                         color: valueColor,
-                        fontSize: 14,
                         fontWeight: FontWeight.w400,
                       ),
                     ),
@@ -575,11 +558,8 @@ class _NodeBar extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 2, left: 2),
                     child: Text(
                       interp,
-                      style: TextStyle(
-                        color: _Palette.warmBrown,
-                        fontSize: 13,
-                        height: 1.45,
-                      ),
+                      style: AppText.caption
+                          .copyWith(color: _Palette.warmBrown),
                     ),
                   ),
                 if (metricBody != null)
@@ -587,11 +567,8 @@ class _NodeBar extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 4, left: 2, right: 2),
                     child: Text(
                       metricBody,
-                      style: TextStyle(
-                        color: _Palette.warmBrown,
-                        fontSize: 13,
-                        height: 1.5,
-                      ),
+                      style: AppText.caption
+                          .copyWith(color: _Palette.warmBrown),
                     ),
                   ),
               ],
@@ -633,20 +610,15 @@ class _NodeBar extends StatelessWidget {
               ),
               child: Text(
                 body,
-                style: TextStyle(
-                  color: _Palette.warmBrown,
-                  fontSize: 15,
-                  height: 1.65,
-                ),
+                style: AppText.body.copyWith(color: _Palette.warmBrown),
               ),
             ),
           if (metricRows.isNotEmpty) ...[
             const SizedBox(height: 14),
             Text(
               '세부 측정값',
-              style: TextStyle(
+              style: AppText.subTitle.copyWith(
                 color: _Palette.darkBrown,
-                fontSize: 15,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -657,9 +629,8 @@ class _NodeBar extends StatelessWidget {
             const SizedBox(height: 14),
             Text(
               '부위 해석 조합',
-              style: TextStyle(
+              style: AppText.subTitle.copyWith(
                 color: _Palette.darkBrown,
-                fontSize: 14,
                 fontWeight: FontWeight.w400,
               ),
             ),
@@ -689,11 +660,8 @@ class _NodeBar extends StatelessWidget {
                       Expanded(
                         child: Text(
                           combos[ci].body,
-                          style: TextStyle(
-                            color: _Palette.warmBrown,
-                            fontSize: 13,
-                            height: 1.5,
-                          ),
+                          style: AppText.caption
+                              .copyWith(color: _Palette.warmBrown),
                         ),
                       ),
                     ],
@@ -866,24 +834,9 @@ class _CompatCta extends ConsumerWidget {
       // 내 관상이 없으면 결제 여건이 안 된다 — 즉시 결제 대신 '저장'만. 받은
       // 카드를 궁합 미확인 목록에 넣고 궁합 탭으로 이동(거기서 내 관상 등록을
       // 유도). 결제·해제 복잡도는 궁합 탭 한 곳에만 둔다.
-      return SizedBox(
-        width: double.infinity,
-        height: 48,
-        child: ElevatedButton(
-          onPressed: () => _onSaveForCompat(context, ref),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.textPrimary,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.md),
-            ),
-            elevation: 0,
-          ),
-          child: Text(
-            '궁합을 볼 수 있도록 저장하기',
-            style: AppText.subTitle.copyWith(color: Colors.white),
-          ),
-        ),
+      return SecondaryButton(
+        label: '궁합을 볼 수 있도록 저장하기',
+        onPressed: () => _onSaveForCompat(context, ref),
       );
     }
     // 받은 카드가 내 관상(같은 metrics UUID)이면 나 자신과의 궁합은 무의미 —
@@ -916,24 +869,9 @@ class _CompatCta extends ConsumerWidget {
     final isUnlocked = key != null && unlocked.contains(key);
     final label = isUnlocked ? '궁합 풀이 보기' : '1코인으로 풀이 보기';
 
-    return SizedBox(
-      width: double.infinity,
-      height: 48,
-      child: ElevatedButton(
-        onPressed: () => _onTap(context, ref, myFace, isUnlocked),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.textPrimary,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.md),
-          ),
-          elevation: 0,
-        ),
-        child: Text(
-          label,
-          style: AppText.subTitle.copyWith(color: Colors.white),
-        ),
-      ),
+    return SecondaryButton(
+      label: label,
+      onPressed: () => _onTap(context, ref, myFace, isUnlocked),
     );
   }
 
@@ -1118,9 +1056,8 @@ class _ReportPageState extends ConsumerState<ReportPage> {
         border: Border.all(color: _Palette.sand.withValues(alpha: 0.5)),
       ),
       child: Text(text,
-          style: TextStyle(
+          style: AppText.caption.copyWith(
               color: _Palette.darkBrown,
-              fontSize: 13,
               fontWeight: FontWeight.w600)),
     );
   }
@@ -1173,23 +1110,21 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('관상은 과학이다',
-                          style: TextStyle(
+                          style: AppText.hint.copyWith(
                               color: _Palette.sand,
-                              fontSize: 12,
                               fontWeight: FontWeight.w700,
                               letterSpacing: 1)),
                       const SizedBox(height: 10),
                       Text(arch.primaryLabel,
-                          style: const TextStyle(
+                          style: AppText.modalTitle.copyWith(
                               color: Colors.white,
                               fontSize: 28,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w700,
                               height: 1.0)),
                       const SizedBox(height: 6),
                       Text('${arch.secondaryLabel} 기질',
-                          style: TextStyle(
+                          style: AppText.subTitle.copyWith(
                               color: _Palette.sand,
-                              fontSize: 14,
                               fontWeight: FontWeight.w500)),
                       if (arch.specialArchetype != null) ...[
                         const SizedBox(height: 10),
@@ -1203,9 +1138,8 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                                 color: Colors.white.withValues(alpha: 0.3)),
                           ),
                           child: Text(arch.specialArchetype!,
-                              style: const TextStyle(
+                              style: AppText.hint.copyWith(
                                   color: Colors.white,
-                                  fontSize: 12,
                                   fontWeight: FontWeight.w600)),
                         ),
                       ],
@@ -1224,22 +1158,18 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                     Text(
                       '${report.ageGroup.labelKo} ${report.gender.labelKo} ${report.ethnicity.labelKo}',
                       textAlign: TextAlign.right,
-                      style: TextStyle(
+                      style: AppText.hint.copyWith(
                         color: _Palette.sand,
-                        fontSize: 11,
                         fontWeight: FontWeight.w500,
-                        height: 1.3,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       report.faceShape.korean,
                       textAlign: TextAlign.right,
-                      style: TextStyle(
+                      style: AppText.hint.copyWith(
                         color: _Palette.sand,
-                        fontSize: 11,
                         fontWeight: FontWeight.w500,
-                        height: 1.3,
                       ),
                     ),
                   ],
@@ -1261,10 +1191,8 @@ class _ReportPageState extends ConsumerState<ReportPage> {
               ),
               child: Text(
                 catchphrase,
-                style: const TextStyle(
+                style: AppText.caption.copyWith(
                   color: Colors.white,
-                  fontSize: 13.5,
-                  height: 1.45,
                   fontWeight: FontWeight.w600,
                   fontStyle: FontStyle.italic,
                 ),
@@ -1304,10 +1232,8 @@ class _ReportPageState extends ConsumerState<ReportPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('관상 10대 속성',
-            style: TextStyle(
-                color: AppTheme.textPrimary,
-                fontSize: 19,
-                fontWeight: FontWeight.bold)),
+            style: AppText.modalTitle
+                .copyWith(fontWeight: FontWeight.w700)),
         const SizedBox(height: 12),
         ...sorted.map((e) => Padding(
               padding: const EdgeInsets.only(bottom: 10),
@@ -1330,8 +1256,9 @@ class _ReportPageState extends ConsumerState<ReportPage> {
 
     return Row(
       children: [
+        // nudge 배너·궁합 안내와 동일 토큰 — caption(13) + textHint.
         Text(timeStr,
-            style: TextStyle(color: AppTheme.textHint, fontSize: 16)),
+            style: AppText.caption.copyWith(color: AppColors.textHint)),
         const Spacer(),
         _badge(report.gender.labelKo),
         const SizedBox(width: 6),
@@ -1385,10 +1312,9 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             child: Row(
               children: [
                 Text('부위별 상세 해석',
-                    style: TextStyle(
+                    style: AppText.modalTitle.copyWith(
                         color: _Palette.darkBrown,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold)),
+                        fontWeight: FontWeight.w700)),
                 const Spacer(),
                 FaIcon(
                   _showNodeDetails
@@ -1446,10 +1372,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     // Others start with "Header\nBody..."
     if (isFirst) {
       return Text(section.trim(),
-          style: TextStyle(
-              color: AppTheme.textPrimary,
-              fontSize: 16,
-              height: 1.7));
+          style: AppText.body.copyWith(color: AppColors.textPrimary));
     }
 
     final lines = section.split('\n');
@@ -1466,17 +1389,13 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             borderRadius: BorderRadius.circular(6),
           ),
           child: Text(header,
-              style: TextStyle(
+              style: AppText.sectionTitle.copyWith(
                   color: _Palette.darkBrown,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold)),
+                  fontWeight: FontWeight.w700)),
         ),
         const SizedBox(height: 8),
         Text(body,
-            style: TextStyle(
-                color: AppTheme.textPrimary,
-                fontSize: 16,
-                height: 1.7)),
+            style: AppText.body.copyWith(color: AppColors.textPrimary)),
       ],
     );
   }
@@ -1501,10 +1420,9 @@ class _ReportPageState extends ConsumerState<ReportPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('관상 해석',
-              style: TextStyle(
+              style: AppText.modalTitle.copyWith(
                   color: _Palette.darkBrown,
-                  fontSize: 19,
-                  fontWeight: FontWeight.bold)),
+                  fontWeight: FontWeight.w700)),
           const SizedBox(height: 14),
           for (var i = 0; i < sections.length; i++) ...[
             if (i > 0) const SizedBox(height: 14),
@@ -1520,15 +1438,13 @@ class _ReportPageState extends ConsumerState<ReportPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('참고 자료',
-            style: TextStyle(
+            style: AppText.sectionTitle.copyWith(
                 color: _Palette.darkBrown,
-                fontSize: 16,
-                fontWeight: FontWeight.bold)),
+                fontWeight: FontWeight.w700)),
         const SizedBox(height: 6),
         Text(
           '이 분석이 근거로 삼는 학술·전통 자료입니다.',
-          style: TextStyle(
-              color: _Palette.warmBrown, fontSize: 12, height: 1.4),
+          style: AppText.hint.copyWith(color: _Palette.warmBrown),
         ),
         const SizedBox(height: 12),
         for (var i = 0; i < _references.length; i++)
@@ -1542,19 +1458,16 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                   width: 22,
                   child: Text(
                     '${i + 1}.',
-                    style: TextStyle(
+                    style: AppText.hint.copyWith(
                         color: _Palette.warmBrown,
-                        fontSize: 12,
                         fontWeight: FontWeight.w600),
                   ),
                 ),
                 Expanded(
                   child: Text(
                     _references[i],
-                    style: TextStyle(
-                        color: _Palette.warmBrown,
-                        fontSize: 12,
-                        height: 1.5),
+                    style: AppText.hint
+                        .copyWith(color: _Palette.warmBrown),
                   ),
                 ),
               ],
@@ -1775,20 +1688,17 @@ class _SamjeongRadarPainter extends CustomPainter {
           children: [
             TextSpan(
               text: '$zone\n',
-              style: const TextStyle(
+              style: AppText.caption.copyWith(
                 color: _Palette.darkBrown,
-                fontSize: 13,
                 fontWeight: FontWeight.w500,
               ),
             ),
             TextSpan(
               text: '${z >= 0 ? '+' : ''}${z.toStringAsFixed(2)}',
-              style: TextStyle(
+              style: AppText.hint.copyWith(
                 color: z >= 0
                     ? const Color(0xFFC0392B)
                     : const Color(0xFF2C5AA0),
-                fontSize: 12,
-                fontWeight: FontWeight.w400,
               ),
             ),
           ],
@@ -2003,9 +1913,8 @@ class _TldrChip extends StatelessWidget {
       ),
       child: Text(
         '$prefix${data.label}',
-        style: TextStyle(
+        style: AppText.caption.copyWith(
             color: fg,
-            fontSize: 13,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.2),
       ),
@@ -2091,11 +2000,9 @@ class _YinYangBar extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Text('음양 균형',
-                  style: TextStyle(
-                      color: _Palette.darkBrown,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600)),
+              Text('음양 균형',
+                  style: AppText.subTitle
+                      .copyWith(color: _Palette.darkBrown)),
               const Spacer(),
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -2108,9 +2015,8 @@ class _YinYangBar extends StatelessWidget {
                 ),
                 child: Text(
                   balance.label,
-                  style: TextStyle(
+                  style: AppText.hint.copyWith(
                     color: toneColor,
-                    fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -2184,16 +2090,15 @@ class _YinYangBar extends StatelessWidget {
           Row(
             children: [
               Text('음기',
-                  style: TextStyle(color: _yinColor, fontSize: 11)),
+                  style: AppText.hint.copyWith(color: _yinColor)),
               const Spacer(),
               Text(
                 '편향성 ${skew >= 0 ? '+' : ''}${skew.toStringAsFixed(2)}  ·  강도 ${mag.toStringAsFixed(2)}',
-                style: TextStyle(
-                    color: _Palette.warmBrown, fontSize: 11),
+                style: AppText.hint.copyWith(color: _Palette.warmBrown),
               ),
               const Spacer(),
               Text('양기',
-                  style: TextStyle(color: _yangColor, fontSize: 11)),
+                  style: AppText.hint.copyWith(color: _yangColor)),
             ],
           ),
         ],

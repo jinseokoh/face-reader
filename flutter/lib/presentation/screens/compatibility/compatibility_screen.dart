@@ -276,26 +276,21 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          '궁합 삭제',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-        ),
-        content: const Text(
+        title: const Text('궁합 삭제', style: AppText.modalTitle),
+        content: Text(
           '이 궁합을 목록에서 삭제할까요?\n사용한 코인은 환불되지 않습니다.',
-          style: TextStyle(
-            fontSize: 14,
-            color: AppColors.textSecondary,
-            height: 1.5,
-          ),
+          style: AppText.body.copyWith(height: 1.5),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('취소'),
+            child: Text('취소',
+                style: AppText.body.copyWith(color: AppColors.textSecondary)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('삭제', style: TextStyle(color: AppColors.danger)),
+            child: Text('삭제',
+                style: AppText.body.copyWith(color: AppColors.danger)),
           ),
         ],
       ),
@@ -332,14 +327,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          '궁합 분석에 대하여',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.textPrimary,
-          ),
-        ),
+        title: const Text('궁합 분석에 대하여', style: AppText.modalTitle),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -347,23 +335,11 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
             children: [
               const Text(
                 '두 사람의 얼굴이 만드는 네 갈래 신호를 종합해 얼마나 잘 어울릴 수 있는지를 등급으로 나눕니다.',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w400,
-                  color: AppTheme.textSecondary,
-                  height: 1.7,
-                ),
+                style: AppText.body,
               ),
               const SizedBox(height: 18),
               // 등급 블록 — 4 갈래 breakdown 보다 먼저.
-              const Text(
-                '등급',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.textPrimary,
-                ),
-              ),
+              const Text('등급', style: AppText.sectionTitle),
               const SizedBox(height: 10),
               const _LabelRow(label: CompatLabel.cheonjakjihap),
               const _LabelRow(label: CompatLabel.geumseulsanghwa),
@@ -377,14 +353,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
                   body: kind.descriptionKo,
                 ),
               const SizedBox(height: 18),
-              const Text(
-                '비중이 다른 이유',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.textPrimary,
-                ),
-              ),
+              const Text('비중이 다른 이유', style: AppText.sectionTitle),
               const SizedBox(height: 10),
               const Text(
                 '정통 관상학에서 두 사람의 결을 볼 때는, 인생의 어느 자리에서 어떻게 부딪히는지를 따로따로 따져 무게를 둡니다. 네 차원의 비중도 그 가르침을 따른 것입니다.\n\n'
@@ -393,12 +362,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
                 '• 가치관 20% — 오행(五行, 목·화·토·금·수)의 기운. 평생 변하지 않는 큰 결. 토대로서의 무게는 크되 십이궁만큼 세분화되지 않습니다.\n'
                 '• 이성적 끌림 15% — 매력은 관계의 출발 색(色)이지 평생을 지탱하는 결이 아닙니다. 옛 관상학이 남녀의 운을 볼 때도, 단순한 미모보다 부부운·자식운·재물운처럼 실제 결혼생활의 조화를 더 중요하게 본 이유도 여기에 있습니다.\n\n'
                 '이들 네 요소들이 인간관계에 미치는 영향력은 서로 다른 비중을 갖기 때문에, 각각의 요소의 중요도를 다른 비중으로 계산합니다. 이는 옛 관상서와 현대 데이터 모두가 공통적으로 보여주는 부분입니다.',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w400,
-                  color: AppTheme.textSecondary,
-                  height: 1.7,
-                ),
+                style: AppText.body,
               ),
             ],
           ),
@@ -406,14 +370,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text(
-              '닫기',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary,
-              ),
-            ),
+            child: const Text('닫기', style: AppText.subTitle),
           ),
         ],
       ),
@@ -526,8 +483,7 @@ class _CompatListCard extends StatelessWidget {
                                   const SizedBox(height: 4),
                                   Text(
                                     '${r.label.korean} (${r.label.hanja})',
-                                    style: TextStyle(
-                                      fontSize: 13,
+                                    style: AppText.caption.copyWith(
                                       color: labelColor,
                                       letterSpacing: 1,
                                       height: 1.2,
@@ -539,12 +495,7 @@ class _CompatListCard extends StatelessWidget {
                             const SizedBox(height: 4),
                             Text(
                               r.label.modernKo,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w400,
-                                color: AppTheme.textHint,
-                                height: 1.4,
-                              ),
+                              style: AppText.hint,
                             ),
                           ],
                         ),
@@ -555,20 +506,17 @@ class _CompatListCard extends StatelessWidget {
                         children: [
                           Text(
                             r.total.toStringAsFixed(0),
-                            style: const TextStyle(
+                            // 데이터 numeral — 토큰 anchor + 명시적 크기 유지.
+                            style: AppText.sectionTitle.copyWith(
                               fontSize: 28,
                               fontWeight: FontWeight.w300,
-                              color: AppTheme.textPrimary,
                               height: 1,
                             ),
                           ),
                           const SizedBox(height: 2),
-                          const Text(
+                          Text(
                             '/ 100',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: AppTheme.textHint,
-                            ),
+                            style: AppText.hint.copyWith(fontSize: 10),
                           ),
                         ],
                       ),
@@ -579,9 +527,8 @@ class _CompatListCard extends StatelessWidget {
                   const SizedBox(height: 12),
                   Text(
                     '${r.myElement.displayKorean} × ${r.albumElement.displayKorean}  ·  ${_relationKindKo(r.elementRelation.kind)}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.accent,
+                    style: AppText.hint.copyWith(
+                      color: AppColors.accent,
                       letterSpacing: 1,
                     ),
                   ),
@@ -752,11 +699,7 @@ class _CompatLockedCard extends ConsumerWidget {
               isLoggedIn
                   ? '상세 풀이는 1코인 지불 후 확인가능합니다.'
                   : '최초 로그인하면 가입 보너스 3 코인을 지급해 드립니다.',
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppTheme.textSecondary,
-                height: 1.5,
-              ),
+              style: AppText.hint.copyWith(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 12),
             // 받은(북마크) 카드 포함 모든 미확인 카드는 단일 "궁합보기" 버튼으로
@@ -776,10 +719,7 @@ class _CompatLockedCard extends ConsumerWidget {
                 ),
                 child: Text(
                   cta,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: AppText.subTitle.copyWith(color: Colors.white),
                 ),
               ),
             ),
@@ -901,7 +841,8 @@ class _RegisterMyFaceBannerState extends ConsumerState<_RegisterMyFaceBanner>
             child: Text(
               '나의 관상이 등록되기 전까지는 궁합이 잠겨있게 됩니다.',
               textAlign: TextAlign.center,
-              style: AppText.hint,
+              // nudge 배너 caption("앨범 사진이나 …")과 동일 토큰.
+              style: AppText.caption.copyWith(color: AppColors.textHint),
             ),
           ),
         ),
@@ -981,35 +922,13 @@ class _InfoRow extends StatelessWidget {
             textBaseline: TextBaseline.alphabetic,
             children: [
               Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary,
-                  ),
-                ),
+                child: Text(title, style: AppText.subTitle),
               ),
-              Text(
-                weight,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w400,
-                  color: AppTheme.textHint,
-                ),
-              ),
+              Text(weight, style: AppText.hint),
             ],
           ),
           const SizedBox(height: 4),
-          Text(
-            body,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w400,
-              color: AppTheme.textSecondary,
-              height: 1.6,
-            ),
-          ),
+          Text(body, style: AppText.caption),
         ],
       ),
     );
@@ -1050,22 +969,11 @@ class _LabelRow extends StatelessWidget {
                     Flexible(
                       child: RichText(
                         text: TextSpan(
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: accent,
-                          ),
+                          style: AppText.subTitle.copyWith(color: accent),
                           children: [
                             TextSpan(text: label.korean),
                             const TextSpan(text: '  '),
-                            TextSpan(
-                              text: label.hanja,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w400,
-                                color: AppTheme.textHint,
-                              ),
-                            ),
+                            TextSpan(text: label.hanja, style: AppText.hint),
                           ],
                         ),
                       ),
@@ -1075,23 +983,10 @@ class _LabelRow extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   pair.headline,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary,
-                    height: 1.5,
-                  ),
+                  style: AppText.subTitle.copyWith(height: 1.5),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  pair.detail,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w400,
-                    color: AppTheme.textSecondary,
-                    height: 1.6,
-                  ),
-                ),
+                Text(pair.detail, style: AppText.caption),
               ],
             ),
           ),
@@ -1147,19 +1042,16 @@ class _MiniBar extends StatelessWidget {
                 entry.korean,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: labelColor,
-                  letterSpacing: 0,
-                ),
+                // 미니 차트 micro-label — 4열 폭 제약으로 크기 명시 유지.
+                style: AppText.hint.copyWith(fontSize: 10, color: labelColor),
               ),
             ),
             const SizedBox(width: 4),
             Text(
               entry.muted ? '—' : entry.value.toStringAsFixed(0),
-              style: TextStyle(
+              style: AppText.hint.copyWith(
                 fontSize: 11,
-                color: entry.muted ? AppTheme.textHint : AppTheme.textPrimary,
+                color: entry.muted ? AppColors.textHint : AppColors.textPrimary,
               ),
             ),
           ],

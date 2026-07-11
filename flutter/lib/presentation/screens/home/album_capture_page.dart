@@ -6,6 +6,7 @@ import 'dart:ui' as ui;
 import 'package:camera/camera.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
+import 'package:facely/core/theme.dart';
 import 'package:facely/data/services/face_metadata_client.dart';
 import 'package:facely/domain/models/capture_result.dart';
 import 'package:facely/domain/models/face_metadata.dart';
@@ -66,11 +67,7 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
             centerTitle: true,
             title: Text(
               _isLateralPhase ? '얼굴 측면' : '얼굴 정면',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
+              style: AppText.modalTitle.copyWith(color: Colors.white),
             ),
             actions: [
               IconButton(
@@ -118,22 +115,21 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
                 fit: BoxFit.contain,
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 '얼굴 측면',
-                style: TextStyle(
-                  color: Color(0xFF1F1F1F),
+                style: AppText.modalTitle.copyWith(
+                  color: const Color(0xFF1F1F1F),
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1.5,
                 ),
               ),
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 '코 모양 판단을 위해 한쪽 귀가 안보이는 '
                 ' 측면 사진을 올려주세요. 패스하면, 특징이 없는 평범한 코 모양으로 판단합니다.',
-                style: TextStyle(
-                  color: Color(0xFF555555),
-                  fontSize: 14,
+                style: AppText.body.copyWith(
+                  color: AppColors.accent,
                   height: 1.5,
                 ),
                 textAlign: TextAlign.center,
@@ -152,12 +148,10 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text(
+                        child: Text(
                           '패스',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: AppText.subTitle
+                              .copyWith(color: AppColors.accent),
                         ),
                       ),
                     ),
@@ -176,12 +170,10 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text(
+                        child: Text(
                           '측면사진 선택',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: AppText.subTitle
+                              .copyWith(color: Colors.white),
                         ),
                       ),
                     ),
@@ -220,7 +212,7 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
           padding: const EdgeInsets.all(24),
           child: Text(
             _error!,
-            style: const TextStyle(color: Colors.white, fontSize: 16),
+            style: AppText.body.copyWith(color: Colors.white),
             textAlign: TextAlign.center,
           ),
         ),
@@ -285,8 +277,7 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
             color: Colors.black.withValues(alpha: 0.6),
             child: Text(
               description,
-              style: const TextStyle(
-                  color: Colors.white, fontSize: 16, height: 1.4),
+              style: AppText.body.copyWith(color: Colors.white, height: 1.4),
               textAlign: TextAlign.left,
             ),
           ),
@@ -311,8 +302,7 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
                 icon: const FaIcon(FontAwesomeIcons.camera, size: 18),
                 label: Text(
                   buttonLabel,
-                  style: const TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.w600),
+                  style: AppText.subTitle,
                 ),
               ),
             ),
@@ -385,8 +375,13 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
         performanceMode: FaceDetectorMode.accurate,
       ),
     );
-    final faces = await faceDetector.processImage(inputImage);
-    await faceDetector.close();
+    final List<Face> faces;
+    try {
+      faces = await faceDetector.processImage(inputImage);
+    } finally {
+      // processImage 실패 시에도 네이티브 detector 해제.
+      await faceDetector.close();
+    }
     if (faces.isEmpty) {
       throw Exception('얼굴을 찾을 수 없습니다.\n다른 사진을 선택해 주세요.');
     }
@@ -428,81 +423,89 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
       original.dispose();
     }
 
-    final byteData =
-        await squareImage.toByteData(format: ui.ImageByteFormat.rawRgba);
-    if (byteData == null) throw Exception('이미지를 디코딩할 수 없습니다');
-    final rgba = Uint8List.sublistView(byteData.buffer.asUint8List());
+    // square 분기에서는 squareImage == original 이라 finally 의 dispose 한 번으로
+    // 둘 다 해제된다. 미해제 시 사진당 full-res 네이티브 비트맵이 누적돼 궁합
+    // (2장 연속 분석) 같은 흐름에서 메모리 압박 → iOS jetsam kill 을 유발.
+    // landmark 없음·인코딩 실패 등 throw 경로에서도 해제되도록 try-finally.
+    try {
+      final byteData =
+          await squareImage.toByteData(format: ui.ImageByteFormat.rawRgba);
+      if (byteData == null) throw Exception('이미지를 디코딩할 수 없습니다');
+      final rgba = Uint8List.sublistView(byteData.buffer.asUint8List());
 
-    final imgW = squareImage.width.toDouble();
-    final imgH = squareImage.height.toDouble();
-    final bbox = faces.first.boundingBox;
-    final shifted = Rect.fromLTRB(
-      bbox.left + padOffsetX,
-      bbox.top + padOffsetY,
-      bbox.right + padOffsetX,
-      bbox.bottom + padOffsetY,
-    );
-    final clamped = Rect.fromLTRB(
-      shifted.left.clamp(0.0, imgW),
-      shifted.top.clamp(0.0, imgH),
-      shifted.right.clamp(0.0, imgW),
-      shifted.bottom.clamp(0.0, imgH),
-    );
-    final box = FaceMeshBox.fromLTWH(
-      left: clamped.left,
-      top: clamped.top,
-      width: clamped.width,
-      height: clamped.height,
-    );
+      final imgW = squareImage.width.toDouble();
+      final imgH = squareImage.height.toDouble();
+      final bbox = faces.first.boundingBox;
+      final shifted = Rect.fromLTRB(
+        bbox.left + padOffsetX,
+        bbox.top + padOffsetY,
+        bbox.right + padOffsetX,
+        bbox.bottom + padOffsetY,
+      );
+      final clamped = Rect.fromLTRB(
+        shifted.left.clamp(0.0, imgW),
+        shifted.top.clamp(0.0, imgH),
+        shifted.right.clamp(0.0, imgW),
+        shifted.bottom.clamp(0.0, imgH),
+      );
+      final box = FaceMeshBox.fromLTWH(
+        left: clamped.left,
+        top: clamped.top,
+        width: clamped.width,
+        height: clamped.height,
+      );
 
-    final processor = await FaceMeshProcessor.create(
-      delegate: FaceMeshDelegate.xnnpack,
-      enableRoiTracking: false,
-      minDetectionConfidence: 0.5,
-      minTrackingConfidence: 0.5,
-    );
-    final meshImage = FaceMeshImage(
-      pixels: rgba,
-      width: squareImage.width,
-      height: squareImage.height,
-    );
-    final result = processor.process(
-      meshImage,
-      box: box,
-      boxScale: 1.2,
-      boxMakeSquare: true,
-      rotationDegrees: 0,
-    );
-    processor.close();
+      final processor = await FaceMeshProcessor.create(
+        delegate: FaceMeshDelegate.xnnpack,
+        enableRoiTracking: false,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5,
+      );
+      final meshImage = FaceMeshImage(
+        pixels: rgba,
+        width: squareImage.width,
+        height: squareImage.height,
+      );
+      final FaceMeshResult result;
+      try {
+        result = processor.process(
+          meshImage,
+          box: box,
+          boxScale: 1.2,
+          boxMakeSquare: true,
+          rotationDegrees: 0,
+        );
+      } finally {
+        // process 실패 시에도 네이티브 processor 해제.
+        processor.close();
+      }
 
-    if (result.landmarks.isEmpty) {
-      throw Exception('얼굴 랜드마크를 추출할 수 없습니다.\n다른 사진을 선택해 주세요.');
+      if (result.landmarks.isEmpty) {
+        throw Exception('얼굴 랜드마크를 추출할 수 없습니다.\n다른 사진을 선택해 주세요.');
+      }
+
+      final pngData =
+          await squareImage.toByteData(format: ui.ImageByteFormat.png);
+      if (pngData == null) throw Exception('이미지 인코딩 실패');
+      final pngBytes = Uint8List.sublistView(pngData.buffer.asUint8List());
+
+      final yaw = estimateYaw(result.landmarks);
+      final outW = squareImage.width;
+      final outH = squareImage.height;
+      debugPrint('[Album] processed image=${outW}x$outH '
+          '(orig=${origW}x$origH padOffset=${padOffsetX.toStringAsFixed(0)},${padOffsetY.toStringAsFixed(0)}) '
+          'yaw=${yaw.toStringAsFixed(3)} class=${classifyYaw(yaw)}');
+
+      return _AlbumPhoto(
+        pngBytes: pngBytes,
+        meshResult: result,
+        width: outW,
+        height: outH,
+        yaw: yaw,
+      );
+    } finally {
+      squareImage.dispose();
     }
-
-    final pngData =
-        await squareImage.toByteData(format: ui.ImageByteFormat.png);
-    if (pngData == null) throw Exception('이미지 인코딩 실패');
-    final pngBytes = Uint8List.sublistView(pngData.buffer.asUint8List());
-
-    final yaw = estimateYaw(result.landmarks);
-    final outW = squareImage.width;
-    final outH = squareImage.height;
-    debugPrint('[Album] processed image=${outW}x$outH '
-        '(orig=${origW}x$origH padOffset=${padOffsetX.toStringAsFixed(0)},${padOffsetY.toStringAsFixed(0)}) '
-        'yaw=${yaw.toStringAsFixed(3)} class=${classifyYaw(yaw)}');
-
-    // square 분기에서는 squareImage == original 이라 이 한 번의 dispose 로 둘 다
-    // 해제된다. 미해제 시 사진당 full-res 네이티브 비트맵이 누적돼 궁합(2장
-    // 연속 분석) 같은 흐름에서 메모리 압박 → iOS jetsam kill 을 유발.
-    squareImage.dispose();
-
-    return _AlbumPhoto(
-      pngBytes: pngBytes,
-      meshResult: result,
-      width: outW,
-      height: outH,
-      yaw: yaw,
-    );
   }
 
   void _runAnalysis() {

@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:camera/camera.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
+import 'package:facely/core/theme.dart';
 import 'package:facely/data/services/face_metadata_client.dart';
 import 'package:facely/domain/models/capture_result.dart';
 import 'package:facely/domain/models/face_analysis.dart';
@@ -50,6 +51,9 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
   String? _error;
 
   bool _isCapturing = false;
+  // 캡처 세션 세대 — 6초 timeout 이 자기 세션만 취소하도록 (정면 캡처의
+  // timeout 이 6초 안에 시작된 측면 캡처를 오발로 죽이는 것 차단).
+  int _captureSession = 0;
   final List<List<FaceMeshLandmark>> _capturedFrames = [];
   // Still image captured via takePicture() at the moment the user taps the
   // analyze button. Used to produce a 128px WebP thumbnail attached to the
@@ -108,11 +112,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
             centerTitle: true,
             title: Text(
               _phase == _CapturePhase.frontal ? '얼굴 정면' : '얼굴 측면',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
+              style: AppText.modalTitle.copyWith(color: Colors.white),
             ),
             actions: [
               IconButton(
@@ -144,7 +144,10 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
     WidgetsBinding.instance.removeObserver(this);
     _countdownTimer?.cancel();
     _cameraController?.dispose();
-    _meshProcessor?.close();
+    // 읽기→null→close — _closeCamera 와의 레이스에서 이중 close 차단.
+    final processor = _meshProcessor;
+    _meshProcessor = null;
+    processor?.close();
     super.dispose();
   }
 
@@ -190,7 +193,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
           padding: const EdgeInsets.all(24),
           child: Text(
             _error!,
-            style: const TextStyle(color: Colors.white, fontSize: 16),
+            style: AppText.body.copyWith(color: Colors.white),
             textAlign: TextAlign.center,
           ),
         ),
@@ -256,8 +259,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
               _phase == _CapturePhase.frontal
                   ? '안면 계측 점선이 녹색으로 변해야 합니다.'
                   : '한쪽 귀가 안 보일 때까지 얼굴을 돌려주세요.',
-              style: const TextStyle(
-                  color: Colors.white, fontSize: 16, height: 1.4),
+              style: AppText.body.copyWith(color: Colors.white, height: 1.4),
               textAlign: TextAlign.left,
             ),
           ),
@@ -295,7 +297,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
                     child: Center(
                       child: Text(
                         '$_countdownRemaining',
-                        style: const TextStyle(
+                        style: AppText.modalTitle.copyWith(
                           color: Colors.white,
                           fontSize: 88,
                           fontWeight: FontWeight.w800,
@@ -372,8 +374,8 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
                                 ],
                                 Text(
                                   _phaseTitle!,
-                                  style: const TextStyle(
-                                    color: Color(0xFF1F1F1F),
+                                  style: AppText.modalTitle.copyWith(
+                                    color: const Color(0xFF1F1F1F),
                                     fontSize: 22,
                                     fontWeight: FontWeight.w700,
                                     letterSpacing: 1.5,
@@ -383,9 +385,8 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
                                   const SizedBox(height: 12),
                                   Text(
                                     _phaseInstruction(_phaseTitle!),
-                                    style: const TextStyle(
-                                      color: Color(0xFF555555),
-                                      fontSize: 14,
+                                    style: AppText.body.copyWith(
+                                      color: AppColors.accent,
                                       height: 1.5,
                                     ),
                                     textAlign: TextAlign.center,
@@ -407,10 +408,8 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
                                       ),
                                       child: Text(
                                         _phaseConfirmLabel(_phaseTitle!),
-                                        style: const TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w600,
-                                        ),
+                                        style: AppText.subTitle
+                                            .copyWith(color: Colors.white),
                                       ),
                                     ),
                                   ),
@@ -440,25 +439,22 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
                   borderRadius: BorderRadius.circular(999),
                   onTap: () =>
                       Navigator.of(context).pop(const FaceMeshAlbumRequest()),
-                  child: const Padding(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        FaIcon(
+                        const FaIcon(
                           FontAwesomeIcons.image,
                           color: Colors.white,
                           size: 14,
                         ),
-                        SizedBox(width: 8),
+                        const SizedBox(width: 8),
                         Text(
                           '앨범에서 선택',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: AppText.subTitle
+                              .copyWith(color: Colors.white),
                         ),
                       ],
                     ),
@@ -486,8 +482,10 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
 
   Future<void> _closeCamera() async {
     await _detachAndDisposeController();
-    _meshProcessor?.close();
+    // 읽기→null→close — pop 직후 위젯 dispose() 와 겹쳐도 한 번만 닫힌다.
+    final processor = _meshProcessor;
     _meshProcessor = null;
+    processor?.close();
     _meshResult = null;
     _prevLandmarks = null;
     _isProcessing = false;
@@ -664,6 +662,9 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
 
   void _onCameraFrame(CameraImage image) {
     if (_isProcessing || _meshProcessor == null) return;
+    // 안내 모달이 화면을 덮는 동안은 overlay·카운트다운이 모두 죽어 있다 —
+    // 결과를 쓸 곳이 없으니 468-landmark 추론 자체를 쉰다 (CPU·발열 절감).
+    if (_phaseTitleBlocking) return;
     _isProcessing = true;
 
     // Capture actual frame dimensions on first frame
@@ -678,8 +679,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
       if (ps != null) {
         final shorter = min(ps.width, ps.height);
         final longer = max(ps.width, ps.height);
-        // ignore: avoid_print
-        print('[FaceMesh] platform=${Platform.operatingSystem}  '
+        debugPrint('[FaceMesh] platform=${Platform.operatingSystem}  '
             'rawFrame=${image.width}x${image.height}  '
             'previewSize=$ps  aspectRatio=${(shorter / longer).toStringAsFixed(4)}  '
             'bytesPerRow=${image.planes[0].bytesPerRow}  '
@@ -695,8 +695,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
           final lm0 = result.landmarks[0];
           final lm234 = result.landmarks[234];
           final lm454 = result.landmarks[454];
-          // ignore: avoid_print
-          print('[FaceMesh-Dart] imageW=${result.imageWidth} imageH=${result.imageHeight} '
+          debugPrint('[FaceMesh-Dart] imageW=${result.imageWidth} imageH=${result.imageHeight} '
               'lm0=(${lm0.x.toStringAsFixed(4)},${lm0.y.toStringAsFixed(4)}) '
               'lm234=(${lm234.x.toStringAsFixed(4)},${lm234.y.toStringAsFixed(4)}) '
               'lm454=(${lm454.x.toStringAsFixed(4)},${lm454.y.toStringAsFixed(4)})');
@@ -716,10 +715,11 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
           // so landmarks are in screen-upright space — no painter rotation needed.
           _rotationCompensation = 0;
         });
-        _prevLandmarks = List.of(result.landmarks);
+        // result 는 프레임마다 새 객체 — 복사 없이 참조만 유지 (GC churn 절감).
+        _prevLandmarks = result.landmarks;
         _evaluateAutoCountdown(color);
         if (_isCapturing && result.landmarks.isNotEmpty) {
-          _capturedFrames.add(List.of(result.landmarks));
+          _capturedFrames.add(result.landmarks);
           debugPrint(
               '[Camera] frame ${_capturedFrames.length}/5 (phase=$_phase yawClass=$yawClass)');
           if (_capturedFrames.length >= 5) {
@@ -761,6 +761,10 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
     if (rotComp == null) return null;
     _rotationCompensation = rotComp;
 
+    // 로컬 캡처 — close 레이스 중 필드가 null 이 돼도 `!` 크래시 없이 skip.
+    final processor = _meshProcessor;
+    if (processor == null) return null;
+
     try {
       if (Platform.isAndroid) {
         final planes = image.planes;
@@ -800,7 +804,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
           yBytesPerRow: yBytesPerRow,
           vuBytesPerRow: vuBytesPerRow,
         );
-        return _meshProcessor!.processNv21(
+        return processor.processNv21(
           nv21Image,
           rotationDegrees: rotComp,
         );
@@ -813,7 +817,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
           bytesPerRow: image.planes[0].bytesPerRow,
           pixelFormat: FaceMeshPixelFormat.bgra,
         );
-        return _meshProcessor!.process(
+        return processor.process(
           meshImage,
           rotationDegrees: rotComp,
         );
@@ -948,6 +952,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
     }
 
     if (!mounted) return;
+    final session = ++_captureSession;
     setState(() {
       _isCapturing = true;
       _capturedFrames.clear();
@@ -956,8 +961,9 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
 
     // Safety: if frames don't arrive within 6 seconds (tracking failure,
     // severe yaw, etc.), cancel the capture so the UI isn't stuck.
+    // 세션 토큰 일치 시에만 — 이후 시작된 다른 캡처는 건드리지 않는다.
     Future.delayed(const Duration(seconds: 6), () {
-      if (!mounted) return;
+      if (!mounted || _captureSession != session) return;
       if (_isCapturing && _capturedFrames.length < 5) {
         debugPrint('[Camera] capture timeout — collected ${_capturedFrames.length}/5');
         setState(() {

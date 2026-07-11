@@ -317,10 +317,10 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
               const SizedBox(height: AppSpacing.huge),
               // 액션 — 풀폭 스택.
               if (!room.isClosed) ...[
-                PrimaryButton(
-                  label: '직접촬영',
-                  icon: FontAwesomeIcons.camera,
-                  onPressed: canAddMore ? () => _scanNewMember(room) : null,
+                // 직접촬영 — 아래 초대 타일과 같은 surface+border 타일 패밀리.
+                _scanTile(
+                  enabled: canAddMore,
+                  onTap: () => _scanNewMember(room),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 // 초대 3종 — 카톡(친구) · 링크 공유(아무 채널/비연락처) · 복사.
@@ -365,7 +365,7 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
               // 그룹 케미 보기 — 스캔 3명부터 (A7: 부분 공개, 마감과 무관).
               // 인원 미달이면 버튼 대신 배경 없는 작은 안내 텍스트.
               if (canMatrix)
-                PrimaryButton(
+                SecondaryButton(
                   label: '그룹 케미 보기',
                   onPressed: () => _openMatrix(room),
                 )
@@ -374,7 +374,7 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
                   padding:
                       const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                   child: Text(
-                    '앞으로 ${total - scanned}명 더 등록하면 마감됩니다',
+                    '${TeamRoom.kMinMembers - scanned}명 더 등록하면 그룹 케미 발표',
                     textAlign: TextAlign.center,
                     style:
                         AppText.caption.copyWith(color: AppColors.textHint),
@@ -602,6 +602,38 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
 
   /// 초대 아이콘 타일 — 등폭 모노톤(브랜드색 금지, §UI 통일). 진행 중이면 스피너,
   /// 다른 타일은 흐려서 비활성 표시.
+  /// 직접촬영 — 초대 타일(_inviteTile)과 동일한 surface+border 디자인의
+  /// 풀폭 타일 버튼. 같은 행동 패밀리 = 같은 시각 언어.
+  Widget _scanTile({required bool enabled, required VoidCallback onTap}) {
+    return Opacity(
+      opacity: enabled ? 1 : 0.4,
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: Container(
+          height: 48,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const FaIcon(
+                FontAwesomeIcons.solidCamera, // fill — regular(outline) 금지
+                size: 16,
+                color: AppColors.textPrimary,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              const Text('직접촬영', style: AppText.subTitle),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _inviteTile({
     required FaIconData icon,
     required String label,
