@@ -9,7 +9,7 @@ import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/providers/tab_provider.dart';
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/presentation/widgets/emotion_empty_state.dart';
-import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
+import 'package:facely/presentation/widgets/other_face_scan_pill.dart';
 import 'package:facely/presentation/widgets/physiognomy_info_dialog.dart';
 import 'package:facely/presentation/widgets/source_badge.dart';
 import 'package:flutter/material.dart';
@@ -483,30 +483,8 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
               // 맡는다. 헤더는 타이틀 + TabBar 만.
               title: const Text('관상'),
               actions: [
-                // 다른 사람 관상보기 — 탭 = 즉시 카메라 (내 관상 등록과 동일
-                // UX, 앨범은 카메라 화면 안 숏컷). 사전 팝업 메뉴 없음.
-                // 설정 [충전하기]·궁합 등록 pill 과 동일 outlined stadium 레시피.
-                Center(
-                  child: GestureDetector(
-                    onTap: () => startOtherFaceCapture(context, ref),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.md, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppColors.background,
-                        border: Border.all(color: AppColors.textPrimary),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        '다른 사람 관상보기',
-                        style: AppText.caption.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+                // 상대방 관상 추가 — 궁합 탭과 공유하는 공용 pill.
+                const OtherFaceScanPill(),
                 IconButton(
                   icon: const FaIcon(FontAwesomeIcons.circleInfo, size: 20),
                   onPressed: () => _showInfoDialog(context),

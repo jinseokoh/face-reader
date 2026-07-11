@@ -289,12 +289,13 @@ class _InfoConfirmScreenState
         Navigator.of(context).pop(report);
         return;
       }
-      // 내 관상 등록은 시작한 탭(홈/관상/궁합)에 그대로 남는다 — 탭 전환 없음.
-      // 궁합 탭에서 등록하면 그 자리에서 잠긴 리스트가 열리는 흐름.
+      // 분석은 시작한 탭(관상/궁합/교감)에 그대로 남는다 — 탭 전환 없음.
+      // 궁합에서 상대를 추가하면 그 자리 미확인 리스트에 새 카드가 보이고,
+      // 관상에서 시작했으면 관상 리스트에 보인다. 관상 inner 탭만 결과가
+      // 놓인 소스(카메라/앨범)로 미리 맞춰 둔다.
       if (!widget.asMyFace) {
         ref.read(historyTabProvider.notifier).selectTab(
             c.source == AnalysisSource.camera ? 0 : 1);
-        ref.read(selectedTabProvider.notifier).selectTab(0); // 관상 탭
       }
 
       if (!mounted) return;
