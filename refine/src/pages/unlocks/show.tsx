@@ -4,6 +4,7 @@ import { Alert, Descriptions, Space, Tag, Typography } from "antd";
 import { useMemo } from "react";
 import { useParams } from "react-router";
 import type { MetricEntry, Unlock } from "../../types";
+import { metricThumbUrl } from "../../types";
 import {
   runCompat,
   type CompatOutput,
@@ -106,7 +107,13 @@ export const UnlockShow = () => {
           />
         )}
 
-        {compat.out && <CompatHeroCard compat={compat.out} />}
+        {compat.out && (
+          <CompatHeroCard
+            compat={compat.out}
+            thumbA={metricThumbUrl(ownerBody)}
+            thumbB={metricThumbUrl(partnerBody)}
+          />
+        )}
       </Space>
     </Show>
   );

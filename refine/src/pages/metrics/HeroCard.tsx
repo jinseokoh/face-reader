@@ -1,7 +1,14 @@
 import type { CompatOutput, EngineOutput } from "../../lib/share-engine";
 import "./hero-card.css";
 
-export function SoloHeroCard({ eng }: { eng: EngineOutput }) {
+export function SoloHeroCard({
+  eng,
+  thumbUrl,
+}: {
+  eng: EngineOutput;
+  /** body.thumbnailKey 로 만든 실제 썸네일 URL — 없을 때만 성별 fallback. */
+  thumbUrl?: string | null;
+}) {
   return (
     <article className="hero">
       <div className="hero-head-row">
@@ -13,7 +20,11 @@ export function SoloHeroCard({ eng }: { eng: EngineOutput }) {
             <span className="hero-special">{eng.specialArchetype}</span>
           )}
         </header>
-        <img className="hero-portrait" src={portraitFor(eng.gender)} alt="" />
+        <img
+          className="hero-portrait"
+          src={thumbUrl ?? portraitFor(eng.gender)}
+          alt=""
+        />
       </div>
 
       {eng.catchphrase && (
@@ -53,7 +64,16 @@ export function SoloHeroCard({ eng }: { eng: EngineOutput }) {
   );
 }
 
-export function CompatHeroCard({ compat }: { compat: CompatOutput }) {
+export function CompatHeroCard({
+  compat,
+  thumbA,
+  thumbB,
+}: {
+  compat: CompatOutput;
+  /** 각자 body.thumbnailKey 썸네일 — 없을 때만 성별 fallback. */
+  thumbA?: string | null;
+  thumbB?: string | null;
+}) {
   const score = Math.round(compat.total);
   return (
     <article className="hero">
@@ -66,9 +86,9 @@ export function CompatHeroCard({ compat }: { compat: CompatOutput }) {
       </header>
 
       <div className="compat-portraits">
-        <CompatFace person={compat.a} />
+        <CompatFace person={compat.a} thumbUrl={thumbA} />
         <span className="compat-x">×</span>
-        <CompatFace person={compat.b} />
+        <CompatFace person={compat.b} thumbUrl={thumbB} />
       </div>
 
       {compat.summary && (
@@ -89,10 +109,20 @@ export function CompatHeroCard({ compat }: { compat: CompatOutput }) {
   );
 }
 
-function CompatFace({ person }: { person: CompatOutput["a"] }) {
+function CompatFace({
+  person,
+  thumbUrl,
+}: {
+  person: CompatOutput["a"];
+  thumbUrl?: string | null;
+}) {
   return (
     <div className="compat-face">
-      <img className="compat-face-img" src={portraitFor(person.gender)} alt="" />
+      <img
+        className="compat-face-img"
+        src={thumbUrl ?? portraitFor(person.gender)}
+        alt=""
+      />
       <p className="compat-face-label">{person.primaryLabel}</p>
       <p className="compat-face-element">{elementKo(person.fiveElement)}</p>
     </div>

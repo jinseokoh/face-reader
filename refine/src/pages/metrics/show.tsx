@@ -84,7 +84,9 @@ export const MetricShow = () => {
             />
           )}
 
-          {result.eng && <SoloHeroCard eng={result.eng} />}
+          {result.eng && (
+            <SoloHeroCard eng={result.eng} thumbUrl={metricThumbUrl(row.body)} />
+          )}
 
           {row.body && (
             <details>
