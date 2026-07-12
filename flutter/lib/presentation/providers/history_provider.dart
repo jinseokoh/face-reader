@@ -106,7 +106,22 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
   void _claimAnonymousMetrics(List<FaceReadingReport> reports) {
     final ids = reports.map((r) => r.supabaseId).whereType<String>().toList();
     if (ids.isEmpty) return;
-    SupabaseService().claimAnonymousMetrics(ids).catchError((Object e) {
+    // 내 관상 row 는 claim 과 함께 alias 를 프로필 nickname 으로 backfill
+    // (익명 촬영 → 로그인 시나리오. 서버 alias 가 이미 있으면 보존).
+    String? myFaceId;
+    for (final r in reports) {
+      if (r.isMyFace) {
+        myFaceId = r.supabaseId;
+        break;
+      }
+    }
+    SupabaseService()
+        .claimAnonymousMetrics(
+      ids,
+      myFaceId: myFaceId,
+      nickname: AuthService().currentUser?.nickname,
+    )
+        .catchError((Object e) {
       _log('claim anon metrics error: $e');
     });
   }

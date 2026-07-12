@@ -107,7 +107,11 @@ class SupabaseService {
   /// id 범위 없이 갱신하면 남의 익명 카드까지 가로챈다. is null 필터까지 더해
   /// 이미 소유된 행(받은 카드 등)은 건드리지 않는다. RLS metrics_owner_update
   /// (USING user_id null|본인, WITH CHECK user_id = auth.uid) 가 이를 허용.
-  Future<void> claimAnonymousMetrics(List<String> ids) async {
+  Future<void> claimAnonymousMetrics(
+    List<String> ids, {
+    String? myFaceId,
+    String? nickname,
+  }) async {
     final uid = _client.auth.currentUser?.id;
     if (uid == null || ids.isEmpty) return;
     await _client
@@ -116,5 +120,16 @@ class SupabaseService {
         .inFilter('id', ids)
         .isFilter('user_id', null);
     debugPrint('[Supabase] claimed anon metrics → $uid (scope=${ids.length})');
+    // 익명 시절 비어 있던 내 관상 alias 를 프로필 nickname 으로 backfill —
+    // 익명 촬영 → 나중에 로그인한 시나리오. alias 가 이미 있으면(사용자 지정
+    // 이름 등) 보존 (is null 가드).
+    if (myFaceId != null && nickname != null && nickname.isNotEmpty) {
+      await _client
+          .from('metrics')
+          .update({'alias': nickname})
+          .eq('id', myFaceId)
+          .isFilter('alias', null);
+      debugPrint('[Supabase] backfilled my-face alias ← $nickname');
+    }
   }
 }

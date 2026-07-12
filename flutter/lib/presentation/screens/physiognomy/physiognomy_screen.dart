@@ -607,7 +607,7 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
               const SliverFillRemaining(
                 hasScrollBody: false,
                 child: EmotionEmptyState(
-                  asset: 'assets/images/emotion-anger.png',
+                  asset: 'assets/images/emotion-frown.png',
                   message: '아직 관상을 등록하지 않았다니!',
                 ),
               )

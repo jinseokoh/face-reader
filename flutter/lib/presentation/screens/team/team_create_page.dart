@@ -1175,9 +1175,10 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage>
       _nameFocus.requestFocus();
       return;
     }
+    // '나' 는 방장 슬롯의 표시 이름이라 명단에 또 있으면 사실상 중복.
     if (name == '나' || _names.contains(name)) {
       _nameController.clear();
-      setState(() => _nameError = '이미 있는 이름이에요');
+      setState(() => _nameError = '같은 그룹내에 동일이름은 허용하지 않습니다.');
       _nameFocus.requestFocus();
       return;
     }

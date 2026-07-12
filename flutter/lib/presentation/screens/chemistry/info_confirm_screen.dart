@@ -66,6 +66,11 @@ class _InfoConfirmScreenState
   bool _isAnalyzing = false;
   // DeepFace background 진행 중 표시. future 가 resolve 되면 false.
   bool _inferring = false;
+  // 상대방 관상(내 관상 아님) 한정 optional 이름 — report.alias 로 들어가
+  // metrics.alias 까지 흐른다. 팀 스캔 루프(popWithReport)는 복귀 후
+  // "누구인가요?" 다이얼로그가 이름을 받으므로 여기선 숨겨 이중 입력 방지.
+  final TextEditingController _aliasController = TextEditingController();
+  bool get _showAliasField => !widget.asMyFace && !widget.popWithReport;
   // 사용자가 picker 하나라도 만진 적 있는가. 만졌으면 DeepFace 결과로 덮지
   // 않음 — 사용자가 명시적으로 수정한 값을 존중.
   bool _userTouched = false;
@@ -93,6 +98,12 @@ class _InfoConfirmScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // 이름 필드의 키보드가 열려도 overflow 없이 본문만 스크롤.
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
               const SizedBox(height: 16),
               const Text(
                 '추정 정보가 맞나요?',
@@ -155,15 +166,34 @@ class _InfoConfirmScreenState
                   if (v != null) _touchAndSet(() => _ageGroup = v);
                 },
               ),
+              // 상대방 관상 — 이름을 미리 붙여두면 궁합·공유 리스트에서 바로
+              // 식별된다. 비워도 진행 가능 (optional).
+              if (_showAliasField) ...[
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _aliasController,
+                  maxLength: 10,
+                  style: AppText.body.copyWith(color: AppColors.textPrimary),
+                  decoration: InputDecoration(
+                    hintText: '상대방 이름 입력 (선택)',
+                    hintStyle:
+                        AppText.body.copyWith(color: AppColors.textHint),
+                    counterText: '',
+                  ),
+                ),
+              ],
               const SizedBox(height: 24),
               Text(
                 '잘못된 항목은 직접 수정해 주세요.',
                 style: AppText.body.copyWith(color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),
-              const Spacer(),
+                    ],
+                  ),
+                ),
+              ),
               PrimaryButton(
-                label: '분석 시작',
+                label: '확인',
                 busy: _isAnalyzing,
                 onPressed: _runFullAnalysis,
               ),
@@ -173,6 +203,12 @@ class _InfoConfirmScreenState
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _aliasController.dispose();
+    super.dispose();
   }
 
   @override
@@ -206,7 +242,7 @@ class _InfoConfirmScreenState
   ///
   /// **stuck 방지 contract** —
   /// (1) metadata 대기는 8초 timeout. 안 끝나면 metadata 없이 진행. 사용자가
-  ///     "분석 시작" 누르고 무한정 spinner 만 돌아가는 케이스 차단.
+  ///     "확인" 누르고 무한정 spinner 만 돌아가는 케이스 차단.
   /// (2) 모든 예외 path 에서 `_isAnalyzing` 가 false 로 reset 보장 (try/finally).
   ///     이전엔 metadataFuture 가 throw 하면 영구히 spinner 상태로 stuck.
   /// metadata timeout 시 thumbnailKey 는 null — 카카오 공유는 영향 없음
@@ -274,6 +310,11 @@ class _InfoConfirmScreenState
       // 내 관상 경로 — add() 가 기존 isMyFace 지정을 해제하고 이 카드를 단일
       // 내 관상으로 등록한다.
       report.isMyFace = widget.asMyFace;
+      // 상대방 이름 (optional) — 로컬 alias + saveMetrics 의 metrics.alias.
+      if (_showAliasField) {
+        final alias = _aliasController.text.trim();
+        if (alias.isNotEmpty) report.alias = alias;
+      }
       ref.read(historyProvider.notifier).add(report);
       // 분석을 마친 모든 카드는 기본으로 metrics row 생성 (썸네일은 analyze
       // 시점에 이미 R2 업로드됨). 비로그인이면 user_id=null 로 익명 저장되고,

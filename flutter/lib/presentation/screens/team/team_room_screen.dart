@@ -41,7 +41,11 @@ class TeamRoomScreen extends ConsumerStatefulWidget {
 class _AssignNameDialog extends StatefulWidget {
   final List<({int index, String name})> pending;
 
-  const _AssignNameDialog({required this.pending});
+  /// 그룹의 현재 멤버 이름 전체(스캔 완료 + 대기) — 직접 입력 중복 차단용.
+  /// 이름이 서버 슬롯 키(team_id, name)라 중복은 push 충돌로 이어진다.
+  final Set<String> taken;
+
+  const _AssignNameDialog({required this.pending, required this.taken});
 
   @override
   State<_AssignNameDialog> createState() => _AssignNameDialogState();
@@ -51,6 +55,19 @@ class _AssignNameDialogState extends State<_AssignNameDialog> {
   final TextEditingController _controller = TextEditingController();
   // 빈자리가 없으면 처음부터 직접 입력만 노출.
   late bool _typing = widget.pending.isEmpty;
+  String? _error;
+
+  /// 직접 입력 저장 — 중복(명단 전체·예약어 '나')이면 다이얼로그를 유지한 채
+  /// 오류 노출 (생성 페이지·그룹 설정과 동일 문구).
+  void _submitFresh() {
+    final name = _controller.text.trim();
+    if (name.isNotEmpty && (name == '나' || widget.taken.contains(name))) {
+      setState(
+          () => _error = '같은 그룹내에 동일이름은 허용하지 않습니다.');
+      return;
+    }
+    Navigator.pop(context, _NameChoice.fresh(name));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -99,6 +116,13 @@ class _AssignNameDialogState extends State<_AssignNameDialog> {
                 counterText: '',
               ),
             ),
+            if (_error != null) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                _error!,
+                style: AppText.hint.copyWith(color: AppColors.danger),
+              ),
+            ],
           ],
         ],
       ),
@@ -110,8 +134,7 @@ class _AssignNameDialogState extends State<_AssignNameDialog> {
         ),
         if (_typing)
           TextButton(
-            onPressed: () => Navigator.pop(
-                context, _NameChoice.fresh(_controller.text.trim())),
+            onPressed: _submitFresh,
             child: const Text('저장',
                 style: TextStyle(color: AppColors.textPrimary)),
           ),
@@ -204,6 +227,7 @@ class _GroupSettingsDialogState extends State<_GroupSettingsDialog> {
       TextEditingController(text: widget.initialTitle);
   final TextEditingController _nameController = TextEditingController();
   late final List<String> _pending = [...widget.initialPending];
+  String? _nameError;
 
   bool get _canAddMore => _total < TeamRoom.kMaxMembers;
   int get _total => widget.scannedNames.length + _pending.length;
@@ -261,6 +285,14 @@ class _GroupSettingsDialogState extends State<_GroupSettingsDialog> {
                 ),
                 onSubmitted: _addName,
               ),
+              // 생성 페이지와 동일한 중복 이름 안내 (hint + danger).
+              if (_nameError != null) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  _nameError!,
+                  style: AppText.hint.copyWith(color: AppColors.danger),
+                ),
+              ],
             ],
           ],
         ),
@@ -304,9 +336,14 @@ class _GroupSettingsDialogState extends State<_GroupSettingsDialog> {
     if (name == '나' ||
         _pending.contains(name) ||
         widget.scannedNames.contains(name)) {
+      setState(
+          () => _nameError = '같은 그룹내에 동일이름은 허용하지 않습니다.');
       return;
     }
-    setState(() => _pending.add(name));
+    setState(() {
+      _pending.add(name);
+      _nameError = null;
+    });
   }
 
   /// 단일톤 멤버 칩 — 생성 페이지 _MemberChip 과 동일 토큰. onRemove 없으면
@@ -741,10 +778,13 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
   /// walk-in 스캔 후 이름 정하기 — 아직 안 찍힌 빈자리(이름만 있는 슬롯)를
   /// 칩으로 먼저 고르게 하고, 거기 없을 때만 직접 입력. 반환: 빈자리 선택 시
   /// 그 인덱스+이름, 직접 입력 시 인덱스 null+입력 이름. 취소(barrier)면 null.
-  Future<_NameChoice?> _chooseMemberName(List<({int index, String name})> pending) {
+  Future<_NameChoice?> _chooseMemberName(
+    List<({int index, String name})> pending,
+    Set<String> taken,
+  ) {
     return showDialog<_NameChoice>(
       context: context,
-      builder: (_) => _AssignNameDialog(pending: pending),
+      builder: (_) => _AssignNameDialog(pending: pending, taken: taken),
     );
   }
 
@@ -981,7 +1021,8 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
           (index: i, name: room.members[i].name),
     ];
 
-    final choice = await _chooseMemberName(pending);
+    final choice =
+        await _chooseMemberName(pending, {for (final m in room.members) m.name});
     if (!mounted || choice == null) return;
 
     final notifier = ref.read(teamsProvider.notifier);

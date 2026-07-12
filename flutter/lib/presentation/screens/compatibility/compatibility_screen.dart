@@ -54,12 +54,6 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
       TabController(length: 2, vsync: this);
 
   @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final history = ref.watch(historyProvider);
     final myFace = history
@@ -162,6 +156,70 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
     );
   }
 
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  /// 확인 리스트 항목 삭제 — unlock 행 제거(서버). 파트너는 관상/북마크에 남고
+  /// 미확인으로 복귀한다. 코인 환불 없음.
+  Future<void> _confirmDeleteUnlock(
+    BuildContext context,
+    WidgetRef ref,
+    FaceReadingReport my,
+    FaceReadingReport album,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('궁합 삭제', style: AppText.modalTitle),
+        content: Text(
+          '이 궁합을 목록에서 삭제할까요?\n사용한 코인은 환불되지 않습니다.',
+          style: AppText.body.copyWith(height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('취소',
+                style: AppText.body.copyWith(color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('삭제',
+                style: AppText.body.copyWith(color: AppColors.danger)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    // pair_key = 상대 supabaseId 단독.
+    final keys = <String>[];
+    final key = tryPairKey(my, album);
+    if (key != null) keys.add(key);
+    try {
+      await CompatUnlockService().deleteUnlock(keys);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('삭제 중 오류: $e'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+      return;
+    }
+    // unlock·복원 파트너 캐시 무효화 → 확인 리스트에서 사라지고, 로컬 파트너는
+    // 미확인으로 복귀.
+    ref.read(recentUnlockFocusProvider.notifier).clear();
+    ref.invalidate(compatUnlocksProvider);
+    ref.invalidate(unlockedPartnerBodiesProvider);
+  }
+
   /// 탭 없이 표시되는 안내 화면 — 내 관상 미설정 / 상대 0명.
   Widget _guideBody(List<FaceReadingReport> others) {
     final history = ref.read(historyProvider);
@@ -180,9 +238,21 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
       return _InactiveCompatPreview(others: others);
     }
     return const EmotionEmptyState(
-      asset: 'assets/images/emotion-shrug.png',
+      asset: 'assets/images/emotion-love.png',
       message: '카메라나 앨범으로 상대방의 관상을 추가하세요.',
     );
+  }
+
+  /// 잠금 카드의 [궁합보기] → 공용 1코인 unlock 흐름(확인 다이얼로그 포함).
+  /// 성공 시 compatUnlocksProvider 가 invalidate 돼 카드가 '확인' 섹션으로
+  /// 자동 이동한다 (별도 네비게이션 없음).
+  Future<void> _handleUnlockPressed(
+    BuildContext context,
+    WidgetRef ref,
+    FaceReadingReport my,
+    FaceReadingReport album,
+  ) async {
+    await runCompatUnlock(context, ref, my: my, album: album);
   }
 
   /// 미확인 탭 — 시간 정렬 + 잠금 카드 리스트.
@@ -228,6 +298,62 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
           ),
         ),
       ],
+    );
+  }
+
+  void _showInfoDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('궁합 분석에 대하여', style: AppText.modalTitle),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                '두 사람의 얼굴이 만드는 네 갈래 신호를 종합해 얼마나 잘 어울릴 수 있는지를 등급으로 나눕니다.',
+                style: AppText.body,
+              ),
+              const SizedBox(height: 18),
+              // 등급 블록 — 4 갈래 breakdown 보다 먼저.
+              const Text('등급', style: AppText.sectionTitle),
+              const SizedBox(height: 10),
+              const _LabelRow(label: CompatLabel.cheonjakjihap),
+              const _LabelRow(label: CompatLabel.geumseulsanghwa),
+              const _LabelRow(label: CompatLabel.mahapgaseong),
+              const _LabelRow(label: CompatLabel.hyeonggeuknanjo),
+              const SizedBox(height: 20),
+              for (final kind in CompatSubKind.values)
+                _InfoRow(
+                  title: kind.displayLabel,
+                  weight: kind.weightLabel,
+                  body: kind.descriptionKo,
+                ),
+              const SizedBox(height: 18),
+              const Text('비중이 다른 이유', style: AppText.sectionTitle),
+              const SizedBox(height: 10),
+              const Text(
+                '정통 관상학에서 두 사람의 결을 볼 때는, 인생의 어느 자리에서 어떻게 부딪히는지를 따로따로 따져 무게를 둡니다. 네 차원의 비중도 그 가르침을 따른 것입니다.\n\n'
+                '• 12 가지 생활 영역 40% — 십이궁(十二宮): 부부(夫妻)·재물(財帛)·자녀(子女)·관록(官祿)·질액(疾厄)·천이(遷移)·노복(奴僕)·전택(田宅)·복덕(福德)·부모(父母)·형제(兄弟)·명궁(命宮). 결혼·돈·자녀·일·건강·이동·인덕·부동산·복·부모·형제·운명 — 두 사람이 평생 부딪히는 실생활의 결이 이 12 자리에 모두 들어와 있어 가장 무거운 무게를 둡니다. 五行(가치관)이 큰 토대라면, 十二宮은 그 토대 위에서 매일·매년 마주하는 결.\n'
+                '• 소통 스타일 25% — 오관(五官, 눈·코·입·귀·눈썹)이 만들어내는 표현 방식. 매시간 부딪히는 신호라 단기 호흡·갈등의 가장 빠른 1차 지표.\n'
+                '• 가치관 20% — 오행(五行, 목·화·토·금·수)의 기운. 평생 변하지 않는 큰 결. 토대로서의 무게는 크되 십이궁만큼 세분화되지 않습니다.\n'
+                '• 이성적 끌림 15% — 매력은 관계의 출발 색(色)이지 평생을 지탱하는 결이 아닙니다. 옛 관상학이 남녀의 운을 볼 때도, 단순한 미모보다 부부운·자식운·재물운처럼 실제 결혼생활의 조화를 더 중요하게 본 이유도 여기에 있습니다.\n\n'
+                '이들 네 요소들이 인간관계에 미치는 영향력은 서로 다른 비중을 갖기 때문에, 각각의 요소의 중요도를 다른 비중으로 계산합니다. 이는 옛 관상서와 현대 데이터 모두가 공통적으로 보여주는 부분입니다.',
+                style: AppText.body,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('닫기', style: AppText.subTitle),
+          ),
+        ],
+      ),
     );
   }
 
@@ -313,132 +439,6 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
           ),
         ),
       ],
-    );
-  }
-
-  /// 잠금 카드의 [궁합보기] → 공용 1코인 unlock 흐름(확인 다이얼로그 포함).
-  /// 성공 시 compatUnlocksProvider 가 invalidate 돼 카드가 '확인' 섹션으로
-  /// 자동 이동한다 (별도 네비게이션 없음).
-  Future<void> _handleUnlockPressed(
-    BuildContext context,
-    WidgetRef ref,
-    FaceReadingReport my,
-    FaceReadingReport album,
-  ) async {
-    await runCompatUnlock(context, ref, my: my, album: album);
-  }
-
-  /// 확인 리스트 항목 삭제 — unlock 행 제거(서버). 파트너는 관상/북마크에 남고
-  /// 미확인으로 복귀한다. 코인 환불 없음.
-  Future<void> _confirmDeleteUnlock(
-    BuildContext context,
-    WidgetRef ref,
-    FaceReadingReport my,
-    FaceReadingReport album,
-  ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('궁합 삭제', style: AppText.modalTitle),
-        content: Text(
-          '이 궁합을 목록에서 삭제할까요?\n사용한 코인은 환불되지 않습니다.',
-          style: AppText.body.copyWith(height: 1.5),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text('취소',
-                style: AppText.body.copyWith(color: AppColors.textSecondary)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text('삭제',
-                style: AppText.body.copyWith(color: AppColors.danger)),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-
-    // pair_key = 상대 supabaseId 단독.
-    final keys = <String>[];
-    final key = tryPairKey(my, album);
-    if (key != null) keys.add(key);
-    try {
-      await CompatUnlockService().deleteUnlock(keys);
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('삭제 중 오류: $e'),
-            backgroundColor: Colors.red.shade700,
-          ),
-        );
-      }
-      return;
-    }
-    // unlock·복원 파트너 캐시 무효화 → 확인 리스트에서 사라지고, 로컬 파트너는
-    // 미확인으로 복귀.
-    ref.read(recentUnlockFocusProvider.notifier).clear();
-    ref.invalidate(compatUnlocksProvider);
-    ref.invalidate(unlockedPartnerBodiesProvider);
-  }
-
-  void _showInfoDialog(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('궁합 분석에 대하여', style: AppText.modalTitle),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                '두 사람의 얼굴이 만드는 네 갈래 신호를 종합해 얼마나 잘 어울릴 수 있는지를 등급으로 나눕니다.',
-                style: AppText.body,
-              ),
-              const SizedBox(height: 18),
-              // 등급 블록 — 4 갈래 breakdown 보다 먼저.
-              const Text('등급', style: AppText.sectionTitle),
-              const SizedBox(height: 10),
-              const _LabelRow(label: CompatLabel.cheonjakjihap),
-              const _LabelRow(label: CompatLabel.geumseulsanghwa),
-              const _LabelRow(label: CompatLabel.mahapgaseong),
-              const _LabelRow(label: CompatLabel.hyeonggeuknanjo),
-              const SizedBox(height: 20),
-              for (final kind in CompatSubKind.values)
-                _InfoRow(
-                  title: kind.displayLabel,
-                  weight: kind.weightLabel,
-                  body: kind.descriptionKo,
-                ),
-              const SizedBox(height: 18),
-              const Text('비중이 다른 이유', style: AppText.sectionTitle),
-              const SizedBox(height: 10),
-              const Text(
-                '정통 관상학에서 두 사람의 결을 볼 때는, 인생의 어느 자리에서 어떻게 부딪히는지를 따로따로 따져 무게를 둡니다. 네 차원의 비중도 그 가르침을 따른 것입니다.\n\n'
-                '• 12 가지 생활 영역 40% — 십이궁(十二宮): 부부(夫妻)·재물(財帛)·자녀(子女)·관록(官祿)·질액(疾厄)·천이(遷移)·노복(奴僕)·전택(田宅)·복덕(福德)·부모(父母)·형제(兄弟)·명궁(命宮). 결혼·돈·자녀·일·건강·이동·인덕·부동산·복·부모·형제·운명 — 두 사람이 평생 부딪히는 실생활의 결이 이 12 자리에 모두 들어와 있어 가장 무거운 무게를 둡니다. 五行(가치관)이 큰 토대라면, 十二宮은 그 토대 위에서 매일·매년 마주하는 결.\n'
-                '• 소통 스타일 25% — 오관(五官, 눈·코·입·귀·눈썹)이 만들어내는 표현 방식. 매시간 부딪히는 신호라 단기 호흡·갈등의 가장 빠른 1차 지표.\n'
-                '• 가치관 20% — 오행(五行, 목·화·토·금·수)의 기운. 평생 변하지 않는 큰 결. 토대로서의 무게는 크되 십이궁만큼 세분화되지 않습니다.\n'
-                '• 이성적 끌림 15% — 매력은 관계의 출발 색(色)이지 평생을 지탱하는 결이 아닙니다. 옛 관상학이 남녀의 운을 볼 때도, 단순한 미모보다 부부운·자식운·재물운처럼 실제 결혼생활의 조화를 더 중요하게 본 이유도 여기에 있습니다.\n\n'
-                '이들 네 요소들이 인간관계에 미치는 영향력은 서로 다른 비중을 갖기 때문에, 각각의 요소의 중요도를 다른 비중으로 계산합니다. 이는 옛 관상서와 현대 데이터 모두가 공통적으로 보여주는 부분입니다.',
-                style: AppText.body,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('닫기', style: AppText.subTitle),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -800,122 +800,6 @@ class _CompatLockedCard extends ConsumerWidget {
   }
 }
 
-/// 내 관상 미등록 + 저장된 상대가 있을 때의 궁합 탭 — 등록 유도 배너 위에,
-/// "이런 분들과 볼 수 있다"는 비활성 프리뷰 리스트를 흐릿하게 보여준다.
-class _InactiveCompatPreview extends StatelessWidget {
-  final List<FaceReadingReport> others;
-  const _InactiveCompatPreview({required this.others});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      children: [
-        const _RegisterMyFaceBanner(),
-        const SizedBox(height: AppSpacing.sm),
-        ...others.map(
-          (o) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _CompatLockedCard(album: o, inactive: true),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// 내 관상 등록 안내 — 등록 pill + "등록 전까지 잠김"을 알리는 펄싱 안내 한 줄.
-/// pill 탭 = 관상 등록 팝업(촬영 시트) 직행.
-class _RegisterMyFaceBanner extends ConsumerStatefulWidget {
-  const _RegisterMyFaceBanner();
-
-  @override
-  ConsumerState<_RegisterMyFaceBanner> createState() =>
-      _RegisterMyFaceBannerState();
-}
-
-class _RegisterMyFaceBannerState extends ConsumerState<_RegisterMyFaceBanner>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1200),
-  )..repeat(reverse: true);
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // 흰색+1px border stadium pill — 본문 CTA 규칙 (검정 invert 는 오버레이
-        // 전용). 설정 탭 [충전하기] 와 동일 레시피. 탭 = 관상 등록 팝업 직행.
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-          child: Center(
-            child: GestureDetector(
-              onTap: () => startMyFaceCapture(context, ref),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  border: Border.all(color: AppColors.textPrimary),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        '나의 관상을 등록하면 궁합을 볼 수 있습니다.',
-                        textAlign: TextAlign.center,
-                        style: AppText.caption.copyWith(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    const FaIcon(
-                      FontAwesomeIcons.chevronRight,
-                      size: 12,
-                      color: AppColors.textPrimary,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-        AnimatedBuilder(
-          animation: _c,
-          builder: (context, child) => Opacity(
-            opacity: 0.45 + 0.55 * _c.value,
-            child: Transform.translate(
-              offset: Offset(0, 3 * _c.value),
-              child: child,
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-            child: Text(
-              '나의 관상이 등록되기 전까지는 궁합이 잠겨있게 됩니다.',
-              textAlign: TextAlign.center,
-              // nudge 배너 caption("앨범 사진이나 …")과 동일 토큰.
-              style: AppText.caption.copyWith(color: AppColors.textHint),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 /// 4 단계 stepper — cheonjakjihap(녹) → geumseulsanghwa(파) → mahapgaseong(주) → hyeonggeuknanjo(빨).
 /// 활성 dot 만 해당 등급 vivid 컬러 채움 (이모지 🟢🔵🟠🔴 톤). 비활성 dot 과 dash 는 border 톤.
 class _GradeStepper extends StatelessWidget {
@@ -960,6 +844,30 @@ class _GradeStepper extends StatelessWidget {
   // accent bar · 등급명 텍스트 · stepper dot 모두 한 셋 (Tailwind-600).
   // _CompatListCard._labelColor 와 반드시 동일 값 — 변경 시 동시 수정.
   static Color _stepColor(CompatLabel l) => _CompatListCard._labelColor(l);
+}
+
+/// 내 관상 미등록 + 저장된 상대가 있을 때의 궁합 탭 — 등록 유도 배너 위에,
+/// "이런 분들과 볼 수 있다"는 비활성 프리뷰 리스트를 흐릿하게 보여준다.
+class _InactiveCompatPreview extends StatelessWidget {
+  final List<FaceReadingReport> others;
+  const _InactiveCompatPreview({required this.others});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      children: [
+        const _RegisterMyFaceBanner(),
+        const SizedBox(height: AppSpacing.sm),
+        ...others.map(
+          (o) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _CompatLockedCard(album: o, inactive: true),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1087,6 +995,14 @@ class _LabelRow extends StatelessWidget {
   }
 }
 
+enum _LockedSort {
+  newest('최신순'),
+  oldest('오래된순');
+
+  final String label;
+  const _LockedSort(this.label);
+}
+
 class _MiniBar extends StatelessWidget {
   final _MiniEntry entry;
   const _MiniBar({required this.entry});
@@ -1194,105 +1110,96 @@ class _MiniEntry {
   const _MiniEntry(this.korean, this.value, this.muted);
 }
 
-class _TaglinePair {
-  final String headline;
-  final String detail;
-  const _TaglinePair({required this.headline, required this.detail});
+/// 내 관상 등록 안내 — 등록 pill + "등록 전까지 잠김"을 알리는 펄싱 안내 한 줄.
+/// pill 탭 = 관상 등록 팝업(촬영 시트) 직행.
+class _RegisterMyFaceBanner extends ConsumerStatefulWidget {
+  const _RegisterMyFaceBanner();
+
+  @override
+  ConsumerState<_RegisterMyFaceBanner> createState() =>
+      _RegisterMyFaceBannerState();
 }
 
-// ─────────────────────────────────────────────────────────────
-// Thumb
-// ─────────────────────────────────────────────────────────────
-
-class _Thumb extends StatelessWidget {
-  final String? path;
-  final String? thumbnailKey;
-  final double size;
-  final Gender? gender;
-  const _Thumb({
-    required this.path,
-    required this.size,
-    this.thumbnailKey,
-    this.gender,
-  });
+class _RegisterMyFaceBannerState extends ConsumerState<_RegisterMyFaceBanner>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1200),
+  )..repeat(reverse: true);
 
   @override
   Widget build(BuildContext context) {
-    final radius = size / 2;
-    // 1순위 로컬 파일(thumbnailPath) → 2순위 CDN(thumbnailKey) → gender fallback.
-    // 받은 카드·결제 궁합 복원 파트너는 thumbnailPath=null 이지만 thumbnailKey 는
-    // 들고 있으므로 CDN 으로 실제 얼굴을 띄운다.
-    final file = ThumbnailPaths.resolveFileSync(path);
-    final cdn = ThumbnailPaths.cdnUrl(thumbnailKey);
-    if (file != null) {
-      return ClipOval(
-        child: Image.file(
-          file,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => _networkOrFallback(radius, cdn),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // 흰색+1px border stadium pill — 본문 CTA 규칙 (검정 invert 는 오버레이
+        // 전용). 설정 탭 [충전하기] 와 동일 레시피. 탭 = 관상 등록 팝업 직행.
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+          child: Center(
+            child: GestureDetector(
+              onTap: () => startMyFaceCapture(context, ref),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  border: Border.all(color: AppColors.textPrimary),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        '나의 관상을 등록하면 궁합을 볼 수 있습니다.',
+                        textAlign: TextAlign.center,
+                        style: AppText.caption.copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    const FaIcon(
+                      FontAwesomeIcons.chevronRight,
+                      size: 12,
+                      color: AppColors.textPrimary,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
-      );
-    }
-    return _networkOrFallback(radius, cdn);
-  }
-
-  Widget _networkOrFallback(double radius, String? cdn) {
-    if (cdn == null) return _genderFallback(radius);
-    return ClipOval(
-      child: Image.network(
-        cdn,
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => _genderFallback(radius),
-      ),
+        AnimatedBuilder(
+          animation: _c,
+          builder: (context, child) => Opacity(
+            opacity: 0.45 + 0.55 * _c.value,
+            child: Transform.translate(
+              offset: Offset(0, 3 * _c.value),
+              child: child,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+            child: Text(
+              '나의 관상이 등록되기 전까지는 궁합이 잠겨있게 됩니다.',
+              textAlign: TextAlign.center,
+              // nudge 배너 caption("앨범 사진이나 …")과 동일 토큰.
+              style: AppText.caption.copyWith(color: AppColors.textHint),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
-  /// thumbnail 없을 때 gender 기본 아바타. male/female 은 png 에셋,
-  /// gender 미상이면 generic user 아이콘.
-  Widget _genderFallback(double radius) {
-    final asset = switch (gender) {
-      Gender.male => 'assets/icons/male.png',
-      Gender.female => 'assets/icons/female.png',
-      _ => null,
-    };
-    if (asset == null) {
-      return CircleAvatar(
-        radius: radius,
-        backgroundColor: AppTheme.border,
-        child: FaIcon(
-          FontAwesomeIcons.user,
-          color: AppTheme.textHint,
-          size: radius * 0.85,
-        ),
-      );
-    }
-    return CircleAvatar(
-      radius: radius,
-      backgroundColor: AppTheme.border,
-      backgroundImage: AssetImage(asset),
-    );
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
   }
-}
-
-enum _LockedSort {
-  newest('최신순'),
-  oldest('오래된순');
-
-  final String label;
-  const _LockedSort(this.label);
-}
-
-enum _UnlockedSort {
-  score('점수순'),
-  newest('최신순'),
-  oldest('오래된순');
-
-  final String label;
-  const _UnlockedSort(this.label);
 }
 
 /// 섹션 헤더 — 타이틀(N) + 정렬 토글. 관상 탭의 sort selector 와 동일 패턴
@@ -1352,6 +1259,99 @@ class _SortSelector<T> extends StatelessWidget {
       ],
     );
   }
+}
+
+class _TaglinePair {
+  final String headline;
+  final String detail;
+  const _TaglinePair({required this.headline, required this.detail});
+}
+
+// ─────────────────────────────────────────────────────────────
+// Thumb
+// ─────────────────────────────────────────────────────────────
+
+class _Thumb extends StatelessWidget {
+  final String? path;
+  final String? thumbnailKey;
+  final double size;
+  final Gender? gender;
+  const _Thumb({
+    required this.path,
+    required this.size,
+    this.thumbnailKey,
+    this.gender,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = size / 2;
+    // 1순위 로컬 파일(thumbnailPath) → 2순위 CDN(thumbnailKey) → gender fallback.
+    // 받은 카드·결제 궁합 복원 파트너는 thumbnailPath=null 이지만 thumbnailKey 는
+    // 들고 있으므로 CDN 으로 실제 얼굴을 띄운다.
+    final file = ThumbnailPaths.resolveFileSync(path);
+    final cdn = ThumbnailPaths.cdnUrl(thumbnailKey);
+    if (file != null) {
+      return ClipOval(
+        child: Image.file(
+          file,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _networkOrFallback(radius, cdn),
+        ),
+      );
+    }
+    return _networkOrFallback(radius, cdn);
+  }
+
+  /// thumbnail 없을 때 gender 기본 아바타. male/female 은 png 에셋,
+  /// gender 미상이면 generic user 아이콘.
+  Widget _genderFallback(double radius) {
+    final asset = switch (gender) {
+      Gender.male => 'assets/icons/male.png',
+      Gender.female => 'assets/icons/female.png',
+      _ => null,
+    };
+    if (asset == null) {
+      return CircleAvatar(
+        radius: radius,
+        backgroundColor: AppTheme.border,
+        child: FaIcon(
+          FontAwesomeIcons.user,
+          color: AppTheme.textHint,
+          size: radius * 0.85,
+        ),
+      );
+    }
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: AppTheme.border,
+      backgroundImage: AssetImage(asset),
+    );
+  }
+
+  Widget _networkOrFallback(double radius, String? cdn) {
+    if (cdn == null) return _genderFallback(radius);
+    return ClipOval(
+      child: Image.network(
+        cdn,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _genderFallback(radius),
+      ),
+    );
+  }
+}
+
+enum _UnlockedSort {
+  score('점수순'),
+  newest('최신순'),
+  oldest('오래된순');
+
+  final String label;
+  const _UnlockedSort(this.label);
 }
 
 // 잔액 chip 은 공용 CoinChip (presentation/widgets/coin_chip.dart) — 궁합·교감 공유.

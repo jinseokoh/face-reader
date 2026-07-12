@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:facely/data/services/auth_service.dart';
+import 'package:facely/data/services/supabase_service.dart';
+import 'package:facely/presentation/providers/history_provider.dart';
 
 final authProvider = NotifierProvider<AuthNotifier, AuthUser?>(
   AuthNotifier.new,
@@ -70,7 +72,23 @@ class AuthNotifier extends Notifier<AuthUser?> {
   }
 
   Future<bool> updateNickname(String nickname) async {
-    return AuthService().updateNickname(nickname);
+    final ok = await AuthService().updateNickname(nickname);
+    if (ok) {
+      // 내 관상의 서버 alias 는 프로필 nickname 을 따라간다 (팀·공유 표면의
+      // 표시 이름). 로컬 별칭이 자동 부여 '나' 가 아니면 사용자가 직접 지은
+      // 이름이므로 보존. 로컬 표기는 '나' 유지 — 서버만 갱신.
+      for (final r in ref.read(historyProvider)) {
+        if (!r.isMyFace) continue;
+        final uuid = r.supabaseId;
+        if (uuid != null && (r.alias == null || r.alias == '나')) {
+          unawaited(
+            SupabaseService().updateAlias(uuid, nickname).catchError((_) {}),
+          );
+        }
+        break;
+      }
+    }
+    return ok;
   }
 
   Future<bool> deductCoins(int amount, {String? description}) async {
