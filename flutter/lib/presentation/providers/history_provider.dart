@@ -208,15 +208,22 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
     _log('add: supabaseId=${report.supabaseId} alias=${report.alias} '
         'faceShape=${report.faceShape.name} metrics=${report.metrics.length} '
         'isMyFace=${report.isMyFace}');
+    // 재촬영(고정 row) — 같은 supabaseId 의 옛 카드는 새 카드로 교체한다.
+    // 내 관상 row id 가 영구 고정이라, 교체 없이는 같은 row 를 가리키는
+    // 카드가 로컬에 2장 쌓인다.
+    var rest = state;
+    if (report.supabaseId != null) {
+      rest = rest.where((r) => r.supabaseId != report.supabaseId).toList();
+    }
     // 내 관상은 항상 1장 — isMyFace 로 들어오는 카드가 기존 지정을 대체.
     if (report.isMyFace) {
-      for (final r in state) {
+      for (final r in rest) {
         r.isMyFace = false;
         _syncMyFaceAlias(r); // 자동 별칭 '나' 회수
       }
     }
     _syncMyFaceAlias(report); // 지정 카드에 기본 별칭 '나'
-    state = [report, ...state];
+    state = [report, ...rest];
     await _saveToHive();
   }
 

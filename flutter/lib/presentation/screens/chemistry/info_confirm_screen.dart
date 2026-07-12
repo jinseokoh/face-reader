@@ -310,6 +310,14 @@ class _InfoConfirmScreenState
       // 내 관상 경로 — add() 가 기존 isMyFace 지정을 해제하고 이 카드를 단일
       // 내 관상으로 등록한다.
       report.isMyFace = widget.asMyFace;
+      // 고정 row — 서버에 내 관상 row 가 이미 있으면 그 id 를 미리 물려받아,
+      // add() 의 supabaseId 교체(옛 카드 제거)와 saveMetrics 덮어쓰기가 같은
+      // row 를 가리키게 한다. 비로그인·조회 실패면 null → 현행 신규 생성.
+      if (widget.asMyFace) {
+        final fixedId = await SupabaseService().myFaceRowId();
+        if (!mounted) return;
+        if (fixedId != null) report.supabaseId = fixedId;
+      }
       // 상대방 이름 (optional) — 로컬 alias + saveMetrics 의 metrics.alias.
       if (_showAliasField) {
         final alias = _aliasController.text.trim();
