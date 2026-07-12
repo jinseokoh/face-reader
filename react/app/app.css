@@ -872,29 +872,12 @@ textarea.form-input {
   justify-content: center;
   gap: 8px;
 }
-.join-btn--ghost {
-  display: inline-block;
-  background: none;
-  border: none;
-  color: var(--caption);
-  font-size: 13px;
-  font-family: inherit;
-  cursor: pointer;
-  margin-top: 12px;
-  text-decoration: underline;
-}
 .join-video {
   width: 100%;
   max-width: 320px;
   border-radius: 12px;
   background: #fff;
   transform: scaleX(-1);
-}
-.join-score {
-  font-size: 24px;
-  color: var(--accent);
-  font-weight: 700;
-  margin-top: 8px;
 }
 .join-badge {
   display: inline-block;

@@ -141,12 +141,3 @@ export async function joinTeam(
     ? "name-taken"
     : "failed";
 }
-
-/** sessionStorage stash 용 dataURL → Blob (미리보기→로그인 복귀 경로). */
-export function dataUrlToBlob(u: string): Blob {
-  const [, b64] = u.split(",");
-  const bin = atob(b64);
-  const arr = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-  return new Blob([arr], { type: "image/jpeg" });
-}

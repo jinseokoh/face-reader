@@ -9,7 +9,6 @@ import {
   loginWithKakao,
 } from "../lib/auth";
 import {
-  dataUrlToBlob,
   fetchMyFace,
   fetchProgress,
   isTeamOpen,
@@ -20,8 +19,7 @@ import {
 
 /**
  * /g/:id 참여 위저드 — 앱 미설치자가 브라우저에서 그룹 참여를 끝까지 완료한다.
- * entry → (kakao) → name → info → camera → saving → done
- * 미리보기 경로: entry → info → camera → done(teaser) → [참여] → stash → kakao → name…
+ * entry → (kakao) → name → (reuse) → info → camera → saving → done
  * 스펙: docs/superpowers/specs/2026-07-12-web-join-upgrade-design.md
  *
  * 전부 client-only — getUserMedia·tasks-vision·face_engine.js 는 dynamic import.
@@ -35,7 +33,6 @@ const MP_WASM = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VERSI
 const MP_MODEL =
   "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
 
-const STASH_KEY = "facely:pendingJoin";
 const NO_FACE_TIMEOUT_MS = 20_000;
 
 type Stage =
@@ -47,13 +44,6 @@ type Stage =
   | "saving"
   | "done"
   | "error";
-
-type Teaser =
-  | { kind: "pair"; total: number; labelKo: string; ownerName: string }
-  | { kind: "solo"; primaryLabel: string; catchphrase: string };
-
-/** 미리보기→카카오 redirect 사이 캡처 보존 (sessionStorage). */
-type Stash = { teamId: string; body: WebCaptureBody; thumb: string | null };
 
 const GENDERS: { v: string; ko: string }[] = [
   { v: "male", ko: "남자" },
@@ -89,7 +79,6 @@ export function JoinWizard({
   onProgress?: (active: boolean) => void;
 }) {
   const [stage, setStage] = useState<Stage>("entry");
-  const [previewOnly, setPreviewOnly] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [nickname, setNickname] = useState("");
   // 이름 선택 — 빈 슬롯 하나 또는 "직접 입력" 중 한 곳만 활성.
@@ -99,8 +88,6 @@ export function JoinWizard({
   // 성별은 남자 기본 선택 (radio) — 나이대만 명시 선택을 요구한다.
   const [gender, setGender] = useState<string>("male");
   const [age, setAge] = useState<string | null>(null);
-  const [teaser, setTeaser] = useState<Teaser | null>(null);
-  const [joined, setJoined] = useState(false);
   // 서버에 이미 있는 내 관상(is_my_face) — 재사용/재촬영 선택의 근거.
   const [existingId, setExistingId] = useState<string | null>(null);
   // 참여 직후 서버에서 다시 읽은 등록 현황 (loader 데이터는 stale).
@@ -173,25 +160,8 @@ export function JoinWizard({
         setNameInput((cur) => cur || n);
       });
       void fetchMyFace(client, data.session.user.id).then(setExistingId);
-      // 미리보기→로그인 복귀: 캡처를 복원하고 이름 선택으로 점프.
-      const raw = sessionStorage.getItem(STASH_KEY);
-      if (raw) {
-        sessionStorage.removeItem(STASH_KEY);
-        try {
-          const stash = JSON.parse(raw) as Stash;
-          if (stash.teamId === team.id) {
-            bodyRef.current = stash.body;
-            thumbRef.current = stash.thumb ? dataUrlToBlob(stash.thumb) : null;
-            setGender(stash.body.gender);
-            setAge(stash.body.ageGroup);
-            setPreviewOnly(false);
-            setStage("name");
-          }
-        } catch {
-          /* 손상된 stash 는 버림 */
-        }
-      } else if (cameFromLogin) {
-        // [카카오로 참여하기] 로 로그인만 하고 복귀 — 바로 이름 선택.
+      if (cameFromLogin) {
+        // [카카오로 참여하기] 로 로그인하고 복귀 — 바로 이름 선택.
         setStage("name");
       }
     });
@@ -365,14 +335,7 @@ export function JoinWizard({
     }
     bodyRef.current = body;
     thumbRef.current = thumb;
-    if (previewOnly) {
-      // 미리보기 경로만 즉석 티저 — 참여 경로는 점수 없이 등록 현황만 보여준다.
-      setTeaser(computeTeaser(body));
-      setJoined(false);
-      setStage("done");
-    } else {
-      await runSave();
-    }
+    await runSave();
   }
 
   /** 저장 시퀀스: 마감 재확인 → metrics(신규 캡처 시, 기존 my-face 덮어쓰기) → 합류. */
@@ -424,36 +387,7 @@ export function JoinWizard({
       return;
     }
     setProgress(await fetchProgress(client, team.id));
-    setJoined(true);
     setStage("done");
-  }
-
-  function computeTeaser(body: WebCaptureBody): Teaser | null {
-    try {
-      const json = JSON.stringify(body);
-      if (team.owner) {
-        const c = JSON.parse(
-          globalThis.runCompat(json, JSON.stringify(team.owner.raw)),
-        ) as { total: number; labelKo: string };
-        return {
-          kind: "pair",
-          total: Math.round(c.total),
-          labelKo: c.labelKo,
-          ownerName: team.owner.name,
-        };
-      }
-      const s = JSON.parse(globalThis.runEngine(json)) as {
-        primaryLabel: string;
-        catchphrase: string;
-      };
-      return {
-        kind: "solo",
-        primaryLabel: s.primaryLabel,
-        catchphrase: s.catchphrase,
-      };
-    } catch {
-      return null;
-    }
   }
 
   // ── 액션 핸들러 ────────────────────────────────────────────────────────
@@ -471,11 +405,6 @@ export function JoinWizard({
     });
   }
 
-  function onPreviewStart() {
-    setPreviewOnly(true);
-    setStage("info");
-  }
-
   function onNameNext() {
     const name = chosenName();
     if (!name) {
@@ -490,10 +419,8 @@ export function JoinWizard({
       return;
     }
     setNotice("");
-    // 미리보기에서 넘어온 경우 캡처가 이미 있음 → 바로 저장.
-    if (bodyRef.current) void runSave();
     // 서버에 내 관상이 이미 있으면 재사용/재촬영을 사용자가 고른다.
-    else if (existingId) setStage("reuse");
+    if (existingId) setStage("reuse");
     else setStage("info");
   }
 
@@ -510,35 +437,6 @@ export function JoinWizard({
     }
     setNotice("");
     void startCamera();
-  }
-
-  /** 미리보기 결과 → 참여: 캡처를 stash 하고 로그인 (복귀 시 재촬영 없음). */
-  function onTeaserJoin() {
-    setPreviewOnly(false);
-    if (sessionRef.current) {
-      setStage("name");
-      return;
-    }
-    const stashAndLogin = async () => {
-      let thumbUrl: string | null = null;
-      const blob = thumbRef.current;
-      if (blob) {
-        thumbUrl = await new Promise<string | null>((resolve) => {
-          const fr = new FileReader();
-          fr.onload = () => resolve(fr.result as string);
-          fr.onerror = () => resolve(null);
-          fr.readAsDataURL(blob);
-        });
-      }
-      const stash: Stash = {
-        teamId: team.id,
-        body: bodyRef.current!,
-        thumb: thumbUrl,
-      };
-      sessionStorage.setItem(STASH_KEY, JSON.stringify(stash));
-      await loginWithKakao(sb());
-    };
-    void stashAndLogin();
   }
 
   // ── 렌더 ──────────────────────────────────────────────────────────────
@@ -596,9 +494,6 @@ export function JoinWizard({
           </button>
           {notice && <p className="join-notice">{notice}</p>}
           <p className="join-sub">설치 없이 브라우저에서 얼굴 등록까지</p>
-          <button className="join-btn--ghost" onClick={onPreviewStart}>
-            먼저 미리보기
-          </button>
         </>
       )}
 
@@ -746,7 +641,7 @@ export function JoinWizard({
         </>
       )}
 
-      {stage === "done" && joined && (
+      {stage === "done" && (
         <>
           <div className="join-badge">참여 완료 ✓</div>
           {progress ? (
@@ -769,33 +664,6 @@ export function JoinWizard({
           >
             앱에서 정밀 분석 받기
           </a>
-          <Stores appStoreUrl={appStoreUrl} playStoreUrl={playStoreUrl} />
-        </>
-      )}
-
-      {stage === "done" && !joined && (
-        <>
-          {teaser?.kind === "pair" ? (
-            <>
-              <p className="join-sub">
-                나 ↔ {teaser.ownerName} (방장)
-              </p>
-              <div className="join-score">{teaser.total}점</div>
-              <div style={{ fontSize: 16, color: "#1a1a1a" }}>
-                {teaser.labelKo}
-              </div>
-            </>
-          ) : teaser ? (
-            <>
-              <div style={{ fontSize: 24, color: "#1a1a1a" }}>
-                {teaser.primaryLabel}
-              </div>
-              <p className="join-sub">{teaser.catchphrase}</p>
-            </>
-          ) : null}
-          <button className="join-btn" onClick={onTeaserJoin}>
-            이 결과로 그룹 참여하기
-          </button>
           <Stores appStoreUrl={appStoreUrl} playStoreUrl={playStoreUrl} />
         </>
       )}
