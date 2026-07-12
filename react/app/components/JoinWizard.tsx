@@ -347,9 +347,18 @@ export function JoinWizard({
     if (video.readyState >= 2) {
       const res = landmarker.detectForVideo(video, performance.now());
       const face = res.faceLandmarks?.[0];
-      drawMesh(video, face ?? null);
-      if (face && face.length >= 468) {
-        // 얼굴이 잡히면 2초 카운트다운 (2 → 1 → 찰칵) — 앱과 동일한 치즈 모먼트.
+      const frontal = face != null && face.length >= 468 && isFrontal(face);
+      drawMesh(video, face ?? null, frontal);
+      if (face && face.length >= 468 && !frontal) {
+        // 얼굴은 있지만 정면이 아님 — 빨간 mesh + 카운트다운 리셋 (앱 동일).
+        countdownStartRef.current = null;
+        if (lastCountRef.current != null) {
+          lastCountRef.current = null;
+          setCount(null);
+        }
+        setHint("정면을 봐 주세요");
+      } else if (face && face.length >= 468) {
+        // 정면이 잡히면 2초 카운트다운 (2 → 1 → 찰칵) — 앱과 동일한 치즈 모먼트.
         const now = performance.now();
         if (countdownStartRef.current == null) {
           countdownStartRef.current = now;
@@ -381,11 +390,23 @@ export function JoinWizard({
     rafRef.current = requestAnimationFrame(loop);
   }
 
+  /** 앱 estimateYaw/classifyYaw 와 동일 — 코끝(1)↔좌(454)·우(234) 가장자리
+   *  거리 비대칭으로 yaw 추정, |yaw| < 0.70 이면 정면. */
+  function isFrontal(face: { x: number }[]): boolean {
+    const nose = face[1].x;
+    const rightDist = Math.abs(nose - face[234].x);
+    const leftDist = Math.abs(face[454].x - nose);
+    const total = rightDist + leftDist;
+    if (total === 0) return false;
+    return Math.abs((leftDist - rightDist) / total) < 0.7;
+  }
+
   /** 앱 FaceMeshPainter 와 동일 문법 — tesselation(alpha 0.15) + landmark 점.
-   *  검출 성립 = greenAccent (앱의 정렬 OK 색). 미검출이면 지운다. */
+   *  정면 = greenAccent / 비정면 = redAccent (앱 동일). 미검출이면 지운다. */
   function drawMesh(
     video: HTMLVideoElement,
     face: { x: number; y: number }[] | null,
+    frontal: boolean,
   ) {
     const canvas = canvasRef.current;
     const tools = drawToolsRef.current;
@@ -401,14 +422,18 @@ export function JoinWizard({
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (!face) return;
+    const line = frontal
+      ? "rgba(105, 240, 174, 0.15)" // greenAccent × 0.15
+      : "rgba(255, 82, 82, 0.15)"; // redAccent × 0.15
+    const dot = frontal ? "#69f0ae" : "#ff5252";
     const draw = new tools.DrawingUtils(ctx);
     draw.drawConnectors(face, tools.tesselation, {
-      color: "rgba(105, 240, 174, 0.15)", // greenAccent × 0.15 (앱 동일)
+      color: line,
       lineWidth: 0.5,
     });
     draw.drawLandmarks(face, {
-      color: "#69f0ae",
-      fillColor: "#69f0ae",
+      color: dot,
+      fillColor: dot,
       radius: 1.2,
       lineWidth: 0,
     });
