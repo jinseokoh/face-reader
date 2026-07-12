@@ -4,8 +4,8 @@
 
 관상 분석 Flutter 앱. MediaPipe Face Mesh 468 landmarks → 26 frontal + 8 lateral metric → 14-node tree → 10 attribute → archetype → 8 인생 질문 본문. 궁합은 별도 엔진(五行·十二宮·五官·三停·陰陽 기반).
 
-> **용어 규칙** — 1차 기능 `Team Chemistry Map` 의 한국어 공식 명칭은 **`교감도`** (PIVOT.md SOT).
-> 제품 분류: 1인 관상 · 2인 궁합 · 다인 교감도. 문서·UI·스토어 카피의 한국어 표기는 이 명칭만 사용한다.
+> **용어 규칙** — 1차 기능 `Team Chemistry Map` 의 한국어 공식 명칭은 **`케미`** (2026-07-11 교감도 표기 폐기).
+> 제품 분류: 1인 관상 · 2인 궁합 · 다인 케미. 문서·UI·스토어 카피의 한국어 표기는 이 명칭만 사용한다.
 > 코드 식별자는 영문 team_* 유지.
 
 ## ⛔ 절대 규칙
