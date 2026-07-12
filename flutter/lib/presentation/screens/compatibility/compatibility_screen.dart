@@ -86,7 +86,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
     if (myFace != null) {
       final localIds = <String>{};
       for (final o in others) {
-        // pair_key = 상대 supabaseId 단독. 내 사진을 바꿔도 같은 상대면 키가
+        // partner_id = 상대 supabaseId. 내 사진을 바꿔도 같은 상대면 키가
         // 동일해 unlock 이 유지된다(재결제 없음). 점수는 현재 내 관상으로 재계산.
         final key = tryPairKey(myFace, o);
         if (o.supabaseId != null) localIds.add(o.supabaseId!);

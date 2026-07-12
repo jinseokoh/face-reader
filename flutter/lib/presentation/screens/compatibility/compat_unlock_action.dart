@@ -65,7 +65,7 @@ Future<bool> runCompatUnlock(
     return false;
   }
 
-  // 이미 unlock 된 상대면 재결제 없이 통과 (pair_key = 상대 id 단독, 내 사진
+  // 이미 unlock 된 상대면 재결제 없이 통과 (partner_id = 상대 id, 내 사진
   // 교체와 무관하게 유지).
   final already =
       ref.read(compatUnlocksProvider).asData?.value ?? const <String>{};

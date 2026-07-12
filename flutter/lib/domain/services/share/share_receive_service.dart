@@ -15,7 +15,7 @@ import 'package:facely/data/services/supabase_service.dart';
 ///     `alias=null`, `thumbnailPath=null` 로 override 한 뒤 fromJsonString 으로
 ///     parse. 원본 alias·thumbnailPath 는 leak 차단.
 ///   * `thumbnailKey` 와 `supabaseId` 는 그대로 둔다 — CDN 직통 read-only,
-///     향후 궁합 pair_key 의 절반.
+///     향후 궁합 unlock 키(partner_id) 후보.
 ///
 /// 받는 사람이 Hive 에 저장하면 본문이 영구 박힘 — Supabase row 가 만료·삭제
 /// 돼도 view 가능 (offline·resilient).

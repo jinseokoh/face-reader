@@ -865,7 +865,7 @@ class _CompatCta extends ConsumerWidget {
     }
     final unlocksAsync = ref.watch(compatUnlocksProvider);
     final unlocked = unlocksAsync.asData?.value ?? const <String>{};
-    // pair_key = 상대 supabaseId 단독 (내 사진 교체와 무관).
+    // partner_id = 상대 supabaseId (내 사진 교체와 무관).
     final key = tryPairKey(myFace, report);
     final isUnlocked = key != null && unlocked.contains(key);
     final label = isUnlocked ? '궁합 풀이 보기' : '1코인으로 풀이 보기';
