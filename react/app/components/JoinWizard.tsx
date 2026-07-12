@@ -46,8 +46,8 @@ type Teaser =
 type Stash = { teamId: string; body: WebCaptureBody; thumb: string | null };
 
 const GENDERS: { v: string; ko: string }[] = [
-  { v: "male", ko: "남성" },
-  { v: "female", ko: "여성" },
+  { v: "male", ko: "남" },
+  { v: "female", ko: "녀" },
 ];
 // 앱 InfoConfirm 과 동일 범위 (AgeGroup teens~seventies, jsonValue "10s".."70s").
 const AGES: { v: string; ko: string }[] = [
@@ -568,15 +568,28 @@ export function JoinWizard({
       {stage === "info" && (
         <>
           <p className="join-q">나를 알려주세요</p>
-          <Picker
-            label="성별"
-            options={GENDERS}
-            value={gender}
-            onPick={(v) => {
-              setGender(v);
-              void preloadDetector().catch(() => {});
-            }}
-          />
+          <div style={{ marginTop: 12 }}>
+            <p className="join-sub" style={{ margin: "0 0 6px" }}>
+              성별
+            </p>
+            <select
+              className="join-select"
+              value={gender ?? ""}
+              onChange={(e) => {
+                setGender(e.target.value || null);
+                void preloadDetector().catch(() => {});
+              }}
+            >
+              <option value="" disabled>
+                성별 선택
+              </option>
+              {GENDERS.map((o) => (
+                <option key={o.v} value={o.v}>
+                  {o.ko}
+                </option>
+              ))}
+            </select>
+          </div>
           <div style={{ marginTop: 12 }}>
             <p className="join-sub" style={{ margin: "0 0 6px" }}>
               나이대
@@ -680,37 +693,6 @@ function KakaoTalkIcon() {
     >
       <path d="M288 2.5c159.1 0 288 101.7 288 227.1 0 125.4-128.9 227.1-288 227.1-17.5 0-34.6-1.2-51.2-3.6-16.6 11.7-112.6 79.1-121.7 80.4 0 0-3.7 1.4-6.9-.4s-2.6-6.7-2.6-6.7C106.6 519.8 130.6 437.2 135 421.9 53.9 381.8 0 310.6 0 229.5 0 104.1 128.9 2.5 288 2.5zM86.2 161.7c-9 0-16.3 7.3-16.3 16.3s7.3 16.3 16.3 16.3l25.9 0 0 98.7c0 8.8 7.5 15.9 16.6 15.9s16.6-7.1 16.6-15.9l0-98.7 25.9 0c9 0 16.3-7.3 16.3-16.3s-7.3-16.3-16.3-16.3l-85.1 0zm140.8 0c-10.8 .2-19.3 8.4-22.1 16.4L165.2 282.7c-5 15.7-.6 21.5 3.9 23.6 3.2 1.5 6.9 2.3 10.6 2.3 6.9 0 12.2-2.8 13.8-7.3l8.2-21.6 50.7 0 8.2 21.5c1.6 4.5 6.9 7.3 13.8 7.3 3.7 0 7.3-.8 10.6-2.3 4.6-2.1 9-7.9 3.9-23.6L249.2 178.1c-2.8-8-11.3-16.2-22.2-16.4zm180.9 0c-9.2 0-16.6 7.5-16.6 16.6l0 113.7c0 9.2 7.5 16.6 16.6 16.6s16.6-7.5 16.6-16.6l0-36.2 5.8-5.8 38.9 51.6c3.2 4.2 8 6.6 13.3 6.6 3.6 0 7.1-1.1 10-3.3 3.5-2.7 5.8-6.6 6.4-11s-.5-8.8-3.2-12.3l-40.9-54.2 37.9-37.8c2.6-2.6 3.9-6.2 3.7-10.1-.2-3.9-2-7.6-4.9-10.5-3.1-3.1-7.3-4.9-11.4-4.9-3.6 0-6.8 1.3-9.2 3.7l-46.3 46.4 0-35.7c0-9.2-7.5-16.6-16.6-16.6zm-91.3 0c-9.3 0-16.9 7.5-16.9 16.6l0 112.8c0 8.4 7.1 15.2 15.9 15.3l53.3 0c8.8 0 15.9-6.9 15.9-15.3s-7.2-15.2-15.9-15.2l-35.3 0 0-97.6c0-9.2-7.6-16.6-17-16.6zm-73 88.6l-33.2 0 16.6-47.1 16.6 47.1z" />
     </svg>
-  );
-}
-
-function Picker({
-  label,
-  options,
-  value,
-  onPick,
-}: {
-  label: string;
-  options: { v: string; ko: string }[];
-  value: string | null;
-  onPick: (v: string) => void;
-}) {
-  return (
-    <div style={{ marginTop: 12 }}>
-      <p className="join-sub" style={{ margin: "0 0 6px" }}>
-        {label}
-      </p>
-      <div className="join-chips">
-        {options.map((o) => (
-          <button
-            key={o.v}
-            className={value === o.v ? "join-chip join-chip--on" : "join-chip"}
-            onClick={() => onPick(o.v)}
-          >
-            {o.ko}
-          </button>
-        ))}
-      </div>
-    </div>
   );
 }
 
