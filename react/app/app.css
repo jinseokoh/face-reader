@@ -907,6 +907,17 @@ textarea.form-input {
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.55);
   pointer-events: none;
 }
+.join-avatar {
+  /* 앱 DetailAvatar 문법 — 원형 + 얇은 링 */
+  display: block;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid #ddd;
+  background: #fff;
+  margin: 12px auto;
+}
 .join-badge {
   display: inline-block;
   background: #fff;

@@ -51,46 +51,73 @@ async function uploadThumbnail(id: string, blob: Blob): Promise<string | null> {
   }
 }
 
-/** 로그인 사용자의 기존 내 관상(is_my_face) metrics id — 없으면 null. */
+/** metrics.body(JSON 문자열)에서 썸네일 R2 키만 안전하게 꺼낸다. */
+function thumbKeyOf(body: string | null): string | null {
+  if (!body) return null;
+  try {
+    const parsed = JSON.parse(body) as { thumbnailKey?: string };
+    return parsed.thumbnailKey ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** 로그인 사용자의 기존 내 관상(is_my_face) — id + 썸네일 키. 없으면 null. */
 export async function fetchMyFace(
   sb: SupabaseClient,
   uid: string,
-): Promise<string | null> {
+): Promise<{ id: string; thumbnailKey: string | null } | null> {
   const { data } = await sb
     .from("metrics")
-    .select("id")
+    .select("id,body")
     .eq("user_id", uid)
     .eq("is_my_face", true)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  return (data?.id as string | undefined) ?? null;
+  if (!data) return null;
+  return {
+    id: data.id as string,
+    thumbnailKey: thumbKeyOf(data.body as string | null),
+  };
 }
 
 /**
  * 이 그룹에 내가 이미 참여했는지 — 내 metrics 중 하나가 멤버 슬롯을 점유하면
- * 그 슬롯 {name, metricsId} 를 반환. 아니면 null.
+ * 그 슬롯 {name, metricsId, thumbnailKey} 를 반환. 아니면 null.
  */
 export async function fetchMembership(
   sb: SupabaseClient,
   teamId: string,
   uid: string,
-): Promise<{ name: string; metricsId: string } | null> {
+): Promise<{
+  name: string;
+  metricsId: string;
+  thumbnailKey: string | null;
+} | null> {
   const { data: mine } = await sb
     .from("metrics")
-    .select("id")
+    .select("id,body")
     .eq("user_id", uid);
-  const ids = (mine ?? []).map((r) => r.id as string);
-  if (ids.length === 0) return null;
+  const rows = mine ?? [];
+  if (rows.length === 0) return null;
   const { data } = await sb
     .from("team_members")
     .select("name,metrics_id")
     .eq("team_id", teamId)
-    .in("metrics_id", ids)
+    .in(
+      "metrics_id",
+      rows.map((r) => r.id as string),
+    )
     .limit(1)
     .maybeSingle();
   if (!data) return null;
-  return { name: data.name as string, metricsId: data.metrics_id as string };
+  const mineRow = rows.find((r) => r.id === data.metrics_id);
+  return {
+    name: data.name as string,
+    metricsId: data.metrics_id as string,
+    thumbnailKey: thumbKeyOf((mineRow?.body as string | null) ?? null),
+  };
 }
 
 /** 그룹 등록 현황 — joined = metrics 등록 완료 슬롯 수, total = 전체 슬롯. */

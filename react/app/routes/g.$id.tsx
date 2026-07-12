@@ -37,6 +37,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     // 웹 카카오 로그인·참여용 공개 config (anon key 는 공개키).
     supabaseUrl: env.SUPABASE_URL ?? "",
     supabaseAnonKey: env.SUPABASE_ANON_KEY ?? "",
+    cdnBase: env.R2_CDN_BASE ?? "",
   };
 }
 
@@ -91,6 +92,7 @@ export default function Group({ loaderData }: Route.ComponentProps) {
             team={team}
             supabaseUrl={loaderData.supabaseUrl}
             supabaseAnonKey={loaderData.supabaseAnonKey}
+            cdnBase={loaderData.cdnBase}
             onProgress={setWizardActive}
           />
         </>

@@ -70,11 +70,14 @@ export function JoinWizard({
   team,
   supabaseUrl,
   supabaseAnonKey,
+  cdnBase,
   onProgress,
 }: {
   team: TeamShowcase;
   supabaseUrl: string;
   supabaseAnonKey: string;
+  /** R2 CDN base (cdn.facely.kr) — 내 관상 썸네일 아바타 렌더용. */
+  cdnBase: string;
   /** 위저드가 entry 를 벗어나면 true — 부모가 초대장 칩을 숨기는 데 쓴다. */
   onProgress?: (active: boolean) => void;
 }) {
@@ -89,12 +92,20 @@ export function JoinWizard({
   const [gender, setGender] = useState<string>("male");
   const [age, setAge] = useState<string | null>(null);
   // 서버에 이미 있는 내 관상(is_my_face) — 재사용/재촬영 선택의 근거.
-  const [existingId, setExistingId] = useState<string | null>(null);
+  const [existing, setExisting] = useState<{
+    id: string;
+    thumbnailKey: string | null;
+  } | null>(null);
   // 이 그룹에 이미 참여한 내 슬롯 — 있으면 이름을 묻지 않고 재참여를 묻는다.
   const [membership, setMembership] = useState<{
     name: string;
     metricsId: string;
+    thumbnailKey: string | null;
   } | null>(null);
+
+  /** 썸네일 키 → CDN URL (없으면 null). */
+  const avatarUrl = (key: string | null | undefined): string | null =>
+    key && cdnBase ? `${cdnBase}/${key}` : null;
   // 참여 직후 서버에서 다시 읽은 등록 현황 (loader 데이터는 stale).
   const [progress, setProgress] = useState<{
     joined: number;
@@ -179,7 +190,7 @@ export function JoinWizard({
           setNickname(n);
           setNameInput((cur) => cur || n);
         });
-        void fetchMyFace(client, s.user.id).then(setExistingId);
+        void fetchMyFace(client, s.user.id).then(setExisting);
       }
     });
     void client.auth.getSession().then(async ({ data }) => {
@@ -198,7 +209,7 @@ export function JoinWizard({
         setNickname(n);
         setNameInput((cur) => cur || n);
       });
-      void fetchMyFace(client, uid).then(setExistingId);
+      void fetchMyFace(client, uid).then(setExisting);
       const member = await fetchMembership(client, team.id, uid);
       setMembership(member);
       if (cameFromLogin) {
@@ -505,7 +516,7 @@ export function JoinWizard({
         nickname,
         body,
         thumb: thumbRef.current,
-        id: membership?.metricsId ?? existingId ?? undefined,
+        id: membership?.metricsId ?? existing?.id ?? undefined,
       });
     }
     if (!metricsIdRef.current) {
@@ -579,13 +590,13 @@ export function JoinWizard({
     }
     setNotice("");
     // 서버에 내 관상이 이미 있으면 재사용/재촬영을 사용자가 고른다.
-    if (existingId) setStage("reuse");
+    if (existing) setStage("reuse");
     else setStage("info");
   }
 
   /** 기존 내 관상으로 촬영 없이 바로 참여. */
   function onReuseExisting() {
-    metricsIdRef.current = existingId;
+    metricsIdRef.current = existing?.id ?? null;
     void runSave();
   }
 
@@ -665,6 +676,13 @@ export function JoinWizard({
       {stage === "already" && membership && (
         <>
           <div className="join-badge">참여 완료 ✓</div>
+          {avatarUrl(membership.thumbnailKey) && (
+            <img
+              className="join-avatar"
+              src={avatarUrl(membership.thumbnailKey)!}
+              alt=""
+            />
+          )}
           <p className="join-q">
             이미 &lsquo;{membership.name}&rsquo;(으)로 참여한 그룹이에요
           </p>
@@ -736,6 +754,13 @@ export function JoinWizard({
 
       {stage === "reuse" && (
         <>
+          {avatarUrl(existing?.thumbnailKey) && (
+            <img
+              className="join-avatar"
+              src={avatarUrl(existing?.thumbnailKey)!}
+              alt=""
+            />
+          )}
           <p className="join-q">이미 등록된 내 관상이 있어요</p>
           <p className="join-sub">
             기존 관상으로 바로 참여하거나, 다시 촬영해서 덮어쓸 수 있어요.
