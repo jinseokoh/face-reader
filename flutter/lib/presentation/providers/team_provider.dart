@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 import 'package:uuid/uuid.dart';
@@ -222,6 +223,36 @@ class TeamsNotifier extends Notifier<List<TeamRoom>> {
   /// 서버에서 그룹 1건을 미리보기로 fetch (합류 화면용, 로컬 병합 없음).
   Future<RemoteTeam?> peekRemoteTeam(String teamId) => _sync.fetchTeam(teamId);
 
+  /// 로그인 rehydrate — **모집 중인** 내 방(owned+invited)만 서버에서 복원.
+  /// metrics rehydrate 완료 후 호출 (invited 매칭이 내 metrics id 에 의존).
+  /// closed 방은 부활 금지 정책으로 제외. 이미 로컬에 있는 방은 skip.
+  Future<void> rehydrateFromServer() async {
+    try {
+      final myIds = <String>[
+        for (final r in ref.read(historyProvider))
+          if (r.supabaseId != null) r.supabaseId!,
+      ];
+      final ids = await _sync.fetchMyOpenTeamIds(myIds);
+      if (ids.isEmpty) return;
+      final known = {for (final r in state) r.id};
+      var restored = 0;
+      for (final id in ids) {
+        if (known.contains(id)) continue;
+        try {
+          final room = await refreshFromServer(id);
+          if (room != null) restored++;
+        } catch (_) {
+          // 개별 실패 무시 — 나머지 방은 계속 복원.
+        }
+      }
+      if (restored > 0) {
+        debugPrint('[TeamRehydrate] restored $restored open room(s)');
+      }
+    } catch (e) {
+      debugPrint('[TeamRehydrate] error: $e');
+    }
+  }
+
   /// 초대받은 그룹 합류 — 서버에 내 등록 추가 후 pull 해서 로컬에 반영.
   /// 성공 시 invited 그룹(ownedByMe=false), 실패(비로그인 등) 시 null.
   Future<TeamRoom?> joinRemoteTeam(
@@ -276,10 +307,13 @@ class TeamsNotifier extends Notifier<List<TeamRoom>> {
       if (remote.closedAt != null) {
         existing.closedAt = remote.closedAt;
         // 서버(48h cron)가 닫은 방은 matrix_payload 가 없다 — owner 의 다음
-        // refresh 에서 웹 쇼케이스용 payload 를 backfill. 3명 미만이면 매트릭스
-        // 불성립이라 생략 (웹이 "인원 미달 종료" 렌더).
+        // refresh 에서 웹 쇼케이스용 payload 를 backfill. 결과표는 **전원
+        // 등록** 시에만 생성 (옛 ≥3 기준 폐기, 2026-07-12) — 전원 미충족
+        // 종료 방은 웹이 "전원이 모이지 않아 종료" 를 렌더.
         final scanned = existing.members.where((m) => m.isScanned).length;
-        if (remote.matrixPayload == null && scanned >= TeamRoom.kMinMembers) {
+        if (remote.matrixPayload == null &&
+            scanned >= TeamRoom.kMinMembers &&
+            scanned == existing.members.length) {
           unawaited(_syncClose(existing));
         }
       }

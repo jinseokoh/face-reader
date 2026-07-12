@@ -11,6 +11,7 @@ import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/data/services/auth_service.dart';
 import 'package:facely/data/services/r2_uploader.dart';
 import 'package:facely/data/services/supabase_service.dart';
+import 'package:facely/presentation/providers/team_provider.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 
 /// debugPrint 의 rate-limit 을 피하려 raw `print` + `dev.log` 이중 출력.
@@ -53,9 +54,16 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
       _lastClaimedUid = existing.id;
       _claimAnonymousMetrics(reports);
       // build 중엔 state 재할당 금지 — 다음 틱에.
-      Future(() => _rehydrateFromServer());
+      Future(() => _rehydrateAll());
     }
     return reports;
+  }
+
+  /// metrics rehydrate → (완료 후) 모집 중인 케미 방 rehydrate.
+  /// 순서 의존 — invited 방 매칭이 복원된 내 metrics id 에 의존한다.
+  Future<void> _rehydrateAll() async {
+    await _rehydrateFromServer();
+    await ref.read(teamsProvider.notifier).rehydrateFromServer();
   }
 
   /// 내 관상의 기본 별칭. 지정 시 별칭이 없으면 자동 부여, 해제 시 자동
@@ -104,10 +112,10 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
     if (uid == _lastClaimedUid) return;
     _lastClaimedUid = uid;
     _claimAnonymousMetrics(state);
-    // 로그인 rehydrate — 서버 소유 rows 중 이 기기에 없는 것 복원 (새 기기·
-    // 웹 티저 capture). claim 과 대상이 겹치지 않아(로컬 보유 uuid 는 skip)
+    // 로그인 rehydrate — 서버 소유 metrics 복원 후 모집 중인 케미 방 복원
+    // (새 기기·웹 티저 capture). claim 과 대상이 겹치지 않아 claim 과는
     // 순서 의존 없음.
-    unawaited(_rehydrateFromServer());
+    unawaited(_rehydrateAll());
   }
 
   void _claimAnonymousMetrics(List<FaceReadingReport> reports) {

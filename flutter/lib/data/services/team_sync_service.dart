@@ -165,6 +165,45 @@ class TeamSyncService {
     }
   }
 
+  /// 로그인 rehydrate 용 — **모집 중(closed_at null)** 인 내 방 id 열거.
+  /// owned = teams.owner_id, invited = 내 metrics 가 team_members 에 있는 방.
+  /// closed 방은 의도적으로 제외 (부활 금지 정책, 2026-07-12): 끝난 방을
+  /// 지운 사용자 의도 존중 + 결과표는 웹 링크로 열람 가능.
+  Future<List<String>> fetchMyOpenTeamIds(List<String> myMetricsIds) async {
+    final uid = myUid;
+    if (uid == null) return const [];
+    final ids = <String>{};
+    final owned = await _client
+        .from('teams')
+        .select('id')
+        .eq('owner_id', uid)
+        .isFilter('closed_at', null);
+    for (final r in (owned as List).cast<Map<String, dynamic>>()) {
+      ids.add(r['id'] as String);
+    }
+    if (myMetricsIds.isNotEmpty) {
+      final memberRows = await _client
+          .from('team_members')
+          .select('team_id')
+          .inFilter('metrics_id', myMetricsIds);
+      final joined = <String>{
+        for (final r in (memberRows as List).cast<Map<String, dynamic>>())
+          r['team_id'] as String,
+      }..removeAll(ids);
+      if (joined.isNotEmpty) {
+        final open = await _client
+            .from('teams')
+            .select('id')
+            .inFilter('id', joined.toList())
+            .isFilter('closed_at', null);
+        for (final r in (open as List).cast<Map<String, dynamic>>()) {
+          ids.add(r['id'] as String);
+        }
+      }
+    }
+    return ids.toList();
+  }
+
   /// 그룹 1건 fetch (입장·pull-to-refresh). 없으면 null.
   Future<RemoteTeam?> fetchTeam(String teamId) async {
     final t = await _client
