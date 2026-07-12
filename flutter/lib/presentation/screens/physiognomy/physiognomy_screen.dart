@@ -9,6 +9,7 @@ import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/providers/tab_provider.dart';
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/presentation/widgets/emotion_empty_state.dart';
+import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
 import 'package:facely/presentation/widgets/other_face_scan_pill.dart';
 import 'package:facely/presentation/widgets/physiognomy_info_dialog.dart';
 import 'package:facely/presentation/widgets/source_badge.dart';
@@ -211,14 +212,21 @@ class _PhysiognomyItem extends ConsumerWidget {
               onSelected: (value) {
                 if (value == 'rename') {
                   _showAliasDialog(context, ref, displayName);
+                } else if (value == 'recapture') {
+                  startMyFaceCapture(context, ref);
                 } else if (value == 'delete') {
                   _confirmDelete(context, ref);
                 }
               },
-              // 내 관상 지정/해제 메뉴 없음 — my-face 변경은 등록 플로우와 카드
-              // 삭제만. 로컬 전용 지정/해제는 서버 is_my_face 와 어긋나 중복·stale
-              // 을 만들던 funnel 이라 제거 (내 관상 = 항상 최신 1장 불변식).
+              // 내 관상 지정/해제 메뉴 없음 — 로컬 전용 지정/해제는 서버
+              // is_my_face 와 어긋나던 funnel 이라 제거. 교체는 [다시 찍기]
+              // (고정 row 덮어쓰기 — 서버 row·케미 슬롯·공유 링크 유지).
               itemBuilder: (ctx) => [
+                if (isMyFace)
+                  const PopupMenuItem<String>(
+                    value: 'recapture',
+                    child: Text('내 관상 다시 찍기', style: AppText.body),
+                  ),
                 const PopupMenuItem<String>(
                   value: 'rename',
                   child: Text('제목 변경', style: AppText.body),
