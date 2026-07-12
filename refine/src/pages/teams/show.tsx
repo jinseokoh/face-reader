@@ -1,23 +1,84 @@
+import { CloseOutlined } from "@ant-design/icons";
 import { DateField, Show } from "@refinedev/antd";
-import { useList, useMany } from "@refinedev/core";
+import { useInvalidate, useList, useMany } from "@refinedev/core";
 import {
   Alert,
+  App,
   Avatar,
+  Button,
   Descriptions,
+  Popconfirm,
   Space,
   Table,
   Tag,
   Typography,
 } from "antd";
+import { AwsClient } from "aws4fetch";
 import { useParams } from "react-router";
 import { Link } from "react-router";
+import { adminClient } from "../../providers/data";
 import type { MetricEntry, Team, TeamMember } from "../../types";
 import { metricThumbUrl } from "../../types";
 
 const { Text, Title } = Typography;
 
+// 브라우저 직접 R2 조작 — refine 는 로컬 전용 admin (ad-videos/create 와 동일 패턴).
+const R2_ENV = (import.meta as { env: Record<string, string> }).env;
+const R2 = {
+  accountId: R2_ENV.VITE_R2_ACCOUNT_ID,
+  bucket: R2_ENV.VITE_R2_BUCKET_NAME || "facely",
+  accessKeyId: R2_ENV.VITE_R2_ACCESS_KEY_ID,
+  secretAccessKey: R2_ENV.VITE_R2_SECRET_ACCESS_KEY,
+};
+
+/** R2 객체 삭제 — 404 도 성공 취급. 자격 미설정이면 false. */
+async function deleteR2Object(key: string): Promise<boolean> {
+  if (!R2.accountId || !R2.accessKeyId || !R2.secretAccessKey) return false;
+  const client = new AwsClient({
+    accessKeyId: R2.accessKeyId,
+    secretAccessKey: R2.secretAccessKey,
+    service: "s3",
+    region: "auto",
+  });
+  const url = `https://${R2.accountId}.r2.cloudflarestorage.com/${R2.bucket}/${key}`;
+  const signed = await client.sign(new Request(url, { method: "DELETE" }), {
+    aws: { signQuery: true },
+  });
+  const res = await fetch(signed.url, { method: "DELETE" });
+  return res.ok || res.status === 404;
+}
+
 export const TeamShow = () => {
   const { id } = useParams<{ id: string }>();
+  const { message } = App.useApp();
+  const invalidate = useInvalidate();
+
+  /** 등록 삭제 — R2 썸네일 + metrics row. FK(on delete set null)가
+   *  team_members.metrics_id 를 비워 슬롯이 '대기'로 되돌아간다. */
+  const handleUnregister = async (metricsId: string, body?: string) => {
+    try {
+      const key = body
+        ? (JSON.parse(body) as { thumbnailKey?: string }).thumbnailKey
+        : undefined;
+      if (key) {
+        const ok = await deleteR2Object(key);
+        if (!ok) message.warning("R2 썸네일 삭제 실패 — row 는 계속 삭제합니다");
+      }
+      const { error } = await adminClient
+        .from("metrics")
+        .delete()
+        .eq("id", metricsId);
+      if (error) {
+        message.error(`metrics 삭제 실패: ${error.message}`);
+        return;
+      }
+      message.success("등록 삭제됨 (슬롯은 대기로 전환)");
+      invalidate({ resource: "team_members", invalidates: ["list"] });
+      invalidate({ resource: "metrics", invalidates: ["list", "many"] });
+    } catch (e) {
+      message.error(`삭제 실패: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
 
   const {
     result: { data: teamRows },
@@ -114,8 +175,31 @@ export const TeamShow = () => {
             <Table.Column<TeamMember>
               title="등록"
               dataIndex="metrics_id"
-              render={(v: string | null) =>
-                v ? <Tag color="blue">등록</Tag> : <Tag>대기</Tag>
+              render={(v: string | null, m) =>
+                v ? (
+                  <Space size={4}>
+                    <Tag color="blue">등록</Tag>
+                    <Popconfirm
+                      title="등록 삭제"
+                      description={`'${m.name}' 의 metrics row 와 R2 썸네일을 삭제합니다. 되돌릴 수 없습니다.`}
+                      okText="Yes"
+                      cancelText="No"
+                      okButtonProps={{ danger: true }}
+                      onConfirm={() =>
+                        handleUnregister(v, metricById.get(v)?.body)
+                      }
+                    >
+                      <Button
+                        size="small"
+                        type="text"
+                        danger
+                        icon={<CloseOutlined />}
+                      />
+                    </Popconfirm>
+                  </Space>
+                ) : (
+                  <Tag>대기</Tag>
+                )
               }
             />
             <Table.Column<TeamMember>

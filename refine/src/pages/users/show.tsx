@@ -24,7 +24,7 @@ import { GiftOutlined } from "@ant-design/icons";
 import { useState } from "react";
 import { adminClient } from "../../providers/data";
 import type { AppUser, CoinEntry, MetricEntry, Unlock } from "../../types";
-import { parseDemographics } from "../../types";
+import { metricThumbUrl, parseDemographics } from "../../types";
 
 const { Title, Text } = Typography;
 
@@ -283,6 +283,19 @@ export const UserShow = () => {
             size="small"
             pagination={{ pageSize: 20 }}
           >
+            <Table.Column<MetricEntry>
+              title="썸네일"
+              dataIndex="body"
+              render={(_: unknown, record: MetricEntry) => (
+                <Avatar
+                  src={metricThumbUrl(record.body) ?? undefined}
+                  size={40}
+                  shape="circle"
+                >
+                  {record.alias?.[0] ?? "?"}
+                </Avatar>
+              )}
+            />
             <Table.Column<MetricEntry>
               title="source"
               dataIndex="body"
