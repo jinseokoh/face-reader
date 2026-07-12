@@ -77,19 +77,19 @@ function App() {
                   {
                     name: 'coins',
                     list: '/coins',
-                    meta: { label: '코인 ledger', icon: <DollarOutlined /> },
+                    meta: { label: '코인 coins', icon: <DollarOutlined /> },
                   },
                   {
                     name: 'unlocks',
                     list: '/unlocks',
                     show: '/unlocks/show/:id',
-                    meta: { label: '궁합 unlock', icon: <UnlockOutlined /> },
+                    meta: { label: '궁합 unlocks', icon: <UnlockOutlined /> },
                   },
                   {
                     name: 'teams',
                     list: '/teams',
                     show: '/teams/show/:id',
-                    meta: { label: '케미', icon: <ClusterOutlined /> },
+                    meta: { label: '케미 teams', icon: <ClusterOutlined /> },
                   },
                   {
                     name: 'ad_videos',
