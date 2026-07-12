@@ -52,9 +52,17 @@ type Stage =
   | "done"
   | "error";
 
+// 앱 InfoConfirm 과 동일 필드 — 값은 엔진 enum name.
+const ETHNICITIES: { v: string; ko: string }[] = [
+  { v: "eastAsian", ko: "동아시아인" },
+  { v: "caucasian", ko: "백인" },
+  { v: "african", ko: "아프리카인" },
+  { v: "hispanic", ko: "히스패닉" },
+  { v: "middleEastern", ko: "중동인" },
+];
 const GENDERS: { v: string; ko: string }[] = [
-  { v: "male", ko: "남자" },
-  { v: "female", ko: "여자" },
+  { v: "male", ko: "남성" },
+  { v: "female", ko: "여성" },
 ];
 // 앱 InfoConfirm 과 동일 범위 (AgeGroup teens~seventies, jsonValue "10s".."70s").
 const AGES: { v: string; ko: string }[] = [
@@ -82,8 +90,8 @@ export function JoinWizard({
   cdnBase: string;
   /** 위저드가 entry 를 벗어나면 true — 부모가 초대장 칩을 숨기는 데 쓴다. */
   onProgress?: (active: boolean) => void;
-  /** 참여 성립 시 최신 등록 수 전달 — 헤더 subtitle 이 '참여 완료' 로 바뀐다. */
-  onJoined?: (joined: number) => void;
+  /** 참여 성립 시 최신 현황 전달 — 헤더 subtitle 이 '등록 완료' 상태로 바뀐다. */
+  onJoined?: (p: { joined: number; total: number }) => void;
 }) {
   const [stage, setStage] = useState<Stage>("entry");
   const [session, setSession] = useState<Session | null>(null);
@@ -92,9 +100,10 @@ export function JoinWizard({
   const [slotPick, setSlotPick] = useState<string | null>(null);
   const [direct, setDirect] = useState(false);
   const [nameInput, setNameInput] = useState("");
-  // 성별은 남자 기본 선택 (radio) — 나이대만 명시 선택을 요구한다.
+  // 정보 확인 — 3필드 모두 default 보유 (동아시아인/남성/20대), 즉시 진행 가능.
+  const [ethnicity, setEthnicity] = useState<string>("eastAsian");
   const [gender, setGender] = useState<string>("male");
-  const [age, setAge] = useState<string | null>(null);
+  const [age, setAge] = useState<string>("20s");
   // 서버에 이미 있는 내 관상(is_my_face) — 재사용/재촬영 선택의 근거.
   const [existing, setExisting] = useState<{
     id: string;
@@ -115,9 +124,9 @@ export function JoinWizard({
     joined: number;
     total: number;
   } | null>(null);
-  // 등록 완료한 참여자 명단 — done 화면의 아바타 로스터.
+  // 전체 참여자 명단 — done 화면 로스터 (미등록은 빈 슬롯).
   const [roster, setRoster] = useState<
-    { name: string; thumbnailKey: string | null }[]
+    { name: string; joined: boolean; thumbnailKey: string | null }[]
   >([]);
   const [hint, setHint] = useState("얼굴을 화면 안에 맞춰 주세요");
   // 자동 촬영 카운트다운 (2 → 1) — 비디오 위 대형 숫자.
@@ -173,12 +182,19 @@ export function JoinWizard({
       const saved = JSON.parse(localStorage.getItem(DEMO_KEY) ?? "null") as {
         gender?: string;
         age?: string;
+        ethnicity?: string;
       } | null;
       if (saved?.gender === "male" || saved?.gender === "female") {
         setGender(saved.gender);
       }
       if (saved?.age && AGES.some((a) => a.v === saved.age)) {
         setAge(saved.age);
+      }
+      if (
+        saved?.ethnicity &&
+        ETHNICITIES.some((e) => e.v === saved.ethnicity)
+      ) {
+        setEthnicity(saved.ethnicity);
       }
     } catch {
       /* 손상된 저장값은 무시 */
@@ -225,7 +241,7 @@ export function JoinWizard({
         if (member) {
           const p = await fetchProgress(client, team.id);
           setProgress(p);
-          if (p) onJoined?.(p.joined);
+          if (p) onJoined?.(p);
           setStage("already");
         } else {
           setStage("name");
@@ -245,13 +261,15 @@ export function JoinWizard({
 
   // 선택 즉시 저장 — 다음 방문의 "나를 알려주세요"는 탭 한 번으로 끝난다.
   useEffect(() => {
-    if (!age) return;
     try {
-      localStorage.setItem(DEMO_KEY, JSON.stringify({ gender, age }));
+      localStorage.setItem(
+        DEMO_KEY,
+        JSON.stringify({ gender, age, ethnicity }),
+      );
     } catch {
       /* storage 불가 환경은 무시 */
     }
-  }, [gender, age]);
+  }, [gender, age, ethnicity]);
 
   const openSlots = team.members.filter((m) => !m.joined);
   // 빈 슬롯이 하나도 없으면 직접 입력이 유일한 경로.
@@ -482,9 +500,9 @@ export function JoinWizard({
       ) as Record<string, number>;
       body = {
         schemaVersion: 1,
-        ethnicity: "eastAsian",
+        ethnicity,
         gender,
-        ageGroup: age ?? "30s",
+        ageGroup: age,
         timestamp: new Date().toISOString(),
         source: "camera",
         metrics,
@@ -567,7 +585,7 @@ export function JoinWizard({
     ]);
     setProgress(p);
     setRoster(r);
-    if (p) onJoined?.(p.joined);
+    if (p) onJoined?.(p);
     setStage("done");
   }
 
@@ -584,7 +602,7 @@ export function JoinWizard({
         setMembership(member);
         const p = await fetchProgress(client, team.id);
         setProgress(p);
-        if (p) onJoined?.(p.joined);
+        if (p) onJoined?.(p);
         setStage("already");
       } else {
         setStage("name");
@@ -633,10 +651,6 @@ export function JoinWizard({
   }
 
   function onInfoNext() {
-    if (!age) {
-      setNotice("나이대를 골라 주세요.");
-      return;
-    }
     setNotice("");
     void startCamera();
   }
@@ -693,45 +707,52 @@ export function JoinWizard({
             카카오로 참여하기
           </button>
           {notice && <p className="join-notice">{notice}</p>}
-          <p className="join-sub">설치 없이 브라우저에서 얼굴 등록까지</p>
+          <p className="join-sub">
+            앱 설치 없이 브라우저에서 관상을 등록할 수 있습니다.
+          </p>
         </>
       )}
 
       {stage === "already" && membership && (
         <>
-          {avatarUrl(membership.thumbnailKey) && (
-            <>
-              <img
-                className="join-avatar"
-                src={avatarUrl(membership.thumbnailKey)!}
-                alt=""
-              />
+          <p className="join-q">등록 완료</p>
+          <div className="join-me-row">
+            <div className="join-roster-item">
+              {avatarUrl(membership.thumbnailKey) ? (
+                <img
+                  className="join-avatar"
+                  src={avatarUrl(membership.thumbnailKey)!}
+                  alt=""
+                />
+              ) : (
+                <div className="join-avatar join-avatar--letter">
+                  {(membership.name === "나"
+                    ? nickname || membership.name
+                    : membership.name
+                  ).slice(0, 1)}
+                </div>
+              )}
               {/* 아바타 라벨은 항상 실명(nickname/슬롯명) — '나' 표기 금지 */}
               <p className="join-avatar-name">
                 {membership.name === "나"
                   ? nickname || membership.name
                   : membership.name}
               </p>
-            </>
-          )}
-          <p className="join-q">
-            이미 &lsquo;
-            {membership.name === "나"
-              ? nickname || membership.name
-              : membership.name}
-            &rsquo;(으)로 참여한 그룹이에요
-          </p>
-          {progress && (
-            <p className="join-sub">
-              {progress.total}명 중 {progress.joined}명 등록 · 전원이 모이면 이
-              링크에서 결과표가 공개됩니다.
-            </p>
-          )}
-          <div>
-            <button className="join-btn join-btn--line" onClick={onAlreadyRecapture}>
-              관상 다시 촬영하기
+            </div>
+            <button
+              className="join-btn join-btn--line join-me-recapture"
+              onClick={onAlreadyRecapture}
+            >
+              관상 다시 촬영
             </button>
           </div>
+          {progress && (
+            <p className="join-sub">
+              {progress.total - progress.joined > 0
+                ? `나머지 ${progress.total - progress.joined}명이 등록을 마치면 그룹 케미 결과표가 공개됩니다.`
+                : "전원 등록 완료! 그룹 케미 결과표가 곧 공개됩니다."}
+            </p>
+          )}
         </>
       )}
 
@@ -821,54 +842,63 @@ export function JoinWizard({
 
       {stage === "info" && (
         <>
-          <p className="join-q">나를 알려주세요</p>
-          <div style={{ marginTop: 12 }}>
-            <p className="join-sub" style={{ margin: "0 0 6px" }}>
-              성별
-            </p>
-            <div className="join-radios">
-              {GENDERS.map((o) => (
-                <label key={o.v} className="join-radio">
-                  <input
-                    type="radio"
-                    name="join-gender"
-                    value={o.v}
-                    checked={gender === o.v}
-                    onChange={() => {
-                      setGender(o.v);
-                      void preloadDetector().catch(() => {});
-                    }}
-                  />
-                  {o.ko}
-                </label>
-              ))}
-            </div>
-          </div>
-          <div style={{ marginTop: 12 }}>
-            <p className="join-sub" style={{ margin: "0 0 6px" }}>
-              나이대
-            </p>
-            <select
-              className="join-select"
-              value={age ?? ""}
-              onChange={(e) => {
-                setAge(e.target.value || null);
-                void preloadDetector().catch(() => {});
-              }}
+          <p className="join-q">정보 확인</p>
+          <div className="join-form">
+            <label className="join-field">
+              <span className="join-field-label">인종</span>
+              <select
+                className="join-select"
+                value={ethnicity}
+                onChange={(e) => {
+                  setEthnicity(e.target.value);
+                  void preloadDetector().catch(() => {});
+                }}
+              >
+                {ETHNICITIES.map((o) => (
+                  <option key={o.v} value={o.v}>
+                    {o.ko}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="join-field">
+              <span className="join-field-label">성별</span>
+              <select
+                className="join-select"
+                value={gender}
+                onChange={(e) => {
+                  setGender(e.target.value);
+                  void preloadDetector().catch(() => {});
+                }}
+              >
+                {GENDERS.map((o) => (
+                  <option key={o.v} value={o.v}>
+                    {o.ko}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="join-field">
+              <span className="join-field-label">나이대</span>
+              <select
+                className="join-select"
+                value={age}
+                onChange={(e) => {
+                  setAge(e.target.value);
+                  void preloadDetector().catch(() => {});
+                }}
+              >
+                {AGES.map((o) => (
+                  <option key={o.v} value={o.v}>
+                    {o.ko}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              className="join-btn join-btn--line join-form-submit"
+              onClick={onInfoNext}
             >
-              <option value="" disabled>
-                나이대 선택
-              </option>
-              {AGES.map((o) => (
-                <option key={o.v} value={o.v}>
-                  {o.ko}
-                </option>
-              ))}
-            </select>
-          </div>
-          {notice && <p className="join-notice">{notice}</p>}
-          <div>
-            <button className="join-btn" onClick={onInfoNext}>
               카메라 켜기
             </button>
           </div>
@@ -883,33 +913,39 @@ export function JoinWizard({
 
       {stage === "done" && (
         <>
-          {/* 앱 팀룸처럼 — 지금까지 등록한 참여자 아바타 + 닉네임 로스터. */}
+          {/* 앱 팀룸처럼 — 등록자는 아바타, 미등록자는 점선 빈 슬롯. */}
           {roster.length > 0 && (
             <div className="join-roster">
               {roster.map((m) => (
                 <div key={m.name} className="join-roster-item">
-                  {avatarUrl(m.thumbnailKey) ? (
+                  {m.joined && avatarUrl(m.thumbnailKey) ? (
                     <img
                       className="join-avatar"
                       src={avatarUrl(m.thumbnailKey)!}
                       alt=""
                     />
-                  ) : (
+                  ) : m.joined ? (
                     <div className="join-avatar join-avatar--letter">
                       {m.name.slice(0, 1)}
                     </div>
+                  ) : (
+                    <div className="join-avatar join-slot-empty" />
                   )}
-                  <p className="join-avatar-name">{m.name}</p>
+                  <p
+                    className="join-avatar-name"
+                    style={m.joined ? undefined : { color: "#666" }}
+                  >
+                    {m.name}
+                  </p>
                 </div>
               ))}
             </div>
           )}
-          {progress && progress.joined >= progress.total && (
-            <p className="join-q">전원 등록 완료!</p>
-          )}
           <p className="join-sub">
-            전원이 모이면 이 링크에서 그룹 케미 결과표가 공개됩니다. 측면까지
-            넣은 정밀 분석은 앱에서만 가능합니다.
+            {progress && progress.total - progress.joined > 0
+              ? `나머지 ${progress.total - progress.joined}명이 등록을 마치면 그룹 케미 결과표가 공개됩니다. `
+              : "전원 등록 완료! 그룹 케미 결과표가 곧 공개됩니다. "}
+            측면까지 넣은 정밀 분석은 앱에서만 가능합니다.
           </p>
         </>
       )}

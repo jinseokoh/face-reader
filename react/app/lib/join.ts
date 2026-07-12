@@ -3,7 +3,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 /** 웹 캡처 body — 앱 FaceReadingReport.toBodyJson() 과 동일 키 계약. */
 export type WebCaptureBody = {
   schemaVersion: 1;
-  ethnicity: "eastAsian";
+  /** Ethnicity enum name — 정보 확인에서 사용자가 선택 (default eastAsian). */
+  ethnicity: string;
   gender: string;
   ageGroup: string;
   timestamp: string;
@@ -120,22 +121,24 @@ export async function fetchMembership(
   };
 }
 
-/** 등록 완료한 참여자 명단(방장 먼저) — 이름 + 썸네일 키. done 화면 로스터용. */
+/** 전체 멤버 명단(방장 먼저) — 미등록 멤버는 joined=false 빈 슬롯으로 렌더. */
 export async function fetchRoster(
   sb: SupabaseClient,
   teamId: string,
-): Promise<{ name: string; thumbnailKey: string | null }[]> {
+): Promise<{ name: string; joined: boolean; thumbnailKey: string | null }[]> {
   const { data } = await sb
     .from("team_members")
     .select("name,metrics_id,is_owner,joined_at")
     .eq("team_id", teamId)
     .order("joined_at");
-  const rows = (data ?? []).filter((r) => r.metrics_id != null);
+  const rows = data ?? [];
   const ordered = [
     ...rows.filter((r) => r.is_owner),
     ...rows.filter((r) => !r.is_owner),
   ];
-  const ids = ordered.map((r) => r.metrics_id as string);
+  const ids = ordered
+    .filter((r) => r.metrics_id != null)
+    .map((r) => r.metrics_id as string);
   const thumbs = new Map<string, string | null>();
   if (ids.length > 0) {
     const { data: ms } = await sb.from("metrics").select("id,body").in("id", ids);
@@ -145,7 +148,11 @@ export async function fetchRoster(
   }
   return ordered.map((r) => ({
     name: r.name as string,
-    thumbnailKey: thumbs.get(r.metrics_id as string) ?? null,
+    joined: r.metrics_id != null,
+    thumbnailKey:
+      r.metrics_id != null
+        ? (thumbs.get(r.metrics_id as string) ?? null)
+        : null,
   }));
 }
 

@@ -73,8 +73,11 @@ export default function Group({ loaderData }: Route.ComponentProps) {
   // 위저드 진행 중엔 초대장 멤버 칩을 숨긴다 — 위저드의 "비어 있는 자리"
   // 목록과 같은 이름이 이중 노출되어 혼란을 만든다.
   const [wizardActive, setWizardActive] = useState(false);
-  // 참여 성립 시 최신 등록 수 — 헤더 subtitle 이 '참여 완료했습니다' 로 바뀐다.
-  const [joinedCount, setJoinedCount] = useState<number | null>(null);
+  // 참여 성립 시 최신 현황 — 헤더 subtitle 3상태의 입력.
+  const [joinedInfo, setJoinedInfo] = useState<{
+    joined: number;
+    total: number;
+  } | null>(null);
   return (
     <main className="share">
       {team.closed && team.payload ? (
@@ -87,7 +90,8 @@ export default function Group({ loaderData }: Route.ComponentProps) {
             title={team.title}
             members={team.members}
             hideChips={wizardActive}
-            joinedCount={joinedCount}
+            wizardActive={wizardActive}
+            joinedInfo={joinedInfo}
           />
           {/* 미설치자 웹 참여 위저드 (미리보기 겸용) — 카카오 로그인 →
               슬롯 claim → 정면 캡처 → 그룹 합류까지 브라우저에서 완결. */}
@@ -97,7 +101,7 @@ export default function Group({ loaderData }: Route.ComponentProps) {
             supabaseAnonKey={loaderData.supabaseAnonKey}
             cdnBase={loaderData.cdnBase}
             onProgress={setWizardActive}
-            onJoined={setJoinedCount}
+            onJoined={setJoinedInfo}
           />
         </>
       )}
@@ -114,25 +118,40 @@ function Invite({
   title,
   members,
   hideChips,
-  joinedCount,
+  wizardActive,
+  joinedInfo,
 }: {
   title: string;
   members: TeamShowcase["members"];
   hideChips: boolean;
-  /** 내 참여가 성립된 뒤의 최신 등록 수 — null 이면 아직 미참여. */
-  joinedCount: number | null;
+  /** 위저드 진행 중(로그인·미참여) — subtitle "당신의 자리가 비어 있어요". */
+  wizardActive: boolean;
+  /** 내 참여가 성립된 뒤의 최신 현황 — null 이면 아직 미참여. */
+  joinedInfo: { joined: number; total: number } | null;
 }) {
-  const joined = joinedCount ?? members.filter((m) => m.joined).length;
+  const joined = joinedInfo?.joined ?? members.filter((m) => m.joined).length;
+  const total = joinedInfo?.total ?? members.length;
+  // subtitle 3상태: 참여 완료 / 진행 중(로그인·미참여) / 방문만.
+  const status =
+    joinedInfo != null
+      ? "내 관상은 이미 등록했습니다."
+      : wizardActive
+        ? "당신의 자리가 비어 있어요"
+        : `아직 ${Math.max(total - joined, 0)}명이 미등록 중입니다.`;
+  // 등록 완료자 먼저 보여준다.
+  const ordered = [
+    ...members.filter((m) => m.joined),
+    ...members.filter((m) => !m.joined),
+  ];
   return (
     <section style={{ textAlign: "center", padding: "24px 16px" }}>
       <h1 style={{ fontSize: 24, color: "#1a1a1a", margin: 0 }}>{title}</h1>
       <p style={{ color: "#666", fontSize: 14, marginTop: 8 }}>
-        {joined}명 등록 ·{" "}
-        {joinedCount != null ? "참여 완료했습니다." : "당신 자리가 비어 있어요"}
+        {total}명 중 {joined}명 등록 · {status}
       </p>
-      {!hideChips && members.length > 0 && (
+      {!hideChips && ordered.length > 0 && (
         <div className="invite-chips">
-          {members.map((m, i) => (
+          {ordered.map((m, i) => (
             <span
               key={i}
               className={
