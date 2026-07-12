@@ -539,8 +539,11 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
                           text: '앨범 '
                               '(${history.where((r) => r.source == AnalysisSource.album).length})',
                         ),
+                        // 탭 이름은 '북마크' — 공유받은 카드 중 북마크로 담은
+                        // 것만 오는 보관함이라 동작·아이콘과 일치. 카드의
+                        // SourceBadge '공유받음' 은 출처 표기라 그대로.
                         Tab(
-                          text: '공유받음 '
+                          text: '북마크 '
                               '(${history.where((r) => r.source == AnalysisSource.received).length})',
                         ),
                       ],
@@ -564,7 +567,8 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
                   _buildList(
                       history, const [AnalysisSource.received], hasMyFace,
                       emptyAsset: 'assets/images/emotion-smile.png',
-                      emptyMessage: '관상 카드를 공유받으면 여기에 보관됩니다.'),
+                      emptyMessage:
+                          '공유받은 관상 카드를 북마크하면 여기에 보관됩니다.'),
                 ],
               )
             : _buildList(

@@ -334,7 +334,7 @@ EmptyStatePlaceholder(
 emotion-photo 와 동일 스케일).
 캡션은 상태 한 줄. 일러스트는 흰 배경·검정 라인아트·배경 소품 없음.
 사용처: `chemistry_screen.dart` — emotion-laugh.png(내가 만든 그룹) · emotion-shrug.png(초대받은 그룹) /
-`physiognomy_screen.dart` — 카메라 탭 emotion-anger.png · 앨범 탭/미등록 emotion-frown.png(기록 0개) · 공유받음 탭 emotion-smile.png · emotion-sad.png(내 관상 미설정 안내, 리스트 하단) /
+`physiognomy_screen.dart` — 카메라 탭 emotion-anger.png · 앨범 탭/미등록 emotion-frown.png(기록 0개) · 북마크 탭 emotion-smile.png · emotion-sad.png(내 관상 미설정 안내, 리스트 하단) /
 nudge 배너 — emotion-photo.png. **emotion 패밀리는 항상 84px 로 통일.**
 
 ### 3.9 Full-width 주/보조 버튼 — PrimaryButton / SecondaryButton
