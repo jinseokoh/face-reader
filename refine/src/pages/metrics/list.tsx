@@ -4,7 +4,7 @@ import { Avatar, Modal, Space, Table, Tag, Typography, message } from "antd";
 import { adminClient } from "../../providers/data";
 import { UserLink } from "../../components/user-link";
 import type { AppUser, MetricEntry } from "../../types";
-import { parseDemographics } from "../../types";
+import { metricThumbUrl, parseDemographics } from "../../types";
 
 const { Text } = Typography;
 
@@ -94,6 +94,18 @@ export const MetricList = () => {
       )}
     >
       <Table {...tableProps} rowKey="id" size="middle" scroll={{ x: 1100 }}>
+        <Table.Column<MetricEntry>
+          title="썸네일"
+          dataIndex="body"
+          render={(_: unknown, record: MetricEntry) => {
+            const url = metricThumbUrl(record.body);
+            return (
+              <Avatar src={url ?? undefined} size={40} shape="circle">
+                {record.alias?.[0] ?? "?"}
+              </Avatar>
+            );
+          }}
+        />
         <Table.Column<MetricEntry>
           title="업로더"
           dataIndex="user_id"

@@ -72,7 +72,7 @@ function App() {
                     name: 'metrics',
                     list: '/metrics',
                     show: '/metrics/show/:id',
-                    meta: { label: '관상 업로드', icon: <ScanOutlined /> },
+                    meta: { label: '관상 metrics', icon: <ScanOutlined /> },
                   },
                   {
                     name: 'coins',

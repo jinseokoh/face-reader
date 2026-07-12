@@ -53,6 +53,17 @@ export function parseDemographics(body: string | null | undefined): Demographics
   }
 }
 
+/** metrics.body 의 thumbnailKey → R2 CDN URL (없으면 null). */
+export function metricThumbUrl(body: string | null | undefined): string | null {
+  if (!body) return null;
+  try {
+    const key = (JSON.parse(body) as { thumbnailKey?: string }).thumbnailKey;
+    return key ? `https://cdn.facely.kr/${key}` : null;
+  } catch {
+    return null;
+  }
+}
+
 // 케미 그룹 — 방장이 push 한 teams row (마감 시 matrix_payload 보관).
 export type Team = {
   id: string;

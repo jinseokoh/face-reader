@@ -12,20 +12,9 @@ import {
 import { useParams } from "react-router";
 import { Link } from "react-router";
 import type { MetricEntry, Team, TeamMember } from "../../types";
+import { metricThumbUrl } from "../../types";
 
 const { Text, Title } = Typography;
-
-const CDN_BASE = "https://cdn.facely.kr";
-
-function thumbUrlOf(body: string | null | undefined): string | null {
-  if (!body) return null;
-  try {
-    const key = (JSON.parse(body) as { thumbnailKey?: string }).thumbnailKey;
-    return key ? `${CDN_BASE}/${key}` : null;
-  } catch {
-    return null;
-  }
-}
 
 export const TeamShow = () => {
   const { id } = useParams<{ id: string }>();
@@ -110,7 +99,7 @@ export const TeamShow = () => {
                 const metric = m.metrics_id
                   ? metricById.get(m.metrics_id)
                   : undefined;
-                const thumb = thumbUrlOf(metric?.body);
+                const thumb = metricThumbUrl(metric?.body);
                 return (
                   <Space>
                     <Avatar src={thumb ?? undefined} size={32}>
