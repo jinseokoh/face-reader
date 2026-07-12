@@ -35,7 +35,7 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen>
 
   static const _invitedEmpty = EmotionEmptyState(
     asset: 'assets/images/emotion-shrug.png',
-    message: '초대받은 그룹이 없습니다',
+    message: '초대받은 케미 그룹이 없습니다',
   );
 
   // 탭 수는 2 고정 (내가 만든 / 초대받은) — 동적 재생성 불필요.

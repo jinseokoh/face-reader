@@ -57,11 +57,18 @@ class _PhysiognomyItem extends ConsumerWidget {
         key: ValueKey(report.supabaseId ?? index),
         children: [
           Material(
-            color: AppColors.surface,
+            // 내 관상 카드는 '내 관상' gold pill 과 같은 가족의 chrome —
+            // goldSoft 옅은 tint 바탕 + gold 1px border 로 리스트에서 즉시
+            // 구분 (원색 goldSoft 는 카드 면적에선 과함 — alpha 로 눌러쓴다).
+            color: isMyFace
+                ? AppColors.goldSoft.withValues(alpha: 0.35)
+                : AppColors.surface,
             // 궁합 카드와 동일한 1px border (§0.0.1 같은 역할 = 같은 chrome).
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppRadius.lg),
-              side: const BorderSide(color: AppColors.border),
+              side: BorderSide(
+                color: isMyFace ? AppColors.gold : AppColors.border,
+              ),
             ),
             child: InkWell(
               onTap: () => context.push(
