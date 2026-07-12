@@ -13,6 +13,7 @@ import {
   InputNumber,
   Modal,
   Row,
+  Space,
   Statistic,
   Table,
   Tag,
@@ -344,14 +345,21 @@ export const UserShow = () => {
 
       {unlocks.length > 0 && (
         <Card title={`궁합 unlock (${unlocks.length}건)`} style={{ marginTop: 16 }}>
-          <Table dataSource={unlocks} rowKey="pair_key" size="small">
+          <Table dataSource={unlocks} rowKey="partner_id" size="small">
             <Table.Column<Unlock>
-              title="pair_key"
-              dataIndex="pair_key"
-              render={(v: string) => (
-                <Text code style={{ fontSize: 11 }}>
-                  {v}
-                </Text>
+              title="상대"
+              dataIndex="partner_id"
+              render={(v: string, r: Unlock) => (
+                <Space>
+                  {r.partner_alias ? (
+                    <Text strong>{r.partner_alias}</Text>
+                  ) : (
+                    <Text type="secondary">-</Text>
+                  )}
+                  <Text code style={{ fontSize: 11 }}>
+                    {v.slice(0, 8)}…
+                  </Text>
+                </Space>
               )}
             />
             <Table.Column<Unlock>

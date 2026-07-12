@@ -1,96 +1,64 @@
 import { Show } from "@refinedev/antd";
-import { useList, useMany } from "@refinedev/core";
-import { Alert, Descriptions, Space, Tag, Typography } from "antd";
+import { useList } from "@refinedev/core";
+import { Alert, Descriptions, Space, Typography } from "antd";
 import { useMemo } from "react";
 import { useParams } from "react-router";
-import type { MetricEntry, Unlock } from "../../types";
+import type { Unlock } from "../../types";
 import { metricThumbUrl } from "../../types";
-import {
-  runCompat,
-  type CompatOutput,
-} from "../../lib/share-engine";
+import { runCompat, type CompatOutput } from "../../lib/share-engine";
 import { CompatHeroCard } from "../metrics/HeroCard";
 
 const { Text } = Typography;
 
 export const UnlockShow = () => {
   const { id } = useParams<{ id: string }>();
-  const pairKey = id ? decodeURIComponent(id) : "";
-  const [myId, albumId] = pairKey.split("~");
+  const partnerId = id ? decodeURIComponent(id) : "";
 
-  // 1차 소스: unlocks 행의 결제 시점 body 스냅샷 — metrics row 삭제와 무관.
+  // 결제 시점 body 스냅샷이 해석 소스 — metrics row 삭제와 무관.
   const { result: unlockResult, query: unlockQuery } = useList<Unlock>({
     resource: "unlocks",
-    filters: [{ field: "pair_key", operator: "eq", value: pairKey }],
+    filters: [{ field: "partner_id", operator: "eq", value: partnerId }],
     sorters: [{ field: "created_at", order: "desc" }],
     pagination: { pageSize: 1 },
-    queryOptions: { enabled: Boolean(pairKey) },
+    queryOptions: { enabled: Boolean(partnerId) },
   });
   const unlock = (unlockResult?.data ?? [])[0];
-  const hasSnapshot = Boolean(unlock?.owner_body && unlock?.partner_body);
-
-  // fallback: 스냅샷 없는 옛 unlock 행만 live metrics 로 복원 시도.
-  const { result, query } = useMany<MetricEntry>({
-    resource: "metrics",
-    ids: [myId, albumId].filter(Boolean),
-    queryOptions: {
-      enabled: Boolean(myId && albumId) && !unlockQuery.isLoading && !hasSnapshot,
-    },
-  });
-
-  const rows = result?.data ?? [];
-  const my = rows.find((r) => r.id === myId);
-  const album = rows.find((r) => r.id === albumId);
-
-  const ownerBody = hasSnapshot ? unlock!.owner_body! : my?.body;
-  const partnerBody = hasSnapshot ? unlock!.partner_body! : album?.body;
+  const hasSnapshot = Boolean(unlock?.user_body && unlock?.partner_body);
 
   const compat = useMemo<{ out?: CompatOutput; error?: string }>(() => {
-    if (!ownerBody || !partnerBody) return {};
+    if (!hasSnapshot) return {};
     try {
-      return { out: runCompat(ownerBody, partnerBody) };
+      return { out: runCompat(unlock!.user_body!, unlock!.partner_body!) };
     } catch (e) {
       return { error: e instanceof Error ? e.message : String(e) };
     }
-  }, [ownerBody, partnerBody]);
+  }, [hasSnapshot, unlock]);
 
-  const isLoading = unlockQuery.isLoading || (!hasSnapshot && query.isLoading);
-  const missing = !isLoading && (!ownerBody || !partnerBody);
+  const isLoading = unlockQuery.isLoading;
 
   return (
     <Show isLoading={isLoading} title="궁합 해석">
       <Space direction="vertical" size="large" style={{ width: "100%" }}>
         <Descriptions column={2} bordered size="small">
-          <Descriptions.Item label="pair_key" span={2}>
-            <Text code copyable={{ text: pairKey }} style={{ fontSize: 12 }}>
-              {pairKey}
+          <Descriptions.Item label="partner_id (상대 metrics)" span={2}>
+            <Text code copyable={{ text: partnerId }} style={{ fontSize: 12 }}>
+              {partnerId}
             </Text>
           </Descriptions.Item>
-          <Descriptions.Item label="my (사용자)">
-            <Text code style={{ fontSize: 11 }}>
-              {myId}
-            </Text>
+          <Descriptions.Item label="본인 (user_alias)">
+            {unlock?.user_alias ?? <Text type="secondary">-</Text>}
           </Descriptions.Item>
-          <Descriptions.Item label="album (상대)">
-            <Text code style={{ fontSize: 11 }}>
-              {albumId}
-            </Text>
-          </Descriptions.Item>
-          <Descriptions.Item label="해석 소스" span={2}>
-            {hasSnapshot ? (
-              <Tag color="blue">결제 시점 스냅샷 (owner/partner_body)</Tag>
-            ) : (
-              <Tag>live metrics (스냅샷 없는 옛 행)</Tag>
-            )}
+          <Descriptions.Item label="상대 (partner_alias)">
+            {unlock?.partner_alias ?? <Text type="secondary">-</Text>}
           </Descriptions.Item>
         </Descriptions>
 
-        {missing && (
+        {!isLoading && !hasSnapshot && (
           <Alert
             type="warning"
             showIcon
             message="복원 불가"
-            description="unlock 행에 body 스냅샷이 없고, live metrics 도 삭제되어 해석할 수 없습니다 (스냅샷 도입 전 옛 unlock)."
+            description="unlock 행에 body 스냅샷이 없어 해석할 수 없습니다."
           />
         )}
 
@@ -110,8 +78,8 @@ export const UnlockShow = () => {
         {compat.out && (
           <CompatHeroCard
             compat={compat.out}
-            thumbA={metricThumbUrl(ownerBody)}
-            thumbB={metricThumbUrl(partnerBody)}
+            thumbA={metricThumbUrl(unlock?.user_body ?? undefined)}
+            thumbB={metricThumbUrl(unlock?.partner_body ?? undefined)}
           />
         )}
       </Space>

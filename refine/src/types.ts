@@ -116,11 +116,15 @@ export type AdImage = {
 
 export type Unlock = {
   user_id: string;
-  pair_key: string;
+  /** 상대 metrics id — FK 없음(스냅샷은 metrics 삭제를 견딘다). */
+  partner_id: string;
   /** 결제 시점 본인/상대 metrics body 스냅샷 — metrics row 삭제와 무관하게
    *  궁합을 self-contained 로 복원한다 (해석의 1차 소스). */
-  owner_body: string | null;
+  user_body: string | null;
   partner_body: string | null;
+  /** 결제 시점 이름 스냅샷 — user: 본인 닉네임, partner: 카드에 지정한 이름. */
+  user_alias: string | null;
+  partner_alias: string | null;
   total_score: number | null;
   created_at: string;
 };
