@@ -161,6 +161,39 @@ export async function fetchRoster(
   }));
 }
 
+/**
+ * 등록 완료 멤버들의 raw body(JSON 문자열) — 웹 즉석 결과표 계산용.
+ * runCompat 이 JSON 문자열을 그대로 받으므로 파싱 없이 전달한다. 방장 먼저.
+ */
+export async function fetchMemberBodies(
+  sb: SupabaseClient,
+  teamId: string,
+): Promise<{ name: string; body: string }[]> {
+  const { data } = await sb
+    .from("team_members")
+    .select("name,metrics_id,is_owner,joined_at")
+    .eq("team_id", teamId)
+    .order("joined_at");
+  const rows = (data ?? []).filter((r) => r.metrics_id != null);
+  const ordered = [
+    ...rows.filter((r) => r.is_owner),
+    ...rows.filter((r) => !r.is_owner),
+  ];
+  const ids = ordered.map((r) => r.metrics_id as string);
+  if (ids.length === 0) return [];
+  const { data: ms } = await sb.from("metrics").select("id,body").in("id", ids);
+  const bodies = new Map<string, string>();
+  for (const m of ms ?? []) {
+    if (m.body) bodies.set(m.id as string, m.body as string);
+  }
+  return ordered
+    .filter((r) => bodies.has(r.metrics_id as string))
+    .map((r) => ({
+      name: r.name as string,
+      body: bodies.get(r.metrics_id as string)!,
+    }));
+}
+
 /** 그룹 등록 현황 — joined = metrics 등록 완료 슬롯 수, total = 전체 슬롯. */
 export async function fetchProgress(
   sb: SupabaseClient,

@@ -9,6 +9,7 @@ import {
   loginWithKakao,
 } from "../lib/auth";
 import {
+  fetchMemberBodies,
   fetchMembership,
   fetchMyFace,
   fetchProgress,
@@ -65,6 +66,20 @@ const GENDERS: { v: string; ko: string }[] = [
   { v: "female", ko: "여성" },
 ];
 // 앱 InfoConfirm 과 동일 범위 (AgeGroup teens~seventies, jsonValue "10s".."70s").
+// 밴드 라벨 → 이모지 (웹 4색 팔레트를 지키는 쇼케이스와 동일 문법).
+const BAND_EMOJI: Record<string, string> = {
+  천작지합: "🟢",
+  금슬상화: "🔵",
+  마합가성: "🟠",
+  형극난조: "🔴",
+};
+
+type WebMatrix = {
+  names: string[];
+  pairs: { a: number; b: number; total: number; label: string; emoji: string }[];
+  best: { a: number; b: number; label: string; emoji: string } | null;
+};
+
 const AGES: { v: string; ko: string }[] = [
   { v: "10s", ko: "10대" },
   { v: "20s", ko: "20대" },
@@ -128,6 +143,9 @@ export function JoinWizard({
   const [roster, setRoster] = useState<
     { name: string; joined: boolean; thumbnailKey: string | null }[]
   >([]);
+  // 전원 등록 시 [그룹 케미 결과표 보기] — 웹에서 shared 엔진으로 즉석 계산.
+  const [matrix, setMatrix] = useState<WebMatrix | null>(null);
+  const [matrixBusy, setMatrixBusy] = useState(false);
   const [hint, setHint] = useState("얼굴을 화면 안에 맞춰 주세요");
   // 자동 촬영 카운트다운 (2 → 1) — 비디오 위 대형 숫자.
   const [count, setCount] = useState<number | null>(null);
@@ -642,6 +660,47 @@ export function JoinWizard({
     void runSave();
   }
 
+  /** 전원 등록 시 즉석 결과표 — 멤버 전원 raw 를 받아 runCompat 전쌍 계산. */
+  async function onShowMatrix() {
+    if (matrixBusy) return;
+    setMatrixBusy(true);
+    try {
+      await import("../lib/shared/face_engine.js");
+      const rows = await fetchMemberBodies(sb(), team.id);
+      if (rows.length < 2) return;
+      const pairs: WebMatrix["pairs"] = [];
+      let best: WebMatrix["pairs"][number] | null = null;
+      for (let i = 0; i < rows.length; i++) {
+        for (let j = i + 1; j < rows.length; j++) {
+          const c = JSON.parse(
+            globalThis.runCompat(rows[i].body, rows[j].body),
+          ) as { total: number; labelKo: string };
+          const p = {
+            a: i,
+            b: j,
+            total: Math.round(c.total),
+            label: c.labelKo,
+            emoji: BAND_EMOJI[c.labelKo] ?? "⚪",
+          };
+          pairs.push(p);
+          if (!best || p.total > best.total) best = p;
+        }
+      }
+      setMatrix({
+        names: rows.map((r) => r.name),
+        pairs,
+        best: best
+          ? { a: best.a, b: best.b, label: best.label, emoji: best.emoji }
+          : null,
+      });
+    } catch (e) {
+      console.error("[join] matrix compute failed:", e);
+      setNotice("결과표를 계산하지 못했어요. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setMatrixBusy(false);
+    }
+  }
+
   /** 이미 참여한 사용자의 재촬영 — 내 슬롯의 metrics 를 덮어쓴다. */
   function onAlreadyRecapture() {
     metricsIdRef.current = null;
@@ -656,6 +715,21 @@ export function JoinWizard({
   }
 
   // ── 렌더 ──────────────────────────────────────────────────────────────
+  const allJoined =
+    progress != null && progress.total > 0 && progress.joined >= progress.total;
+  // 전원 등록 → 결과표 버튼/테이블 (done·already 공용).
+  const matrixSection = allJoined ? (
+    matrix ? (
+      <MatrixTable matrix={matrix} />
+    ) : (
+      <div>
+        <button className="join-btn" onClick={() => void onShowMatrix()}>
+          {matrixBusy ? "결과표 계산 중…" : "그룹 케미 결과표 보기"}
+        </button>
+        {notice && <p className="join-notice">{notice}</p>}
+      </div>
+    )
+  ) : null;
   // ref race 방지 — video 는 항상 마운트, 카메라 단계에서만 표시.
   // 캔버스가 video 위에 겹쳐 landmark mesh 오버레이를 그린다 (앱과 동일).
   const video = (
@@ -746,13 +820,13 @@ export function JoinWizard({
               관상 다시 촬영
             </button>
           </div>
-          {progress && (
+          {progress && progress.total - progress.joined > 0 && (
             <p className="join-sub">
-              {progress.total - progress.joined > 0
-                ? `나머지 ${progress.total - progress.joined}명이 등록을 마치면 그룹 케미 결과표가 공개됩니다.`
-                : "전원 등록 완료! 그룹 케미 결과표가 곧 공개됩니다."}
+              나머지 {progress.total - progress.joined}명이 등록을 마치면 그룹
+              케미 결과표가 공개됩니다.
             </p>
           )}
+          {matrixSection}
         </>
       )}
 
@@ -941,16 +1015,88 @@ export function JoinWizard({
               ))}
             </div>
           )}
-          <p className="join-sub">
-            {progress && progress.total - progress.joined > 0
-              ? `나머지 ${progress.total - progress.joined}명이 등록을 마치면 그룹 케미 결과표가 공개됩니다.`
-              : "전원 등록 완료! 그룹 케미 결과표가 곧 공개됩니다."}
-          </p>
+          {progress && progress.total - progress.joined > 0 && (
+            <p className="join-sub">
+              나머지 {progress.total - progress.joined}명이 등록을 마치면 그룹
+              케미 결과표가 공개됩니다.
+            </p>
+          )}
+          {matrixSection}
           <p className="join-sub" style={{ marginTop: 4 }}>
             얼굴의 측면까지 분석하는 정밀 관상은 앱으로만 가능합니다.
           </p>
         </>
       )}
+    </div>
+  );
+}
+
+/** 즉석 결과표 — /g 쇼케이스와 동일 문법 (이름 + 밴드 이모지, 점수 비노출). */
+function MatrixTable({ matrix }: { matrix: WebMatrix }) {
+  const { names, pairs, best } = matrix;
+  const bandOf = (i: number, j: number) => {
+    const a = Math.min(i, j);
+    const b = Math.max(i, j);
+    return pairs.find((p) => p.a === a && p.b === b) ?? null;
+  };
+  const head: React.CSSProperties = {
+    fontSize: 12,
+    color: "#666",
+    fontWeight: 400,
+    padding: 4,
+    whiteSpace: "nowrap",
+  };
+  const cell: React.CSSProperties = {
+    width: 36,
+    height: 36,
+    textAlign: "center",
+    fontSize: 16,
+    border: "1px solid #f7f7f8",
+    background: "#fff",
+  };
+  return (
+    <div style={{ marginTop: 16 }}>
+      {best && (
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: 12,
+            padding: 12,
+            fontSize: 14,
+            color: "#1a1a1a",
+          }}
+        >
+          🏆 {names[best.a]} × {names[best.b]} {best.emoji} {best.label}
+        </div>
+      )}
+      <div style={{ overflowX: "auto", marginTop: 12 }}>
+        <table style={{ borderCollapse: "collapse", margin: "0 auto" }}>
+          <thead>
+            <tr>
+              <th />
+              {names.map((n, j) => (
+                <th key={j} style={head}>
+                  {n}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {names.map((n, i) => (
+              <tr key={i}>
+                <th style={{ ...head, textAlign: "right", paddingRight: 8 }}>
+                  {n}
+                </th>
+                {names.map((_, j) => (
+                  <td key={j} style={cell}>
+                    {i === j ? "·" : (bandOf(i, j)?.emoji ?? "")}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
