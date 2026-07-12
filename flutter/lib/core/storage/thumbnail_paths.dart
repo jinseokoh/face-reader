@@ -49,7 +49,7 @@ class ThumbnailPaths {
     return slashIdx == -1 ? path : path.substring(slashIdx + 1);
   }
 
-  /// R2 CDN 공개 read URL. `thumbnailKey`(예: `thumbnails/YYYYMMDD/{uuid}.jpg`)를
+  /// R2 CDN 공개 read URL. `thumbnailKey`(예: `thumbnails/YYYYMM/{uuid}.jpg`)를
   /// `cdn.facely.kr` base 와 조립. 로컬 thumbnail 파일이 없는 카드(받은 카드·
   /// 결제 궁합 복원 파트너 등 thumbnailPath=null)의 이미지 fallback 용.
   /// base 는 `.env` 의 `R2_CDN_BASE` override, 없으면 기본값.

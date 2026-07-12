@@ -16,7 +16,7 @@ import type { Route } from "./+types/api.r2.presign";
  *
  *   * uploadUrl : 5분 TTL presigned PUT URL
  *   * publicUrl : 업로드 후 GET 가능한 CDN URL (R2_CDN_BASE/key)
- *   * key       : 실제 R2 object key. prefix=thumbnails 면 YYYYMMDD 자동 삽입.
+ *   * key       : 실제 R2 object key. prefix=thumbnails 면 YYYYMM 자동 삽입.
  *   * token     : prefix=temp 에 한해, Python /analyze 호출 인증용 HMAC 토큰
  *                 (X-Face-Token 헤더로 전달; X-Face-Key 도 함께 보내야 함).
  */
@@ -109,11 +109,12 @@ function readConfig(env: Env): Cfg | null {
 
 function buildKey(prefix: Prefix, uuid: string, ext: string): string {
   if (prefix === "temp") return `temp/${uuid}.${ext}`;
+  // 월 단위 prefix — 일 단위는 대시보드에서 폴더가 너무 많아진다. 클라이언트는
+  // thumbnailKey 를 opaque 하게 저장·사용하므로 날짜 형식 변경은 신규 키에만 영향.
   const now = new Date();
   const yyyy = now.getUTCFullYear();
   const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
-  const dd = String(now.getUTCDate()).padStart(2, "0");
-  return `thumbnails/${yyyy}${mm}${dd}/${uuid}.${ext}`;
+  return `thumbnails/${yyyy}${mm}/${uuid}.${ext}`;
 }
 
 // ─── R2 SigV4 presign ────────────────────────────────────────────────────

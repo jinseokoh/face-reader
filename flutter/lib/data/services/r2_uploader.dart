@@ -36,7 +36,7 @@ class PresignedUpload {
 ///
 /// 서버 책임:
 ///   * temp/ prefix 는 R2 lifecycle 룰로 자동 삭제 (orphan 정리)
-///   * thumbnails/ prefix 는 영구 보관 (YYYYMMDD 디렉토리는 서버가 자동 산출 OK)
+///   * thumbnails/ prefix 는 영구 보관 (YYYYMM 디렉토리는 서버가 자동 산출 OK)
 ///   * SigV4 signed URL TTL 은 5~10분 권장
 class R2Uploader {
   static const _kPathPresign = '/api/r2/presign';
@@ -50,7 +50,7 @@ class R2Uploader {
   R2Uploader({http.Client? client}) : _client = client ?? http.Client();
 
   /// 서버에 prefix·uuid·contentType 을 알리고 단기 PUT URL 을 받아온다.
-  /// 서버가 YYYYMMDD 같은 동적 segment 를 직접 조립.
+  /// 서버가 YYYYMM 같은 동적 segment 를 직접 조립.
   Future<PresignedUpload> presign({
     required String prefix, // "temp" | "thumbnails"
     required String uuid,

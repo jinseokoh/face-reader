@@ -61,22 +61,25 @@ class SettingsScreen extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                Flexible(
-                                  child: Text(user.nickname ?? '사용자',
-                                      style: AppText.sectionTitle,
-                                      overflow: TextOverflow.ellipsis),
-                                ),
-                                const SizedBox(width: 8),
-                                // 카카오 로그인이 준 기본 이름 수정 진입점.
-                                GestureDetector(
-                                  onTap: () => _showNicknameDialog(
-                                      context, ref, user.nickname ?? ''),
-                                  child: FaIcon(FontAwesomeIcons.pen,
+                            // 카카오 로그인이 준 기본 이름 수정 진입점 —
+                            // 연필만으론 히트 영역이 작아 이름까지 탭 대상.
+                            GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => _showNicknameDialog(
+                                  context, ref, user.nickname ?? ''),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Flexible(
+                                    child: Text(user.nickname ?? '사용자',
+                                        style: AppText.sectionTitle,
+                                        overflow: TextOverflow.ellipsis),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  FaIcon(FontAwesomeIcons.pen,
                                       size: 12, color: AppTheme.textHint),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                             const SizedBox(height: 2),
                             Text(

@@ -34,7 +34,7 @@
 │   │                                                                 │
 │   └─(C) 공유 publish                                                 │
 │        Flutter ──presign(thumbnails)──► Worker (signing only)        │
-│        Flutter ──200 PUT──► R2 thumbnails/{YYYYMMDD}/{uuid}.jpg      │
+│        Flutter ──200 PUT──► R2 thumbnails/{YYYYMM}/{uuid}.jpg      │
 │        Flutter ──UPSERT──► Supabase metrics (id=uuid)                │
 │        Flutter ─[share_plus]─► https://facely.kr/r/{uuid}            │
 │        (카톡 link — Worker 호출 0회)                                  │
@@ -63,7 +63,7 @@
 - **시스템 안 PII 의 실질 보관소는 R2 `thumbnails/` 한 곳** (200² 얼굴 = PII). UUID-as-unguessable-URL access control. Supabase 행은 비-PII (정규화 카테고리·rawValue·thumbnailKey 포인터). 즉 "Supabase 엔 PII 없음" 은 사실이지만 **시스템 전체에 PII 없음 ≠ 사실** — §12 Privacy 참조. landmark 좌표·alias·사용자 이름·생년월일은 어떤 store 에도 안 들어감.
 - **해석 엔진은 `shared/` 한 곳** — Flutter 와 Worker SSR 이 같은 Dart 코드를 컴파일된 JS 로 공유. 룰 변경 시 양쪽 동시 반영.
 - **공유·재계산·OG 모두 `metrics` 테이블의 `body` 한 곳을 SSOT 로 사용.** 별도 `share_card` 같은 행 단위 압축 metadata 테이블 도입 금지.
-- **1 face capture = 1 UUID.** Flutter 가 analyze 시점에 v4 한 번 발급 → 그 uuid 가 `temp/{uuid}.jpg` → `thumbnails/{YYYYMMDD}/{uuid}.jpg` → `metrics.id` → `https://facely.kr/r/{uuid}` 까지 그대로 흐름. 단일 trace id 로 incident response·log grep 한 번에 끝. publish 단계에서 새 uuid 발급 금지.
+- **1 face capture = 1 UUID.** Flutter 가 analyze 시점에 v4 한 번 발급 → 그 uuid 가 `temp/{uuid}.jpg` → `thumbnails/{YYYYMM}/{uuid}.jpg` → `metrics.id` → `https://facely.kr/r/{uuid}` 까지 그대로 흐름. 단일 trace id 로 incident response·log grep 한 번에 끝. publish 단계에서 새 uuid 발급 금지.
 
 ---
 
@@ -81,7 +81,7 @@
 - Workers 스크립트 `facely` (이 repo)
 - R2 bucket `facely` — prefix 두 갈래:
   - `temp/{uuid}.jpg` — 분석용 임시. Python 이 즉시 삭제. lifecycle rule 로 1일 백업 정리.
-  - `thumbnails/{YYYYMMDD}/{uuid}.jpg` — 영구 200×200.
+  - `thumbnails/{YYYYMM}/{uuid}.jpg` — 영구 200×200.
 - DNS records (Workers 자동 관리: facely.kr, www; tunnel: meta; R2: cdn)
 
 **외부 자원**:
@@ -96,7 +96,7 @@
 ### 3.1 분석 (analyze pipeline)
 
 > Flutter 는 **analyze 진입 시점에 UUID v4 를 한 번 발급**한다. 이 uuid 가
-> `temp/{uuid}.jpg`, (분석 성공 시) `thumbnails/{YYYYMMDD}/{uuid}.jpg`, 그리고
+> `temp/{uuid}.jpg`, (분석 성공 시) `thumbnails/{YYYYMM}/{uuid}.jpg`, 그리고
 > 이후 publish 시점의 `metrics.id` + `/r/{uuid}` 까지 그대로 흐른다. 단일
 > capture 의 모든 부산물이 같은 trace id 로 묶임 — Flutter ↔ Worker ↔ Python ↔
 > Supabase 로그 grep 한 번이면 끝.
@@ -159,7 +159,7 @@ Python 이 DeepFace raw(`race:"asian"` 등)를 enum name 으로 매핑해 반환
 ```
 Flutter
   ├─ POST /api/r2/presign {prefix:"thumbnails", uuid}  → Worker (signing only)
-  ├─ PUT (presigned, 200 JPG)                          → R2 thumbnails/{YYYYMMDD}/{uuid}.jpg
+  ├─ PUT (presigned, 200 JPG)                          → R2 thumbnails/{YYYYMM}/{uuid}.jpg
   │
   └─ Supabase REST UPSERT /rest/v1/metrics             → Supabase (anon key)
         body: { id: "<uuid>", body: { … thumbnailKey 포함 … } }
@@ -433,8 +433,8 @@ bucket: facely
 │   └── {uuid}.jpg                  Python 이 즉시 DELETE
 │                                   lifecycle 룰: ExpirationInDays=1 (백업 정리)
 └── thumbnails/                   ← 영구 200×200
-    └── {YYYYMMDD}/
-        └── {uuid}.jpg              Worker 가 buildKey 에서 YYYYMMDD 자동 산출
+    └── {YYYYMM}/
+        └── {uuid}.jpg              Worker 가 buildKey 에서 YYYYMM 자동 산출
                                     cdn.facely.kr 로 public read
                                     lifecycle 룰 없음 (의도적)
 ```
@@ -784,7 +784,7 @@ pnpm cf-typegen      # Cloudflare.Env 타입 재생성
 - Flutter 앱에 R2 secret·Supabase service-role key 박기 — **금지**. presigned URL + anon key 만.
 - OG meta 를 client-only 로 주입 — **금지**. `route.meta` export 만.
 - 친밀 챕터·갈등 시나리오 본문을 Worker 응답에 포함 — **금지** (앱 안에서만 생성).
-- publish 단계에서 **새 UUID 발급** — **금지**. analyze 시점에 발급한 uuid 가 `temp/{uuid}.jpg` → `thumbnails/{YYYYMMDD}/{uuid}.jpg` → `metrics.id` → `/r/{uuid}` 까지 그대로 흐른다. `SupabaseService.saveMetrics` 의 `?? _uuid.v4()` fallback 은 analyze 미경유 케이스(라이브 mesh-only 캡처 등) 한정.
+- publish 단계에서 **새 UUID 발급** — **금지**. analyze 시점에 발급한 uuid 가 `temp/{uuid}.jpg` → `thumbnails/{YYYYMM}/{uuid}.jpg` → `metrics.id` → `/r/{uuid}` 까지 그대로 흐른다. `SupabaseService.saveMetrics` 의 `?? _uuid.v4()` fallback 은 analyze 미경유 케이스(라이브 mesh-only 캡처 등) 한정.
 
 ---
 
@@ -824,7 +824,7 @@ P0 출시 전 필수:
 
 ### 12.4 access control 의 실체
 
-`cdn.facely.kr/thumbnails/{YYYYMMDD}/{uuid}.jpg` 는 **public read** — UUID 만 알면 누구나 GET. 보호는 "UUID 가 unguessable" 에 의존 (security through obscurity, 단 122 bit entropy 라 brute-force 가 사실상 불가능):
+`cdn.facely.kr/thumbnails/{YYYYMM}/{uuid}.jpg` 는 **public read** — UUID 만 알면 누구나 GET. 보호는 "UUID 가 unguessable" 에 의존 (security through obscurity, 단 122 bit entropy 라 brute-force 가 사실상 불가능):
 
 - **공유 link 발송 = 그 thumbnail URL 의 발송과 사실상 동일** — 사용자가 share_plus 로 카톡에 보내는 행위는 "이 사진 URL 을 카톡방 참여자에게 공개한다" 는 동의로 간주.
 - **검색엔진 indexing 방지** — `/r/*` 라우트에 `<meta name="robots" content="noindex">` SSR 강제 + `cdn.facely.kr` 의 R2 객체에 robots.txt 또는 `X-Robots-Tag` 헤더로 noindex.
