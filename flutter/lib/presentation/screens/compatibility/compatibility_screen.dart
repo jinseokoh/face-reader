@@ -210,7 +210,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
     );
     if (confirmed != true) return;
 
-    // pair_key = 상대 supabaseId 단독.
+    // partner_id = 상대 supabaseId. RLS 가 본인 행만 지운다.
     final keys = <String>[];
     final key = tryPairKey(my, album);
     if (key != null) keys.add(key);

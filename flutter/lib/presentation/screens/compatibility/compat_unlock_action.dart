@@ -3,6 +3,7 @@ import 'package:face_engine/domain/services/compat/compat_adapter.dart';
 import 'package:face_engine/domain/services/compat/compat_pair_key.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/data/services/analytics_service.dart';
+import 'package:facely/data/services/auth_service.dart';
 import 'package:facely/data/services/compat_unlock_service.dart';
 import 'package:facely/data/services/supabase_service.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
@@ -90,14 +91,17 @@ Future<bool> runCompatUnlock(
   }
 
   // 5. RPC. unlock 직전에 분석을 실행해 total_score 를 함께 기록 — admin 콘솔
-  // (refine) 에서 점수별 정렬·필터 가능하도록.
+  // (refine) 에서 점수별 정렬·필터 가능하도록. alias 는 결제 시점 이름 스냅샷
+  // (내 쪽 = 프로필 닉네임, 상대 쪽 = 카드에 지정한 이름).
   final preBundle = analyzeCompatibilityFromReports(my: my, album: album);
   final int newBalance;
   try {
     newBalance = await CompatUnlockService().unlock(
       key,
-      ownerBody: my.toBodyJson(),
+      userBody: my.toBodyJson(),
       partnerBody: album.toBodyJson(),
+      userAlias: AuthService().currentUser?.nickname,
+      partnerAlias: album.alias,
       totalScore: preBundle.report.total,
     );
   } catch (e, st) {

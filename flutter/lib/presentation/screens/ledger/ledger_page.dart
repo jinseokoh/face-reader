@@ -8,6 +8,7 @@ import 'package:facely/core/theme.dart';
 import 'package:facely/domain/models/coin_transaction.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:facely/presentation/providers/compat_unlock_provider.dart';
+import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/providers/wallet_provider.dart';
 import 'package:facely/presentation/widgets/login_entry_button.dart';
 import 'package:flutter/material.dart';
@@ -174,13 +175,22 @@ class _TransactionTile extends ConsumerWidget {
     final snapshots =
         ref.watch(compatPartnerSnapshotsProvider).asData?.value ?? const {};
     final album = _resolveAlbum(snapshots);
+    // 이름 우선순위: 로컬 history 의 현재 이름(개명 반영) → 결제 시점
+    // partner_alias 스냅샷 (재설치·새 기기 fallback).
+    String? alias = album?.alias;
+    for (final r in ref.watch(historyProvider)) {
+      if (r.supabaseId != null && r.supabaseId == tx.referenceId) {
+        if (r.alias != null && r.alias!.isNotEmpty) alias = r.alias;
+        break;
+      }
+    }
     final demographic = album == null
         ? null
         : '${album.gender.labelKo} · ${album.ageGroup.labelKo} · ${album.faceShape.korean}';
     final subtitle = album == null
         ? null
-        : (album.alias != null && album.alias!.isNotEmpty
-            ? '${album.alias} · $demographic'
+        : (alias != null && alias.isNotEmpty
+            ? '$alias · $demographic'
             : demographic);
 
     return Padding(
@@ -235,7 +245,7 @@ class _TransactionTile extends ConsumerWidget {
 
   FaceReadingReport? _resolveAlbum(Map<String, FaceReadingReport> snapshots) {
     if (tx.description != 'compat-unlock') return null;
-    // reference_id 는 곧 pair_key — 스냅샷 맵 직접 조회 (구분자 파싱 불필요).
+    // reference_id 는 곧 partner_id — 스냅샷 맵 직접 조회.
     final ref = tx.referenceId;
     if (ref == null) return null;
     return snapshots[ref];
