@@ -49,13 +49,15 @@ const GENDERS: { v: string; ko: string }[] = [
   { v: "male", ko: "남성" },
   { v: "female", ko: "여성" },
 ];
+// 앱 InfoConfirm 과 동일 범위 (AgeGroup teens~seventies, jsonValue "10s".."70s").
 const AGES: { v: string; ko: string }[] = [
   { v: "10s", ko: "10대" },
   { v: "20s", ko: "20대" },
   { v: "30s", ko: "30대" },
   { v: "40s", ko: "40대" },
   { v: "50s", ko: "50대" },
-  { v: "60s", ko: "60대+" },
+  { v: "60s", ko: "60대" },
+  { v: "70s", ko: "70대+" },
 ];
 
 export function JoinWizard({
