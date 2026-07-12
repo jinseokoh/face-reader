@@ -25,6 +25,7 @@ import 'package:facely/presentation/widgets/coin_chip.dart';
 import 'package:facely/presentation/widgets/emotion_empty_state.dart';
 import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
 import 'package:facely/presentation/widgets/other_face_scan_pill.dart';
+import 'package:facely/presentation/widgets/sort_selector.dart';
 import 'package:facely/presentation/widgets/source_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -291,15 +292,16 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
     );
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      // selector 위 lg(16)/아래 md(12) — 관상 탭 정렬 헤더와 동일 리듬.
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
       children: [
-        _SortSelector<_LockedSort>(
+        SortSelector<_LockedSort>(
           value: _lockedSort,
           values: _LockedSort.values,
           labelOf: (v) => v.label,
           onChanged: (v) => setState(() => _lockedSort = v),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         ...sorted.map(
           (other) => Padding(
             padding: const EdgeInsets.only(bottom: 12),
@@ -423,9 +425,10 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
         : unlockedSorted;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      // selector 위 lg(16)/아래 md(12) — 관상 탭 정렬 헤더와 동일 리듬.
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
       children: [
-        _SortSelector<_UnlockedSort>(
+        SortSelector<_UnlockedSort>(
           value: _unlockedSort,
           values: _UnlockedSort.values,
           labelOf: (v) => v.label,
@@ -434,7 +437,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
             ref.read(recentUnlockFocusProvider.notifier).clear();
           }),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         ...unlockedPinned.map(
           (other) => Padding(
             padding: const EdgeInsets.only(bottom: 12),
@@ -1219,61 +1222,6 @@ class _RegisterMyFaceBannerState extends ConsumerState<_RegisterMyFaceBanner>
 /// (DESIGN.md §0.0.1 통일성). T 는 각 섹션의 enum 타입.
 /// 탭 리스트 상단의 정렬 셀렉터 — 섹션 타이틀·개수는 탭 라벨이 담당하므로
 /// (같은 정보 중복 금지) 우측 정렬 selector 만 남긴다.
-class _SortSelector<T> extends StatelessWidget {
-  final T value;
-  final List<T> values;
-  final String Function(T) labelOf;
-  final ValueChanged<T> onChanged;
-  const _SortSelector({
-    required this.value,
-    required this.values,
-    required this.labelOf,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        PopupMenuButton<T>(
-          tooltip: '정렬',
-          initialValue: value,
-          padding: EdgeInsets.zero,
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.md),
-          ),
-          onSelected: onChanged,
-          itemBuilder: (ctx) => values
-              .map(
-                (o) => PopupMenuItem<T>(
-                  value: o,
-                  child: Text(labelOf(o), style: AppText.body),
-                ),
-              )
-              .toList(),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                labelOf(value),
-                style: AppText.caption.copyWith(color: AppColors.textHint),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              const FaIcon(
-                FontAwesomeIcons.chevronDown,
-                size: 12,
-                color: AppColors.textHint,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _TaglinePair {
   final String headline;
   final String detail;

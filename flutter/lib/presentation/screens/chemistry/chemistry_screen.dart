@@ -13,10 +13,19 @@ import 'package:facely/presentation/screens/team/team_room_screen.dart';
 import 'package:facely/presentation/widgets/coin_chip.dart';
 import 'package:facely/presentation/widgets/emotion_empty_state.dart';
 import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
+import 'package:facely/presentation/widgets/sort_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
+
+enum _RoomSort {
+  newest('최신순'),
+  oldest('오래된순');
+
+  final String label;
+  const _RoomSort(this.label);
+}
 
 class ChemistryScreen extends ConsumerStatefulWidget {
   const ChemistryScreen({super.key});
@@ -46,10 +55,12 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen>
   // 않기). 이후엔 사용자의 탭 선택을 존중해 다시 건드리지 않는다.
   bool _appliedInitialTab = false;
 
+  // 그룹 리스트 정렬 — 궁합 미확인 탭과 동일한 시간 기준 (두 탭 공유).
+  _RoomSort _roomSort = _RoomSort.newest;
+
   @override
   Widget build(BuildContext context) {
     final compact = MediaQuery.of(context).size.height < 720;
-    final topGap = compact ? AppSpacing.sm : AppSpacing.xl;
     final bottomGap = compact ? AppSpacing.lg : AppSpacing.huge;
 
     // 팀 카드의 alias·썸네일이 history 변화에 반응하도록 watch 유지.
@@ -147,8 +158,8 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen>
             ? TabBarView(
                 controller: _tabController,
                 children: [
-                  _groupTab(owned, _ownedEmpty, topGap, bottomGap),
-                  _groupTab(invited, _invitedEmpty, topGap, bottomGap),
+                  _groupTab(owned, _ownedEmpty, bottomGap),
+                  _groupTab(invited, _invitedEmpty, bottomGap),
                 ],
               )
             // 내 관상 미등록 — 관상·궁합 탭 초기 화면과 동일한 §3.8 안내.
@@ -194,13 +205,14 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen>
   }
 
   /// 당겨서 새로고침이 붙은 그룹 스크롤 — 탭 본문과 미등록 단일 스크롤 공용.
-  Widget _groupScroll(List<Widget> slivers, double topGap, double bottomGap) {
+  // topGap 제거(2026-07-12) — 정렬 selector 의 SliverPadding top lg(16)가
+  // 상단 리듬을 담당해 관상·궁합과 동일해진다.
+  Widget _groupScroll(List<Widget> slivers, double bottomGap) {
     return RefreshIndicator(
       onRefresh: _refreshGroups,
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
-          SliverToBoxAdapter(child: SizedBox(height: topGap)),
           ...slivers,
           // 다른 사람 관상 보기는 AppBar 우상단 버튼(카메라/앨범)으로 일원화 —
           // 하단 중복 보조 컨테이너 제거.
@@ -215,7 +227,6 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen>
   Widget _groupTab(
     List<TeamRoom> rooms,
     EmotionEmptyState empty,
-    double topGap,
     double bottomGap,
   ) {
     if (rooms.isEmpty) {
@@ -229,7 +240,29 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen>
         ),
       );
     }
-    return _groupScroll([_roomListSliver(rooms)], topGap, bottomGap);
+    // 궁합 탭과 동일한 정렬 selector + 시간 정렬 (updatedAt 기준).
+    final sorted = [...rooms]..sort(
+      (a, b) => _roomSort == _RoomSort.newest
+          ? b.updatedAt.compareTo(a.updatedAt)
+          : a.updatedAt.compareTo(b.updatedAt),
+    );
+    return _groupScroll([
+      SliverPadding(
+        // selector 위 lg(16)/아래 md(12, 리스트 top padding) — 관상·궁합과
+        // 동일 리듬.
+        padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 0),
+        sliver: SliverToBoxAdapter(
+          child: SortSelector<_RoomSort>(
+            value: _roomSort,
+            values: _RoomSort.values,
+            labelOf: (v) => v.label,
+            onChanged: (v) => setState(() => _roomSort = v),
+          ),
+        ),
+      ),
+      _roomListSliver(sorted),
+    ], bottomGap);
   }
 
   void _openRoom(TeamRoom room) {
@@ -253,8 +286,9 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen>
 
   Widget _roomListSliver(List<TeamRoom> rooms) {
     return SliverPadding(
+      // 좌우 lg(16) — 관상·궁합 리스트와 카드 폭 통일 (xxl 은 카드가 좁아짐).
       padding: const EdgeInsets.fromLTRB(
-          AppSpacing.xxl, AppSpacing.md, AppSpacing.xxl, 0),
+          AppSpacing.lg, AppSpacing.md, AppSpacing.lg, 0),
       sliver: SliverList.builder(
         itemCount: rooms.length,
         itemBuilder: (_, i) => _TeamCard(
