@@ -1,6 +1,5 @@
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/config/router.dart';
-import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/domain/models/capture_result.dart';
 import 'package:facely/domain/models/team_room.dart';
@@ -11,6 +10,7 @@ import 'package:facely/presentation/providers/team_provider.dart';
 import 'package:facely/presentation/screens/chemistry/album_capture_page.dart';
 import 'package:facely/presentation/screens/chemistry/face_mesh_page.dart';
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
+import 'package:facely/presentation/widgets/detail_avatar.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 import 'package:facely/presentation/widgets/primary_button.dart';
 import 'package:flutter/material.dart';
@@ -464,42 +464,18 @@ class _MemberCell extends StatelessWidget {
   }
 
   Widget _faceAvatar() {
-    // 1순위 로컬 파일 → 2순위 CDN(thumbnailKey) → user 아이콘 (관상 리스트·
-    // 궁합 아바타와 동일 3단). rehydrate 복원 내 관상·원격 합류 멤버는
-    // thumbnailPath=null 이지만 thumbnailKey 로 실제 얼굴을 띄운다.
-    const size = 56.0;
-    final file = ThumbnailPaths.resolveFileSync(report!.thumbnailPath);
-    if (file != null && file.existsSync()) {
-      return ClipOval(
-        child: Image.file(file, width: size, height: size, fit: BoxFit.cover),
-      );
-    }
-    final cdn = ThumbnailPaths.cdnUrl(report!.thumbnailKey);
-    if (cdn != null) {
-      return ClipOval(
-        child: Image.network(
-          cdn,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => _iconAvatar(size),
-        ),
-      );
-    }
-    return _iconAvatar(size);
-  }
-
-  Widget _iconAvatar(double size) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
+    // 관상·궁합 상세와 동일한 공용 DetailAvatar (56 원형 + 1.5px ring,
+    // 3단 이미지 fallback). 흰 배경이라 ring 은 AppColors.border.
+    return DetailAvatar(
+      thumbnailPath: report!.thumbnailPath,
+      thumbnailKey: report!.thumbnailKey,
+      borderColor: AppColors.border,
+      fallback: Container(
         color: AppColors.surface,
-      ),
-      child: const Center(
-        child: FaIcon(FontAwesomeIcons.user,
-            size: 20, color: AppColors.textHint),
+        child: const Center(
+          child: FaIcon(FontAwesomeIcons.user,
+              size: 20, color: AppColors.textHint),
+        ),
       ),
     );
   }
