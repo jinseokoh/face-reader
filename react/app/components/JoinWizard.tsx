@@ -575,15 +575,28 @@ export function JoinWizard({
               void preloadDetector().catch(() => {});
             }}
           />
-          <Picker
-            label="나이대"
-            options={AGES}
-            value={age}
-            onPick={(v) => {
-              setAge(v);
-              void preloadDetector().catch(() => {});
-            }}
-          />
+          <div style={{ marginTop: 12 }}>
+            <p className="join-sub" style={{ margin: "0 0 6px" }}>
+              나이대
+            </p>
+            <select
+              className="join-select"
+              value={age ?? ""}
+              onChange={(e) => {
+                setAge(e.target.value || null);
+                void preloadDetector().catch(() => {});
+              }}
+            >
+              <option value="" disabled>
+                나이대 선택
+              </option>
+              {AGES.map((o) => (
+                <option key={o.v} value={o.v}>
+                  {o.ko}
+                </option>
+              ))}
+            </select>
+          </div>
           {notice && <p className="join-notice">{notice}</p>}
           <div>
             <button className="join-btn" onClick={onInfoNext}>
