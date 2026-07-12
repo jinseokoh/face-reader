@@ -260,7 +260,9 @@ class _TeamMatrixScreenState extends ConsumerState<TeamMatrixScreen> {
     );
   }
 
-  /// 원형 thumbnail 아바타 — 사람 구분용. 사진 없으면 사람 아이콘.
+  /// 원형 thumbnail 아바타 — 사람 구분용. 1순위 로컬 파일 → 2순위
+  /// CDN(thumbnailKey) → 사람 아이콘 (앱 공통 3단 — rehydrate 복원·원격
+  /// 합류 멤버는 thumbnailPath=null 이라 CDN 이 실제 얼굴을 띄운다).
   Widget _rankAvatar(FaceReadingReport r, {double size = 28}) {
     final file = ThumbnailPaths.resolveFileSync(r.thumbnailPath);
     if (file != null && file.existsSync()) {
@@ -268,6 +270,22 @@ class _TeamMatrixScreenState extends ConsumerState<TeamMatrixScreen> {
         child: Image.file(file, width: size, height: size, fit: BoxFit.cover),
       );
     }
+    final cdn = ThumbnailPaths.cdnUrl(r.thumbnailKey);
+    if (cdn != null) {
+      return ClipOval(
+        child: Image.network(
+          cdn,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _iconAvatar(size),
+        ),
+      );
+    }
+    return _iconAvatar(size);
+  }
+
+  Widget _iconAvatar(double size) {
     return Container(
       width: size,
       height: size,

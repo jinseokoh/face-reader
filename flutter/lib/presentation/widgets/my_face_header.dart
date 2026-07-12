@@ -131,10 +131,21 @@ class _HeaderAvatar extends StatelessWidget {
         fit: BoxFit.contain,
       );
     }
+    // 1순위 로컬 파일 → 2순위 CDN(thumbnailKey) → placeholder (앱 공통 3단
+    // — rehydrate 복원 내 관상은 thumbnailPath=null 이라 CDN 이 얼굴을 띄운다).
     Widget inner = const _HeaderAvatarPlaceholder();
     final file = ThumbnailPaths.resolveFileSync(myFace?.thumbnailPath);
+    final cdn = ThumbnailPaths.cdnUrl(myFace?.thumbnailKey);
     if (file != null && file.existsSync()) {
       inner = Image.file(file, width: size, height: size, fit: BoxFit.cover);
+    } else if (cdn != null) {
+      inner = Image.network(
+        cdn,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => const _HeaderAvatarPlaceholder(),
+      );
     }
     return Container(
       width: size,
