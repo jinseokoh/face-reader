@@ -36,11 +36,23 @@ class _TeamMatrixScreenState extends ConsumerState<TeamMatrixScreen> {
   late final List<FaceReadingReport> _ordered; // 보는 사람(나) 행 최상단.
   FaceReadingReport? _viewer;
 
+  /// 표시 이름 SoT = 방 명단(roster) — 웹 쇼케이스 payload(_buildPayload)와
+  /// 동일 규칙. report.alias 는 원격 합류자에서 항상 null(공유수신 차단)이라
+  /// 이름 소스로 쓰면 인구통계 fallback 으로 새는 참사가 난다 (2026-07-12).
+  late final Map<String, String> _nameById;
+
   @override
   void initState() {
     super.initState();
     final room = ref.read(teamsProvider.notifier).byId(widget.roomId)!;
     _title = room.title;
+    // 방장 슬롯 '나' 는 결과표에선 프로필 nickname 으로 (웹과 동일 표기).
+    final myNickname = ref.read(authProvider)?.nickname;
+    _nameById = {
+      for (final m in room.members)
+        if (m.reportId != null)
+          m.reportId!: m.name == '나' ? (myNickname ?? m.name) : m.name,
+    };
     final members = ref.read(teamsProvider.notifier).scannedReports(room);
     // 엔진이 결정론적·대칭이라 매번 재계산 (capture-only 원칙).
     _matrix = computeTeamMatrix(members);
@@ -63,12 +75,19 @@ class _TeamMatrixScreenState extends ConsumerState<TeamMatrixScreen> {
         _matrix.members
             .firstWhere((m) => m.supabaseId == v.supabaseId),
       );
+      // 내 관상 재등록으로 roster 의 방장 reportId 와 live id 가 어긋난
+      // 경우 보충 — 결과표의 나는 항상 프로필명으로.
+      final vid = v.supabaseId;
+      if (vid != null && !_nameById.containsKey(vid)) {
+        _nameById[vid] = myNickname ?? '나';
+      }
     }
   }
 
   String _nameOf(FaceReadingReport r) {
-    if (_viewer != null && r.supabaseId == _viewer!.supabaseId) return '나';
-    return r.alias ?? '${r.ageGroup.labelKo} ${r.gender.labelKo}';
+    final id = r.supabaseId;
+    final roster = id == null ? null : _nameById[id];
+    return roster ?? r.alias ?? '${r.ageGroup.labelKo} ${r.gender.labelKo}';
   }
 
   @override
