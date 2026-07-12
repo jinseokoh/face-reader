@@ -894,6 +894,19 @@ textarea.form-input {
   transform: scaleX(-1);
   pointer-events: none;
 }
+.join-count {
+  /* 자동 촬영 카운트다운 — 비디오 중앙 대형 숫자 */
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 72px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
 .join-badge {
   display: inline-block;
   background: #fff;

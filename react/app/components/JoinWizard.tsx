@@ -35,6 +35,8 @@ const MP_MODEL =
   "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
 
 const NO_FACE_TIMEOUT_MS = 20_000;
+// 앱 face_mesh_page 와 동일 — 얼굴이 잡히면 2초 카운트다운 후 자동 찰칵.
+const COUNTDOWN_MS = 2_000;
 
 type Stage =
   | "entry"
@@ -103,6 +105,8 @@ export function JoinWizard({
     total: number;
   } | null>(null);
   const [hint, setHint] = useState("얼굴을 화면 안에 맞춰 주세요");
+  // 자동 촬영 카운트다운 (2 → 1) — 비디오 위 대형 숫자.
+  const [count, setCount] = useState<number | null>(null);
   const [notice, setNotice] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   // 인앱 브라우저 — 카톡 웹뷰는 카메라가 막혀 외부 브라우저로 탈출해야 한다.
@@ -131,7 +135,8 @@ export function JoinWizard({
   } | null>(null);
   const preloadRef = useRef<Promise<void> | null>(null);
   const rafRef = useRef<number | null>(null);
-  const hitsRef = useRef(0);
+  const countdownStartRef = useRef<number | null>(null);
+  const lastCountRef = useRef<number | null>(null);
   const doneRef = useRef(false);
   const noFaceTimerRef = useRef<number | null>(null);
   // 캡처 산출물 — 단계를 넘어도 유지 (name-taken 재시도 시 metrics 재사용).
@@ -267,7 +272,9 @@ export function JoinWizard({
 
   async function startCamera() {
     doneRef.current = false;
-    hitsRef.current = 0;
+    countdownStartRef.current = null;
+    lastCountRef.current = null;
+    setCount(null);
     setHint("얼굴 인식 준비 중…");
     setStage("camera");
     let stream: MediaStream;
@@ -316,16 +323,32 @@ export function JoinWizard({
       const face = res.faceLandmarks?.[0];
       drawMesh(video, face ?? null);
       if (face && face.length >= 468) {
-        hitsRef.current += 1;
-        setHint("좋아요! 잠시만 그대로…");
-        // 3 프레임 연속 검출되면 안정으로 보고 캡처.
-        if (hitsRef.current >= 3) {
+        // 얼굴이 잡히면 2초 카운트다운 (2 → 1 → 찰칵) — 앱과 동일한 치즈 모먼트.
+        const now = performance.now();
+        if (countdownStartRef.current == null) {
+          countdownStartRef.current = now;
+          setHint("좋아요! 그대로 계세요");
+        }
+        const remaining = COUNTDOWN_MS - (now - countdownStartRef.current);
+        if (remaining <= 0) {
           doneRef.current = true;
+          setCount(null);
+          setHint("찰칵!");
           void capture(face.map((p) => [p.x, p.y]));
           return;
         }
+        const c = Math.ceil(remaining / 1000);
+        if (lastCountRef.current !== c) {
+          lastCountRef.current = c;
+          setCount(c);
+        }
       } else {
-        hitsRef.current = 0;
+        // 얼굴을 놓치면 카운트다운 리셋.
+        countdownStartRef.current = null;
+        if (lastCountRef.current != null) {
+          lastCountRef.current = null;
+          setCount(null);
+        }
         setHint("얼굴을 화면 안에 맞춰 주세요");
       }
     }
@@ -548,6 +571,7 @@ export function JoinWizard({
     >
       <video ref={videoRef} playsInline muted className="join-video" />
       <canvas ref={canvasRef} className="join-mesh" />
+      {count != null && <div className="join-count">{count}</div>}
     </div>
   );
 
@@ -776,7 +800,7 @@ export function JoinWizard({
           ) : null}
           <p className="join-sub">
             전원이 모이면 이 링크에서 그룹 케미 결과표가 공개됩니다. 측면까지
-            넣은 정밀 분석은 앱에서 확인할 수 있어요.
+            넣은 정밀 분석은 앱에서만 가능합니다.
           </p>
           <a
             className="join-btn"
