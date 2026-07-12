@@ -265,7 +265,17 @@ export async function saveCapture(
     },
     { onConflict: "id" },
   );
-  return error ? null : id;
+  if (error) return null;
+  // 내 관상 불변식 안전망 — is_my_face=true 는 사용자당 1행 (앱 saveMetrics
+  // 와 동일). 참여 슬롯 row 가 my-face row 와 다른 잔재 케이스에서 true 2행이
+  // 되지 않게, 이번 row 외의 true 행을 일반 카드로 강등. 실패해도 참여는 계속.
+  await sb
+    .from("metrics")
+    .update({ is_my_face: false })
+    .eq("user_id", args.uid)
+    .eq("is_my_face", true)
+    .neq("id", id);
+  return id;
 }
 
 /**
