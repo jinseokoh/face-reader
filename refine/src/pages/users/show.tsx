@@ -320,6 +320,13 @@ export const UserShow = () => {
               render={(_: unknown, record: MetricEntry) => parseDemographics(record.body).ethnicity ?? "-"}
             />
             <Table.Column<MetricEntry>
+              title="본인"
+              dataIndex="is_my_face"
+              render={(v: boolean) =>
+                v ? <Tag color="blue">본인</Tag> : <Text type="secondary">-</Text>
+              }
+            />
+            <Table.Column<MetricEntry>
               title="alias"
               dataIndex="alias"
               render={(v: string | null) => v ?? <Text type="secondary">-</Text>}
