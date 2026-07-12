@@ -138,8 +138,11 @@ Future<bool> runCompatUnlock(
 ///   upload·claim 하지 않기 위함. null 일 때만 id 발급.
 Future<void> _ensureSupabaseId(WidgetRef ref, FaceReadingReport report) async {
   if (!report.isMyFace && report.supabaseId != null) return;
+  final before = report.supabaseId;
+  // saveMetrics 가 report.supabaseId 를 최종 id 로 직접 갱신하므로,
+  // 호출 전 값과 비교해 바뀐 경우에만 Hive 재영속.
   final uuid = await SupabaseService().saveMetrics(report);
-  if (report.supabaseId != uuid) {
+  if (before != uuid) {
     report.supabaseId = uuid;
     await ref.read(historyProvider.notifier).updateHive();
   }
