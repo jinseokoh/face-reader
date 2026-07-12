@@ -68,17 +68,11 @@ const AGES: { v: string; ko: string }[] = [
 
 export function JoinWizard({
   team,
-  appOpenUrl,
-  appStoreUrl,
-  playStoreUrl,
   supabaseUrl,
   supabaseAnonKey,
   onProgress,
 }: {
   team: TeamShowcase;
-  appOpenUrl: string;
-  appStoreUrl: string;
-  playStoreUrl: string;
   supabaseUrl: string;
   supabaseAnonKey: string;
   /** 위저드가 entry 를 벗어나면 true — 부모가 초대장 칩을 숨기는 데 쓴다. */
@@ -649,10 +643,6 @@ export function JoinWizard({
           이 화면에서는 카메라가 안 돼요. 우측 상단 메뉴에서 기본 브라우저로
           열거나, 앱에서 참여해 주세요.
         </p>
-        <a className="join-btn" href={appOpenUrl}>
-          앱에서 보기
-        </a>
-        <Stores appStoreUrl={appStoreUrl} playStoreUrl={playStoreUrl} />
       </div>
     );
   }
@@ -689,7 +679,6 @@ export function JoinWizard({
               관상 다시 촬영하기
             </button>
           </div>
-          <Stores appStoreUrl={appStoreUrl} playStoreUrl={playStoreUrl} />
         </>
       )}
 
@@ -827,15 +816,7 @@ export function JoinWizard({
 
       {stage === "saving" && <p className="join-q">그룹에 등록 중…</p>}
 
-      {stage === "error" && (
-        <>
-          <p className="join-q">{errorMsg}</p>
-          <a className="join-btn" href={appOpenUrl}>
-            앱에서 확인하기
-          </a>
-          <Stores appStoreUrl={appStoreUrl} playStoreUrl={playStoreUrl} />
-        </>
-      )}
+      {stage === "error" && <p className="join-q">{errorMsg}</p>}
 
       {stage === "done" && (
         <>
@@ -853,14 +834,6 @@ export function JoinWizard({
             전원이 모이면 이 링크에서 그룹 케미 결과표가 공개됩니다. 측면까지
             넣은 정밀 분석은 앱에서만 가능합니다.
           </p>
-          <a
-            className="join-btn"
-            href={appOpenUrl}
-            style={{ display: "block", margin: "16px auto 0", maxWidth: 320 }}
-          >
-            앱에서 정밀 분석 받기
-          </a>
-          <Stores appStoreUrl={appStoreUrl} playStoreUrl={playStoreUrl} />
         </>
       )}
     </div>
@@ -883,34 +856,3 @@ function KakaoTalkIcon() {
   );
 }
 
-function Stores({
-  appStoreUrl,
-  playStoreUrl,
-}: {
-  appStoreUrl: string;
-  playStoreUrl: string;
-}) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        gap: 16,
-        justifyContent: "center",
-        marginTop: 10,
-      }}
-    >
-      <a
-        style={{ fontSize: 13, color: "#666", textDecoration: "none" }}
-        href={appStoreUrl}
-      >
-        App Store
-      </a>
-      <a
-        style={{ fontSize: 13, color: "#666", textDecoration: "none" }}
-        href={playStoreUrl}
-      >
-        Google Play
-      </a>
-    </div>
-  );
-}

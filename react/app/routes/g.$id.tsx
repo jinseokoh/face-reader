@@ -89,9 +89,6 @@ export default function Group({ loaderData }: Route.ComponentProps) {
               슬롯 claim → 정면 캡처 → 그룹 합류까지 브라우저에서 완결. */}
           <JoinWizard
             team={team}
-            appOpenUrl={loaderData.appOpenUrl}
-            appStoreUrl={loaderData.appStoreUrl}
-            playStoreUrl={loaderData.playStoreUrl}
             supabaseUrl={loaderData.supabaseUrl}
             supabaseAnonKey={loaderData.supabaseAnonKey}
             onProgress={setWizardActive}
