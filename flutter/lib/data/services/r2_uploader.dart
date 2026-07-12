@@ -40,6 +40,7 @@ class PresignedUpload {
 ///   * SigV4 signed URL TTL 은 5~10분 권장
 class R2Uploader {
   static const _kPathPresign = '/api/r2/presign';
+  static const _kPathDelete = '/api/r2/delete';
 
   static String get _hostBase =>
       dotenv.env['WEBAPP_BASE']?.trim().replaceAll(RegExp(r'/$'), '') ??
@@ -120,6 +121,26 @@ class R2Uploader {
       contentType: contentType,
     );
     return p;
+  }
+
+  /// 재촬영 교체로 고아가 될 옛 썸네일 즉시 삭제 — 웹 saveCapture 와 동일
+  /// 계약. 서버가 "요청자의 metrics.body 가 아직 이 key 를 참조" 를 검증하므로
+  /// 반드시 body 를 새 키로 upsert 하기 **전에** 호출할 것. 실패는 무해
+  /// (고아 1개 감수) — false 반환.
+  Future<bool> deleteObject(String key, {required String accessToken}) async {
+    try {
+      final res = await _client.post(
+        Uri.parse('$_hostBase$_kPathDelete'),
+        headers: {
+          'content-type': 'application/json',
+          'authorization': 'Bearer $accessToken',
+        },
+        body: jsonEncode({'key': key}),
+      );
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
   }
 }
 

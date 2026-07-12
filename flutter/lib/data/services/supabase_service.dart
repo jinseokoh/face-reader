@@ -1,9 +1,12 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/data/services/auth_service.dart';
+import 'package:facely/data/services/r2_uploader.dart';
 
 class SupabaseService {
   static final SupabaseService _instance = SupabaseService._();
@@ -23,7 +26,29 @@ class SupabaseService {
   ///     (R2 업로드 없이 메타만), legacy entry, compat 페어링의 보조 슬롯 등.
   /// 결과 UUID 를 반환.
   Future<String> saveMetrics(FaceReadingReport report) async {
-    final id = report.supabaseId ?? _uuid.v4();
+    final uid = _client.auth.currentUser?.id;
+
+    // 내 관상 고정 row — 서버에 기존 my-face row 가 있으면 새 row 를 만들지
+    // 않고 그 id 에 덮어쓴다 (row id 영구 고정 · 웹 saveCapture 와 동일 모델.
+    // 케미 슬롯 FK·/r/{id} 링크가 항상 유효하고 최신 관상을 가리킴). 재촬영의
+    // 분석 uuid 는 썸네일 키로만 남는다. 옛 썸네일 삭제는 body 가 아직 옛 키를
+    // 참조하는 upsert **이전** 이어야 /api/r2/delete 소유 검증을 통과한다.
+    ({String id, String? thumbnailKey})? existing;
+    if (report.isMyFace && uid != null) {
+      existing = await _myFaceRow(uid);
+      final oldKey = existing?.thumbnailKey;
+      if (oldKey != null && oldKey != report.thumbnailKey) {
+        final token = _client.auth.currentSession?.accessToken;
+        if (token != null) {
+          final ok = await R2Uploader().deleteObject(oldKey, accessToken: token);
+          debugPrint('[Supabase.saveMetrics] old thumbnail delete ok=$ok key=$oldKey');
+        }
+      }
+    }
+    final id = existing?.id ?? report.supabaseId ?? _uuid.v4();
+    // 로컬 카드가 최종 row 를 가리키도록 동기화 — InfoConfirm 이 미리 고정 id
+    // 를 물려받은 경우엔 no-op.
+    report.supabaseId = id;
 
     // alias 컬럼 = 소유자 지정 이름 (RLS 는 body 안의 alias 만 금지 — 컬럼 OK).
     // 내 관상의 로컬 전용 표기 '나' 는 서버 밖에선 무의미 — 설정에서 수정
@@ -34,7 +59,6 @@ class SupabaseService {
         ? AuthService().currentUser?.nickname
         : report.alias;
 
-    final uid = _client.auth.currentUser?.id;
     final data = {
       'id': id,
       'user_id': uid,
@@ -79,6 +103,41 @@ class SupabaseService {
       rethrow;
     }
     return id;
+  }
+
+  /// 서버의 내 관상 row (id + body 의 thumbnailKey). 없거나 조회 실패면 null.
+  Future<({String id, String? thumbnailKey})?> _myFaceRow(String uid) async {
+    try {
+      final row = await _client
+          .from('metrics')
+          .select('id, body')
+          .eq('user_id', uid)
+          .eq('is_my_face', true)
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+      if (row == null) return null;
+      String? key;
+      try {
+        key = (jsonDecode(row['body'] as String)
+            as Map<String, dynamic>)['thumbnailKey'] as String?;
+      } catch (_) {
+        key = null;
+      }
+      return (id: row['id'] as String, thumbnailKey: key);
+    } catch (e) {
+      debugPrint('[Supabase] my-face row 조회 실패 (신규 생성 fallback): $e');
+      return null;
+    }
+  }
+
+  /// 저장 전에 호출해 재촬영 카드가 처음부터 고정 row id 를 갖게 한다 —
+  /// 로컬 히스토리의 supabaseId 교체(add)와 saveMetrics 덮어쓰기가 같은
+  /// row 를 가리키는 전제. 비로그인·행 없음·조회 실패면 null.
+  Future<String?> myFaceRowId() async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) return null;
+    return (await _myFaceRow(uid))?.id;
   }
 
   /// 로그인 사용자 소유 metrics 전체 — 로그인 rehydrate(새 기기 복원)용.
