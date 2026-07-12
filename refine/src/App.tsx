@@ -13,6 +13,7 @@ import '@refinedev/antd/dist/reset.css'
 
 import {
     AppstoreOutlined,
+    ClusterOutlined,
     DollarOutlined,
     PictureOutlined,
     PlaySquareOutlined,
@@ -35,6 +36,7 @@ import { AdVideoCreate, AdVideoList } from './pages/ad-videos'
 import { CoinList } from './pages/coins'
 import { DashboardPage } from './pages/dashboard'
 import { MetricList, MetricShow } from './pages/metrics'
+import { TeamList, TeamShow } from './pages/teams'
 import { UnlockList, UnlockShow } from './pages/unlocks'
 import { UserList, UserShow } from './pages/users'
 import authProvider from './providers/auth'
@@ -82,6 +84,12 @@ function App() {
                     list: '/unlocks',
                     show: '/unlocks/show/:id',
                     meta: { label: '궁합 unlock', icon: <UnlockOutlined /> },
+                  },
+                  {
+                    name: 'teams',
+                    list: '/teams',
+                    show: '/teams/show/:id',
+                    meta: { label: '케미', icon: <ClusterOutlined /> },
                   },
                   {
                     name: 'ad_videos',
@@ -132,6 +140,10 @@ function App() {
                     <Route path="/unlocks">
                       <Route index element={<UnlockList />} />
                       <Route path="show/:id" element={<UnlockShow />} />
+                    </Route>
+                    <Route path="/teams">
+                      <Route index element={<TeamList />} />
+                      <Route path="show/:id" element={<TeamShow />} />
                     </Route>
                     <Route path="/ad-videos">
                       <Route index element={<AdVideoList />} />

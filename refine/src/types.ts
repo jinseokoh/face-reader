@@ -53,6 +53,35 @@ export function parseDemographics(body: string | null | undefined): Demographics
   }
 }
 
+// 케미 그룹 — 방장이 push 한 teams row (마감 시 matrix_payload 보관).
+export type Team = {
+  id: string;
+  owner_id: string | null;
+  title: string;
+  closed_at: string | null;
+  matrix_payload: TeamMatrixPayload | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** 마감 시 앱이 올린 결과표 — 이름 + 밴드만 (점수·landmark 없음). */
+export type TeamMatrixPayload = {
+  v: number;
+  title: string;
+  members: string[];
+  pairs: { a: number; b: number; e: string; l: string; c: string }[];
+  best: { a: number; b: number }[];
+};
+
+export type TeamMember = {
+  id: string;
+  team_id: string;
+  metrics_id: string | null;
+  name: string;
+  is_owner: boolean;
+  joined_at: string;
+};
+
 // custom video 광고 — 무료코인 3편 중 1편으로 노출 (per-video reward 없음).
 export type AdVideo = {
   id: string;
