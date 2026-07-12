@@ -857,6 +857,12 @@ textarea.form-input {
   margin-top: 16px;
   text-decoration: none;
 }
+.join-btn--line {
+  background: #fff;
+  color: var(--ink);
+  border: 1px solid var(--ink);
+  margin-top: 8px;
+}
 .join-btn--kakao {
   /* 카카오 브랜드 버튼 — 4색 팔레트의 유일한 승인 예외 (공식 #FEE500 + 검정). */
   background: #fee500;

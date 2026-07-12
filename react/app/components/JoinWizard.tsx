@@ -10,6 +10,8 @@ import {
 } from "../lib/auth";
 import {
   dataUrlToBlob,
+  fetchMyFace,
+  fetchProgress,
   isTeamOpen,
   joinTeam,
   saveCapture,
@@ -36,7 +38,15 @@ const MP_MODEL =
 const STASH_KEY = "facely:pendingJoin";
 const NO_FACE_TIMEOUT_MS = 20_000;
 
-type Stage = "entry" | "name" | "info" | "camera" | "saving" | "done" | "error";
+type Stage =
+  | "entry"
+  | "name"
+  | "reuse"
+  | "info"
+  | "camera"
+  | "saving"
+  | "done"
+  | "error";
 
 type Teaser =
   | { kind: "pair"; total: number; labelKo: string; ownerName: string }
@@ -91,6 +101,13 @@ export function JoinWizard({
   const [age, setAge] = useState<string | null>(null);
   const [teaser, setTeaser] = useState<Teaser | null>(null);
   const [joined, setJoined] = useState(false);
+  // 서버에 이미 있는 내 관상(is_my_face) — 재사용/재촬영 선택의 근거.
+  const [existingId, setExistingId] = useState<string | null>(null);
+  // 참여 직후 서버에서 다시 읽은 등록 현황 (loader 데이터는 stale).
+  const [progress, setProgress] = useState<{
+    joined: number;
+    total: number;
+  } | null>(null);
   const [hint, setHint] = useState("얼굴을 화면 안에 맞춰 주세요");
   const [notice, setNotice] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
@@ -137,6 +154,7 @@ export function JoinWizard({
           setNickname(n);
           setNameInput((cur) => cur || n);
         });
+        void fetchMyFace(client, s.user.id).then(setExistingId);
       }
     });
     void client.auth.getSession().then(({ data }) => {
@@ -154,6 +172,7 @@ export function JoinWizard({
         setNickname(n);
         setNameInput((cur) => cur || n);
       });
+      void fetchMyFace(client, data.session.user.id).then(setExistingId);
       // 미리보기→로그인 복귀: 캡처를 복원하고 이름 선택으로 점프.
       const raw = sessionStorage.getItem(STASH_KEY);
       if (raw) {
@@ -346,8 +365,9 @@ export function JoinWizard({
     }
     bodyRef.current = body;
     thumbRef.current = thumb;
-    setTeaser(computeTeaser(body));
     if (previewOnly) {
+      // 미리보기 경로만 즉석 티저 — 참여 경로는 점수 없이 등록 현황만 보여준다.
+      setTeaser(computeTeaser(body));
       setJoined(false);
       setStage("done");
     } else {
@@ -355,11 +375,10 @@ export function JoinWizard({
     }
   }
 
-  /** 저장 시퀀스: 마감 재확인 → metrics(1회) → 합류. */
+  /** 저장 시퀀스: 마감 재확인 → metrics(신규 캡처 시, 기존 my-face 덮어쓰기) → 합류. */
   async function runSave() {
-    const body = bodyRef.current;
     const s = sessionRef.current;
-    if (!body || !s) {
+    if (!s) {
       fail("세션이 만료됐어요. 다시 로그인해 주세요.");
       return;
     }
@@ -370,11 +389,18 @@ export function JoinWizard({
       return;
     }
     if (!metricsIdRef.current) {
+      const body = bodyRef.current;
+      if (!body) {
+        fail("촬영 정보가 없어요. 처음부터 다시 시도해 주세요.");
+        return;
+      }
+      // 기존 my-face 가 있으면 그 row 를 덮어써 my-face 1행을 유지한다.
       metricsIdRef.current = await saveCapture(client, {
         uid: s.user.id,
         nickname,
         body,
         thumb: thumbRef.current,
+        id: existingId ?? undefined,
       });
     }
     if (!metricsIdRef.current) {
@@ -397,6 +423,7 @@ export function JoinWizard({
       fail("참여에 실패했어요. 잠시 후 다시 시도해 주세요.");
       return;
     }
+    setProgress(await fetchProgress(client, team.id));
     setJoined(true);
     setStage("done");
   }
@@ -465,7 +492,15 @@ export function JoinWizard({
     setNotice("");
     // 미리보기에서 넘어온 경우 캡처가 이미 있음 → 바로 저장.
     if (bodyRef.current) void runSave();
+    // 서버에 내 관상이 이미 있으면 재사용/재촬영을 사용자가 고른다.
+    else if (existingId) setStage("reuse");
     else setStage("info");
+  }
+
+  /** 기존 내 관상으로 촬영 없이 바로 참여. */
+  function onReuseExisting() {
+    metricsIdRef.current = existingId;
+    void runSave();
   }
 
   function onInfoNext() {
@@ -619,6 +654,28 @@ export function JoinWizard({
         </>
       )}
 
+      {stage === "reuse" && (
+        <>
+          <p className="join-q">이미 등록된 내 관상이 있어요</p>
+          <p className="join-sub">
+            기존 관상으로 바로 참여하거나, 다시 촬영해서 덮어쓸 수 있어요.
+          </p>
+          <div>
+            <button className="join-btn" onClick={onReuseExisting}>
+              기존 관상으로 참여
+            </button>
+          </div>
+          <div>
+            <button
+              className="join-btn join-btn--line"
+              onClick={() => setStage("info")}
+            >
+              다시 촬영하기
+            </button>
+          </div>
+        </>
+      )}
+
       {stage === "info" && (
         <>
           <p className="join-q">나를 알려주세요</p>
@@ -689,9 +746,35 @@ export function JoinWizard({
         </>
       )}
 
-      {stage === "done" && (
+      {stage === "done" && joined && (
         <>
-          {joined && <div className="join-badge">참여 완료 ✓</div>}
+          <div className="join-badge">참여 완료 ✓</div>
+          {progress ? (
+            progress.joined >= progress.total ? (
+              <p className="join-q">전원 등록 완료!</p>
+            ) : (
+              <p className="join-q">
+                {progress.total}명 중 {progress.joined}명 등록
+              </p>
+            )
+          ) : null}
+          <p className="join-sub">
+            전원이 모이면 이 링크에서 그룹 케미 결과표가 공개됩니다. 측면까지
+            넣은 정밀 분석은 앱에서 확인할 수 있어요.
+          </p>
+          <a
+            className="join-btn"
+            href={appOpenUrl}
+            style={{ display: "block", margin: "16px auto 0", maxWidth: 320 }}
+          >
+            앱에서 정밀 분석 받기
+          </a>
+          <Stores appStoreUrl={appStoreUrl} playStoreUrl={playStoreUrl} />
+        </>
+      )}
+
+      {stage === "done" && !joined && (
+        <>
           {teaser?.kind === "pair" ? (
             <>
               <p className="join-sub">
@@ -710,23 +793,9 @@ export function JoinWizard({
               <p className="join-sub">{teaser.catchphrase}</p>
             </>
           ) : null}
-          {joined ? (
-            <p className="join-sub">
-              전원이 모이면 이 링크에서 그룹 케미 결과표가 공개됩니다. 측면까지
-              넣은 정밀 분석은 앱에서 확인할 수 있어요.
-            </p>
-          ) : (
-            <button className="join-btn" onClick={onTeaserJoin}>
-              이 결과로 그룹 참여하기
-            </button>
-          )}
-          <a
-            className="join-btn"
-            href={appOpenUrl}
-            style={{ display: "block", margin: "16px auto 0", maxWidth: 320 }}
-          >
-            앱에서 전체 결과 보기
-          </a>
+          <button className="join-btn" onClick={onTeaserJoin}>
+            이 결과로 그룹 참여하기
+          </button>
           <Stores appStoreUrl={appStoreUrl} playStoreUrl={playStoreUrl} />
         </>
       )}

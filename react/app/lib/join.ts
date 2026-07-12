@@ -51,10 +51,43 @@ async function uploadThumbnail(id: string, blob: Blob): Promise<string | null> {
   }
 }
 
+/** 로그인 사용자의 기존 내 관상(is_my_face) metrics id — 없으면 null. */
+export async function fetchMyFace(
+  sb: SupabaseClient,
+  uid: string,
+): Promise<string | null> {
+  const { data } = await sb
+    .from("metrics")
+    .select("id")
+    .eq("user_id", uid)
+    .eq("is_my_face", true)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return (data?.id as string | undefined) ?? null;
+}
+
+/** 그룹 등록 현황 — joined = metrics 등록 완료 슬롯 수, total = 전체 슬롯. */
+export async function fetchProgress(
+  sb: SupabaseClient,
+  teamId: string,
+): Promise<{ joined: number; total: number } | null> {
+  const { data, error } = await sb
+    .from("team_members")
+    .select("metrics_id")
+    .eq("team_id", teamId);
+  if (error || !data) return null;
+  return {
+    joined: data.filter((r) => r.metrics_id != null).length,
+    total: data.length,
+  };
+}
+
 /**
  * metrics 저장 — 1 capture = 1 uuid (썸네일 key 와 metrics.id 공유).
  * is_my_face=true: 본인 얼굴 — 앱 rehydrate 가 내 관상으로 복원.
  * alias=nickname: 앱 saveMetrics 의 my-face 컨벤션과 동일.
+ * [id] 를 주면 기존 내 관상 row 를 덮어쓴다 (재촬영 overwrite — my-face 1행 유지).
  */
 export async function saveCapture(
   sb: SupabaseClient,
@@ -63,9 +96,10 @@ export async function saveCapture(
     nickname: string;
     body: WebCaptureBody;
     thumb: Blob | null;
+    id?: string;
   },
 ): Promise<string | null> {
-  const id = crypto.randomUUID();
+  const id = args.id ?? crypto.randomUUID();
   const key = args.thumb ? await uploadThumbnail(id, args.thumb) : null;
   const body: WebCaptureBody = key
     ? { ...args.body, thumbnailKey: key }
