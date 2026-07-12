@@ -233,29 +233,6 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
     }
   }
 
-  Future<void> setMyFace(int index) async {
-    final updated = <FaceReadingReport>[];
-    for (int i = 0; i < state.length; i++) {
-      final r = state[i];
-      r.isMyFace = (i == index);
-      _syncMyFaceAlias(r);
-      updated.add(r);
-    }
-    state = [...updated];
-    await _saveToHive();
-  }
-
-  Future<void> clearMyFace() async {
-    final updated = <FaceReadingReport>[];
-    for (final r in state) {
-      r.isMyFace = false;
-      _syncMyFaceAlias(r);
-      updated.add(r);
-    }
-    state = [...updated];
-    await _saveToHive();
-  }
-
   /// supabaseId 로 별칭 갱신 — 팀 스캔 루프(이름 붙이기)용.
   Future<void> updateAliasById(String supabaseId, String alias) async {
     final idx = state.indexWhere((r) => r.supabaseId == supabaseId);

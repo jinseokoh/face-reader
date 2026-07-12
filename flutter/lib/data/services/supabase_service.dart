@@ -34,13 +34,31 @@ class SupabaseService {
         ? AuthService().currentUser?.nickname
         : report.alias;
 
+    final uid = _client.auth.currentUser?.id;
     final data = {
       'id': id,
-      'user_id': _client.auth.currentUser?.id,
+      'user_id': uid,
       'body': report.toBodyJson(),
       'alias': alias,
       'is_my_face': report.isMyFace,
     };
+
+    // 내 관상 불변식 안전망 — is_my_face=true 는 사용자당 최대 1행. 새 my-face
+    // 를 올리기 직전에 서버의 다른 true 행을 일반 카드로 강등해, 멀티 기기 등록
+    // 이나 과거에 쌓인 중복을 등록 시점마다 자동 치유한다. 옛 행은 삭제가 아닌
+    // 강등 — 팀 슬롯(team_members.metrics_id) 참조와 공유 링크를 살린다.
+    if (report.isMyFace && uid != null) {
+      try {
+        await _client
+            .from('metrics')
+            .update({'is_my_face': false})
+            .eq('user_id', uid)
+            .eq('is_my_face', true)
+            .neq('id', id);
+      } catch (e) {
+        debugPrint('[Supabase.saveMetrics] my-face demote error (계속 진행): $e');
+      }
+    }
 
     // upsert — analyze 시점에 발급된 UUID 가 이미 row 로 들어가 있을 수도
     // (재시도 / pull-to-refresh). insert 면 PK 충돌, 무엇보다 RLS reject 가

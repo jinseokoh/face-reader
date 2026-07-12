@@ -211,24 +211,14 @@ class _PhysiognomyItem extends ConsumerWidget {
               onSelected: (value) {
                 if (value == 'rename') {
                   _showAliasDialog(context, ref, displayName);
-                } else if (value == 'setMyFace') {
-                  _setMyFace(context, ref);
-                } else if (value == 'clearMyFace') {
-                  _clearMyFace(context, ref);
                 } else if (value == 'delete') {
                   _confirmDelete(context, ref);
                 }
               },
+              // 내 관상 지정/해제 메뉴 없음 — my-face 변경은 등록 플로우와 카드
+              // 삭제만. 로컬 전용 지정/해제는 서버 is_my_face 와 어긋나 중복·stale
+              // 을 만들던 funnel 이라 제거 (내 관상 = 항상 최신 1장 불변식).
               itemBuilder: (ctx) => [
-                // 받은(북마크) 카드는 남의 얼굴 — 내 관상으로 설정 불가.
-                if (report.source != AnalysisSource.received)
-                  PopupMenuItem<String>(
-                    value: isMyFace ? 'clearMyFace' : 'setMyFace',
-                    child: Text(
-                      isMyFace ? '내 관상으로 설정 취소' : '내 관상으로 설정',
-                      style: AppText.body,
-                    ),
-                  ),
                 const PopupMenuItem<String>(
                   value: 'rename',
                   child: Text('제목 변경', style: AppText.body),
@@ -346,14 +336,6 @@ class _PhysiognomyItem extends ConsumerWidget {
     );
   }
 
-  void _clearMyFace(BuildContext context, WidgetRef ref) {
-    ref.read(historyProvider.notifier).clearMyFace();
-    showTopSnackBar(
-      Overlay.of(context),
-      CompactSnackBar.success(message: '내 관상 지정을 취소했습니다'),
-    );
-  }
-
   void _confirmDelete(BuildContext context, WidgetRef ref) {
     final demographic =
         '${report.ageGroup.labelKo} '
@@ -390,14 +372,6 @@ class _PhysiognomyItem extends ConsumerWidget {
           ),
         ],
       ),
-    );
-  }
-
-  void _setMyFace(BuildContext context, WidgetRef ref) {
-    ref.read(historyProvider.notifier).setMyFace(index);
-    showTopSnackBar(
-      Overlay.of(context),
-      CompactSnackBar.success(message: '내 관상을 지정했습니다'),
     );
   }
 
