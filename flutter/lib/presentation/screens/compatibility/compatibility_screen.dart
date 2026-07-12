@@ -53,6 +53,10 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
   late final TabController _tabController =
       TabController(length: 2, vsync: this);
 
+  // 최초 노출 시 1회 — 개수가 더 많은 탭을 기본 선택 (빈 탭부터 보여주지
+  // 않기). 이후엔 사용자의 탭 선택을 존중해 다시 건드리지 않는다.
+  bool _appliedInitialTab = false;
+
   @override
   Widget build(BuildContext context) {
     final history = ref.watch(historyProvider);
@@ -100,9 +104,18 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
       }
     }
 
-    // 탭은 실제 데이터가 있을 때만 — 내 관상 미설정·전체 0건은 안내 화면.
-    final showTabs =
-        myFace != null && !(others.isEmpty && unlockedList.isEmpty);
+    // 내부 탭 노출 조건 = 내 관상 등록 여부 — 관상·케미 탭과 동일한 앱 공통
+    // 규칙. 상대 0명이어도 탭 구조(미확인→확인)를 먼저 보여주고, 다음 행동
+    // 안내는 미확인 탭의 빈 상태가 담당한다.
+    final showTabs = myFace != null;
+    final noPartners = others.isEmpty && unlockedList.isEmpty;
+
+    // 최초 노출 기본 탭 = 개수가 더 많은 쪽. unlock 데이터가 async 라 로드
+    // 완료(asData) 후 첫 build 에 판정해야 확인 개수를 오판하지 않는다.
+    if (showTabs && !_appliedInitialTab && unlocksAsync.asData != null) {
+      _appliedInitialTab = true;
+      if (unlockedList.length > lockedList.length) _tabController.index = 1;
+    }
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -148,7 +161,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
           ? TabBarView(
               controller: _tabController,
               children: [
-                _lockedTab(context, myFace, lockedList),
+                _lockedTab(context, myFace, lockedList, noPartners),
                 _unlockedTab(context, myFace, unlockedList),
               ],
             )
@@ -220,27 +233,19 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
     ref.invalidate(unlockedPartnerBodiesProvider);
   }
 
-  /// 탭 없이 표시되는 안내 화면 — 내 관상 미설정 / 상대 0명.
+  /// 탭 없이 표시되는 안내 화면 — 내 관상 미설정 한정 (등록 후엔 항상 탭).
   Widget _guideBody(List<FaceReadingReport> others) {
-    final history = ref.read(historyProvider);
-    final hasMyFace = history.any((r) => r.isMyFace);
-    if (!hasMyFace) {
-      // 비교할 상대가 하나도 없으면 빈 상태 — 관상 탭과 동일한 §3.8 레시피.
-      if (others.isEmpty) {
-        return const EmotionEmptyState(
-          asset: 'assets/images/emotion-sad.png',
-          message: '궁합을 보려면 내 관상 등록이 필요합니다.',
-        );
-      }
-      // 저장된 상대는 있는데 내 관상이 없으면 — "등록만 하면 이 사람들과 궁합을
-      // 볼 수 있다"를 비활성 프리뷰로 한눈에 보여준다(원인 즉시 이해).
-      // 등록 CTA 는 nudge 스낵바 [내 관상 등록하기]가 전담 (중복 제거).
-      return _InactiveCompatPreview(others: others);
+    // 비교할 상대가 하나도 없으면 빈 상태 — 관상 탭과 동일한 §3.8 레시피.
+    if (others.isEmpty) {
+      return const EmotionEmptyState(
+        asset: 'assets/images/emotion-sad.png',
+        message: '궁합을 보려면 내 관상 등록이 필요합니다.',
+      );
     }
-    return const EmotionEmptyState(
-      asset: 'assets/images/emotion-love.png',
-      message: '카메라나 앨범으로 상대방의 관상을 추가하세요.',
-    );
+    // 저장된 상대는 있는데 내 관상이 없으면 — "등록만 하면 이 사람들과 궁합을
+    // 볼 수 있다"를 비활성 프리뷰로 한눈에 보여준다(원인 즉시 이해).
+    // 등록 CTA 는 nudge 스낵바 [내 관상 등록하기]가 전담 (중복 제거).
+    return _InactiveCompatPreview(others: others);
   }
 
   /// 잠금 카드의 [궁합보기] → 공용 1코인 unlock 흐름(확인 다이얼로그 포함).
@@ -260,9 +265,17 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
     BuildContext context,
     FaceReadingReport myFace,
     List<FaceReadingReport> lockedList,
+    bool noPartners,
   ) {
     if (lockedList.isEmpty) {
-      // 탭이 떠 있는데 미확인 0 = 전부 확인함 — happy.
+      // 상대 0명 = 다음 행동(상대 추가) 안내 / 상대는 있는데 미확인 0 =
+      // 전부 확인함(happy). 같은 빈 탭이라도 가리키는 곳이 다르다.
+      if (noPartners) {
+        return const EmotionEmptyState(
+          asset: 'assets/images/emotion-love.png',
+          message: '카메라나 앨범으로 상대방의 관상을 추가하세요.',
+        );
+      }
       return const EmotionEmptyState(
         asset: 'assets/images/emotion-happy.png',
         message: '미확인 궁합이 없습니다.',
@@ -365,7 +378,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
   ) {
     if (unlockedList.isEmpty) {
       return const EmotionEmptyState(
-        asset: 'assets/images/emotion-anger.png',
+        asset: 'assets/images/emotion-surprise.png',
         message: '아직 궁합을 보지 않았다니!',
       );
     }

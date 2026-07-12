@@ -294,6 +294,9 @@ class _PhysiognomyItem extends ConsumerWidget {
   Widget _buildLeadingIcon() {
     // §3.7 — 내 관상 프로필 헤더 avatar 42px 와 동일 사이즈.
     // 아바타는 전 탭 공통 circle (rounded square 금지 — 통일감).
+    // 1순위 로컬 파일 → 2순위 CDN(thumbnailKey) → 소스 아이콘 fallback.
+    // 공유받은 카드·로그인 rehydrate 복원 카드는 thumbnailPath=null 이지만
+    // thumbnailKey 가 있어 CDN 으로 실제 얼굴을 띄운다 (궁합 아바타와 동일).
     const size = 42.0;
     final file = ThumbnailPaths.resolveFileSync(report.thumbnailPath);
     if (file != null && file.existsSync()) {
@@ -301,6 +304,22 @@ class _PhysiognomyItem extends ConsumerWidget {
         child: Image.file(file, width: size, height: size, fit: BoxFit.cover),
       );
     }
+    final cdn = ThumbnailPaths.cdnUrl(report.thumbnailKey);
+    if (cdn != null) {
+      return ClipOval(
+        child: Image.network(
+          cdn,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _sourceIconAvatar(report, size),
+        ),
+      );
+    }
+    return _sourceIconAvatar(report, size);
+  }
+
+  Widget _sourceIconAvatar(FaceReadingReport report, double size) {
     return Container(
       width: size,
       height: size,
@@ -423,24 +442,23 @@ class _PhysiognomyItem extends ConsumerWidget {
 
 class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
     with SingleTickerProviderStateMixin {
-  // 북마크(받은 카드) 유무에 따라 탭 수가 2↔3 으로 바뀌므로 nullable + 동적 재생성.
+  // 카메라/앨범/공유받음 3탭 고정 (2026-07-12 — 북마크 유무 2↔3 동적 폐기).
   TabController? _tabController;
   _SortOrder _sortOrder = _SortOrder.newest;
 
-  // 카메라/앨범 default 탭 — 내 관상이 있으면 내 관상이 사는 탭에서 시작.
-  // 최초 1회만: 이후엔 사용자의 명시적 선택과 분석 후 이동(info_confirm)이
-  // 우선이라 다시 강제하지 않는다.
-  bool _appliedMyFaceDefault = false;
+  // 최초 노출 시 1회 — 개수가 가장 많은 내부 탭을 기본 선택 (궁합·케미와
+  // 동일 규칙, 빈 탭부터 보여주지 않기). 이후엔 사용자의 명시적 선택과
+  // 분석 후 이동(info_confirm)이 우선이라 다시 강제하지 않는다.
+  bool _appliedInitialTab = false;
 
   @override
   Widget build(BuildContext context) {
     // Only react to actual provider changes (e.g. external selectTab calls
     // from album_preview after analysis). Avoid forcing on every rebuild.
     final history = ref.watch(historyProvider);
-    // 북마크(받은 카드) 존재 시에만 3번째 탭 — 없으면 2탭. 개수 변화 시 재생성.
-    final hasBookmarks =
-        history.any((r) => r.source == AnalysisSource.received);
-    _syncTabController(hasBookmarks ? 3 : 2);
+    // 카메라/앨범/공유받음 3탭 고정 — 공유받음 0개여도 노출 (2↔3 동적 재생성
+    // 폐기. 구조는 고정, 빈 탭은 (0) 카운트 + 빈 상태가 기능을 학습시킨다).
+    _syncTabController(3);
     final tabController = _tabController!;
 
     ref.listen<int>(historyTabProvider, (prev, next) {
@@ -460,15 +478,24 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
     }
     final hasMyFace = myFace != null;
 
-    // 내 관상이 앨범 소스면 default 를 앨범 탭으로 (히스토리 hydrate 후 1회).
-    // provider 가 아직 초기값(0)일 때만 — 이미 다른 흐름이 탭을 정했으면 존중.
-    if (!_appliedMyFaceDefault && myFace != null) {
-      _appliedMyFaceDefault = true;
-      if (myFace.source == AnalysisSource.album &&
-          ref.read(historyTabProvider) == 0) {
+    // 최초 노출 기본 탭 = 개수가 가장 많은 소스 (동률은 앞 탭). 히스토리
+    // hydrate 후 1회, provider 가 아직 초기값(0)일 때만 — 이미 다른 흐름이
+    // 탭을 정했으면 존중.
+    if (!_appliedInitialTab && hasMyFace) {
+      _appliedInitialTab = true;
+      final counts = [
+        history.where((r) => r.source == AnalysisSource.camera).length,
+        history.where((r) => r.source == AnalysisSource.album).length,
+        history.where((r) => r.source == AnalysisSource.received).length,
+      ];
+      var best = 0;
+      for (var i = 1; i < counts.length; i++) {
+        if (counts[i] > counts[best]) best = i;
+      }
+      if (best != 0 && ref.read(historyTabProvider) == 0) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
-            ref.read(historyTabProvider.notifier).selectTab(1);
+            ref.read(historyTabProvider.notifier).selectTab(best);
           }
         });
       }
@@ -512,11 +539,10 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
                           text: '앨범 '
                               '(${history.where((r) => r.source == AnalysisSource.album).length})',
                         ),
-                        if (hasBookmarks)
-                          Tab(
-                            text: '공유받음 '
-                                '(${history.where((r) => r.source == AnalysisSource.received).length})',
-                          ),
+                        Tab(
+                          text: '공유받음 '
+                              '(${history.where((r) => r.source == AnalysisSource.received).length})',
+                        ),
                       ],
                     )
                   : null,
@@ -527,11 +553,18 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
             ? TabBarView(
                 controller: tabController,
                 children: [
-                  _buildList(history, const [AnalysisSource.camera], hasMyFace),
-                  _buildList(history, const [AnalysisSource.album], hasMyFace),
-                  if (hasBookmarks)
-                    _buildList(
-                        history, const [AnalysisSource.received], hasMyFace),
+                  // 탭별 빈 상태 이미지 분리 — 케미 탭(laugh/shrug)과 같은
+                  // 원칙: 나란한 탭이 같은 그림이면 지루하다.
+                  _buildList(history, const [AnalysisSource.camera], hasMyFace,
+                      emptyAsset: 'assets/images/emotion-anger.png'),
+                  _buildList(history, const [AnalysisSource.album], hasMyFace,
+                      emptyAsset: 'assets/images/emotion-frown.png'),
+                  // 공유받음 — 상시 노출 (0개 포함). 빈 상태가 "공유받기"
+                  // 라는 기능의 존재를 학습시킨다 (구조 고정 원칙).
+                  _buildList(
+                      history, const [AnalysisSource.received], hasMyFace,
+                      emptyAsset: 'assets/images/emotion-smile.png',
+                      emptyMessage: '관상 카드를 공유받으면 여기에 보관됩니다.'),
                 ],
               )
             : _buildList(
@@ -556,22 +589,19 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
   @override
   void initState() {
     super.initState();
-    final history = ref.read(historyProvider);
-    final hasBookmarks =
-        history.any((r) => r.source == AnalysisSource.received);
-    _syncTabController(hasBookmarks ? 3 : 2);
+    _syncTabController(3);
   }
 
-  /// 한 tab 의 내용을 그린다. sources 는 그 tab 에서 보일 source list.
-  ///   • 카메라 탭: [camera]
-  ///   • 앨범 탭: [album, received] — 둘 다 section 으로 나란히 노출. count
-  ///     0 인 source 는 section 자체 hidden (dead-space 없음).
+  /// 한 tab 의 내용을 그린다. sources 는 그 tab 에서 보일 source list
+  /// (카메라/앨범/공유받음 각 1개, 미등록 상태의 단일 리스트만 3개 합침).
   /// 모든 source 가 비어있으면 단일 empty state.
   Widget _buildList(
     List<FaceReadingReport> history,
     List<AnalysisSource> sources,
-    bool hasMyFace,
-  ) {
+    bool hasMyFace, {
+    String emptyAsset = 'assets/images/emotion-frown.png',
+    String emptyMessage = '아직 관상을 등록하지 않았다니!',
+  }) {
     final groups = <(AnalysisSource, List<(int, FaceReadingReport)>)>[];
     for (final s in sources) {
       final filtered = <(int, FaceReadingReport)>[];
@@ -604,11 +634,11 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
             ),
             if (allEmpty)
               // §3.8 일러스트 빈 상태 — 궁합 탭과 동일한 공용 EmotionEmptyState.
-              const SliverFillRemaining(
+              SliverFillRemaining(
                 hasScrollBody: false,
                 child: EmotionEmptyState(
-                  asset: 'assets/images/emotion-frown.png',
-                  message: '아직 관상을 등록하지 않았다니!',
+                  asset: emptyAsset,
+                  message: emptyMessage,
                 ),
               )
             else ...[

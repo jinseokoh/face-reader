@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:developer' as dev;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -46,11 +47,13 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
     }
     _authSub = AuthService().profileStream.listen(_onAuthChanged);
     ref.onDispose(() => _authSub?.cancel());
-    // 앱 시작 시 이미 로그인 상태면 즉시 1회 claim.
+    // 앱 시작 시 이미 로그인 상태면 즉시 1회 claim + rehydrate.
     final existing = AuthService().currentUser;
     if (existing != null) {
       _lastClaimedUid = existing.id;
       _claimAnonymousMetrics(reports);
+      // build 중엔 state 재할당 금지 — 다음 틱에.
+      Future(() => _rehydrateFromServer());
     }
     return reports;
   }
@@ -101,6 +104,10 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
     if (uid == _lastClaimedUid) return;
     _lastClaimedUid = uid;
     _claimAnonymousMetrics(state);
+    // 로그인 rehydrate — 서버 소유 rows 중 이 기기에 없는 것 복원 (새 기기·
+    // 웹 티저 capture). claim 과 대상이 겹치지 않아(로컬 보유 uuid 는 skip)
+    // 순서 의존 없음.
+    unawaited(_rehydrateFromServer());
   }
 
   void _claimAnonymousMetrics(List<FaceReadingReport> reports) {
@@ -124,6 +131,69 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
         .catchError((Object e) {
       _log('claim anon metrics error: $e');
     });
+  }
+
+  /// 로그인 rehydrate — 본인 소유 metrics 를 서버에서 로컬 history 로 복원
+  /// (ARCHITECTURE §로그인 rehydrate). 새 기기 로그인·웹 티저 capture 가 대상.
+  /// 로컬이 이미 아는 uuid 는 skip, 이 기기에 내 관상이 있으면 서버 지정을
+  /// 덮지 않는다 (로컬 우선). 실패는 무해 — 다음 로그인 전이에서 재시도.
+  Future<void> _rehydrateFromServer() async {
+    try {
+      final rows = await SupabaseService().fetchMyMetrics();
+      if (rows.isEmpty) return;
+      final known = state.map((r) => r.supabaseId).whereType<String>().toSet();
+      var hasMyFace = state.any((r) => r.isMyFace);
+      final restored = <FaceReadingReport>[];
+      for (final row in rows) {
+        final id = row['id'] as String?;
+        if (id == null || known.contains(id)) continue;
+        final report = _reportFromRow(row);
+        if (report == null) continue;
+        if (report.isMyFace) {
+          if (hasMyFace) {
+            report.isMyFace = false; // 로컬 지정 우선 — 일반 카드로 강등.
+          } else {
+            hasMyFace = true;
+            // 내 관상의 로컬 표기는 '나' — 서버 alias(nickname)는 서버 전용.
+            report.alias = null;
+          }
+        }
+        restored.add(report);
+      }
+      if (restored.isEmpty) return;
+      _log('rehydrate: restored ${restored.length} rows from server');
+      // 로컬 뒤에 붙이고 정규화 — _normalizeMyFace 는 첫 my-face 만 유지
+      // (리스트 앞 = 로컬)이라 로컬 우선 규칙과 일치. 자동 별칭 '나' 부여 포함.
+      final merged = [...state, ...restored];
+      _normalizeMyFace(merged);
+      state = merged;
+      await _saveToHive();
+    } catch (e) {
+      _log('rehydrate error: $e');
+    }
+  }
+
+  /// metrics row → FaceReadingReport. 공유받기(fetchByUuid)와 같은
+  /// body-override 파싱이되, 소유자 관점이라 source·isMyFace·alias 를 살린다.
+  /// thumbnailPath 는 이 기기에 파일이 없으므로 null — 리스트가 thumbnailKey
+  /// 의 CDN URL 로 fallback (ThumbnailPaths.cdnUrl).
+  FaceReadingReport? _reportFromRow(Map<String, dynamic> row) {
+    final body = row['body'];
+    if (body is! String || body.isEmpty) return null;
+    try {
+      final original = jsonDecode(body) as Map<String, dynamic>;
+      final overridden = <String, dynamic>{
+        ...original,
+        'isMyFace': row['is_my_face'] == true,
+        'alias': row['alias'],
+        'thumbnailPath': null,
+        'supabaseId': row['id'],
+      };
+      return FaceReadingReport.fromJsonString(jsonEncode(overridden));
+    } catch (e) {
+      _log('rehydrate parse failed id=${row['id']}: $e');
+      return null;
+    }
   }
 
   Future<void> add(FaceReadingReport report) async {

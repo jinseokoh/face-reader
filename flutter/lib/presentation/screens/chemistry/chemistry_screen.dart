@@ -27,15 +27,24 @@ class ChemistryScreen extends ConsumerStatefulWidget {
 
 class _ChemistryScreenState extends ConsumerState<ChemistryScreen>
     with SingleTickerProviderStateMixin {
+  // §3.8 공용 빈 상태 — 탭 본문(세로 중앙)과 미등록 섹션이 공유.
+  static const _ownedEmpty = EmotionEmptyState(
+    asset: 'assets/images/emotion-laugh.png',
+    message: '내가 만든 케미 그룹이 없소이다.',
+  );
+
+  static const _invitedEmpty = EmotionEmptyState(
+    asset: 'assets/images/emotion-shrug.png',
+    message: '초대받은 그룹이 없습니다',
+  );
+
   // 탭 수는 2 고정 (내가 만든 / 초대받은) — 동적 재생성 불필요.
   late final TabController _tabController =
       TabController(length: 2, vsync: this);
 
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
+  // 최초 노출 시 1회 — 개수가 더 많은 탭을 기본 선택 (빈 탭부터 보여주지
+  // 않기). 이후엔 사용자의 탭 선택을 존중해 다시 건드리지 않는다.
+  bool _appliedInitialTab = false;
 
   @override
   Widget build(BuildContext context) {
@@ -56,6 +65,12 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen>
     final invited = <TeamRoom>[];
     for (final t in teams) {
       (t.ownedByMe ? owned : invited).add(t);
+    }
+
+    // 최초 노출 기본 탭 = 개수가 더 많은 쪽 (관상·궁합과 동일 규칙).
+    if (hasMyFace && !_appliedInitialTab) {
+      _appliedInitialTab = true;
+      if (invited.length > owned.length) _tabController.index = 1;
     }
 
     return Scaffold(
@@ -121,8 +136,8 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen>
                 unselectedLabelColor: AppColors.textHint,
                 indicatorColor: AppColors.textPrimary,
                 tabs: [
-                  Tab(text: '내가 만든 케미 그룹 (${owned.length})'),
-                  Tab(text: '초대받은 케미 그룹 (${invited.length})'),
+                  Tab(text: '내가 만든 그룹 (${owned.length})'),
+                  Tab(text: '초대받은 그룹 (${invited.length})'),
                 ],
               )
             : null,
@@ -145,70 +160,11 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen>
     );
   }
 
-  /// 당겨서 새로고침이 붙은 그룹 스크롤 — 탭 본문과 미등록 단일 스크롤 공용.
-  Widget _groupScroll(List<Widget> slivers, double topGap, double bottomGap) {
-    return RefreshIndicator(
-      onRefresh: _refreshGroups,
-      child: CustomScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        slivers: [
-          SliverToBoxAdapter(child: SizedBox(height: topGap)),
-          ...slivers,
-          // 다른 사람 관상 보기는 AppBar 우상단 버튼(카메라/앨범)으로 일원화 —
-          // 하단 중복 보조 컨테이너 제거.
-          SliverToBoxAdapter(child: SizedBox(height: bottomGap)),
-        ],
-      ),
-    );
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
-
-  // §3.8 공용 빈 상태 — 탭 본문(세로 중앙)과 미등록 섹션이 공유.
-  static const _ownedEmpty = EmotionEmptyState(
-    asset: 'assets/images/emotion-laugh.png',
-    message: '내가 만든 케미 그룹이 없소이다.',
-  );
-  static const _invitedEmpty = EmotionEmptyState(
-    asset: 'assets/images/emotion-shrug.png',
-    message: '초대받은 그룹이 없습니다',
-  );
-
-  /// 탭 본문 — 빈 리스트는 관상 빈 탭과 동일하게 SliverFillRemaining 으로
-  /// 화면 세로 중앙 정렬.
-  Widget _groupTab(
-    List<TeamRoom> rooms,
-    EmotionEmptyState empty,
-    double topGap,
-    double bottomGap,
-  ) {
-    if (rooms.isEmpty) {
-      return RefreshIndicator(
-        onRefresh: _refreshGroups,
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverFillRemaining(hasScrollBody: false, child: empty),
-          ],
-        ),
-      );
-    }
-    return _groupScroll([_roomListSliver(rooms)], topGap, bottomGap);
-  }
-
-  Widget _roomListSliver(List<TeamRoom> rooms) {
-    return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(
-          AppSpacing.xxl, AppSpacing.md, AppSpacing.xxl, 0),
-      sliver: SliverList.builder(
-        itemCount: rooms.length,
-        itemBuilder: (_, i) => _TeamCard(
-          key: ValueKey(rooms[i].id),
-          room: rooms[i],
-          onTap: () => _openRoom(rooms[i]),
-        ),
-      ),
-    );
-  }
-
   /// 내 관상 등록 — 공용 플로우 (nudge 배너와 동일 경로).
   Future<void> _createMyFace() => startMyFaceCapture(context, ref);
 
@@ -237,6 +193,45 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen>
     return null;
   }
 
+  /// 당겨서 새로고침이 붙은 그룹 스크롤 — 탭 본문과 미등록 단일 스크롤 공용.
+  Widget _groupScroll(List<Widget> slivers, double topGap, double bottomGap) {
+    return RefreshIndicator(
+      onRefresh: _refreshGroups,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverToBoxAdapter(child: SizedBox(height: topGap)),
+          ...slivers,
+          // 다른 사람 관상 보기는 AppBar 우상단 버튼(카메라/앨범)으로 일원화 —
+          // 하단 중복 보조 컨테이너 제거.
+          SliverToBoxAdapter(child: SizedBox(height: bottomGap)),
+        ],
+      ),
+    );
+  }
+
+  /// 탭 본문 — 빈 리스트는 관상 빈 탭과 동일하게 SliverFillRemaining 으로
+  /// 화면 세로 중앙 정렬.
+  Widget _groupTab(
+    List<TeamRoom> rooms,
+    EmotionEmptyState empty,
+    double topGap,
+    double bottomGap,
+  ) {
+    if (rooms.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _refreshGroups,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverFillRemaining(hasScrollBody: false, child: empty),
+          ],
+        ),
+      );
+    }
+    return _groupScroll([_roomListSliver(rooms)], topGap, bottomGap);
+  }
+
   void _openRoom(TeamRoom room) {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => TeamRoomScreen(roomId: room.id)),
@@ -254,6 +249,21 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen>
         // 개별 실패는 무시 — 나머지 그룹은 계속 갱신.
       }
     }
+  }
+
+  Widget _roomListSliver(List<TeamRoom> rooms) {
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.xxl, AppSpacing.md, AppSpacing.xxl, 0),
+      sliver: SliverList.builder(
+        itemCount: rooms.length,
+        itemBuilder: (_, i) => _TeamCard(
+          key: ValueKey(rooms[i].id),
+          room: rooms[i],
+          onTap: () => _openRoom(rooms[i]),
+        ),
+      ),
+    );
   }
 
   /// 교감도 안내 — 궁합 탭 info 다이얼로그와 동일한 형태 (AlertDialog · 흰 배경
@@ -277,8 +287,8 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen>
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                '그룹(3~12명) 멤버 전원의 얼굴 측정값으로 두 사람씩 모든 짝의 '
-                '케미를 계산해 한 장의 표로 보여줍니다. 짝별 계산 기준은 궁합 '
+                '그룹(3~12명) 멤버 전원의 얼굴 측정값으로 두 사람씩 모든 조합의 '
+                '케미를 계산해 한 장의 표로 보여줍니다. 조합별 계산 기준은 궁합 '
                 '분석과 동일합니다.',
                 style: AppText.body,
               ),
@@ -297,9 +307,8 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen>
               const Text('진행 방식', style: AppText.sectionTitle),
               const SizedBox(height: AppSpacing.sm),
               const Text(
-                '그룹을 만들고 직접촬영 또는 카톡 초대로 멤버를 등록합니다. '
-                '전원이 등록되면 그룹 케미가 발표됩니다. 3명 이상 모이면 '
-                '기다리지 않고 먼저 발표할 수 있습니다.',
+                '그룹을 만들고 참여할 멤버를 등록하면, 참가자를 직접촬영하거나 카톡/링크 초대를 보낼 수 있습니다. '
+                '참가자 전원이 관상을 등록하면 그룹 케미가 발표됩니다.',
                 style: AppText.body,
               ),
               const SizedBox(height: AppSpacing.lg),

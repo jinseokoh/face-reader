@@ -63,6 +63,19 @@ class SupabaseService {
     return id;
   }
 
+  /// 로그인 사용자 소유 metrics 전체 — 로그인 rehydrate(새 기기 복원)용.
+  /// 최신 우선 정렬 (history 리스트 관례 newest-first 와 일치).
+  Future<List<Map<String, dynamic>>> fetchMyMetrics() async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) return const [];
+    final rows = await _client
+        .from('metrics')
+        .select()
+        .eq('user_id', uid)
+        .order('created_at', ascending: false);
+    return (rows as List).cast<Map<String, dynamic>>();
+  }
+
   /// Fetch a single metrics record by UUID (for shared links).
   Future<Map<String, dynamic>?> getMetrics(String uuid) async {
     final response = await _client
