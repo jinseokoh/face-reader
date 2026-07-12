@@ -67,6 +67,7 @@ export function JoinWizard({
   playStoreUrl,
   supabaseUrl,
   supabaseAnonKey,
+  onProgress,
 }: {
   team: TeamShowcase;
   appOpenUrl: string;
@@ -74,11 +75,16 @@ export function JoinWizard({
   playStoreUrl: string;
   supabaseUrl: string;
   supabaseAnonKey: string;
+  /** 위저드가 entry 를 벗어나면 true — 부모가 초대장 칩을 숨기는 데 쓴다. */
+  onProgress?: (active: boolean) => void;
 }) {
   const [stage, setStage] = useState<Stage>("entry");
   const [previewOnly, setPreviewOnly] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [nickname, setNickname] = useState("");
+  // 이름 선택 — 빈 슬롯 하나 또는 "직접 입력" 중 한 곳만 활성.
+  const [slotPick, setSlotPick] = useState<string | null>(null);
+  const [direct, setDirect] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [gender, setGender] = useState<string | null>(null);
   const [age, setAge] = useState<string | null>(null);
@@ -174,6 +180,20 @@ export function JoinWizard({
   }, []);
 
   useEffect(() => () => stopCamera(), []);
+
+  useEffect(() => {
+    onProgress?.(stage !== "entry");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage]);
+
+  const openSlots = team.members.filter((m) => !m.joined);
+  // 빈 슬롯이 하나도 없으면 직접 입력이 유일한 경로.
+  const isDirect = direct || openSlots.length === 0;
+
+  /** 확정된 참여 이름 — 슬롯 선택 또는 직접 입력 중 활성인 쪽. */
+  function chosenName(): string {
+    return isDirect ? nameInput.trim() : (slotPick ?? "");
+  }
 
   function stopCamera() {
     if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
@@ -363,7 +383,7 @@ export function JoinWizard({
     const r = await joinTeam(client, {
       teamId: team.id,
       metricsId: metricsIdRef.current,
-      name: nameInput.trim(),
+      name: chosenName(),
     });
     if (r === "name-taken") {
       setNotice(
@@ -429,9 +449,11 @@ export function JoinWizard({
   }
 
   function onNameNext() {
-    const name = nameInput.trim();
+    const name = chosenName();
     if (!name) {
-      setNotice("이름을 입력하거나 자리를 골라 주세요.");
+      setNotice(
+        isDirect ? "이름을 입력해 주세요." : "자리를 고르거나 직접 입력을 눌러 주세요.",
+      );
       return;
     }
     const taken = team.members.some((m) => m.joined && m.name === name);
@@ -547,35 +569,46 @@ export function JoinWizard({
       {stage === "name" && (
         <>
           <p className="join-q">어떤 이름으로 참여할까요?</p>
-          {team.members.some((m) => !m.joined) && (
-            <>
-              <p className="join-sub">비어 있는 자리</p>
-              <div className="join-chips">
-                {team.members
-                  .filter((m) => !m.joined)
-                  .map((m) => (
-                    <button
-                      key={m.name}
-                      className={
-                        nameInput === m.name
-                          ? "join-chip join-chip--on"
-                          : "join-chip"
-                      }
-                      onClick={() => setNameInput(m.name)}
-                    >
-                      {m.name}
-                    </button>
-                  ))}
-              </div>
-            </>
+          {openSlots.length > 0 && (
+            <div className="join-chips">
+              {openSlots.map((m) => (
+                <button
+                  key={m.name}
+                  className={
+                    !isDirect && slotPick === m.name
+                      ? "join-chip join-chip--on"
+                      : "join-chip"
+                  }
+                  onClick={() => {
+                    setSlotPick(m.name);
+                    setDirect(false);
+                    setNotice("");
+                  }}
+                >
+                  {m.name}
+                </button>
+              ))}
+              <button
+                className={isDirect ? "join-chip join-chip--on" : "join-chip"}
+                onClick={() => {
+                  setDirect(true);
+                  setSlotPick(null);
+                  setNotice("");
+                }}
+              >
+                직접 입력
+              </button>
+            </div>
           )}
-          <input
-            className="join-input"
-            value={nameInput}
-            maxLength={10}
-            placeholder="이름 직접 입력"
-            onChange={(e) => setNameInput(e.target.value)}
-          />
+          {isDirect && (
+            <input
+              className="join-input"
+              value={nameInput}
+              maxLength={10}
+              placeholder="참여할 이름 입력"
+              onChange={(e) => setNameInput(e.target.value)}
+            />
+          )}
           {notice && <p className="join-notice">{notice}</p>}
           <div>
             <button className="join-btn" onClick={onNameNext}>

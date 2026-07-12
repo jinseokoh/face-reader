@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Route } from "./+types/g.$id";
 import { CTA } from "../components/CTA";
 import { JoinWizard } from "../components/JoinWizard";
@@ -68,6 +69,9 @@ export function meta({ data }: Route.MetaArgs) {
 
 export default function Group({ loaderData }: Route.ComponentProps) {
   const { team } = loaderData;
+  // 위저드 진행 중엔 초대장 멤버 칩을 숨긴다 — 위저드의 "비어 있는 자리"
+  // 목록과 같은 이름이 이중 노출되어 혼란을 만든다.
+  const [wizardActive, setWizardActive] = useState(false);
   return (
     <main className="share">
       {team.closed && team.payload ? (
@@ -76,7 +80,11 @@ export default function Group({ loaderData }: Route.ComponentProps) {
         <ClosedNotice title={team.title} allJoined={team.allJoined} />
       ) : (
         <>
-          <Invite title={team.title} members={team.members} />
+          <Invite
+            title={team.title}
+            members={team.members}
+            hideChips={wizardActive}
+          />
           {/* 미설치자 웹 참여 위저드 (미리보기 겸용) — 카카오 로그인 →
               슬롯 claim → 정면 캡처 → 그룹 합류까지 브라우저에서 완결. */}
           <JoinWizard
@@ -86,6 +94,7 @@ export default function Group({ loaderData }: Route.ComponentProps) {
             playStoreUrl={loaderData.playStoreUrl}
             supabaseUrl={loaderData.supabaseUrl}
             supabaseAnonKey={loaderData.supabaseAnonKey}
+            onProgress={setWizardActive}
           />
         </>
       )}
@@ -101,9 +110,11 @@ export default function Group({ loaderData }: Route.ComponentProps) {
 function Invite({
   title,
   members,
+  hideChips,
 }: {
   title: string;
   members: TeamShowcase["members"];
+  hideChips: boolean;
 }) {
   const joinedCount = members.filter((m) => m.joined).length;
   return (
@@ -112,7 +123,7 @@ function Invite({
       <p style={{ color: "#666", fontSize: 14, marginTop: 8 }}>
         {joinedCount}명 등록 · 당신 자리가 비어 있어요
       </p>
-      {members.length > 0 && (
+      {!hideChips && members.length > 0 && (
         <div className="invite-chips">
           {members.map((m, i) => (
             <span
