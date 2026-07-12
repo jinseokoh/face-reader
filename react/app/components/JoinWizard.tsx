@@ -116,7 +116,11 @@ export function JoinWizard({
   useEffect(() => {
     setInApp(detectInApp());
     if (!supabaseUrl || !supabaseAnonKey) return;
-    const cameFromLogin = cleanAuthParams();
+    // ⚠️ 순서 중요 — ?code= 는 createClient(detectSessionInUrl)가 세션으로
+    // 교환한 뒤에 지워야 한다. 먼저 지우면 교환이 영영 안 일어난다.
+    const cameFromLogin = new URL(window.location.href).searchParams.has(
+      "code",
+    );
     const client = sb();
     const { data: sub } = client.auth.onAuthStateChange((_e, s) => {
       sessionRef.current = s;
@@ -129,9 +133,16 @@ export function JoinWizard({
       }
     });
     void client.auth.getSession().then(({ data }) => {
+      // 이 시점엔 code→세션 교환이 끝났으므로 주소창의 흔적을 지워도 안전.
+      cleanAuthParams();
       sessionRef.current = data.session;
       setSession(data.session);
-      if (!data.session) return;
+      if (!data.session) {
+        if (cameFromLogin) {
+          setNotice("로그인 처리에 실패했어요. 다시 시도해 주세요.");
+        }
+        return;
+      }
       void fetchNickname(client, data.session.user.id).then((n) => {
         setNickname(n);
         setNameInput((cur) => cur || n);
