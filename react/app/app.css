@@ -872,12 +872,27 @@ textarea.form-input {
   justify-content: center;
   gap: 8px;
 }
-.join-video {
+.join-camera-wrap {
+  position: relative;
+  display: inline-block;
   width: 100%;
   max-width: 320px;
+}
+.join-video {
+  display: block;
+  width: 100%;
   border-radius: 12px;
   background: #fff;
   transform: scaleX(-1);
+}
+.join-mesh {
+  /* video 와 같은 박스에 겹쳐 같은 미러 변환 — landmark 좌표가 그대로 맞는다 */
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: scaleX(-1);
+  pointer-events: none;
 }
 .join-badge {
   display: inline-block;

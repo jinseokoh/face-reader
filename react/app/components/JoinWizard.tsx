@@ -104,8 +104,24 @@ export function JoinWizard({
   const sbRef = useRef<SupabaseClient | null>(null);
   const sessionRef = useRef<Session | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const landmarkerRef = useRef<unknown>(null);
+  // MediaPipe 오버레이 도구 — preload 시 채워지고 loop 가 매 프레임 그린다.
+  const drawToolsRef = useRef<{
+    DrawingUtils: new (ctx: CanvasRenderingContext2D) => {
+      drawConnectors: (
+        lms: { x: number; y: number }[],
+        connections: unknown,
+        style: { color: string; lineWidth: number },
+      ) => void;
+      drawLandmarks: (
+        lms: { x: number; y: number }[],
+        style: { color: string; fillColor: string; radius: number; lineWidth: number },
+      ) => void;
+    };
+    tesselation: unknown;
+  } | null>(null);
   const preloadRef = useRef<Promise<void> | null>(null);
   const rafRef = useRef<number | null>(null);
   const hitsRef = useRef(0);
@@ -192,6 +208,10 @@ export function JoinWizard({
     noFaceTimerRef.current = null;
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
+    const canvas = canvasRef.current;
+    canvas
+      ?.getContext("2d")
+      ?.clearRect(0, 0, canvas.width, canvas.height);
   }
 
   function fail(msg: string) {
@@ -205,9 +225,13 @@ export function JoinWizard({
     if (!preloadRef.current) {
       preloadRef.current = (async () => {
         await import("../lib/shared/face_engine.js");
-        const { FaceLandmarker, FilesetResolver } = await import(
+        const { FaceLandmarker, FilesetResolver, DrawingUtils } = await import(
           "@mediapipe/tasks-vision"
         );
+        drawToolsRef.current = {
+          DrawingUtils: DrawingUtils as never,
+          tesselation: FaceLandmarker.FACE_LANDMARKS_TESSELATION,
+        };
         const fileset = await FilesetResolver.forVisionTasks(MP_WASM);
         landmarkerRef.current = await FaceLandmarker.createFromOptions(
           fileset,
@@ -275,6 +299,7 @@ export function JoinWizard({
     if (video.readyState >= 2) {
       const res = landmarker.detectForVideo(video, performance.now());
       const face = res.faceLandmarks?.[0];
+      drawMesh(video, face ?? null);
       if (face && face.length >= 468) {
         hitsRef.current += 1;
         setHint("좋아요! 잠시만 그대로…");
@@ -290,6 +315,39 @@ export function JoinWizard({
       }
     }
     rafRef.current = requestAnimationFrame(loop);
+  }
+
+  /** 앱 FaceMeshPainter 와 동일 문법 — tesselation(alpha 0.15) + landmark 점.
+   *  검출 성립 = greenAccent (앱의 정렬 OK 색). 미검출이면 지운다. */
+  function drawMesh(
+    video: HTMLVideoElement,
+    face: { x: number; y: number }[] | null,
+  ) {
+    const canvas = canvasRef.current;
+    const tools = drawToolsRef.current;
+    if (!canvas || !tools) return;
+    if (
+      canvas.width !== video.videoWidth ||
+      canvas.height !== video.videoHeight
+    ) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+    }
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (!face) return;
+    const draw = new tools.DrawingUtils(ctx);
+    draw.drawConnectors(face, tools.tesselation, {
+      color: "rgba(105, 240, 174, 0.15)", // greenAccent × 0.15 (앱 동일)
+      lineWidth: 0.5,
+    });
+    draw.drawLandmarks(face, {
+      color: "#69f0ae",
+      fillColor: "#69f0ae",
+      radius: 1.2,
+      lineWidth: 0,
+    });
   }
 
   /** 검출 순간의 video 프레임 → 200×200 미러 crop JPEG (앱 썸네일과 동급). */
@@ -441,14 +499,15 @@ export function JoinWizard({
 
   // ── 렌더 ──────────────────────────────────────────────────────────────
   // ref race 방지 — video 는 항상 마운트, 카메라 단계에서만 표시.
+  // 캔버스가 video 위에 겹쳐 landmark mesh 오버레이를 그린다 (앱과 동일).
   const video = (
-    <video
-      ref={videoRef}
-      playsInline
-      muted
-      className="join-video"
+    <div
+      className="join-camera-wrap"
       style={stage === "camera" ? undefined : { display: "none" }}
-    />
+    >
+      <video ref={videoRef} playsInline muted className="join-video" />
+      <canvas ref={canvasRef} className="join-mesh" />
+    </div>
   );
 
   // 카톡 웹뷰 — 카메라가 막혀 있어 기본 브라우저로 재오픈해야 진행 가능.
