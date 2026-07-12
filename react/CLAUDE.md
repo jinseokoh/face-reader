@@ -17,5 +17,5 @@
 pnpm build:shared    # 첫 실행 전 필수
 pnpm dev
 pnpm typecheck
-pnpm deploy
+pnpm build && pnpm run deploy   # ⚠️ deploy 는 빌드 안 함 — build 생략 시 낡은 번들이 올라간다
 ```
