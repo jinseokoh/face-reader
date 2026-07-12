@@ -1,6 +1,6 @@
 import type { Route } from "./+types/g.$id";
 import { CTA } from "../components/CTA";
-import { CameraTeaser } from "../components/CameraTeaser";
+import { JoinWizard } from "../components/JoinWizard";
 import {
   fetchTeam,
   type TeamPayload,
@@ -77,12 +77,15 @@ export default function Group({ loaderData }: Route.ComponentProps) {
       ) : (
         <>
           <Invite title={team.title} members={team.members} />
-          {/* 비연락처 설치 전 티저 — 정면 1장으로 미리보기 → 설치 유도. */}
-          <CameraTeaser
+          {/* 미설치자 웹 참여 위저드 (미리보기 겸용) — 카카오 로그인 →
+              슬롯 claim → 정면 캡처 → 그룹 합류까지 브라우저에서 완결. */}
+          <JoinWizard
             team={team}
             appOpenUrl={loaderData.appOpenUrl}
             appStoreUrl={loaderData.appStoreUrl}
             playStoreUrl={loaderData.playStoreUrl}
+            supabaseUrl={loaderData.supabaseUrl}
+            supabaseAnonKey={loaderData.supabaseAnonKey}
           />
         </>
       )}
