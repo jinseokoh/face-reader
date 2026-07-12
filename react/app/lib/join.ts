@@ -182,7 +182,11 @@ export async function saveCapture(
   },
 ): Promise<string | null> {
   const id = args.id ?? crypto.randomUUID();
-  const key = args.thumb ? await uploadThumbnail(id, args.thumb) : null;
+  // 재촬영(overwrite)의 썸네일은 반드시 **새 키**로 — 같은 키에 재업로드하면
+  // CDN·브라우저 캐시가 옛 사진을 계속 서빙한다 (키는 불변, 내용 교체 금지).
+  // 신규 캡처는 1 capture = 1 uuid 원칙대로 metrics id 를 키에 쓴다.
+  const thumbUuid = args.id ? crypto.randomUUID() : id;
+  const key = args.thumb ? await uploadThumbnail(thumbUuid, args.thumb) : null;
   const body: WebCaptureBody = key
     ? { ...args.body, thumbnailKey: key }
     : args.body;
