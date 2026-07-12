@@ -399,9 +399,17 @@ export function JoinWizard({
 
   // ── 액션 핸들러 ────────────────────────────────────────────────────────
   function onJoinStart() {
-    setNotice("");
-    if (sessionRef.current) setStage("name");
-    else void loginWithKakao(sb());
+    if (sessionRef.current) {
+      setNotice("");
+      setStage("name");
+      return;
+    }
+    // 클릭이 먹었는지 즉시 가시화 — 실패 시 사유도 화면에 띄운다.
+    setNotice("카카오 로그인으로 이동 중…");
+    loginWithKakao(sb()).catch((e) => {
+      console.error("[join] kakao login failed:", e);
+      setNotice("카카오 로그인을 열지 못했어요. 새로고침 후 다시 시도해 주세요.");
+    });
   }
 
   function onPreviewStart() {
@@ -517,6 +525,7 @@ export function JoinWizard({
             <KakaoTalkIcon />
             카카오로 참여하기
           </button>
+          {notice && <p className="join-notice">{notice}</p>}
           <p className="join-sub">설치 없이 브라우저에서 얼굴 등록까지</p>
           <button className="join-btn--ghost" onClick={onPreviewStart}>
             먼저 미리보기

@@ -16,13 +16,29 @@ export function getSupabase(url: string, anonKey: string): SupabaseClient {
   return client;
 }
 
-/** 카카오 OAuth 시작 — 현재 페이지(쿼리 제거)로 복귀하도록 redirect. */
+/**
+ * 카카오 OAuth 시작 — 현재 페이지(쿼리 제거)로 복귀하도록 redirect.
+ * supabase-js 의 자동 redirect 에 맡기지 않고 URL 을 받아 직접 이동한다
+ * (내부 실패가 조용히 삼켜져 "무반응" 이 되는 것을 차단). 실패 시 throw.
+ */
 export async function loginWithKakao(sb: SupabaseClient): Promise<void> {
   const url = new URL(window.location.href);
-  await sb.auth.signInWithOAuth({
+  const { data, error } = await sb.auth.signInWithOAuth({
     provider: "kakao",
-    options: { redirectTo: `${url.origin}${url.pathname}` },
+    options: {
+      redirectTo: `${url.origin}${url.pathname}`,
+      skipBrowserRedirect: true,
+    },
   });
+  if (error) {
+    console.error("[auth] signInWithOAuth error:", error);
+    throw error;
+  }
+  if (!data?.url) {
+    console.error("[auth] signInWithOAuth returned no url");
+    throw new Error("no-oauth-url");
+  }
+  window.location.assign(data.url);
 }
 
 /** users.nickname (self-read RLS) → 없으면 kakao user_metadata fallback. */
