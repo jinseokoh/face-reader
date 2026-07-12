@@ -12,6 +12,7 @@ import {
   fetchMembership,
   fetchMyFace,
   fetchProgress,
+  fetchRoster,
   isTeamOpen,
   joinTeam,
   saveCapture,
@@ -37,8 +38,8 @@ const MP_MODEL =
 const NO_FACE_TIMEOUT_MS = 20_000;
 // 성별/나이대는 한 번 고르면 localStorage 에 남겨 다음 방문에 prefill.
 const DEMO_KEY = "facely:demographic";
-// 앱 face_mesh_page 와 동일 — 얼굴이 잡히면 2초 카운트다운 후 자동 찰칵.
-const COUNTDOWN_MS = 2_000;
+// 얼굴이 잡히면 3초 카운트다운 (3 → 2 → 1) 후 자동 찰칵.
+const COUNTDOWN_MS = 3_000;
 
 type Stage =
   | "entry"
@@ -72,6 +73,7 @@ export function JoinWizard({
   supabaseAnonKey,
   cdnBase,
   onProgress,
+  onJoined,
 }: {
   team: TeamShowcase;
   supabaseUrl: string;
@@ -80,6 +82,8 @@ export function JoinWizard({
   cdnBase: string;
   /** 위저드가 entry 를 벗어나면 true — 부모가 초대장 칩을 숨기는 데 쓴다. */
   onProgress?: (active: boolean) => void;
+  /** 참여 성립 시 최신 등록 수 전달 — 헤더 subtitle 이 '참여 완료' 로 바뀐다. */
+  onJoined?: (joined: number) => void;
 }) {
   const [stage, setStage] = useState<Stage>("entry");
   const [session, setSession] = useState<Session | null>(null);
@@ -111,6 +115,10 @@ export function JoinWizard({
     joined: number;
     total: number;
   } | null>(null);
+  // 등록 완료한 참여자 명단 — done 화면의 아바타 로스터.
+  const [roster, setRoster] = useState<
+    { name: string; thumbnailKey: string | null }[]
+  >([]);
   const [hint, setHint] = useState("얼굴을 화면 안에 맞춰 주세요");
   // 자동 촬영 카운트다운 (2 → 1) — 비디오 위 대형 숫자.
   const [count, setCount] = useState<number | null>(null);
@@ -215,7 +223,9 @@ export function JoinWizard({
       if (cameFromLogin) {
         // 로그인하고 복귀 — 이미 참여했으면 재참여 확인, 아니면 이름 선택.
         if (member) {
-          setProgress(await fetchProgress(client, team.id));
+          const p = await fetchProgress(client, team.id);
+          setProgress(p);
+          if (p) onJoined?.(p.joined);
           setStage("already");
         } else {
           setStage("name");
@@ -525,8 +535,7 @@ export function JoinWizard({
     }
     // 이미 참여한 슬롯의 재촬영 — metrics id 가 그대로라 명단 변경이 없다.
     if (membership && metricsIdRef.current === membership.metricsId) {
-      setProgress(await fetchProgress(client, team.id));
-      setStage("done");
+      await finishJoin(client);
       return;
     }
     const r = await joinTeam(client, {
@@ -545,7 +554,18 @@ export function JoinWizard({
       fail("참여에 실패했어요. 잠시 후 다시 시도해 주세요.");
       return;
     }
-    setProgress(await fetchProgress(client, team.id));
+    await finishJoin(client);
+  }
+
+  /** 참여 성립 마무리 — 최신 현황·로스터를 읽고 done 으로. */
+  async function finishJoin(client: SupabaseClient) {
+    const [p, r] = await Promise.all([
+      fetchProgress(client, team.id),
+      fetchRoster(client, team.id),
+    ]);
+    setProgress(p);
+    setRoster(r);
+    if (p) onJoined?.(p.joined);
     setStage("done");
   }
 
@@ -560,7 +580,9 @@ export function JoinWizard({
         membership ?? (await fetchMembership(client, team.id, s.user.id));
       if (member) {
         setMembership(member);
-        setProgress(await fetchProgress(client, team.id));
+        const p = await fetchProgress(client, team.id);
+        setProgress(p);
+        if (p) onJoined?.(p.joined);
         setStage("already");
       } else {
         setStage("name");
@@ -675,7 +697,6 @@ export function JoinWizard({
 
       {stage === "already" && membership && (
         <>
-          <div className="join-badge">참여 완료 ✓</div>
           {avatarUrl(membership.thumbnailKey) && (
             <>
               <img
@@ -860,16 +881,30 @@ export function JoinWizard({
 
       {stage === "done" && (
         <>
-          <div className="join-badge">참여 완료 ✓</div>
-          {progress ? (
-            progress.joined >= progress.total ? (
-              <p className="join-q">전원 등록 완료!</p>
-            ) : (
-              <p className="join-q">
-                {progress.total}명 중 {progress.joined}명 등록
-              </p>
-            )
-          ) : null}
+          {/* 앱 팀룸처럼 — 지금까지 등록한 참여자 아바타 + 닉네임 로스터. */}
+          {roster.length > 0 && (
+            <div className="join-roster">
+              {roster.map((m) => (
+                <div key={m.name} className="join-roster-item">
+                  {avatarUrl(m.thumbnailKey) ? (
+                    <img
+                      className="join-avatar"
+                      src={avatarUrl(m.thumbnailKey)!}
+                      alt=""
+                    />
+                  ) : (
+                    <div className="join-avatar join-avatar--letter">
+                      {m.name.slice(0, 1)}
+                    </div>
+                  )}
+                  <p className="join-avatar-name">{m.name}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          {progress && progress.joined >= progress.total && (
+            <p className="join-q">전원 등록 완료!</p>
+          )}
           <p className="join-sub">
             전원이 모이면 이 링크에서 그룹 케미 결과표가 공개됩니다. 측면까지
             넣은 정밀 분석은 앱에서만 가능합니다.

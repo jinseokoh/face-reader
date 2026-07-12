@@ -120,6 +120,35 @@ export async function fetchMembership(
   };
 }
 
+/** 등록 완료한 참여자 명단(방장 먼저) — 이름 + 썸네일 키. done 화면 로스터용. */
+export async function fetchRoster(
+  sb: SupabaseClient,
+  teamId: string,
+): Promise<{ name: string; thumbnailKey: string | null }[]> {
+  const { data } = await sb
+    .from("team_members")
+    .select("name,metrics_id,is_owner,joined_at")
+    .eq("team_id", teamId)
+    .order("joined_at");
+  const rows = (data ?? []).filter((r) => r.metrics_id != null);
+  const ordered = [
+    ...rows.filter((r) => r.is_owner),
+    ...rows.filter((r) => !r.is_owner),
+  ];
+  const ids = ordered.map((r) => r.metrics_id as string);
+  const thumbs = new Map<string, string | null>();
+  if (ids.length > 0) {
+    const { data: ms } = await sb.from("metrics").select("id,body").in("id", ids);
+    for (const m of ms ?? []) {
+      thumbs.set(m.id as string, thumbKeyOf(m.body as string | null));
+    }
+  }
+  return ordered.map((r) => ({
+    name: r.name as string,
+    thumbnailKey: thumbs.get(r.metrics_id as string) ?? null,
+  }));
+}
+
 /** 그룹 등록 현황 — joined = metrics 등록 완료 슬롯 수, total = 전체 슬롯. */
 export async function fetchProgress(
   sb: SupabaseClient,

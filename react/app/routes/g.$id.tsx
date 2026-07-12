@@ -73,6 +73,8 @@ export default function Group({ loaderData }: Route.ComponentProps) {
   // 위저드 진행 중엔 초대장 멤버 칩을 숨긴다 — 위저드의 "비어 있는 자리"
   // 목록과 같은 이름이 이중 노출되어 혼란을 만든다.
   const [wizardActive, setWizardActive] = useState(false);
+  // 참여 성립 시 최신 등록 수 — 헤더 subtitle 이 '참여 완료했습니다' 로 바뀐다.
+  const [joinedCount, setJoinedCount] = useState<number | null>(null);
   return (
     <main className="share">
       {team.closed && team.payload ? (
@@ -85,6 +87,7 @@ export default function Group({ loaderData }: Route.ComponentProps) {
             title={team.title}
             members={team.members}
             hideChips={wizardActive}
+            joinedCount={joinedCount}
           />
           {/* 미설치자 웹 참여 위저드 (미리보기 겸용) — 카카오 로그인 →
               슬롯 claim → 정면 캡처 → 그룹 합류까지 브라우저에서 완결. */}
@@ -94,6 +97,7 @@ export default function Group({ loaderData }: Route.ComponentProps) {
             supabaseAnonKey={loaderData.supabaseAnonKey}
             cdnBase={loaderData.cdnBase}
             onProgress={setWizardActive}
+            onJoined={setJoinedCount}
           />
         </>
       )}
@@ -110,17 +114,21 @@ function Invite({
   title,
   members,
   hideChips,
+  joinedCount,
 }: {
   title: string;
   members: TeamShowcase["members"];
   hideChips: boolean;
+  /** 내 참여가 성립된 뒤의 최신 등록 수 — null 이면 아직 미참여. */
+  joinedCount: number | null;
 }) {
-  const joinedCount = members.filter((m) => m.joined).length;
+  const joined = joinedCount ?? members.filter((m) => m.joined).length;
   return (
     <section style={{ textAlign: "center", padding: "24px 16px" }}>
       <h1 style={{ fontSize: 24, color: "#1a1a1a", margin: 0 }}>{title}</h1>
       <p style={{ color: "#666", fontSize: 14, marginTop: 8 }}>
-        {joinedCount}명 등록 · 당신 자리가 비어 있어요
+        {joined}명 등록 ·{" "}
+        {joinedCount != null ? "참여 완료했습니다." : "당신 자리가 비어 있어요"}
       </p>
       {!hideChips && members.length > 0 && (
         <div className="invite-chips">
