@@ -179,6 +179,10 @@ export async function saveCapture(
     body: WebCaptureBody;
     thumb: Blob | null;
     id?: string;
+    /** 재촬영 시 교체 대상인 옛 썸네일 키 — 새 키 성립 후 즉시 삭제. */
+    oldKey?: string | null;
+    /** 옛 썸네일 삭제 API 인증용 (session.access_token). */
+    accessToken?: string;
   },
 ): Promise<string | null> {
   const id = args.id ?? crypto.randomUUID();
@@ -187,9 +191,25 @@ export async function saveCapture(
   // 신규 캡처는 1 capture = 1 uuid 원칙대로 metrics id 를 키에 쓴다.
   const thumbUuid = args.id ? crypto.randomUUID() : id;
   const key = args.thumb ? await uploadThumbnail(thumbUuid, args.thumb) : null;
+  // 새 썸네일이 성립했으면 옛 객체를 즉시 삭제 (고아 0, cron 불필요).
+  // body 가 아직 옛 키를 참조하는 upsert **이전** 시점이라 서버 소유 검증 통과.
+  // 실패해도 참여 흐름은 계속 (고아 1개 감수).
+  if (key && args.oldKey && args.accessToken) {
+    await fetch("/api/r2/delete", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${args.accessToken}`,
+      },
+      body: JSON.stringify({ key: args.oldKey }),
+    }).catch(() => {});
+  }
+  // 새 업로드 실패 시엔 옛 키를 보존해 아바타가 깨지지 않게 한다.
   const body: WebCaptureBody = key
     ? { ...args.body, thumbnailKey: key }
-    : args.body;
+    : args.oldKey
+      ? { ...args.body, thumbnailKey: args.oldKey }
+      : args.body;
   const { error } = await sb.from("metrics").upsert(
     {
       id,

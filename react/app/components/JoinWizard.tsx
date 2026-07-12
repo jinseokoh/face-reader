@@ -527,6 +527,8 @@ export function JoinWizard({
         body,
         thumb: thumbRef.current,
         id: membership?.metricsId ?? existing?.id ?? undefined,
+        oldKey: membership?.thumbnailKey ?? existing?.thumbnailKey ?? null,
+        accessToken: s.access_token,
       });
     }
     if (!metricsIdRef.current) {
