@@ -37,11 +37,20 @@ class SupabaseService {
     if (report.isMyFace && uid != null) {
       existing = await _myFaceRow(uid);
       final oldKey = existing?.thumbnailKey;
-      if (oldKey != null && oldKey != report.thumbnailKey) {
-        final token = _client.auth.currentSession?.accessToken;
-        if (token != null) {
-          final ok = await R2Uploader().deleteObject(oldKey, accessToken: token);
-          debugPrint('[Supabase.saveMetrics] old thumbnail delete ok=$ok key=$oldKey');
+      if (oldKey != null) {
+        if (report.thumbnailKey == null) {
+          // 새 썸네일이 없으면(메타데이터 타임아웃 등) 옛 키를 보존 — 아바타가
+          // 깨지지 않게 body 가 계속 살아있는 객체를 가리키게 한다 (웹 saveCapture
+          // 와 동일 규칙). 삭제하지 않는다.
+          report.thumbnailKey = oldKey;
+        } else if (oldKey != report.thumbnailKey) {
+          final token = _client.auth.currentSession?.accessToken;
+          if (token != null) {
+            final ok =
+                await R2Uploader().deleteObject(oldKey, accessToken: token);
+            debugPrint(
+                '[Supabase.saveMetrics] old thumbnail delete ok=$ok key=$oldKey');
+          }
         }
       }
     }
