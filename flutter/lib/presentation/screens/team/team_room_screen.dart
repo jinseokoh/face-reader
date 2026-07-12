@@ -464,6 +464,9 @@ class _MemberCell extends StatelessWidget {
   }
 
   Widget _faceAvatar() {
+    // 1순위 로컬 파일 → 2순위 CDN(thumbnailKey) → user 아이콘 (관상 리스트·
+    // 궁합 아바타와 동일 3단). rehydrate 복원 내 관상·원격 합류 멤버는
+    // thumbnailPath=null 이지만 thumbnailKey 로 실제 얼굴을 띄운다.
     const size = 56.0;
     final file = ThumbnailPaths.resolveFileSync(report!.thumbnailPath);
     if (file != null && file.existsSync()) {
@@ -471,6 +474,22 @@ class _MemberCell extends StatelessWidget {
         child: Image.file(file, width: size, height: size, fit: BoxFit.cover),
       );
     }
+    final cdn = ThumbnailPaths.cdnUrl(report!.thumbnailKey);
+    if (cdn != null) {
+      return ClipOval(
+        child: Image.network(
+          cdn,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _iconAvatar(size),
+        ),
+      );
+    }
+    return _iconAvatar(size);
+  }
+
+  Widget _iconAvatar(double size) {
     return Container(
       width: size,
       height: size,

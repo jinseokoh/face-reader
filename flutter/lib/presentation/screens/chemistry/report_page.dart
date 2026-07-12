@@ -29,6 +29,7 @@ import 'package:facely/presentation/providers/recent_unlock_focus_provider.dart'
 import 'package:facely/presentation/providers/tab_provider.dart';
 import 'package:facely/presentation/screens/compatibility/compat_unlock_action.dart';
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
+import 'package:facely/presentation/widgets/detail_avatar.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -1151,9 +1152,17 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _UserAvatar(
-                        thumbnailPath: report.thumbnailPath,
-                        thumbnailKey: report.thumbnailKey),
+                    DetailAvatar(
+                      thumbnailPath: report.thumbnailPath,
+                      thumbnailKey: report.thumbnailKey,
+                      fallback: Container(
+                        color: Colors.white.withValues(alpha: 0.12),
+                        child: const Center(
+                          child: FaIcon(FontAwesomeIcons.user,
+                              color: Colors.white54, size: 18),
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     Text(
                       '${report.ageGroup.labelKo} ${report.gender.labelKo} ${report.ethnicity.labelKo}',
@@ -1926,49 +1935,6 @@ class _TldrChipData {
   final String label;
   final _ChipTone tone;
   const _TldrChipData({required this.label, required this.tone});
-}
-
-/// 관상 hero 카드의 우측 thumbnail avatar — 사용자 얼굴 thumbnail 을 100px
-/// 원형 frame 에. thumbnail 이 없으면 user icon placeholder.
-class _UserAvatar extends StatelessWidget {
-  final String? thumbnailPath;
-  final String? thumbnailKey;
-  const _UserAvatar({required this.thumbnailPath, this.thumbnailKey});
-
-  @override
-  Widget build(BuildContext context) {
-    const size = 50.0;
-    // 로컬 thumbnailPath → CDN thumbnailKey → user 아이콘.
-    final file = ThumbnailPaths.resolveFileSync(thumbnailPath);
-    final cdn = ThumbnailPaths.cdnUrl(thumbnailKey);
-    final Widget placeholder = Container(
-      color: Colors.white.withValues(alpha: 0.12),
-      child: const Center(
-        child: FaIcon(FontAwesomeIcons.user,
-            color: Colors.white54, size: 18),
-      ),
-    );
-    Widget inner = placeholder;
-    if (file != null && file.existsSync()) {
-      inner = Image.file(file, width: size, height: size, fit: BoxFit.cover);
-    } else if (cdn != null) {
-      inner = Image.network(cdn,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => placeholder);
-    }
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(
-            color: Colors.white.withValues(alpha: 0.3), width: 1.5),
-      ),
-      child: ClipOval(child: inner),
-    );
-  }
 }
 
 // ─── Yin-Yang balance bar (음기 ←→ 양기 축) ───

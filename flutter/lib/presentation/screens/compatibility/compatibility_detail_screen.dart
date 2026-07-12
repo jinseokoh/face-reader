@@ -20,6 +20,7 @@ import 'package:facely/core/theme.dart';
 import 'package:facely/domain/services/share/share_publisher.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
+import 'package:facely/presentation/widgets/detail_avatar.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -239,11 +240,18 @@ class _CompatShareSide extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _Thumb(
-            path: report.thumbnailPath,
-            thumbnailKey: report.thumbnailKey,
-            gender: report.gender,
-            size: 56),
+        DetailAvatar(
+          thumbnailPath: report.thumbnailPath,
+          thumbnailKey: report.thumbnailKey,
+          fallback: Image.asset(
+            report.gender == Gender.male
+                ? 'assets/icons/male.png'
+                : 'assets/icons/female.png',
+            width: DetailAvatar.size,
+            height: DetailAvatar.size,
+            fit: BoxFit.cover,
+          ),
+        ),
         const SizedBox(height: 8),
         Text(alias,
             maxLines: 1,
@@ -447,63 +455,6 @@ class _SubScorePanel extends StatelessWidget {
     return Column(
       children: [for (final r in rows) _SubBar(row: r)],
     );
-  }
-}
-
-class _Thumb extends StatelessWidget {
-  final String? path;
-  final String? thumbnailKey;
-  final Gender gender;
-  final double size;
-  const _Thumb({
-    required this.path,
-    this.thumbnailKey,
-    required this.gender,
-    this.size = 44,
-  });
-  @override
-  Widget build(BuildContext context) {
-    // 로컬 thumbnailPath → CDN thumbnailKey → gender fallback(male/female png).
-    final file = ThumbnailPaths.resolveFileSync(path);
-    final hasFile = file != null && file.existsSync();
-    final cdn = ThumbnailPaths.cdnUrl(thumbnailKey);
-    final fallback = _genderFallback();
-    final Widget child;
-    if (hasFile) {
-      child = Image.file(file,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => fallback);
-    } else if (cdn != null) {
-      child = Image.network(cdn,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => fallback);
-    } else {
-      child = fallback;
-    }
-    return Container(
-      width: size,
-      height: size,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: AppTheme.border,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: child,
-    );
-  }
-
-  /// thumbnail 없을 때 성별 기본 아바타 — 성별을 알고 있으므로 무성별 아이콘
-  /// 대신 male/female png 를 쓴다.
-  Widget _genderFallback() {
-    final asset = switch (gender) {
-      Gender.male => 'assets/icons/male.png',
-      Gender.female => 'assets/icons/female.png',
-    };
-    return Image.asset(asset, width: size, height: size, fit: BoxFit.cover);
   }
 }
 
