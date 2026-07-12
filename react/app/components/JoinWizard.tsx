@@ -677,14 +677,26 @@ export function JoinWizard({
         <>
           <div className="join-badge">참여 완료 ✓</div>
           {avatarUrl(membership.thumbnailKey) && (
-            <img
-              className="join-avatar"
-              src={avatarUrl(membership.thumbnailKey)!}
-              alt=""
-            />
+            <>
+              <img
+                className="join-avatar"
+                src={avatarUrl(membership.thumbnailKey)!}
+                alt=""
+              />
+              {/* 아바타 라벨은 항상 실명(nickname/슬롯명) — '나' 표기 금지 */}
+              <p className="join-avatar-name">
+                {membership.name === "나"
+                  ? nickname || membership.name
+                  : membership.name}
+              </p>
+            </>
           )}
           <p className="join-q">
-            이미 &lsquo;{membership.name}&rsquo;(으)로 참여한 그룹이에요
+            이미 &lsquo;
+            {membership.name === "나"
+              ? nickname || membership.name
+              : membership.name}
+            &rsquo;(으)로 참여한 그룹이에요
           </p>
           {progress && (
             <p className="join-sub">
@@ -755,11 +767,14 @@ export function JoinWizard({
       {stage === "reuse" && (
         <>
           {avatarUrl(existing?.thumbnailKey) && (
-            <img
-              className="join-avatar"
-              src={avatarUrl(existing?.thumbnailKey)!}
-              alt=""
-            />
+            <>
+              <img
+                className="join-avatar"
+                src={avatarUrl(existing?.thumbnailKey)!}
+                alt=""
+              />
+              {nickname && <p className="join-avatar-name">{nickname}</p>}
+            </>
           )}
           <p className="join-q">이미 등록된 내 관상이 있어요</p>
           <p className="join-sub">

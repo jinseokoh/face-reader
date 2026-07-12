@@ -918,6 +918,12 @@ textarea.form-input {
   background: #fff;
   margin: 12px auto;
 }
+.join-avatar-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 12px;
+}
 .join-badge {
   display: inline-block;
   background: #fff;

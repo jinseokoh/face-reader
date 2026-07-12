@@ -390,6 +390,10 @@ class _GroupSettingsDialogState extends State<_GroupSettingsDialog> {
 /// 방장은 gold 테두리 + 좌상단 "나" 배지. 길게 눌러 제거(방장 제외).
 class _MemberCell extends StatelessWidget {
   final TeamMember member;
+
+  /// 아바타 아래 라벨 — '나' 노출 금지, 방장 셀은 nickname 으로 치환해 전달.
+  /// ('나' 는 좌상단 gold 배지 장식 전용.)
+  final String displayName;
   final FaceReadingReport? report;
   final bool isOwner;
   final VoidCallback? onTap;
@@ -398,6 +402,7 @@ class _MemberCell extends StatelessWidget {
   const _MemberCell({
     super.key,
     required this.member,
+    required this.displayName,
     required this.report,
     required this.isOwner,
     this.onTap,
@@ -451,7 +456,7 @@ class _MemberCell extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            member.name,
+            displayName,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: AppText.caption.copyWith(
@@ -617,6 +622,9 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
                       key: ValueKey(room.members[i].reportId ??
                           'pending:${room.members[i].name}'),
                       member: room.members[i],
+                      displayName: room.members[i].name == '나'
+                          ? (ref.watch(authProvider)?.nickname ?? '나')
+                          : room.members[i].name,
                       report: notifier.reportForInRoom(room, i),
                       isOwner: i == 0,
                       onTap: room.isClosed || room.members[i].isScanned
