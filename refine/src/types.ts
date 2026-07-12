@@ -117,6 +117,10 @@ export type AdImage = {
 export type Unlock = {
   user_id: string;
   pair_key: string;
+  /** 결제 시점 본인/상대 metrics body 스냅샷 — metrics row 삭제와 무관하게
+   *  궁합을 self-contained 로 복원한다 (해석의 1차 소스). */
+  owner_body: string | null;
+  partner_body: string | null;
   total_score: number | null;
   created_at: string;
 };
