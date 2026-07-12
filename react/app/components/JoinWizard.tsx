@@ -46,8 +46,8 @@ type Teaser =
 type Stash = { teamId: string; body: WebCaptureBody; thumb: string | null };
 
 const GENDERS: { v: string; ko: string }[] = [
-  { v: "male", ko: "남" },
-  { v: "female", ko: "녀" },
+  { v: "male", ko: "남자" },
+  { v: "female", ko: "여자" },
 ];
 // 앱 InfoConfirm 과 동일 범위 (AgeGroup teens~seventies, jsonValue "10s".."70s").
 const AGES: { v: string; ko: string }[] = [
@@ -86,7 +86,8 @@ export function JoinWizard({
   const [slotPick, setSlotPick] = useState<string | null>(null);
   const [direct, setDirect] = useState(false);
   const [nameInput, setNameInput] = useState("");
-  const [gender, setGender] = useState<string | null>(null);
+  // 성별은 남자 기본 선택 (radio) — 나이대만 명시 선택을 요구한다.
+  const [gender, setGender] = useState<string>("male");
   const [age, setAge] = useState<string | null>(null);
   const [teaser, setTeaser] = useState<Teaser | null>(null);
   const [joined, setJoined] = useState(false);
@@ -331,7 +332,7 @@ export function JoinWizard({
       body = {
         schemaVersion: 1,
         ethnicity: "eastAsian",
-        gender: gender ?? "male",
+        gender,
         ageGroup: age ?? "30s",
         timestamp: new Date().toISOString(),
         source: "camera",
@@ -468,8 +469,8 @@ export function JoinWizard({
   }
 
   function onInfoNext() {
-    if (!gender || !age) {
-      setNotice("성별과 나이대를 골라 주세요.");
+    if (!age) {
+      setNotice("나이대를 골라 주세요.");
       return;
     }
     setNotice("");
@@ -625,23 +626,23 @@ export function JoinWizard({
             <p className="join-sub" style={{ margin: "0 0 6px" }}>
               성별
             </p>
-            <select
-              className="join-select"
-              value={gender ?? ""}
-              onChange={(e) => {
-                setGender(e.target.value || null);
-                void preloadDetector().catch(() => {});
-              }}
-            >
-              <option value="" disabled>
-                성별 선택
-              </option>
+            <div className="join-radios">
               {GENDERS.map((o) => (
-                <option key={o.v} value={o.v}>
+                <label key={o.v} className="join-radio">
+                  <input
+                    type="radio"
+                    name="join-gender"
+                    value={o.v}
+                    checked={gender === o.v}
+                    onChange={() => {
+                      setGender(o.v);
+                      void preloadDetector().catch(() => {});
+                    }}
+                  />
                   {o.ko}
-                </option>
+                </label>
               ))}
-            </select>
+            </div>
           </div>
           <div style={{ marginTop: 12 }}>
             <p className="join-sub" style={{ margin: "0 0 6px" }}>

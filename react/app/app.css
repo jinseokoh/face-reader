@@ -800,6 +800,28 @@ textarea.form-input {
   outline: none;
   border-color: var(--ink);
 }
+.join-radios {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  margin-top: 8px;
+}
+.join-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--ink);
+  min-height: 44px;
+  cursor: pointer;
+}
+.join-radio input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--ink);
+  cursor: pointer;
+  margin: 0;
+}
 .join-select {
   font: inherit;
   font-size: 14px;
