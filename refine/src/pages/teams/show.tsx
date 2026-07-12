@@ -16,8 +16,9 @@ import {
 import { AwsClient } from "aws4fetch";
 import { useParams } from "react-router";
 import { Link } from "react-router";
+import { UserLink } from "../../components/user-link";
 import { adminClient } from "../../providers/data";
-import type { MetricEntry, Team, TeamMember } from "../../types";
+import type { AppUser, MetricEntry, Team, TeamMember } from "../../types";
 import { metricThumbUrl } from "../../types";
 
 const { Text, Title } = Typography;
@@ -113,6 +114,21 @@ export const TeamShow = () => {
     (metricsRows ?? []).map((m) => [m.id, m]),
   );
 
+  // 멤버 → metrics.user_id → users — 계정 추적 컬럼용.
+  const memberUserIds = (metricsRows ?? [])
+    .map((m) => m.user_id)
+    .filter((v): v is string => Boolean(v));
+  const {
+    result: { data: memberUsers },
+  } = useMany<AppUser>({
+    resource: "users",
+    ids: Array.from(new Set(memberUserIds)),
+    queryOptions: { enabled: memberUserIds.length > 0 },
+  });
+  const userById = new Map<string, AppUser>(
+    (memberUsers ?? []).map((u) => [u.id, u]),
+  );
+
   const payload = team?.matrix_payload ?? null;
 
   return (
@@ -201,6 +217,32 @@ export const TeamShow = () => {
                   <Tag>대기</Tag>
                 )
               }
+            />
+            <Table.Column<TeamMember>
+              title="사용자"
+              dataIndex="metrics_id"
+              render={(v: string | null) => {
+                const uid = v ? metricById.get(v)?.user_id : null;
+                if (!uid)
+                  return v ? (
+                    <Tag color="default">anon</Tag>
+                  ) : (
+                    <Text type="secondary">-</Text>
+                  );
+                const u = userById.get(uid);
+                return (
+                  <Space size={6}>
+                    <Avatar src={u?.profile_image_url ?? undefined} size={20}>
+                      {u?.nickname?.[0] ?? "?"}
+                    </Avatar>
+                    <UserLink id={uid}>
+                      <Text strong style={{ fontSize: 12 }}>
+                        {u?.nickname ?? `${uid.slice(0, 8)}…`}
+                      </Text>
+                    </UserLink>
+                  </Space>
+                );
+              }}
             />
             <Table.Column<TeamMember>
               title="관상 row"
