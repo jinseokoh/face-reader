@@ -1,7 +1,19 @@
+import { DeleteOutlined } from "@ant-design/icons";
 import { DateField, List, ShowButton, useTable } from "@refinedev/antd";
-import { useMany } from "@refinedev/core";
-import { Avatar, Space, Table, Tag, Tooltip, Typography } from "antd";
+import { useInvalidate, useMany } from "@refinedev/core";
+import {
+  Avatar,
+  Button,
+  Popconfirm,
+  Space,
+  Table,
+  Tag,
+  Tooltip,
+  Typography,
+  message,
+} from "antd";
 import { UserLink } from "../../components/user-link";
+import { adminClient } from "../../providers/data";
 import type { AppUser, Unlock } from "../../types";
 
 const { Text } = Typography;
@@ -40,8 +52,26 @@ export const UnlockList = () => {
     (usersResult ?? []).map((u) => [u.id, u])
   );
 
+  const invalidate = useInvalidate();
+
+  /** unlock 삭제 — (user_id, pair_key) 복합 키. 스냅샷 body 도 함께 사라져
+   *  사용자는 재열람에 코인을 다시 써야 한다. */
+  const handleDelete = async (r: Unlock) => {
+    const { error } = await adminClient
+      .from("unlocks")
+      .delete()
+      .eq("user_id", r.user_id)
+      .eq("pair_key", r.pair_key);
+    if (error) {
+      message.error(`삭제 실패: ${error.message}`);
+      return;
+    }
+    message.success("궁합 unlock 삭제됨");
+    invalidate({ resource: "unlocks", invalidates: ["list"] });
+  };
+
   return (
-    <List title="궁합 unlock 내역">
+    <List title="궁합 리스트">
       <Table
         {...tableProps}
         rowKey={(r) => `${r.user_id}~${r.pair_key}`}
@@ -102,11 +132,23 @@ export const UnlockList = () => {
           )}
         />
         <Table.Column<Unlock>
-          title="해석"
+          title="메뉴"
           dataIndex="pair_key"
           fixed="right"
-          render={(pairKey: string) => (
-            <ShowButton hideText size="small" recordItemId={pairKey} />
+          render={(pairKey: string, r: Unlock) => (
+            <Space size={4}>
+              <ShowButton hideText size="small" recordItemId={pairKey} />
+              <Popconfirm
+                title="궁합 unlock 삭제"
+                description="이 궁합 잠금해제 기록을 삭제합니다. 사용자가 다시 보려면 코인을 재차감해야 하며 되돌릴 수 없습니다."
+                okText="Yes"
+                cancelText="No"
+                okButtonProps={{ danger: true }}
+                onConfirm={() => handleDelete(r)}
+              >
+                <Button size="small" danger icon={<DeleteOutlined />} />
+              </Popconfirm>
+            </Space>
           )}
         />
       </Table>

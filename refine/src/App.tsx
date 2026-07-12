@@ -75,11 +75,6 @@ function App() {
                     meta: { label: '관상 metrics', icon: <ScanOutlined /> },
                   },
                   {
-                    name: 'coins',
-                    list: '/coins',
-                    meta: { label: '코인 coins', icon: <DollarOutlined /> },
-                  },
-                  {
                     name: 'unlocks',
                     list: '/unlocks',
                     show: '/unlocks/show/:id',
@@ -90,6 +85,11 @@ function App() {
                     list: '/teams',
                     show: '/teams/show/:id',
                     meta: { label: '케미 teams', icon: <ClusterOutlined /> },
+                  },
+                  {
+                    name: 'coins',
+                    list: '/coins',
+                    meta: { label: '코인 coins', icon: <DollarOutlined /> },
                   },
                   {
                     name: 'ad_videos',

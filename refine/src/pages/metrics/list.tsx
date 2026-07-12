@@ -1,6 +1,18 @@
+import { DeleteOutlined } from "@ant-design/icons";
 import { DateField, List, ShowButton, useTable } from "@refinedev/antd";
 import { useInvalidate, useMany } from "@refinedev/core";
-import { Avatar, Modal, Space, Table, Tag, Typography, message } from "antd";
+import {
+  Avatar,
+  Button,
+  Modal,
+  Popconfirm,
+  Space,
+  Table,
+  Tag,
+  Typography,
+  message,
+} from "antd";
+import { deleteR2Object } from "../../lib/r2";
 import { adminClient } from "../../providers/data";
 import { UserLink } from "../../components/user-link";
 import type { AppUser, MetricEntry } from "../../types";
@@ -46,6 +58,32 @@ export const MetricList = () => {
     (usersResult ?? []).map((u) => [u.id, u])
   );
 
+  /** 관상 삭제 — R2 썸네일 + metrics row (teams/show 등록 삭제와 동일).
+   *  team_members.metrics_id 는 FK(on delete set null)로 대기 슬롯이 된다. */
+  const handleDelete = async (record: MetricEntry) => {
+    try {
+      const key = record.body
+        ? (JSON.parse(record.body) as { thumbnailKey?: string }).thumbnailKey
+        : undefined;
+      if (key) {
+        const ok = await deleteR2Object(key);
+        if (!ok) message.warning("R2 썸네일 삭제 실패 — row 는 계속 삭제합니다");
+      }
+      const { error } = await adminClient
+        .from("metrics")
+        .delete()
+        .eq("id", record.id);
+      if (error) {
+        message.error(`삭제 실패: ${error.message}`);
+        return;
+      }
+      message.success("관상 삭제됨");
+      invalidate({ resource: "metrics", invalidates: ["list", "many"] });
+    } catch (e) {
+      message.error(`삭제 실패: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
   const handleCleanup = () => {
     Modal.confirm({
       title: "90일+ 미활동 metrics 삭제",
@@ -73,7 +111,7 @@ export const MetricList = () => {
 
   return (
     <List
-      title="metric 업로드"
+      title="관상 리스트"
       headerButtons={({ defaultButtons }) => (
         <>
           {defaultButtons}
@@ -212,11 +250,23 @@ export const MetricList = () => {
           )}
         />
         <Table.Column<MetricEntry>
-          title="해석"
+          title="메뉴"
           dataIndex="id"
           fixed="right"
-          render={(id: string) => (
-            <ShowButton hideText size="small" recordItemId={id} />
+          render={(id: string, record: MetricEntry) => (
+            <Space size={4}>
+              <ShowButton hideText size="small" recordItemId={id} />
+              <Popconfirm
+                title="관상 삭제"
+                description={`'${record.alias ?? `${id.slice(0, 8)}…`}' 의 metrics row 와 R2 썸네일을 삭제합니다. 되돌릴 수 없습니다.`}
+                okText="Yes"
+                cancelText="No"
+                okButtonProps={{ danger: true }}
+                onConfirm={() => handleDelete(record)}
+              >
+                <Button size="small" danger icon={<DeleteOutlined />} />
+              </Popconfirm>
+            </Space>
           )}
         />
       </Table>

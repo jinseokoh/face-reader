@@ -44,7 +44,7 @@ export const CoinList = () => {
   );
 
   return (
-    <List title="코인 ledger">
+    <List title="코인 리스트">
       <Table {...tableProps} rowKey="id" size="middle" scroll={{ x: 1200 }}>
         <Table.Column<CoinEntry>
           title="사용자"

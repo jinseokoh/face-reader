@@ -1,3 +1,4 @@
+import { DeleteOutlined } from "@ant-design/icons";
 import {
   DateField,
   List,
@@ -5,9 +6,20 @@ import {
   ShowButton,
   useTable,
 } from "@refinedev/antd";
-import type { BaseRecord } from "@refinedev/core";
-import { Avatar, Space, Table, Tag, Typography } from "antd";
+import { type BaseRecord, useInvalidate } from "@refinedev/core";
+import {
+  Avatar,
+  Button,
+  Popconfirm,
+  Space,
+  Table,
+  Tag,
+  Typography,
+  message,
+} from "antd";
 import { UserLink } from "../../components/user-link";
+import { deleteR2Object } from "../../lib/r2";
+import { adminClient } from "../../providers/data";
 import type { AppUser } from "../../types";
 
 const { Text } = Typography;
@@ -19,8 +31,62 @@ export const UserList = () => {
     sorters: { initial: [{ field: "created_at", order: "desc" }] },
   });
 
+  const invalidate = useInvalidate();
+
+  /** 회원 탈퇴 — react /api/account/delete 와 동일 순서:
+   *  썸네일 수집 → R2 삭제 → metrics 삭제 → 모집 중 teams 삭제 →
+   *  auth.users 삭제 (cascade: users/coins/unlocks). */
+  const handleDelete = async (record: AppUser) => {
+    try {
+      const { data: rows } = await adminClient
+        .from("metrics")
+        .select("body")
+        .eq("user_id", record.id);
+      const keys: string[] = [];
+      for (const r of rows ?? []) {
+        try {
+          const b = JSON.parse(r.body as string) as { thumbnailKey?: string };
+          if (b.thumbnailKey) keys.push(b.thumbnailKey);
+        } catch {
+          /* malformed body — skip */
+        }
+      }
+      await Promise.all(keys.map((k) => deleteR2Object(k)));
+
+      const { error: metricsErr } = await adminClient
+        .from("metrics")
+        .delete()
+        .eq("user_id", record.id);
+      if (metricsErr) {
+        message.error(`metrics 삭제 실패: ${metricsErr.message}`);
+        return;
+      }
+      // 모집 중(open) 그룹만 — closed 팀은 owner_id 만 null 로 남아 결과 열람 유지.
+      const { error: teamsErr } = await adminClient
+        .from("teams")
+        .delete()
+        .eq("owner_id", record.id)
+        .is("closed_at", null);
+      if (teamsErr) {
+        message.error(`모집 중 그룹 삭제 실패: ${teamsErr.message}`);
+        return;
+      }
+      const { error: authErr } = await adminClient.auth.admin.deleteUser(
+        record.id,
+      );
+      if (authErr) {
+        message.error(`auth 사용자 삭제 실패: ${authErr.message}`);
+        return;
+      }
+      message.success("탈퇴 처리됨");
+      invalidate({ resource: "admin_users", invalidates: ["list"] });
+    } catch (e) {
+      message.error(`삭제 실패: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
   return (
-    <List title="사용자">
+    <List title="사용자 리스트">
       <Table {...tableProps} rowKey="id" size="middle">
         <Table.Column
           title=""
@@ -105,11 +171,21 @@ export const UserList = () => {
           )}
         />
         <Table.Column
-          title=""
+          title="메뉴"
           dataIndex="actions"
           render={(_, record: BaseRecord) => (
-            <Space>
+            <Space size={4}>
               <ShowButton hideText size="small" recordItemId={record.id} />
+              <Popconfirm
+                title="회원 탈퇴"
+                description={`'${(record as AppUser).nickname ?? "(없음)"}' 을 탈퇴 처리합니다. 관상·R2 썸네일·코인·궁합·모집 중 그룹이 삭제되며 되돌릴 수 없습니다.`}
+                okText="Yes"
+                cancelText="No"
+                okButtonProps={{ danger: true }}
+                onConfirm={() => handleDelete(record as AppUser)}
+              >
+                <Button size="small" danger icon={<DeleteOutlined />} />
+              </Popconfirm>
             </Space>
           )}
         />

@@ -19,65 +19,60 @@
 
 ---
 
-### Task 1: DB 변경 SQL 작성·적용·검증
+### Task 1: DB 스키마 — 0001_baseline.sql 직접 수정 + 프로덕션 one-off 적용
+
+배포 전이므로 변경 파일(0002)을 만들지 않고 `0001_baseline.sql` 을 최종 상태로 직접 수정한다 (사용자 지시). 프로덕션에는 이미 이전 스키마가 적용돼 있으므로, 반영은 커밋하지 않는 one-off ALTER SQL 로 한다 (`create table if not exists` 는 기존 테이블을 바꾸지 못함).
 
 **Files:**
-- Create: `react/db/migrations/0002_unlocks_partner_columns.sql`
+- Modify: `react/db/migrations/0001_baseline.sql` — §4 unlocks 테이블(라인 ~250-266), §9 unlock_compat RPC(라인 ~465-518), §10 grants(라인 ~525·530), 파일 헤더는 변경 없음
+- Create(비커밋, scratch): 프로덕션 반영용 one-off ALTER SQL — 세션 scratchpad 에 `unlocks-oneoff.sql`
 
 **Interfaces:**
 - Produces: `unlocks(user_id uuid, partner_id uuid, user_body text, partner_body text, user_alias text, partner_alias text, total_score real, created_at timestamptz)`, PK `(user_id, partner_id)`
 - Produces: RPC `unlock_compat(p_partner_id uuid, p_total_score real, p_user_body text, p_partner_body text, p_user_alias text, p_partner_alias text) returns integer`
 
-- [ ] **Step 1: SQL 파일 작성**
+- [ ] **Step 1: baseline §4 unlocks 테이블 정의 교체**
 
-`react/db/migrations/0002_unlocks_partner_columns.sql`:
+기존 §4 의 헤더 주석 + `create table` 블록을 다음으로 교체 (RLS/policy 부분은 그대로):
 
 ```sql
--- ============================================================================
--- 0002 — unlocks 칼럼 보강
---   • pair_key → partner_id (uuid) : 키는 원래 상대 metrics id 단독
---     (shared compat_pair_key 설계 — 내 사진을 바꿔도 같은 상대 unlock 유지)
---   • owner_body → user_body       : user_id 와 짝 맞춘 이름
---   • user_alias · partner_alias   : 결제 시점 이름 스냅샷
---     (body 스냅샷은 PII 정책상 alias 를 담지 않음 — 컬럼이 올바른 위치.
---      unlocks 는 RLS self-read 라 안전)
---   설계: docs/superpowers/specs/2026-07-12-unlocks-columns-design.md
--- ============================================================================
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 4. public.unlocks — 궁합 카드 해제 ledger
+-- ─────────────────────────────────────────────────────────────────────────────
+-- partner_id = 상대 metrics id 단독 (shared compat_pair_key 설계 — 내 사진을
+-- 바꿔도 같은 상대의 unlock 이 유지된다). FK 없음 — 스냅샷은 metrics 삭제를 견딤.
+-- INSERT 는 unlock_compat (SECURITY DEFINER) RPC 만 — 코인 차감 + 삽입 트랜잭션.
 
-begin;
+create table if not exists public.unlocks (
+  user_id       uuid        not null references auth.users(id) on delete cascade,
+  partner_id    uuid        not null,
+  user_body     text,      -- 결제 시점 본인 metrics body 스냅샷.
+  partner_body  text,      -- 결제 시점 상대 metrics body 스냅샷.
+                           -- 두 body 를 동결해 구매한 궁합을 self-contained 로 보존.
+                           -- metrics row·로컬 history 에 의존하지 않고 단독 복원/표시.
+  user_alias    text,      -- 결제 시점 본인 닉네임 — admin 표시용.
+  partner_alias text,      -- 결제 시점 상대 alias — 앱 fallback + admin 표시.
+                           -- (body 스냅샷은 PII 정책상 alias 를 담지 않음.
+                           --  unlocks 는 RLS self-read 라 컬럼 저장이 안전.)
+  total_score real,        -- 해제 시점 궁합 총점(0~100). admin 콘솔 정렬·필터용.
+  created_at timestamptz not null default now(),
+  primary key (user_id, partner_id)
+);
+```
 
-alter table public.unlocks rename column pair_key   to partner_id;
-alter table public.unlocks rename column owner_body to user_body;
-alter table public.unlocks
-  alter column partner_id type uuid using partner_id::uuid;
-alter table public.unlocks add column if not exists user_alias    text;
-alter table public.unlocks add column if not exists partner_alias text;
+- [ ] **Step 2: baseline §9 RPC 교체**
 
-comment on column public.unlocks.partner_id is
-  '상대 metrics id. FK 없음 — 스냅샷은 metrics 삭제를 견뎌야 함';
-comment on column public.unlocks.user_body is
-  '결제 시점 본인 metrics body 스냅샷';
-comment on column public.unlocks.partner_body is
-  '결제 시점 상대 metrics body 스냅샷';
-comment on column public.unlocks.user_alias is
-  '결제 시점 본인 닉네임 — admin 표시용';
-comment on column public.unlocks.partner_alias is
-  '결제 시점 상대 alias — 앱 fallback + admin 표시';
+drop 라인들을 아래로 교체하고:
 
--- 기존 행 backfill — 살아 있는 row 에서만 채운다.
-update public.unlocks u
-   set partner_alias = m.alias
-  from public.metrics m
- where m.id = u.partner_id and u.partner_alias is null;
-
-update public.unlocks u
-   set user_alias = us.nickname
-  from public.users us
- where us.id = u.user_id and u.user_alias is null;
-
--- RPC 재정의 — 이전 시그니처는 drop, 이중 유지 없음.
+```sql
+drop function if exists public.unlock_compat(text);
+drop function if exists public.unlock_compat(text, real);
 drop function if exists public.unlock_compat(text, real, text, text);
+```
 
+`create or replace function public.unlock_compat(...)` 본문 전체를 다음으로 교체 (§9 헤더 주석의 "이미 해제됐으면 idempotent / 잔액 부족이면 -1" 은 유지):
+
+```sql
 create or replace function public.unlock_compat(
   p_partner_id    uuid,
   p_total_score   real default null,
@@ -113,6 +108,8 @@ begin
   if v_balance is null then return -1; end if;
 
   -- 결제 확정 → body·alias 를 클라이언트가 넘긴 그대로 동결 저장.
+  -- metrics row 존재 여부에 의존하지 않아 (업로드 누락·삭제·만료와 무관)
+  -- 구매한 궁합이 self-contained 로 영구 보존된다.
   insert into unlocks (user_id, partner_id, user_body, partner_body,
                        user_alias, partner_alias, total_score)
     values (v_uid, p_partner_id, p_user_body, p_partner_body,
@@ -123,20 +120,52 @@ begin
 
   return v_balance;
 end; $$;
+```
 
-revoke execute on function
-  public.unlock_compat(uuid, real, text, text, text, text) from public, anon;
-grant  execute on function
-  public.unlock_compat(uuid, real, text, text, text, text) to authenticated;
+- [ ] **Step 3: baseline §10 grants 시그니처 갱신**
+
+`unlock_compat(text, real, text, text)` 를 언급하는 revoke/grant 두 줄을 `unlock_compat(uuid, real, text, text, text, text)` 로.
+
+- [ ] **Step 4: 프로덕션 one-off SQL 작성 (scratch, 커밋 금지)**
+
+세션 scratchpad 에 `unlocks-oneoff.sql` 로 저장:
+
+```sql
+begin;
+
+alter table public.unlocks rename column pair_key   to partner_id;
+alter table public.unlocks rename column owner_body to user_body;
+alter table public.unlocks
+  alter column partner_id type uuid using partner_id::uuid;
+alter table public.unlocks add column if not exists user_alias    text;
+alter table public.unlocks add column if not exists partner_alias text;
+
+-- 기존 행 backfill — 살아 있는 row 에서만 채운다.
+update public.unlocks u
+   set partner_alias = m.alias
+  from public.metrics m
+ where m.id = u.partner_id and u.partner_alias is null;
+
+update public.unlocks u
+   set user_alias = us.nickname
+  from public.users us
+ where us.id = u.user_id and u.user_alias is null;
+
+drop function if exists public.unlock_compat(text, real, text, text);
+
+-- 아래 create function·revoke·grant 는 baseline §9·§10 과 동일 내용을 붙여넣는다.
+-- (Step 2 의 create or replace function 전문 + Step 3 의 grant 2줄)
 
 commit;
 ```
 
-- [ ] **Step 2: 프로덕션 적용**
+(작성 시 주석 자리에 실제 함수 전문과 grant 문을 인라인으로 포함할 것 — SQL Editor 에 한 번에 붙여넣어 실행 가능해야 한다.)
 
-Supabase 대시보드 → SQL Editor 에 위 파일 내용을 붙여넣어 실행 (supabase CLI 미설치, DDL 은 REST 로 불가 — 사용자 실행 필요).
+- [ ] **Step 5: 프로덕션 적용**
 
-- [ ] **Step 3: REST 로 결과 검증**
+Supabase 대시보드 → SQL Editor 에 one-off SQL 을 붙여넣어 실행 (supabase CLI 미설치, DDL 은 REST 로 불가 — 사용자 실행 필요).
+
+- [ ] **Step 6: REST 로 결과 검증**
 
 ```bash
 cd /Users/chuck/Code/face/refine
@@ -147,11 +176,11 @@ curl -s "$URL/rest/v1/unlocks?select=user_id,partner_id,user_alias,partner_alias
 
 Expected: 기존 1행이 `partner_id`(uuid)·`user_alias`(닉네임)·`partner_alias`(metrics.alias 값 또는 null) 로 반환.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 7: Commit (baseline 만 — one-off scratch 는 커밋하지 않음)**
 
 ```bash
 cd /Users/chuck/Code/face
-git add react/db/migrations/0002_unlocks_partner_columns.sql
+git add react/db/migrations/0001_baseline.sql
 git commit -m "feat(db): unlocks pair_key→partner_id·alias 스냅샷 + unlock_compat 재정의"
 ```
 

@@ -1,4 +1,10 @@
-import { DateField, List, ShowButton, useTable } from "@refinedev/antd";
+import {
+  DateField,
+  DeleteButton,
+  List,
+  ShowButton,
+  useTable,
+} from "@refinedev/antd";
 import { useList, useMany } from "@refinedev/core";
 import { Avatar, Space, Table, Tag, Typography } from "antd";
 import { UserLink } from "../../components/user-link";
@@ -51,7 +57,7 @@ export const TeamList = () => {
   }
 
   return (
-    <List title="케미 그룹">
+    <List title="케미 리스트">
       <Table {...tableProps} rowKey="id" size="middle" scroll={{ x: 1100 }}>
         <Table.Column<Team>
           title="그룹명"
@@ -133,11 +139,21 @@ export const TeamList = () => {
           }
         />
         <Table.Column<Team>
-          title="상세"
+          title="메뉴"
           dataIndex="id"
           fixed="right"
-          render={(id: string) => (
-            <ShowButton hideText size="small" recordItemId={id} />
+          render={(id: string, t: Team) => (
+            <Space size={4}>
+              <ShowButton hideText size="small" recordItemId={id} />
+              <DeleteButton
+                hideText
+                size="small"
+                recordItemId={id}
+                confirmTitle={`'${t.title}' 그룹을 삭제합니다. 멤버 명단도 함께 삭제되며 되돌릴 수 없습니다.`}
+                confirmOkText="Yes"
+                confirmCancelText="No"
+              />
+            </Space>
           )}
         />
       </Table>
