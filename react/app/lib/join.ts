@@ -67,6 +67,32 @@ export async function fetchMyFace(
   return (data?.id as string | undefined) ?? null;
 }
 
+/**
+ * 이 그룹에 내가 이미 참여했는지 — 내 metrics 중 하나가 멤버 슬롯을 점유하면
+ * 그 슬롯 {name, metricsId} 를 반환. 아니면 null.
+ */
+export async function fetchMembership(
+  sb: SupabaseClient,
+  teamId: string,
+  uid: string,
+): Promise<{ name: string; metricsId: string } | null> {
+  const { data: mine } = await sb
+    .from("metrics")
+    .select("id")
+    .eq("user_id", uid);
+  const ids = (mine ?? []).map((r) => r.id as string);
+  if (ids.length === 0) return null;
+  const { data } = await sb
+    .from("team_members")
+    .select("name,metrics_id")
+    .eq("team_id", teamId)
+    .in("metrics_id", ids)
+    .limit(1)
+    .maybeSingle();
+  if (!data) return null;
+  return { name: data.name as string, metricsId: data.metrics_id as string };
+}
+
 /** 그룹 등록 현황 — joined = metrics 등록 완료 슬롯 수, total = 전체 슬롯. */
 export async function fetchProgress(
   sb: SupabaseClient,

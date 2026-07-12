@@ -9,6 +9,7 @@ import {
   loginWithKakao,
 } from "../lib/auth";
 import {
+  fetchMembership,
   fetchMyFace,
   fetchProgress,
   isTeamOpen,
@@ -37,6 +38,7 @@ const NO_FACE_TIMEOUT_MS = 20_000;
 
 type Stage =
   | "entry"
+  | "already"
   | "name"
   | "reuse"
   | "info"
@@ -90,6 +92,11 @@ export function JoinWizard({
   const [age, setAge] = useState<string | null>(null);
   // 서버에 이미 있는 내 관상(is_my_face) — 재사용/재촬영 선택의 근거.
   const [existingId, setExistingId] = useState<string | null>(null);
+  // 이 그룹에 이미 참여한 내 슬롯 — 있으면 이름을 묻지 않고 재참여를 묻는다.
+  const [membership, setMembership] = useState<{
+    name: string;
+    metricsId: string;
+  } | null>(null);
   // 참여 직후 서버에서 다시 읽은 등록 현황 (loader 데이터는 stale).
   const [progress, setProgress] = useState<{
     joined: number;
@@ -160,7 +167,7 @@ export function JoinWizard({
         void fetchMyFace(client, s.user.id).then(setExistingId);
       }
     });
-    void client.auth.getSession().then(({ data }) => {
+    void client.auth.getSession().then(async ({ data }) => {
       // 이 시점엔 code→세션 교환이 끝났으므로 주소창의 흔적을 지워도 안전.
       cleanAuthParams();
       sessionRef.current = data.session;
@@ -171,14 +178,22 @@ export function JoinWizard({
         }
         return;
       }
-      void fetchNickname(client, data.session.user.id).then((n) => {
+      const uid = data.session.user.id;
+      void fetchNickname(client, uid).then((n) => {
         setNickname(n);
         setNameInput((cur) => cur || n);
       });
-      void fetchMyFace(client, data.session.user.id).then(setExistingId);
+      void fetchMyFace(client, uid).then(setExistingId);
+      const member = await fetchMembership(client, team.id, uid);
+      setMembership(member);
       if (cameFromLogin) {
-        // [카카오로 참여하기] 로 로그인하고 복귀 — 바로 이름 선택.
-        setStage("name");
+        // 로그인하고 복귀 — 이미 참여했으면 재참여 확인, 아니면 이름 선택.
+        if (member) {
+          setProgress(await fetchProgress(client, team.id));
+          setStage("already");
+        } else {
+          setStage("name");
+        }
       }
     });
     return () => sub.subscription.unsubscribe();
@@ -415,17 +430,24 @@ export function JoinWizard({
         fail("촬영 정보가 없어요. 처음부터 다시 시도해 주세요.");
         return;
       }
-      // 기존 my-face 가 있으면 그 row 를 덮어써 my-face 1행을 유지한다.
+      // 기존 참여 슬롯의 metrics > 내 관상 순으로 그 row 를 덮어써
+      // my-face 1행·멤버십 1행을 유지한다.
       metricsIdRef.current = await saveCapture(client, {
         uid: s.user.id,
         nickname,
         body,
         thumb: thumbRef.current,
-        id: existingId ?? undefined,
+        id: membership?.metricsId ?? existingId ?? undefined,
       });
     }
     if (!metricsIdRef.current) {
       fail("등록에 실패했어요. 잠시 후 다시 시도해 주세요.");
+      return;
+    }
+    // 이미 참여한 슬롯의 재촬영 — metrics id 가 그대로라 명단 변경이 없다.
+    if (membership && metricsIdRef.current === membership.metricsId) {
+      setProgress(await fetchProgress(client, team.id));
+      setStage("done");
       return;
     }
     const r = await joinTeam(client, {
@@ -449,10 +471,21 @@ export function JoinWizard({
   }
 
   // ── 액션 핸들러 ────────────────────────────────────────────────────────
-  function onJoinStart() {
-    if (sessionRef.current) {
+  async function onJoinStart() {
+    const s = sessionRef.current;
+    if (s) {
       setNotice("");
-      setStage("name");
+      // 이미 참여한 그룹이면 이름을 묻지 않고 재참여 확인으로.
+      const client = sb();
+      const member =
+        membership ?? (await fetchMembership(client, team.id, s.user.id));
+      if (member) {
+        setMembership(member);
+        setProgress(await fetchProgress(client, team.id));
+        setStage("already");
+      } else {
+        setStage("name");
+      }
       return;
     }
     // 클릭이 먹었는지 즉시 가시화 — 실패 시 사유도 화면에 띄운다.
@@ -486,6 +519,14 @@ export function JoinWizard({
   function onReuseExisting() {
     metricsIdRef.current = existingId;
     void runSave();
+  }
+
+  /** 이미 참여한 사용자의 재촬영 — 내 슬롯의 metrics 를 덮어쓴다. */
+  function onAlreadyRecapture() {
+    metricsIdRef.current = null;
+    bodyRef.current = null;
+    setNotice("");
+    setStage("info");
   }
 
   function onInfoNext() {
@@ -553,6 +594,27 @@ export function JoinWizard({
           </button>
           {notice && <p className="join-notice">{notice}</p>}
           <p className="join-sub">설치 없이 브라우저에서 얼굴 등록까지</p>
+        </>
+      )}
+
+      {stage === "already" && membership && (
+        <>
+          <div className="join-badge">참여 완료 ✓</div>
+          <p className="join-q">
+            이미 &lsquo;{membership.name}&rsquo;(으)로 참여한 그룹이에요
+          </p>
+          {progress && (
+            <p className="join-sub">
+              {progress.total}명 중 {progress.joined}명 등록 · 전원이 모이면 이
+              링크에서 결과표가 공개됩니다.
+            </p>
+          )}
+          <div>
+            <button className="join-btn join-btn--line" onClick={onAlreadyRecapture}>
+              관상 다시 촬영하기
+            </button>
+          </div>
+          <Stores appStoreUrl={appStoreUrl} playStoreUrl={playStoreUrl} />
         </>
       )}
 
