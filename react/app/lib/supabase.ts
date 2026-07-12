@@ -105,7 +105,12 @@ export type TeamShowcase = {
   id: string;
   title: string;
   closed: boolean;
-  memberNames: string[]; // 마감 전 참여자 칩 (team_members, 방장 먼저)
+  // 초대장·참여 위저드용 슬롯 상세 (방장 먼저) — joined = metrics 등록 완료.
+  members: { name: string; joined: boolean; isOwner: boolean }[];
+  // 전원 등록 여부 — 모든 슬롯이 metrics 로 채워짐(≥3). 결과표는 전원 등록
+  // 시에만 생성되므로, closed+payload 없음 상태의 안내 분기가 이 값을 쓴다:
+  // true = "결과표 준비 중"(방장 앱 backfill 대기), false = 전원 미충족 종료.
+  allJoined: boolean;
   payload: TeamPayload | null; // 마감 후 결과
   // 웹 티저용 — 방장의 이름 + raw 메트릭. 방장 미참여/미스캔이면 null
   // (그 경우 티저는 solo 관상 한 입으로 fallback).
@@ -154,10 +159,14 @@ export async function fetchTeam(
         metrics_id: string | null;
       }>)
     : [];
-  const names = [
+  const memberList = [
     ...members.filter((m) => m.is_owner),
     ...members.filter((m) => !m.is_owner),
-  ].map((m) => m.name);
+  ].map((m) => ({
+    name: m.name,
+    joined: m.metrics_id != null,
+    isOwner: m.is_owner,
+  }));
 
   // 방장 raw 메트릭 — 웹 티저 "나 ↔ 방장" 점수 계산용.
   const ownerRow = members.find((m) => m.is_owner);
@@ -171,7 +180,9 @@ export async function fetchTeam(
     id: t.id,
     title: t.title,
     closed: t.closed_at != null,
-    memberNames: names,
+    members: memberList,
+    allJoined:
+      members.length >= 3 && members.every((m) => m.metrics_id != null),
     payload: t.matrix_payload ?? null,
     owner,
   };

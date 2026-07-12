@@ -1,14 +1,19 @@
 import type { Route } from "./+types/g.$id";
 import { CTA } from "../components/CTA";
 import { CameraTeaser } from "../components/CameraTeaser";
-import { fetchTeam, type TeamPayload } from "../lib/supabase";
+import {
+  fetchTeam,
+  type TeamPayload,
+  type TeamShowcase,
+} from "../lib/supabase";
 
 /**
  * `GET /g/:id` — 교감도 그룹 (P3). 한 라우트, 두 얼굴:
  *   - 마감 전 = 초대장 (참여자 칩 + "당신 자리가 비어 있어요" + 앱 유도)
  *   - 마감 후 = 결과 쇼케이스 (이름 + 밴드 이모지 매트릭스, 사진/점수 없음)
- *   - 마감 후 payload 없음 = 48h cron 이 닫은 방 — 3명 이상이면 owner 앱이
- *     payload 를 backfill 할 때까지 대기 안내, 미만이면 인원 미달 종료 안내.
+ *   - 마감 후 payload 없음 = 48h cron 이 닫은 방. 결과표는 **전원 등록**
+ *     시에만 생성되므로: 전원이 찼으면 owner 앱의 backfill 대기 안내,
+ *     아니면 전원 미충족 종료 안내 (옛 ≥3 기준 폐기, 2026-07-12).
  *     닫힌 방은 합류 불가라 초대장·티저를 렌더하면 안 된다.
  *
  * teams.matrix_payload 가 있으면 결과, 없으면 초대장. 밴드는 색 대신 이모지
@@ -28,6 +33,9 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     // 링크 스크랩(카톡·문자 등) 미리보기 이미지 — 공용 배너(800x420, OG 표준
     // 1.91:1). /r/:id 와 동일하게 R2 CDN 서빙 (번들 아님 — 교체 시 재배포 불필요).
     ogImage: `${env.R2_CDN_BASE}/assets/og.png`,
+    // 웹 카카오 로그인·참여용 공개 config (anon key 는 공개키).
+    supabaseUrl: env.SUPABASE_URL ?? "",
+    supabaseAnonKey: env.SUPABASE_ANON_KEY ?? "",
   };
 }
 
@@ -39,7 +47,7 @@ export function meta({ data }: Route.MetaArgs) {
     : `${t.title} — 케미 그룹 초대`;
   const desc = t.closed
     ? "관상으로 풀어본 우리 그룹의 케미 결과"
-    : `${t.memberNames.length}명이 참여 중 · 당신 자리가 비어 있어요`;
+    : `${t.members.length}명이 참여 중 · 당신 자리가 비어 있어요`;
   return [
     { title },
     { name: "description", content: desc },
@@ -65,10 +73,10 @@ export default function Group({ loaderData }: Route.ComponentProps) {
       {team.closed && team.payload ? (
         <Showcase payload={team.payload} />
       ) : team.closed ? (
-        <ClosedNotice title={team.title} memberCount={team.memberNames.length} />
+        <ClosedNotice title={team.title} allJoined={team.allJoined} />
       ) : (
         <>
-          <Invite title={team.title} names={team.memberNames} />
+          <Invite title={team.title} members={team.members} />
           {/* 비연락처 설치 전 티저 — 정면 1장으로 미리보기 → 설치 유도. */}
           <CameraTeaser
             team={team}
@@ -87,25 +95,32 @@ export default function Group({ loaderData }: Route.ComponentProps) {
   );
 }
 
-function Invite({ title, names }: { title: string; names: string[] }) {
+function Invite({
+  title,
+  members,
+}: {
+  title: string;
+  members: TeamShowcase["members"];
+}) {
+  const joinedCount = members.filter((m) => m.joined).length;
   return (
     <section style={{ textAlign: "center", padding: "24px 16px" }}>
       <h1 style={{ fontSize: 24, color: "#1a1a1a", margin: 0 }}>{title}</h1>
       <p style={{ color: "#666", fontSize: 14, marginTop: 8 }}>
-        {names.length}명이 참여 중 · 당신 자리가 비어 있어요
+        {joinedCount}명 등록 · 당신 자리가 비어 있어요
       </p>
-      {names.length > 0 && (
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 8,
-            justifyContent: "center",
-            marginTop: 16,
-          }}
-        >
-          {names.map((n, i) => (
-            <Chip key={i} label={n} />
+      {members.length > 0 && (
+        <div className="invite-chips">
+          {members.map((m, i) => (
+            <span
+              key={i}
+              className={
+                m.joined ? "invite-chip" : "invite-chip invite-chip--wait"
+              }
+            >
+              {m.name}
+              {m.joined ? " ✓" : ""}
+            </span>
           ))}
         </div>
       )}
@@ -115,18 +130,18 @@ function Invite({ title, names }: { title: string; names: string[] }) {
 
 function ClosedNotice({
   title,
-  memberCount,
+  allJoined,
 }: {
   title: string;
-  memberCount: number;
+  allJoined: boolean;
 }) {
   return (
     <section style={{ textAlign: "center", padding: "24px 16px" }}>
       <h1 style={{ fontSize: 24, color: "#1a1a1a", margin: 0 }}>{title}</h1>
       <p style={{ color: "#666", fontSize: 14, marginTop: 8 }}>
-        {memberCount >= 3
+        {allJoined
           ? "모집이 끝났습니다. 케미 결과표가 만들어지기를 기다리는 중입니다."
-          : "인원이 모이지 않아 종료된 그룹입니다."}
+          : "전원이 모이지 않아 종료된 그룹입니다."}
       </p>
     </section>
   );
@@ -213,22 +228,6 @@ function Showcase({ payload }: { payload: TeamPayload }) {
         </table>
       </div>
     </section>
-  );
-}
-
-function Chip({ label }: { label: string }) {
-  return (
-    <span
-      style={{
-        background: "#f7f7f8",
-        borderRadius: 10,
-        padding: "4px 12px",
-        fontSize: 14,
-        color: "#1a1a1a",
-      }}
-    >
-      {label}
-    </span>
   );
 }
 

@@ -721,6 +721,135 @@ textarea.form-input {
   text-align: center;
 }
 
+/* ─── /g/:id 초대장·참여 위저드 ─── */
+.invite-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 16px;
+}
+.invite-chip {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 6px 14px;
+  font-size: 14px;
+  color: var(--ink);
+}
+.invite-chip--wait {
+  color: var(--caption);
+  border-style: dashed;
+}
+.join {
+  text-align: center;
+  padding: 16px;
+  margin-top: 8px;
+}
+.join-q {
+  font-size: 16px;
+  color: var(--ink);
+  margin: 0 0 4px;
+}
+.join-sub {
+  font-size: 13px;
+  color: var(--caption);
+  margin: 8px 0 0;
+}
+.join-notice {
+  font-size: 13px;
+  color: var(--accent);
+  margin: 8px 0 0;
+}
+.join-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 8px;
+}
+.join-chip {
+  background: #fff;
+  color: var(--ink);
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 14px;
+  min-height: 44px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.join-chip--on {
+  border-color: var(--ink);
+  font-weight: 600;
+}
+.join-input {
+  font: inherit;
+  font-size: 14px;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  width: 100%;
+  max-width: 280px;
+  margin-top: 8px;
+  text-align: center;
+}
+.join-input:focus {
+  outline: none;
+  border-color: var(--ink);
+}
+.join-btn {
+  display: inline-block;
+  background: var(--ink);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 20px;
+  font-size: 16px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  margin-top: 16px;
+  text-decoration: none;
+}
+.join-btn--ghost {
+  display: inline-block;
+  background: none;
+  border: none;
+  color: var(--caption);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  margin-top: 12px;
+  text-decoration: underline;
+}
+.join-video {
+  width: 100%;
+  max-width: 320px;
+  border-radius: 12px;
+  background: #fff;
+  transform: scaleX(-1);
+}
+.join-score {
+  font-size: 24px;
+  color: var(--accent);
+  font-weight: 700;
+  margin-top: 8px;
+}
+.join-badge {
+  display: inline-block;
+  background: #fff;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  padding: 6px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 12px;
+}
+
 /* ─── CTA ─── */
 .cta {
   text-align: center;
