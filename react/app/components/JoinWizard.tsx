@@ -35,6 +35,8 @@ const MP_MODEL =
   "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
 
 const NO_FACE_TIMEOUT_MS = 20_000;
+// 성별/나이대는 한 번 고르면 localStorage 에 남겨 다음 방문에 prefill.
+const DEMO_KEY = "facely:demographic";
 // 앱 face_mesh_page 와 동일 — 얼굴이 잡히면 2초 카운트다운 후 자동 찰칵.
 const COUNTDOWN_MS = 2_000;
 
@@ -151,9 +153,23 @@ export function JoinWizard({
     return sbRef.current;
   }
 
-  // 마운트: 인앱 감지 + 세션 복구 + OAuth 복귀/stash 처리.
+  // 마운트: 인앱 감지 + 저장된 성별/나이대 복원 + 세션 복구 + OAuth 복귀 처리.
   useEffect(() => {
     setInApp(detectInApp());
+    try {
+      const saved = JSON.parse(localStorage.getItem(DEMO_KEY) ?? "null") as {
+        gender?: string;
+        age?: string;
+      } | null;
+      if (saved?.gender === "male" || saved?.gender === "female") {
+        setGender(saved.gender);
+      }
+      if (saved?.age && AGES.some((a) => a.v === saved.age)) {
+        setAge(saved.age);
+      }
+    } catch {
+      /* 손상된 저장값은 무시 */
+    }
     if (!supabaseUrl || !supabaseAnonKey) return;
     // ⚠️ 순서 중요 — ?code= 는 createClient(detectSessionInUrl)가 세션으로
     // 교환한 뒤에 지워야 한다. 먼저 지우면 교환이 영영 안 일어난다.
@@ -211,6 +227,16 @@ export function JoinWizard({
     onProgress?.(stage !== "entry");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage]);
+
+  // 선택 즉시 저장 — 다음 방문의 "나를 알려주세요"는 탭 한 번으로 끝난다.
+  useEffect(() => {
+    if (!age) return;
+    try {
+      localStorage.setItem(DEMO_KEY, JSON.stringify({ gender, age }));
+    } catch {
+      /* storage 불가 환경은 무시 */
+    }
+  }, [gender, age]);
 
   const openSlots = team.members.filter((m) => !m.joined);
   // 빈 슬롯이 하나도 없으면 직접 입력이 유일한 경로.
