@@ -536,7 +536,6 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
     final notifier = ref.read(teamsProvider.notifier);
     final total = room.members.length;
     final scanned = room.scannedCount;
-    final canMatrix = scanned >= TeamRoom.kMinMembers;
     final canAddMore = !room.isClosed && total < TeamRoom.kMaxMembers;
 
     return Scaffold(
@@ -575,7 +574,8 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
                 children: [
                   Text('$scanned/$total명 등록', style: AppText.subTitle),
                   const SizedBox(width: AppSpacing.sm),
-                  // 마감 = "발표" 금색 뱃지 ("나" 배지와 동일 idiom).
+                  // 마감 = "완료" 금색 뱃지 ("나" 배지와 동일 idiom) —
+                  // 결과표 생성 언어에 맞춰 "발표" 표기 폐기.
                   if (room.isClosed)
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -585,7 +585,7 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
                         borderRadius: BorderRadius.circular(AppRadius.sm),
                       ),
                       child: Text(
-                        '발표',
+                        '완료',
                         style: AppText.hint.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,
@@ -672,40 +672,46 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
                 ),
                 const SizedBox(height: AppSpacing.md),
               ],
-              // 마감된 그룹이면 버튼 위에 작은 안내 라벨.
+              // 결과표는 "누가 발표하는 것"이 아니라 전원 등록 시 자동으로
+              // 만들어지는 것 — 카피도 생성 언어로. 마감된 그룹이면 안내 라벨.
               if (room.isClosed) ...[
                 Text(
-                  '이미 발표가 끝난 그룹입니다.',
+                  '이미 결과표가 만들어진 그룹입니다.',
                   textAlign: TextAlign.center,
                   style: AppText.caption.copyWith(color: AppColors.textHint),
                 ),
                 const SizedBox(height: AppSpacing.sm),
-              ],
-              // 케미는 발표(마감) 후에만 — 3명 부분 공개 로직 폐기. 카운트는
-              // 빈 슬롯 수와 항상 일치해 "N명이면 N명" 기대 그대로 동작한다.
-              if (room.isClosed)
-                SecondaryButton(
-                  label: '그룹 케미 보기',
-                  onPressed: () => _openMatrix(room),
-                )
-              else ...[
+              ] else ...[
                 Padding(
                   padding:
                       const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                   child: Text(
-                    '${total - scanned}명 더 등록하면 그룹 케미 발표 가능',
+                    '${total - scanned}명 더 등록하면, 그룹 케미 결과표 생성',
                     textAlign: TextAlign.center,
                     style:
                         AppText.caption.copyWith(color: AppColors.textHint),
                   ),
                 ),
-                // 조기 마감 — 3명 이상 등록 시 방장이 기다리지 않고 발표 가능.
                 const SizedBox(height: AppSpacing.md),
-                SecondaryButton(
-                  label: '발표하기',
-                  onPressed: canMatrix ? () => _confirmClose(room) : null,
-                ),
               ],
+              // 버튼은 상태 무관 단일 — 안 만들어졌으면 탭 시 부족 인원
+              // validation 안내 (조기 마감 경로 폐기, 2026-07-12).
+              SecondaryButton(
+                label: '생성된 케미 결과표 보기',
+                onPressed: () {
+                  if (room.isClosed) {
+                    _openMatrix(room);
+                  } else {
+                    showTopSnackBar(
+                      Overlay.of(context),
+                      CompactSnackBar.error(
+                        message:
+                            '아직 ${total - scanned}명이 부족해 안 만들어졌어요.',
+                      ),
+                    );
+                  }
+                },
+              ),
             ],
             ),
           ),
@@ -786,40 +792,6 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
       context: context,
       builder: (_) => _AssignNameDialog(pending: pending, taken: taken),
     );
-  }
-
-  Future<void> _confirmClose(TeamRoom room) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.xl),
-        ),
-        title: const Text('지금 발표할까요?', style: AppText.modalTitle),
-        content: const Text(
-          '발표하면 멤버를 더 추가할 수 없고 베스트 페어가 공개됩니다.',
-          style: AppText.body,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('취소',
-                style: TextStyle(color: AppColors.textHint)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('발표',
-                style: TextStyle(color: AppColors.textPrimary)),
-          ),
-        ],
-      ),
-    );
-    if (ok == true && mounted) {
-      await ref.read(teamsProvider.notifier).close(room.id);
-      if (!mounted) return;
-      _openMatrix(room);
-    }
   }
 
   Future<void> _confirmRemove(TeamRoom room, int index) async {

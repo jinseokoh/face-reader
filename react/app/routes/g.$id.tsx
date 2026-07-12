@@ -125,7 +125,7 @@ function ClosedNotice({
       <h1 style={{ fontSize: 24, color: "#1a1a1a", margin: 0 }}>{title}</h1>
       <p style={{ color: "#666", fontSize: 14, marginTop: 8 }}>
         {memberCount >= 3
-          ? "모집이 끝났습니다. 결과 발표를 기다리는 중입니다."
+          ? "모집이 끝났습니다. 케미 결과표가 만들어지기를 기다리는 중입니다."
           : "인원이 모이지 않아 종료된 그룹입니다."}
       </p>
     </section>

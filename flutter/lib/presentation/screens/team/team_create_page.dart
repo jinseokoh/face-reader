@@ -33,9 +33,24 @@ Future<TeamRoom?> showTeamCreatePage(
   );
 }
 
-/// 스텝 플로우 단계. name 은 단일 활성 단계로, 필요한 이름이 다 모일 때까지
-/// 같은 컨트롤러로 슬롯을 하나씩 reveal 한다.
-enum _Step { intro, count, includeOwner, name, review }
+/// 모임 유형 선택 시트 — 회전 키워드 목록에서 고르거나 마지막 '직접 입력'
+/// 으로 커스텀 이름을 적는다. 선택값(키워드 String) 반환, 취소 시 null.
+/// 시트 chrome 은 legal_doc_sheet 와 동일(grab handle·흰 배경·radius 20).
+Future<String?> _showKeywordSheet(
+  BuildContext context, {
+  required List<String> words,
+  required String current,
+}) {
+  return showModalBottomSheet<String>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.white,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (_) => _KeywordSheet(words: words, current: current),
+  );
+}
 
 /// "우리 〔팀〕에서 나랑 케미가 제일 잘 맞는 사람은?" — 키워드만
 /// fade+slide 로 교체되는 훅 헤드라인. SongMyung display 토큰.
@@ -65,188 +80,6 @@ class _HookHeadline extends StatelessWidget {
   }
 }
 
-/// 멤버 이름 칩 — 명단 입력용 단일 톤 pill (§3.3). onRemove 없으면 X 없음(나).
-/// [number] 는 명단 순번(1-indexed) — '1. 나' 처럼 이름과 동일 톤으로 앞에 붙는다.
-class _MemberChip extends StatelessWidget {
-  final int number;
-  final String name;
-  final VoidCallback? onRemove;
-
-  const _MemberChip({
-    required this.number,
-    required this.name,
-    this.onRemove,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        AppSpacing.xs + 1,
-        onRemove != null ? AppSpacing.sm : AppSpacing.md,
-        AppSpacing.xs + 1,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '$number. $name',
-            style: AppText.body.copyWith(color: AppColors.textPrimary),
-          ),
-          if (onRemove != null) ...[
-            const SizedBox(width: AppSpacing.xs),
-            InkWell(
-              onTap: onRemove,
-              customBorder: const CircleBorder(),
-              child: const Padding(
-                padding: EdgeInsets.all(2),
-                child: FaIcon(
-                  FontAwesomeIcons.xmark,
-                  size: 12,
-                  color: AppColors.textHint,
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-/// 회전 키워드 — 전환 400ms 동안만 크로스페이드 Stack 을 쓰고, 정지
-/// 상태에선 래퍼 없는 평문 [Text] 로 렌더한다. 전환 위젯(opacity/transform
-/// 레이어) 안의 텍스트는 글리프 픽셀 스냅이 달라져 옆 글자보다 흐릿하게
-/// 보이는 문제가 있어, 화면에 머무는 시간(약 1.1초)에는 일반 텍스트와
-/// 동일한 렌더 경로를 보장한다.
-class _RotatingWord extends StatefulWidget {
-  final String word;
-
-  const _RotatingWord({required this.word});
-
-  @override
-  State<_RotatingWord> createState() => _RotatingWordState();
-}
-
-class _RotatingWordState extends State<_RotatingWord>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 400),
-  );
-  late String _current = widget.word;
-  String? _outgoing;
-
-  @override
-  Widget build(BuildContext context) {
-    final outgoing = _outgoing;
-    if (outgoing == null) {
-      // 정지 상태 — 평문 렌더 (레이어 0, 옆 글자와 동일 경로).
-      return Text(_current, style: AppText.display);
-    }
-    return Stack(
-      alignment: Alignment.bottomLeft,
-      children: [
-        FadeTransition(
-          opacity: ReverseAnimation(_controller),
-          child: Text(outgoing, style: AppText.display),
-        ),
-        FadeTransition(
-          opacity: _controller,
-          child: Text(_current, style: AppText.display),
-        ),
-      ],
-    );
-  }
-
-  @override
-  void didUpdateWidget(covariant _RotatingWord oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.word == widget.word) return;
-    _outgoing = _current;
-    _current = widget.word;
-    _controller.forward(from: 0).whenComplete(() {
-      if (mounted) setState(() => _outgoing = null);
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-}
-
-/// once-only 등장 위젯 — Fade 0→1 + Slide translateY 위로 살짝, 360ms
-/// easeOutCubic. 다음 스텝/슬롯이 내려오는 reveal 연출 전용. [revealKey] 가
-/// 바뀌면(같은 위치의 새 슬롯) 다시 처음부터 재생한다.
-class _RevealOnce extends StatefulWidget {
-  final Widget child;
-
-  const _RevealOnce({super.key, required this.child});
-
-  @override
-  State<_RevealOnce> createState() => _RevealOnceState();
-}
-
-class _RevealOnceState extends State<_RevealOnce>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 360),
-  )..forward();
-
-  late final Animation<double> _curve = CurvedAnimation(
-    parent: _c,
-    curve: Curves.easeOutCubic,
-  );
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _curve,
-      child: SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(0, 0.04),
-          end: Offset.zero,
-        ).animate(_curve),
-        child: widget.child,
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-}
-
-/// 모임 유형 선택 시트 — 회전 키워드 목록에서 고르거나 마지막 '직접 입력'
-/// 으로 커스텀 이름을 적는다. 선택값(키워드 String) 반환, 취소 시 null.
-/// 시트 chrome 은 legal_doc_sheet 와 동일(grab handle·흰 배경·radius 20).
-Future<String?> _showKeywordSheet(
-  BuildContext context, {
-  required List<String> words,
-  required String current,
-}) {
-  return showModalBottomSheet<String>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.white,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
-    builder: (_) => _KeywordSheet(words: words, current: current),
-  );
-}
-
 class _KeywordSheet extends StatefulWidget {
   final List<String> words;
   final String current;
@@ -263,13 +96,6 @@ class _KeywordSheetState extends State<_KeywordSheet> {
     text: widget.words.contains(widget.current) ? '' : widget.current,
   );
   final FocusNode _focus = FocusNode();
-
-  @override
-  void dispose() {
-    _input.dispose();
-    _focus.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -302,45 +128,20 @@ class _KeywordSheetState extends State<_KeywordSheet> {
     );
   }
 
-  Widget _listBody() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(
-            AppSpacing.xxl,
-            AppSpacing.sm,
-            AppSpacing.xxl,
-            AppSpacing.sm,
-          ),
-          child: Text('어떤 모임이에요?', style: AppText.modalTitle),
-        ),
-        Flexible(
-          child: ListView(
-            shrinkWrap: true,
-            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-            children: [
-              for (final w in widget.words)
-                _row(
-                  label: '우리 $w',
-                  selected: w == widget.current,
-                  onTap: () => Navigator.of(context).pop(w),
-                ),
-              _row(
-                label: '직접 입력',
-                trailing: FontAwesomeIcons.pen,
-                onTap: () {
-                  setState(() => _custom = true);
-                  _focus.requestFocus();
-                },
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: AppSpacing.md),
-      ],
-    );
+  @override
+  void dispose() {
+    _input.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  void _confirmCustom() {
+    final v = _input.text.trim();
+    if (v.isEmpty) {
+      _focus.requestFocus();
+      return;
+    }
+    Navigator.of(context).pop(v);
   }
 
   Widget _customBody() {
@@ -417,6 +218,47 @@ class _KeywordSheetState extends State<_KeywordSheet> {
     );
   }
 
+  Widget _listBody() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(
+            AppSpacing.xxl,
+            AppSpacing.sm,
+            AppSpacing.xxl,
+            AppSpacing.sm,
+          ),
+          child: Text('어떤 모임이에요?', style: AppText.modalTitle),
+        ),
+        Flexible(
+          child: ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            children: [
+              for (final w in widget.words)
+                _row(
+                  label: '우리 $w',
+                  selected: w == widget.current,
+                  onTap: () => Navigator.of(context).pop(w),
+                ),
+              _row(
+                label: '직접 입력',
+                trailing: FontAwesomeIcons.pen,
+                onTap: () {
+                  setState(() => _custom = true);
+                  _focus.requestFocus();
+                },
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+      ],
+    );
+  }
+
   Widget _row({
     required String label,
     bool selected = false,
@@ -454,16 +296,174 @@ class _KeywordSheetState extends State<_KeywordSheet> {
       ),
     );
   }
+}
 
-  void _confirmCustom() {
-    final v = _input.text.trim();
-    if (v.isEmpty) {
-      _focus.requestFocus();
-      return;
-    }
-    Navigator.of(context).pop(v);
+/// 멤버 이름 칩 — 명단 입력용 단일 톤 pill (§3.3). onRemove 없으면 X 없음(나).
+/// [number] 는 명단 순번(1-indexed) — '1. 나' 처럼 이름과 동일 톤으로 앞에 붙는다.
+class _MemberChip extends StatelessWidget {
+  final int number;
+  final String name;
+  final VoidCallback? onRemove;
+
+  const _MemberChip({
+    required this.number,
+    required this.name,
+    this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.xs + 1,
+        onRemove != null ? AppSpacing.sm : AppSpacing.md,
+        AppSpacing.xs + 1,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$number. $name',
+            style: AppText.body.copyWith(color: AppColors.textPrimary),
+          ),
+          if (onRemove != null) ...[
+            const SizedBox(width: AppSpacing.xs),
+            InkWell(
+              onTap: onRemove,
+              customBorder: const CircleBorder(),
+              child: const Padding(
+                padding: EdgeInsets.all(2),
+                child: FaIcon(
+                  FontAwesomeIcons.xmark,
+                  size: 12,
+                  color: AppColors.textHint,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }
+
+/// once-only 등장 위젯 — Fade 0→1 + Slide translateY 위로 살짝, 360ms
+/// easeOutCubic. 다음 스텝/슬롯이 내려오는 reveal 연출 전용. [revealKey] 가
+/// 바뀌면(같은 위치의 새 슬롯) 다시 처음부터 재생한다.
+class _RevealOnce extends StatefulWidget {
+  final Widget child;
+
+  const _RevealOnce({super.key, required this.child});
+
+  @override
+  State<_RevealOnce> createState() => _RevealOnceState();
+}
+
+class _RevealOnceState extends State<_RevealOnce>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 360),
+  )..forward();
+
+  late final Animation<double> _curve = CurvedAnimation(
+    parent: _c,
+    curve: Curves.easeOutCubic,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _curve,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.04),
+          end: Offset.zero,
+        ).animate(_curve),
+        child: widget.child,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+}
+
+/// 회전 키워드 — 전환 400ms 동안만 크로스페이드 Stack 을 쓰고, 정지
+/// 상태에선 래퍼 없는 평문 [Text] 로 렌더한다. 전환 위젯(opacity/transform
+/// 레이어) 안의 텍스트는 글리프 픽셀 스냅이 달라져 옆 글자보다 흐릿하게
+/// 보이는 문제가 있어, 화면에 머무는 시간(약 1.1초)에는 일반 텍스트와
+/// 동일한 렌더 경로를 보장한다.
+class _RotatingWord extends StatefulWidget {
+  final String word;
+
+  const _RotatingWord({required this.word});
+
+  @override
+  State<_RotatingWord> createState() => _RotatingWordState();
+}
+
+class _RotatingWordState extends State<_RotatingWord>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 400),
+  );
+  late String _current = widget.word;
+  String? _outgoing;
+
+  @override
+  Widget build(BuildContext context) {
+    final outgoing = _outgoing;
+    if (outgoing == null) {
+      // 정지 상태 — 평문 렌더 (레이어 0, 옆 글자와 동일 경로).
+      return Text(_current, style: AppText.display);
+    }
+    return Stack(
+      alignment: Alignment.bottomLeft,
+      children: [
+        FadeTransition(
+          opacity: ReverseAnimation(_controller),
+          child: Text(outgoing, style: AppText.display),
+        ),
+        FadeTransition(
+          opacity: _controller,
+          child: Text(_current, style: AppText.display),
+        ),
+      ],
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant _RotatingWord oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.word == widget.word) return;
+    _outgoing = _current;
+    _current = widget.word;
+    _controller.forward(from: 0).whenComplete(() {
+      if (mounted) setState(() => _outgoing = null);
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+}
+
+/// 스텝 플로우 단계. name 은 단일 활성 단계로, 필요한 이름이 다 모일 때까지
+/// 같은 컨트롤러로 슬롯을 하나씩 reveal 한다.
+enum _Step { intro, count, includeOwner, name, review }
 
 class _TeamCreatePage extends ConsumerStatefulWidget {
   final String ownerReportId;
@@ -518,72 +518,39 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage>
   String? _nameError;
   bool _creating = false;
 
-  /// 방 제목 — 직접 입력값이 있으면 그대로, 없으면 "우리 {키워드}".
-  String get _title => _customTitle ?? '우리 ${_frozenWord ?? _hookWords[_hookIndex]}';
+  VoidCallback? get _ctaAction {
+    switch (_step) {
+      case _Step.intro:
+        return _start;
+      case _Step.count:
+        return _confirmCount;
+      case _Step.includeOwner:
+        return null; // 카드 탭 auto-advance.
+      case _Step.name:
+        return _confirmName;
+      case _Step.review:
+        return _enterRoom;
+    }
+  }
+
+  // ── 하단 CTA 파생 ──────────────────────────────────────────────────
+
+  String get _ctaLabel {
+    switch (_step) {
+      case _Step.intro:
+        return '시작하기';
+      case _Step.review:
+        return '케미 그룹 상세보기';
+      default:
+        return '다음';
+    }
+  }
 
   /// 수집해야 할 참가자 이름 수 — 나 포함이면 총원-1, 아니면 총원.
   int get _neededNames => (_includeOwner ?? true) ? _count - 1 : _count;
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _startHookRotation();
-  }
-
-  /// 훅 키워드 회전 시작/재개 — 1.5초마다 키워드 교체. 인트로 진입마다 호출.
-  void _startHookRotation() {
-    _hookTimer?.cancel();
-    _hookTimer = Timer.periodic(const Duration(milliseconds: 1500), (_) {
-      if (!mounted) return;
-      setState(() => _hookIndex = (_hookIndex + 1) % _hookWords.length);
-    });
-  }
-
-  /// 인트로(시작 페이지)로 복귀 — 동결 해제 + 키워드 회전 재개.
-  void _goIntro() {
-    setState(() {
-      _frozenWord = null;
-      _customTitle = null;
-      _step = _Step.intro;
-    });
-    _startHookRotation();
-  }
-
-  /// 모임 유형 편집 — 접힌 '우리 ○' 헤더의 연필 탭. 시트에서 키워드를 고르거나
-  /// 직접 입력하면 동결 키워드를 교체한다(방 제목에 반영).
-  Future<void> _editKeyword() async {
-    final picked = await _showKeywordSheet(
-      context,
-      words: _hookWords,
-      current: _customTitle ?? _frozenWord ?? _hookWords[_hookIndex],
-    );
-    if (picked == null || !mounted) return;
-    setState(() {
-      if (_hookWords.contains(picked)) {
-        // 프리셋 키워드 — "우리 {키워드}".
-        _frozenWord = picked;
-        _customTitle = null;
-      } else {
-        // 직접 입력 — 전체 제목 그대로(프리픽스 강제 없음).
-        _customTitle = picked;
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _hookTimer?.cancel();
-    _scroll.dispose();
-    _nameController.dispose();
-    _nameFocus.dispose();
-    super.dispose();
-  }
-
-  // 키보드 inset 변화 시 활성 입력을 키보드 위로 다시 스크롤.
-  @override
-  void didChangeMetrics() => _scrollToBottomSoon();
+  /// 방 제목 — 직접 입력값이 있으면 그대로, 없으면 "우리 {키워드}".
+  String get _title => _customTitle ?? '우리 ${_frozenWord ?? _hookWords[_hookIndex]}';
 
   @override
   Widget build(BuildContext context) {
@@ -660,6 +627,59 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage>
     );
   }
 
+  // 키보드 inset 변화 시 활성 입력을 키보드 위로 다시 스크롤.
+  @override
+  void didChangeMetrics() => _scrollToBottomSoon();
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _hookTimer?.cancel();
+    _scroll.dispose();
+    _nameController.dispose();
+    _nameFocus.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _startHookRotation();
+  }
+
+  void _back() {
+    switch (_step) {
+      case _Step.intro:
+        return;
+      case _Step.count:
+        _goIntro();
+      case _Step.includeOwner:
+        setState(() => _step = _Step.count);
+      case _Step.name:
+        if (_names.isNotEmpty) {
+          // 직전 슬롯 재편집 — 마지막 이름을 필드로 되돌린다.
+          setState(() {
+            _nameController.text = _names.removeLast();
+            _nameError = null;
+          });
+        } else {
+          setState(() => _step = _Step.includeOwner);
+        }
+      case _Step.review:
+        if (_names.isNotEmpty) {
+          setState(() {
+            _nameController.text = _names.removeLast();
+            _nameError = null;
+            _step = _Step.name;
+          });
+        } else {
+          setState(() => _step = _Step.includeOwner);
+        }
+    }
+    _scrollToBottomSoon(focusName: true);
+  }
+
   // ── 스텝 본문 ───────────────────────────────────────────────────────
 
   List<Widget> _buildSteps() {
@@ -683,47 +703,91 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage>
     ];
   }
 
-  /// 답한 스텝 ↔ 활성 스텝 전환 — fade(AnimatedSwitcher) + size(AnimatedSize).
-  Widget _slot({required Widget child}) {
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 280),
-      curve: Curves.easeInOutCubic,
-      alignment: Alignment.topCenter,
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 260),
-        switchInCurve: Curves.easeInOut,
-        switchOutCurve: Curves.easeInOut,
-        child: child,
+  void _bumpCount(int delta) {
+    final next = (_count + delta).clamp(
+      TeamRoom.kMinMembers,
+      TeamRoom.kMaxMembers,
+    );
+    if (next == _count) return;
+    HapticFeedback.selectionClick();
+    setState(() => _count = next);
+  }
+
+  Widget _choiceCard({
+    required bool selected,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        padding: const EdgeInsets.symmetric(
+          vertical: AppSpacing.lg,
+          horizontal: AppSpacing.xl,
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(
+            color: selected ? AppColors.textPrimary : AppColors.border,
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: AppText.subTitle),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(subtitle, style: AppText.caption),
+                ],
+              ),
+            ),
+            if (selected)
+              const FaIcon(
+                FontAwesomeIcons.check,
+                size: 16,
+                color: AppColors.textPrimary,
+              ),
+          ],
+        ),
       ),
     );
   }
 
-  // 인트로 — 활성: 회전 훅 + 맵 이미지. 접힘: '우리 ○' quiet 헤더 한 줄.
-  Widget _introSlot() {
-    final active = _step == _Step.intro;
-    return _slot(
-      child: active
-          ? Column(
-              key: const ValueKey('intro-hero'),
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _HookHeadline(word: _frozenWord ?? _hookWords[_hookIndex]),
-                const SizedBox(height: AppSpacing.md),
-                Text('준비 되었으면 시작하기 버튼을 누르세요.', style: AppText.body),
-                const SizedBox(height: AppSpacing.xl),
-                Image.asset(
-                  'assets/images/team-chemistry-map.png',
-                  height: 180,
-                  fit: BoxFit.contain,
-                ),
-              ],
-            )
-          : _quietHeader(
-              key: const ValueKey('intro-quiet'),
-              label: _title,
-              onTap: _editKeyword,
-            ),
-    );
+  void _confirmCount() {
+    // 인원 축소로 이름이 넘치면 꼬리부터 trim (앞쪽 보존).
+    if (_includeOwner != null && _names.length > _neededNames) {
+      _names.removeRange(_neededNames, _names.length);
+    }
+    setState(() => _step = _Step.includeOwner);
+    _scrollToBottomSoon();
+  }
+
+  void _confirmName([String? raw]) {
+    final name = (raw ?? _nameController.text).trim();
+    if (name.isEmpty) {
+      _nameFocus.requestFocus();
+      return;
+    }
+    // '나' 는 방장 슬롯의 표시 이름이라 명단에 또 있으면 사실상 중복.
+    if (name == '나' || _names.contains(name)) {
+      _nameController.clear();
+      setState(() => _nameError = '같은 그룹내에 동일이름은 허용하지 않습니다.');
+      _nameFocus.requestFocus();
+      return;
+    }
+    _nameController.clear();
+    setState(() {
+      _names.add(name);
+      _nameError = null;
+      if (_names.length >= _neededNames) _step = _Step.review;
+    });
+    _scrollToBottomSoon(focusName: true);
   }
 
   // 인원 — 활성: 촉각 스테퍼. 접힘: '인원 {n}명' summary row.
@@ -750,6 +814,64 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage>
               onTap: () => setState(() => _step = _Step.count),
             ),
     );
+  }
+
+  /// 모임 유형 편집 — 접힌 '우리 ○' 헤더의 연필 탭. 시트에서 키워드를 고르거나
+  /// 직접 입력하면 동결 키워드를 교체한다(방 제목에 반영).
+  Future<void> _editKeyword() async {
+    final picked = await _showKeywordSheet(
+      context,
+      words: _hookWords,
+      current: _customTitle ?? _frozenWord ?? _hookWords[_hookIndex],
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      if (_hookWords.contains(picked)) {
+        // 프리셋 키워드 — "우리 {키워드}".
+        _frozenWord = picked;
+        _customTitle = null;
+      } else {
+        // 직접 입력 — 전체 제목 그대로(프리픽스 강제 없음).
+        _customTitle = picked;
+      }
+    });
+  }
+
+  void _editName(String name) {
+    setState(() {
+      _names.remove(name);
+      _nameController.text = name;
+      _nameError = null;
+      _step = _Step.name;
+    });
+    _scrollToBottomSoon(focusName: true);
+  }
+
+  Future<void> _enterRoom() async {
+    if (_creating) return;
+    // 입력 중이던 이름이 남아 있으면 흡수.
+    if (_nameController.text.trim().isNotEmpty) _confirmName();
+    setState(() => _creating = true);
+    final room = await ref
+        .read(teamsProvider.notifier)
+        .create(
+          title: _title,
+          ownerReportId: widget.ownerReportId,
+          pendingNames: List<String>.from(_names),
+          includeOwner: _includeOwner ?? true,
+        );
+    if (!mounted) return;
+    Navigator.of(context).pop(room);
+  }
+
+  /// 인트로(시작 페이지)로 복귀 — 동결 해제 + 키워드 회전 재개.
+  void _goIntro() {
+    setState(() {
+      _frozenWord = null;
+      _customTitle = null;
+      _step = _Step.intro;
+    });
+    _startHookRotation();
   }
 
   // 나 포함 — 활성: 전폭 선택 카드 2개. 접힘: '나 포함/제외' summary row.
@@ -783,6 +905,34 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage>
               label: '나',
               value: (_includeOwner ?? true) ? '포함' : '제외',
               onTap: () => setState(() => _step = _Step.includeOwner),
+            ),
+    );
+  }
+
+  // 인트로 — 활성: 회전 훅 + 맵 이미지. 접힘: '우리 ○' quiet 헤더 한 줄.
+  Widget _introSlot() {
+    final active = _step == _Step.intro;
+    return _slot(
+      child: active
+          ? Column(
+              key: const ValueKey('intro-hero'),
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _HookHeadline(word: _frozenWord ?? _hookWords[_hookIndex]),
+                const SizedBox(height: AppSpacing.md),
+                Text('준비 되었으면 시작하기 버튼을 누르세요.', style: AppText.body),
+                const SizedBox(height: AppSpacing.xl),
+                Image.asset(
+                  'assets/images/team-chemistry-map.png',
+                  height: 180,
+                  fit: BoxFit.contain,
+                ),
+              ],
+            )
+          : _quietHeader(
+              key: const ValueKey('intro-quiet'),
+              label: _title,
+              onTap: _editKeyword,
             ),
     );
   }
@@ -856,6 +1006,61 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage>
     );
   }
 
+  Widget _nameField() {
+    final lastSlot = _names.length + 1 >= _neededNames;
+    return TextField(
+      controller: _nameController,
+      focusNode: _nameFocus,
+      autofocus: true,
+      textInputAction: lastSlot ? TextInputAction.done : TextInputAction.next,
+      maxLength: 10,
+      style: AppText.body.copyWith(color: AppColors.textPrimary),
+      decoration: InputDecoration(
+        hintText: '이름을 입력하세요',
+        hintStyle: AppText.body.copyWith(color: AppColors.textHint),
+        counterText: '',
+        filled: true,
+        fillColor: AppColors.surface,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.md,
+        ),
+        suffixIcon: IconButton(
+          icon: const FaIcon(FontAwesomeIcons.plus, size: 16),
+          color: AppColors.textPrimary,
+          onPressed: () => _confirmName(),
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: const BorderSide(color: AppColors.textPrimary),
+        ),
+      ),
+      onSubmitted: (v) => _confirmName(v),
+    );
+  }
+
+  Widget _popInChip({required Key key, required Widget child}) {
+    return TweenAnimationBuilder<double>(
+      key: key,
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+      builder: (_, t, c) => Opacity(
+        opacity: t,
+        child: Transform.scale(scale: 0.9 + 0.1 * t, child: c),
+      ),
+      child: child,
+    );
+  }
+
   // ── 공용 조각 ───────────────────────────────────────────────────────
 
   Widget _question(String q, String sub) {
@@ -895,33 +1100,77 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage>
     );
   }
 
-  Widget _summaryRow({
-    required Key key,
-    required String label,
-    required String value,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      key: key,
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.md),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-        child: Row(
-          children: [
-            Text(label, style: AppText.caption),
-            const SizedBox(width: AppSpacing.md),
-            Text(value, style: AppText.subTitle),
-            const Spacer(),
-            const FaIcon(
-              FontAwesomeIcons.pen,
-              size: 12,
-              color: AppColors.textHint,
-            ),
-          ],
-        ),
+  void _removeName(String name) {
+    setState(() {
+      _names.remove(name);
+      _nameError = null;
+      if (_names.length < _neededNames) _step = _Step.name;
+    });
+  }
+
+  void _scrollToBottomSoon({bool focusName = false}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      // 새 슬롯이 빌드된 다음 프레임에 포커스를 다시 잡아 키보드가 끊기지 않게.
+      if (focusName && _step == _Step.name) _nameFocus.requestFocus();
+      if (!_scroll.hasClients) return;
+      _scroll.animateTo(
+        _scroll.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+      );
+    });
+  }
+
+  void _selectIncludeOwner(bool value) {
+    HapticFeedback.selectionClick();
+    setState(() => _includeOwner = value); // 140ms 하이라이트.
+    Future.delayed(const Duration(milliseconds: 140), () {
+      if (!mounted) return;
+      // 토글로 필요한 이름 수가 줄면 초과분 drop.
+      if (_names.length > _neededNames) {
+        _names.removeRange(_neededNames, _names.length);
+      }
+      setState(() {
+        _step = _names.length >= _neededNames ? _Step.review : _Step.name;
+      });
+      _scrollToBottomSoon(focusName: true);
+    });
+  }
+
+  /// 답한 스텝 ↔ 활성 스텝 전환 — fade(AnimatedSwitcher) + size(AnimatedSize).
+  Widget _slot({required Widget child}) {
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeInOutCubic,
+      alignment: Alignment.topCenter,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 260),
+        switchInCurve: Curves.easeInOut,
+        switchOutCurve: Curves.easeInOut,
+        child: child,
       ),
     );
+  }
+
+  // ── 액션 / 전환 ────────────────────────────────────────────────────
+
+  void _start() {
+    _hookTimer?.cancel();
+    setState(() {
+      _frozenWord = _hookWords[_hookIndex];
+      _step = _Step.count;
+    });
+    _scrollToBottomSoon();
+  }
+
+  /// 훅 키워드 회전 시작/재개 — 1.5초마다 키워드 교체. 인트로 진입마다 호출.
+  void _startHookRotation() {
+    _hookTimer?.cancel();
+    _hookTimer = Timer.periodic(const Duration(milliseconds: 1500), (_) {
+      if (!mounted) return;
+      setState(() => _hookIndex = (_hookIndex + 1) % _hookWords.length);
+    });
   }
 
   Widget _stepper() {
@@ -994,281 +1243,32 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage>
     );
   }
 
-  Widget _choiceCard({
-    required bool selected,
-    required String title,
-    required String subtitle,
+  Widget _summaryRow({
+    required Key key,
+    required String label,
+    required String value,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
+    return InkWell(
+      key: key,
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
-        padding: const EdgeInsets.symmetric(
-          vertical: AppSpacing.lg,
-          horizontal: AppSpacing.xl,
-        ),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          border: Border.all(
-            color: selected ? AppColors.textPrimary : AppColors.border,
-            width: selected ? 1.5 : 1,
-          ),
-        ),
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
         child: Row(
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: AppText.subTitle),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(subtitle, style: AppText.caption),
-                ],
-              ),
+            Text(label, style: AppText.caption),
+            const SizedBox(width: AppSpacing.md),
+            Text(value, style: AppText.subTitle),
+            const Spacer(),
+            const FaIcon(
+              FontAwesomeIcons.pen,
+              size: 12,
+              color: AppColors.textHint,
             ),
-            if (selected)
-              const FaIcon(
-                FontAwesomeIcons.check,
-                size: 16,
-                color: AppColors.textPrimary,
-              ),
           ],
         ),
       ),
     );
-  }
-
-  Widget _nameField() {
-    final lastSlot = _names.length + 1 >= _neededNames;
-    return TextField(
-      controller: _nameController,
-      focusNode: _nameFocus,
-      autofocus: true,
-      textInputAction: lastSlot ? TextInputAction.done : TextInputAction.next,
-      maxLength: 10,
-      style: AppText.body.copyWith(color: AppColors.textPrimary),
-      decoration: InputDecoration(
-        hintText: '이름을 입력하세요',
-        hintStyle: AppText.body.copyWith(color: AppColors.textHint),
-        counterText: '',
-        filled: true,
-        fillColor: AppColors.surface,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.lg,
-          vertical: AppSpacing.md,
-        ),
-        suffixIcon: IconButton(
-          icon: const FaIcon(FontAwesomeIcons.plus, size: 16),
-          color: AppColors.textPrimary,
-          onPressed: () => _confirmName(),
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: const BorderSide(color: AppColors.textPrimary),
-        ),
-      ),
-      onSubmitted: (v) => _confirmName(v),
-    );
-  }
-
-  Widget _popInChip({required Key key, required Widget child}) {
-    return TweenAnimationBuilder<double>(
-      key: key,
-      tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOut,
-      builder: (_, t, c) => Opacity(
-        opacity: t,
-        child: Transform.scale(scale: 0.9 + 0.1 * t, child: c),
-      ),
-      child: child,
-    );
-  }
-
-  // ── 하단 CTA 파생 ──────────────────────────────────────────────────
-
-  String get _ctaLabel {
-    switch (_step) {
-      case _Step.intro:
-        return '시작하기';
-      case _Step.review:
-        return '케미 그룹 입장하기';
-      default:
-        return '다음';
-    }
-  }
-
-  VoidCallback? get _ctaAction {
-    switch (_step) {
-      case _Step.intro:
-        return _start;
-      case _Step.count:
-        return _confirmCount;
-      case _Step.includeOwner:
-        return null; // 카드 탭 auto-advance.
-      case _Step.name:
-        return _confirmName;
-      case _Step.review:
-        return _enterRoom;
-    }
-  }
-
-  // ── 액션 / 전환 ────────────────────────────────────────────────────
-
-  void _start() {
-    _hookTimer?.cancel();
-    setState(() {
-      _frozenWord = _hookWords[_hookIndex];
-      _step = _Step.count;
-    });
-    _scrollToBottomSoon();
-  }
-
-  void _bumpCount(int delta) {
-    final next = (_count + delta).clamp(
-      TeamRoom.kMinMembers,
-      TeamRoom.kMaxMembers,
-    );
-    if (next == _count) return;
-    HapticFeedback.selectionClick();
-    setState(() => _count = next);
-  }
-
-  void _confirmCount() {
-    // 인원 축소로 이름이 넘치면 꼬리부터 trim (앞쪽 보존).
-    if (_includeOwner != null && _names.length > _neededNames) {
-      _names.removeRange(_neededNames, _names.length);
-    }
-    setState(() => _step = _Step.includeOwner);
-    _scrollToBottomSoon();
-  }
-
-  void _selectIncludeOwner(bool value) {
-    HapticFeedback.selectionClick();
-    setState(() => _includeOwner = value); // 140ms 하이라이트.
-    Future.delayed(const Duration(milliseconds: 140), () {
-      if (!mounted) return;
-      // 토글로 필요한 이름 수가 줄면 초과분 drop.
-      if (_names.length > _neededNames) {
-        _names.removeRange(_neededNames, _names.length);
-      }
-      setState(() {
-        _step = _names.length >= _neededNames ? _Step.review : _Step.name;
-      });
-      _scrollToBottomSoon(focusName: true);
-    });
-  }
-
-  void _confirmName([String? raw]) {
-    final name = (raw ?? _nameController.text).trim();
-    if (name.isEmpty) {
-      _nameFocus.requestFocus();
-      return;
-    }
-    // '나' 는 방장 슬롯의 표시 이름이라 명단에 또 있으면 사실상 중복.
-    if (name == '나' || _names.contains(name)) {
-      _nameController.clear();
-      setState(() => _nameError = '같은 그룹내에 동일이름은 허용하지 않습니다.');
-      _nameFocus.requestFocus();
-      return;
-    }
-    _nameController.clear();
-    setState(() {
-      _names.add(name);
-      _nameError = null;
-      if (_names.length >= _neededNames) _step = _Step.review;
-    });
-    _scrollToBottomSoon(focusName: true);
-  }
-
-  void _removeName(String name) {
-    setState(() {
-      _names.remove(name);
-      _nameError = null;
-      if (_names.length < _neededNames) _step = _Step.name;
-    });
-  }
-
-  void _editName(String name) {
-    setState(() {
-      _names.remove(name);
-      _nameController.text = name;
-      _nameError = null;
-      _step = _Step.name;
-    });
-    _scrollToBottomSoon(focusName: true);
-  }
-
-  void _back() {
-    switch (_step) {
-      case _Step.intro:
-        return;
-      case _Step.count:
-        _goIntro();
-      case _Step.includeOwner:
-        setState(() => _step = _Step.count);
-      case _Step.name:
-        if (_names.isNotEmpty) {
-          // 직전 슬롯 재편집 — 마지막 이름을 필드로 되돌린다.
-          setState(() {
-            _nameController.text = _names.removeLast();
-            _nameError = null;
-          });
-        } else {
-          setState(() => _step = _Step.includeOwner);
-        }
-      case _Step.review:
-        if (_names.isNotEmpty) {
-          setState(() {
-            _nameController.text = _names.removeLast();
-            _nameError = null;
-            _step = _Step.name;
-          });
-        } else {
-          setState(() => _step = _Step.includeOwner);
-        }
-    }
-    _scrollToBottomSoon(focusName: true);
-  }
-
-  Future<void> _enterRoom() async {
-    if (_creating) return;
-    // 입력 중이던 이름이 남아 있으면 흡수.
-    if (_nameController.text.trim().isNotEmpty) _confirmName();
-    setState(() => _creating = true);
-    final room = await ref
-        .read(teamsProvider.notifier)
-        .create(
-          title: _title,
-          ownerReportId: widget.ownerReportId,
-          pendingNames: List<String>.from(_names),
-          includeOwner: _includeOwner ?? true,
-        );
-    if (!mounted) return;
-    Navigator.of(context).pop(room);
-  }
-
-  void _scrollToBottomSoon({bool focusName = false}) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      // 새 슬롯이 빌드된 다음 프레임에 포커스를 다시 잡아 키보드가 끊기지 않게.
-      if (focusName && _step == _Step.name) _nameFocus.requestFocus();
-      if (!_scroll.hasClients) return;
-      _scroll.animateTo(
-        _scroll.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 320),
-        curve: Curves.easeOutCubic,
-      );
-    });
   }
 }

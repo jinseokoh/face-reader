@@ -308,7 +308,8 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen>
               const SizedBox(height: AppSpacing.sm),
               const Text(
                 '그룹을 만들고 참여할 멤버를 등록하면, 참가자를 직접촬영하거나 카톡/링크 초대를 보낼 수 있습니다. '
-                '참가자 전원이 관상을 등록하면 그룹 케미가 발표됩니다.',
+                '참가자 전원이 관상을 등록하면 그룹 케미 결과표가 '
+                '만들어집니다.',
                 style: AppText.body,
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -408,7 +409,7 @@ class _TeamCardState extends ConsumerState<_TeamCard> {
                         // 방은 발표까지 남은 스캔 수. 두 상태의 카드 높이를 맞춘다.
                         Text(
                           room.isClosed
-                              ? (_bestPreview ?? '발표 완료')
+                              ? (_bestPreview ?? '결과표 완성')
                               : _recruitHint(room),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -470,14 +471,15 @@ class _TeamCardState extends ConsumerState<_TeamCard> {
             ),
           ],
         ),
-        // 마감 카드 좌상단 대각선 "발표" 리본 — 새 색 없이 gold 바탕 + 흰 텍스트.
+        // 마감 카드 좌상단 대각선 "완료" 리본 — 새 색 없이 gold 바탕 + 흰 텍스트.
         // 카드 radius 로 ClipRRect 해 리본 끝이 모서리에 맞춰 잘린다.
-        // UI 카피는 "발표" 통일 — "마감" 은 코드·스키마 내부 용어로만.
+        // "발표" 표기 폐기(2026-07-12) — 결과표는 전원 등록 시 자동 생성되는
+        // 것이지 누가 발표하는 것이 아니다. 방 화면 gold 뱃지와 동일 표기.
         child: room.isClosed
             ? ClipRRect(
                 borderRadius: BorderRadius.circular(AppRadius.lg),
                 child: Banner(
-                  message: '발표',
+                  message: '완료',
                   location: BannerLocation.topStart,
                   color: AppColors.gold,
                   textStyle: AppText.hint.copyWith(
@@ -547,10 +549,10 @@ class _TeamCardState extends ConsumerState<_TeamCard> {
     await ref.read(teamsProvider.notifier).delete(room.id);
   }
 
-  /// 모집중 방의 3번째 줄 — 발표(전원 등록 자동 마감)까지 남은 수. 3명 부분
-  /// 공개 로직 폐기로 카운트가 빈 슬롯 수와 항상 일치한다.
+  /// 모집중 방의 3번째 줄 — 결과표 생성(전원 등록 자동 마감)까지 남은 수.
+  /// 3명 부분 공개 로직 폐기로 카운트가 빈 슬롯 수와 항상 일치한다.
   String _recruitHint(TeamRoom room) {
-    return '${room.members.length - room.scannedCount}명 더 등록하면 그룹 케미 발표 가능';
+    return '${room.members.length - room.scannedCount}명 더 등록하면, 그룹 케미 결과표 생성';
   }
 
   /// 좌측 상태 아바타 — 모집중과 모집끝 모두 동일한 peopleGroup 아이콘.
