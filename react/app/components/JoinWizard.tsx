@@ -943,9 +943,11 @@ export function JoinWizard({
           )}
           <p className="join-sub">
             {progress && progress.total - progress.joined > 0
-              ? `나머지 ${progress.total - progress.joined}명이 등록을 마치면 그룹 케미 결과표가 공개됩니다. `
-              : "전원 등록 완료! 그룹 케미 결과표가 곧 공개됩니다. "}
-            측면까지 넣은 정밀 분석은 앱에서만 가능합니다.
+              ? `나머지 ${progress.total - progress.joined}명이 등록을 마치면 그룹 케미 결과표가 공개됩니다.`
+              : "전원 등록 완료! 그룹 케미 결과표가 곧 공개됩니다."}
+          </p>
+          <p className="join-sub" style={{ marginTop: 4 }}>
+            얼굴의 측면까지 분석하는 정밀 관상은 앱으로만 가능합니다.
           </p>
         </>
       )}

@@ -132,9 +132,14 @@ export async function fetchRoster(
     .eq("team_id", teamId)
     .order("joined_at");
   const rows = data ?? [];
-  const ordered = [
+  // 등록 완료(사진) 먼저, 빈 슬롯 나중 — 각 그룹 안에선 방장 우선.
+  const byOwner = [
     ...rows.filter((r) => r.is_owner),
     ...rows.filter((r) => !r.is_owner),
+  ];
+  const ordered = [
+    ...byOwner.filter((r) => r.metrics_id != null),
+    ...byOwner.filter((r) => r.metrics_id == null),
   ];
   const ids = ordered
     .filter((r) => r.metrics_id != null)
