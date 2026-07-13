@@ -44,7 +44,6 @@ const COUNTDOWN_MS = 3_000
 
 type Stage =
   | 'entry'
-  | 'already'
   | 'name'
   | 'reuse'
   | 'info'
@@ -264,13 +263,10 @@ export function JoinWizard({
       setExisting(mine)
       setMembership(member)
       if (cameFromLogin) {
-        // 로그인하고 복귀 — 이미 참여했으면 재참여 확인, 기존 관상이 있으면
-        // 썸네일과 함께 재사용/재촬영 선택, 아니면 이름 선택.
+        // 로그인하고 복귀 — 이미 참여했으면 바로 로스터(done) 화면, 기존
+        // 관상이 있으면 썸네일과 함께 재사용/재촬영 선택, 아니면 이름 선택.
         if (member) {
-          const p = await fetchProgress(client, team.id)
-          setProgress(p)
-          if (p) onJoined?.(p)
-          setStage('already')
+          await finishJoin(client)
         } else if (mine) {
           setStage('reuse')
         } else {
@@ -626,10 +622,7 @@ export function JoinWizard({
         membership ?? (await fetchMembership(client, team.id, s.user.id))
       if (member) {
         setMembership(member)
-        const p = await fetchProgress(client, team.id)
-        setProgress(p)
-        if (p) onJoined?.(p)
-        setStage('already')
+        await finishJoin(client)
       } else {
         const mine =
           existing ?? (await fetchMyFace(client, s.user.id))
@@ -736,13 +729,6 @@ export function JoinWizard({
     }
   }
 
-  /** 이미 참여한 사용자의 재촬영 — 내 슬롯의 metrics 를 덮어쓴다. */
-  function onAlreadyRecapture() {
-    metricsIdRef.current = null
-    bodyRef.current = null
-    setNotice('')
-    setStage('info')
-  }
 
   function onInfoNext() {
     setNotice('')
@@ -825,48 +811,6 @@ export function JoinWizard({
         </>
       )}
 
-      {stage === 'already' && membership && (
-        <>
-          <p className="join-q">등록 완료</p>
-          <div className="join-me-row">
-            <div className="join-roster-item">
-              {avatarUrl(membership.thumbnailKey) ? (
-                <img
-                  className="join-avatar"
-                  src={avatarUrl(membership.thumbnailKey)!}
-                  alt=""
-                />
-              ) : (
-                <div className="join-avatar join-avatar--letter">
-                  {(membership.name === '나'
-                    ? nickname || membership.name
-                    : membership.name
-                  ).slice(0, 1)}
-                </div>
-              )}
-              {/* 아바타 라벨은 항상 실명(nickname/슬롯명) — '나' 표기 금지 */}
-              <p className="join-avatar-name">
-                {membership.name === '나'
-                  ? nickname || membership.name
-                  : membership.name}
-              </p>
-            </div>
-            <button
-              className="join-btn join-btn--line join-me-recapture"
-              onClick={onAlreadyRecapture}
-            >
-              관상 다시 촬영
-            </button>
-          </div>
-          {progress && progress.total - progress.joined > 0 && (
-            <p className="join-sub">
-              나머지 {progress.total - progress.joined}명이 등록을 마치면 그룹
-              케미 결과표가 공개됩니다.
-            </p>
-          )}
-          {matrixSection}
-        </>
-      )}
 
       {stage === 'name' && (
         <>
