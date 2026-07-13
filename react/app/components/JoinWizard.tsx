@@ -188,6 +188,8 @@ export function JoinWizard({
   const lastCountRef = useRef<number | null>(null)
   const doneRef = useRef(false)
   const noFaceTimerRef = useRef<number | null>(null)
+  // 직전 프레임 landmark — 앱과 동일한 흔들림(stability) 판정용.
+  const prevFaceRef = useRef<{ x: number; y: number }[] | null>(null)
   // 캡처 산출물 — 단계를 넘어도 유지 (name-taken 재시도 시 metrics 재사용).
   const bodyRef = useRef<WebCaptureBody | null>(null)
   const thumbRef = useRef<Blob | null>(null)
@@ -374,6 +376,7 @@ export function JoinWizard({
     doneRef.current = false
     countdownStartRef.current = null
     lastCountRef.current = null
+    prevFaceRef.current = null
     setCount(null)
     setHint('얼굴 인식 준비 중…')
     setStage('camera')
@@ -421,16 +424,24 @@ export function JoinWizard({
     if (video.readyState >= 2) {
       const res = landmarker.detectForVideo(video, performance.now())
       const face = res.faceLandmarks?.[0]
-      const frontal = face != null && face.length >= 468 && isFrontal(face)
-      drawMesh(video, face ?? null, frontal)
-      if (face && face.length >= 468 && !frontal) {
-        // 얼굴은 있지만 정면이 아님 — 빨간 mesh + 카운트다운 리셋 (앱 동일).
+      const ready =
+        face && face.length >= 468 ? captureReadiness(face) : 'no-face'
+      prevFaceRef.current = face && face.length >= 468 ? face : null
+      drawMesh(video, face ?? null, ready === 'ok')
+      if (face && face.length >= 468 && ready !== 'ok') {
+        // 얼굴은 있지만 캡처 조건 미달 — 빨간 mesh + 카운트다운 리셋 (앱 동일).
         countdownStartRef.current = null
         if (lastCountRef.current != null) {
           lastCountRef.current = null
           setCount(null)
         }
-        setHint('정면을 봐 주세요')
+        setHint(
+          ready === 'yaw'
+            ? '정면을 봐 주세요'
+            : ready === 'size'
+              ? '조금 더 가까이 와 주세요'
+              : '움직이지 말고 그대로 계세요',
+        )
       } else if (face && face.length >= 468) {
         // 정면이 잡히면 2초 카운트다운 (2 → 1 → 찰칵) — 앱과 동일한 치즈 모먼트.
         const now = performance.now()
@@ -464,15 +475,30 @@ export function JoinWizard({
     rafRef.current = requestAnimationFrame(loop)
   }
 
-  /** 앱 estimateYaw/classifyYaw 와 동일 — 코끝(1)↔좌(454)·우(234) 가장자리
-   *  거리 비대칭으로 yaw 추정, |yaw| < 0.70 이면 정면. */
-  function isFrontal(face: { x: number }[]): boolean {
+  /** 앱 _computeOverlayColor 이식 — 캡처 성립 조건 3중 게이트.
+   *  ① yaw(코끝↔좌우 가장자리 비대칭) < 0.45 — 웹은 정면 전용이라 앱의
+   *     frontal 분류(0.70)보다 엄격. ② 얼굴 폭 > 0.25 (너무 멀면 거부).
+   *  ③ 프레임 간 landmark 평균 이동 < 0.005 (흔들림 거부). */
+  function captureReadiness(
+    face: { x: number; y: number }[],
+  ): 'ok' | 'yaw' | 'size' | 'unstable' {
     const nose = face[1].x
     const rightDist = Math.abs(nose - face[234].x)
     const leftDist = Math.abs(face[454].x - nose)
     const total = rightDist + leftDist
-    if (total === 0) return false
-    return Math.abs((leftDist - rightDist) / total) < 0.7
+    const yaw = total === 0 ? 1 : Math.abs((leftDist - rightDist) / total)
+    if (yaw >= 0.45) return 'yaw'
+    if (Math.abs(face[454].x - face[234].x) <= 0.25) return 'size'
+    const prev = prevFaceRef.current
+    if (!prev || prev.length !== face.length) return 'unstable'
+    let dist = 0
+    for (let i = 0; i < face.length; i++) {
+      const dx = face[i].x - prev[i].x
+      const dy = face[i].y - prev[i].y
+      dist += Math.sqrt(dx * dx + dy * dy)
+    }
+    if (dist / face.length >= 0.005) return 'unstable'
+    return 'ok'
   }
 
   /** 앱 FaceMeshPainter 와 동일 문법 — tesselation(alpha 0.15) + landmark 점.
