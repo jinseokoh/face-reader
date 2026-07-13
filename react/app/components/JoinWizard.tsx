@@ -749,7 +749,8 @@ export function JoinWizard({
       <div className="join">
         <p className="join-sub">카카오톡 안에서는 카메라가 막혀 있어요.</p>
         <button
-          className="join-btn"
+          className="join-btn join-btn--line"
+          style={{ display: "block", width: "100%" }}
           onClick={() => openInExternalBrowser(window.location.href)}
         >
           기본 브라우저로 열기
