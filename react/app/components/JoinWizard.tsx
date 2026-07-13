@@ -124,6 +124,8 @@ export function JoinWizard({
     id: string
     thumbnailKey: string | null
   } | null>(null)
+  // 로그인 직후 확인된 내 관상 보유 여부 — 이름 화면 상단에 항상 명시한다.
+  const [faceStatus, setFaceStatus] = useState<'reuse' | 'none' | null>(null)
   // 이 그룹에 이미 참여한 내 슬롯 — 있으면 이름을 묻지 않고 재참여를 묻는다.
   const [membership, setMembership] = useState<{
     name: string
@@ -271,6 +273,8 @@ export function JoinWizard({
         } else if (mine) {
           setStage('reuse')
         } else {
+          // 등록된 관상 없음 — 이름 화면에서 '없음'을 먼저 알린다.
+          setFaceStatus('none')
           setStage('name')
         }
       }
@@ -629,6 +633,7 @@ export function JoinWizard({
         const mine =
           existing ?? (await fetchMyFace(client, s.user.id))
         setExisting(mine)
+        if (!mine) setFaceStatus('none')
         setStage(mine ? 'reuse' : 'name')
       }
       return
@@ -668,6 +673,7 @@ export function JoinWizard({
   /** 기존 내 관상 재사용 — 촬영 없이 이름 선택으로 진행. */
   function onReuseExisting() {
     metricsIdRef.current = existing?.id ?? null
+    setFaceStatus('reuse')
     setStage('name')
   }
 
@@ -675,6 +681,7 @@ export function JoinWizard({
   function onReuseRecapture() {
     metricsIdRef.current = null
     bodyRef.current = null
+    setFaceStatus('none')
     setStage('name')
   }
 
@@ -853,6 +860,16 @@ export function JoinWizard({
 
       {stage === 'name' && (
         <>
+          {faceStatus === 'reuse' && (
+            <p className="join-sub" style={{ margin: '0 0 8px' }}>
+              이미 등록된 내 관상으로 참여합니다. (촬영 없음)
+            </p>
+          )}
+          {faceStatus === 'none' && (
+            <p className="join-sub" style={{ margin: '0 0 8px' }}>
+              등록된 내 관상이 없습니다. 이름 선택 후 촬영으로 등록합니다.
+            </p>
+          )}
           <p className="join-q">어떤 이름으로 참여할까요?</p>
           {openSlots.length > 0 && (
             <div className="join-chips">
