@@ -923,7 +923,7 @@ export function JoinWizard({
       {stage === 'reuse' && (
         <>
           <p className="join-q">이미 등록된 내 관상이 있어요</p>
-          <div>
+          <div className="join-btn-row">
             <button
               className="join-btn join-btn--line join-btn--face"
               onClick={onReuseExisting}
@@ -937,8 +937,6 @@ export function JoinWizard({
               )}
               기존 관상으로 참여
             </button>
-          </div>
-          <div>
             <button
               className="join-btn join-btn--line"
               onClick={onReuseRecapture}

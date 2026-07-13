@@ -868,6 +868,13 @@ textarea.form-input {
   border: 1px solid var(--ink);
   margin-top: 8px;
 }
+.join-btn-row {
+  /* 버튼 2개 한 줄 나열 */
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  align-items: stretch;
+}
 .join-btn--face {
   /* 버튼 안 아바타 — 24px = 라벨 line-height 와 동일해 버튼 높이 불변 */
   display: inline-flex;
