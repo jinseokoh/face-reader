@@ -254,16 +254,22 @@ export function JoinWizard({
         setNickname(n)
         setNameInput((cur) => cur || n)
       })
-      void fetchMyFace(client, uid).then(setExisting)
-      const member = await fetchMembership(client, team.id, uid)
+      const [mine, member] = await Promise.all([
+        fetchMyFace(client, uid),
+        fetchMembership(client, team.id, uid),
+      ])
+      setExisting(mine)
       setMembership(member)
       if (cameFromLogin) {
-        // 로그인하고 복귀 — 이미 참여했으면 재참여 확인, 아니면 이름 선택.
+        // 로그인하고 복귀 — 이미 참여했으면 재참여 확인, 기존 관상이 있으면
+        // 썸네일과 함께 재사용/재촬영 선택, 아니면 이름 선택.
         if (member) {
           const p = await fetchProgress(client, team.id)
           setProgress(p)
           if (p) onJoined?.(p)
           setStage('already')
+        } else if (mine) {
+          setStage('reuse')
         } else {
           setStage('name')
         }
@@ -620,7 +626,10 @@ export function JoinWizard({
         if (p) onJoined?.(p)
         setStage('already')
       } else {
-        setStage('name')
+        const mine =
+          existing ?? (await fetchMyFace(client, s.user.id))
+        setExisting(mine)
+        setStage(mine ? 'reuse' : 'name')
       }
       return
     }
@@ -650,15 +659,23 @@ export function JoinWizard({
       return
     }
     setNotice('')
-    // 서버에 내 관상이 이미 있으면 재사용/재촬영을 사용자가 고른다.
-    if (existing) setStage('reuse')
+    // 재사용/재촬영 결정은 이름 전에 끝난 상태 — 기존 관상 재사용이면
+    // 바로 합류, 아니면 정보 확인 → 카메라.
+    if (metricsIdRef.current || bodyRef.current) void runSave()
     else setStage('info')
   }
 
-  /** 기존 내 관상으로 촬영 없이 바로 참여. */
+  /** 기존 내 관상 재사용 — 촬영 없이 이름 선택으로 진행. */
   function onReuseExisting() {
     metricsIdRef.current = existing?.id ?? null
-    void runSave()
+    setStage('name')
+  }
+
+  /** 기존 관상 대신 새로 촬영 — 이름 선택 후 정보/카메라로 이어진다. */
+  function onReuseRecapture() {
+    metricsIdRef.current = null
+    bodyRef.current = null
+    setStage('name')
   }
 
   /** 전원 등록 시 즉석 결과표 — 멤버 전원 raw 를 받아 runCompat 전쌍 계산. */
@@ -910,7 +927,7 @@ export function JoinWizard({
           <div>
             <button
               className="join-btn join-btn--line"
-              onClick={() => setStage('info')}
+              onClick={onReuseRecapture}
             >
               다시 촬영하기
             </button>
