@@ -11,7 +11,7 @@ export function CTA(props: Props) {
   return (
     <section className="cta">
       <a className="cta-primary" href={props.appOpenUrl}>
-        관상은 과학이다 앱 열기
+        앱으로 열기
       </a>
       <p className="cta-divider">앱이 없다면</p>
       <div className="cta-stores">
