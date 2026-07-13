@@ -819,11 +819,6 @@ export function JoinWizard({
               이미 등록된 내 관상으로 참여합니다. (촬영 없음)
             </p>
           )}
-          {faceStatus === 'none' && (
-            <p className="join-sub" style={{ margin: '0 0 8px' }}>
-              등록된 내 관상이 없습니다. 이름 선택 후 촬영으로 등록합니다.
-            </p>
-          )}
           <p className="join-q">어떤 이름으로 참여할까요?</p>
           {openSlots.length > 0 && (
             <div className="join-chips">
