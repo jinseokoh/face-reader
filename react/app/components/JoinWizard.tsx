@@ -252,27 +252,25 @@ export function JoinWizard({
         return
       }
       const uid = data.session.user.id
-      void fetchNickname(client, uid).then((n) => {
-        setNickname(n)
-        setNameInput((cur) => cur || n)
-      })
-      const [mine, member] = await Promise.all([
+      const [nick, mine, member] = await Promise.all([
+        fetchNickname(client, uid),
         fetchMyFace(client, uid),
         fetchMembership(client, team.id, uid),
       ])
+      setNickname(nick)
+      setNameInput((cur) => cur || nick)
       setExisting(mine)
       setMembership(member)
       if (cameFromLogin) {
         // 로그인하고 복귀 — 이미 참여했으면 바로 로스터(done) 화면, 기존
-        // 관상이 있으면 썸네일과 함께 재사용/재촬영 선택, 아니면 이름 선택.
+        // 관상이 있으면 썸네일과 함께 재사용/재촬영 선택, 아니면 이름으로.
         if (member) {
           await finishJoin(client)
         } else if (mine) {
           setStage('reuse')
         } else {
-          // 등록된 관상 없음 — 이름 화면에서 '없음'을 먼저 알린다.
           setFaceStatus('none')
-          setStage('name')
+          goNameOrSkip(nick)
         }
       }
     })
@@ -287,16 +285,37 @@ export function JoinWizard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage])
 
-  // 선택 즉시 저장 — 다음 방문의 "나를 알려주세요"는 탭 한 번으로 끝난다.
-  useEffect(() => {
-    try {
-      localStorage.setItem(DEMO_KEY, JSON.stringify({ gender, age, ethnicity }))
-    } catch {
-      /* storage 불가 환경은 무시 */
-    }
-  }, [gender, age, ethnicity])
 
   const openSlots = team.members.filter((m) => !m.joined)
+
+  /** 정보 확인 진입 또는 생략 — 이전에 한 번 확정(localStorage)한 사용자는
+   *  저장값으로 바로 카메라를 연다. 최초 1회만 정보 확인 노출. */
+  function goCapture() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(DEMO_KEY) ?? 'null') as {
+        age?: string
+      } | null
+      if (saved?.age && AGES.some((a) => a.v === saved.age)) {
+        void startCamera()
+        return
+      }
+    } catch {
+      /* 손상된 저장값 — 정보 확인으로 */
+    }
+    setStage('info')
+  }
+
+  /** 이름 화면 진입 또는 생략 — [name]이 빈 슬롯과 정확히 매칭되면 물어볼
+   *  것이 없으므로 그 자리를 자동 선택하고 촬영 단계로 직행한다. */
+  function goNameOrSkip(name: string | null | undefined) {
+    if (name && openSlots.some((m) => m.name === name)) {
+      setSlotPick(name)
+      setDirect(false)
+      goCapture()
+      return
+    }
+    setStage('name')
+  }
   // 빈 슬롯이 하나도 없으면 직접 입력이 유일한 경로.
   const isDirect = direct || openSlots.length === 0
 
@@ -627,8 +646,18 @@ export function JoinWizard({
         const mine =
           existing ?? (await fetchMyFace(client, s.user.id))
         setExisting(mine)
-        if (!mine) setFaceStatus('none')
-        setStage(mine ? 'reuse' : 'name')
+        if (mine) {
+          setStage('reuse')
+        } else {
+          setFaceStatus('none')
+          const nick =
+            nickname || (await fetchNickname(client, s.user.id))
+          if (nick && !nickname) {
+            setNickname(nick)
+            setNameInput((cur) => cur || nick)
+          }
+          goNameOrSkip(nick)
+        }
       }
       return
     }
@@ -659,22 +688,25 @@ export function JoinWizard({
     }
     setNotice('')
     // 재사용/재촬영 결정은 이름 전에 끝난 상태 — 기존 관상 재사용이면
-    // 바로 합류, 아니면 정보 확인 → 카메라.
+    // 바로 합류, 아니면 촬영 (확정 이력 있으면 정보 확인 생략).
     if (metricsIdRef.current || bodyRef.current) void runSave()
-    else setStage('info')
+    else goCapture()
   }
 
   /** 기존 내 관상 재사용 — 촬영 없이 이름 선택으로 진행. */
   function onReuseExisting() {
     metricsIdRef.current = existing?.id ?? null
     setFaceStatus('reuse')
-    // 기존 관상의 alias 와 같은 이름의 빈 슬롯이 있으면 이름 단계 생략 —
-    // 그 자리로 즉시 합류한다.
-    const alias = existing?.alias ?? null
-    if (alias && team.members.some((m) => !m.joined && m.name === alias)) {
-      setSlotPick(alias)
+    // alias(우선) 또는 카카오 닉네임이 빈 슬롯과 매칭되면 이름 단계 생략 —
+    // 그 자리로 즉시 합류한다. 매칭되는데 또 물어보는 것은 무의미.
+    const match = [existing?.alias, nickname].find(
+      (n): n is string =>
+        Boolean(n) && team.members.some((m) => !m.joined && m.name === n),
+    )
+    if (match) {
+      setSlotPick(match)
       setDirect(false)
-      void runSave(alias)
+      void runSave(match)
       return
     }
     setStage('name')
@@ -685,7 +717,7 @@ export function JoinWizard({
     metricsIdRef.current = null
     bodyRef.current = null
     setFaceStatus('none')
-    setStage('name')
+    goNameOrSkip(nickname)
   }
 
   /** 전원 등록 시 즉석 결과표 — 멤버 전원 raw 를 받아 runCompat 전쌍 계산. */
@@ -732,6 +764,14 @@ export function JoinWizard({
 
   function onInfoNext() {
     setNotice('')
+    try {
+      localStorage.setItem(
+        DEMO_KEY,
+        JSON.stringify({ gender, age, ethnicity }),
+      )
+    } catch {
+      /* storage 불가 환경은 무시 */
+    }
     void startCamera()
   }
 
