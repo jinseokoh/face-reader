@@ -123,6 +123,7 @@ export function JoinWizard({
   const [existing, setExisting] = useState<{
     id: string
     thumbnailKey: string | null
+    alias: string | null
   } | null>(null)
   // 로그인 직후 확인된 내 관상 보유 여부 — 이름 화면 상단에 항상 명시한다.
   const [faceStatus, setFaceStatus] = useState<'reuse' | 'none' | null>(null)
@@ -544,7 +545,7 @@ export function JoinWizard({
   }
 
   /** 저장 시퀀스: 마감 재확인 → metrics(신규 캡처 시, 기존 my-face 덮어쓰기) → 합류. */
-  async function runSave() {
+  async function runSave(nameOverride?: string) {
     const s = sessionRef.current
     if (!s) {
       fail('세션이 만료됐어요. 다시 로그인해 주세요.')
@@ -586,7 +587,7 @@ export function JoinWizard({
     const r = await joinTeam(client, {
       teamId: team.id,
       metricsId: metricsIdRef.current,
-      name: chosenName(),
+      name: nameOverride ?? chosenName(),
     })
     if (r === 'name-taken') {
       setNotice(
@@ -674,6 +675,15 @@ export function JoinWizard({
   function onReuseExisting() {
     metricsIdRef.current = existing?.id ?? null
     setFaceStatus('reuse')
+    // 기존 관상의 alias 와 같은 이름의 빈 슬롯이 있으면 이름 단계 생략 —
+    // 그 자리로 즉시 합류한다.
+    const alias = existing?.alias ?? null
+    if (alias && team.members.some((m) => !m.joined && m.name === alias)) {
+      setSlotPick(alias)
+      setDirect(false)
+      void runSave(alias)
+      return
+    }
     setStage('name')
   }
 

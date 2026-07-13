@@ -67,10 +67,14 @@ function thumbKeyOf(body: string | null): string | null {
 export async function fetchMyFace(
   sb: SupabaseClient,
   uid: string,
-): Promise<{ id: string; thumbnailKey: string | null } | null> {
+): Promise<{
+  id: string;
+  thumbnailKey: string | null;
+  alias: string | null;
+} | null> {
   const { data } = await sb
     .from("metrics")
-    .select("id,body")
+    .select("id,body,alias")
     .eq("user_id", uid)
     .eq("is_my_face", true)
     .order("created_at", { ascending: false })
@@ -80,6 +84,7 @@ export async function fetchMyFace(
   return {
     id: data.id as string,
     thumbnailKey: thumbKeyOf(data.body as string | null),
+    alias: (data.alias as string | null) ?? null,
   };
 }
 
