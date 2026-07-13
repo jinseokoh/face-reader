@@ -16,7 +16,6 @@ import {
 import { useParams } from "react-router";
 import { Link } from "react-router";
 import { UserLink } from "../../components/user-link";
-import { deleteR2Object } from "../../lib/r2";
 import { adminClient } from "../../providers/data";
 import type { AppUser, MetricEntry, Team, TeamMember } from "../../types";
 import { metricThumbUrl } from "../../types";
@@ -28,30 +27,22 @@ export const TeamShow = () => {
   const { message } = App.useApp();
   const invalidate = useInvalidate();
 
-  /** 등록 삭제 — R2 썸네일 + metrics row. FK(on delete set null)가
-   *  team_members.metrics_id 를 비워 슬롯이 '대기'로 되돌아간다. */
-  const handleUnregister = async (metricsId: string, body?: string) => {
+  /** 슬롯 비우기 — team_members.metrics_id 만 null 로. metrics row 와
+   *  R2 썸네일은 보존한다 (그룹에서의 연결만 해제). */
+  const handleUnregister = async (memberId: string) => {
     try {
-      const key = body
-        ? (JSON.parse(body) as { thumbnailKey?: string }).thumbnailKey
-        : undefined;
-      if (key) {
-        const ok = await deleteR2Object(key);
-        if (!ok) message.warning("R2 썸네일 삭제 실패 — row 는 계속 삭제합니다");
-      }
       const { error } = await adminClient
-        .from("metrics")
-        .delete()
-        .eq("id", metricsId);
+        .from("team_members")
+        .update({ metrics_id: null })
+        .eq("id", memberId);
       if (error) {
-        message.error(`metrics 삭제 실패: ${error.message}`);
+        message.error(`슬롯 비우기 실패: ${error.message}`);
         return;
       }
-      message.success("등록 삭제됨 (슬롯은 대기로 전환)");
+      message.success("슬롯을 대기로 전환 (metrics·썸네일은 보존)");
       invalidate({ resource: "team_members", invalidates: ["list"] });
-      invalidate({ resource: "metrics", invalidates: ["list", "many"] });
     } catch (e) {
-      message.error(`삭제 실패: ${e instanceof Error ? e.message : String(e)}`);
+      message.error(`실패: ${e instanceof Error ? e.message : String(e)}`);
     }
   };
 
@@ -170,14 +161,12 @@ export const TeamShow = () => {
                   <Space size={4}>
                     <Tag color="blue">등록</Tag>
                     <Popconfirm
-                      title="등록 삭제"
-                      description={`'${m.name}' 의 metrics row 와 R2 썸네일을 삭제합니다. 되돌릴 수 없습니다.`}
+                      title="슬롯 비우기"
+                      description={`'${m.name}' 슬롯을 대기(빈 슬롯)로 되돌립니다. metrics·썸네일은 삭제되지 않습니다.`}
                       okText="Yes"
                       cancelText="No"
                       okButtonProps={{ danger: true }}
-                      onConfirm={() =>
-                        handleUnregister(v, metricById.get(v)?.body)
-                      }
+                      onConfirm={() => handleUnregister(m.id)}
                     >
                       <Button
                         size="small"
