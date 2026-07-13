@@ -922,22 +922,22 @@ export function JoinWizard({
 
       {stage === 'reuse' && (
         <>
-          {avatarUrl(existing?.thumbnailKey) && (
-            <>
-              <img
-                className="join-avatar"
-                src={avatarUrl(existing?.thumbnailKey)!}
-                alt=""
-              />
-              {nickname && <p className="join-avatar-name">{nickname}</p>}
-            </>
-          )}
           <p className="join-q">이미 등록된 내 관상이 있어요</p>
           <p className="join-sub">
             기존 관상으로 바로 참여하거나, 다시 촬영해서 덮어쓸 수 있어요.
           </p>
           <div>
-            <button className="join-btn" onClick={onReuseExisting}>
+            <button
+              className="join-btn join-btn--line join-btn--face"
+              onClick={onReuseExisting}
+            >
+              {avatarUrl(existing?.thumbnailKey) && (
+                <img
+                  className="join-btn-avatar"
+                  src={avatarUrl(existing?.thumbnailKey)!}
+                  alt=""
+                />
+              )}
               기존 관상으로 참여
             </button>
           </div>

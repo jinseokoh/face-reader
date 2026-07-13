@@ -868,6 +868,20 @@ textarea.form-input {
   border: 1px solid var(--ink);
   margin-top: 8px;
 }
+.join-btn--face {
+  /* 버튼 안 아바타 — 24px = 라벨 line-height 와 동일해 버튼 높이 불변 */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.join-btn-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
 .join-btn--kakao {
   /* 카카오 브랜드 버튼 — 4색 팔레트의 유일한 승인 예외 (공식 #FEE500 + 검정). */
   background: #fee500;
