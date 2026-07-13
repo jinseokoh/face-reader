@@ -923,9 +923,6 @@ export function JoinWizard({
       {stage === 'reuse' && (
         <>
           <p className="join-q">이미 등록된 내 관상이 있어요</p>
-          <p className="join-sub">
-            기존 관상으로 바로 참여하거나, 다시 촬영해서 덮어쓸 수 있어요.
-          </p>
           <div>
             <button
               className="join-btn join-btn--line join-btn--face"
