@@ -7,6 +7,7 @@ import {
   Modal,
   Popconfirm,
   Space,
+  Switch,
   Table,
   Tag,
   Typography,
@@ -81,6 +82,33 @@ export const MetricList = () => {
       invalidate({ resource: "metrics", invalidates: ["list", "many"] });
     } catch (e) {
       message.error(`삭제 실패: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
+  /** 본인(is_my_face) 토글 — my-face 는 사용자당 1개: on 시 기존 지정을
+   *  자동 demote. 익명(user_id null) row 는 소유자가 없어 지정 불가. */
+  const handleMyFace = async (record: MetricEntry, on: boolean) => {
+    try {
+      if (on && record.user_id) {
+        const { error: demoteErr } = await adminClient
+          .from("metrics")
+          .update({ is_my_face: false })
+          .eq("user_id", record.user_id)
+          .eq("is_my_face", true)
+          .neq("id", record.id);
+        if (demoteErr) throw demoteErr;
+      }
+      const { error } = await adminClient
+        .from("metrics")
+        .update({ is_my_face: on })
+        .eq("id", record.id);
+      if (error) throw error;
+      message.success(
+        on ? "내 관상으로 지정 — 기존 지정은 자동 해제됨" : "내 관상 해제됨",
+      );
+      invalidate({ resource: "metrics", invalidates: ["list"] });
+    } catch (e) {
+      message.error(`변경 실패: ${e instanceof Error ? e.message : String(e)}`);
     }
   };
 
@@ -203,7 +231,15 @@ export const MetricList = () => {
           title="본인"
           dataIndex="is_my_face"
           render={(_: unknown, record: MetricEntry) =>
-            record.is_my_face ? <Tag color="blue">본인</Tag> : <Text type="secondary">-</Text>
+            record.user_id ? (
+              <Switch
+                size="small"
+                checked={record.is_my_face}
+                onChange={(checked) => void handleMyFace(record, checked)}
+              />
+            ) : (
+              <Text type="secondary">-</Text>
+            )
           }
         />
         <Table.Column<MetricEntry>

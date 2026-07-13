@@ -15,6 +15,7 @@ import {
   Row,
   Space,
   Statistic,
+  Switch,
   Table,
   Tag,
   Typography,
@@ -53,7 +54,10 @@ export const UserShow = () => {
 
   const userId = user?.id;
 
-  const { result: metricsResult } = useList<MetricEntry>({
+  const {
+    result: metricsResult,
+    query: { refetch: refetchMetrics },
+  } = useList<MetricEntry>({
     resource: "metrics",
     filters: userId ? [{ field: "user_id", operator: "eq", value: userId }] : [],
     sorters: [{ field: "created_at", order: "desc" }],
@@ -91,6 +95,35 @@ export const UserShow = () => {
   const totalBonus = coins
     .filter((c) => c.kind === "bonus")
     .reduce((s, c) => s + c.amount, 0);
+
+  /** 본인(is_my_face) 토글 — my-face 는 사용자당 1개: on 시 기존 지정을
+   *  자동 demote(false) 하고 대상 row 만 true 로. */
+  const handleMyFace = async (record: MetricEntry, on: boolean) => {
+    try {
+      if (on && record.user_id) {
+        const { error: demoteErr } = await adminClient
+          .from("metrics")
+          .update({ is_my_face: false })
+          .eq("user_id", record.user_id)
+          .eq("is_my_face", true)
+          .neq("id", record.id);
+        if (demoteErr) throw demoteErr;
+      }
+      const { error } = await adminClient
+        .from("metrics")
+        .update({ is_my_face: on })
+        .eq("id", record.id);
+      if (error) throw error;
+      message.success(
+        on ? "내 관상으로 지정 — 기존 지정은 자동 해제됨" : "내 관상 해제됨",
+      );
+      refetchMetrics();
+    } catch (e) {
+      message.error(
+        `변경 실패: ${e instanceof Error ? e.message : String(e)}`,
+      );
+    }
+  };
 
   return (
     <Show isLoading={isLoading} title="사용자 상세">
@@ -323,9 +356,13 @@ export const UserShow = () => {
             <Table.Column<MetricEntry>
               title="본인"
               dataIndex="is_my_face"
-              render={(v: boolean) =>
-                v ? <Tag color="blue">본인</Tag> : <Text type="secondary">-</Text>
-              }
+              render={(v: boolean, record: MetricEntry) => (
+                <Switch
+                  size="small"
+                  checked={v}
+                  onChange={(checked) => void handleMyFace(record, checked)}
+                />
+              )}
             />
             <Table.Column<MetricEntry>
               title="alias"
