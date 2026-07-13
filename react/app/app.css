@@ -871,12 +871,11 @@ textarea.form-input {
   /* 카카오 브랜드 버튼 — 4색 팔레트의 유일한 승인 예외 (공식 #FEE500 + 검정). */
   background: #fee500;
   color: #000;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   width: 100%;
-  max-width: 360px;
 }
 .join-camera-wrap {
   /* 영역 사전 확보 — 스트림 도착 전에도 같은 크기 카드가 자리를 지킨다 (점핑 0) */

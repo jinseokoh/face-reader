@@ -754,10 +754,10 @@ export function JoinWizard({
           style={{ display: 'block', width: '100%' }}
           onClick={() => openInExternalBrowser(window.location.href)}
         >
-          기본 브라우저로 열기
+          기본 브라우저로 다시 열기
         </button>
         <p className="join-sub">
-          기본 브라우저를 사용해야만 카메라로 관상 촬영이 가능합니다.
+          기본 브라우저를 사용해야만 관상 촬영이 가능합니다.
         </p>
       </div>
     )
