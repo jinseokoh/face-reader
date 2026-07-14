@@ -30,8 +30,10 @@ python/ (DeepFace FastAPI)          Supabase (metrics·coins·unlocks·teams·te
 기본 선택(1회). 내 관상 미등록이면 nudge 배너(`my_face_nudge_banner`, 로컬 Overlay 호스트).
 
 **온보딩 인트로** (`onboarding_intro.dart`): MainApp 첫 프레임 뒤 —
-관상(무료)/궁합(유료)/케미(결과표 무료·상세 유료)/시작 4페이지 스와이프 인트로,
-마지막 CTA "내 관상 보기" → `startMyFaceCapture`. 내 관상 등록 전까지 매 실행
+관상(무료)/궁합(유료)/케미(결과표 무료·상세 유료)/시작 4페이지 인트로,
+전환은 `concentric_transition` 동심원 리플 (페이지 배경 cream/white/shell/white
+교대, warm 페이지는 darkBrown+warmBrown 짝), 마지막 CTA "내 관상 보기" →
+`startMyFaceCapture`. 내 관상 등록 전까지 매 실행
 노출하며, 하단 "다시 보지 않기"만 Hive `prefs` box (`onboarding_never_again`)
 flag 를 남겨 노출을 끈다. 건너뛰기·뒤로가기는 기록 없음. 공유 링크 cold-start
 면 이번 실행은 양보.
