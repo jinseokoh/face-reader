@@ -4,16 +4,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 
+import 'package:facely/core/hive/hive_setup.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/data/services/auth_service.dart';
 import 'package:facely/data/services/deep_link_service.dart';
+import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/providers/tab_provider.dart';
 import 'package:facely/presentation/screens/compatibility/compatibility_screen.dart';
 import 'package:facely/presentation/screens/chemistry/chemistry_screen.dart';
 import 'package:facely/presentation/screens/physiognomy/physiognomy_screen.dart';
 import 'package:facely/presentation/screens/settings/settings_screen.dart';
+import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
 import 'package:facely/presentation/widgets/my_face_nudge_banner.dart';
+import 'package:facely/presentation/widgets/onboarding_intro.dart';
 
 class MainApp extends ConsumerStatefulWidget {
   const MainApp({super.key});
@@ -51,6 +56,29 @@ class _MainAppState extends ConsumerState<MainApp> {
         DeepLinkService.instance.consumePending();
         _handleShareLink(pending);
       });
+    } else {
+      // 온보딩 인트로 — 내 관상 등록 전까지 매 실행 노출 ("다시 보지 않기"만
+      // 노출을 끈다). 공유 링크 cold-start 면 이번 실행은 양보.
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => _maybeShowOnboarding());
+    }
+  }
+
+  Future<void> _maybeShowOnboarding() async {
+    if (!mounted) return;
+    final prefs = Hive.box<String>(HiveBoxes.prefs);
+    if (prefs.get(kOnboardingNeverAgainKey) != null) return;
+    // 내 관상이 등록돼 있으면 온보딩의 목적이 끝난 것 — 노출 종료.
+    if (ref.read(historyProvider).any((r) => r.isMyFace)) return;
+    final result = await showOnboardingIntro(context);
+    if (!mounted) return;
+    switch (result) {
+      case OnboardingIntroResult.startCapture:
+        await startMyFaceCapture(context, ref);
+      case OnboardingIntroResult.neverAgain:
+        await prefs.put(kOnboardingNeverAgainKey, '1');
+      case OnboardingIntroResult.later:
+        break;
     }
   }
 

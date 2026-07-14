@@ -29,6 +29,13 @@ python/ (DeepFace FastAPI)          Supabase (metrics·coins·unlocks·teams·te
 공통 규칙: 내부 탭은 내 관상 등록 후 상시 노출(0개 포함), 최초 노출 시 개수 많은 탭
 기본 선택(1회). 내 관상 미등록이면 nudge 배너(`my_face_nudge_banner`, 로컬 Overlay 호스트).
 
+**온보딩 인트로** (`onboarding_intro.dart`): MainApp 첫 프레임 뒤 —
+관상(무료)/궁합(유료)/케미(결과표 무료·상세 유료)/시작 4페이지 스와이프 인트로,
+마지막 CTA "내 관상 보기" → `startMyFaceCapture`. 내 관상 등록 전까지 매 실행
+노출하며, 하단 "다시 보지 않기"만 Hive `prefs` box (`onboarding_never_again`)
+flag 를 남겨 노출을 끈다. 건너뛰기·뒤로가기는 기록 없음. 공유 링크 cold-start
+면 이번 실행은 양보.
+
 **캡처 파이프라인** (`screens/chemistry/` 폴더 — 관상·궁합·케미 공용):
 
 - `FaceMeshPage` — 카메라 preview + mesh overlay. 녹색 조건 4: confidence ≥0.85 ·
