@@ -188,6 +188,9 @@ export function JoinWizard({
   const lastCountRef = useRef<number | null>(null)
   const doneRef = useRef(false)
   const noFaceTimerRef = useRef<number | null>(null)
+  // 확정된 참여 이름 — setState 는 카메라 루프 클로저에 반영되지 않으므로
+  // (stale closure) 합류 이름은 반드시 ref 로 전달한다.
+  const joinNameRef = useRef<string | null>(null)
   // 직전 프레임 landmark — 앱과 동일한 흔들림(stability) 판정용.
   const prevFaceRef = useRef<{ x: number; y: number }[] | null>(null)
   // 캡처 산출물 — 단계를 넘어도 유지 (name-taken 재시도 시 metrics 재사용).
@@ -310,6 +313,7 @@ export function JoinWizard({
    *  것이 없으므로 그 자리를 자동 선택하고 촬영 단계로 직행한다. */
   function goNameOrSkip(name: string | null | undefined) {
     if (name && openSlots.some((m) => m.name === name)) {
+      joinNameRef.current = name
       setSlotPick(name)
       setDirect(false)
       goCapture()
@@ -624,10 +628,16 @@ export function JoinWizard({
       await finishJoin(client)
       return
     }
+    const joinName = (nameOverride ?? joinNameRef.current ?? chosenName()).trim()
+    if (!joinName) {
+      // 빈 이름 합류 금지 — 이름 없는 유령 멤버 행 방지.
+      fail('참여할 이름이 비어 있어요. 처음부터 다시 시도해 주세요.')
+      return
+    }
     const r = await joinTeam(client, {
       teamId: team.id,
       metricsId: metricsIdRef.current,
-      name: nameOverride ?? chosenName(),
+      name: joinName,
     })
     if (r === 'name-taken') {
       setNotice(
@@ -710,6 +720,7 @@ export function JoinWizard({
       return
     }
     setNotice('')
+    joinNameRef.current = name
     // 재사용/재촬영 결정은 이름 전에 끝난 상태 — 기존 관상 재사용이면
     // 바로 합류, 아니면 촬영 (확정 이력 있으면 정보 확인 생략).
     if (metricsIdRef.current || bodyRef.current) void runSave()
@@ -727,6 +738,7 @@ export function JoinWizard({
         Boolean(n) && team.members.some((m) => !m.joined && m.name === n),
     )
     if (match) {
+      joinNameRef.current = match
       setSlotPick(match)
       setDirect(false)
       void runSave(match)
