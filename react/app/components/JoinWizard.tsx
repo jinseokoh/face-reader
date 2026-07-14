@@ -287,7 +287,6 @@ export function JoinWizard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage])
 
-
   const openSlots = team.members.filter((m) => !m.joined)
 
   /** 정보 확인 진입 또는 생략 — 이전에 한 번 확정(localStorage)한 사용자는
@@ -669,15 +668,13 @@ export function JoinWizard({
         setMembership(member)
         await finishJoin(client)
       } else {
-        const mine =
-          existing ?? (await fetchMyFace(client, s.user.id))
+        const mine = existing ?? (await fetchMyFace(client, s.user.id))
         setExisting(mine)
         if (mine) {
           setStage('reuse')
         } else {
           setFaceStatus('none')
-          const nick =
-            nickname || (await fetchNickname(client, s.user.id))
+          const nick = nickname || (await fetchNickname(client, s.user.id))
           if (nick && !nickname) {
             setNickname(nick)
             setNameInput((cur) => cur || nick)
@@ -787,14 +784,10 @@ export function JoinWizard({
     }
   }
 
-
   function onInfoNext() {
     setNotice('')
     try {
-      localStorage.setItem(
-        DEMO_KEY,
-        JSON.stringify({ gender, age, ethnicity }),
-      )
+      localStorage.setItem(DEMO_KEY, JSON.stringify({ gender, age, ethnicity }))
     } catch {
       /* storage 불가 환경은 무시 */
     }
@@ -834,7 +827,6 @@ export function JoinWizard({
   if (inApp === 'kakao') {
     return (
       <div className="join">
-        <p className="join-sub">카카오톡 안에서는 카메라가 막혀 있어요.</p>
         <button
           className="join-btn join-btn--line"
           style={{ display: 'block', width: '100%' }}
@@ -842,8 +834,9 @@ export function JoinWizard({
         >
           기본 브라우저로 다시 열기
         </button>
-        <p className="join-sub">
-          기본 브라우저를 사용해야만 관상 촬영이 가능합니다.
+        <p className="join-sub" style={{ textAlign: 'left' }}>
+          카카오톡 웹뷰 안에서는 카메라가 막혀 있어서, 기본 브라우저를 사용해서
+          다시 열어야 해요.
         </p>
       </div>
     )
@@ -876,7 +869,6 @@ export function JoinWizard({
           </p>
         </>
       )}
-
 
       {stage === 'name' && (
         <>
