@@ -215,6 +215,66 @@ export async function fetchProgress(
   };
 }
 
+/** python 나이(정수) → 앱 decade 라벨 ("10s".."70s", 70+ 는 70s 로 클램프). */
+function ageToGroup(age: number): string {
+  const decade = Math.min(Math.max(Math.floor(age / 10) * 10, 10), 70);
+  return `${decade}s`;
+}
+
+/**
+ * DeepFace 추정 — 앱과 동일 경로: 캡처 프레임을 R2 temp/ 에 presign PUT 후
+ * Worker 프록시(/api/analyze)로 python 을 호출한다 (python 이 temp 즉시 삭제).
+ * 실패 시 null — 확인 페이지가 수동 선택 fallback 으로 동작.
+ */
+export async function estimateDemographics(frame: Blob): Promise<{
+  gender: string;
+  ageGroup: string;
+  ethnicity: string;
+} | null> {
+  try {
+    const uuid = crypto.randomUUID();
+    const pres = await fetch("/api/r2/presign", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ prefix: "temp", uuid }),
+    });
+    if (!pres.ok) return null;
+    const { uploadUrl, key, token } = (await pres.json()) as {
+      uploadUrl: string;
+      key: string;
+      token?: string;
+    };
+    if (!token) return null;
+    const put = await fetch(uploadUrl, {
+      method: "PUT",
+      headers: { "content-type": "image/jpeg" },
+      body: frame,
+    });
+    if (!put.ok) return null;
+    const res = await fetch("/api/analyze", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ key, token }),
+    });
+    if (!res.ok) return null;
+    const out = (await res.json()) as {
+      age: number;
+      gender: string;
+      ethnicity: string;
+    };
+    if (!out.gender || !out.ethnicity || typeof out.age !== "number") {
+      return null;
+    }
+    return {
+      gender: out.gender,
+      ageGroup: ageToGroup(out.age),
+      ethnicity: out.ethnicity,
+    };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * metrics 저장 — 1 capture = 1 uuid (썸네일 key 와 metrics.id 공유).
  * is_my_face=true: 본인 얼굴 — 앱 rehydrate 가 내 관상으로 복원.
@@ -226,6 +286,8 @@ export async function saveCapture(
   args: {
     uid: string;
     nickname: string;
+    /** 확인 페이지에서 입력한 이름 — 없으면 nickname fallback. */
+    alias?: string | null;
     body: WebCaptureBody;
     thumb: Blob | null;
     id?: string;
@@ -265,7 +327,7 @@ export async function saveCapture(
       id,
       user_id: args.uid,
       body: JSON.stringify(body),
-      alias: args.nickname || null,
+      alias: args.alias?.trim() || args.nickname || null,
       is_my_face: true,
     },
     { onConflict: "id" },

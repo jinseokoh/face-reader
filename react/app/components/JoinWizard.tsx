@@ -8,6 +8,7 @@ import {
 } from '../lib/auth'
 import { detectInApp, openInExternalBrowser, type InApp } from '../lib/inapp'
 import {
+  estimateDemographics,
   fetchMemberBodies,
   fetchMembership,
   fetchMyFace,
@@ -46,8 +47,8 @@ type Stage =
   | 'entry'
   | 'name'
   | 'reuse'
-  | 'info'
   | 'camera'
+  | 'confirm'
   | 'saving'
   | 'done'
   | 'error'
@@ -55,6 +56,7 @@ type Stage =
 // 앱 InfoConfirm 과 동일 필드 — 값은 엔진 enum name.
 const ETHNICITIES: { v: string; ko: string }[] = [
   { v: 'eastAsian', ko: '동아시아인' },
+  { v: 'southeastAsian', ko: '동남아시아인' },
   { v: 'caucasian', ko: '백인' },
   { v: 'african', ko: '아프리카인' },
   { v: 'hispanic', ko: '히스패닉' },
@@ -110,6 +112,10 @@ export function JoinWizard({
   const [stage, setStage] = useState<Stage>('entry')
   const [session, setSession] = useState<Session | null>(null)
   const [nickname, setNickname] = useState('')
+  // 촬영 후 정보 확인 — DeepFace 추정으로 prefill, 사용자 수정 허용.
+  const [estimating, setEstimating] = useState(false)
+  // 확인 페이지 이름 필드 — default fallback 은 카카오 nickname.
+  const [aliasName, setAliasName] = useState('')
   // 정보 확인 — 3필드 모두 default 보유 (동아시아인/남성/20대), 즉시 진행 가능.
   const [ethnicity, setEthnicity] = useState<string>('eastAsian')
   const [gender, setGender] = useState<string>('male')
@@ -187,6 +193,8 @@ export function JoinWizard({
   // 확정된 참여 이름 — setState 는 카메라 루프 클로저에 반영되지 않으므로
   // (stale closure) 합류 이름은 반드시 ref 로 전달한다.
   const joinNameRef = useRef<string | null>(null)
+  // 확인 페이지에서 확정한 metrics 이름(alias) — 클로저 안전하게 ref 로.
+  const aliasRef = useRef<string | null>(null)
   // 직전 프레임 landmark — 앱과 동일한 흔들림(stability) 판정용.
   const prevFaceRef = useRef<{ x: number; y: number }[] | null>(null)
   // 캡처 산출물 — 단계를 넘어도 유지 (name-taken 재시도 시 metrics 재사용).
@@ -284,21 +292,10 @@ export function JoinWizard({
 
   const openSlots = team.members.filter((m) => !m.joined)
 
-  /** 정보 확인 진입 또는 생략 — 이전에 한 번 확정(localStorage)한 사용자는
-   *  저장값으로 바로 카메라를 연다. 최초 1회만 정보 확인 노출. */
+  /** 촬영 진입 — 정보 확인은 앱과 동일하게 촬영 **후** DeepFace 추정
+   *  prefill 상태로 노출된다. */
   function goCapture() {
-    try {
-      const saved = JSON.parse(localStorage.getItem(DEMO_KEY) ?? 'null') as {
-        age?: string
-      } | null
-      if (saved?.age && AGES.some((a) => a.v === saved.age)) {
-        void startCamera()
-        return
-      }
-    } catch {
-      /* 손상된 저장값 — 정보 확인으로 */
-    }
-    setStage('info')
+    void startCamera()
   }
 
   /** 이름 화면 진입 또는 생략 — [name]이 빈 슬롯과 정확히 매칭되면 물어볼
@@ -542,9 +539,22 @@ export function JoinWizard({
     return new Promise((r) => c.toBlob(r, 'image/jpeg', 0.8))
   }
 
+  /** DeepFace 추정용 원본 프레임 (비미러, 전체 해상도 JPEG). */
+  function frameToFull(video: HTMLVideoElement): Promise<Blob | null> {
+    if (!video.videoWidth || !video.videoHeight) return Promise.resolve(null)
+    const c = document.createElement('canvas')
+    c.width = video.videoWidth
+    c.height = video.videoHeight
+    const ctx = c.getContext('2d')
+    if (!ctx) return Promise.resolve(null)
+    ctx.drawImage(video, 0, 0)
+    return new Promise((r) => c.toBlob(r, 'image/jpeg', 0.85))
+  }
+
   async function capture(points: number[][]) {
     const video = videoRef.current
     const thumb = video ? await frameToThumb(video) : null
+    const frame = video ? await frameToFull(video) : null
     stopCamera()
     let body: WebCaptureBody
     try {
@@ -568,7 +578,22 @@ export function JoinWizard({
     }
     bodyRef.current = body
     thumbRef.current = thumb
-    await runSave()
+    // 앱과 동일: 촬영 → DeepFace 추정 → 정보 확인(prefill) → 저장.
+    setAliasName((cur) => cur || nickname)
+    setStage('confirm')
+    if (frame) {
+      setEstimating(true)
+      void estimateDemographics(frame)
+        .then((est) => {
+          if (!est) return
+          if (GENDERS.some((g) => g.v === est.gender)) setGender(est.gender)
+          if (AGES.some((a) => a.v === est.ageGroup)) setAge(est.ageGroup)
+          if (ETHNICITIES.some((e) => e.v === est.ethnicity)) {
+            setEthnicity(est.ethnicity)
+          }
+        })
+        .finally(() => setEstimating(false))
+    }
   }
 
   /** 저장 시퀀스: 마감 재확인 → metrics(신규 캡처 시, 기존 my-face 덮어쓰기) → 합류. */
@@ -595,6 +620,7 @@ export function JoinWizard({
       metricsIdRef.current = await saveCapture(client, {
         uid: s.user.id,
         nickname,
+        alias: aliasRef.current,
         body,
         thumb: thumbRef.current,
         id: membership?.metricsId ?? existing?.id ?? undefined,
@@ -762,14 +788,24 @@ export function JoinWizard({
     }
   }
 
-  function onInfoNext() {
+  /** 정보 확인 [확인] — 확정값을 body/ref 에 굳히고 저장·합류. */
+  function onConfirm() {
     setNotice('')
     try {
       localStorage.setItem(DEMO_KEY, JSON.stringify({ gender, age, ethnicity }))
     } catch {
       /* storage 불가 환경은 무시 */
     }
-    void startCamera()
+    if (bodyRef.current) {
+      bodyRef.current = {
+        ...bodyRef.current,
+        gender,
+        ageGroup: age,
+        ethnicity,
+      }
+    }
+    aliasRef.current = aliasName.trim() || nickname || null
+    void runSave()
   }
 
   // ── 렌더 ──────────────────────────────────────────────────────────────
@@ -904,19 +940,22 @@ export function JoinWizard({
         </>
       )}
 
-      {stage === 'info' && (
+      {stage === 'confirm' && (
         <>
           <p className="join-q">정보 확인</p>
+          <p className="join-sub" style={{ textAlign: 'center' }}>
+            {estimating
+              ? 'AI가 사진에서 정보를 추정하는 중…'
+              : 'AI 추정 결과입니다. 잘못된 항목은 직접 수정해 주세요.'}
+          </p>
           <div className="join-form">
             <label className="join-field">
               <span className="join-field-label">인종</span>
               <select
                 className="join-select"
                 value={ethnicity}
-                onChange={(e) => {
-                  setEthnicity(e.target.value)
-                  void preloadDetector().catch(() => {})
-                }}
+                disabled={estimating}
+                onChange={(e) => setEthnicity(e.target.value)}
               >
                 {ETHNICITIES.map((o) => (
                   <option key={o.v} value={o.v}>
@@ -930,10 +969,8 @@ export function JoinWizard({
               <select
                 className="join-select"
                 value={gender}
-                onChange={(e) => {
-                  setGender(e.target.value)
-                  void preloadDetector().catch(() => {})
-                }}
+                disabled={estimating}
+                onChange={(e) => setGender(e.target.value)}
               >
                 {GENDERS.map((o) => (
                   <option key={o.v} value={o.v}>
@@ -947,10 +984,8 @@ export function JoinWizard({
               <select
                 className="join-select"
                 value={age}
-                onChange={(e) => {
-                  setAge(e.target.value)
-                  void preloadDetector().catch(() => {})
-                }}
+                disabled={estimating}
+                onChange={(e) => setAge(e.target.value)}
               >
                 {AGES.map((o) => (
                   <option key={o.v} value={o.v}>
@@ -959,11 +994,22 @@ export function JoinWizard({
                 ))}
               </select>
             </label>
+            <label className="join-field">
+              <span className="join-field-label">이름</span>
+              <input
+                className="join-select join-name-input"
+                value={aliasName}
+                maxLength={10}
+                placeholder={nickname || '이름 입력'}
+                onChange={(e) => setAliasName(e.target.value)}
+              />
+            </label>
             <button
               className="join-btn join-btn--line join-form-submit"
-              onClick={onInfoNext}
+              disabled={estimating}
+              onClick={onConfirm}
             >
-              카메라 켜기
+              확인
             </button>
           </div>
         </>
