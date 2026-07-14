@@ -110,10 +110,6 @@ export function JoinWizard({
   const [stage, setStage] = useState<Stage>('entry')
   const [session, setSession] = useState<Session | null>(null)
   const [nickname, setNickname] = useState('')
-  // 이름 선택 — 빈 슬롯 하나 또는 "직접 입력" 중 한 곳만 활성.
-  const [slotPick, setSlotPick] = useState<string | null>(null)
-  const [direct, setDirect] = useState(false)
-  const [nameInput, setNameInput] = useState('')
   // 정보 확인 — 3필드 모두 default 보유 (동아시아인/남성/20대), 즉시 진행 가능.
   const [ethnicity, setEthnicity] = useState<string>('eastAsian')
   const [gender, setGender] = useState<string>('male')
@@ -238,10 +234,7 @@ export function JoinWizard({
       sessionRef.current = s
       setSession(s)
       if (s) {
-        void fetchNickname(client, s.user.id).then((n) => {
-          setNickname(n)
-          setNameInput((cur) => cur || n)
-        })
+        void fetchNickname(client, s.user.id).then(setNickname)
         void fetchMyFace(client, s.user.id).then(setExisting)
       }
     })
@@ -263,7 +256,6 @@ export function JoinWizard({
         fetchMembership(client, team.id, uid),
       ])
       setNickname(nick)
-      setNameInput((cur) => cur || nick)
       setExisting(mine)
       setMembership(member)
       if (cameFromLogin) {
@@ -314,19 +306,10 @@ export function JoinWizard({
   function goNameOrSkip(name: string | null | undefined) {
     if (name && openSlots.some((m) => m.name === name)) {
       joinNameRef.current = name
-      setSlotPick(name)
-      setDirect(false)
       goCapture()
       return
     }
     setStage('name')
-  }
-  // 빈 슬롯이 하나도 없으면 직접 입력이 유일한 경로.
-  const isDirect = direct || openSlots.length === 0
-
-  /** 확정된 참여 이름 — 슬롯 선택 또는 직접 입력 중 활성인 쪽. */
-  function chosenName(): string {
-    return isDirect ? nameInput.trim() : (slotPick ?? '')
   }
 
   function stopCamera() {
@@ -628,7 +611,7 @@ export function JoinWizard({
       await finishJoin(client)
       return
     }
-    const joinName = (nameOverride ?? joinNameRef.current ?? chosenName()).trim()
+    const joinName = (nameOverride ?? joinNameRef.current ?? '').trim()
     if (!joinName) {
       // 빈 이름 합류 금지 — 이름 없는 유령 멤버 행 방지.
       fail('참여할 이름이 비어 있어요. 처음부터 다시 시도해 주세요.')
@@ -685,10 +668,7 @@ export function JoinWizard({
         } else {
           setFaceStatus('none')
           const nick = nickname || (await fetchNickname(client, s.user.id))
-          if (nick && !nickname) {
-            setNickname(nick)
-            setNameInput((cur) => cur || nick)
-          }
+          if (nick && !nickname) setNickname(nick)
           goNameOrSkip(nick)
         }
       }
@@ -704,21 +684,9 @@ export function JoinWizard({
     })
   }
 
-  function onNameNext() {
-    const name = chosenName()
-    if (!name) {
-      setNotice(
-        isDirect
-          ? '이름을 입력해 주세요.'
-          : '자리를 고르거나 직접 입력을 눌러 주세요.',
-      )
-      return
-    }
-    const taken = team.members.some((m) => m.joined && m.name === name)
-    if (taken) {
-      setNotice('같은 그룹내에 동일이름은 허용하지 않습니다.')
-      return
-    }
+  /** 슬롯 칩 선택 — [다음] 없이 즉시 진행. 직접 입력은 정원 밖 참가를
+   *  만들므로 허용하지 않는다 (빈 슬롯 claim 만 가능). */
+  function onSlotSelect(name: string) {
     setNotice('')
     joinNameRef.current = name
     // 재사용/재촬영 결정은 이름 전에 끝난 상태 — 기존 관상 재사용이면
@@ -739,8 +707,6 @@ export function JoinWizard({
     )
     if (match) {
       joinNameRef.current = match
-      setSlotPick(match)
-      setDirect(false)
       void runSave(match)
       return
     }
@@ -890,52 +856,24 @@ export function JoinWizard({
             </p>
           )}
           <p className="join-q">어떤 이름으로 참여할까요?</p>
-          {openSlots.length > 0 && (
+          {openSlots.length > 0 ? (
             <div className="join-chips">
               {openSlots.map((m) => (
                 <button
                   key={m.name}
-                  className={
-                    !isDirect && slotPick === m.name
-                      ? 'join-chip join-chip--on'
-                      : 'join-chip'
-                  }
-                  onClick={() => {
-                    setSlotPick(m.name)
-                    setDirect(false)
-                    setNotice('')
-                  }}
+                  className="join-chip"
+                  onClick={() => onSlotSelect(m.name)}
                 >
                   {m.name}
                 </button>
               ))}
-              <button
-                className={isDirect ? 'join-chip join-chip--on' : 'join-chip'}
-                onClick={() => {
-                  setDirect(true)
-                  setSlotPick(null)
-                  setNotice('')
-                }}
-              >
-                직접 입력
-              </button>
             </div>
-          )}
-          {isDirect && (
-            <input
-              className="join-input"
-              value={nameInput}
-              maxLength={10}
-              placeholder="참여할 이름 입력"
-              onChange={(e) => setNameInput(e.target.value)}
-            />
+          ) : (
+            <p className="join-sub">
+              빈 자리가 없습니다. 방장에게 자리를 요청해 주세요.
+            </p>
           )}
           {notice && <p className="join-notice">{notice}</p>}
-          <div>
-            <button className="join-btn" onClick={onNameNext}>
-              다음
-            </button>
-          </div>
         </>
       )}
 

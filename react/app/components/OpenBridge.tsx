@@ -94,7 +94,7 @@ export function OpenBridge({
           {inKakao ? (
             <>
               <p className="bridge-sub">
-                카카오톡 안에서는 앱 열기가 막혀 있어서, 기본 브라우저를
+                카카오톡 웹뷰 안에서는 앱 열기가 막혀 있어서, 기본 브라우저를
                 사용해서 다시 열어야 해요.
               </p>
               <button
