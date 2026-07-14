@@ -7,6 +7,7 @@ import {
 } from "@refinedev/antd";
 import { useList, useMany } from "@refinedev/core";
 import { Avatar, Space, Table, Tag, Typography } from "antd";
+import { Link } from "react-router";
 import { UserLink } from "../../components/user-link";
 import type { AppUser, Team, TeamMember } from "../../types";
 
@@ -62,7 +63,11 @@ export const TeamList = () => {
         <Table.Column<Team>
           title="그룹명"
           dataIndex="title"
-          render={(v: string) => <Text strong>{v}</Text>}
+          render={(v: string, t: Team) => (
+            <Link to={`/teams/show/${t.id}`}>
+              <Text strong>{v}</Text>
+            </Link>
+          )}
         />
         <Table.Column<Team>
           title="방장"
