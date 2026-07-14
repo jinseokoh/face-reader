@@ -97,8 +97,19 @@ ArchetypeResult classifyArchetype(
   final sorted = adjusted.entries.toList()
     ..sort((a, b) => b.value.compareTo(a.value));
 
-  final primary = sorted[0].key;
-  final secondary = sorted[1].key;
+  // UX 정합성 가드 — primary/secondary 라벨은 사용자에게 보이는 **원 score
+  // top-3** 안에서만 뽑는다. gender prior 는 그 top-3 내부의 순서 결정에만
+  // 작용. (prior ×1.10 이 원 score 4위권 attribute 를 기질 라벨로 끌어올려
+  // "3순위에 리더십이 없는데 리더형 기질" 같은 화면-라벨 불일치를 만들던
+  // 문제 차단.)
+  final rawSorted = scores.entries.toList()
+    ..sort((a, b) => b.value.compareTo(a.value));
+  final rawTop3 = {for (final e in rawSorted.take(3)) e.key};
+  final ranked =
+      sorted.where((e) => rawTop3.contains(e.key)).toList(growable: false);
+
+  final primary = ranked[0].key;
+  final secondary = ranked[1].key;
   final topSet = {primary, secondary};
 
   return ArchetypeResult(
