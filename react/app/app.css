@@ -754,7 +754,9 @@ textarea.form-input {
 }
 .join-sub {
   font-size: 13px;
-  color: var(--caption);
+  /* '앱이 없다면'(.cta-divider) 과 동일 색 + 좌측 정렬 */
+  color: #888;
+  text-align: left;
   margin: 8px 0 0;
 }
 .join-notice {

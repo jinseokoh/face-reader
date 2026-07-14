@@ -834,7 +834,7 @@ export function JoinWizard({
         >
           기본 브라우저로 다시 열기
         </button>
-        <p className="join-sub" style={{ textAlign: 'left' }}>
+        <p className="join-sub">
           카카오톡 웹뷰 안에서는 카메라가 막혀 있어서, 기본 브라우저를 사용해서
           다시 열어야 해요.
         </p>

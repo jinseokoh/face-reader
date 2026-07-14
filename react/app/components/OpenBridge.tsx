@@ -94,21 +94,21 @@ export function OpenBridge({
           {inKakao ? (
             <>
               <p className="bridge-sub">
-                카카오톡 안에서는 앱 열기가 막혀 있어요. 아래 버튼을 누르거나,
-                오른쪽 위 <b>⋮</b> 메뉴에서 <b>다른 브라우저로 열기</b>를 선택해
-                주세요.
+                카카오톡 안에서는 앱 열기가 막혀 있어서, 기본 브라우저를
+                사용해서 다시 열어야 해요.
               </p>
               <button
                 type="button"
                 className="bridge-link bridge-link--primary"
                 onClick={() => openInExternalBrowser(openUrl)}
               >
-                다른 브라우저로 열기
+                기본 브라우저로 다시 열기
               </button>
             </>
           ) : (
             <p className="bridge-sub">
-              앱이 설치돼 있다면 잠시 후 열려요. 안 열리면 아래에서 진행해 주세요.
+              앱이 설치돼 있다면 잠시 후 열려요. 안 열리면 아래에서 진행해
+              주세요.
             </p>
           )}
           <a className="bridge-link" href={readUrl}>
