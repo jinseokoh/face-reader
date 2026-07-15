@@ -27,27 +27,27 @@ const _kPages = [
     asset: 'assets/images/onboarding-physiognomy.png',
     title: '관상',
     chips: ['관상풀이 무료'],
-    body: '카메라로 찍거나 앨범 사진을 올리면\n관상 분석을 무료로 볼 수 있습니다.',
+    body: '카메라로 찍거나 앨범 사진을 올리면 상세한\n관상 분석을 무료로 볼 수 있습니다.',
     warm: true,
   ),
   _OnboardingPageData(
     asset: 'assets/images/onboarding-compatibility.png',
     title: '궁합',
-    chips: ['상세궁합 유료'],
+    chips: ['궁합해석 1코인'],
     body: '내 관상이 등록된 상태 이후에 올리는 모든\n사진 속 인물과 나와의 궁합을 볼 수 있습니다.',
     warm: false,
   ),
   _OnboardingPageData(
     asset: 'assets/images/onboarding-chemistry.png',
     title: '케미',
-    chips: ['결과표 무료'],
-    body: '케미 그룹을 만들고 참여자 전원이 관상을 올리면\n구성원 간의 그룹 케미 결과표가 완성됩니다.',
+    chips: ['그룹케미 결과표 무료'],
+    body: '그룹을 만들고 모든 참여자가 관상을 올리면\n구성원 간의 그룹 케미 결과표가 완성됩니다.',
     warm: true,
   ),
   _OnboardingPageData(
-    asset: 'assets/images/banner.png',
+    asset: 'assets/images/banner-start.png',
     title: '시작은 내 관상부터',
-    body: '궁합과 케미는 내 관상이 등록되어 있어야\n이용할 수 있습니다.\n지금 내 관상부터 확인해보세요.',
+    body: '궁합과 케미는 내 관상이 등록되어 있어야\n볼 수 있습니다. 지금 내 관상을 등록하세요.',
     warm: false,
   ),
 ];
@@ -174,40 +174,6 @@ class _OnboardingIntroState extends State<_OnboardingIntro>
       (_pageController.page ?? 0) >= _kPages.length - 1 - 0.005;
 
   @override
-  void initState() {
-    super.initState();
-    _pageController.addListener(_onScroll);
-    // 흡수 완료 → CTA fade-in 체이닝. 마지막 페이지를 떠나며 value=1 로
-    // 리셋할 때도 completed 가 발화하므로 페이지 위치로 가드.
-    _discAbsorb.addStatusListener((status) {
-      if (status == AnimationStatus.completed && _onLastPage) {
-        _ctaFade.forward(from: 0);
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _discAbsorb.dispose();
-    _ctaFade.dispose();
-    super.dispose();
-  }
-
-  void _onScroll() {
-    if (_onLastPage) {
-      // 마지막 페이지 정착 — 원판 흡수 애니메이션 1회 발화.
-      if (_absorbArmed) {
-        _absorbArmed = false;
-        _discAbsorb.forward(from: 0);
-      }
-    } else {
-      _absorbArmed = true;
-      if (_discAbsorb.value != 1) _discAbsorb.value = 1;
-      if (_ctaFade.value != 0) _ctaFade.value = 0;
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
     // 시트가 전체 화면을 덮으므로 상태바 회피는 raw window inset 으로 직접.
     final topInset = _statusBarHeight(context) + AppSpacing.md;
@@ -287,7 +253,7 @@ class _OnboardingIntroState extends State<_OnboardingIntro>
                   ),
                 ),
                 child: PrimaryButton(
-                  label: '내 관상 보기',
+                  label: '내 관상 등록하기',
                   onPressed: _finish,
                 ),
               ),
@@ -341,8 +307,42 @@ class _OnboardingIntroState extends State<_OnboardingIntro>
     );
   }
 
+  @override
+  void dispose() {
+    _discAbsorb.dispose();
+    _ctaFade.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController.addListener(_onScroll);
+    // 흡수 완료 → CTA fade-in 체이닝. 마지막 페이지를 떠나며 value=1 로
+    // 리셋할 때도 completed 가 발화하므로 페이지 위치로 가드.
+    _discAbsorb.addStatusListener((status) {
+      if (status == AnimationStatus.completed && _onLastPage) {
+        _ctaFade.forward(from: 0);
+      }
+    });
+  }
+
   void _finish() =>
       Navigator.of(context).pop(OnboardingIntroResult.startCapture);
+
+  void _onScroll() {
+    if (_onLastPage) {
+      // 마지막 페이지 정착 — 원판 흡수 애니메이션 1회 발화.
+      if (_absorbArmed) {
+        _absorbArmed = false;
+        _discAbsorb.forward(from: 0);
+      }
+    } else {
+      _absorbArmed = true;
+      if (_discAbsorb.value != 1) _discAbsorb.value = 1;
+      if (_ctaFade.value != 0) _ctaFade.value = 0;
+    }
+  }
 }
 
 class _OnboardingPage extends StatelessWidget {
