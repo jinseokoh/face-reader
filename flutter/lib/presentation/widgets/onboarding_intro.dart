@@ -12,10 +12,13 @@ const _kAnimDuration = Duration(milliseconds: 350);
 const double _kContentBottomInset = 200;
 
 /// 페이지 배경색 — 리플 대비를 위해 warm 톤과 흰색 교대.
+/// 마지막 sentinel(흰색)은 실제 페이지가 아니다 — 패키지가 "다음 페이지 색"
+/// 원판을 마지막 페이지에서도 그리는데, 배경과 같은 색을 주면 보이지 않는다.
 const _kPageColors = [
   AppColors.cream,
   AppColors.background,
   AppColors.shell,
+  AppColors.background,
   AppColors.background,
 ];
 
@@ -51,7 +54,7 @@ const _kPages = [
 /// 동심원 버튼 반지름 + 세로 위치 (화면 높이 비율). 원 중심은
 /// verticalPosition * H + radius — 0.75 를 넘기면 하단 시스템 내비와 겹친다.
 /// 본문은 [_kContentBottomInset] 만큼 하단을 비워 버튼 존과 분리한다.
-const double _kRevealRadius = 40;
+const double _kRevealRadius = 32;
 const double _kRevealVerticalPosition = 0.75;
 
 /// 상단 컨트롤 바 고정 높이 — Align 자식이 세로로 확장돼 화면 중앙까지
@@ -142,13 +145,73 @@ class _OnboardingIntro extends StatefulWidget {
   State<_OnboardingIntro> createState() => _OnboardingIntroState();
 }
 
-class _OnboardingIntroState extends State<_OnboardingIntro> {
+class _OnboardingIntroState extends State<_OnboardingIntro>
+    with TickerProviderStateMixin {
   int _page = 0;
+
+  // 패키지에 넘기는 controller — 마지막 페이지 "정착 순간" 감지용.
+  // dispose 는 패키지가 대신 한다 (여기서 또 하면 이중 dispose).
+  final PageController _pageController = PageController();
+
+  /// 마지막 페이지 정착 시 패키지가 남기는 이전 페이지 색 원판은 한 프레임에
+  /// 사라진다(sentinel 색 교체). 같은 자리·같은 색 원판을 이어받아 그린 뒤
+  /// 스케일-아웃으로 흡수시키는 cover. value 1 = 숨김 (초기값).
+  late final AnimationController _discAbsorb = AnimationController(
+    vsync: this,
+    duration: _kAnimDuration,
+    value: 1,
+  );
+  bool _absorbArmed = true;
+
+  /// "내 관상 보기" CTA fade-in — 원판 흡수가 끝난 뒤에만 forward.
+  /// value 0 = 숨김 (초기값).
+  late final AnimationController _ctaFade = AnimationController(
+    vsync: this,
+    duration: _kAnimDuration,
+  );
+
+  bool get _onLastPage =>
+      (_pageController.page ?? 0) >= _kPages.length - 1 - 0.005;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController.addListener(_onScroll);
+    // 흡수 완료 → CTA fade-in 체이닝. 마지막 페이지를 떠나며 value=1 로
+    // 리셋할 때도 completed 가 발화하므로 페이지 위치로 가드.
+    _discAbsorb.addStatusListener((status) {
+      if (status == AnimationStatus.completed && _onLastPage) {
+        _ctaFade.forward(from: 0);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _discAbsorb.dispose();
+    _ctaFade.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_onLastPage) {
+      // 마지막 페이지 정착 — 원판 흡수 애니메이션 1회 발화.
+      if (_absorbArmed) {
+        _absorbArmed = false;
+        _discAbsorb.forward(from: 0);
+      }
+    } else {
+      _absorbArmed = true;
+      if (_discAbsorb.value != 1) _discAbsorb.value = 1;
+      if (_ctaFade.value != 0) _ctaFade.value = 0;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     // 시트가 전체 화면을 덮으므로 상태바 회피는 raw window inset 으로 직접.
     final topInset = _statusBarHeight(context) + AppSpacing.md;
+    final screenHeight = MediaQuery.of(context).size.height;
     return Material(
       color: AppColors.background,
       child: Stack(
@@ -159,13 +222,74 @@ class _OnboardingIntroState extends State<_OnboardingIntro> {
               itemCount: _kPages.length,
               radius: _kRevealRadius,
               verticalPosition: _kRevealVerticalPosition,
+              pageController: _pageController,
               onChange: (page) => setState(() => _page = page),
               onFinish: _finish,
-              nextButtonBuilder: (_) => const _RevealButtonIcon(),
+              // 마지막 페이지는 CTA(내 관상 보기)가 있으므로 화살표 숨김.
+              nextButtonBuilder: (_) => _page == _kPages.length - 1
+                  ? const SizedBox.shrink()
+                  : const _RevealButtonIcon(),
               itemBuilder: (index) => _OnboardingPage(
                 data: _kPages[index],
-                isLast: index == _kPages.length - 1,
-                onStartCapture: _finish,
+                // 기능 3장은 이미지 여백을 텍스트(huge)의 절반으로 — 더 크게.
+                imageHInset: index < _kPages.length - 1
+                    ? AppSpacing.lg
+                    : AppSpacing.huge,
+              ),
+            ),
+          ),
+          // 원판 흡수 cover — 패키지 버튼과 동일 좌표 (verticalPosition * H,
+          // 지름 = radius * 2), 색은 마지막 직전 페이지 배경.
+          Positioned(
+            top: screenHeight * _kRevealVerticalPosition,
+            left: 0,
+            right: 0,
+            child: IgnorePointer(
+              child: Center(
+                child: ScaleTransition(
+                  scale: Tween<double>(begin: 1, end: 0).animate(
+                    CurvedAnimation(
+                      parent: _discAbsorb,
+                      curve: Curves.easeInCubic,
+                    ),
+                  ),
+                  child: Container(
+                    width: _kRevealRadius * 2,
+                    height: _kRevealRadius * 2,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _kPageColors[_kPages.length - 2],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // "내 관상 보기" CTA — 흡수된 원판과 같은 세로 중심선
+          // (verticalPosition * H + radius)에서 흡수 완료 후 fade-in.
+          // 버튼 높이 48 의 절반만큼 올려 원 중심과 정렬한다.
+          Positioned(
+            top: screenHeight * _kRevealVerticalPosition +
+                _kRevealRadius -
+                24,
+            left: 0,
+            right: 0,
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              child: AnimatedBuilder(
+                animation: _ctaFade,
+                builder: (_, child) => IgnorePointer(
+                  ignoring: _ctaFade.value == 0,
+                  child: Opacity(
+                    opacity: Curves.easeOut.transform(_ctaFade.value),
+                    child: child,
+                  ),
+                ),
+                child: PrimaryButton(
+                  label: '내 관상 보기',
+                  onPressed: _finish,
+                ),
               ),
             ),
           ),
@@ -223,14 +347,12 @@ class _OnboardingIntroState extends State<_OnboardingIntro> {
 
 class _OnboardingPage extends StatelessWidget {
   final _OnboardingPageData data;
-  final bool isLast;
-  final VoidCallback onStartCapture;
 
-  const _OnboardingPage({
-    required this.data,
-    required this.isLast,
-    required this.onStartCapture,
-  });
+  /// 일러스트 좌우 여백 — 기능 3장(관상·궁합·케미)은 텍스트 여백의 절반으로
+  /// 이미지를 더 크게, 마지막 장(banner)은 텍스트와 동일.
+  final double imageHInset;
+
+  const _OnboardingPage({required this.data, required this.imageHInset});
 
   @override
   Widget build(BuildContext context) {
@@ -243,13 +365,9 @@ class _OnboardingPage extends StatelessWidget {
         AppSpacing.md +
         _kTopBarHeight +
         AppSpacing.sm;
+    // 좌우 여백은 요소별로: 일러스트 = imageHInset, 텍스트·chip = huge.
     return Padding(
-      padding: EdgeInsets.fromLTRB(
-        AppSpacing.huge,
-        topInset,
-        AppSpacing.huge,
-        _kContentBottomInset,
-      ),
+      padding: EdgeInsets.only(top: topInset, bottom: _kContentBottomInset),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -257,16 +375,22 @@ class _OnboardingPage extends StatelessWidget {
           // Flexible + loose 제약: 이미지가 비율 그대로 축소돼 letterbox 없이
           // 렌더된다 (작은 화면 overflow 방지).
           Flexible(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadius.xl),
-              child: Image.asset(data.asset, fit: BoxFit.contain),
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: imageHInset),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadius.xl),
+                child: Image.asset(data.asset, fit: BoxFit.contain),
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.huge),
-          Text(
-            data.title,
-            style: AppText.display.copyWith(color: titleColor),
-            textAlign: TextAlign.center,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.huge),
+            child: Text(
+              data.title,
+              style: AppText.display.copyWith(color: titleColor),
+              textAlign: TextAlign.center,
+            ),
           ),
           if (data.chips.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.md),
@@ -284,15 +408,14 @@ class _OnboardingPage extends StatelessWidget {
             ),
           ],
           const SizedBox(height: AppSpacing.lg),
-          Text(
-            data.body,
-            style: AppText.body.copyWith(color: bodyColor),
-            textAlign: TextAlign.center,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.huge),
+            child: Text(
+              data.body,
+              style: AppText.body.copyWith(color: bodyColor),
+              textAlign: TextAlign.center,
+            ),
           ),
-          if (isLast) ...[
-            const SizedBox(height: AppSpacing.xxl),
-            PrimaryButton(label: '내 관상 보기', onPressed: onStartCapture),
-          ],
         ],
       ),
     );
