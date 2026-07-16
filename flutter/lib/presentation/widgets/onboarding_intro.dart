@@ -24,24 +24,24 @@ const _kPageColors = [
 
 const _kPages = [
   _OnboardingPageData(
-    asset: 'assets/images/onboarding-physiognomy.png',
+    asset: 'assets/images/onboarding1.png',
     title: '관상',
     chips: ['관상풀이 무료'],
     body: '카메라로 찍거나 앨범 사진을 올리면 상세한\n관상 분석을 무료로 볼 수 있습니다.',
     warm: true,
   ),
   _OnboardingPageData(
-    asset: 'assets/images/onboarding-compatibility.png',
+    asset: 'assets/images/onboarding2.png',
     title: '궁합',
     chips: ['궁합해석 1코인'],
     body: '내 관상이 등록된 상태 이후에 올리는 모든\n사진 속 인물과 나와의 궁합을 볼 수 있습니다.',
     warm: false,
   ),
   _OnboardingPageData(
-    asset: 'assets/images/onboarding-chemistry.png',
+    asset: 'assets/images/onboarding3.png',
     title: '케미',
     chips: ['그룹케미 결과표 무료'],
-    body: '그룹을 만들고 모든 참여자가 관상을 올리면\n구성원 간의 그룹 케미 결과표가 완성됩니다.',
+    body: '그룹을 만들고 모든 참여자가 관상을 올리면\n구성원 간의 그룹케미 결과표가 완성됩니다.',
     warm: true,
   ),
   _OnboardingPageData(
@@ -231,9 +231,10 @@ class _OnboardingIntroState extends State<_OnboardingIntro>
               ),
             ),
           ),
-          // "내 관상 보기" CTA — 흡수된 원판과 같은 세로 중심선
+          // 마지막 장 CTA 행 — 흡수된 원판과 같은 세로 중심선
           // (verticalPosition * H + radius)에서 흡수 완료 후 fade-in.
           // 버튼 높이 48 의 절반만큼 올려 원 중심과 정렬한다.
+          // [닫기] 1/3 : [내 관상 등록] 2/3 — 닫기는 인트로만 내린다.
           Positioned(
             top: screenHeight * _kRevealVerticalPosition +
                 _kRevealRadius -
@@ -252,9 +253,24 @@ class _OnboardingIntroState extends State<_OnboardingIntro>
                     child: child,
                   ),
                 ),
-                child: PrimaryButton(
-                  label: '내 관상 등록하기',
-                  onPressed: _finish,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: SecondaryButton(
+                        label: '닫기',
+                        onPressed: () => Navigator.of(context)
+                            .pop(OnboardingIntroResult.later),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      flex: 2,
+                      child: PrimaryButton(
+                        label: '내 관상 등록',
+                        onPressed: _finish,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
