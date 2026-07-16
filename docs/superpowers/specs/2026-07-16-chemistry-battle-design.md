@@ -214,7 +214,6 @@ payload 기록 후의 열람·웹 쇼케이스는 전부 payload 렌더.
 
 ```jsonc
 {
-  "v": 2,
   "players": [{ "n": "닉네임", "slot": 1 }],          // 썸네일은 방장 옵트인 정책 유지
   "pairs":   [{ "a": 1, "b": 2, "band": "geumseul" }], // 밴드만 — 점수 없음
   "awards": {
