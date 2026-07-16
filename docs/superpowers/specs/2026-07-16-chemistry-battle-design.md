@@ -223,10 +223,10 @@ payload 기록 후의 열람·웹 쇼케이스는 전부 payload 렌더.
 ```jsonc
 {
   "players": [
-    { "slot": 1, "n": "지은" },
-    { "slot": 2, "n": "철수" },
-    { "slot": 3, "n": "민준" },
-    { "slot": 4, "n": "슬기" }
+    { "slot": 1, "name": "지은" },
+    { "slot": 2, "name": "철수" },
+    { "slot": 3, "name": "민준" },
+    { "slot": 4, "name": "슬기" }
   ],
   "pairs": [                        // raw total 내림차순 — 인덱스 = 순위
     { "a": 1, "b": 4, "band": 0 },  // 1위 = best 와 동일 쌍
