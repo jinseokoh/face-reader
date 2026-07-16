@@ -219,10 +219,13 @@ payload 기록 후의 열람·웹 쇼케이스는 전부 payload 렌더.
     "leader":     { "p": 3, "avg": 82 },
     "unexpected": { "a": 2, "b": 6, "score": 88 },     // 생략 가능
     "hidden":     { "a": 4, "b": 8, "score": 86 }      // 생략 가능
-  },
-  "stake": { "kind": "best_pays", "text": "☕ 커피" }   // 있을 때만
+  }
 }
 ```
+
+내기 정보는 payload 에 넣지 않는다 — `stake_kind`/`stake_text`/`chat_url` 은 teams 컬럼에
+이미 있고 생성 후 불변이며, payload 를 읽는 모든 소비자는 teams 행을 함께 fetch 한다.
+공약 회수 카드는 컬럼 + `awards.best`(또는 rival) 조합으로 렌더.
 
 ---
 
