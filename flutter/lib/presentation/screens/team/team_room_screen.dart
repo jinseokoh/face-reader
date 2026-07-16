@@ -21,6 +21,7 @@ import 'package:go_router/go_router.dart';
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
 import 'team_matrix_screen.dart';
+import 'team_matrix_snapshot_screen.dart';
 
 /// 교감도 — 팀(방) 화면. PIVOT A6 방 화면 스펙:
 /// 모임명 · 스캔 진행(scanned/total) · 멤버 그리드(스캔 완료=얼굴 / 대기=이름+
@@ -928,10 +929,44 @@ class _TeamRoomScreenState extends ConsumerState<TeamRoomScreen> {
         ),
       );
 
-  void _openMatrix(TeamRoom room) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => TeamMatrixScreen(roomId: room.id),
+  Future<void> _openMatrix(TeamRoom room) async {
+    // live 우선 — resolve 되는 리포트 2명 이상이면 실시간 계산 (resolve 실패
+    // 멤버는 결과표 화면이 별도 표기). computeTeamMatrix 의 2명 이상 전제를
+    // 여기서 지킨다 (케미 리스트 프리뷰의 <2 게이트와 동일 규칙).
+    final resolvable = ref
+        .read(teamsProvider.notifier)
+        .scannedReports(room)
+        .where((r) => r.supabaseId != null)
+        .length;
+    if (resolvable >= 2) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => TeamMatrixScreen(roomId: room.id),
+        ),
+      );
+      return;
+    }
+    // 최후 fallback — 탈퇴·삭제로 live 계산이 불가능하면 마감 당시 서버
+    // 스냅샷(matrix_payload)으로 결과표를 보존 렌더.
+    final remote =
+        await ref.read(teamsProvider.notifier).peekRemoteTeam(room.id);
+    final payload = remote?.matrixPayload;
+    if (!mounted) return;
+    if (payload != null) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => TeamMatrixSnapshotScreen(
+            title: room.title,
+            payload: payload,
+          ),
+        ),
+      );
+      return;
+    }
+    showTopSnackBar(
+      Overlay.of(context),
+      CompactSnackBar.error(
+        message: '구성원의 관상 정보를 찾을 수 없어 결과표를 열 수 없어요.',
       ),
     );
   }

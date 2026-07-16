@@ -646,6 +646,7 @@ export function JoinWizard({
     const r = await joinTeam(client, {
       teamId: team.id,
       metricsId: metricsIdRef.current,
+      uid: s.user.id,
       name: joinName,
     })
     if (r === 'name-taken') {

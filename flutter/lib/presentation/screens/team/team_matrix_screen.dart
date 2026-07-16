@@ -36,6 +36,10 @@ class _TeamMatrixScreenState extends ConsumerState<TeamMatrixScreen> {
   late final List<FaceReadingReport> _ordered; // 보는 사람(나) 행 최상단.
   FaceReadingReport? _viewer;
 
+  /// 등록은 됐지만 리포트를 resolve 못 한 멤버 이름 — 탈퇴·카드 삭제 등.
+  /// 계산에서 빠진 사람도 결과표 화면에 함께 표기한다.
+  late final List<String> _missingNames;
+
   /// 표시 이름 SoT = 방 명단(roster) — 웹 쇼케이스 payload(_buildPayload)와
   /// 동일 규칙. report.alias 는 원격 합류자에서 항상 null(공유수신 차단)이라
   /// 이름 소스로 쓰면 인구통계 fallback 으로 새는 참사가 난다 (2026-07-12).
@@ -53,9 +57,17 @@ class _TeamMatrixScreenState extends ConsumerState<TeamMatrixScreen> {
         if (m.reportId != null)
           m.reportId!: m.name == '나' ? (myNickname ?? m.name) : m.name,
     };
-    final members = ref.read(teamsProvider.notifier).scannedReports(room);
+    final notifier = ref.read(teamsProvider.notifier);
+    final members = notifier.scannedReports(room);
     // 엔진이 결정론적·대칭이라 매번 재계산 (capture-only 원칙).
     _matrix = computeTeamMatrix(members);
+    // 등록됐지만 resolve 실패한 멤버(탈퇴·삭제) — 그리드 아래 별도 표기.
+    _missingNames = [
+      for (int i = 0; i < room.members.length; i++)
+        if (room.members[i].isScanned &&
+            notifier.reportForInRoom(room, i) == null)
+          room.members[i].name,
+    ];
 
     // 보는 사람 = 멤버 중 내 관상. 없으면(남의 폰) 첫 멤버 순서 그대로.
     final history = ref.read(historyProvider);
@@ -105,7 +117,7 @@ class _TeamMatrixScreenState extends ConsumerState<TeamMatrixScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // 🏆 베스트 — 1위 점수 그룹(동점자 모두) + 한 줄 무료 (A2 도파민 모먼트).
-              _SummaryCard(
+              TeamSummaryCard(
                 eyebrow: '🥳 베스트 케미',
                 headline: _pairHeadlines(bests),
                 caption: '얼굴 관상으로 분석한 두사람의 호흡이 '
@@ -114,7 +126,7 @@ class _TeamMatrixScreenState extends ConsumerState<TeamMatrixScreen> {
               if (surprises.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.md),
                 // 😲 버금가는 케미 — 2위 점수 그룹(동점자 모두).
-                _SummaryCard(
+                TeamSummaryCard(
                   eyebrow: '😲 버금가는 케미',
                   headline: _pairHeadlines(surprises),
                   caption: '얼굴 관상으로 분석한 두사람의 호흡이 '
@@ -144,6 +156,34 @@ class _TeamMatrixScreenState extends ConsumerState<TeamMatrixScreen> {
               ),
               const SizedBox(height: AppSpacing.sm),
               _buildGrid(),
+              // resolve 실패 멤버(탈퇴·카드 삭제) — 계산에서 빠졌음을 명시.
+              if (_missingNames.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.md),
+                Wrap(
+                  spacing: AppSpacing.md,
+                  runSpacing: AppSpacing.xs,
+                  children: [
+                    for (final name in _missingNames)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _iconAvatar(20),
+                          const SizedBox(width: AppSpacing.xs),
+                          Text(
+                            name,
+                            style: AppText.caption
+                                .copyWith(color: AppColors.textHint),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  '탈퇴 등으로 관상 정보가 없는 멤버는 계산에서 제외되었습니다.',
+                  style: AppText.hint,
+                ),
+              ],
               const SizedBox(height: AppSpacing.lg),
               // 밴드 범례 — 매트릭스와 동일한 색깔 닷 + 라벨.
               Wrap(
@@ -604,12 +644,15 @@ class _TeamMatrixScreenState extends ConsumerState<TeamMatrixScreen> {
 }
 
 /// 🏆/😲 요약 카드 — §3.2 카드 토큰.
-class _SummaryCard extends StatelessWidget {
+/// 결과표 요약 카드 — live 결과표와 matrix_payload 스냅샷 화면이 공유
+/// (§0.0.3 같은 역할 = 같은 위젯).
+class TeamSummaryCard extends StatelessWidget {
   final String eyebrow;
   final Widget headline;
   final String caption;
 
-  const _SummaryCard({
+  const TeamSummaryCard({
+    super.key,
     required this.eyebrow,
     required this.headline,
     required this.caption,

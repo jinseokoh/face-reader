@@ -47,17 +47,21 @@ class TeamSyncService {
       final memberRows = <Map<String, dynamic>>[];
       final pendingRows = <Map<String, dynamic>>[];
       for (int i = 0; i < room.members.length; i++) {
-        final id = room.members[i].reportId;
+        final member = room.members[i];
+        final id = member.reportId;
         // 방장 슬롯의 로컬 전용 표기 '나' 는 웹 초대장·쇼케이스에 그대로
         // 노출되면 안 된다 — 프로필 nickname 으로 치환해 올린다 (로컬 화면은
         // '나' 유지).
-        var name = room.members[i].name;
+        var name = member.name;
         if (i == 0 && name == '나') {
           name = AuthService().currentUser?.nickname ?? name;
         }
+        // user_id = 사람 참조: 방장 슬롯은 내 uid, 합류자는 로컬에 동기화된
+        // userId, 직접촬영/walk-in 은 null (metrics 스냅샷 유지).
         final row = {
           'team_id': room.id,
           'metrics_id': id,
+          'user_id': i == 0 && room.includeOwner ? uid : member.userId,
           'name': name,
           'is_owner': i == 0,
         };
@@ -135,6 +139,7 @@ class TeamSyncService {
       await _client.from('team_members').upsert({
         'team_id': teamId,
         'metrics_id': metricsId,
+        'user_id': myUid,
         'name': name,
         'is_owner': false,
       }, onConflict: 'team_id,name');
@@ -166,7 +171,8 @@ class TeamSyncService {
   }
 
   /// 로그인 rehydrate 용 — **모집 중(closed_at null)** 인 내 방 id 열거.
-  /// owned = teams.owner_id, invited = 내 metrics 가 team_members 에 있는 방.
+  /// owned = teams.owner_id, invited = 내가 멤버인 방 (user_id 사람 참조 우선,
+  /// user_id 없는 옛 합류 행은 내 metrics 로 보조 매칭).
   /// closed 방은 의도적으로 제외 (부활 금지 정책, 2026-07-12): 끝난 방을
   /// 지운 사용자 의도 존중 + 결과표는 웹 링크로 열람 가능.
   Future<List<String>> fetchMyOpenTeamIds(List<String> myMetricsIds) async {
@@ -181,24 +187,32 @@ class TeamSyncService {
     for (final r in (owned as List).cast<Map<String, dynamic>>()) {
       ids.add(r['id'] as String);
     }
+    final joined = <String>{};
+    final byUid = await _client
+        .from('team_members')
+        .select('team_id')
+        .eq('user_id', uid);
+    for (final r in (byUid as List).cast<Map<String, dynamic>>()) {
+      joined.add(r['team_id'] as String);
+    }
     if (myMetricsIds.isNotEmpty) {
       final memberRows = await _client
           .from('team_members')
           .select('team_id')
           .inFilter('metrics_id', myMetricsIds);
-      final joined = <String>{
-        for (final r in (memberRows as List).cast<Map<String, dynamic>>())
-          r['team_id'] as String,
-      }..removeAll(ids);
-      if (joined.isNotEmpty) {
-        final open = await _client
-            .from('teams')
-            .select('id')
-            .inFilter('id', joined.toList())
-            .isFilter('closed_at', null);
-        for (final r in (open as List).cast<Map<String, dynamic>>()) {
-          ids.add(r['id'] as String);
-        }
+      for (final r in (memberRows as List).cast<Map<String, dynamic>>()) {
+        joined.add(r['team_id'] as String);
+      }
+    }
+    joined.removeAll(ids);
+    if (joined.isNotEmpty) {
+      final open = await _client
+          .from('teams')
+          .select('id')
+          .inFilter('id', joined.toList())
+          .isFilter('closed_at', null);
+      for (final r in (open as List).cast<Map<String, dynamic>>()) {
+        ids.add(r['id'] as String);
       }
     }
     return ids.toList();
@@ -223,18 +237,49 @@ class TeamSyncService {
     );
   }
 
-  /// 멤버 metrics 들을 FaceReadingReport 로 복원 — 매트릭스 계산용. 로컬 history
-  /// 에 없는 원격 멤버를 서버에서 read-only 로 끌어온다 (ShareReceiveService 재사용).
-  /// 실패/삭제된 id 는 결과에서 빠진다.
+  /// 멤버들의 FaceReadingReport 복원 — 매트릭스 계산용. 결과 key = 슬롯의
+  /// metrics_id (provider 의 reportId resolve 키와 일치).
+  ///
+  /// user_id 가 있는 멤버(본인 합류)는 그 유저의 **현재 my-face** 로 live
+  /// resolve — 재촬영·claim 귀속으로 my-face row 가 바뀌어도 항상 최신 관상
+  /// (케미 = 최신 데이터). 반환 report 의 supabaseId 가 슬롯 metrics_id 와
+  /// 다를 수 있고, provider 가 그 값으로 로컬 슬롯을 self-heal 한다.
+  /// user_id 없는 멤버(직접촬영)는 metrics_id 스냅샷 그대로.
+  /// 실패/삭제(탈퇴)된 멤버는 결과에서 빠진다.
   Future<Map<String, FaceReadingReport>> fetchMemberReports(
-    Iterable<String> metricsIds,
+    Iterable<({String metricsId, String? userId})> members,
   ) async {
     final out = <String, FaceReadingReport>{};
-    for (final id in metricsIds) {
+    for (final m in members) {
+      var id = m.metricsId;
+      final uid = m.userId;
+      if (uid != null) {
+        final liveId = await _liveMyFaceId(uid);
+        // my-face 가 없으면(탈퇴 직전·전부 강등) 스냅샷 id 로 fallback.
+        if (liveId != null) id = liveId;
+      }
       final r = await _receive.fetchByUuid(id);
-      if (r != null) out[id] = r;
+      if (r != null) out[m.metricsId] = r;
     }
     return out;
+  }
+
+  /// 유저의 현재 my-face metrics id. 없거나 조회 실패면 null.
+  Future<String?> _liveMyFaceId(String uid) async {
+    try {
+      final row = await _client
+          .from('metrics')
+          .select('id')
+          .eq('user_id', uid)
+          .eq('is_my_face', true)
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+      return row?['id'] as String?;
+    } catch (e) {
+      debugPrint('[TeamSync] live my-face 조회 실패 uid=$uid: $e');
+      return null;
+    }
   }
 }
 
@@ -276,17 +321,22 @@ class RemoteTeam {
 
 class RemoteMember {
   final String? metricsId;
+
+  /// 멤버 본인 계정 uid (본인 합류 슬롯). null = 직접촬영·대기.
+  final String? userId;
   final String name;
   final bool isOwner;
 
   const RemoteMember({
     required this.metricsId,
+    required this.userId,
     required this.name,
     required this.isOwner,
   });
 
   factory RemoteMember.fromRow(Map<String, dynamic> m) => RemoteMember(
         metricsId: m['metrics_id'] as String?,
+        userId: m['user_id'] as String?,
         name: m['name'] as String? ?? '',
         isOwner: m['is_owner'] as bool? ?? false,
       );

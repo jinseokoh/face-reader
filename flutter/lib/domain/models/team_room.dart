@@ -9,16 +9,23 @@ class TeamMember {
   /// FaceReadingReport.supabaseId. null 이면 아직 안 찍은 대기 멤버.
   String? reportId;
 
-  TeamMember({required this.name, this.reportId});
+  /// 멤버 본인 계정 uid — 본인 합류·방장 본인 슬롯만. 읽기 쪽이 이 값으로
+  /// 그 유저의 현재 my-face 를 live resolve 한다 (케미 = 최신 데이터).
+  /// 직접촬영/walk-in 슬롯은 null (metrics 스냅샷 유지).
+  String? userId;
+
+  TeamMember({required this.name, this.reportId, this.userId});
 
   bool get isScanned => reportId != null;
 
   factory TeamMember.fromJson(Map<String, dynamic> m) => TeamMember(
         name: m['name'] as String,
         reportId: m['reportId'] as String?,
+        userId: m['userId'] as String?,
       );
 
-  Map<String, dynamic> toJson() => {'name': name, 'reportId': reportId};
+  Map<String, dynamic> toJson() =>
+      {'name': name, 'reportId': reportId, 'userId': userId};
 }
 
 /// 교감도 팀(방) — PIVOT A6/A7. 멤버 명단은 생성 시 칩 입력으로 미리 깔고,

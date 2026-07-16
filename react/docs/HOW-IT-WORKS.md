@@ -8,7 +8,7 @@
 2. **공유 link 의 SSR host** (`GET /r/{uuid}`) — 받는 사람이 카톡에서 link 탭했을 때 OG 카드·리포트·딥링크·스토어 fallback. Supabase `metrics` 행을 **read-only** 로 fetch.
 3. **계정 삭제 admin endpoint** (`POST /api/account/delete`) — 사용자 JWT 검증 후 R2 thumbnails 일괄 삭제 + metrics row 삭제 + Supabase admin API 로 `auth.users` 삭제 (cascade 로 users/coins/unlocks). `SUPABASE_SERVICE_ROLE_KEY` 사용.
 4. **landing & 정적 문서** (`/`, `/app`, `/terms`, `/privacy`, `/contact`) — hero / 이용약관 / 개인정보처리방침 / 개인정보 삭제 요청 폼.
-5. **케미 그룹 웹 참여** (`GET /g/:id` + client `JoinWizard`) — 앱 미설치 합류자가 브라우저에서 카카오 로그인(supabase-js PKCE, 앱과 같은 `auth.users`) 후 정면 캡처로 그룹에 합류 (전원 등록 카운트 포함). write 는 전부 클라이언트 → Supabase 직통 (metrics upsert + team_members claim/insert, 기존 RLS 그대로) + `/api/r2/presign` 썸네일 PUT. 선행 조건: Supabase Auth Redirect URLs 에 `https://facely.kr/g/*` 등록. 이후 앱 설치 + 같은 카카오 로그인 시 rehydrate 가 캡처·그룹 자동 복원.
+5. **케미 그룹 웹 참여** (`GET /g/:id` + client `JoinWizard`) — 앱 미설치 합류자가 브라우저에서 카카오 로그인(supabase-js PKCE, 앱과 같은 `auth.users`) 후 정면 캡처로 그룹에 합류 (전원 등록 카운트 포함). write 는 전부 클라이언트 → Supabase 직통 (metrics upsert + team_members claim/insert — user_id 사람 참조 포함, 앱 읽기가 그 uid 의 현재 my-face 로 live resolve) + `/api/r2/presign` 썸네일 PUT. 선행 조건: Supabase Auth Redirect URLs 에 `https://facely.kr/g/*` 등록. 이후 앱 설치 + 같은 카카오 로그인 시 rehydrate 가 캡처·그룹 자동 복원.
 
 이미지 본체는 단 한 번도 Worker 메모리에 안 들어옴 (R2 직통 PUT, CDN GET). Worker 의 Supabase write 는 `/api/account/delete` (service_role) 하나뿐 — 웹 참여를 포함한 평상시 분석/공유/합류 흐름은 클라이언트(Flutter·브라우저) ↔ Supabase 직통이고 Worker 는 read-only.
 

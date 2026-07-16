@@ -101,24 +101,36 @@ export async function fetchMembership(
   metricsId: string;
   thumbnailKey: string | null;
 } | null> {
-  const { data: mine } = await sb
-    .from("metrics")
-    .select("id,body")
-    .eq("user_id", uid);
-  const rows = mine ?? [];
-  if (rows.length === 0) return null;
-  const { data } = await sb
+  // 사람 참조(user_id) 직조회 — user_id 없는 옛 합류 행은 내 metrics 소유로
+  // 보조 매칭.
+  let { data } = await sb
     .from("team_members")
     .select("name,metrics_id")
     .eq("team_id", teamId)
-    .in(
-      "metrics_id",
-      rows.map((r) => r.id as string),
-    )
+    .eq("user_id", uid)
     .limit(1)
     .maybeSingle();
-  if (!data) return null;
-  const mineRow = rows.find((r) => r.id === data.metrics_id);
+  if (!data) {
+    const { data: mine } = await sb
+      .from("metrics")
+      .select("id")
+      .eq("user_id", uid);
+    const ids = (mine ?? []).map((r) => r.id as string);
+    if (ids.length === 0) return null;
+    ({ data } = await sb
+      .from("team_members")
+      .select("name,metrics_id")
+      .eq("team_id", teamId)
+      .in("metrics_id", ids)
+      .limit(1)
+      .maybeSingle());
+  }
+  if (!data || data.metrics_id == null) return null;
+  const { data: mineRow } = await sb
+    .from("metrics")
+    .select("body")
+    .eq("id", data.metrics_id as string)
+    .maybeSingle();
   return {
     name: data.name as string,
     metricsId: data.metrics_id as string,
@@ -352,12 +364,14 @@ export async function saveCapture(
  */
 export async function joinTeam(
   sb: SupabaseClient,
-  args: { teamId: string; metricsId: string; name: string },
+  args: { teamId: string; metricsId: string; uid: string; name: string },
 ): Promise<"ok" | "name-taken" | "failed"> {
   const { error } = await sb.from("team_members").upsert(
     {
       team_id: args.teamId,
       metrics_id: args.metricsId,
+      // 사람 참조 — 읽기 쪽이 이 uid 의 현재 my-face 로 live resolve 한다.
+      user_id: args.uid,
       name: args.name,
       is_owner: false,
     },

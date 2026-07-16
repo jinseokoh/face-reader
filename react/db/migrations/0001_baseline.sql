@@ -743,15 +743,21 @@ create trigger teams_touch
   for each row execute procedure public.touch_teams_updated_at();
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 11-3. public.team_members — 그룹 멤버 (metrics_id 참조)
+-- 11-3. public.team_members — 그룹 멤버 (user_id 사람 참조 + metrics_id 스냅샷)
 -- ─────────────────────────────────────────────────────────────────────────────
--- 멤버 = (team_id, metrics_id). name = 그룹 안 표시 이름(방장이 깐 이름 또는
--- 본인 alias). 대기(미등록) 슬롯은 metrics_id null + name 만, 등록되면 채운다.
--- 한 그룹에 같은 metrics_id 1회 (등록 중복 차단, 부분 unique).
+-- 멤버 = 사람. name = 그룹 안 표시 이름(방장이 깐 이름 또는 본인 alias).
+-- 대기(미등록) 슬롯은 metrics_id null + name 만, 등록되면 채운다.
+--
+-- user_id = 멤버 본인 계정 (본인 합류·방장 본인 슬롯). 읽기 쪽은 user_id 가
+-- 있으면 그 유저의 **현재 my-face** 로 live resolve — my-face row id 가
+-- 바뀌어도(claim 귀속 등) 슬롯이 항상 최신 관상을 가리킨다 (케미 = 최신 데이터
+-- 정책). 방장이 남의 얼굴을 대신 찍은 직접촬영/walk-in 슬롯은 본인 계정이
+-- 없으므로 user_id null + metrics_id 스냅샷으로 남는다.
 create table if not exists public.team_members (
   id         uuid        primary key default gen_random_uuid(),
   team_id    uuid        not null references public.teams(id) on delete cascade,
   metrics_id uuid        references public.metrics(id) on delete set null,
+  user_id    uuid        references auth.users(id) on delete set null,
   name       text        not null,
   is_owner   boolean     not null default false,
   joined_at  timestamptz not null default now()
@@ -762,6 +768,10 @@ create index        if not exists idx_team_members_team    on public.team_member
 -- 비부분(non-partial) 이라야 ON CONFLICT 가 추론한다. metrics_id NULL 행(대기·
 -- metrics 삭제로 set null)은 PG 기본 NULL-distinct 라 여러 개 허용돼 무해.
 create unique index if not exists idx_team_members_metrics on public.team_members (team_id, metrics_id);
+-- (team_id, user_id) 부분 unique — 같은 사람의 이중 합류 차단 (user_id null
+-- 인 직접촬영·대기 슬롯은 제외).
+create unique index if not exists idx_team_members_user on public.team_members (team_id, user_id)
+  where user_id is not null;
 -- (team_id, name) unique — 그룹 안 이름이 슬롯 키. 합류자가 방장이 깐 대기
 -- 이름("까불이")으로 upsert 하면 그 대기 행이 채워진다(claim by name). 등록·대기
 -- 모두 한 이름당 한 행.
@@ -779,11 +789,16 @@ drop policy if exists "team_members_delete"      on public.team_members;
 create policy "team_members_public_read"
   on public.team_members for select using (true);
 
--- 쓰기(insert): owner 가 멤버를 깔거나, 합류자가 자기 자신(metrics 소유)을 넣는다.
+-- 쓰기(insert): owner 는 자기 그룹에 자유(재-push 가 합류자 행의 user_id 를
+-- 보존 upsert 해야 한다 — metrics_id 와 동일한 owner-trust 모델). 합류자는
+-- 자기 자신(metrics 소유 + user_id 본인)만.
 create policy "team_members_insert"
   on public.team_members for insert with check (
-       exists (select 1 from public.teams t   where t.id = team_id    and t.owner_id  = auth.uid())
-    or exists (select 1 from public.metrics m where m.id = metrics_id and m.user_id   = auth.uid())
+       exists (select 1 from public.teams t where t.id = team_id and t.owner_id = auth.uid())
+    or (
+      (user_id is null or user_id = auth.uid())
+      and exists (select 1 from public.metrics m where m.id = metrics_id and m.user_id = auth.uid())
+    )
   );
 
 -- 수정: owner 만 (명단 관리·슬롯 채움).
@@ -794,19 +809,21 @@ create policy "team_members_update"
 
 -- 슬롯 claim: 합류자가 **대기 슬롯(metrics_id null)** 을 자기 metrics 로 채운다.
 -- USING = 빈 슬롯만(기존 점유 행은 못 가로챔), WITH CHECK = 새 metrics_id 가
--- 본인 소유. team_members_update(owner) 와 OR 로 합쳐져, 합류자도 빈 이름 슬롯에
--- 한해 채울 수 있다.
+-- 본인 소유 + user_id 는 본인. team_members_update(owner) 와 OR 로 합쳐져,
+-- 합류자도 빈 이름 슬롯에 한해 채울 수 있다.
 create policy "team_members_claim_slot"
   on public.team_members for update
     using (metrics_id is null)
     with check (
-      exists (select 1 from public.metrics m where m.id = metrics_id and m.user_id = auth.uid())
+      (user_id is null or user_id = auth.uid())
+      and exists (select 1 from public.metrics m where m.id = metrics_id and m.user_id = auth.uid())
     );
 
--- 삭제: owner(멤버 제거) 또는 본인(그룹 나가기).
+-- 삭제: owner(멤버 제거) 또는 본인(그룹 나가기 — user_id 또는 metrics 소유).
 create policy "team_members_delete"
   on public.team_members for delete using (
-       exists (select 1 from public.teams t   where t.id = team_id    and t.owner_id  = auth.uid())
+       user_id = auth.uid()
+    or exists (select 1 from public.teams t   where t.id = team_id    and t.owner_id  = auth.uid())
     or exists (select 1 from public.metrics m where m.id = metrics_id and m.user_id   = auth.uid())
   );
 

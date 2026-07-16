@@ -276,11 +276,30 @@ class TeamsNotifier extends Notifier<List<TeamRoom>> {
     final remote = await _sync.fetchTeam(teamId);
     if (remote == null) return null;
 
-    // 원격 멤버 리포트 캐시 (매트릭스용).
-    final ids =
-        remote.members.map((m) => m.metricsId).whereType<String>().toList();
-    if (ids.isNotEmpty) {
-      _remoteCache.addAll(await _sync.fetchMemberReports(ids));
+    // 원격 멤버 리포트 캐시 (매트릭스용). user_id 슬롯은 그 유저의 현재
+    // my-face 로 live resolve — 반환 report 의 supabaseId 가 슬롯 metrics_id
+    // 와 다르면 아래 병합에서 로컬 reportId 를 self-heal 한다.
+    final fetchTargets = [
+      for (final m in remote.members)
+        if (m.metricsId != null)
+          (metricsId: m.metricsId!, userId: m.userId),
+    ];
+    final fetched = fetchTargets.isEmpty
+        ? const <String, FaceReadingReport>{}
+        : await _sync.fetchMemberReports(fetchTargets);
+    // 캐시는 슬롯 키(metrics_id)와 live id 양쪽에 — reportFor 가 self-heal
+    // 전후 어느 id 로 조회해도 맞는 리포트가 나온다.
+    for (final e in fetched.entries) {
+      _remoteCache[e.key] = e.value;
+      final liveId = e.value.supabaseId;
+      if (liveId != null && liveId != e.key) _remoteCache[liveId] = e.value;
+    }
+
+    /// 슬롯의 유효 report id — live resolve 결과가 있으면 그 id.
+    String? liveIdOf(RemoteMember m) {
+      final mid = m.metricsId;
+      if (mid == null) return null;
+      return fetched[mid]?.supabaseId ?? mid;
     }
 
     final mine = _sync.myUid != null && remote.ownerId == _sync.myUid;
@@ -290,9 +309,33 @@ class TeamsNotifier extends Notifier<List<TeamRoom>> {
       // 내 그룹 — 로컬 명단 유지하며 서버의 합류를 병합.
       final known =
           existing.members.map((m) => m.reportId).whereType<String>().toSet();
+      final knownUids =
+          existing.members.map((m) => m.userId).whereType<String>().toSet();
       for (final m in remote.members) {
-        final mid = m.metricsId;
-        if (mid == null || m.isOwner || known.contains(mid)) continue;
+        final mid = liveIdOf(m);
+        if (mid == null || m.isOwner) continue;
+        // 이미 아는 멤버 — id 매칭 또는 사람(uid) 매칭. 사람 매칭 시 my-face
+        // 교체로 어긋난 로컬 reportId 를 live id 로 self-heal.
+        if (known.contains(mid) || known.contains(m.metricsId)) {
+          if (m.userId != null) {
+            final slot = existing.members
+                .where((lm) =>
+                    lm.reportId == mid || lm.reportId == m.metricsId)
+                .firstOrNull;
+            if (slot != null) {
+              slot.reportId = mid;
+              slot.userId ??= m.userId;
+            }
+          }
+          continue;
+        }
+        if (m.userId != null && knownUids.contains(m.userId)) {
+          final slot = existing.members
+              .where((lm) => lm.userId == m.userId)
+              .firstOrNull;
+          if (slot != null) slot.reportId = mid;
+          continue;
+        }
         // 같은 이름의 로컬 **대기 슬롯**이 있으면 그 슬롯을 채운다(원격 claim 반영).
         // 없으면 새 합류자로 추가.
         final slot = existing.members
@@ -300,8 +343,10 @@ class TeamsNotifier extends Notifier<List<TeamRoom>> {
             .firstOrNull;
         if (slot != null) {
           slot.reportId = mid;
+          slot.userId = m.userId;
         } else {
-          existing.members.add(TeamMember(name: m.name, reportId: mid));
+          existing.members
+              .add(TeamMember(name: m.name, reportId: mid, userId: m.userId));
         }
       }
       if (remote.closedAt != null) {
@@ -333,7 +378,7 @@ class TeamsNotifier extends Notifier<List<TeamRoom>> {
       title: remote.title,
       members: [
         for (final m in ordered)
-          TeamMember(name: m.name, reportId: m.metricsId),
+          TeamMember(name: m.name, reportId: liveIdOf(m), userId: m.userId),
       ],
       createdAt: existing?.createdAt ?? DateTime.now(),
       updatedAt: DateTime.now(),
