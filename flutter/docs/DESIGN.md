@@ -80,7 +80,7 @@ stroke 가 짙어 Material 대비 약 75~85% 크기로 (Material 24 → FA 18~20
 - 기본은 `AppText.X` 직접 참조 (const 유지). 변형은 `copyWith` 만 — inline TextStyle 신설 금지.
 - **§2.5 공용 승격**: 같은 모양이 두 화면 이상 등장하면 `presentation/widgets/` 공용
   위젯으로 승격 (이름·토큰 함께 이동). 현재 공용: PrimaryButton/SecondaryButton ·
-  DetailAvatar · SortSelector · EmotionEmptyState · CoinChip · OtherFaceScanPill ·
+  DetailAvatar · SortSelector · EmotionEmptyState · CoinChip · FaceScanPill ·
   CompactSnackBar · SourceBadge · MyFaceHeader 등.
 
 ## 3. 컴포넌트 표준
@@ -133,7 +133,7 @@ gold border (gold = "나" 시각 언어).
   `Center > Column[Image 84×84 contain, gap sm, caption+textHint center]`.
   **emotion 패밀리는 항상 84px.** 배치: 관상 카메라 anger / 앨범·미등록 frown /
   북마크 smile / 궁합 미확인 love(상대0)·happy(전부확인) / 확인 surprise /
-  케미 내가만든 laugh / 초대받은·미등록 shrug / nudge 배너 photo.
+  케미 내가만든 laugh / 초대받은·미등록 shrug.
 - **EmptyStatePlaceholder** (icon + title + detail): 아이콘형 — icon FaIcon 56px
   `AppColors.border`, title `sectionTitle` w400 textHint. 화면별 자체 empty 헬퍼 금지.
 

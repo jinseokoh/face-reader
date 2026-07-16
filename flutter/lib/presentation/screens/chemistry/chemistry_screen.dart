@@ -12,6 +12,7 @@ import 'package:facely/presentation/screens/team/team_create_page.dart';
 import 'package:facely/presentation/screens/team/team_room_screen.dart';
 import 'package:facely/presentation/widgets/coin_chip.dart';
 import 'package:facely/presentation/widgets/emotion_empty_state.dart';
+import 'package:facely/presentation/widgets/face_scan_pill.dart';
 import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
 import 'package:facely/presentation/widgets/sort_selector.dart';
 import 'package:flutter/material.dart';
@@ -106,6 +107,8 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen>
         ),
         // 다른 사람 관상보기 pill 은 관상 탭 AppBar 로 이관 (2026-07-10).
         actions: [
+          // 미등록 = [내 관상 등록] pill (관상·궁합 탭과 공용 FaceScanPill).
+          if (!hasMyFace) const FaceScanPill(),
           // [케미 그룹 시작] — 궁합 [상대방 관상 추가] pill 과 동일한
           // outlined stadium 레시피 (§2.5). 내 관상 등록 후에만 노출.
           if (hasMyFace)

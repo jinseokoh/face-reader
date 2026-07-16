@@ -17,7 +17,6 @@ import 'package:facely/presentation/screens/chemistry/chemistry_screen.dart';
 import 'package:facely/presentation/screens/physiognomy/physiognomy_screen.dart';
 import 'package:facely/presentation/screens/settings/settings_screen.dart';
 import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
-import 'package:facely/presentation/widgets/my_face_nudge_banner.dart';
 import 'package:facely/presentation/widgets/onboarding_intro.dart';
 
 class MainApp extends ConsumerStatefulWidget {
@@ -182,9 +181,6 @@ class _MainAppState extends ConsumerState<MainApp> {
               SettingsScreen(),
             ],
           ),
-          // 내 관상 미설정 nudge — 관상/궁합/교감 탭 상단에 top_snackbar 오버레이.
-          // Positioned.fill 로컬 Overlay 호스트 — entry 없으면 hit-test 통과.
-          const Positioned.fill(child: MyFaceNudgeBanner()),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(

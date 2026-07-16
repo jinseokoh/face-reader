@@ -10,7 +10,7 @@ import 'package:facely/presentation/providers/tab_provider.dart';
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/presentation/widgets/emotion_empty_state.dart';
 import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
-import 'package:facely/presentation/widgets/other_face_scan_pill.dart';
+import 'package:facely/presentation/widgets/face_scan_pill.dart';
 import 'package:facely/presentation/widgets/physiognomy_info_dialog.dart';
 import 'package:facely/presentation/widgets/source_badge.dart';
 import 'package:flutter/material.dart';
@@ -498,13 +498,13 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
             handle: NestedScrollView.sliverOverlapAbsorberHandleFor(ctx),
             sliver: SliverAppBar(
               pinned: true,
-              // 내 관상 프로필 슬롯 제거 (2026-06-12) — 등록 상태는 nudge 배너
-              // 유무가 전달하고, 리스트 카드의 gold '내 관상' 배지가 식별을
-              // 맡는다. 헤더는 타이틀 + TabBar 만.
+              // 내 관상 프로필 슬롯 제거 (2026-06-12) — 등록 상태는 AppBar
+              // pill 라벨이 전달하고, 리스트 카드의 gold '내 관상' 배지가
+              // 식별을 맡는다. 헤더는 타이틀 + TabBar 만.
               title: const Text('관상'),
               actions: [
-                // 상대방 관상 추가 — 궁합 탭과 공유하는 공용 pill.
-                const OtherFaceScanPill(),
+                // 미등록 = 내 관상 등록 / 등록 후 = 상대방 관상 추가.
+                const FaceScanPill(),
                 IconButton(
                   icon: const FaIcon(FontAwesomeIcons.circleInfo, size: 20),
                   onPressed: () => _showInfoDialog(context),

@@ -24,7 +24,7 @@ import 'package:facely/presentation/screens/compatibility/compat_unlock_action.d
 import 'package:facely/presentation/widgets/coin_chip.dart';
 import 'package:facely/presentation/widgets/emotion_empty_state.dart';
 import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
-import 'package:facely/presentation/widgets/other_face_scan_pill.dart';
+import 'package:facely/presentation/widgets/face_scan_pill.dart';
 import 'package:facely/presentation/widgets/sort_selector.dart';
 import 'package:facely/presentation/widgets/source_badge.dart';
 import 'package:flutter/material.dart';
@@ -136,9 +136,9 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
           ],
         ),
         actions: [
-          // 상대방 관상 추가 — 관상 탭과 공유하는 공용 pill. 궁합의 상대
-          // 리스트가 자라는 진입점을 이 화면 안에 둔다.
-          const OtherFaceScanPill(),
+          // 미등록 = 내 관상 등록 / 등록 후 = 상대방 관상 추가 — 궁합의
+          // 상대 리스트가 자라는 진입점을 이 화면 안에 둔다.
+          const FaceScanPill(),
           IconButton(
             icon: const FaIcon(FontAwesomeIcons.circleInfo, size: 20),
             tooltip: '궁합 분석에 대하여',
