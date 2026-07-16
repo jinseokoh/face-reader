@@ -203,13 +203,46 @@ payload 기록 후의 열람·웹 쇼케이스는 전부 payload 렌더.
 
 ### 6.3 `result_payload` (웹 쇼케이스·스냅샷 겸용)
 
+구조 규칙:
+
+- **`players`** — slot_no 오름차순. 이름은 payload 에 보존 (참가자 계정 삭제로 team_members
+  행이 사라져도 결과표는 온전). 썸네일 없음 — 웹 노출은 방장 옵트인 정책 유지, 앱 열람은
+  team_members → live my-face 로 아바타 resolve.
+- **`pairs`** — 케미는 대칭이므로 삼각형만: `a < b` (slot_no) 불변, N(N-1)/2 행 (12명 = 66행).
+  클라이언트가 렌더 시 대칭으로 펼친다.
+- **정렬 = 순위**: pairs 는 raw total 내림차순 — 배열 인덱스가 곧 케미 순위.
+  "나와의 케미 순위" 리스트를 점수 노출 없이 그린다.
+- **점수 없음**: payload 는 public read 라 점수를 넣으면 "숫자·풀이 = 유료(1🪙)" 과금이
+  뚫린다. 유일한 점수는 `best.score` (기존 베스트 무료 정책). unlock 시 해석·점수는
+  `chemistry_snapshot` 의 두 body 로 그 자리에서 재계산.
+- **`band`** 정수 코드: 0=🟢 천작지합 · 1=🔵 금슬상화 · 2=🟠 마합가성 · 3=🔴 형극난조.
+- 뷰어 식별(내 행 최상단 고정)은 payload 가 아니라 team_members 의 `user_id=나 → slot_no` 조회로.
+
+4인 방 샘플:
+
 ```jsonc
 {
-  "players": [{ "n": "닉네임", "slot": 1 }],          // 썸네일은 방장 옵트인 정책 유지
-  "pairs":   [{ "a": 1, "b": 2, "band": "geumseul" }], // 밴드만 — 점수 없음
-  "best": { "a": 3, "b": 7, "score": 94 }
+  "players": [
+    { "slot": 1, "n": "지은" },
+    { "slot": 2, "n": "철수" },
+    { "slot": 3, "n": "민준" },
+    { "slot": 4, "n": "슬기" }
+  ],
+  "pairs": [                        // raw total 내림차순 — 인덱스 = 순위
+    { "a": 1, "b": 4, "band": 0 },  // 1위 = best 와 동일 쌍
+    { "a": 2, "b": 4, "band": 1 },
+    { "a": 1, "b": 2, "band": 1 },
+    { "a": 2, "b": 3, "band": 2 },
+    { "a": 3, "b": 4, "band": 2 },
+    { "a": 1, "b": 3, "band": 3 }
+  ],
+  "best": { "a": 1, "b": 4, "score": 94 }
 }
 ```
+
+렌더 예 (슬기(slot 4) 폰에서 열람): 슬기 행 최상단 — `4×1 🟢 · 4×2 🔵 · 4×3 🟠` —
+아래로 나머지 행. "나와의 케미 순위" = pairs 에서 slot 4 포함 행을 배열 순서 그대로
+(지은 🟢 → 철수 🔵 → 민준 🟠).
 
 공약 정보는 payload 에 넣지 않는다 — `pledge`/`chat_url` 은 teams 컬럼에
 이미 있고 생성 후 불변이며, payload 를 읽는 모든 소비자는 teams 행을 함께 fetch 한다.
