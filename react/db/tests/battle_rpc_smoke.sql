@@ -159,5 +159,8 @@ begin
   end if;
 end $$;
 
-select 'BATTLE RPC SMOKE: ALL PASS' as result;
 rollback;
+
+-- rollback 뒤 = 마지막 문장이라야 SQL Editor 가 결과로 보여준다.
+-- 여기 도달했다 = 위 assert 전부 통과 (실패면 SMOKE_FAIL exception 으로 중단).
+select 'BATTLE RPC SMOKE: ALL PASS' as result;
