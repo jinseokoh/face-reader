@@ -923,7 +923,7 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage>
                 Text('준비 되었으면 시작하기 버튼을 누르세요.', style: AppText.body),
                 const SizedBox(height: AppSpacing.xl),
                 Image.asset(
-                  'assets/images/team-chemistry-map.png',
+                  'assets/images/chemistry.png',
                   height: 180,
                   fit: BoxFit.contain,
                 ),
