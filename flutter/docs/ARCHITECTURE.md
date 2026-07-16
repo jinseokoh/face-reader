@@ -27,7 +27,8 @@ python/ (DeepFace FastAPI)          Supabase (metrics·coins·unlocks·teams·te
 | 3 | `SettingsScreen` | 설정 · 프로필 이름 수정 · 약관 · 로그인/탈퇴 |
 
 공통 규칙: 내부 탭은 내 관상 등록 후 상시 노출(0개 포함), 최초 노출 시 개수 많은 탭
-기본 선택(1회). 내 관상 미등록이면 nudge 배너(`my_face_nudge_banner`, 로컬 Overlay 호스트).
+기본 선택(1회). 내 관상 미등록이면 관상·궁합·케미 AppBar 에 [내 관상 등록]
+pill (`face_scan_pill`, 등록 후엔 [상대방 관상 추가]로 전환).
 
 **온보딩 인트로** (`onboarding_intro.dart`): MainApp 첫 프레임 뒤 —
 관상(무료)/궁합(유료)/케미(결과표 무료·상세 유료)/시작 4페이지 인트로,
@@ -97,7 +98,7 @@ age_adjustment, yin_yang, compat/).
 ├── presentation/screens/           # physiognomy/ · compatibility/ · chemistry/(캡처 포함)
 │                                   # · team/ · ads/ · ledger/ · settings/
 └── presentation/widgets/           # detail_avatar · sort_selector · emotion_empty_state
-                                    # · coin_chip · other_face_scan_pill · my_face_nudge_banner
+                                    # · coin_chip · face_scan_pill
                                     # · my_face_header · primary_button · compact_snack_bar
                                     # · login_bottom_sheet · purchase_sheet · source_badge 등
 ```
@@ -111,7 +112,8 @@ age_adjustment, yin_yang, compat/).
 | `FutureProvider` | 비동기 read | `walletProvider` · `freeCoinProvider` · `compatUnlocksProvider` · `unlockedPartnerBodiesProvider` |
 
 - `historyProvider` — Hive 히스토리 SoT. 로그인 전이 시 **claim**(anon rows user_id 귀속 +
-  내 관상 alias←nickname backfill) → **rehydrate**(본인 metrics 서버→로컬 복원) →
+  내 관상 alias←nickname backfill + 서버의 과거 my-face 행 강등 — 방금 귀속된
+  최신 관상만 is_my_face 유지) → **rehydrate**(본인 metrics 서버→로컬 복원) →
   팀 rehydrate 체인. 내 관상 싱글톤·별칭 '나' 정규화.
 - `teamsProvider` — 케미 방 Hive SoT + lazy sync(초대 시 push, 유령 행 diff 삭제) +
   `refreshFromServer`(합류·마감 pull, 전원 등록 시 matrix_payload backfill) +

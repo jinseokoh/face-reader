@@ -230,5 +230,23 @@ class SupabaseService {
           .isFilter('alias', null);
       debugPrint('[Supabase] backfilled my-face alias ← $nickname');
     }
+    // 방금 귀속된 내 관상이 유일한 my-face 가 되도록, 서버에 남아 있던 과거
+    // my-face 행(이전 기기·세션 등록분)을 일반 카드로 강등 — is_my_face=true
+    // 는 사용자당 최대 1행 (saveMetrics 안전망과 동일 규칙). 삭제가 아닌
+    // 강등이라 팀 슬롯 FK(team_members.metrics_id)·공유 링크는 살아 있다.
+    // 실패해도 claim 자체는 유효 — 앱 재시작 claim 에서 재시도된다.
+    if (myFaceId != null) {
+      try {
+        await _client
+            .from('metrics')
+            .update({'is_my_face': false})
+            .eq('user_id', uid)
+            .eq('is_my_face', true)
+            .neq('id', myFaceId);
+        debugPrint('[Supabase] demoted stale my-face rows (keep=$myFaceId)');
+      } catch (e) {
+        debugPrint('[Supabase] stale my-face demote error (계속 진행): $e');
+      }
+    }
   }
 }
