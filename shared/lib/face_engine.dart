@@ -10,6 +10,7 @@
 /// Output:
 ///   globalThis.runEngine(metricsJson)        → solo share card payload
 ///   globalThis.runCompat(metricsJsonA, B)    → compat share card payload
+///   globalThis.runBattle(battleJson)         → battle result payload
 ///
 /// Both functions return JSON strings carrying the same fields the Flutter
 /// hero card 가 렌더하는 것 (line-by-line copy).
@@ -27,6 +28,7 @@ import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
+import 'package:face_engine/domain/services/compat/battle.dart';
 import 'package:face_engine/domain/services/compat/compat_adapter.dart';
 import 'package:face_engine/domain/services/compat/compat_label.dart';
 import 'package:face_engine/domain/services/compat/five_element.dart';
@@ -41,6 +43,9 @@ external set _setRunCompat(JSFunction fn);
 
 @JS('runMetrics')
 external set _setRunMetrics(JSFunction fn);
+
+@JS('runBattle')
+external set _setRunBattle(JSFunction fn);
 
 void main() {
   _setRunEngine = ((String metricsJson) {
@@ -64,6 +69,22 @@ void main() {
         [(p[0] as num).toDouble(), (p[1] as num).toDouble()],
     ];
     return jsonEncode(WebFaceMetrics(pts).computeAll());
+  }).toJS;
+
+  // Chemistry Battle — chemistry_snapshot 기반 배틀 집계 (§6.3 payload 계약).
+  // 입력: {"players":[{"slot":1,"name":"지은","body":{…metrics body…}}, …]}
+  // 출력: {"players":[…],"pairs":[…],"best":{…}} — pairs 정렬 = 순위.
+  _setRunBattle = ((String battleJson) {
+    final raw = jsonDecode(battleJson) as Map<String, dynamic>;
+    final players = [
+      for (final p in raw['players'] as List)
+        BattlePlayer(
+          slot: (p['slot'] as num).toInt(),
+          name: p['name'] as String,
+          report: FaceReadingReport.fromJsonString(jsonEncode(p['body'])),
+        ),
+    ];
+    return jsonEncode(computeBattle(players).toPayload());
   }).toJS;
 }
 
