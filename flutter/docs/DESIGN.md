@@ -99,9 +99,10 @@ gold border (gold = "나" 시각 언어).
 
 ### 3.3 pill / chip
 
-- outlined stadium pill (AppBar 액션 — 상대방 관상 추가·케미 그룹 시작): 흰 bg +
-  1px textPrimary border + radius 999 + padding(md, 6) + `AppText.caption` w700.
-  CoinChip 도 동일 레시피.
+- outlined stadium pill (AppBar 액션): 흰 bg + 1px textPrimary border +
+  radius 999 + padding(md, 6) + `AppText.caption` w700. CoinChip 도 동일 레시피.
+  FaceScanPill 은 dual-state — 내 관상 미등록 = [내 관상 등록](내 관상 촬영),
+  등록 후 = [상대방 관상 추가]. 케미 탭은 등록 후 [케미 그룹 시작]이 이 자리.
 - chip: `AppRadius.sm`, 단일 색·단일 크기 — chip 안 multi-segment 색·사이즈 분리 금지.
 - 가운데점(`·`) 남발 금지 — 한 줄에 두 의미를 잇지 않고 줄 바꿈으로 분리.
 
