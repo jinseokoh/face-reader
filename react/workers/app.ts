@@ -2,7 +2,8 @@ import { createRequestHandler } from "react-router";
 
 import {
   cleanupStaleMetrics,
-  closeStaleTeams,
+  completeOrphanReveals,
+  expireStaleTeams,
   purgeExpiredTeams,
 } from "./cron";
 
@@ -29,8 +30,9 @@ export default {
       await cleanupStaleMetrics(env);
       await purgeExpiredTeams(env);
     } else {
-      // 매시 정각 — 48h 자동 발표 (하루 1회면 최대 24h 오차라 시간 단위로).
-      await closeStaleTeams(env);
+      // 매시 정각 — 48h 만료 + revealing 고아 안전망.
+      await expireStaleTeams(env);
+      await completeOrphanReveals(env);
     }
   },
 } satisfies ExportedHandler<Env>;

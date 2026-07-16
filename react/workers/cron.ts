@@ -1,15 +1,16 @@
 import { AwsClient } from 'aws4fetch'
 
 /**
- * Cron Triggers 잡 3종 — wrangler.jsonc `triggers.crons` 가 스케줄, 호출은
+ * Cron Triggers 잡 4종 — wrangler.jsonc `triggers.crons` 가 스케줄, 호출은
  * Cloudflare 플랫폼이 직접 (`workers/app.ts` 의 `scheduled` 핸들러).
  *
- *   매시    closeStaleTeams     — 생성 48h 지난 모집 중 팀 자동 발표(마감).
- *   매일    cleanupStaleMetrics — 90일 미활동 anon metrics + R2 썸네일 삭제.
- *   매일    purgeExpiredTeams   — 발표 후 30일 지난 teams 삭제 (멤버 cascade).
+ *   매시    expireStaleTeams      — 모집 48h 초과 방 expired (시작은 cron 몫 아님).
+ *   매시    completeOrphanReveals — revealing 24h 고아 방 completed 안전망.
+ *   매일    cleanupStaleMetrics   — 90일 미활동 anon metrics + R2 썸네일 삭제.
+ *   매일    purgeExpiredTeams     — 종료 후 30일 지난 teams 삭제 (멤버 cascade).
  *
  * 로컬 테스트: `pnpm wrangler dev` 후
- *   curl "http://localhost:8787/__scheduled?cron=0+18+*+*+*"
+ *   curl "http://localhost:8787/__scheduled?cron=0+*+*+*+*"
  */
 
 type CronEnv = Env & { SUPABASE_SERVICE_ROLE_KEY?: string }
@@ -24,14 +25,13 @@ const daysAgo = (d: number) =>
   new Date(Date.now() - d * 24 * 3600_000).toISOString()
 
 /**
- * 48h 자동 발표 — 전원 등록 트리거·방장 수동 발표가 둘 다 안 일어난 방치
- * 그룹을 서버가 대신 닫는다. closed_at 이 찍혀야 30일 수명주기에도 진입.
- * matrix_payload 는 앱만 계산 가능 — owner 앱이 다음 refresh 에서 backfill
- * (team_provider.refreshFromServer). 3명 미만 그룹은 웹이 "인원 미달" 렌더.
+ * 48h 만료 — 시작 조건은 정원 충족 하나뿐이므로 cron 은 시작을 수행하지
+ * 않는다. 모집 48h 안에 정원을 못 채운 방은 인원 무관 expired (모이면 굿,
+ * 안 모이면 꽝). closed_at 을 찍어 30일 purge 수명주기에 진입시킨다.
  */
-export async function closeStaleTeams(env: CronEnv): Promise<number> {
+export async function expireStaleTeams(env: CronEnv): Promise<number> {
   const res = await fetch(
-    `${env.SUPABASE_URL}/rest/v1/teams?closed_at=is.null&created_at=lt.${daysAgo(2)}&select=id`,
+    `${env.SUPABASE_URL}/rest/v1/teams?status=eq.recruiting&created_at=lt.${daysAgo(2)}&select=id`,
     {
       method: 'PATCH',
       headers: {
@@ -39,12 +39,42 @@ export async function closeStaleTeams(env: CronEnv): Promise<number> {
         'Content-Type': 'application/json',
         Prefer: 'return=representation',
       },
-      body: JSON.stringify({ closed_at: new Date().toISOString() }),
+      body: JSON.stringify({
+        status: 'expired',
+        closed_at: new Date().toISOString(),
+      }),
     },
   )
-  if (!res.ok) throw new Error(`closeStaleTeams failed: ${res.status}`)
+  if (!res.ok) throw new Error(`expireStaleTeams failed: ${res.status}`)
+  const expired = ((await res.json()) as unknown[]).length
+  if (expired > 0) console.log(`[cron] expireStaleTeams: expired ${expired}`)
+  return expired
+}
+
+/**
+ * revealing 고아 안전망 — 시작됐지만 전 참가자 이탈 등으로 24h 내
+ * result_payload 가 backfill 되지 않은 방을 completed 로 닫는다.
+ * payload 는 null 로 남고 쇼케이스가 "결과 미생성" 을 렌더.
+ */
+export async function completeOrphanReveals(env: CronEnv): Promise<number> {
+  const res = await fetch(
+    `${env.SUPABASE_URL}/rest/v1/teams?status=eq.revealing&result_payload=is.null&started_at=lt.${daysAgo(1)}&select=id`,
+    {
+      method: 'PATCH',
+      headers: {
+        ...serviceHeaders(env),
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      },
+      body: JSON.stringify({
+        status: 'completed',
+        closed_at: new Date().toISOString(),
+      }),
+    },
+  )
+  if (!res.ok) throw new Error(`completeOrphanReveals failed: ${res.status}`)
   const closed = ((await res.json()) as unknown[]).length
-  if (closed > 0) console.log(`[cron] closeStaleTeams: closed ${closed}`)
+  if (closed > 0) console.log(`[cron] completeOrphanReveals: closed ${closed}`)
   return closed
 }
 
