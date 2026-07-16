@@ -27,7 +27,7 @@
 -- 포함:
 --   • tables    : users · coins · metrics · unlocks · bonus_recipients · ad_rewards
 --                 · ad_videos (custom video, §11-0) · ad_images (홈 배너, §11-0b)
---                 · teams · team_members (교감도 그룹 원격 경로, §11-2/11-3, P3)
+--                 · teams · team_members (Chemistry Battle 로비, §11-2/11-3/11-4)
 --   • views     : admin_users (users + auth.users.email · service_role 전용)
 --   • triggers  : handle_new_user (auth.users → public.users + 보너스 3 코인)
 --                 touch_metrics_updated_at (views++ 시 updated_at 자동 갱신)
@@ -692,26 +692,54 @@ create index if not exists ad_images_active_sort_idx
   on public.ad_images (sort_order, created_at desc) where active = true;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 11-2. public.teams — 교감도 그룹 (원격 경로, P3)
+-- 11-2. public.teams — Chemistry Battle 방 (게임 로비, 서버 우선)
 -- ─────────────────────────────────────────────────────────────────────────────
--- 그룹 1개 = 1 row. 멤버는 public.team_members (metrics_id 참조).
--- lazy sync: 그룹은 로컬(Hive) 우선 생성되고, [카톡 초대]·[마감] 등 원격 행동
--- 시점에만 서버로 push 된다 (현장 경로의 무마찰 유지).
--- title·closed_at 은 owner 관리. matrix_payload(jsonb) = 마감 시 앱이 계산한
--- 밴드 매트릭스 (이름+밴드만, 점수·landmark 없음 — react 는 그리기만).
--- 읽기 = groupId(UUID) 아는 사람 (link-share 모델, metrics 와 동일). 쓰기 = owner
--- (원격 그룹은 안정적 소유 식별이 필요해 anon 소유 불가 — push 시 로그인 게이트).
+-- 방은 생성 즉시 서버에 존재한다 (로컬 우선/lazy sync 폐기). 참가자는 이름
+-- 선등록 없이 join_battle RPC 로 셀프 조인. 시작 조건은 정원 충족 하나뿐 —
+-- 모이면 시작, 48h 안에 안 모이면 expired (cron).
+--
+-- chemistry_snapshot = 시작 트랜잭션이 동결한 {user_id: metrics body} — 엔진
+-- 입력. 시작 후 재촬영·metrics 변경이 결과에 영향을 못 주게 하는 치팅 방어.
+-- result_payload = 클라이언트가 snapshot 으로 계산해 1회 기록하는 스코어보드
+-- (players/pairs/best — 점수는 best.score 만).
+-- password 는 column grant 로 클라이언트 SELECT 차단 (§11-4) — 비교는
+-- join_battle 내부에서만. 상태 전이는 RPC 전용 (직접 UPDATE 는 title 만).
 create table if not exists public.teams (
-  id             uuid        primary key default gen_random_uuid(),
-  owner_id       uuid        references auth.users(id) on delete set null,
-  title          text        not null,
-  closed_at      timestamptz,
-  matrix_payload jsonb,
-  created_at     timestamptz not null default now(),
-  updated_at     timestamptz not null default now()
+  id                 uuid        primary key default gen_random_uuid(),
+  owner_id           uuid        references auth.users(id) on delete set null,
+  title              text        not null,
+  visibility         text        not null default 'private'
+                                 check (visibility in ('public', 'private')),
+  password           text,
+  max_players        int         not null default 8
+                                 check (max_players between 4 and 12),
+  age_min            int         check (age_min is null or age_min between 10 and 90),
+  age_max            int         check (age_max is null or age_max between 10 and 90),
+  pledge             text        check (pledge is null or char_length(pledge) <= 40),
+  chat_url           text,
+  status             text        not null default 'recruiting'
+                                 check (status in ('recruiting', 'revealing', 'completed', 'expired')),
+  started_at         timestamptz,
+  closed_at          timestamptz,
+  chemistry_snapshot jsonb,
+  result_payload     jsonb,
+  created_at         timestamptz not null default now(),
+  updated_at         timestamptz not null default now(),
+  -- 연령 범위는 둘 다 null(전연령) 또는 둘 다 값 + 순서.
+  check ((age_min is null) = (age_max is null)),
+  check (age_min is null or age_min <= age_max),
+  -- 비밀방은 비밀번호 필수, 공개방은 비밀번호 없음.
+  check (visibility <> 'private' or password is not null),
+  check (visibility <> 'public' or password is null),
+  -- 공약 공개방 성인 게이트: 공개방 + 공약이면 age_min >= 20 (10대 차단).
+  check (not (visibility = 'public' and pledge is not null
+              and (age_min is null or age_min < 20)))
 );
 
 create index if not exists idx_teams_owner on public.teams (owner_id, updated_at desc);
+-- 공개 목록 조회 (public_battles view).
+create index if not exists idx_teams_public_recruiting
+  on public.teams (created_at desc) where visibility = 'public' and status = 'recruiting';
 
 alter table public.teams enable row level security;
 
@@ -720,18 +748,20 @@ drop policy if exists "teams_owner_insert" on public.teams;
 drop policy if exists "teams_owner_update" on public.teams;
 drop policy if exists "teams_owner_delete" on public.teams;
 
--- 읽기: UUID 모르면 접근 불가 (link-share). 초대장·쇼케이스가 anon 으로 읽는다.
+-- 읽기: UUID 아는 사람 (link-share). 컬럼 접근은 §11-4 column grant 가 좁힌다.
 create policy "teams_public_read"
   on public.teams for select using (true);
--- 생성·수정·삭제: owner 본인(auth 필요)만.
+-- 생성: owner 본인. status 등 계산 컬럼은 column grant 로 insert 불가 (§11-4).
 create policy "teams_owner_insert"
   on public.teams for insert with check (owner_id = auth.uid());
+-- 수정: owner 본인 — 단 column grant 가 title 로 제한 (상태 전이는 RPC 전용).
 create policy "teams_owner_update"
   on public.teams for update using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+-- 삭제: owner 본인 (모집 중 방 접기 — 멤버는 FK cascade).
 create policy "teams_owner_delete"
   on public.teams for delete using (owner_id = auth.uid());
 
--- 어떤 UPDATE 든 updated_at 자동 touch (pull-to-refresh 폴링 변경 감지용).
+-- 어떤 UPDATE 든 updated_at 자동 touch.
 create or replace function public.touch_teams_updated_at()
 returns trigger language plpgsql as $$
 begin new.updated_at := now(); return new; end;
@@ -743,39 +773,27 @@ create trigger teams_touch
   for each row execute procedure public.touch_teams_updated_at();
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 11-3. public.team_members — 그룹 멤버 (user_id 사람 참조 + metrics_id 스냅샷)
+-- 11-3. public.team_members — 배틀 참가자 (전원 로그인 셀프 조인)
 -- ─────────────────────────────────────────────────────────────────────────────
--- 멤버 = 사람. name = 그룹 안 표시 이름(방장이 깐 이름 또는 본인 alias).
--- 대기(미등록) 슬롯은 metrics_id null + name 만, 등록되면 채운다.
---
--- user_id = 멤버 본인 계정 (본인 합류·방장 본인 슬롯). 읽기 쪽은 user_id 가
--- 있으면 그 유저의 **현재 my-face** 로 live resolve — my-face row id 가
--- 바뀌어도(claim 귀속 등) 슬롯이 항상 최신 관상을 가리킨다 (케미 = 최신 데이터
--- 정책). 방장이 남의 얼굴을 대신 찍은 직접촬영/walk-in 슬롯은 본인 계정이
--- 없으므로 user_id null + metrics_id 스냅샷으로 남는다.
+-- 참가자 = 로그인 사용자. 이름·얼굴 컬럼 없음 — 표시 이름은 users.nickname,
+-- 얼굴은 조회 시 user_id → 현재 my-face live resolve (시작 후엔 teams.
+-- chemistry_snapshot 이 입력). 계정 삭제 = FK cascade 로 참가 행 소멸 →
+-- 슬롯 자동 반환. 쓰기는 전부 RPC (join_battle / leave_battle) — 직접
+-- insert/update/delete 정책 없음 (RLS deny by default).
 create table if not exists public.team_members (
-  id         uuid        primary key default gen_random_uuid(),
-  team_id    uuid        not null references public.teams(id) on delete cascade,
-  metrics_id uuid        references public.metrics(id) on delete set null,
-  user_id    uuid        references auth.users(id) on delete set null,
-  name       text        not null,
-  is_owner   boolean     not null default false,
-  joined_at  timestamptz not null default now()
+  id        uuid        primary key default gen_random_uuid(),
+  team_id   uuid        not null references public.teams(id) on delete cascade,
+  user_id   uuid        not null references auth.users(id) on delete cascade,
+  slot_no   int         not null,
+  is_owner  boolean     not null default false,
+  joined_at timestamptz not null default now(),
+  unique (team_id, user_id),
+  unique (team_id, slot_no)
 );
 
-create index        if not exists idx_team_members_team    on public.team_members (team_id);
--- (team_id, metrics_id) unique — 등록 중복 차단 + upsert onConflict 추론 대상.
--- 비부분(non-partial) 이라야 ON CONFLICT 가 추론한다. metrics_id NULL 행(대기·
--- metrics 삭제로 set null)은 PG 기본 NULL-distinct 라 여러 개 허용돼 무해.
-create unique index if not exists idx_team_members_metrics on public.team_members (team_id, metrics_id);
--- (team_id, user_id) 부분 unique — 같은 사람의 이중 합류 차단 (user_id null
--- 인 직접촬영·대기 슬롯은 제외).
-create unique index if not exists idx_team_members_user on public.team_members (team_id, user_id)
-  where user_id is not null;
--- (team_id, name) unique — 그룹 안 이름이 슬롯 키. 합류자가 방장이 깐 대기
--- 이름("까불이")으로 upsert 하면 그 대기 행이 채워진다(claim by name). 등록·대기
--- 모두 한 이름당 한 행.
-create unique index if not exists idx_team_members_name on public.team_members (team_id, name);
+create index if not exists idx_team_members_team on public.team_members (team_id);
+-- 로그인 rehydrate: 내가 참가한 방 조회.
+create index if not exists idx_team_members_user on public.team_members (user_id);
 
 alter table public.team_members enable row level security;
 
@@ -785,47 +803,9 @@ drop policy if exists "team_members_update"      on public.team_members;
 drop policy if exists "team_members_claim_slot"  on public.team_members;
 drop policy if exists "team_members_delete"      on public.team_members;
 
--- 읽기: 그룹과 동일 link-share (team UUID 아는 사람).
+-- 읽기: 방과 동일 link-share. 쓰기 정책은 의도적으로 없음 — RPC 전용.
 create policy "team_members_public_read"
   on public.team_members for select using (true);
-
--- 쓰기(insert): owner 는 자기 그룹에 자유(재-push 가 합류자 행의 user_id 를
--- 보존 upsert 해야 한다 — metrics_id 와 동일한 owner-trust 모델). 합류자는
--- 자기 자신(metrics 소유 + user_id 본인)만.
-create policy "team_members_insert"
-  on public.team_members for insert with check (
-       exists (select 1 from public.teams t where t.id = team_id and t.owner_id = auth.uid())
-    or (
-      (user_id is null or user_id = auth.uid())
-      and exists (select 1 from public.metrics m where m.id = metrics_id and m.user_id = auth.uid())
-    )
-  );
-
--- 수정: owner 만 (명단 관리·슬롯 채움).
-create policy "team_members_update"
-  on public.team_members for update using (
-    exists (select 1 from public.teams t where t.id = team_id and t.owner_id = auth.uid())
-  );
-
--- 슬롯 claim: 합류자가 **대기 슬롯(metrics_id null)** 을 자기 metrics 로 채운다.
--- USING = 빈 슬롯만(기존 점유 행은 못 가로챔), WITH CHECK = 새 metrics_id 가
--- 본인 소유 + user_id 는 본인. team_members_update(owner) 와 OR 로 합쳐져,
--- 합류자도 빈 이름 슬롯에 한해 채울 수 있다.
-create policy "team_members_claim_slot"
-  on public.team_members for update
-    using (metrics_id is null)
-    with check (
-      (user_id is null or user_id = auth.uid())
-      and exists (select 1 from public.metrics m where m.id = metrics_id and m.user_id = auth.uid())
-    );
-
--- 삭제: owner(멤버 제거) 또는 본인(그룹 나가기 — user_id 또는 metrics 소유).
-create policy "team_members_delete"
-  on public.team_members for delete using (
-       user_id = auth.uid()
-    or exists (select 1 from public.teams t   where t.id = team_id    and t.owner_id  = auth.uid())
-    or exists (select 1 from public.metrics m where m.id = metrics_id and m.user_id   = auth.uid())
-  );
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 11-1. 테이블/시퀀스 GRANT — drop schema 후에도 self-contained
@@ -850,6 +830,27 @@ alter default privileges in schema public
 -- 새면 이메일 유출 — §1 의 revoke 를 일괄 grant 뒤에서 다시 적용해 좁힌다.
 revoke all on public.admin_users from anon, authenticated, public;
 grant select on public.admin_users to service_role;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 11-4. teams column grants — password 봉인 + 상태 전이 RPC 전용화
+-- ─────────────────────────────────────────────────────────────────────────────
+-- §11-1 의 blanket grant 가 teams 전 컬럼을 열어 두므로 여기서 다시 좁힌다.
+-- SELECT: password 만 제외 — 비교는 join_battle 내부에서만.
+revoke select on public.teams from anon, authenticated;
+grant select (id, owner_id, title, visibility, max_players, age_min, age_max,
+              pledge, chat_url, status, started_at, closed_at,
+              chemistry_snapshot, result_payload, created_at, updated_at)
+  on public.teams to anon, authenticated;
+-- INSERT: 생성 입력 컬럼만 — status/started_at/snapshot/payload 는 default·RPC 전용.
+revoke insert on public.teams from anon, authenticated;
+grant insert (id, owner_id, title, visibility, password, max_players,
+              age_min, age_max, pledge, chat_url)
+  on public.teams to authenticated;
+-- UPDATE: title 만 (방 이름 수정). 상태 전이·payload 는 RPC 전용.
+revoke update on public.teams from anon, authenticated;
+grant update (title) on public.teams to authenticated;
+-- team_members 직접 쓰기 차단 — RPC (security definer) 전용.
+revoke insert, update, delete on public.team_members from anon, authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 12. 광고 시스템 현황 메모 (모든 오브젝트 ad_* 네이밍)
