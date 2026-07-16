@@ -808,6 +808,144 @@ create policy "team_members_public_read"
   on public.team_members for select using (true);
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- 11-5. Battle RPC 상태 머신 + 공개 목록 view + Realtime
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 조인·이탈·결과 기록은 전부 security definer 단일 트랜잭션 — 정원·비밀번호·
+-- 연령·상태 가드를 원자 검증한다. 시작 조건은 정원 충족 하나뿐 (join 내장).
+
+-- 조인: recruiting · 정원 미달 · 미중복 · 비밀번호 · 연령대 · my-face 존재.
+-- 마지막 참가자의 트랜잭션이 chemistry_snapshot 동결 + revealing 전이까지 수행.
+create or replace function public.join_battle(p_team_id uuid, p_password text default null)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_uid   uuid := auth.uid();
+  v_team  record;
+  v_age   int;
+  v_count int;
+  v_slot  int;
+begin
+  if v_uid is null then raise exception 'AUTH_REQUIRED'; end if;
+
+  -- 방 행 잠금 — 동시 조인의 정원 검사를 직렬화 (race 원천 차단).
+  select * into v_team from teams where id = p_team_id for update;
+  if not found then raise exception 'NOT_FOUND'; end if;
+  if v_team.status <> 'recruiting' then raise exception 'NOT_RECRUITING'; end if;
+  if v_team.visibility = 'private'
+     and (p_password is null or p_password <> v_team.password) then
+    raise exception 'BAD_PASSWORD';
+  end if;
+
+  -- my-face 필수 + 연령대 게이트 (body.ageGroup "20s" → 20).
+  select nullif(regexp_replace(m.body::jsonb->>'ageGroup', '\D', '', 'g'), '')::int
+    into v_age
+    from metrics m
+   where m.user_id = v_uid and m.is_my_face
+   order by m.updated_at desc limit 1;
+  if v_age is null then raise exception 'NO_MY_FACE'; end if;
+  if v_team.age_min is not null
+     and (v_age < v_team.age_min or v_age > v_team.age_max) then
+    raise exception 'AGE_NOT_ALLOWED';
+  end if;
+
+  select count(*), coalesce(max(slot_no), 0) into v_count, v_slot
+    from team_members where team_id = p_team_id;
+  if v_count >= v_team.max_players then raise exception 'FULL'; end if;
+
+  begin
+    insert into team_members (team_id, user_id, slot_no, is_owner)
+    values (p_team_id, v_uid, v_slot + 1, v_uid = v_team.owner_id);
+  exception when unique_violation then
+    raise exception 'ALREADY_JOINED';
+  end;
+
+  -- 정원 충족 = 유일한 시작 조건. 입력(snapshot)을 서버가 동결 — 시작 후
+  -- 재촬영이 결과에 영향을 못 주는 치팅 방어 + 전 클라이언트 동일 입력.
+  if v_count + 1 = v_team.max_players then
+    update teams
+       set status = 'revealing',
+           started_at = now(),
+           chemistry_snapshot = (
+             select jsonb_object_agg(tm.user_id::text, mf.body::jsonb)
+               from team_members tm
+               join lateral (
+                 select body from metrics m
+                  where m.user_id = tm.user_id and m.is_my_face
+                  order by m.updated_at desc limit 1
+               ) mf on true
+              where tm.team_id = p_team_id
+           )
+     where id = p_team_id;
+  end if;
+end;
+$$;
+
+-- 이탈: recruiting 중 본인만 (방장은 방 삭제로만 접는다).
+create or replace function public.leave_battle(p_team_id uuid)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+begin
+  if v_uid is null then raise exception 'AUTH_REQUIRED'; end if;
+  if exists (select 1 from teams where id = p_team_id and owner_id = v_uid) then
+    raise exception 'OWNER_CANNOT_LEAVE';
+  end if;
+  delete from team_members tm
+   using teams t
+   where tm.team_id = p_team_id and tm.user_id = v_uid
+     and t.id = tm.team_id and t.status = 'recruiting';
+  if not found then raise exception 'NOT_LEAVABLE'; end if;
+end;
+$$;
+
+-- 결과 기록: revealing 방의 참가자가 1회. first-writer-wins — 입력이
+-- snapshot 으로 동결돼 전원이 같은 payload 를 내므로 후착은 무해 no-op.
+create or replace function public.submit_battle_result(p_team_id uuid, p_payload jsonb)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+begin
+  if v_uid is null then raise exception 'AUTH_REQUIRED'; end if;
+  if not exists (select 1 from team_members
+                  where team_id = p_team_id and user_id = v_uid) then
+    raise exception 'NOT_PARTICIPANT';
+  end if;
+  update teams
+     set result_payload = p_payload, status = 'completed', closed_at = now()
+   where id = p_team_id and status = 'revealing' and result_payload is null;
+end;
+$$;
+
+revoke execute on function public.join_battle(uuid, text)          from public, anon;
+revoke execute on function public.leave_battle(uuid)               from public, anon;
+revoke execute on function public.submit_battle_result(uuid, jsonb) from public, anon;
+grant  execute on function public.join_battle(uuid, text)          to authenticated;
+grant  execute on function public.leave_battle(uuid)               to authenticated;
+grant  execute on function public.submit_battle_result(uuid, jsonb) to authenticated;
+
+-- 공개 배틀 목록 — 모집 중 공개방만, 컬럼 화이트리스트 (password 접근 없음).
+create or replace view public.public_battles as
+  select t.id, t.title, t.max_players, t.age_min, t.age_max, t.pledge, t.created_at,
+         (select count(*)::int from public.team_members tm where tm.team_id = t.id)
+           as player_count
+    from public.teams t
+   where t.visibility = 'public' and t.status = 'recruiting';
+
+-- Realtime: 로비 라이브 반영 — teams UPDATE(status 전이) + team_members
+-- INSERT/DELETE(입장·이탈). 재실행 안전 (duplicate 무시).
+do $$ begin
+  alter publication supabase_realtime add table public.teams;
+exception when duplicate_object then null; end $$;
+do $$ begin
+  alter publication supabase_realtime add table public.team_members;
+exception when duplicate_object then null; end $$;
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- 11-1. 테이블/시퀀스 GRANT — drop schema 후에도 self-contained
 -- ─────────────────────────────────────────────────────────────────────────────
 -- `drop schema public cascade` 는 Supabase 가 깔아둔 anon/authenticated 기본
