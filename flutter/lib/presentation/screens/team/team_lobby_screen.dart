@@ -34,6 +34,7 @@ class _TeamLobbyScreenState extends ConsumerState<TeamLobbyScreen> {
   RealtimeChannel? _channel;
   Timer? _poll;
   bool _loading = true;
+  int _refreshSeq = 0;
 
   @override
   void initState() {
@@ -52,26 +53,29 @@ class _TeamLobbyScreenState extends ConsumerState<TeamLobbyScreen> {
   }
 
   Future<void> _refresh() async {
-    final battle = await _service.fetchBattle(widget.battleId);
-    if (!mounted) return;
-    if (battle == null) {
-      Navigator.of(context).maybePop();
-      return;
-    }
-    if (battle.status != BattleStatus.recruiting) {
-      _onBattleStarted(battle);
-      return;
-    }
-    final roster = await _service.fetchRoster(widget.battleId);
-    final thumbs = await _service
-        .fetchMyFaceThumbnailUrls([for (final r in roster) r.userId]);
-    if (!mounted) return;
-    setState(() {
-      _battle = battle;
-      _roster = roster;
-      _thumbs = thumbs;
-      _loading = false;
-    });
+    final seq = ++_refreshSeq;
+    try {
+      final battle = await _service.fetchBattle(widget.battleId);
+      if (!mounted || seq != _refreshSeq) return;
+      if (battle == null) {
+        Navigator.of(context).maybePop();
+        return;
+      }
+      if (battle.status != BattleStatus.recruiting) {
+        _onBattleStarted(battle);
+        return;
+      }
+      final roster = await _service.fetchRoster(widget.battleId);
+      final thumbs = await _service
+          .fetchMyFaceThumbnailUrls([for (final r in roster) r.userId]);
+      if (!mounted || seq != _refreshSeq) return;
+      setState(() {
+        _battle = battle;
+        _roster = roster;
+        _thumbs = thumbs;
+        _loading = false;
+      });
+    } catch (_) {}
   }
 
   /// 배틀 시작 감지 hook — Task 5 에서 TeamRevealScreen pushReplacement 로 교체.
