@@ -1,10 +1,12 @@
 import 'package:facely/core/theme.dart';
 import 'package:facely/data/services/battle_service.dart';
 import 'package:facely/domain/models/battle.dart';
+import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/presentation/widgets/primary_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
@@ -16,6 +18,9 @@ Future<Battle?> showBattleCreatePage(BuildContext context) {
     isScrollControlled: true,
     useSafeArea: true,
     backgroundColor: AppColors.background,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
     builder: (_) => const _BattleCreatePage(),
   );
 }
@@ -41,14 +46,14 @@ const _kAgePresets = [
 
 const _kPledgePresets = ['🎬 영화', '☕ 커피', '🍜 밥 한 끼', '🎤 노래방'];
 
-class _BattleCreatePage extends StatefulWidget {
+class _BattleCreatePage extends ConsumerStatefulWidget {
   const _BattleCreatePage();
 
   @override
-  State<_BattleCreatePage> createState() => _BattleCreatePageState();
+  ConsumerState<_BattleCreatePage> createState() => _BattleCreatePageState();
 }
 
-class _BattleCreatePageState extends State<_BattleCreatePage> {
+class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
   _Step _step = _Step.name;
   final _titleCtrl = TextEditingController();
   final _pinCtrl = TextEditingController();
@@ -59,6 +64,18 @@ class _BattleCreatePageState extends State<_BattleCreatePage> {
   _AgePreset _age = _kAgePresets.first;
   String? _pledgePreset; // null = 공약 없음, '' = 직접입력 모드
   bool _busy = false;
+  int? _ownerAgeDecade; // 방장(나) 연령대 — join_battle 연령 게이트 셀프-배제 방지용.
+
+  @override
+  void initState() {
+    super.initState();
+    for (final r in ref.read(historyProvider)) {
+      if (r.isMyFace) {
+        _ownerAgeDecade = 10 + r.ageGroup.index * 10;
+        break;
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -79,6 +96,18 @@ class _BattleCreatePageState extends State<_BattleCreatePage> {
   // 공개방 + 공약 → 성인 연령대 강제 (서버 CHECK 와 동일 규칙의 UI 게이트).
   bool get _pledgeAllowed => !_isPublic || _age.isAdult;
 
+  // 방장은 createBattle 직후 셀프 조인하며 join_battle 도 연령 게이트를
+  // 적용한다 — 방장 본인 연령대를 배제하는 프리셋을 고르면 고아 방이 생기므로
+  // 그런 프리셋은 아예 선택 불가로 막는다. 연령대 모를 땐 게이트 없음.
+  bool _presetEnabled(_AgePreset preset) {
+    if (preset.min == null) return true;
+    final decade = _ownerAgeDecade;
+    if (decade == null) return true;
+    return decade >= preset.min! && decade <= preset.max!;
+  }
+
+  bool get _anyPresetDisabled => _kAgePresets.any((p) => !_presetEnabled(p));
+
   bool get _stepValid => switch (_step) {
         _Step.name => _titleCtrl.text.trim().isNotEmpty,
         _Step.count => true,
@@ -90,8 +119,9 @@ class _BattleCreatePageState extends State<_BattleCreatePage> {
   Future<void> _create() async {
     setState(() => _busy = true);
     final service = BattleService.instance;
+    Battle? battle;
     try {
-      final battle = await service.createBattle(
+      battle = await service.createBattle(
         title: _titleCtrl.text.trim(),
         isPublic: _isPublic,
         password: _isPublic ? null : _pinCtrl.text.trim(),
@@ -105,6 +135,13 @@ class _BattleCreatePageState extends State<_BattleCreatePage> {
           password: _isPublic ? null : _pinCtrl.text.trim());
       if (mounted) Navigator.of(context).pop(battle);
     } catch (e) {
+      // createBattle 은 성공했는데 셀프 조인이 실패하면(예: 연령 게이트) 방장
+      // 없는 고아 방이 남는다 — 에러를 보여주기 전에 방부터 지운다.
+      if (battle != null) {
+        try {
+          await service.deleteBattle(battle.id);
+        } catch (_) {}
+      }
       if (mounted) {
         showTopSnackBar(
           Overlay.of(context),
@@ -282,10 +319,16 @@ class _BattleCreatePageState extends State<_BattleCreatePage> {
               _chip(
                 label: preset.label,
                 selected: _age == preset,
-                onTap: () => setState(() => _age = preset),
+                onTap: _presetEnabled(preset)
+                    ? () => setState(() => _age = preset)
+                    : null,
               ),
           ],
         ),
+        if (_anyPresetDisabled) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Text('방장인 나도 참가하므로 내 연령대가 포함되어야 합니다', style: AppText.caption),
+        ],
       ],
     );
   }
