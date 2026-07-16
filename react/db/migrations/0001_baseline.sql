@@ -929,17 +929,33 @@ grant  execute on function public.leave_battle(uuid)               to authentica
 grant  execute on function public.submit_battle_result(uuid, jsonb) to authenticated;
 
 -- 공개 배틀 목록 — 모집 중 공개방만, 컬럼 화이트리스트 (password 접근 없음).
-create or replace view public.public_battles as
+create or replace view public.public_battles with (security_invoker = on) as
   select t.id, t.title, t.max_players, t.age_min, t.age_max, t.pledge, t.created_at,
          (select count(*)::int from public.team_members tm where tm.team_id = t.id)
            as player_count
     from public.teams t
    where t.visibility = 'public' and t.status = 'recruiting';
 
+-- 로비·리빌 명단 — team_members 에 users.nickname 을 붙인 읽기 전용 view.
+-- 의도적으로 owner 권한 실행(비-invoker): users RLS(self-read)를 우회해
+-- 참가자 "닉네임만" 노출한다 (coins·kakao_user_id 등은 select 목록에 없음).
+-- 읽기 범위 = 방과 동일 link-share 모델. 다중 테이블 join 이라 auto-update
+-- 불가지만 §11-4 에서 write revoke 로 이중 봉인.
+create or replace view public.battle_roster as
+  select tm.team_id, tm.user_id, tm.slot_no, tm.is_owner, tm.joined_at,
+         u.nickname
+    from public.team_members tm
+    join public.users u on u.id = tm.user_id;
+
 -- Realtime: 로비 라이브 반영 — teams UPDATE(status 전이) + team_members
 -- INSERT/DELETE(입장·이탈). 재실행 안전 (duplicate 무시).
+-- Realtime full-row payload 가 column grant 를 우회해 password 를 실어나르지
+-- 않도록 컬럼 리스트로 발행 (PG15+). chemistry_snapshot/result_payload 도
+-- 제외 — 변경 이벤트는 신호이고 본문은 클라이언트가 refetch 한다.
 do $$ begin
-  alter publication supabase_realtime add table public.teams;
+  alter publication supabase_realtime add table public.teams
+    (id, owner_id, title, visibility, max_players, age_min, age_max,
+     pledge, chat_url, status, started_at, closed_at, created_at, updated_at);
 exception when duplicate_object then null; end $$;
 do $$ begin
   alter publication supabase_realtime add table public.team_members;
@@ -989,6 +1005,10 @@ revoke update on public.teams from anon, authenticated;
 grant update (title) on public.teams to authenticated;
 -- team_members 직접 쓰기 차단 — RPC (security definer) 전용.
 revoke insert, update, delete on public.team_members from anon, authenticated;
+-- view 쓰기 봉인 — public_battles 는 단일 테이블이라 auto-updatable,
+-- owner 권한 실행이면 RLS 우회 쓰기 통로가 된다 (final review Critical).
+revoke insert, update, delete on public.public_battles from anon, authenticated;
+revoke insert, update, delete on public.battle_roster  from anon, authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 12. 광고 시스템 현황 메모 (모든 오브젝트 ad_* 네이밍)

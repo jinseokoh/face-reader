@@ -140,5 +140,24 @@ do $$ begin
   end if;
 end $$;
 
+-- ⑨ battle_roster — 4명 전원 + 닉네임 (handle_new_user 가 raw_user_meta_data
+--    의 nickname 을 users.nickname 으로 옮긴다).
+do $$
+declare
+  v_count      int;
+  v_null_count int;
+begin
+  select count(*), count(*) filter (where nickname is null)
+    into v_count, v_null_count
+    from public.battle_roster
+   where team_id = '11111111-1111-1111-1111-111111111111';
+  if v_count <> 4 then
+    raise exception 'SMOKE_FAIL: battle_roster 인원수 불일치 (%)', v_count;
+  end if;
+  if v_null_count <> 0 then
+    raise exception 'SMOKE_FAIL: battle_roster nickname 누락 (% 명)', v_null_count;
+  end if;
+end $$;
+
 select 'BATTLE RPC SMOKE: ALL PASS' as result;
 rollback;
