@@ -27,24 +27,11 @@ Future<Battle?> showBattleCreatePage(BuildContext context) {
 
 enum _Step { name, count, access, age, pledge }
 
-class _AgePreset {
-  final String label;
-  final int? min;
-  final int? max;
-  const _AgePreset(this.label, this.min, this.max);
-  bool get isAdult => min != null && min! >= 20;
-}
-
-const _kAgePresets = [
-  _AgePreset('전연령', null, null),
-  _AgePreset('10대', 10, 10),
-  _AgePreset('20대', 20, 20),
-  _AgePreset('30대', 30, 30),
-  _AgePreset('20~39세', 20, 30),
-  _AgePreset('40~59세', 40, 50),
-];
-
 const _kPledgePresets = ['🎬 영화', '☕ 커피', '🍜 밥 한 끼', '🎤 노래방'];
+
+// battle.dart 의 Battle.ageRangeLabel 표기 규칙과 동일 포맷(로컬 복제).
+String _ageSliderLabel(int start, int end) =>
+    start == end ? '$start대' : '$start~${end + 9}세';
 
 class _BattleCreatePage extends ConsumerStatefulWidget {
   const _BattleCreatePage();
@@ -61,7 +48,8 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
   final _chatCtrl = TextEditingController();
   int _maxPlayers = 8;
   bool _isPublic = false;
-  _AgePreset _age = _kAgePresets.first;
+  int? _ageMin; // null 쌍 = 전연령 (기본값).
+  int? _ageMax;
   String? _pledgePreset; // null = 공약 없음, '' = 직접입력 모드
   bool _busy = false;
   int? _ownerAgeDecade; // 방장(나) 연령대 — join_battle 연령 게이트 셀프-배제 방지용.
@@ -94,25 +82,23 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
   }
 
   // 공개방 + 공약 → 성인 연령대 강제 (서버 CHECK 와 동일 규칙의 UI 게이트).
-  bool get _pledgeAllowed => !_isPublic || _age.isAdult;
+  bool get _pledgeAllowed => !_isPublic || (_ageMin != null && _ageMin! >= 20);
 
   // 방장은 createBattle 직후 셀프 조인하며 join_battle 도 연령 게이트를
-  // 적용한다 — 방장 본인 연령대를 배제하는 프리셋을 고르면 고아 방이 생기므로
-  // 그런 프리셋은 아예 선택 불가로 막는다. 연령대 모를 땐 게이트 없음.
-  bool _presetEnabled(_AgePreset preset) {
-    if (preset.min == null) return true;
+  // 적용한다 — 방장 본인 연령대를 배제하는 범위를 고르면 고아 방이 생기므로
+  // 그런 범위는 '다음' 버튼을 막는다. 전연령 또는 연령대 모를 땐 게이트 없음.
+  bool get _ageRangeValid {
+    if (_ageMin == null) return true;
     final decade = _ownerAgeDecade;
     if (decade == null) return true;
-    return decade >= preset.min! && decade <= preset.max!;
+    return decade >= _ageMin! && decade <= _ageMax!;
   }
-
-  bool get _anyPresetDisabled => _kAgePresets.any((p) => !_presetEnabled(p));
 
   bool get _stepValid => switch (_step) {
         _Step.name => _titleCtrl.text.trim().isNotEmpty,
         _Step.count => true,
         _Step.access => _isPublic || _pinCtrl.text.trim().length == 4,
-        _Step.age => true,
+        _Step.age => _ageRangeValid,
         _Step.pledge => _pledgeValue == null || _pledgeAllowed,
       };
 
@@ -126,8 +112,8 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
         isPublic: _isPublic,
         password: _isPublic ? null : _pinCtrl.text.trim(),
         maxPlayers: _maxPlayers,
-        ageMin: _age.min,
-        ageMax: _age.max,
+        ageMin: _ageMin,
+        ageMax: _ageMax,
         pledge: _pledgeAllowed ? _pledgeValue : null,
         chatUrl: _pledgeValue == null ? null : _chatCtrl.text.trim(),
       );
@@ -306,28 +292,47 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
   }
 
   Widget _ageStep() {
+    final displayMin = _ageMin ?? 10;
+    final displayMax = _ageMax ?? 70;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('참가 연령대', style: AppText.display),
         const SizedBox(height: AppSpacing.xxl),
-        Wrap(
-          spacing: AppSpacing.sm,
-          runSpacing: AppSpacing.sm,
-          children: [
-            for (final preset in _kAgePresets)
-              _chip(
-                label: preset.label,
-                selected: _age == preset,
-                onTap: _presetEnabled(preset)
-                    ? () => setState(() => _age = preset)
-                    : null,
-              ),
-          ],
+        _chip(
+          label: '전연령',
+          selected: _ageMin == null,
+          onTap: () => setState(() {
+            _ageMin = null;
+            _ageMax = null;
+          }),
         ),
-        if (_anyPresetDisabled) ...[
+        const SizedBox(height: AppSpacing.xl),
+        Text(_ageSliderLabel(displayMin, displayMax), style: AppText.body),
+        SliderTheme(
+          data: const SliderThemeData(
+            activeTrackColor: AppColors.textPrimary,
+            thumbColor: AppColors.textPrimary,
+            inactiveTrackColor: AppColors.border,
+            overlayColor: Colors.transparent,
+          ),
+          child: RangeSlider(
+            min: 10,
+            max: 70,
+            divisions: 6,
+            values: RangeValues(displayMin.toDouble(), displayMax.toDouble()),
+            onChanged: (values) => setState(() {
+              _ageMin = values.start.round();
+              _ageMax = values.end.round();
+            }),
+          ),
+        ),
+        if (!_ageRangeValid) ...[
           const SizedBox(height: AppSpacing.sm),
-          Text('방장인 나도 참가하므로 내 연령대가 포함되어야 합니다', style: AppText.caption),
+          Text(
+            '방장인 나도 참가하므로 내 연령대가 포함되어야 합니다',
+            style: AppText.caption.copyWith(color: AppColors.danger),
+          ),
         ],
       ],
     );
