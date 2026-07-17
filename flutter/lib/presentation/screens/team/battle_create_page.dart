@@ -312,16 +312,21 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
         const SizedBox(height: AppSpacing.xl),
         Text(_ageSliderLabel(displayMin, displayMax), style: AppText.body),
         SliderTheme(
-          data: const SliderThemeData(
+          data: SliderThemeData(
             activeTrackColor: AppColors.textPrimary,
             thumbColor: AppColors.textPrimary,
             inactiveTrackColor: AppColors.border,
             overlayColor: Colors.transparent,
+            showValueIndicator: ShowValueIndicator.onDrag,
+            valueIndicatorColor: AppColors.textPrimary,
+            valueIndicatorTextStyle:
+                AppText.caption.copyWith(color: Colors.white),
           ),
           child: RangeSlider(
             min: 10,
             max: 70,
             divisions: 6,
+            labels: RangeLabels('$displayMin대', '$displayMax대'),
             values: RangeValues(displayMin.toDouble(), displayMax.toDouble()),
             onChanged: (values) => setState(() {
               _ageMin = values.start.round();
