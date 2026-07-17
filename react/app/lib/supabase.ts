@@ -188,6 +188,80 @@ export async function fetchTeam(
   };
 }
 
+export type BattleSSR = {
+  battle: {
+    id: string;
+    title: string;
+    visibility: string;
+    maxPlayers: number;
+    ageMin: number | null;
+    ageMax: number | null;
+    pledge: string | null;
+    chatUrl: string | null;
+    status: string;
+    resultPayload: unknown | null;
+    chemistrySnapshot: Record<string, unknown> | null;
+  };
+  roster: { userId: string; slotNo: number; isOwner: boolean; nickname: string }[];
+};
+
+/** teams + battle_roster 를 anon 으로 read (link-share, RLS public read). */
+export async function fetchBattleSSR(
+  env: Env,
+  id: string,
+): Promise<BattleSSR | null> {
+  if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) return null;
+  const headers = {
+    apikey: env.SUPABASE_ANON_KEY,
+    authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
+  };
+  const q = encodeURIComponent(id);
+
+  const teamRes = await fetch(
+    `${env.SUPABASE_URL}/rest/v1/teams?id=eq.${q}` +
+      `&select=id,title,visibility,max_players,age_min,age_max,pledge,chat_url,status,result_payload,chemistry_snapshot`,
+    { headers },
+  );
+  if (!teamRes.ok) {
+    console.error("[fetchBattleSSR] teams status", teamRes.status, await teamRes.text());
+    return null;
+  }
+  const teams = (await teamRes.json()) as Record<string, unknown>[];
+  if (teams.length === 0) return null;
+  const t = teams[0];
+
+  const rosterRes = await fetch(
+    `${env.SUPABASE_URL}/rest/v1/battle_roster?team_id=eq.${q}` +
+      `&select=user_id,slot_no,is_owner,nickname&order=slot_no.asc`,
+    { headers },
+  );
+  const rosterRows = rosterRes.ok
+    ? ((await rosterRes.json()) as Record<string, unknown>[])
+    : [];
+
+  return {
+    battle: {
+      id: t.id as string,
+      title: t.title as string,
+      visibility: t.visibility as string,
+      maxPlayers: t.max_players as number,
+      ageMin: (t.age_min as number) ?? null,
+      ageMax: (t.age_max as number) ?? null,
+      pledge: (t.pledge as string) ?? null,
+      chatUrl: (t.chat_url as string) ?? null,
+      status: t.status as string,
+      resultPayload: t.result_payload ?? null,
+      chemistrySnapshot: (t.chemistry_snapshot as Record<string, unknown>) ?? null,
+    },
+    roster: rosterRows.map((r) => ({
+      userId: r.user_id as string,
+      slotNo: r.slot_no as number,
+      isOwner: r.is_owner as boolean,
+      nickname: (r.nickname as string) ?? "참가자",
+    })),
+  };
+}
+
 function demoRow(id: string): MetricsRow {
   // 마지막 글자로 demo persona 분기 — '1' 은 여성/30대/계란형, '2' 는 남성/40대/긴얼굴.
   // 솔로 데모는 A (id 끝 1), compat 데모는 A × B (남녀 페어) 로 보이도록.

@@ -383,3 +383,151 @@ export async function joinTeam(
     ? "name-taken"
     : "failed";
 }
+
+// ── Chemistry Battle 계약 (Plan 1 서버) ─────────────────────────────
+export type BattleStatus = "recruiting" | "revealing" | "completed" | "expired";
+
+export type BattlePayload = {
+  players: { slot: number; name: string }[];
+  pairs: { a: number; b: number; band: number }[]; // 정렬 = 순위, band 0~3
+  best: { a: number; b: number; score: number };
+};
+
+export type BattleRow = {
+  id: string;
+  ownerId: string | null;
+  title: string;
+  visibility: "public" | "private";
+  maxPlayers: number;
+  ageMin: number | null;
+  ageMax: number | null;
+  pledge: string | null;
+  chatUrl: string | null;
+  status: BattleStatus;
+  chemistrySnapshot: Record<string, unknown> | null;
+  resultPayload: BattlePayload | null;
+};
+
+export type RosterEntry = {
+  userId: string;
+  slotNo: number;
+  isOwner: boolean;
+  nickname: string;
+};
+
+const BATTLE_COLS =
+  "id, owner_id, title, visibility, max_players, age_min, age_max, pledge, chat_url, status, chemistry_snapshot, result_payload";
+
+function rowToBattle(r: Record<string, unknown>): BattleRow {
+  return {
+    id: r.id as string,
+    ownerId: (r.owner_id as string) ?? null,
+    title: r.title as string,
+    visibility: r.visibility as "public" | "private",
+    maxPlayers: r.max_players as number,
+    ageMin: (r.age_min as number) ?? null,
+    ageMax: (r.age_max as number) ?? null,
+    pledge: (r.pledge as string) ?? null,
+    chatUrl: (r.chat_url as string) ?? null,
+    status: r.status as BattleStatus,
+    chemistrySnapshot:
+      (r.chemistry_snapshot as Record<string, unknown>) ?? null,
+    resultPayload: (r.result_payload as BattlePayload) ?? null,
+  };
+}
+
+export async function fetchBattle(
+  sb: SupabaseClient,
+  battleId: string,
+): Promise<BattleRow | null> {
+  const { data } = await sb
+    .from("teams")
+    .select(BATTLE_COLS)
+    .eq("id", battleId)
+    .maybeSingle();
+  return data ? rowToBattle(data) : null;
+}
+
+export async function fetchBattleRoster(
+  sb: SupabaseClient,
+  battleId: string,
+): Promise<RosterEntry[]> {
+  const { data } = await sb
+    .from("battle_roster")
+    .select("user_id, slot_no, is_owner, nickname")
+    .eq("team_id", battleId)
+    .order("slot_no", { ascending: true });
+  return (data ?? []).map((r) => ({
+    userId: r.user_id as string,
+    slotNo: r.slot_no as number,
+    isOwner: r.is_owner as boolean,
+    nickname: (r.nickname as string) ?? "참가자",
+  }));
+}
+
+/** join_battle RPC — 성공 'ok', 실패는 서버 에러 코드 문자열 그대로. */
+export async function joinBattle(
+  sb: SupabaseClient,
+  battleId: string,
+  password?: string,
+): Promise<string> {
+  const { error } = await sb.rpc("join_battle", {
+    p_team_id: battleId,
+    ...(password ? { p_password: password } : {}),
+  });
+  if (!error) return "ok";
+  const known = [
+    "AUTH_REQUIRED", "NOT_FOUND", "NOT_RECRUITING", "BAD_PASSWORD",
+    "NO_MY_FACE", "AGE_NOT_ALLOWED", "FULL", "ALREADY_JOINED",
+  ];
+  return known.find((k) => error.message.includes(k)) ?? "FAILED";
+}
+
+export async function submitBattleResult(
+  sb: SupabaseClient,
+  battleId: string,
+  payload: BattlePayload,
+): Promise<void> {
+  // first-writer-wins — 실패(후착·비참가자) 무해.
+  await sb.rpc("submit_battle_result", {
+    p_team_id: battleId,
+    p_payload: payload,
+  });
+}
+
+/** 로비 라이브 — teams UPDATE + team_members 변화 신호. 수신 시 refetch. */
+export function watchBattle(
+  sb: SupabaseClient,
+  battleId: string,
+  onChange: () => void,
+) {
+  return sb
+    .channel(`battle:${battleId}`)
+    .on(
+      "postgres_changes",
+      { event: "UPDATE", schema: "public", table: "teams",
+        filter: `id=eq.${battleId}` },
+      onChange,
+    )
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "team_members",
+        filter: `team_id=eq.${battleId}` },
+      onChange,
+    )
+    .subscribe();
+}
+
+/** snapshot({user_id: body}) + roster → runBattle. 입력 부족 시 null. */
+export function computeBattlePayload(
+  roster: RosterEntry[],
+  snapshot: Record<string, unknown>,
+): BattlePayload | null {
+  const players = roster
+    .filter((r) => snapshot[r.userId])
+    .map((r) => ({ slot: r.slotNo, name: r.nickname, body: snapshot[r.userId] }));
+  if (players.length < 2) return null;
+  return JSON.parse(
+    globalThis.runBattle(JSON.stringify({ players })),
+  ) as BattlePayload;
+}

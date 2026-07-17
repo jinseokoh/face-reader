@@ -9,6 +9,9 @@ declare global {
   // 웹 티저 — [[x,y],...] (MediaPipe 468 landmarks) JSON → 26 정면 raw 메트릭 JSON.
   // eslint-disable-next-line no-var
   var runMetrics: (landmarksJson: string) => string;
+  // Chemistry Battle — 입력 {"players":[{"slot","name","body"}]}, 출력 result_payload.
+  // eslint-disable-next-line no-var
+  var runBattle: (battleJson: string) => string;
 }
 
 export {};
