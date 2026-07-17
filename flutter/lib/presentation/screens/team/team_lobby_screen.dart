@@ -218,12 +218,32 @@ class _TeamLobbyScreenState extends ConsumerState<TeamLobbyScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('${_roster.length} / ${battle.maxPlayers} 명',
-              style: AppText.display),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text('${_roster.length} / ${battle.maxPlayers} 명',
+                    style: AppText.display),
+              ),
+              // 연령대 pill — SourceBadge 의 outlined pill 레시피와 동일.
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppColors.border),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
+                child: Text(
+                  battle.ageRangeLabel,
+                  style: AppText.hint.copyWith(color: AppColors.textHint),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: AppSpacing.xs),
-          Text('정원이 다 차면 자동으로 시작됩니다', style: AppText.caption),
-          const SizedBox(height: AppSpacing.sm),
-          Text(battle.ageRangeLabel, style: AppText.hint),
+          Text('정원이 다 차면 케미 결과표가 자동으로 발표됩니다', style: AppText.caption),
         ],
       ),
     );

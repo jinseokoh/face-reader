@@ -718,7 +718,7 @@ create table if not exists public.teams (
   max_players        int         not null default 8
                                  check (max_players in (6, 8, 10, 12)),
   age_min            int         not null check (age_min >= 20),
-  age_max            int         not null check (age_max = age_min + 10),
+  age_max            int         not null check (age_max >= age_min and age_max <= age_min + 20),
   status             text        not null default 'recruiting'
                                  check (status in ('recruiting', 'revealing', 'completed', 'expired')),
   started_at         timestamptz,

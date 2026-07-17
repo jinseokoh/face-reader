@@ -92,7 +92,7 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
         content: const SingleChildScrollView(
           child: Text(
             '방을 만들면 참가자들이 각자 들어옵니다.\n'
-            '정원이 다 차면 배틀이 자동으로 시작됩니다.\n'
+            '정원이 다 차면 케미 결과표가 자동으로 발표됩니다.\n'
             '결과에서 베스트 케미와 케미 맵이 공개됩니다.\n\n'
             '공개방은 목록에서 누구나 참가할 수 있고\n'
             '비밀방은 비밀번호를 아는 사람만 참가합니다.',

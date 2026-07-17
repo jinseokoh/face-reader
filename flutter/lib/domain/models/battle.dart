@@ -21,7 +21,7 @@ BattleRoomKind battleRoomKindFrom(String raw) =>
 String _ageRangeLabel(int? ageMin, int? ageMax) {
   if (ageMin == null || ageMax == null) return '전연령';
   if (ageMin == ageMax) return '$ageMin대';
-  return '$ageMin~${ageMax + 9}세';
+  return '$ageMin대~$ageMax대';
 }
 
 class Battle {

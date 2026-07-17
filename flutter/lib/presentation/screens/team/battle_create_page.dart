@@ -11,10 +11,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
-/// 방 생성 스텝 (rev2 — UX §A/§C): ①방 유형 → ②방 제목(카테고리→프리셋) →
-/// ③인원(6/8/10/12) → ④연령대(방장 인접 구간 RangeSlider) → ⑤공개 설정
-/// (공개/비밀 + 썸네일 공개). [배틀 만들기] = createBattle + joinBattle(셀프
-/// 조인) 후 Battle 반환, 조인 실패 시 방 롤백.
+/// 방 생성 스텝 (rev2 — UX §A/§C): ①방 유형 → ②방 제목(카테고리→프리셋,
+/// 기타 = 자유 입력) → ③인원(6/8/10/12) → ④연령대(방장 인접 구간 RangeSlider)
+/// → ⑤공개 설정(공개/비밀) → ⑥참가자 얼굴 공개. [배틀 만들기] = createBattle
+/// + joinBattle(셀프 조인) 후 Battle 반환, 조인 실패 시 방 롤백.
 Future<Battle?> showBattleCreatePage(BuildContext context) {
   return showModalBottomSheet<Battle>(
     context: context,
@@ -28,11 +28,11 @@ Future<Battle?> showBattleCreatePage(BuildContext context) {
   );
 }
 
-enum _Step { roomKind, title, count, age, visibility }
+enum _Step { roomKind, title, count, age, visibility, thumb }
 
 // battle.dart 의 Battle.ageRangeLabel 표기 규칙과 동일 포맷(로컬 복제).
 String _ageSliderLabel(int start, int end) =>
-    start == end ? '$start대' : '$start~${end + 9}세';
+    start == end ? '$start대' : '$start대~$end대';
 
 class _BattleCreatePage extends ConsumerStatefulWidget {
   const _BattleCreatePage();
@@ -41,9 +41,17 @@ class _BattleCreatePage extends ConsumerStatefulWidget {
   ConsumerState<_BattleCreatePage> createState() => _BattleCreatePageState();
 }
 
-class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
+class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
+    with SingleTickerProviderStateMixin {
   _Step _step = _Step.roomKind;
   final _pinCtrl = TextEditingController();
+  final _customTitleCtrl = TextEditingController();
+
+  /// ② 제목 리스트 등장 연출 — 카테고리를 고를 때마다 위→아래로 순차 등장.
+  late final AnimationController _listAnim = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 450),
+  );
 
   BattleRoomKind? _roomKind;
   BattleTitleCategory? _categorySel;
@@ -67,42 +75,26 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
     }
     // 진입 게이트(chemistry_screen._create)가 10대를 이미 걸러내므로 여기서는
     // 항상 20 이상이 온다 — decade 미상(방어적 fallback)만 20 으로 둔다.
+    // 기본값 = 방장 인접 전체 범위 [decade-10, decade+10] (20~70 클램프).
     final decade = _ownerAgeDecade ?? 20;
-    final windows = _windowsFor(decade);
-    final chosen = windows.length == 1 ? windows.first : windows.last;
-    _ageMin = chosen.$1;
-    _ageMax = chosen.$2;
+    _ageMin = (decade - 10) < 20 ? 20 : decade - 10;
+    _ageMax = (decade + 10) > 70 ? 70 : decade + 10;
   }
 
   @override
   void dispose() {
     _pinCtrl.dispose();
+    _customTitleCtrl.dispose();
+    _listAnim.dispose();
     super.dispose();
   }
 
-  // ④ 연령대 — 방장 decade 가 포함된, 폭 정확히 10(=2-decade) 인 유효 구간들.
-  // 20대/70대는 1개, 그 사이는 2개([D-10,D], [D,D+10]).
-  List<(int, int)> _windowsFor(int decade) {
-    final list = <(int, int)>[];
-    if (decade - 10 >= 20) list.add((decade - 10, decade));
-    if (decade + 10 <= 70) list.add((decade, decade + 10));
-    return list;
-  }
-
-  (int, int) _snapAgeWindow(int start, int end, int decade) {
-    final windows = _windowsFor(decade);
-    if (windows.length == 1) return windows.first;
-    final center = (start + end) / 2;
-    final centerA = (windows[0].$1 + windows[0].$2) / 2;
-    final centerB = (windows[1].$1 + windows[1].$2) / 2;
-    return (center - centerA).abs() <= (center - centerB).abs()
-        ? windows[0]
-        : windows[1];
-  }
-
   // ② 방 제목 — 방 유형에 허용되지 않는 카테고리/제목은 숨긴다(disabled 나열 아님).
+  // 자유 입력(기타)은 방 유형과 무관하게 항상 보인다.
   List<BattleTitleCategory> get _visibleCategories => kBattleTitleCatalog
-      .where((c) => c.titles.any((t) => t.allowedKinds.contains(_roomKind)))
+      .where((c) =>
+          c.isCustom ||
+          c.titles.any((t) => t.allowedKinds.contains(_roomKind)))
       .toList();
 
   BattleTitleCategory get _activeCategory {
@@ -119,6 +111,7 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
         _Step.age => true,
         _Step.visibility =>
           _isPublic || _pinCtrl.text.trim().length == 4,
+        _Step.thumb => true,
       };
 
   Future<void> _create() async {
@@ -171,11 +164,12 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
   }
 
   void _next() {
-    if (_step == _Step.visibility) {
+    if (_step == _Step.thumb) {
       _create();
       return;
     }
     setState(() => _step = _Step.values[_step.index + 1]);
+    if (_step == _Step.title) _listAnim.forward(from: 0);
   }
 
   void _back() {
@@ -184,6 +178,7 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
       return;
     }
     setState(() => _step = _Step.values[_step.index - 1]);
+    if (_step == _Step.title) _listAnim.forward(from: 0);
   }
 
   @override
@@ -219,7 +214,7 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
             Expanded(child: SingleChildScrollView(child: _stepBody())),
             const SizedBox(height: AppSpacing.lg),
             PrimaryButton(
-              label: _step == _Step.visibility ? '배틀 만들기' : '다음',
+              label: _step == _Step.thumb ? '배틀 만들기' : '다음',
               busy: _busy,
               onPressed: _stepValid && !_busy ? _next : null,
             ),
@@ -235,6 +230,7 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
         _Step.count => _countStep(),
         _Step.age => _ageStep(),
         _Step.visibility => _visibilityStep(),
+        _Step.thumb => _thumbStep(),
       };
 
   Widget _roomKindStep() {
@@ -281,8 +277,11 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
   Widget _titleStep() {
     final category = _activeCategory;
     final categories = _visibleCategories;
-    final titles =
-        category.titles.where((t) => t.allowedKinds.contains(_roomKind));
+    final titles = category.isCustom
+        ? const <BattleTitlePreset>[]
+        : category.titles
+            .where((t) => t.allowedKinds.contains(_roomKind))
+            .toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -298,10 +297,15 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
                 _chip(
                   label: c.name,
                   selected: c == category,
-                  onTap: () => setState(() {
-                    _categorySel = c;
-                    _selectedTitle = null;
-                  }),
+                  onTap: () {
+                    setState(() {
+                      _categorySel = c;
+                      final custom = _customTitleCtrl.text.trim();
+                      _selectedTitle =
+                          c.isCustom && custom.isNotEmpty ? custom : null;
+                    });
+                    _listAnim.forward(from: 0);
+                  },
                 ),
                 const SizedBox(width: AppSpacing.sm),
               ],
@@ -309,15 +313,58 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
           ),
         ),
         const SizedBox(height: AppSpacing.lg),
-        for (final t in titles) ...[
-          _titleTile(
-            selected: _selectedTitle == t.title,
-            title: t.title,
-            onTap: () => setState(() => _selectedTitle = t.title),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-        ],
+        if (category.isCustom)
+          _cascadeItem(
+            index: 0,
+            total: 1,
+            child: TextField(
+              controller: _customTitleCtrl,
+              maxLength: 30,
+              style: AppText.body.copyWith(color: AppColors.textPrimary),
+              onChanged: (v) => setState(() {
+                final t = v.trim();
+                _selectedTitle = t.isEmpty ? null : t;
+              }),
+              decoration: const InputDecoration(hintText: '방 제목을 직접 입력하세요'),
+            ),
+          )
+        else
+          for (final (i, t) in titles.indexed) ...[
+            _cascadeItem(
+              index: i,
+              total: titles.length,
+              child: _titleTile(
+                selected: _selectedTitle == t.title,
+                title: t.title,
+                onTap: () => setState(() => _selectedTitle = t.title),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
       ],
+    );
+  }
+
+  /// ② 제목 리스트 등장 연출 — [index] 가 클수록 늦게 fade + 아래로
+  /// 슬라이드하며 나타나 위→아래 순차 등장이 된다. [_listAnim] 재생마다 반복.
+  Widget _cascadeItem({
+    required int index,
+    required int total,
+    required Widget child,
+  }) {
+    final start = total <= 1 ? 0.0 : index * 0.55 / (total - 1);
+    final anim = CurvedAnimation(
+      parent: _listAnim,
+      curve: Interval(start, (start + 0.45).clamp(0.0, 1.0),
+          curve: Curves.easeOutCubic),
+    );
+    return FadeTransition(
+      opacity: anim,
+      child: SlideTransition(
+        position: Tween<Offset>(begin: const Offset(0, -0.25), end: Offset.zero)
+            .animate(anim),
+        child: child,
+      ),
     );
   }
 
@@ -328,7 +375,7 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
       children: [
         Text('몇 명이 참가하나요?', style: AppText.display),
         const SizedBox(height: AppSpacing.sm),
-        Text('정원이 다 차면 배틀이 자동으로 시작됩니다', style: AppText.caption),
+        Text('정원이 다 차면 케미 결과표가 자동으로 발표됩니다', style: AppText.caption),
         const SizedBox(height: AppSpacing.xxl),
         Wrap(
           spacing: AppSpacing.sm,
@@ -382,15 +429,12 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
             divisions: divisions < 1 ? 1 : divisions,
             labels: RangeLabels('$min대', '$max대'),
             values: RangeValues(min.toDouble(), max.toDouble()),
+            // 방장 decade 는 항상 범위에 포함 — 넘어가려는 thumb 만 되돌린다.
             onChanged: (values) => setState(() {
-              _ageMin = values.start.round();
-              _ageMax = values.end.round();
-            }),
-            onChangeEnd: (values) => setState(() {
-              final snapped = _snapAgeWindow(
-                  values.start.round(), values.end.round(), decade);
-              _ageMin = snapped.$1;
-              _ageMax = snapped.$2;
+              final start = values.start.round();
+              final end = values.end.round();
+              _ageMin = start > decade ? decade : start;
+              _ageMax = end < decade ? decade : end;
             }),
           ),
         ),
@@ -429,9 +473,16 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
             decoration: const InputDecoration(hintText: '비밀번호 4자리'),
           ),
         ],
+      ],
+    );
+  }
+
+  Widget _thumbStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('참가자 얼굴 공개', style: AppText.display),
         const SizedBox(height: AppSpacing.xxl),
-        Text('참가자 얼굴 공개', style: AppText.sectionTitle),
-        const SizedBox(height: AppSpacing.md),
         _choiceTile(
           selected: _thumbOpen,
           title: '얼굴 공개',

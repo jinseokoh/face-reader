@@ -115,7 +115,7 @@ void main() {
     expect(battle.status, BattleStatus.recruiting);
     expect(battle.isRecruiting, isTrue);
     expect(battle.hasResult, isFalse);
-    expect(battle.ageRangeLabel, '20~39세');
+    expect(battle.ageRangeLabel, '20대~30대');
     expect(battle.roomKind, BattleRoomKind.all);
     expect(battle.thumbOpen, isFalse);
   });
@@ -162,8 +162,8 @@ void main() {
         });
     expect(b(null, null).ageRangeLabel, '전연령');
     expect(b(30, 30).ageRangeLabel, '30대');
-    expect(b(20, 30).ageRangeLabel, '20~39세');
-    expect(b(40, 50).ageRangeLabel, '40~59세');
+    expect(b(20, 30).ageRangeLabel, '20대~30대');
+    expect(b(40, 50).ageRangeLabel, '40대~50대');
   });
 
   test('BattleRosterEntry / PublicBattle fromRow', () {

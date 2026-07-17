@@ -118,11 +118,11 @@ export default function Group() {
   );
 }
 
-/** ageMin/ageMax → 라벨. 전연령(둘 다 null) · 정확히 한 decade(N대) · 그 외 범위(N~M세). */
+/** ageMin/ageMax → 라벨. 전연령(둘 다 null) · 정확히 한 decade(N대) · 그 외 범위(N대~M대). */
 function ageLabel(min: number | null, max: number | null): string {
   if (min == null || max == null) return "전연령";
   if (min === max) return `${min}대`;
-  return `${min}~${max + 9}세`;
+  return `${min}대~${max}대`;
 }
 
 function BattleInvite({
@@ -187,7 +187,7 @@ function BattleClosedNotice({ expired }: { expired: boolean }) {
 }
 
 const BAND_EMOJI_BY_CODE = ["🟢", "🔵", "🟠", "🔴"] as const;
-const BAND_LABEL_BY_CODE = ["천작지합", "금슬상화", "마합가성", "형극난조"] as const;
+const BAND_LABEL_BY_CODE = ["천생연분", "금슬화합", "상부상조", "형극난조"] as const;
 
 function BattleShowcase({
   title,
