@@ -83,10 +83,7 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
             if (!hasMyFace)
               const FaceScanPill()
             else
-              Padding(
-                padding: const EdgeInsets.only(right: AppSpacing.lg),
-                child: _CreatePill(onTap: _create),
-              ),
+              _CreatePill(onTap: _create),
             IconButton(
               icon: const FaIcon(FontAwesomeIcons.circleInfo, size: 20),
               tooltip: '케미 배틀에 대하여',
