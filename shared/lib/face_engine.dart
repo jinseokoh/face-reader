@@ -71,20 +71,24 @@ void main() {
     return jsonEncode(WebFaceMetrics(pts).computeAll());
   }).toJS;
 
-  // Chemistry Battle — chemistry_snapshot 기반 배틀 집계 (§6.3 payload 계약).
-  // 입력: {"players":[{"slot":1,"name":"지은","body":{…metrics body…}}, …]}
+  // Chemistry Battle — chemistry_snapshot 기반 배틀 집계 (rev2 §3 payload 계약).
+  // 입력: {"roomKind":"match"|"all","players":[{"slot":1,"name":"지은",
+  //   "gender":"female","body":{…metrics body…}}, …]} — roomKind 누락 시 'all'.
   // 출력: {"players":[…],"pairs":[…],"best":{…}} — pairs 정렬 = 순위.
+  // roomKind=='match' 면 이성 쌍만 pairs 에 담긴다(matchOnly).
   _setRunBattle = ((String battleJson) {
     final raw = jsonDecode(battleJson) as Map<String, dynamic>;
+    final matchOnly = raw['roomKind'] == 'match';
     final players = [
       for (final p in raw['players'] as List)
         BattlePlayer(
           slot: (p['slot'] as num).toInt(),
           name: p['name'] as String,
+          gender: p['gender'] as String,
           report: FaceReadingReport.fromJsonString(jsonEncode(p['body'])),
         ),
     ];
-    return jsonEncode(computeBattle(players).toPayload());
+    return jsonEncode(computeBattle(players, matchOnly: matchOnly).toPayload());
   }).toJS;
 }
 

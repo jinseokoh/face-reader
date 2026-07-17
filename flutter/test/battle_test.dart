@@ -110,6 +110,7 @@ List<BattlePlayer> _players(int n, {int seed = 42}) {
       BattlePlayer(
         slot: i + 1,
         name: '플레이어$i',
+        gender: i.isEven ? 'male' : 'female',
         report: _fakeReport(
           rng,
           gender: i.isEven ? Gender.male : Gender.female,
@@ -167,7 +168,7 @@ void main() {
     final players = payload['players'] as List;
     expect(players.length, 4);
     for (final p in players) {
-      expect((p as Map).keys.toSet(), {'slot', 'name'});
+      expect((p as Map).keys.toSet(), {'slot', 'name', 'gender'});
     }
 
     final pairs = payload['pairs'] as List;
@@ -182,5 +183,42 @@ void main() {
     expect(best['score'], result.best.total.round());
     expect(best['a'], result.pairs.first.a);
     expect(best['b'], result.pairs.first.b);
+  });
+
+  test('matchOnly — pairs 수 = 남수 × 여수', () {
+    final players = _players(6); // 짝수 slot(1,3,5) male, 홀수(2,4,6) female.
+    final maleCount = players.where((p) => p.gender == 'male').length;
+    final femaleCount = players.where((p) => p.gender == 'female').length;
+    final result = computeBattle(players, matchOnly: true);
+    expect(result.pairs.length, maleCount * femaleCount);
+  });
+
+  test('matchOnly — 모든 쌍이 이성, 동성 쌍은 존재하지 않음', () {
+    final players = _players(8);
+    final genderBySlot = {for (final p in players) p.slot: p.gender};
+    final result = computeBattle(players, matchOnly: true);
+    for (final pair in result.pairs) {
+      expect(genderBySlot[pair.a], isNot(equals(genderBySlot[pair.b])));
+    }
+  });
+
+  test('payload — players[].gender 키 존재', () {
+    final result = computeBattle(_players(4));
+    final payload = result.toPayload();
+    final players = payload['players'] as List;
+    for (final p in players) {
+      expect((p as Map)['gender'], anyOf('male', 'female'));
+    }
+  });
+
+  test('all 모드(matchOnly 기본값 false) — pairs 수 N(N-1)/2 유지, 동성 쌍 포함', () {
+    final players = _players(6);
+    final result = computeBattle(players);
+    expect(result.pairs.length, 6 * 5 ~/ 2);
+    final genderBySlot = {for (final p in players) p.slot: p.gender};
+    expect(
+      result.pairs.any((p) => genderBySlot[p.a] == genderBySlot[p.b]),
+      isTrue,
+    );
   });
 }

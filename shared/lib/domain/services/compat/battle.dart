@@ -12,11 +12,15 @@ import 'package:face_engine/domain/services/compat/compat_pipeline.dart';
 class BattlePlayer {
   final int slot;
   final String name;
+
+  /// 'male' | 'female' — join_battle 조인 시점 my-face body 에서 기록된 값.
+  final String gender;
   final FaceReadingReport report;
 
   const BattlePlayer({
     required this.slot,
     required this.name,
+    required this.gender,
     required this.report,
   });
 }
@@ -60,7 +64,8 @@ class BattleResult {
   /// band = CompatLabel.index (0=천작지합 … 3=형극난조).
   Map<String, dynamic> toPayload() => {
         'players': [
-          for (final p in players) {'slot': p.slot, 'name': p.name},
+          for (final p in players)
+            {'slot': p.slot, 'name': p.name, 'gender': p.gender},
         ],
         'pairs': [
           for (final p in pairs) {'a': p.a, 'b': p.b, 'band': p.label.index},
@@ -73,12 +78,15 @@ class BattleResult {
       };
 }
 
-BattleResult computeBattle(List<BattlePlayer> players) {
+/// matchOnly 면 `a.gender != b.gender` 쌍만 계산 (동성 쌍은 pairs 에 존재하지
+/// 않음 — rev2 §3). 정렬·tie-break·best 규칙은 두 모드 동일.
+BattleResult computeBattle(List<BattlePlayer> players, {bool matchOnly = false}) {
   assert(players.length >= 2, 'battle 은 2명 이상 필요');
   final sorted = [...players]..sort((x, y) => x.slot.compareTo(y.slot));
   final pairs = <BattlePair>[];
   for (int i = 0; i < sorted.length; i++) {
     for (int j = i + 1; j < sorted.length; j++) {
+      if (matchOnly && sorted[i].gender == sorted[j].gender) continue;
       final report = analyzeCompatibility(
         my: reportToCompatInput(sorted[i].report),
         album: reportToCompatInput(sorted[j].report),
@@ -92,5 +100,8 @@ BattleResult computeBattle(List<BattlePlayer> players) {
     }
   }
   pairs.sort(battlePairCompare);
+  // matchOnly 인데 pairs 가 비면 호출부(서버 정원 계약) 위반 — best 접근이
+  // StateError 가 되므로 방어는 assert 수준, 실제 방어는 클라이언트 몫.
+  assert(pairs.isNotEmpty, 'battle pairs 는 비어 있을 수 없다');
   return BattleResult(players: sorted, pairs: pairs);
 }

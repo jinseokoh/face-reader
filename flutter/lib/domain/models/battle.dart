@@ -181,10 +181,12 @@ List<BattlePlayer> assembleBattlePlayers({
   for (final entry in roster) {
     final body = snapshot[entry.userId];
     if (body == null) continue;
+    final report = FaceReadingReport.fromJsonString(jsonEncode(body));
     players.add(BattlePlayer(
       slot: entry.slotNo,
       name: entry.nickname,
-      report: FaceReadingReport.fromJsonString(jsonEncode(body)),
+      gender: report.gender.name,
+      report: report,
     ));
   }
   players.sort((a, b) => a.slot.compareTo(b.slot));
