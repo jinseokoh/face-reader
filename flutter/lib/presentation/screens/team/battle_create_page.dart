@@ -162,7 +162,9 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
         padding: EdgeInsets.only(
           left: AppSpacing.lg,
           right: AppSpacing.lg,
-          bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.lg,
+          bottom: MediaQuery.of(context).viewInsets.bottom +
+              MediaQuery.of(context).viewPadding.bottom +
+              AppSpacing.lg,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

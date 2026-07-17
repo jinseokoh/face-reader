@@ -158,25 +158,28 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(_battle?.title ?? '케미 배틀')),
-      body: switch (_phase) {
-        _Phase.loading =>
-          const Center(child: CircularProgressIndicator()),
-        _Phase.countdown => Center(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              child: Text('$_count',
-                  key: ValueKey(_count), style: AppText.display),
+      body: SafeArea(
+        top: false,
+        child: switch (_phase) {
+          _Phase.loading =>
+            const Center(child: CircularProgressIndicator()),
+          _Phase.countdown => Center(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: Text('$_count',
+                    key: ValueKey(_count), style: AppText.display),
+              ),
             ),
-          ),
-        _Phase.orphan => Center(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.huge),
-              child: Text('결과가 생성되지 않은 배틀입니다',
-                  style: AppText.body, textAlign: TextAlign.center),
+          _Phase.orphan => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.huge),
+                child: Text('결과가 생성되지 않은 배틀입니다',
+                    style: AppText.body, textAlign: TextAlign.center),
+              ),
             ),
-          ),
-        _Phase.board => _board(),
-      },
+          _Phase.board => _board(),
+        },
+      ),
     );
   }
 

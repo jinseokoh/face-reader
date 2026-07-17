@@ -180,27 +180,30 @@ class _TeamLobbyScreenState extends ConsumerState<TeamLobbyScreen> {
             ),
         ],
       ),
-      body: _loading || battle == null
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _refresh,
-              child: ListView(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                children: [
-                  _headerCard(battle),
-                  if (battle.pledge != null) ...[
-                    const SizedBox(height: AppSpacing.md),
-                    _pledgeBanner(battle),
+      body: SafeArea(
+        top: false,
+        child: _loading || battle == null
+            ? const Center(child: CircularProgressIndicator())
+            : RefreshIndicator(
+                onRefresh: _refresh,
+                child: ListView(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  children: [
+                    _headerCard(battle),
+                    if (battle.pledge != null) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      _pledgeBanner(battle),
+                    ],
+                    const SizedBox(height: AppSpacing.xl),
+                    _slotGrid(battle),
+                    const SizedBox(height: AppSpacing.xl),
+                    _qrCard(),
+                    const SizedBox(height: AppSpacing.xl),
+                    _inviteRow(battle),
                   ],
-                  const SizedBox(height: AppSpacing.xl),
-                  _slotGrid(battle),
-                  const SizedBox(height: AppSpacing.xl),
-                  _qrCard(),
-                  const SizedBox(height: AppSpacing.xl),
-                  _inviteRow(battle),
-                ],
+                ),
               ),
-            ),
+      ),
     );
   }
 

@@ -121,14 +121,17 @@ class _BattleJoinScreenState extends ConsumerState<BattleJoinScreen> {
     final battle = _battle;
     return Scaffold(
       appBar: AppBar(title: const Text('케미 배틀')),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : battle == null
-              ? Center(
-                  child: Text('존재하지 않는 방입니다', style: AppText.body))
-              : !battle.isRecruiting
-                  ? _closedBody(battle)
-                  : _joinBody(battle),
+      body: SafeArea(
+        top: false,
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : battle == null
+                ? Center(
+                    child: Text('존재하지 않는 방입니다', style: AppText.body))
+                : !battle.isRecruiting
+                    ? _closedBody(battle)
+                    : _joinBody(battle),
+      ),
     );
   }
 
