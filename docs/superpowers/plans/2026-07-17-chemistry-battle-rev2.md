@@ -34,9 +34,9 @@
 - public_battles view: pledge 컬럼 제거, room_kind·thumb_open 추가.
 
 **Steps:**
-- [ ] rev2 §2 를 baseline 에 반영 (기존 §11-2~11-5 수정 + §11-6 매칭/채팅 신설). CHECK·RLS·grant·publication 전부.
-- [ ] smoke 확장: ⑩ match 방(6인) 남3 채운 뒤 4번째 남성 조인 → GENDER_FULL / ⑪ 시작 후 submit → battle_matches 행의 user_a/user_b = payload best 쌍 검증 / ⑫ respond_match: 쌍 아닌 참가자 NOT_MATCHED · 한쪽 수락 후 상대 거절 → opened_at null 유지 · 재응답 ALREADY_DECIDED / ⑬ battle_messages: 쌍 본인 insert OK(스모크는 definer 아닌 postgres 라 RLS 우회 — RLS 검증은 `set_config`+`set local role authenticated` 블록으로) — 기존 begin…rollback·ALL PASS 마지막 문장 구조 유지. 기존 ①~⑨는 새 스키마에 맞게 최소 수정 (pledge 참조 제거·인원 6/8/10/12·연령 20+·gender 있는 my-face body).
-- [ ] 검증: `grep -c '\$\$'` 짝수 · node 체크(room_kind 존재·pledge 부재) · 커밋.
+- [x] rev2 §2 를 baseline 에 반영 (기존 §11-2~11-5 수정 + §11-6 매칭/채팅 신설). CHECK·RLS·grant·publication 전부.
+- [x] smoke 확장: ⑩ match 방(6인) 남3 채운 뒤 4번째 남성 조인 → GENDER_FULL / ⑪ 시작 후 submit → battle_matches 행의 user_a/user_b = payload best 쌍 검증 / ⑫ respond_match: 쌍 아닌 참가자 NOT_MATCHED · 한쪽 수락 후 상대 거절 → opened_at null 유지 · 재응답 ALREADY_DECIDED / ⑬ battle_messages: 쌍 본인 insert OK(스모크는 definer 아닌 postgres 라 RLS 우회 — RLS 검증은 `set_config`+`set local role authenticated` 블록으로) — 기존 begin…rollback·ALL PASS 마지막 문장 구조 유지. 기존 ①~⑨는 새 스키마에 맞게 최소 수정 (pledge 참조 제거·인원 6/8/10/12·연령 20+·gender 있는 my-face body).
+- [x] 검증: `grep -c '\$\$'` 짝수 · node 체크(room_kind 존재·pledge 부재) · 커밋.
 
 ```bash
 git add react/db/migrations/0001_baseline.sql react/db/tests/battle_rpc_smoke.sql
@@ -61,8 +61,8 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 - `runBattle` 입력: `{"roomKind":"match"|"all", "players":[{"slot","name","gender","body"}]}` — roomKind=='match' → matchOnly.
 
 **Steps:**
-- [ ] 테스트 먼저: 기존 6개를 gender 필수에 맞게 갱신 + 신규 — matchOnly 에서 (a) pairs 수 = 남수×여수 (b) 모든 쌍이 이성 (c) payload players[].gender 존재 (d) all 모드 무변화 회귀.
-- [ ] 구현 → `flutter test test/battle_test.dart` green → `cd react && pnpm build:shared` 성공 → 전체 게이트 → 커밋.
+- [x] 테스트 먼저: 기존 6개를 gender 필수에 맞게 갱신 + 신규 — matchOnly 에서 (a) pairs 수 = 남수×여수 (b) 모든 쌍이 이성 (c) payload players[].gender 존재 (d) all 모드 무변화 회귀.
+- [x] 구현 → `flutter test test/battle_test.dart` green → `cd react && pnpm build:shared` 성공 → 전체 게이트 → 커밋.
 
 ```bash
 git add shared/lib/domain/services/compat/battle.dart shared/lib/face_engine.dart flutter/test/battle_test.dart
@@ -144,9 +144,9 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 ### Task 8: 종결 — smoke/실기기 게이트 안내 + 문서 갱신 + 배포
 
-- [ ] Human gate 안내문 작성 (drop-recreate = 데이터 전체 초기화 **첫 문장**, 그 다음 절차: 계정 정리 → reset → baseline → smoke ALL PASS → 42501 확인).
-- [ ] 실기기 rev2 시나리오 (rev2 §9-3) 체크리스트 전달.
-- [ ] 문서 5종 rev2 반영 (PRD·ARCHITECTURE·react HOW-IT-WORKS·KAKAO·CLAUDE 테스트 수 — 공약 서술 제거·매칭/채팅·방 유형).
+- [x] Human gate 안내문 작성 (drop-recreate = 데이터 전체 초기화 **첫 문장**, 그 다음 절차: 계정 정리 → reset → baseline → smoke ALL PASS → 42501 확인).
+- [x] 실기기 rev2 시나리오 (rev2 §9-3) 체크리스트 전달.
+- [x] 문서 5종 rev2 반영 (PRD·ARCHITECTURE·react HOW-IT-WORKS·KAKAO·CLAUDE 테스트 수 — 공약 서술 제거·매칭/채팅·방 유형).
 - [ ] 웹 배포 (`pnpm build && pnpm run deploy`) — human 승인 후.
 - [ ] Ledger 종결.
 
