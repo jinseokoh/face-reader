@@ -42,6 +42,35 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
     ));
   }
 
+  void _showInfoDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+        ),
+        title: const Text('케미 배틀', style: AppText.modalTitle),
+        content: const SingleChildScrollView(
+          child: Text(
+            '방을 만들면 참가자들이 각자 들어옵니다.\n'
+            '정원이 다 차면 배틀이 자동으로 시작됩니다.\n'
+            '결과에서 베스트 케미와 케미 맵이 공개됩니다.\n\n'
+            '공개방은 목록에서 누구나 참가할 수 있고\n'
+            '비밀방은 비밀번호를 아는 사람만 참가합니다.',
+            style: AppText.body,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('닫기', style: AppText.subTitle),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasMyFace = ref.watch(historyProvider).any((r) => r.isMyFace);
@@ -58,10 +87,21 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
                 padding: const EdgeInsets.only(right: AppSpacing.lg),
                 child: _CreatePill(onTap: _create),
               ),
+            IconButton(
+              icon: const FaIcon(FontAwesomeIcons.circleInfo, size: 20),
+              tooltip: '케미 배틀에 대하여',
+              onPressed: () => _showInfoDialog(context),
+            ),
           ],
-          bottom: const TabBar(
-            tabs: [Tab(text: '공개 배틀'), Tab(text: '내 배틀')],
-          ),
+          // 내부 탭은 내 관상 등록 후에만 노출 — 궁합·관상 탭과 동일 규칙.
+          bottom: hasMyFace
+              ? const TabBar(
+                  labelColor: AppColors.textPrimary,
+                  unselectedLabelColor: AppColors.textHint,
+                  indicatorColor: AppColors.textPrimary,
+                  tabs: [Tab(text: '공개 배틀'), Tab(text: '내 배틀')],
+                )
+              : null,
         ),
         body: !hasMyFace
             ? const EmotionEmptyState(
