@@ -36,6 +36,7 @@ class _TeamLobbyScreenState extends ConsumerState<TeamLobbyScreen> {
   Timer? _poll;
   bool _loading = true;
   int _refreshSeq = 0;
+  bool _navigatedToReveal = false;
 
   @override
   void initState() {
@@ -80,6 +81,8 @@ class _TeamLobbyScreenState extends ConsumerState<TeamLobbyScreen> {
   }
 
   void _onBattleStarted(Battle battle) {
+    if (_navigatedToReveal) return;
+    _navigatedToReveal = true;
     Navigator.of(context).pushReplacement(MaterialPageRoute(
       builder: (_) => TeamRevealScreen(
         battleId: widget.battleId,

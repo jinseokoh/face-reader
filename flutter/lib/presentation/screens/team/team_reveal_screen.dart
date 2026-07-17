@@ -46,6 +46,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
   Map<String, dynamic>? _payload;
   List<BattleRosterEntry> _roster = const [];
   int? _mySlot;
+  Timer? _countdownTimer;
 
   @override
   void initState() {
@@ -61,6 +62,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
       return;
     }
     final roster = await _service.fetchRoster(widget.battleId);
+    if (!mounted) return;
     Map<String, dynamic>? payload = battle.resultPayload;
     if (payload == null) {
       final snapshot = battle.chemistrySnapshot;
@@ -79,6 +81,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
       try {
         await _service.submitResult(widget.battleId, payload);
       } catch (_) {}
+      if (!mounted) return;
       ref.invalidate(myBattlesProvider);
     }
     if (!mounted) return;
@@ -98,7 +101,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
   }
 
   void _tickCountdown() {
-    Timer.periodic(const Duration(seconds: 1), (t) {
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) {
         t.cancel();
         return;
@@ -110,6 +113,12 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
         setState(() => _count--);
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    super.dispose();
   }
 
   // ── payload 파생 ──────────────────────────────────────────────
