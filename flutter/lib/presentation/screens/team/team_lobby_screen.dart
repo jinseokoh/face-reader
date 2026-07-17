@@ -68,8 +68,12 @@ class _TeamLobbyScreenState extends ConsumerState<TeamLobbyScreen> {
         return;
       }
       final roster = await _service.fetchRoster(widget.battleId);
-      final thumbs = await _service
-          .fetchMyFaceThumbnailUrls([for (final r in roster) r.userId]);
+      // thumb_open=false 인 방은 얼굴 썸네일을 서버에 요청하지 않는다 —
+      // 슬롯은 성별 기본 아이콘으로 대체.
+      final thumbs = battle.thumbOpen
+          ? await _service
+              .fetchMyFaceThumbnailUrls([for (final r in roster) r.userId])
+          : const <String, String?>{};
       if (!mounted || seq != _refreshSeq) return;
       setState(() {
         _battle = battle;
@@ -226,6 +230,35 @@ class _TeamLobbyScreenState extends ConsumerState<TeamLobbyScreen> {
   }
 
   Widget _slotGrid(Battle battle) {
+    if (battle.roomKind == BattleRoomKind.match) {
+      final perGender = battle.maxPlayers ~/ 2;
+      final males = _roster.where((r) => r.gender == 'male').toList();
+      final females = _roster.where((r) => r.gender == 'female').toList();
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: _genderColumn(
+              battle: battle,
+              gender: 'male',
+              label: '남자',
+              entries: males,
+              slotCount: perGender,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.lg),
+          Expanded(
+            child: _genderColumn(
+              battle: battle,
+              gender: 'female',
+              label: '여자',
+              entries: females,
+              slotCount: perGender,
+            ),
+          ),
+        ],
+      );
+    }
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -242,8 +275,48 @@ class _TeamLobbyScreenState extends ConsumerState<TeamLobbyScreen> {
           entry: entry,
           thumbUrl: entry == null ? null : _thumbs[entry.userId],
           isMe: entry?.userId == _service.myUid,
+          thumbOpen: battle.thumbOpen,
         );
       },
+    );
+  }
+
+  /// 이성방 남/여 열 — 헤더(성별 아이콘 16px + "남자 N / M")+ 세로 슬롯 목록.
+  /// 색 구분 없이 열 위치·헤더·빈 슬롯 아이콘 세 겹으로 성별을 표현한다.
+  Widget _genderColumn({
+    required Battle battle,
+    required String gender,
+    required String label,
+    required List<BattleRosterEntry> entries,
+    required int slotCount,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Image.asset(_genderIconAsset(gender), width: 16, height: 16),
+            const SizedBox(width: AppSpacing.xs),
+            Text('$label ${entries.length} / $slotCount',
+                style: AppText.sectionTitle),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        for (var i = 0; i < slotCount; i++)
+          Padding(
+            padding: EdgeInsets.only(
+                bottom: i == slotCount - 1 ? 0 : AppSpacing.lg),
+            child: _SlotCell(
+              entry: i < entries.length ? entries[i] : null,
+              thumbUrl:
+                  i < entries.length ? _thumbs[entries[i].userId] : null,
+              isMe: i < entries.length &&
+                  entries[i].userId == _service.myUid,
+              thumbOpen: battle.thumbOpen,
+              slotGender: gender,
+            ),
+          ),
+      ],
     );
   }
 
@@ -342,11 +415,25 @@ class _TeamLobbyScreenState extends ConsumerState<TeamLobbyScreen> {
   }
 }
 
+/// male/female 성별 기본 아이콘 asset 경로.
+String _genderIconAsset(String gender) =>
+    gender == 'male' ? 'assets/icons/male.png' : 'assets/icons/female.png';
+
 class _SlotCell extends StatelessWidget {
   final BattleRosterEntry? entry;
   final String? thumbUrl;
   final bool isMe;
-  const _SlotCell({required this.entry, required this.thumbUrl, required this.isMe});
+  final bool thumbOpen;
+  /// 이성방 빈 슬롯의 열 성별 — alpha 0.35 성별 아이콘 표시용. 전체방은 null
+  /// (성별 미정 FaIcon `user` 유지).
+  final String? slotGender;
+  const _SlotCell({
+    required this.entry,
+    required this.thumbUrl,
+    required this.isMe,
+    required this.thumbOpen,
+    this.slotGender,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -364,20 +451,7 @@ class _SlotCell extends StatelessWidget {
                   : AppColors.border,
             ),
           ),
-          child: ClipOval(
-            child: !filled
-                ? const Center(
-                    child: FaIcon(FontAwesomeIcons.user,
-                        size: 16, color: AppColors.border))
-                : thumbUrl == null
-                    ? const Center(
-                        child: FaIcon(FontAwesomeIcons.solidUser,
-                            size: 16, color: AppColors.textHint))
-                    : Image.network(thumbUrl!, fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => const Center(
-                            child: FaIcon(FontAwesomeIcons.solidUser,
-                                size: 16, color: AppColors.textHint))),
-          ),
+          child: ClipOval(child: _avatar()),
         ),
         const SizedBox(height: AppSpacing.xs),
         Text(
@@ -388,5 +462,32 @@ class _SlotCell extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  Widget _avatar() {
+    if (entry == null) {
+      final gender = slotGender;
+      if (gender == null) {
+        return const Center(
+            child: FaIcon(FontAwesomeIcons.user,
+                size: 16, color: AppColors.border));
+      }
+      return Opacity(
+        opacity: 0.35,
+        child: Image.asset(_genderIconAsset(gender), fit: BoxFit.cover),
+      );
+    }
+    // thumb_open=false — 얼굴 썸네일 대신 참가자 성별 기본 아이콘.
+    if (!thumbOpen) {
+      return Image.asset(_genderIconAsset(entry!.gender), fit: BoxFit.cover);
+    }
+    return thumbUrl == null
+        ? const Center(
+            child: FaIcon(FontAwesomeIcons.solidUser,
+                size: 16, color: AppColors.textHint))
+        : Image.network(thumbUrl!, fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => const Center(
+                child: FaIcon(FontAwesomeIcons.solidUser,
+                    size: 16, color: AppColors.textHint)));
   }
 }

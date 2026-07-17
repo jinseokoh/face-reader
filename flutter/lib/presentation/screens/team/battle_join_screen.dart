@@ -28,6 +28,7 @@ class _BattleJoinScreenState extends ConsumerState<BattleJoinScreen> {
   final _service = BattleService.instance;
   final _pinCtrl = TextEditingController();
   Battle? _battle;
+  List<BattleRosterEntry> _roster = const [];
   int _playerCount = 0;
   bool _busy = false;
   bool _loading = true;
@@ -60,9 +61,17 @@ class _BattleJoinScreenState extends ConsumerState<BattleJoinScreen> {
     }
     setState(() {
       _battle = battle;
+      _roster = roster ?? const [];
       _playerCount = roster?.length ?? 0;
       _loading = false;
     });
+  }
+
+  /// 이성방 — 성별 남은 자리 수 (roster gender 카운트 기준, 0 미만 표시 방지).
+  int _remaining(String gender) {
+    final per = _battle!.maxPlayers ~/ 2;
+    final count = _roster.where((r) => r.gender == gender).length;
+    return (per - count).clamp(0, per);
   }
 
   void _goInside(Battle battle) {
@@ -118,9 +127,12 @@ class _BattleJoinScreenState extends ConsumerState<BattleJoinScreen> {
         return;
       }
       if (mounted) {
+        final label = err == BattleJoinError.genderFull
+            ? genderFullLabel(myFace.gender.name)
+            : err.labelKo;
         showTopSnackBar(
           Overlay.of(context),
-          CompactSnackBar.error(message: err.labelKo),
+          CompactSnackBar.error(message: label),
         );
         setState(() => _busy = false);
       }
@@ -183,6 +195,11 @@ class _BattleJoinScreenState extends ConsumerState<BattleJoinScreen> {
         Text('$_playerCount / ${battle.maxPlayers} 명', style: AppText.body),
         const SizedBox(height: AppSpacing.xs),
         Text(battle.ageRangeLabel, style: AppText.caption),
+        if (battle.roomKind == BattleRoomKind.match) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Text('남자 ${_remaining('male')}자리 남음', style: AppText.caption),
+          Text('여자 ${_remaining('female')}자리 남음', style: AppText.caption),
+        ],
         if (!battle.isPublic) ...[
           const SizedBox(height: AppSpacing.xl),
           TextField(
@@ -195,13 +212,31 @@ class _BattleJoinScreenState extends ConsumerState<BattleJoinScreen> {
             decoration: const InputDecoration(hintText: '비밀번호 4자리'),
           ),
         ],
+        const SizedBox(height: AppSpacing.xl),
+        _photoConsentNotice(battle),
         const SizedBox(height: AppSpacing.xxl),
         PrimaryButton(
-          label: '참가하기',
+          label: '동의하고 참가',
           busy: _busy,
           onPressed: canJoin && !_busy ? _join : null,
         ),
       ],
+    );
+  }
+
+  /// 사진 공개 계약 문구 — 정보성 고지, 체크박스 없음. 조인 = 동의(UX §E.1).
+  Widget _photoConsentNotice(Battle battle) {
+    final text = battle.roomKind == BattleRoomKind.match
+        ? '베스트 매칭이 되면 상대에게 내 사진이 공개되고, 서로 동의하면 1:1 채팅이 열립니다'
+        : '베스트 케미로 뽑히면 상대에게 내 사진이 공개됩니다';
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Text(text, style: AppText.caption),
     );
   }
 }
