@@ -109,10 +109,7 @@ class BattleService {
     if (ids.isEmpty) return const [];
     final rows = await _client
         .from('teams')
-        .select(
-            'id, owner_id, title, visibility, max_players, age_min, age_max, '
-            'pledge, chat_url, status, started_at, closed_at, '
-            'chemistry_snapshot, result_payload, created_at')
+        .select(_teamCols)
         .inFilter('id', ids)
         .order('created_at', ascending: false);
     return [for (final r in rows) Battle.fromRow(r)];
