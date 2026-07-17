@@ -45,7 +45,6 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
   final _titleCtrl = TextEditingController();
   final _pinCtrl = TextEditingController();
   final _pledgeCtrl = TextEditingController();
-  final _chatCtrl = TextEditingController();
   int _maxPlayers = 8;
   bool _isPublic = false;
   int? _ageMin; // null 쌍 = 전연령 (기본값).
@@ -70,7 +69,6 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
     _titleCtrl.dispose();
     _pinCtrl.dispose();
     _pledgeCtrl.dispose();
-    _chatCtrl.dispose();
     super.dispose();
   }
 
@@ -115,7 +113,6 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
         ageMin: _ageMin,
         ageMax: _ageMax,
         pledge: _pledgeAllowed ? _pledgeValue : null,
-        chatUrl: _pledgeValue == null ? null : _chatCtrl.text.trim(),
       );
       await service.joinBattle(battle.id,
           password: _isPublic ? null : _pinCtrl.text.trim());
@@ -393,17 +390,6 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
             style: AppText.body.copyWith(color: AppColors.textPrimary),
             onChanged: (_) => setState(() {}),
             decoration: const InputDecoration(hintText: '공약 내용'),
-          ),
-        ],
-        if (_pledgeValue != null) ...[
-          const SizedBox(height: AppSpacing.lg),
-          TextField(
-            controller: _chatCtrl,
-            style: AppText.body.copyWith(color: AppColors.textPrimary),
-            decoration: const InputDecoration(
-              hintText: '카카오 오픈채팅 링크 (선택)',
-              helperText: '결과 발표에서 당첨된 두 사람에게만 표시됩니다',
-            ),
           ),
         ],
       ],

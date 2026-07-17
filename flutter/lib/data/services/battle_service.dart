@@ -17,6 +17,13 @@ class BattleService {
   SupabaseClient get _client => Supabase.instance.client;
   final ShareReceiveService _receive = ShareReceiveService();
 
+  // teams 는 password 컬럼에 authenticated 권한 grant 가 없어 bare `select()`
+  // (select=*) 가 42501 로 실패한다 — grant 된 컬럼만 명시.
+  static const _teamCols =
+      'id, owner_id, title, visibility, max_players, age_min, age_max, '
+      'pledge, chat_url, status, started_at, closed_at, '
+      'chemistry_snapshot, result_payload, created_at';
+
   String? get myUid => _client.auth.currentUser?.id;
   bool get isLoggedIn => myUid != null;
 
@@ -43,7 +50,7 @@ class BattleService {
           if (pledge != null && pledge.isNotEmpty) 'pledge': pledge,
           if (chatUrl != null && chatUrl.isNotEmpty) 'chat_url': chatUrl,
         })
-        .select()
+        .select(_teamCols)
         .single();
     return Battle.fromRow(row);
   }
@@ -69,10 +76,7 @@ class BattleService {
   Future<Battle?> fetchBattle(String battleId) async {
     final row = await _client
         .from('teams')
-        .select(
-            'id, owner_id, title, visibility, max_players, age_min, age_max, '
-            'pledge, chat_url, status, started_at, closed_at, '
-            'chemistry_snapshot, result_payload, created_at')
+        .select(_teamCols)
         .eq('id', battleId)
         .maybeSingle();
     return row == null ? null : Battle.fromRow(row);

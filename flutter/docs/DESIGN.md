@@ -36,8 +36,8 @@
 
 | 토큰 | size | weight | family | color | 용도 |
 |---|---|---|---|---|---|
-| `AppText.display` | 28 | w700 | **SongMyung** | textPrimary | 화면 최상위 타이틀 |
-| `AppText.appBarTitle` | 20 | w600 | **SongMyung** | textPrimary | AppBar 타이틀 (theme 주입 — override 금지) |
+| `AppText.display` | 28 | w400 | **SongMyung** | textPrimary | 화면 최상위 타이틀 |
+| `AppText.appBarTitle` | 20 | w400 | **SongMyung** | textPrimary | AppBar 타이틀 (theme 주입 — override 금지) |
 | `AppText.displaySubtitle` | 16 | w400 | **SongMyung** | textSecondary | display 짝 보조 문구 |
 | `AppText.modalTitle` | 18 | w600 | system | textPrimary | Dialog/bottomSheet 타이틀 |
 | `AppText.sectionTitle` | 16 | w600 | system | textPrimary | 큰 구획 헤딩 |

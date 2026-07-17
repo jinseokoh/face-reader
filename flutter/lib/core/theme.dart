@@ -77,22 +77,24 @@ class AppSpacing {
 /// 신규 화면은 inline `TextStyle(fontSize: …)` 대신 `AppText.X` 또는
 /// `AppText.X.copyWith(color: …)` 만 사용.
 class AppText {
-  /// **display** — 28 w700 SongMyung. 홈 화면 타이틀 같은 화면 최상위 타이틀.
+  /// **display** — 28 w400 SongMyung. 홈 화면 타이틀 같은 화면 최상위 타이틀.
+  /// SongMyung 은 Regular 단일 웨이트 — 합성 볼드가 획을 뭉갠다(w400 고정).
   static const TextStyle display = TextStyle(
     fontFamily: _kDisplayFont,
     fontSize: 28,
-    fontWeight: FontWeight.w700,
+    fontWeight: FontWeight.w400,
     color: AppColors.textPrimary,
     height: 1.2,
   );
 
-  /// **appBarTitle** — 20 w600 SongMyung. Scaffold AppBar 타이틀 ("관상", "궁합" 등).
+  /// **appBarTitle** — 20 w400 SongMyung. Scaffold AppBar 타이틀 ("관상", "궁합" 등).
   /// `AppTheme.light` 의 `appBarTheme.titleTextStyle` 로 주입되므로 위젯에서
   /// 별도 지정할 필요 없음. inline 사용은 비권장.
+  /// SongMyung 은 Regular 단일 웨이트 — 합성 볼드가 획을 뭉갠다(w400 고정).
   static const TextStyle appBarTitle = TextStyle(
     fontFamily: _kDisplayFont,
     fontSize: 20,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.w400,
     color: AppColors.textPrimary,
   );
 
