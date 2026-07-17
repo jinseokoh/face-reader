@@ -1,265 +1,235 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useLoaderData } from "react-router";
 import type { Route } from "./+types/g.$id";
 import { CTA } from "../components/CTA";
 import { JoinWizard } from "../components/JoinWizard";
+import { getSupabase } from "../lib/auth";
 import {
-  fetchTeam,
-  type TeamPayload,
-  type TeamShowcase,
-} from "../lib/supabase";
+  computeBattlePayload,
+  submitBattleResult,
+  type BattlePayload,
+} from "../lib/join";
+import { fetchBattleSSR } from "../lib/supabase";
 
 /**
- * `GET /g/:id` — 교감도 그룹 (P3). 한 라우트, 두 얼굴:
- *   - 마감 전 = 초대장 (참여자 칩 + "당신 자리가 비어 있어요" + 앱 유도)
- *   - 마감 후 = 결과 쇼케이스 (이름 + 밴드 이모지 매트릭스, 사진/점수 없음)
- *   - 마감 후 payload 없음 = 48h cron 이 닫은 방. 결과표는 **전원 등록**
- *     시에만 생성되므로: 전원이 찼으면 owner 앱의 backfill 대기 안내,
- *     아니면 전원 미충족 종료 안내 (옛 ≥3 기준 폐기, 2026-07-12).
- *     닫힌 방은 합류 불가라 초대장·티저를 렌더하면 안 된다.
+ * `GET /g/:id` — 케미 배틀 (Plan 3). 한 라우트, status 4분기:
+ *   - recruiting = 초대장(공약·연령대·n/N 노출) + JoinWizard
+ *   - revealing/completed + payload = 결과 쇼케이스 (🏆 Best 카드 + 밴드 매트릭스)
+ *   - revealing/completed + payload 없음 + snapshot 있음 = 클라이언트 즉석 계산
+ *     (runBattle) 후 (로그인 참가자면) 정본 backfill
+ *   - expired 또는 completed + payload/snapshot 둘 다 없음 = 종료 안내
  *
- * teams.matrix_payload 가 있으면 결과, 없으면 초대장. 밴드는 색 대신 이모지
- * (🟢🔵🟠🔴) 로만 표기해 웹 4색 팔레트를 지킨다.
+ * 밴드는 색 대신 이모지(🟢🔵🟠🔴)로만 표기해 웹 4색 팔레트를 지킨다.
  */
-export async function loader({ params, request, context }: Route.LoaderArgs) {
+export async function loader({ context, params }: Route.LoaderArgs) {
   const env = context.cloudflare.env;
-  const team = await fetchTeam(env, params.id);
-  if (!team) throw new Response("Not Found", { status: 404 });
-  const origin = env.WEBAPP_BASE ?? new URL(request.url).origin;
+  const data = await fetchBattleSSR(env, params.id!);
+  if (!data) throw new Response("Not Found", { status: 404 });
   return {
-    team,
-    appOpenUrl: `${origin}/g/${params.id}/open`,
+    battle: data.battle,
+    roster: data.roster,
+    appOpenUrl: `${env.WEBAPP_BASE}/g/${params.id}/open`,
     appStoreUrl: env.APP_STORE_URL,
     playStoreUrl: env.PLAY_STORE_URL,
-    canonicalUrl: `${origin}/g/${params.id}`,
-    // 링크 스크랩(카톡·문자 등) 미리보기 이미지 — 공용 배너(800x420, OG 표준
-    // 1.91:1). /r/:id 와 동일하게 R2 CDN 서빙 (번들 아님 — 교체 시 재배포 불필요).
+    canonicalUrl: `${env.WEBAPP_BASE}/g/${params.id}`,
+    // 링크 스크랩(카톡·문자 등) 미리보기 이미지 — /r/:id 와 동일하게 R2 CDN 서빙.
     ogImage: `${env.R2_CDN_BASE}/assets/og.png`,
     // 웹 카카오 로그인·참여용 공개 config (anon key 는 공개키).
-    supabaseUrl: env.SUPABASE_URL ?? "",
-    supabaseAnonKey: env.SUPABASE_ANON_KEY ?? "",
-    cdnBase: env.R2_CDN_BASE ?? "",
+    supabaseUrl: env.SUPABASE_URL,
+    supabaseAnonKey: env.SUPABASE_ANON_KEY,
+    cdnBase: env.R2_CDN_BASE,
   };
 }
 
-export function meta({ data }: Route.MetaArgs) {
-  if (!data) return [{ title: "그룹을 찾을 수 없습니다" }];
-  const t = data.team;
-  const title = t.closed
-    ? `${t.title} — 케미 결과`
-    : `${t.title} — 케미 그룹 초대`;
-  const desc = t.closed
-    ? "관상으로 풀어본 우리 그룹의 케미 결과"
-    : `${t.members.length}명이 참여 중 · 당신 자리가 비어 있어요`;
+export const meta: Route.MetaFunction = ({ data }) => {
+  if (!data) return [];
+  const { battle, roster, canonicalUrl, ogImage } = data;
+  const title =
+    battle.status === "recruiting"
+      ? `${battle.title} — 케미 배틀 참가`
+      : `${battle.title} — 케미 배틀 결과`;
+  const description =
+    battle.status === "recruiting"
+      ? `${roster.length} / ${battle.maxPlayers} 명 모집 중`
+      : battle.status === "expired"
+        ? "인원이 모이지 않아 종료된 배틀입니다"
+        : "케미 배틀 결과가 공개되었습니다";
   return [
     { title },
-    { name: "description", content: desc },
+    { name: "description", content: description },
     // 멤버 이름이 노출되므로 검색엔진 indexing 차단.
     { name: "robots", content: "noindex,nofollow" },
     { property: "og:type", content: "website" },
     { property: "og:title", content: title },
-    { property: "og:description", content: desc },
-    { property: "og:url", content: data.canonicalUrl },
-    // og:image 부재 시 카톡 링크 스크랩이 텍스트-only 로 떨어진다 — 크기
-    // 힌트까지 명시해 2:1 배너가 크게 보이게 (share.tsx 와 동일 패턴).
-    { property: "og:image", content: data.ogImage },
-    { property: "og:image:width", content: "800" },
-    { property: "og:image:height", content: "420" },
+    { property: "og:description", content: description },
+    { property: "og:url", content: canonicalUrl },
+    { property: "og:image", content: ogImage },
     { name: "twitter:card", content: "summary_large_image" },
   ];
-}
+};
 
-export default function Group({ loaderData }: Route.ComponentProps) {
-  const { team } = loaderData;
-  // 위저드 진행 중엔 초대장 멤버 칩을 숨긴다 — 위저드의 "비어 있는 자리"
-  // 목록과 같은 이름이 이중 노출되어 혼란을 만든다.
+export default function Group() {
+  const data = useLoaderData<typeof loader>();
+  const { battle } = data;
   const [wizardActive, setWizardActive] = useState(false);
-  // 참여 성립 시 최신 현황 — 헤더 subtitle 3상태의 입력.
-  const [joinedInfo, setJoinedInfo] = useState<{
-    joined: number;
-    total: number;
-  } | null>(null);
+
+  let body: React.ReactNode;
+  if (battle.status === "recruiting") {
+    body = (
+      <>
+        {!wizardActive && <BattleInvite data={data} />}
+        {/* 미설치자 웹 참여 위저드 (미리보기 겸용) — 카카오 로그인 →
+            (비밀방) PIN → (공약) 동의 → 정면 캡처 → join_battle 까지
+            브라우저에서 완결. */}
+        <JoinWizard
+          battle={battle}
+          roster={data.roster}
+          supabaseUrl={data.supabaseUrl}
+          supabaseAnonKey={data.supabaseAnonKey}
+          cdnBase={data.cdnBase}
+          onActive={setWizardActive}
+        />
+      </>
+    );
+  } else if (battle.resultPayload) {
+    body = (
+      <BattleShowcase
+        title={battle.title}
+        payload={battle.resultPayload as BattlePayload}
+        pledge={battle.pledge}
+      />
+    );
+  } else if (battle.status !== "expired" && battle.chemistrySnapshot) {
+    body = <RevealFallback data={data} />;
+  } else {
+    body = <BattleClosedNotice expired={battle.status === "expired"} />;
+  }
   return (
-    <main className="share">
-      {team.closed && team.payload ? (
-        <Showcase payload={team.payload} />
-      ) : team.closed ? (
-        <ClosedNotice title={team.title} allJoined={team.allJoined} />
-      ) : (
-        <>
-          <Invite
-            title={team.title}
-            members={team.members}
-            hideChips={wizardActive}
-            wizardActive={wizardActive}
-            joinedInfo={joinedInfo}
-          />
-          {/* 미설치자 웹 참여 위저드 (미리보기 겸용) — 카카오 로그인 →
-              슬롯 claim → 정면 캡처 → 그룹 합류까지 브라우저에서 완결. */}
-          <JoinWizard
-            team={team}
-            supabaseUrl={loaderData.supabaseUrl}
-            supabaseAnonKey={loaderData.supabaseAnonKey}
-            cdnBase={loaderData.cdnBase}
-            onProgress={setWizardActive}
-            onJoined={setJoinedInfo}
-          />
-        </>
-      )}
+    <main className="join">
+      {body}
       <CTA
-        appOpenUrl={loaderData.appOpenUrl}
-        appStoreUrl={loaderData.appStoreUrl}
-        playStoreUrl={loaderData.playStoreUrl}
+        appOpenUrl={data.appOpenUrl}
+        appStoreUrl={data.appStoreUrl}
+        playStoreUrl={data.playStoreUrl}
       />
     </main>
   );
 }
 
-function Invite({
-  title,
-  members,
-  hideChips,
-  wizardActive,
-  joinedInfo,
-}: {
-  title: string;
-  members: TeamShowcase["members"];
-  hideChips: boolean;
-  /** 위저드 진행 중(로그인·미참여) — subtitle "당신의 자리가 비어 있어요". */
-  wizardActive: boolean;
-  /** 내 참여가 성립된 뒤의 최신 현황 — null 이면 아직 미참여. */
-  joinedInfo: { joined: number; total: number } | null;
-}) {
-  const joined = joinedInfo?.joined ?? members.filter((m) => m.joined).length;
-  const total = joinedInfo?.total ?? members.length;
-  // subtitle 3상태: 참여 완료 / 진행 중(로그인·미참여) / 방문만.
-  const status =
-    joinedInfo != null
-      ? "내 관상은 이미 등록했습니다."
-      : wizardActive
-        ? "당신의 자리가 비어 있어요"
-        : `아직 ${Math.max(total - joined, 0)}명이 미등록 중입니다.`;
-  // 등록 완료자 먼저 보여준다.
-  const ordered = [
-    ...members.filter((m) => m.joined),
-    ...members.filter((m) => !m.joined),
-  ];
-  return (
-    <section style={{ textAlign: "center", padding: "24px 16px" }}>
-      <h1 style={{ fontSize: 24, color: "#1a1a1a", margin: 0 }}>{title}</h1>
-      <p style={{ color: "#666", fontSize: 14, marginTop: 8 }}>
-        {total}명 중 {joined}명 등록 · {status}
-      </p>
-      {!hideChips && ordered.length > 0 && (
-        <div className="invite-chips">
-          {ordered.map((m, i) => (
-            <span
-              key={i}
-              className={
-                m.joined ? "invite-chip" : "invite-chip invite-chip--wait"
-              }
-            >
-              {m.name}
-              {m.joined ? " ✓" : ""}
-            </span>
-          ))}
-        </div>
-      )}
-    </section>
-  );
+/** ageMin/ageMax → 라벨. 전연령(둘 다 null) · 정확히 한 decade(N대) · 그 외 범위(N~M세). */
+function ageLabel(min: number | null, max: number | null): string {
+  if (min == null || max == null) return "전연령";
+  if (max - min === 9) return `${min}대`;
+  return `${min}~${max}세`;
 }
 
-function ClosedNotice({
-  title,
-  allJoined,
+function BattleInvite({
+  data,
 }: {
-  title: string;
-  allJoined: boolean;
+  data: ReturnType<typeof useLoaderData<typeof loader>>;
 }) {
+  const { battle, roster } = data;
+  const waitCount = Math.max(battle.maxPlayers - roster.length, 0);
   return (
     <section style={{ textAlign: "center", padding: "24px 16px" }}>
-      <h1 style={{ fontSize: 24, color: "#1a1a1a", margin: 0 }}>{title}</h1>
-      <p style={{ color: "#666", fontSize: 14, marginTop: 8 }}>
-        {allJoined
-          ? "모집이 끝났습니다. 케미 결과표가 만들어지기를 기다리는 중입니다."
-          : "전원이 모이지 않아 종료된 그룹입니다."}
-      </p>
-    </section>
-  );
-}
-
-function Showcase({ payload }: { payload: TeamPayload }) {
-  const { members, pairs, best } = payload;
-  const bandOf = (i: number, j: number) => {
-    const a = Math.min(i, j);
-    const b = Math.max(i, j);
-    return pairs.find((p) => p.a === a && p.b === b) ?? null;
-  };
-
-  return (
-    <section style={{ padding: "24px 16px" }}>
-      <h1
-        style={{
-          fontSize: 24,
-          color: "#1a1a1a",
-          textAlign: "center",
-          margin: 0,
-        }}
-      >
-        {payload.title}
+      <h1 style={{ fontSize: 24, color: "#1a1a1a", margin: 0 }}>
+        {battle.title}
       </h1>
-      <p
-        style={{
-          color: "#666",
-          fontSize: 13,
-          textAlign: "center",
-          marginTop: 4,
-        }}
-      >
-        케미 결과 발표
+      <p style={{ color: "#666", fontSize: 14, marginTop: 8 }}>
+        {roster.length} / {battle.maxPlayers}명 ·{" "}
+        {ageLabel(battle.ageMin, battle.ageMax)}
       </p>
-
-      {best.length > 0 && (
-        <div
-          style={{
-            background: "#f7f7f8",
-            borderRadius: 12,
-            padding: 16,
-            marginTop: 16,
-          }}
-        >
-          {best.map((h, k) => {
-            const band = bandOf(h.a, h.b);
-            return (
-              <div key={k} style={{ fontSize: 16, color: "#1a1a1a" }}>
-                🏆 {members[h.a]} × {members[h.b]}
-                {band ? ` ${band.e} ${band.l}` : ""}
-              </div>
-            );
-          })}
-        </div>
+      {battle.pledge && (
+        <p className="join-pledge-text" style={{ marginTop: 8 }}>
+          이 방의 공약 · {battle.pledge} — 베스트 케미 둘이 실행
+        </p>
       )}
+      <div className="invite-chips">
+        {roster.map((r) => (
+          <span key={r.userId} className="invite-chip">
+            {r.nickname}
+          </span>
+        ))}
+        {Array.from({ length: waitCount }).map((_, i) => (
+          <span key={`wait-${i}`} className="invite-chip invite-chip--wait">
+            대기 중
+          </span>
+        ))}
+      </div>
+    </section>
+  );
+}
 
+function BattleClosedNotice({ expired }: { expired: boolean }) {
+  return (
+    <section style={{ textAlign: "center", padding: "24px 16px" }}>
+      <p style={{ color: "#666", fontSize: 14, margin: 0 }}>
+        {expired
+          ? "인원이 모이지 않아 종료된 배틀입니다"
+          : "결과가 생성되지 않은 배틀입니다"}
+      </p>
+    </section>
+  );
+}
+
+const BAND_EMOJI_BY_CODE = ["🟢", "🔵", "🟠", "🔴"] as const;
+const BAND_LABEL_BY_CODE = ["천작지합", "금슬상화", "마합가성", "형극난조"] as const;
+
+function BattleShowcase({
+  title,
+  payload,
+  pledge,
+}: {
+  title: string;
+  payload: BattlePayload;
+  pledge: string | null;
+}) {
+  const nameOf = (slot: number) =>
+    payload.players.find((p) => p.slot === slot)?.name ?? "참가자";
+  const bandOf = (a: number, b: number) => {
+    const lo = Math.min(a, b);
+    const hi = Math.max(a, b);
+    return payload.pairs.find((p) => p.a === lo && p.b === hi)?.band;
+  };
+  const slots = payload.players.map((p) => p.slot);
+  return (
+    <section className="showcase">
+      <h1 className="showcase-title">{title}</h1>
+      <div className="showcase-best">
+        <p className="showcase-best-eyebrow">🏆 베스트 케미</p>
+        <p className="showcase-best-pair">
+          {nameOf(payload.best.a)} × {nameOf(payload.best.b)}
+        </p>
+        <p className="showcase-best-score">{payload.best.score}점</p>
+      </div>
+      {pledge && (
+        <p className="showcase-pledge">
+          이 방의 공약 — {pledge}
+          <br />
+          {nameOf(payload.best.a)}, {nameOf(payload.best.b)} 두 분의 몫입니다
+        </p>
+      )}
       <div style={{ overflowX: "auto", marginTop: 16 }}>
-        <table style={{ borderCollapse: "collapse", margin: "0 auto" }}>
+        <table style={tableStyle}>
           <thead>
             <tr>
-              <th />
-              {members.map((n, j) => (
-                <th key={j} style={head}>
-                  {n}
+              <th style={head} />
+              {slots.map((s) => (
+                <th key={s} style={head}>
+                  {nameOf(s)}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {members.map((n, i) => (
-              <tr key={i}>
-                <th style={{ ...head, textAlign: "right", paddingRight: 8 }}>
-                  {n}
-                </th>
-                {members.map((_, j) => (
-                  <td key={j} style={cell}>
-                    {i === j ? "·" : (bandOf(i, j)?.e ?? "")}
+            {slots.map((row) => (
+              <tr key={row}>
+                <th style={head}>{nameOf(row)}</th>
+                {slots.map((col) => (
+                  <td key={col} style={cell}>
+                    {row === col
+                      ? "·"
+                      : BAND_EMOJI_BY_CODE[bandOf(row, col) ?? 3]}
                   </td>
                 ))}
               </tr>
@@ -267,9 +237,73 @@ function Showcase({ payload }: { payload: TeamPayload }) {
           </tbody>
         </table>
       </div>
+      <p className="showcase-legend">
+        {BAND_EMOJI_BY_CODE.map((e, i) => `${e} ${BAND_LABEL_BY_CODE[i]}`).join(
+          "  ",
+        )}
+      </p>
     </section>
   );
 }
+
+function RevealFallback({
+  data,
+}: {
+  data: ReturnType<typeof useLoaderData<typeof loader>>;
+}) {
+  const [payload, setPayload] = useState<BattlePayload | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        await import("../lib/shared/face_engine.js");
+        const roster = data.roster.map((r) => ({
+          userId: r.userId,
+          slotNo: r.slotNo,
+          isOwner: r.isOwner,
+          nickname: r.nickname,
+        }));
+        const computed = computeBattlePayload(
+          roster,
+          data.battle.chemistrySnapshot as Record<string, unknown>,
+        );
+        if (!computed) {
+          if (!cancelled) setFailed(true);
+          return;
+        }
+        // 로그인 참가자면 정본 backfill (first-writer-wins, 실패 무해).
+        const sb = getSupabase(data.supabaseUrl, data.supabaseAnonKey);
+        const { data: session } = await sb.auth.getSession();
+        if (session.session) {
+          await submitBattleResult(sb, data.battle.id, computed).catch(
+            () => {},
+          );
+        }
+        if (!cancelled) setPayload(computed);
+      } catch {
+        if (!cancelled) setFailed(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  if (failed) return <BattleClosedNotice expired={false} />;
+  if (!payload) return <p className="join-sub">결과를 계산하는 중…</p>;
+  return (
+    <BattleShowcase
+      title={data.battle.title}
+      payload={payload}
+      pledge={data.battle.pledge}
+    />
+  );
+}
+
+const tableStyle: React.CSSProperties = {
+  borderCollapse: "collapse",
+  margin: "0 auto",
+};
 
 const head: React.CSSProperties = {
   fontSize: 12,
