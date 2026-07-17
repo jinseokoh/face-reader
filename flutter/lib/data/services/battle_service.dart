@@ -9,6 +9,9 @@ import '../../domain/models/battle.dart';
 import '../../domain/services/share/share_receive_service.dart';
 import 'supabase_service.dart';
 
+/// 로비 슬롯 프로필 — my-face 썸네일 URL + 관상 유형(archetype) 라벨.
+typedef BattleSlotProfile = ({String? thumbUrl, String? archetype});
+
 /// Chemistry Battle 서버 접점 — 방은 서버 우선(로컬 캐시 없음).
 /// 쓰기는 RPC(security definer)와 owner 직접 insert/delete 뿐,
 /// 읽기는 teams(컬럼 grant)·battle_roster·public_battles view.
@@ -158,6 +161,38 @@ class BattleService {
         final key = body['thumbnailKey'] as String?;
         result[uid] = key == null ? null : ThumbnailPaths.cdnUrl(key);
       } catch (_) {/* malformed body — fallback 아바타 */}
+    }
+    return result;
+  }
+
+  /// 로비 슬롯 표기용 — 각 유저 my-face 의 썸네일 URL + 관상 유형 라벨.
+  /// metrics body 한 번의 조회로 둘 다 뽑는다. 유형은 body 를 엔진으로
+  /// 재계산한 archetype(신의형·연예인형…), 실패한 유저는 해당 값만 null.
+  Future<Map<String, BattleSlotProfile>> fetchSlotProfiles(
+      List<String> userIds) async {
+    if (userIds.isEmpty) return const {};
+    final rows = await _client
+        .from('metrics')
+        .select('user_id, body')
+        .inFilter('user_id', userIds)
+        .eq('is_my_face', true);
+    final result = <String, BattleSlotProfile>{};
+    for (final r in rows) {
+      final uid = r['user_id'] as String?;
+      if (uid == null) continue;
+      String? thumbUrl;
+      String? archetype;
+      try {
+        final bodyStr = r['body'] as String;
+        final body = jsonDecode(bodyStr) as Map<String, dynamic>;
+        final key = body['thumbnailKey'] as String?;
+        thumbUrl = key == null ? null : ThumbnailPaths.cdnUrl(key);
+        try {
+          archetype =
+              FaceReadingReport.fromJsonString(bodyStr).archetype.primaryLabel;
+        } catch (_) {/* 엔진 재계산 실패 — 유형만 생략 */}
+      } catch (_) {/* malformed body — 아바타·유형 없이 표시 */}
+      result[uid] = (thumbUrl: thumbUrl, archetype: archetype);
     }
     return result;
   }

@@ -7,6 +7,7 @@ import '../../../data/services/battle_service.dart';
 import '../../../domain/models/battle.dart';
 import '../../providers/battle_provider.dart';
 import '../../providers/history_provider.dart';
+import '../../widgets/age_range_pill.dart';
 import '../../widgets/emotion_empty_state.dart';
 import '../../widgets/face_scan_pill.dart';
 import '../../widgets/login_bottom_sheet.dart';
@@ -241,12 +242,17 @@ class _PublicCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(battle.title, style: AppText.subTitle),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: Text(battle.title, style: AppText.subTitle)),
+                const SizedBox(width: AppSpacing.sm),
+                AgeRangePill(label: battle.ageRangeLabel),
+              ],
+            ),
             const SizedBox(height: AppSpacing.xs),
             Text('${battle.playerCount} / ${battle.maxPlayers} 명',
                 style: AppText.caption),
-            Text(battle.ageRangeLabel,
-                style: AppText.caption.copyWith(color: AppColors.textHint)),
           ],
         ),
       ),

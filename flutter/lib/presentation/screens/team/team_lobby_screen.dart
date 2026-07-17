@@ -13,6 +13,7 @@ import '../../../data/services/battle_service.dart';
 import '../../../domain/models/battle.dart';
 import '../../../domain/services/share/share_publisher.dart';
 import '../../providers/battle_provider.dart';
+import '../../widgets/age_range_pill.dart';
 import '../../widgets/compact_snack_bar.dart';
 import 'team_reveal_screen.dart';
 
@@ -31,7 +32,7 @@ class _TeamLobbyScreenState extends ConsumerState<TeamLobbyScreen> {
   final _service = BattleService.instance;
   Battle? _battle;
   List<BattleRosterEntry> _roster = const [];
-  Map<String, String?> _thumbs = const {};
+  Map<String, BattleSlotProfile> _profiles = const {};
   RealtimeChannel? _channel;
   Timer? _poll;
   bool _loading = true;
@@ -68,17 +69,15 @@ class _TeamLobbyScreenState extends ConsumerState<TeamLobbyScreen> {
         return;
       }
       final roster = await _service.fetchRoster(widget.battleId);
-      // thumb_open=false 인 방은 얼굴 썸네일을 서버에 요청하지 않는다 —
-      // 슬롯은 성별 기본 아이콘으로 대체.
-      final thumbs = battle.thumbOpen
-          ? await _service
-              .fetchMyFaceThumbnailUrls([for (final r in roster) r.userId])
-          : const <String, String?>{};
+      // 관상 유형(archetype)은 얼굴 공개 여부와 무관하게 슬롯에 노출한다.
+      // 썸네일 URL 은 thumb_open=true 인 방에서만 사용 (_SlotCell 게이트).
+      final profiles = await _service
+          .fetchSlotProfiles([for (final r in roster) r.userId]);
       if (!mounted || seq != _refreshSeq) return;
       setState(() {
         _battle = battle;
         _roster = roster;
-        _thumbs = thumbs;
+        _profiles = profiles;
         _loading = false;
       });
     } catch (_) {}
@@ -225,21 +224,7 @@ class _TeamLobbyScreenState extends ConsumerState<TeamLobbyScreen> {
                 child: Text('${_roster.length} / ${battle.maxPlayers} 명',
                     style: AppText.display),
               ),
-              // 연령대 pill — SourceBadge 의 outlined pill 레시피와 동일.
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                  vertical: 2,
-                ),
-                decoration: BoxDecoration(
-                  border: Border.all(color: AppColors.border),
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                ),
-                child: Text(
-                  battle.ageRangeLabel,
-                  style: AppText.hint.copyWith(color: AppColors.textHint),
-                ),
-              ),
+              AgeRangePill(label: battle.ageRangeLabel),
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
@@ -291,9 +276,11 @@ class _TeamLobbyScreenState extends ConsumerState<TeamLobbyScreen> {
       itemCount: battle.maxPlayers,
       itemBuilder: (_, i) {
         final entry = i < _roster.length ? _roster[i] : null;
+        final profile = entry == null ? null : _profiles[entry.userId];
         return _SlotCell(
           entry: entry,
-          thumbUrl: entry == null ? null : _thumbs[entry.userId],
+          thumbUrl: profile?.thumbUrl,
+          archetype: profile?.archetype,
           isMe: entry?.userId == _service.myUid,
           thumbOpen: battle.thumbOpen,
         );
@@ -328,8 +315,12 @@ class _TeamLobbyScreenState extends ConsumerState<TeamLobbyScreen> {
                 bottom: i == slotCount - 1 ? 0 : AppSpacing.lg),
             child: _SlotCell(
               entry: i < entries.length ? entries[i] : null,
-              thumbUrl:
-                  i < entries.length ? _thumbs[entries[i].userId] : null,
+              thumbUrl: i < entries.length
+                  ? _profiles[entries[i].userId]?.thumbUrl
+                  : null,
+              archetype: i < entries.length
+                  ? _profiles[entries[i].userId]?.archetype
+                  : null,
               isMe: i < entries.length &&
                   entries[i].userId == _service.myUid,
               thumbOpen: battle.thumbOpen,
@@ -442,6 +433,8 @@ String _genderIconAsset(String gender) =>
 class _SlotCell extends StatelessWidget {
   final BattleRosterEntry? entry;
   final String? thumbUrl;
+  /// 관상 유형 라벨(신의형·연예인형…) — 슬롯의 관심 유도 포인트.
+  final String? archetype;
   final bool isMe;
   final bool thumbOpen;
   /// 이성방 빈 슬롯의 열 성별 — alpha 0.35 성별 아이콘 표시용. 전체방은 null
@@ -450,14 +443,25 @@ class _SlotCell extends StatelessWidget {
   const _SlotCell({
     required this.entry,
     required this.thumbUrl,
+    required this.archetype,
     required this.isMe,
     required this.thumbOpen,
     this.slotGender,
   });
 
+  /// 전체방은 성별이 열로 안 드러나므로 "남 신의형" 처럼 성별을 붙이고,
+  /// 이성방은 열 헤더가 성별을 이미 말해주므로 유형만.
+  String? get _archetypeLine {
+    final a = archetype;
+    if (entry == null || a == null) return null;
+    if (slotGender != null) return a;
+    return '${entry!.gender == 'male' ? '남' : '여'} $a';
+  }
+
   @override
   Widget build(BuildContext context) {
     final filled = entry != null;
+    final typeLine = _archetypeLine;
     return Column(
       children: [
         Container(
@@ -480,6 +484,13 @@ class _SlotCell extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
+        if (typeLine != null)
+          Text(
+            typeLine,
+            style: AppText.hint.copyWith(color: AppColors.textPrimary),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
       ],
     );
   }

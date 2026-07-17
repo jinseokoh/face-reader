@@ -8,6 +8,7 @@ import '../../../data/services/battle_service.dart';
 import '../../../domain/models/battle.dart';
 import '../../providers/battle_provider.dart';
 import '../../providers/history_provider.dart';
+import '../../widgets/age_range_pill.dart';
 import '../../widgets/compact_snack_bar.dart';
 import '../../widgets/login_bottom_sheet.dart';
 import '../../widgets/my_face_capture_flow.dart';
@@ -190,11 +191,16 @@ class _BattleJoinScreenState extends ConsumerState<BattleJoinScreen> {
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
-        Text(battle.title, style: AppText.display),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: Text(battle.title, style: AppText.display)),
+            const SizedBox(width: AppSpacing.sm),
+            AgeRangePill(label: battle.ageRangeLabel),
+          ],
+        ),
         const SizedBox(height: AppSpacing.sm),
         Text('$_playerCount / ${battle.maxPlayers} 명', style: AppText.body),
-        const SizedBox(height: AppSpacing.xs),
-        Text(battle.ageRangeLabel, style: AppText.caption),
         if (battle.roomKind == BattleRoomKind.match) ...[
           const SizedBox(height: AppSpacing.sm),
           Text('남자 ${_remaining('male')}자리 남음', style: AppText.caption),
