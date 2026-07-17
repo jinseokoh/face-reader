@@ -28,6 +28,7 @@
 --   • tables    : users · coins · metrics · unlocks · bonus_recipients · ad_rewards
 --                 · ad_videos (custom video, §11-0) · ad_images (홈 배너, §11-0b)
 --                 · teams · team_members (Chemistry Battle 로비, §11-2/11-3/11-4)
+--                 · battle_matches · battle_messages (매칭·채팅, §11-6)
 --   • views     : admin_users (users + auth.users.email · service_role 전용)
 --   • triggers  : handle_new_user (auth.users → public.users + 보너스 3 코인)
 --                 touch_metrics_updated_at (views++ 시 updated_at 자동 갱신)
@@ -711,12 +712,13 @@ create table if not exists public.teams (
   visibility         text        not null default 'private'
                                  check (visibility in ('public', 'private')),
   password           text,
+  room_kind          text        not null default 'all'
+                                 check (room_kind in ('all', 'match')),
+  thumb_open         boolean     not null default false,
   max_players        int         not null default 8
-                                 check (max_players between 4 and 12),
-  age_min            int         check (age_min is null or age_min between 10 and 90),
-  age_max            int         check (age_max is null or age_max between 10 and 90),
-  pledge             text        check (pledge is null or char_length(pledge) <= 40),
-  chat_url           text,
+                                 check (max_players in (6, 8, 10, 12)),
+  age_min            int         not null check (age_min >= 20),
+  age_max            int         not null check (age_max = age_min + 10),
   status             text        not null default 'recruiting'
                                  check (status in ('recruiting', 'revealing', 'completed', 'expired')),
   started_at         timestamptz,
@@ -725,15 +727,9 @@ create table if not exists public.teams (
   result_payload     jsonb,
   created_at         timestamptz not null default now(),
   updated_at         timestamptz not null default now(),
-  -- 연령 범위는 둘 다 null(전연령) 또는 둘 다 값 + 순서.
-  check ((age_min is null) = (age_max is null)),
-  check (age_min is null or age_min <= age_max),
   -- 비밀방은 비밀번호 필수, 공개방은 비밀번호 없음.
   check (visibility <> 'private' or password is not null),
-  check (visibility <> 'public' or password is null),
-  -- 공약 공개방 성인 게이트: 공개방 + 공약이면 age_min >= 20 (10대 차단).
-  check (not (visibility = 'public' and pledge is not null
-              and (age_min is null or age_min < 20)))
+  check (visibility <> 'public' or password is null)
 );
 
 create index if not exists idx_teams_owner on public.teams (owner_id, updated_at desc);
@@ -785,6 +781,7 @@ create table if not exists public.team_members (
   team_id   uuid        not null references public.teams(id) on delete cascade,
   user_id   uuid        not null references auth.users(id) on delete cascade,
   slot_no   int         not null,
+  gender    text        not null check (gender in ('male', 'female')),
   is_owner  boolean     not null default false,
   joined_at timestamptz not null default now(),
   unique (team_id, user_id),
@@ -808,23 +805,96 @@ create policy "team_members_public_read"
   on public.team_members for select using (true);
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- 11-6. public.battle_matches / public.battle_messages — 매칭 성사·인앱 채팅
+-- ─────────────────────────────────────────────────────────────────────────────
+-- best 쌍의 채팅 개설 상호 동의. battle 당 1행, 행 자체는 submit_battle_result
+-- 가 생성한다 (best 는 payload 확정 이후에만 알 수 있다). consent: null=무응답,
+-- true=수락, false=거절 — 거절은 즉시 종결(재응답 불가). 쓰기는 전부 RPC
+-- (submit_battle_result / respond_match) — 직접 insert/update/delete 정책 없음.
+create table if not exists public.battle_matches (
+  team_id    uuid primary key references public.teams(id) on delete cascade,
+  user_a     uuid not null references auth.users(id) on delete cascade,
+  user_b     uuid not null references auth.users(id) on delete cascade,
+  a_consent  boolean,
+  b_consent  boolean,
+  opened_at  timestamptz            -- 둘 다 true 가 된 시각 = 채팅 개설
+);
+
+alter table public.battle_matches enable row level security;
+
+drop policy if exists "battle_matches_pair_read" on public.battle_matches;
+
+-- 읽기: 해당 쌍 본인만 — 타 참가자에게 동의 현황 비노출.
+create policy "battle_matches_pair_read"
+  on public.battle_matches for select
+  using (auth.uid() = user_a or auth.uid() = user_b);
+
+-- 인앱 1:1 채팅 — 성사된 쌍 전용. 방 삭제(30일 purge)와 함께 cascade.
+create table if not exists public.battle_messages (
+  id         uuid primary key default gen_random_uuid(),
+  team_id    uuid not null references public.battle_matches(team_id) on delete cascade,
+  sender_id  uuid not null references auth.users(id) on delete cascade,
+  body       text not null check (char_length(body) <= 500),
+  created_at timestamptz not null default now()
+);
+
+alter table public.battle_messages enable row level security;
+
+drop policy if exists "battle_messages_pair_read"   on public.battle_messages;
+drop policy if exists "battle_messages_pair_insert" on public.battle_messages;
+
+-- 읽기/쓰기 모두 opened_at 이 찍힌(채팅 개설) 매치의 쌍 본인만.
+-- insert 는 sender_id 위조 방지로 auth.uid() 강제.
+create policy "battle_messages_pair_read"
+  on public.battle_messages for select
+  using (exists (
+    select 1 from public.battle_matches m
+     where m.team_id = battle_messages.team_id
+       and m.opened_at is not null
+       and (auth.uid() = m.user_a or auth.uid() = m.user_b)
+  ));
+create policy "battle_messages_pair_insert"
+  on public.battle_messages for insert
+  with check (
+    sender_id = auth.uid()
+    and exists (
+      select 1 from public.battle_matches m
+       where m.team_id = battle_messages.team_id
+         and m.opened_at is not null
+         and (auth.uid() = m.user_a or auth.uid() = m.user_b)
+    )
+  );
+
+-- Realtime: battle_matches UPDATE(상대 응답 감지) + battle_messages 전체
+-- (채팅 왕복). 재실행 안전 (duplicate 무시).
+do $$ begin
+  alter publication supabase_realtime add table public.battle_matches;
+exception when duplicate_object then null; end $$;
+do $$ begin
+  alter publication supabase_realtime add table public.battle_messages;
+exception when duplicate_object then null; end $$;
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- 11-5. Battle RPC 상태 머신 + 공개 목록 view + Realtime
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 조인·이탈·결과 기록은 전부 security definer 단일 트랜잭션 — 정원·비밀번호·
 -- 연령·상태 가드를 원자 검증한다. 시작 조건은 정원 충족 하나뿐 (join 내장).
 
--- 조인: recruiting · 정원 미달 · 미중복 · 비밀번호 · 연령대 · my-face 존재.
--- 마지막 참가자의 트랜잭션이 chemistry_snapshot 동결 + revealing 전이까지 수행.
+-- 조인: recruiting · 정원 미달 · 미중복 · 비밀번호 · 연령대 · 성별 정원(match
+-- 방) · my-face 존재. 마지막 참가자의 트랜잭션이 chemistry_snapshot 동결 +
+-- revealing 전이까지 수행.
 create or replace function public.join_battle(p_team_id uuid, p_password text default null)
 returns void
 language plpgsql security definer set search_path = public
 as $$
 declare
-  v_uid   uuid := auth.uid();
-  v_team  record;
-  v_age   int;
-  v_count int;
-  v_slot  int;
+  v_uid          uuid := auth.uid();
+  v_team         record;
+  v_age          int;
+  v_gender       text;
+  v_count        int;
+  v_slot         int;
+  v_gender_count int;
 begin
   if v_uid is null then raise exception 'AUTH_REQUIRED'; end if;
 
@@ -837,15 +907,16 @@ begin
     raise exception 'BAD_PASSWORD';
   end if;
 
-  -- my-face 필수 + 연령대 게이트 (body.ageGroup "20s" → 20).
-  select nullif(regexp_replace(m.body::jsonb->>'ageGroup', '\D', '', 'g'), '')::int
-    into v_age
+  -- my-face 필수 + 연령대·성별 게이트 (body.ageGroup "20s" → 20, body.gender).
+  -- gender 는 my-face body 필수 필드라 결측도 NO_MY_FACE 로 준용한다.
+  select nullif(regexp_replace(m.body::jsonb->>'ageGroup', '\D', '', 'g'), '')::int,
+         m.body::jsonb->>'gender'
+    into v_age, v_gender
     from metrics m
    where m.user_id = v_uid and m.is_my_face
    order by m.updated_at desc limit 1;
-  if v_age is null then raise exception 'NO_MY_FACE'; end if;
-  if v_team.age_min is not null
-     and (v_age < v_team.age_min or v_age > v_team.age_max) then
+  if v_age is null or v_gender is null then raise exception 'NO_MY_FACE'; end if;
+  if v_age < v_team.age_min or v_age > v_team.age_max then
     raise exception 'AGE_NOT_ALLOWED';
   end if;
 
@@ -853,9 +924,18 @@ begin
     from team_members where team_id = p_team_id;
   if v_count >= v_team.max_players then raise exception 'FULL'; end if;
 
+  -- match 방: 성별 정원 = max_players/2 — 한쪽 성별이 차면 반대 성별만 남는다.
+  if v_team.room_kind = 'match' then
+    select count(*) into v_gender_count
+      from team_members where team_id = p_team_id and gender = v_gender;
+    if v_gender_count >= v_team.max_players / 2 then
+      raise exception 'GENDER_FULL';
+    end if;
+  end if;
+
   begin
-    insert into team_members (team_id, user_id, slot_no, is_owner)
-    values (p_team_id, v_uid, v_slot + 1, v_uid = v_team.owner_id);
+    insert into team_members (team_id, user_id, slot_no, gender, is_owner)
+    values (p_team_id, v_uid, v_slot + 1, v_gender, v_uid = v_team.owner_id);
   exception when unique_violation then
     raise exception 'ALREADY_JOINED';
   end;
@@ -903,12 +983,17 @@ $$;
 
 -- 결과 기록: revealing 방의 참가자가 1회. first-writer-wins — 입력이
 -- snapshot 으로 동결돼 전원이 같은 payload 를 내므로 후착은 무해 no-op.
+-- 최초 기록 성공 시 payload 의 best 쌍(slot) 을 roster 로 resolve 해
+-- battle_matches 행을 만든다 — payload 의 best 와 roster 만 신뢰하는
+-- definer 전용 지점 (클라이언트가 임의 상대를 지목해 위조할 수 없다).
 create or replace function public.submit_battle_result(p_team_id uuid, p_payload jsonb)
 returns void
 language plpgsql security definer set search_path = public
 as $$
 declare
-  v_uid uuid := auth.uid();
+  v_uid    uuid := auth.uid();
+  v_user_a uuid;
+  v_user_b uuid;
 begin
   if v_uid is null then raise exception 'AUTH_REQUIRED'; end if;
   if not exists (select 1 from team_members
@@ -918,19 +1003,72 @@ begin
   update teams
      set result_payload = p_payload, status = 'completed', closed_at = now()
    where id = p_team_id and status = 'revealing' and result_payload is null;
+
+  if found then
+    select user_id into v_user_a from team_members
+     where team_id = p_team_id and slot_no = (p_payload->'best'->>'a')::int;
+    select user_id into v_user_b from team_members
+     where team_id = p_team_id and slot_no = (p_payload->'best'->>'b')::int;
+    if v_user_a is not null and v_user_b is not null then
+      insert into battle_matches (team_id, user_a, user_b)
+      values (p_team_id, v_user_a, v_user_b)
+      on conflict (team_id) do nothing;
+    end if;
+  end if;
+end;
+$$;
+
+-- 매칭 성사 상호 동의: completed 방의 best 쌍 각자가 채팅 개설 여부를 응답.
+-- 거절은 즉시 종결 정책이라 재응답 불가 — consent 는 최초 응답으로 고정.
+-- 둘 다 true 가 되는 호출에서 opened_at 을 찍어 채팅을 연다.
+create or replace function public.respond_match(p_team_id uuid, p_accept boolean)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_uid   uuid := auth.uid();
+  v_match record;
+begin
+  if v_uid is null then raise exception 'AUTH_REQUIRED'; end if;
+  if not exists (select 1 from teams where id = p_team_id and status = 'completed') then
+    raise exception 'NOT_MATCHED';
+  end if;
+
+  select * into v_match from battle_matches where team_id = p_team_id for update;
+  if not found or (v_uid <> v_match.user_a and v_uid <> v_match.user_b) then
+    raise exception 'NOT_MATCHED';
+  end if;
+  if (v_uid = v_match.user_a and v_match.a_consent is not null)
+     or (v_uid = v_match.user_b and v_match.b_consent is not null) then
+    raise exception 'ALREADY_DECIDED';
+  end if;
+
+  if v_uid = v_match.user_a then
+    update battle_matches set a_consent = p_accept where team_id = p_team_id;
+  else
+    update battle_matches set b_consent = p_accept where team_id = p_team_id;
+  end if;
+
+  update battle_matches
+     set opened_at = now()
+   where team_id = p_team_id and opened_at is null
+     and a_consent is true and b_consent is true;
 end;
 $$;
 
 revoke execute on function public.join_battle(uuid, text)          from public, anon;
 revoke execute on function public.leave_battle(uuid)               from public, anon;
 revoke execute on function public.submit_battle_result(uuid, jsonb) from public, anon;
+revoke execute on function public.respond_match(uuid, boolean)     from public, anon;
 grant  execute on function public.join_battle(uuid, text)          to authenticated;
 grant  execute on function public.leave_battle(uuid)               to authenticated;
 grant  execute on function public.submit_battle_result(uuid, jsonb) to authenticated;
+grant  execute on function public.respond_match(uuid, boolean)     to authenticated;
 
 -- 공개 배틀 목록 — 모집 중 공개방만, 컬럼 화이트리스트 (password 접근 없음).
 create or replace view public.public_battles with (security_invoker = on) as
-  select t.id, t.title, t.max_players, t.age_min, t.age_max, t.pledge, t.created_at,
+  select t.id, t.title, t.room_kind, t.thumb_open, t.max_players, t.age_min,
+         t.age_max, t.created_at,
          (select count(*)::int from public.team_members tm where tm.team_id = t.id)
            as player_count
     from public.teams t
@@ -942,7 +1080,7 @@ create or replace view public.public_battles with (security_invoker = on) as
 -- 읽기 범위 = 방과 동일 link-share 모델. 다중 테이블 join 이라 auto-update
 -- 불가지만 §11-4 에서 write revoke 로 이중 봉인.
 create or replace view public.battle_roster as
-  select tm.team_id, tm.user_id, tm.slot_no, tm.is_owner, tm.joined_at,
+  select tm.team_id, tm.user_id, tm.slot_no, tm.gender, tm.is_owner, tm.joined_at,
          u.nickname
     from public.team_members tm
     join public.users u on u.id = tm.user_id;
@@ -954,8 +1092,8 @@ create or replace view public.battle_roster as
 -- 제외 — 변경 이벤트는 신호이고 본문은 클라이언트가 refetch 한다.
 do $$ begin
   alter publication supabase_realtime add table public.teams
-    (id, owner_id, title, visibility, max_players, age_min, age_max,
-     pledge, chat_url, status, started_at, closed_at, created_at, updated_at);
+    (id, owner_id, title, visibility, room_kind, thumb_open, max_players,
+     age_min, age_max, status, started_at, closed_at, created_at, updated_at);
 exception when duplicate_object then null; end $$;
 do $$ begin
   alter publication supabase_realtime add table public.team_members;
@@ -991,20 +1129,24 @@ grant select on public.admin_users to service_role;
 -- §11-1 의 blanket grant 가 teams 전 컬럼을 열어 두므로 여기서 다시 좁힌다.
 -- SELECT: password 만 제외 — 비교는 join_battle 내부에서만.
 revoke select on public.teams from anon, authenticated;
-grant select (id, owner_id, title, visibility, max_players, age_min, age_max,
-              pledge, chat_url, status, started_at, closed_at,
+grant select (id, owner_id, title, visibility, room_kind, thumb_open, max_players,
+              age_min, age_max, status, started_at, closed_at,
               chemistry_snapshot, result_payload, created_at, updated_at)
   on public.teams to anon, authenticated;
 -- INSERT: 생성 입력 컬럼만 — status/started_at/snapshot/payload 는 default·RPC 전용.
 revoke insert on public.teams from anon, authenticated;
-grant insert (id, owner_id, title, visibility, password, max_players,
-              age_min, age_max, pledge, chat_url)
+grant insert (id, owner_id, title, visibility, password, room_kind, thumb_open,
+              max_players, age_min, age_max)
   on public.teams to authenticated;
 -- UPDATE: title 만 (방 이름 수정). 상태 전이·payload 는 RPC 전용.
 revoke update on public.teams from anon, authenticated;
 grant update (title) on public.teams to authenticated;
 -- team_members 직접 쓰기 차단 — RPC (security definer) 전용.
 revoke insert, update, delete on public.team_members from anon, authenticated;
+-- battle_matches 직접 쓰기 차단 — RPC (submit_battle_result/respond_match) 전용.
+revoke insert, update, delete on public.battle_matches from anon, authenticated;
+-- battle_messages: update/delete 차단 (불변 로그) — insert 는 RLS 정책이 쌍 본인만 허용.
+revoke update, delete on public.battle_messages from anon, authenticated;
 -- view 쓰기 봉인 — public_battles 는 단일 테이블이라 auto-updatable,
 -- owner 권한 실행이면 RLS 우회 쓰기 통로가 된다 (final review Critical).
 revoke insert, update, delete on public.public_battles from anon, authenticated;
