@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
@@ -151,9 +150,6 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
     return null;
   }
 
-  bool get _amInBest =>
-      _mySlot != null && (_best['a'] == _mySlot || _best['b'] == _mySlot);
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -184,15 +180,10 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
   }
 
   Widget _board() {
-    final battle = _battle!;
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
         _bestCard(),
-        if (battle.pledge != null) ...[
-          const SizedBox(height: AppSpacing.md),
-          _pledgeCard(battle),
-        ],
         const SizedBox(height: AppSpacing.xl),
         Text('상호 케미 맵', style: AppText.sectionTitle),
         const SizedBox(height: AppSpacing.md),
@@ -227,47 +218,6 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
           Text('${_nameOf(a)} × ${_nameOf(b)}', style: AppText.display),
           const SizedBox(height: AppSpacing.sm),
           Text('$score점', style: AppText.modalTitle),
-        ],
-      ),
-    );
-  }
-
-  Widget _pledgeCard(Battle battle) {
-    final a = (_best['a'] as num).toInt();
-    final b = (_best['b'] as num).toInt();
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: AppColors.goldSoft.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.gold),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('이 방의 공약', style: AppText.subTitle),
-          const SizedBox(height: AppSpacing.xs),
-          Text('${battle.pledge!}\n${_nameOf(a)}, ${_nameOf(b)} 두 분의 몫입니다',
-              style: AppText.body),
-          if (_amInBest && battle.chatUrl != null) ...[
-            const SizedBox(height: AppSpacing.md),
-            InkWell(
-              onTap: () async {
-                await Clipboard.setData(
-                    ClipboardData(text: battle.chatUrl!));
-                if (mounted) {
-                  showTopSnackBar(
-                    Overlay.of(context),
-                    CompactSnackBar.success(message: '오픈채팅 링크를 복사했습니다'),
-                  );
-                }
-              },
-              child: Text(battle.chatUrl!,
-                  style: AppText.caption.copyWith(
-                      color: AppColors.info,
-                      decoration: TextDecoration.underline)),
-            ),
-          ],
         ],
       ),
     );

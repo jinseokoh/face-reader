@@ -124,7 +124,8 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
         maxPlayers: _maxPlayers,
         ageMin: _ageMin,
         ageMax: _ageMax,
-        pledge: _pledgeAllowed ? _pledgeValue : null,
+        roomKind: BattleRoomKind.all,
+        thumbOpen: false,
       );
       await service.joinBattle(battle.id,
           password: _isPublic ? null : _pinCtrl.text.trim());

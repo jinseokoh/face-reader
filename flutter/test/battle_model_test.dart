@@ -101,8 +101,8 @@ void main() {
       'max_players': 8,
       'age_min': 20,
       'age_max': 30,
-      'pledge': '🎬 영화',
-      'chat_url': 'https://open.kakao.com/o/x',
+      'room_kind': 'all',
+      'thumb_open': false,
       'status': 'recruiting',
       'started_at': null,
       'closed_at': null,
@@ -116,6 +116,30 @@ void main() {
     expect(battle.isRecruiting, isTrue);
     expect(battle.hasResult, isFalse);
     expect(battle.ageRangeLabel, '20~39세');
+    expect(battle.roomKind, BattleRoomKind.all);
+    expect(battle.thumbOpen, isFalse);
+  });
+
+  test('Battle.fromRow — room_kind=match·thumb_open=true 파싱', () {
+    final battle = Battle.fromRow({
+      'id': 'b2',
+      'owner_id': 'u1',
+      'title': '이성 매칭방',
+      'visibility': 'private',
+      'max_players': 8,
+      'age_min': 20,
+      'age_max': 30,
+      'room_kind': 'match',
+      'thumb_open': true,
+      'status': 'recruiting',
+      'started_at': null,
+      'closed_at': null,
+      'chemistry_snapshot': null,
+      'result_payload': null,
+      'created_at': '2026-07-16T09:00:00Z',
+    });
+    expect(battle.roomKind, BattleRoomKind.match);
+    expect(battle.thumbOpen, isTrue);
   });
 
   test('ageRangeLabel — 전연령·단일 decade·범위', () {
@@ -127,8 +151,8 @@ void main() {
           'max_players': 4,
           'age_min': lo,
           'age_max': hi,
-          'pledge': null,
-          'chat_url': null,
+          'room_kind': 'all',
+          'thumb_open': false,
           'status': 'expired',
           'started_at': null,
           'closed_at': null,
@@ -147,12 +171,14 @@ void main() {
       'team_id': 'b1',
       'user_id': 'u2',
       'slot_no': 3,
+      'gender': 'female',
       'is_owner': false,
       'joined_at': '2026-07-16T09:10:00Z',
       'nickname': '철수',
     });
     expect(entry.slotNo, 3);
     expect(entry.nickname, '철수');
+    expect(entry.gender, 'female');
 
     final pub = PublicBattle.fromRow({
       'id': 'b1',
@@ -160,12 +186,15 @@ void main() {
       'max_players': 6,
       'age_min': null,
       'age_max': null,
-      'pledge': null,
+      'room_kind': 'match',
+      'thumb_open': true,
       'created_at': '2026-07-16T09:00:00Z',
       'player_count': 2,
     });
     expect(pub.playerCount, 2);
     expect(pub.ageRangeLabel, '전연령');
+    expect(pub.roomKind, BattleRoomKind.match);
+    expect(pub.thumbOpen, isTrue);
   });
 
   test('mapBattleError — 서버 에러 계약 문자열 매핑', () {
@@ -182,6 +211,10 @@ void main() {
       BattleJoinError.full,
     );
     expect(
+      mapBattleError(const PostgrestException(message: 'GENDER_FULL')),
+      BattleJoinError.genderFull,
+    );
+    expect(
       mapBattleError(Exception('boom')),
       BattleJoinError.unknown,
     );
@@ -191,17 +224,65 @@ void main() {
     }
   });
 
+  test('genderFullLabel — 본인 성별로 분기', () {
+    expect(genderFullLabel('male'), '남자 자리가 다 찼습니다');
+    expect(genderFullLabel('female'), '여자 자리가 다 찼습니다');
+  });
+
+  test('BattleMatch.fromRow — consent·isOpen·consentOf·otherOf', () {
+    final pending = BattleMatch.fromRow({
+      'team_id': 'b1',
+      'user_a': 'u1',
+      'user_b': 'u2',
+      'a_consent': null,
+      'b_consent': null,
+      'opened_at': null,
+    });
+    expect(pending.isOpen, isFalse);
+    expect(pending.consentOf('u1'), isNull);
+    expect(pending.consentOf('u3'), isNull);
+    expect(pending.otherOf('u1'), 'u2');
+    expect(pending.otherOf('u2'), 'u1');
+
+    final open = BattleMatch.fromRow({
+      'team_id': 'b1',
+      'user_a': 'u1',
+      'user_b': 'u2',
+      'a_consent': true,
+      'b_consent': true,
+      'opened_at': '2026-07-16T09:20:00Z',
+    });
+    expect(open.isOpen, isTrue);
+    expect(open.consentOf('u1'), isTrue);
+    expect(open.consentOf('u2'), isTrue);
+  });
+
+  test('BattleMessage.fromRow', () {
+    final message = BattleMessage.fromRow({
+      'id': 'm1',
+      'team_id': 'b1',
+      'sender_id': 'u1',
+      'body': '안녕하세요',
+      'created_at': '2026-07-16T09:30:00Z',
+    });
+    expect(message.id, 'm1');
+    expect(message.senderId, 'u1');
+    expect(message.body, '안녕하세요');
+  });
+
   test('assembleBattlePlayers — roster+snapshot → slot 오름차순 BattlePlayer', () {
     final rng = Random(42);
     final bodyA = jsonDecode(_fakeReport(rng).toBodyJson()) as Map<String, dynamic>;
     final bodyB = jsonDecode(_fakeReport(rng).toBodyJson()) as Map<String, dynamic>;
+    // roster gender 는 report.gender(항상 female, _fakeReport 고정값)와
+    // 일부러 어긋나게 둔다 — gender 소스가 roster 임을 증명.
     final roster = [
       BattleRosterEntry.fromRow({
-        'team_id': 'b1', 'user_id': 'u2', 'slot_no': 2,
+        'team_id': 'b1', 'user_id': 'u2', 'slot_no': 2, 'gender': 'female',
         'is_owner': false, 'joined_at': '2026-07-16T09:10:00Z', 'nickname': '영희',
       }),
       BattleRosterEntry.fromRow({
-        'team_id': 'b1', 'user_id': 'u1', 'slot_no': 1,
+        'team_id': 'b1', 'user_id': 'u1', 'slot_no': 1, 'gender': 'male',
         'is_owner': true, 'joined_at': '2026-07-16T09:00:00Z', 'nickname': '지은',
       }),
     ];
@@ -212,7 +293,10 @@ void main() {
     expect(players.length, 2);
     expect(players.first.slot, 1);
     expect(players.first.name, '지은');
+    // gender 는 roster(서버 강제값) 소스 — report.gender(female)와 무관.
+    expect(players.first.gender, 'male');
     expect(players.last.slot, 2);
+    expect(players.last.gender, 'female');
     // snapshot 에 없는 참가자는 제외 (계정 삭제 등 극단 케이스 방어).
     final partial = assembleBattlePlayers(
       roster: roster,

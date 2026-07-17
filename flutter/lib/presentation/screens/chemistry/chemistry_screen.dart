@@ -215,10 +215,6 @@ class _PublicCard extends StatelessWidget {
                 style: AppText.caption),
             Text(battle.ageRangeLabel,
                 style: AppText.caption.copyWith(color: AppColors.textHint)),
-            if (battle.pledge != null) ...[
-              const SizedBox(height: AppSpacing.xs),
-              Text('공약 ${battle.pledge!}', style: AppText.hint),
-            ],
           ],
         ),
       ),

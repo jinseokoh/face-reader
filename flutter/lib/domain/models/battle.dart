@@ -12,6 +12,12 @@ enum BattleStatus { recruiting, revealing, completed, expired }
 BattleStatus battleStatusFrom(String raw) =>
     BattleStatus.values.firstWhere((s) => s.name == raw);
 
+/// 방 유형 — 'all'(전체 케미) / 'match'(남녀 반반 이성 매칭).
+enum BattleRoomKind { all, match }
+
+BattleRoomKind battleRoomKindFrom(String raw) =>
+    BattleRoomKind.values.byName(raw);
+
 String _ageRangeLabel(int? ageMin, int? ageMax) {
   if (ageMin == null || ageMax == null) return '전연령';
   if (ageMin == ageMax) return '$ageMin대';
@@ -26,8 +32,8 @@ class Battle {
   final int maxPlayers;
   final int? ageMin;
   final int? ageMax;
-  final String? pledge;
-  final String? chatUrl;
+  final BattleRoomKind roomKind;
+  final bool thumbOpen;
   final BattleStatus status;
   final DateTime? startedAt;
   final DateTime? closedAt;
@@ -43,8 +49,8 @@ class Battle {
     required this.maxPlayers,
     required this.ageMin,
     required this.ageMax,
-    required this.pledge,
-    required this.chatUrl,
+    required this.roomKind,
+    required this.thumbOpen,
     required this.status,
     required this.startedAt,
     required this.closedAt,
@@ -61,8 +67,8 @@ class Battle {
         maxPlayers: (row['max_players'] as num).toInt(),
         ageMin: (row['age_min'] as num?)?.toInt(),
         ageMax: (row['age_max'] as num?)?.toInt(),
-        pledge: row['pledge'] as String?,
-        chatUrl: row['chat_url'] as String?,
+        roomKind: battleRoomKindFrom(row['room_kind'] as String),
+        thumbOpen: row['thumb_open'] as bool,
         status: battleStatusFrom(row['status'] as String),
         startedAt: row['started_at'] == null
             ? null
@@ -84,6 +90,7 @@ class BattleRosterEntry {
   final String teamId;
   final String userId;
   final int slotNo;
+  final String gender;
   final bool isOwner;
   final DateTime joinedAt;
   final String nickname;
@@ -92,6 +99,7 @@ class BattleRosterEntry {
     required this.teamId,
     required this.userId,
     required this.slotNo,
+    required this.gender,
     required this.isOwner,
     required this.joinedAt,
     required this.nickname,
@@ -102,6 +110,7 @@ class BattleRosterEntry {
         teamId: row['team_id'] as String,
         userId: row['user_id'] as String,
         slotNo: (row['slot_no'] as num).toInt(),
+        gender: row['gender'] as String,
         isOwner: row['is_owner'] as bool,
         joinedAt: DateTime.parse(row['joined_at'] as String),
         nickname: (row['nickname'] as String?) ?? '참가자',
@@ -114,7 +123,8 @@ class PublicBattle {
   final int maxPlayers;
   final int? ageMin;
   final int? ageMax;
-  final String? pledge;
+  final BattleRoomKind roomKind;
+  final bool thumbOpen;
   final DateTime createdAt;
   final int playerCount;
 
@@ -124,7 +134,8 @@ class PublicBattle {
     required this.maxPlayers,
     required this.ageMin,
     required this.ageMax,
-    required this.pledge,
+    required this.roomKind,
+    required this.thumbOpen,
     required this.createdAt,
     required this.playerCount,
   });
@@ -135,7 +146,8 @@ class PublicBattle {
         maxPlayers: (row['max_players'] as num).toInt(),
         ageMin: (row['age_min'] as num?)?.toInt(),
         ageMax: (row['age_max'] as num?)?.toInt(),
-        pledge: row['pledge'] as String?,
+        roomKind: battleRoomKindFrom(row['room_kind'] as String),
+        thumbOpen: row['thumb_open'] as bool,
         createdAt: DateTime.parse(row['created_at'] as String),
         playerCount: (row['player_count'] as num).toInt(),
       );
@@ -151,6 +163,9 @@ enum BattleJoinError {
   badPassword('BAD_PASSWORD', '비밀번호가 일치하지 않습니다'),
   noMyFace('NO_MY_FACE', '내 관상 등록이 필요합니다'),
   ageNotAllowed('AGE_NOT_ALLOWED', '이 방의 연령대에 해당하지 않습니다'),
+  // GENDER_FULL 이 'FULL' 을 부분 문자열로 포함하므로 mapBattleError 의 순차
+  // contains 매칭에서 full 보다 먼저 검사되도록 앞에 둔다.
+  genderFull('GENDER_FULL', '이 방의 남녀 자리 중 한쪽이 다 찼습니다'),
   full('FULL', '정원이 가득 찼습니다'),
   alreadyJoined('ALREADY_JOINED', '이미 참가한 방입니다'),
   ownerCannotLeave('OWNER_CANNOT_LEAVE', '방장은 나갈 수 없습니다'),
@@ -171,8 +186,79 @@ BattleJoinError mapBattleError(Object e) {
   return BattleJoinError.unknown;
 }
 
+/// GENDER_FULL 중립 카피를 본인 성별로 분기 — 'male'→남자 자리, 그 외(female)→여자 자리.
+String genderFullLabel(String myGender) =>
+    myGender == 'male' ? '남자 자리가 다 찼습니다' : '여자 자리가 다 찼습니다';
+
+/// 매칭 성사 — submit_battle_result 가 best 쌍을 확정해 생성, respond_match
+/// 로 쌍 각자가 채팅 개설에 동의. consent: null=무응답, true=수락, false=거절.
+class BattleMatch {
+  final String teamId;
+  final String userA;
+  final String userB;
+  final bool? aConsent;
+  final bool? bConsent;
+  final DateTime? openedAt;
+
+  const BattleMatch({
+    required this.teamId,
+    required this.userA,
+    required this.userB,
+    required this.aConsent,
+    required this.bConsent,
+    required this.openedAt,
+  });
+
+  factory BattleMatch.fromRow(Map<String, dynamic> row) => BattleMatch(
+        teamId: row['team_id'] as String,
+        userA: row['user_a'] as String,
+        userB: row['user_b'] as String,
+        aConsent: row['a_consent'] as bool?,
+        bConsent: row['b_consent'] as bool?,
+        openedAt: row['opened_at'] == null
+            ? null
+            : DateTime.parse(row['opened_at'] as String),
+      );
+
+  bool get isOpen => openedAt != null;
+
+  bool? consentOf(String uid) {
+    if (uid == userA) return aConsent;
+    if (uid == userB) return bConsent;
+    return null;
+  }
+
+  String otherOf(String uid) => uid == userA ? userB : userA;
+}
+
+class BattleMessage {
+  final String id;
+  final String teamId;
+  final String senderId;
+  final String body;
+  final DateTime createdAt;
+
+  const BattleMessage({
+    required this.id,
+    required this.teamId,
+    required this.senderId,
+    required this.body,
+    required this.createdAt,
+  });
+
+  factory BattleMessage.fromRow(Map<String, dynamic> row) => BattleMessage(
+        id: row['id'] as String,
+        teamId: row['team_id'] as String,
+        senderId: row['sender_id'] as String,
+        body: row['body'] as String,
+        createdAt: DateTime.parse(row['created_at'] as String),
+      );
+}
+
 /// chemistry_snapshot({user_id: body}) + roster → 엔진 입력.
 /// snapshot 에 없는 참가자(계정 삭제 극단 케이스)는 제외. slot 오름차순.
+/// gender 는 roster(join_battle 조인 시점 서버 강제값)에서 읽는다 — report
+/// 재파싱이 아닌 서버와 동일 소스.
 List<BattlePlayer> assembleBattlePlayers({
   required List<BattleRosterEntry> roster,
   required Map<String, dynamic> snapshot,
@@ -185,7 +271,7 @@ List<BattlePlayer> assembleBattlePlayers({
     players.add(BattlePlayer(
       slot: entry.slotNo,
       name: entry.nickname,
-      gender: report.gender.name,
+      gender: entry.gender,
       report: report,
     ));
   }

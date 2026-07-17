@@ -29,7 +29,6 @@ class _BattleJoinScreenState extends ConsumerState<BattleJoinScreen> {
   final _pinCtrl = TextEditingController();
   Battle? _battle;
   int _playerCount = 0;
-  bool _agreed = false;
   bool _busy = false;
   bool _loading = true;
 
@@ -175,9 +174,7 @@ class _BattleJoinScreenState extends ConsumerState<BattleJoinScreen> {
   }
 
   Widget _joinBody(Battle battle) {
-    final needsConsent = battle.pledge != null;
-    final canJoin = (!needsConsent || _agreed) &&
-        (battle.isPublic || _pinCtrl.text.trim().length == 4);
+    final canJoin = battle.isPublic || _pinCtrl.text.trim().length == 4;
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
@@ -186,35 +183,6 @@ class _BattleJoinScreenState extends ConsumerState<BattleJoinScreen> {
         Text('$_playerCount / ${battle.maxPlayers} 명', style: AppText.body),
         const SizedBox(height: AppSpacing.xs),
         Text(battle.ageRangeLabel, style: AppText.caption),
-        if (battle.pledge != null) ...[
-          const SizedBox(height: AppSpacing.xl),
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            decoration: BoxDecoration(
-              color: AppColors.goldSoft.withValues(alpha: 0.35),
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              border: Border.all(color: AppColors.gold),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('이 방의 공약', style: AppText.subTitle),
-                const SizedBox(height: AppSpacing.xs),
-                Text(battle.pledge!, style: AppText.body),
-                const SizedBox(height: AppSpacing.xs),
-                Text('베스트 케미로 뽑힌 두 사람이 실행합니다', style: AppText.hint),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          CheckboxListTile(
-            value: _agreed,
-            onChanged: (v) => setState(() => _agreed = v ?? false),
-            controlAffinity: ListTileControlAffinity.leading,
-            contentPadding: EdgeInsets.zero,
-            title: Text('공약에 동의하고 참가합니다', style: AppText.caption),
-          ),
-        ],
         if (!battle.isPublic) ...[
           const SizedBox(height: AppSpacing.xl),
           TextField(

@@ -23,7 +23,7 @@ class BattleService {
   // (select=*) 가 42501 로 실패한다 — grant 된 컬럼만 명시.
   static const _teamCols =
       'id, owner_id, title, visibility, max_players, age_min, age_max, '
-      'pledge, chat_url, status, started_at, closed_at, '
+      'room_kind, thumb_open, status, started_at, closed_at, '
       'chemistry_snapshot, result_payload, created_at';
 
   String? get myUid => _client.auth.currentUser?.id;
@@ -36,8 +36,8 @@ class BattleService {
     required int maxPlayers,
     int? ageMin,
     int? ageMax,
-    String? pledge,
-    String? chatUrl,
+    required BattleRoomKind roomKind,
+    required bool thumbOpen,
   }) async {
     final row = await _client
         .from('teams')
@@ -49,8 +49,8 @@ class BattleService {
           'max_players': maxPlayers,
           'age_min': ?ageMin,
           'age_max': ?ageMax,
-          if (pledge != null && pledge.isNotEmpty) 'pledge': pledge,
-          if (chatUrl != null && chatUrl.isNotEmpty) 'chat_url': chatUrl,
+          'room_kind': roomKind.name,
+          'thumb_open': thumbOpen,
         })
         .select(_teamCols)
         .single();
@@ -209,4 +209,68 @@ class BattleService {
 
   Future<void> unwatch(RealtimeChannel channel) =>
       _client.removeChannel(channel);
+
+  /// 매칭 성사 상태 — RLS 상 쌍 본인에게만 row 가 보인다(남에겐 null).
+  Future<BattleMatch?> fetchMatch(String teamId) async {
+    final row = await _client
+        .from('battle_matches')
+        .select()
+        .eq('team_id', teamId)
+        .maybeSingle();
+    return row == null ? null : BattleMatch.fromRow(row);
+  }
+
+  Future<void> respondMatch(String teamId, bool accept) =>
+      _client.rpc('respond_match', params: {
+        'p_team_id': teamId,
+        'p_accept': accept,
+      });
+
+  Future<List<BattleMessage>> fetchMessages(String teamId) async {
+    final rows = await _client
+        .from('battle_messages')
+        .select()
+        .eq('team_id', teamId)
+        .order('created_at', ascending: true)
+        .limit(200);
+    return [for (final r in rows) BattleMessage.fromRow(r)];
+  }
+
+  /// sender_id 는 RLS 가 auth.uid() 일치를 강제 — 명시적으로 실어 보낸다.
+  Future<void> sendMessage(String teamId, String body) =>
+      _client.from('battle_messages').insert({
+        'team_id': teamId,
+        'sender_id': myUid,
+        'body': body,
+      });
+
+  /// 매칭·채팅 라이브 — battle_matches UPDATE(상대 응답) + battle_messages
+  /// INSERT(새 메시지). 콜백은 신호일 뿐: 수신 시 호출부가 refetch.
+  RealtimeChannel watchMatch(String teamId, void Function() onChange) {
+    final channel = _client.channel('battle_match:$teamId')
+      ..onPostgresChanges(
+        event: PostgresChangeEvent.update,
+        schema: 'public',
+        table: 'battle_matches',
+        filter: PostgresChangeFilter(
+          type: PostgresChangeFilterType.eq,
+          column: 'team_id',
+          value: teamId,
+        ),
+        callback: (_) => onChange(),
+      )
+      ..onPostgresChanges(
+        event: PostgresChangeEvent.insert,
+        schema: 'public',
+        table: 'battle_messages',
+        filter: PostgresChangeFilter(
+          type: PostgresChangeFilterType.eq,
+          column: 'team_id',
+          value: teamId,
+        ),
+        callback: (_) => onChange(),
+      );
+    channel.subscribe();
+    return channel;
+  }
 }
