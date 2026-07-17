@@ -140,9 +140,9 @@ function BattleInvite({
         {ageLabel(battle.ageMin, battle.ageMax)}
       </p>
       {battle.pledge && (
-        <p className="join-pledge-text" style={{ marginTop: 8 }}>
-          이 방의 공약 · {battle.pledge} — 베스트 케미 둘이 실행
-        </p>
+        <div className="join-pledge">
+          <p className="join-pledge-text">이 방의 공약 — {battle.pledge}</p>
+        </div>
       )}
       <div className="invite-chips">
         {roster.map((r) => (

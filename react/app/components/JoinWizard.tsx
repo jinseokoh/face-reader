@@ -119,16 +119,10 @@ export function JoinWizard({
     alias: string | null
   } | null>(null)
   // 비밀방 PIN — sessionStorage 로 OAuth 왕복(카카오 리다이렉트가 state 를
-  // 날린다) 후에도 값을 잃지 않는다.
+  // 날린다) 후에도 값을 잃지 않는다. SSR hydration 중엔 sessionStorage 를
+  // 읽지 않고(DEMO_KEY 와 동일 패턴) 마운트 useEffect 에서 복원한다.
   const pinStorageKey = `facely:battle-pin:${battle.id}`
-  const [pin, setPin] = useState<string>(() => {
-    if (typeof sessionStorage === 'undefined') return ''
-    try {
-      return sessionStorage.getItem(pinStorageKey) ?? ''
-    } catch {
-      return ''
-    }
-  })
+  const [pin, setPin] = useState<string>('')
   // 공약 동의 — 미체크 시 참가 버튼 disabled.
   const [pledgeConsent, setPledgeConsent] = useState(false)
   // done 스테이지 라이브 로비 — watchBattle 구독 + 폴링으로 항상 최신.
@@ -216,6 +210,12 @@ export function JoinWizard({
       }
     } catch {
       /* 손상된 저장값은 무시 */
+    }
+    try {
+      const savedPin = sessionStorage.getItem(pinStorageKey)
+      if (savedPin) setPin(savedPin)
+    } catch {
+      /* storage 불가 환경은 무시 */
     }
     if (!supabaseUrl || !supabaseAnonKey) return
     // ⚠️ 순서 중요 — ?code= 는 createClient(detectSessionInUrl)가 세션으로
@@ -622,6 +622,11 @@ export function JoinWizard({
     }
     const code = await joinBattle(client, battle.id, pin || undefined)
     if (code === 'ok' || code === 'ALREADY_JOINED') {
+      try {
+        sessionStorage.removeItem(pinStorageKey)
+      } catch {
+        /* storage 불가 환경은 무시 */
+      }
       await finishJoin(client)
       return
     }
@@ -798,7 +803,10 @@ export function JoinWizard({
           <button
             className="join-btn join-btn--kakao"
             onClick={onJoinStart}
-            disabled={battle.pledge != null && !pledgeConsent}
+            disabled={
+              (battle.pledge != null && !pledgeConsent) ||
+              (battle.visibility === 'private' && !/^\d{4}$/.test(pin))
+            }
           >
             <KakaoTalkIcon />
             카카오로 참여하기
