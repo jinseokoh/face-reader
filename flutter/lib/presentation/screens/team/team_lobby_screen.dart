@@ -14,6 +14,7 @@ import '../../../domain/models/battle.dart';
 import '../../../domain/services/share/share_publisher.dart';
 import '../../providers/battle_provider.dart';
 import '../../widgets/compact_snack_bar.dart';
+import 'team_reveal_screen.dart';
 
 /// Chemistry Battle 로비 — 슬롯이 차오르는 대기 화면.
 /// Realtime(teams UPDATE + team_members INSERT/DELETE) 구독 + 10초 폴링
@@ -78,12 +79,13 @@ class _TeamLobbyScreenState extends ConsumerState<TeamLobbyScreen> {
     } catch (_) {}
   }
 
-  /// 배틀 시작 감지 hook — Task 5 에서 TeamRevealScreen pushReplacement 로 교체.
   void _onBattleStarted(Battle battle) {
-    showTopSnackBar(
-      Overlay.of(context),
-      CompactSnackBar.success(message: '배틀이 시작되었습니다'),
-    );
+    Navigator.of(context).pushReplacement(MaterialPageRoute(
+      builder: (_) => TeamRevealScreen(
+        battleId: widget.battleId,
+        ceremony: !battle.hasResult,
+      ),
+    ));
   }
 
   bool get _isOwner =>
