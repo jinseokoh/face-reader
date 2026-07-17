@@ -76,7 +76,7 @@ class _BattleJoinScreenState extends ConsumerState<BattleJoinScreen> {
 
   Future<void> _join() async {
     final battle = _battle!;
-    // ① 로그인 게이트 — team_join_screen 의 login_bottom_sheet 패턴 승계.
+    // ① 로그인 게이트 — login_bottom_sheet 패턴.
     if (!_service.isLoggedIn) {
       final ok = await showLoginBottomSheet(context, ref);
       if (!ok || !mounted) return;

@@ -40,8 +40,8 @@ const _kPages = [
   _OnboardingPageData(
     asset: 'assets/images/onboarding3.png',
     title: '케미',
-    chips: ['그룹케미 결과표 무료'],
-    body: '그룹을 만들고 모든 참여자가 관상을 올리면\n구성원 간의 그룹케미 결과표가 완성됩니다.',
+    chips: ['케미 배틀 무료'],
+    body: '배틀 방을 만들면 참가자들이 각자 들어옵니다\n인원이 모이면 케미 결과가 공개됩니다.',
     warm: true,
   ),
   _OnboardingPageData(

@@ -393,14 +393,11 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
       );
       return;
     }
-    // ⛳ 여기부터는 team_matrix_screen.dart 의 _showPairSheet 이 쓰는
-    // runCompatUnlock/pushCompat 호출과 동일 계약으로 구현한다 —
-    // 그 파일(아직 존재)을 열어 시그니처를 그대로 승계할 것.
     await openBattlePairDetail(context, ref, my: my, album: album);
   }
 }
 
-/// 쌍 상세 unlock 시트 — team_matrix_screen.dart::_showPairSheet 이식.
+/// 쌍 상세 unlock 시트 — runCompatUnlock/pushCompat 호출과 동일 계약.
 /// 무료 = 밴드 닷 + 라벨만(케미 배틀 payload 는 best 외 점수를 싣지 않는다,
 /// A2 정책) → [1🪙 상세 보기] → runCompatUnlock → 성공 시 pushCompat.
 Future<void> openBattlePairDetail(

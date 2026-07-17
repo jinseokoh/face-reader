@@ -10,7 +10,7 @@ import 'package:facely/presentation/screens/compatibility/compatibility_detail_s
 import 'package:facely/presentation/screens/chemistry/info_confirm_screen.dart';
 import 'package:facely/presentation/screens/chemistry/report_page.dart';
 import 'package:facely/presentation/screens/ledger/ledger_page.dart';
-import 'package:facely/presentation/screens/team/team_join_screen.dart';
+import 'package:facely/presentation/screens/team/battle_join_screen.dart';
 import 'package:facely/domain/models/capture_result.dart';
 import 'package:facely/domain/models/face_metadata.dart';
 
@@ -70,12 +70,12 @@ final router = GoRouter(
         ),
       ],
     ),
-    // 교감도 그룹 초대 (P3) — `/g/{teamId}` → 합류 화면. TeamJoinScreen 이
+    // 케미 배틀 초대 — `/g/{battleId}` → 합류 화면. BattleJoinScreen 이
     // 서버 fetch + 합류 처리를 책임 (web `/g/:id` 와 path 동일).
     GoRoute(
       path: '/g/:id',
       builder: (ctx, state) =>
-          TeamJoinScreen(teamId: state.pathParameters['id']!),
+          BattleJoinScreen(battleId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/capture/confirm',
