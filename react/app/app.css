@@ -1000,26 +1000,22 @@ textarea.form-input {
   font-weight: 600;
   color: var(--caption);
 }
-.join-pledge {
+.join-consent {
   background: var(--bg);
   border-radius: 10px;
   padding: 12px 14px;
   margin-top: 16px;
   text-align: left;
 }
-.join-pledge-text {
+.join-consent-text {
   font-size: 14px;
   color: var(--ink);
   margin: 0;
 }
-.join-pledge-consent {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
+.join-gender-badge {
+  font-size: 11px;
   color: var(--caption);
-  cursor: pointer;
-  margin-top: 8px;
+  margin: 2px 0 0;
 }
 
 /* ─── /g/:id 결과 쇼케이스 ─── */
@@ -1055,17 +1051,17 @@ textarea.form-input {
   color: var(--accent);
   margin: 4px 0 0;
 }
-.showcase-pledge {
-  font-size: 13px;
-  color: var(--caption);
-  text-align: center;
-  margin: 12px 0 0;
-}
 .showcase-legend {
   font-size: 12px;
   color: var(--caption);
   text-align: center;
   margin: 12px 0 0;
+}
+.showcase-chat-hint {
+  font-size: 13px;
+  color: var(--caption);
+  text-align: center;
+  margin: 16px 0 0;
 }
 
 /* ─── CTA ─── */

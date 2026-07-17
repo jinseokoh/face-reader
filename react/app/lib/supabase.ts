@@ -99,13 +99,13 @@ export type BattleSSR = {
     maxPlayers: number;
     ageMin: number | null;
     ageMax: number | null;
-    pledge: string | null;
-    chatUrl: string | null;
+    roomKind: "all" | "match";
+    thumbOpen: boolean;
     status: string;
     resultPayload: unknown | null;
     chemistrySnapshot: Record<string, unknown> | null;
   };
-  roster: { userId: string; slotNo: number; isOwner: boolean; nickname: string }[];
+  roster: { userId: string; slotNo: number; isOwner: boolean; nickname: string; gender: string }[];
 };
 
 /** teams + battle_roster 를 anon 으로 read (link-share, RLS public read). */
@@ -122,7 +122,7 @@ export async function fetchBattleSSR(
 
   const teamRes = await fetch(
     `${env.SUPABASE_URL}/rest/v1/teams?id=eq.${q}` +
-      `&select=id,title,visibility,max_players,age_min,age_max,pledge,chat_url,status,result_payload,chemistry_snapshot`,
+      `&select=id,title,visibility,max_players,age_min,age_max,room_kind,thumb_open,status,result_payload,chemistry_snapshot`,
     { headers },
   );
   if (!teamRes.ok) {
@@ -135,7 +135,7 @@ export async function fetchBattleSSR(
 
   const rosterRes = await fetch(
     `${env.SUPABASE_URL}/rest/v1/battle_roster?team_id=eq.${q}` +
-      `&select=user_id,slot_no,is_owner,nickname&order=slot_no.asc`,
+      `&select=user_id,slot_no,is_owner,nickname,gender&order=slot_no.asc`,
     { headers },
   );
   const rosterRows = rosterRes.ok
@@ -150,8 +150,8 @@ export async function fetchBattleSSR(
       maxPlayers: t.max_players as number,
       ageMin: (t.age_min as number) ?? null,
       ageMax: (t.age_max as number) ?? null,
-      pledge: (t.pledge as string) ?? null,
-      chatUrl: (t.chat_url as string) ?? null,
+      roomKind: t.room_kind as "all" | "match",
+      thumbOpen: t.thumb_open as boolean,
       status: t.status as string,
       resultPayload: t.result_payload ?? null,
       chemistrySnapshot: (t.chemistry_snapshot as Record<string, unknown>) ?? null,
@@ -161,6 +161,7 @@ export async function fetchBattleSSR(
       slotNo: r.slot_no as number,
       isOwner: r.is_owner as boolean,
       nickname: (r.nickname as string) ?? "참가자",
+      gender: r.gender as string,
     })),
   };
 }

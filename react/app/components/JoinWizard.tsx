@@ -13,6 +13,8 @@ import {
   fetchBattleRoster,
   fetchMyFace,
   joinBattle,
+  photoConsentText,
+  remainingGenderSlots,
   saveCapture,
   watchBattle,
   type RosterEntry,
@@ -80,6 +82,7 @@ const AGES: { v: string; ko: string }[] = [
 // join_battle 실패 코드 → 사용자 문구 (BAD_PASSWORD/NO_MY_FACE 는 별도 분기).
 const JOIN_ERROR_MESSAGES: Record<string, string> = {
   AGE_NOT_ALLOWED: '이 방의 연령대에 해당하지 않습니다',
+  GENDER_FULL: '이 방의 남녀 자리 중 한쪽이 다 찼습니다',
   FULL: '정원이 가득 찼습니다',
   NOT_RECRUITING: '모집이 끝난 방입니다. 새로고침 후 다시 확인해 주세요.',
 }
@@ -123,8 +126,6 @@ export function JoinWizard({
   // 읽지 않고(DEMO_KEY 와 동일 패턴) 마운트 useEffect 에서 복원한다.
   const pinStorageKey = `facely:battle-pin:${battle.id}`
   const [pin, setPin] = useState<string>('')
-  // 공약 동의 — 미체크 시 참가 버튼 disabled.
-  const [pledgeConsent, setPledgeConsent] = useState(false)
   // done 스테이지 라이브 로비 — watchBattle 구독 + 폴링으로 항상 최신.
   const [liveRoster, setLiveRoster] = useState<RosterEntry[]>(roster)
 
@@ -786,28 +787,22 @@ export function JoinWizard({
               </label>
             </div>
           )}
-          {battle.pledge && (
-            <div className="join-pledge">
-              <p className="join-pledge-text">
-                이 방의 공약 — {battle.pledge}
-              </p>
-              <label className="join-pledge-consent">
-                <input
-                  type="checkbox"
-                  checked={pledgeConsent}
-                  onChange={(e) => setPledgeConsent(e.target.checked)}
-                />
-                베스트 케미 두 사람이 이 공약을 실행하는 데 동의합니다
-              </label>
-            </div>
+          {battle.roomKind === 'match' && (
+            <p className="join-sub">
+              남자 {remainingGenderSlots(roster, battle.maxPlayers, 'male')}자리 남음
+              <br />
+              여자 {remainingGenderSlots(roster, battle.maxPlayers, 'female')}자리 남음
+            </p>
           )}
+          <div className="join-consent">
+            <p className="join-consent-text">
+              {photoConsentText(battle.roomKind)}
+            </p>
+          </div>
           <button
             className="join-btn join-btn--kakao"
             onClick={onJoinStart}
-            disabled={
-              (battle.pledge != null && !pledgeConsent) ||
-              (battle.visibility === 'private' && !/^\d{4}$/.test(pin))
-            }
+            disabled={battle.visibility === 'private' && !/^\d{4}$/.test(pin)}
           >
             <KakaoTalkIcon />
             카카오로 참여하기
@@ -941,6 +936,9 @@ export function JoinWizard({
                   {r.nickname.slice(0, 1)}
                 </div>
                 <p className="join-avatar-name">{r.nickname}</p>
+                <p className="join-gender-badge">
+                  {r.gender === 'male' ? '남' : '여'}
+                </p>
               </div>
             ))}
             {Array.from({ length: waitCount }).map((_, i) => (
@@ -956,13 +954,6 @@ export function JoinWizard({
             <p className="join-sub">
               나머지 {waitCount}명이 등록을 마치면 케미 배틀이 시작됩니다.
             </p>
-          )}
-          {battle.pledge && (
-            <div className="join-pledge">
-              <p className="join-pledge-text">
-                이 방의 공약 — {battle.pledge}
-              </p>
-            </div>
           )}
           <p className="join-sub" style={{ marginTop: 4 }}>
             얼굴의 측면까지 분석하는 정밀 관상은 앱으로만 가능합니다.

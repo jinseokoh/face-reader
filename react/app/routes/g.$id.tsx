@@ -6,6 +6,8 @@ import { JoinWizard } from "../components/JoinWizard";
 import { getSupabase } from "../lib/auth";
 import {
   computeBattlePayload,
+  photoConsentText,
+  remainingGenderSlots,
   submitBattleResult,
   type BattlePayload,
 } from "../lib/join";
@@ -96,7 +98,7 @@ export default function Group() {
       <BattleShowcase
         title={battle.title}
         payload={battle.resultPayload as BattlePayload}
-        pledge={battle.pledge}
+        roomKind={battle.roomKind}
       />
     );
   } else if (battle.status !== "expired" && battle.chemistrySnapshot) {
@@ -130,6 +132,7 @@ function BattleInvite({
 }) {
   const { battle, roster } = data;
   const waitCount = Math.max(battle.maxPlayers - roster.length, 0);
+  const isMatch = battle.roomKind === "match";
   return (
     <section style={{ textAlign: "center", padding: "24px 16px" }}>
       <h1 style={{ fontSize: 24, color: "#1a1a1a", margin: 0 }}>
@@ -139,11 +142,22 @@ function BattleInvite({
         {roster.length} / {battle.maxPlayers}명 ·{" "}
         {ageLabel(battle.ageMin, battle.ageMax)}
       </p>
-      {battle.pledge && (
-        <div className="join-pledge">
-          <p className="join-pledge-text">이 방의 공약 — {battle.pledge}</p>
-        </div>
+      {isMatch && (
+        <>
+          <p style={{ color: "#666", fontSize: 14, marginTop: 4 }}>
+            남녀 반반 매칭방
+          </p>
+          <p style={{ color: "#666", fontSize: 14, marginTop: 4 }}>
+            남자 {remainingGenderSlots(roster, battle.maxPlayers, "male")}자리 남음
+          </p>
+          <p style={{ color: "#666", fontSize: 14, marginTop: 4 }}>
+            여자 {remainingGenderSlots(roster, battle.maxPlayers, "female")}자리 남음
+          </p>
+        </>
       )}
+      <div className="join-consent">
+        <p className="join-consent-text">{photoConsentText(battle.roomKind)}</p>
+      </div>
       <div className="invite-chips">
         {roster.map((r) => (
           <span key={r.userId} className="invite-chip">
@@ -178,11 +192,11 @@ const BAND_LABEL_BY_CODE = ["천작지합", "금슬상화", "마합가성", "형
 function BattleShowcase({
   title,
   payload,
-  pledge,
+  roomKind,
 }: {
   title: string;
   payload: BattlePayload;
-  pledge: string | null;
+  roomKind: "all" | "match";
 }) {
   const nameOf = (slot: number) =>
     payload.players.find((p) => p.slot === slot)?.name ?? "참가자";
@@ -191,7 +205,16 @@ function BattleShowcase({
     const hi = Math.max(a, b);
     return payload.pairs.find((p) => p.a === lo && p.b === hi)?.band;
   };
-  const slots = payload.players.map((p) => p.slot);
+  // match 방 = 남(행) × 여(열) 직사각 매트릭스 (동성 쌍 부재) — Flutter
+  // team_reveal_screen.dart 의 _matrix() 와 동일 축 분리 규칙. all 방은 정방.
+  const isMatch = roomKind === "match";
+  const allSlots = payload.players.map((p) => p.slot);
+  const rows = isMatch
+    ? payload.players.filter((p) => p.gender === "male").map((p) => p.slot)
+    : allSlots;
+  const cols = isMatch
+    ? payload.players.filter((p) => p.gender === "female").map((p) => p.slot)
+    : allSlots;
   return (
     <section className="showcase">
       <h1 className="showcase-title">{title}</h1>
@@ -202,19 +225,12 @@ function BattleShowcase({
         </p>
         <p className="showcase-best-score">{payload.best.score}점</p>
       </div>
-      {pledge && (
-        <p className="showcase-pledge">
-          이 방의 공약 — {pledge}
-          <br />
-          {nameOf(payload.best.a)}, {nameOf(payload.best.b)} 두 분의 몫입니다
-        </p>
-      )}
       <div style={{ overflowX: "auto", marginTop: 16 }}>
         <table style={tableStyle}>
           <thead>
             <tr>
               <th style={head} />
-              {slots.map((s) => (
+              {cols.map((s) => (
                 <th key={s} style={head}>
                   {nameOf(s)}
                 </th>
@@ -222,10 +238,10 @@ function BattleShowcase({
             </tr>
           </thead>
           <tbody>
-            {slots.map((row) => (
+            {rows.map((row) => (
               <tr key={row}>
                 <th style={head}>{nameOf(row)}</th>
-                {slots.map((col) => (
+                {cols.map((col) => (
                   <td key={col} style={cell}>
                     {row === col
                       ? "·"
@@ -241,6 +257,9 @@ function BattleShowcase({
         {BAND_EMOJI_BY_CODE.map((e, i) => `${e} ${BAND_LABEL_BY_CODE[i]}`).join(
           "  ",
         )}
+      </p>
+      <p className="showcase-chat-hint">
+        베스트 케미의 채팅은 앱에서 확인하세요
       </p>
     </section>
   );
@@ -263,10 +282,12 @@ function RevealFallback({
           slotNo: r.slotNo,
           isOwner: r.isOwner,
           nickname: r.nickname,
+          gender: r.gender,
         }));
         const computed = computeBattlePayload(
           roster,
           data.battle.chemistrySnapshot as Record<string, unknown>,
+          data.battle.roomKind,
         );
         if (!computed) {
           if (!cancelled) setFailed(true);
@@ -295,7 +316,7 @@ function RevealFallback({
     <BattleShowcase
       title={data.battle.title}
       payload={payload}
-      pledge={data.battle.pledge}
+      roomKind={data.battle.roomKind}
     />
   );
 }

@@ -209,7 +209,7 @@ export async function saveCapture(
 export type BattleStatus = "recruiting" | "revealing" | "completed" | "expired";
 
 export type BattlePayload = {
-  players: { slot: number; name: string }[];
+  players: { slot: number; name: string; gender: string }[];
   pairs: { a: number; b: number; band: number }[]; // 정렬 = 순위, band 0~3
   best: { a: number; b: number; score: number };
 };
@@ -222,8 +222,8 @@ export type BattleRow = {
   maxPlayers: number;
   ageMin: number | null;
   ageMax: number | null;
-  pledge: string | null;
-  chatUrl: string | null;
+  roomKind: "all" | "match";
+  thumbOpen: boolean;
   status: BattleStatus;
   chemistrySnapshot: Record<string, unknown> | null;
   resultPayload: BattlePayload | null;
@@ -234,10 +234,11 @@ export type RosterEntry = {
   slotNo: number;
   isOwner: boolean;
   nickname: string;
+  gender: string;
 };
 
 const BATTLE_COLS =
-  "id, owner_id, title, visibility, max_players, age_min, age_max, pledge, chat_url, status, chemistry_snapshot, result_payload";
+  "id, owner_id, title, visibility, max_players, age_min, age_max, room_kind, thumb_open, status, chemistry_snapshot, result_payload";
 
 function rowToBattle(r: Record<string, unknown>): BattleRow {
   return {
@@ -248,13 +249,31 @@ function rowToBattle(r: Record<string, unknown>): BattleRow {
     maxPlayers: r.max_players as number,
     ageMin: (r.age_min as number) ?? null,
     ageMax: (r.age_max as number) ?? null,
-    pledge: (r.pledge as string) ?? null,
-    chatUrl: (r.chat_url as string) ?? null,
+    roomKind: r.room_kind as "all" | "match",
+    thumbOpen: r.thumb_open as boolean,
     status: r.status as BattleStatus,
     chemistrySnapshot:
       (r.chemistry_snapshot as Record<string, unknown>) ?? null,
     resultPayload: (r.result_payload as BattlePayload) ?? null,
   };
+}
+
+/** 이성방 조인 confirm/초대장 사진 공개 계약 문구 (UX §E.1 — 웹도 동일 카피). */
+export function photoConsentText(roomKind: "all" | "match"): string {
+  return roomKind === "match"
+    ? "베스트 매칭이 되면 상대에게 내 사진이 공개되고, 서로 동의하면 1:1 채팅이 열립니다"
+    : "베스트 케미로 뽑히면 상대에게 내 사진이 공개됩니다";
+}
+
+/** 이성방 — 성별 남은 자리 수 (roster gender 카운트 기준, 0 미만 표시 방지). */
+export function remainingGenderSlots(
+  roster: { gender: string }[],
+  maxPlayers: number,
+  gender: "male" | "female",
+): number {
+  const per = Math.floor(maxPlayers / 2);
+  const count = roster.filter((r) => r.gender === gender).length;
+  return Math.max(0, Math.min(per, per - count));
 }
 
 export async function fetchBattle(
@@ -275,7 +294,7 @@ export async function fetchBattleRoster(
 ): Promise<RosterEntry[]> {
   const { data } = await sb
     .from("battle_roster")
-    .select("user_id, slot_no, is_owner, nickname")
+    .select("user_id, slot_no, is_owner, nickname, gender")
     .eq("team_id", battleId)
     .order("slot_no", { ascending: true });
   return (data ?? []).map((r) => ({
@@ -283,6 +302,7 @@ export async function fetchBattleRoster(
     slotNo: r.slot_no as number,
     isOwner: r.is_owner as boolean,
     nickname: (r.nickname as string) ?? "참가자",
+    gender: r.gender as string,
   }));
 }
 
@@ -299,7 +319,7 @@ export async function joinBattle(
   if (!error) return "ok";
   const known = [
     "AUTH_REQUIRED", "NOT_FOUND", "NOT_RECRUITING", "BAD_PASSWORD",
-    "NO_MY_FACE", "AGE_NOT_ALLOWED", "FULL", "ALREADY_JOINED",
+    "NO_MY_FACE", "AGE_NOT_ALLOWED", "GENDER_FULL", "FULL", "ALREADY_JOINED",
   ];
   return known.find((k) => error.message.includes(k)) ?? "FAILED";
 }
@@ -343,12 +363,18 @@ export function watchBattle(
 export function computeBattlePayload(
   roster: RosterEntry[],
   snapshot: Record<string, unknown>,
+  roomKind: "all" | "match",
 ): BattlePayload | null {
   const players = roster
     .filter((r) => snapshot[r.userId])
-    .map((r) => ({ slot: r.slotNo, name: r.nickname, body: snapshot[r.userId] }));
+    .map((r) => ({
+      slot: r.slotNo,
+      name: r.nickname,
+      gender: r.gender,
+      body: snapshot[r.userId],
+    }));
   if (players.length < 2) return null;
   return JSON.parse(
-    globalThis.runBattle(JSON.stringify({ players })),
+    globalThis.runBattle(JSON.stringify({ roomKind, players })),
   ) as BattlePayload;
 }

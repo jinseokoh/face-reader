@@ -9,7 +9,8 @@ declare global {
   // 웹 티저 — [[x,y],...] (MediaPipe 468 landmarks) JSON → 26 정면 raw 메트릭 JSON.
   // eslint-disable-next-line no-var
   var runMetrics: (landmarksJson: string) => string;
-  // Chemistry Battle — 입력 {"players":[{"slot","name","body"}]}, 출력 result_payload.
+  // Chemistry Battle — 입력 {"roomKind":"match"|"all","players":[{"slot","name","gender","body"}]},
+  // 출력 result_payload. roomKind=="match" 면 이성 쌍만 계산(matchOnly).
   // eslint-disable-next-line no-var
   var runBattle: (battleJson: string) => string;
 }
