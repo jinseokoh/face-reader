@@ -18,17 +18,18 @@ import type { AppUser, Unlock } from "../../types";
 
 const { Text } = Typography;
 
+// 경계는 shared/compat_label.dart kCompatLabelThresholds (90.5/81.5/61.5) 미러.
 function scoreColor(s: number): string {
-  if (s >= 90) return "magenta"; // 천작지합
-  if (s >= 78) return "geekblue"; // 금슬상화
-  if (s >= 56) return "green"; // 마합가성
+  if (s >= 90.5) return "magenta"; // 천생연분
+  if (s >= 81.5) return "geekblue"; // 금슬화합
+  if (s >= 61.5) return "green"; // 상부상조
   return "default"; // 형극난조
 }
 
 function scoreLabel(s: number): string {
-  if (s >= 90) return "천작지합";
-  if (s >= 78) return "금슬상화";
-  if (s >= 56) return "마합가성";
+  if (s >= 90.5) return "천생연분";
+  if (s >= 81.5) return "금슬화합";
+  if (s >= 61.5) return "상부상조";
   return "형극난조";
 }
 

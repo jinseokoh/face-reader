@@ -23,9 +23,9 @@ extension BattleBand on int {
       };
 
   String get bandLabel => switch (this) {
-        0 => '천작지합',
-        1 => '금슬상화',
-        2 => '마합가성',
+        0 => '천생연분',
+        1 => '금슬화합',
+        2 => '상부상조',
         _ => '형극난조',
       };
 }

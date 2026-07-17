@@ -61,7 +61,7 @@ class BattleResult {
   BattlePair get best => pairs.first;
 
   /// teams.result_payload 계약 (§6.3): 점수는 best.score 하나뿐,
-  /// band = CompatLabel.index (0=천작지합 … 3=형극난조).
+  /// band = CompatLabel.index (0=천생연분 … 3=형극난조).
   Map<String, dynamic> toPayload() => {
         'players': [
           for (final p in players)

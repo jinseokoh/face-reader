@@ -7,11 +7,11 @@ extension CompatLabelLabel on CompatLabel {
   String get hanja {
     switch (this) {
       case CompatLabel.cheonjakjihap:
-        return '天作之合';
+        return '天生緣分';
       case CompatLabel.geumseulsanghwa:
-        return '琴瑟相和';
+        return '琴瑟和合';
       case CompatLabel.mahapgaseong:
-        return '磨合可成';
+        return '相扶相助';
       case CompatLabel.hyeonggeuknanjo:
         return '刑剋難調';
     }
@@ -20,11 +20,11 @@ extension CompatLabelLabel on CompatLabel {
   String get korean {
     switch (this) {
       case CompatLabel.cheonjakjihap:
-        return '천작지합';
+        return '천생연분';
       case CompatLabel.geumseulsanghwa:
-        return '금슬상화';
+        return '금슬화합';
       case CompatLabel.mahapgaseong:
-        return '마합가성';
+        return '상부상조';
       case CompatLabel.hyeonggeuknanjo:
         return '형극난조';
     }
@@ -46,10 +46,10 @@ extension CompatLabelLabel on CompatLabel {
 }
 
 /// §8.1 label 경계 — 100점 만점 UI scale.
-/// total ≥ thresholds.cheonjakjihap → 天作之合
-/// total ≥ thresholds.geumseulsanghwa → 琴瑟相和
-/// total ≥ thresholds.mahapgaseong → 磨合可成
-/// else → 刑剋難調
+/// total ≥ thresholds.cheonjakjihap → 천생연분
+/// total ≥ thresholds.geumseulsanghwa → 금슬화합
+/// total ≥ thresholds.mahapgaseong → 상부상조
+/// else → 형극난조
 class CompatLabelThresholds {
   final double cheonjakjihap;
   final double geumseulsanghwa;
