@@ -147,8 +147,8 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 - [x] Human gate 안내문 작성 (drop-recreate = 데이터 전체 초기화 **첫 문장**, 그 다음 절차: 계정 정리 → reset → baseline → smoke ALL PASS → 42501 확인).
 - [x] 실기기 rev2 시나리오 (rev2 §9-3) 체크리스트 전달.
 - [x] 문서 5종 rev2 반영 (PRD·ARCHITECTURE·react HOW-IT-WORKS·KAKAO·CLAUDE 테스트 수 — 공약 서술 제거·매칭/채팅·방 유형).
-- [ ] 웹 배포 (`pnpm build && pnpm run deploy`) — human 승인 후.
-- [ ] Ledger 종결.
+- [x] 웹 배포 (`pnpm build && pnpm run deploy`) — human 승인 후.
+- [x] Ledger 종결.
 
 ## 완료 기준
 
