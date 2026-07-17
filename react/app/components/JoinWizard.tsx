@@ -9,22 +9,21 @@ import {
 import { detectInApp, openInExternalBrowser, type InApp } from '../lib/inapp'
 import {
   estimateDemographics,
-  fetchMemberBodies,
-  fetchMembership,
+  fetchBattle,
+  fetchBattleRoster,
   fetchMyFace,
-  fetchProgress,
-  fetchRoster,
-  isTeamOpen,
-  joinTeam,
+  joinBattle,
   saveCapture,
+  watchBattle,
+  type RosterEntry,
   type WebCaptureBody,
 } from '../lib/join'
-import type { TeamShowcase } from '../lib/supabase'
+import type { BattleSSR } from '../lib/supabase'
 
 /**
- * /g/:id 참여 위저드 — 앱 미설치자가 브라우저에서 그룹 참여를 끝까지 완료한다.
- * entry → (kakao) → name → (reuse) → info → camera → saving → done
- * 스펙: docs/superpowers/specs/2026-07-12-web-join-upgrade-design.md
+ * /g/:id 참여 위저드 — 앱 미설치자가 브라우저에서 케미 배틀 참가를 끝까지 완료한다.
+ * entry(PIN·공약 동의) → (kakao) → (reuse) → camera → confirm → saving → done(라이브 로비)
+ * 스펙: docs/superpowers/specs/2026-07-16-chemistry-battle-design.md §8
  *
  * 전부 client-only — getUserMedia·tasks-vision·face_engine.js 는 dynamic import.
  * `<video>` 는 위저드 생애 내내 마운트(카메라 단계 외 비표시) — ref race 제거.
@@ -42,10 +41,11 @@ const NO_FACE_TIMEOUT_MS = 20_000
 const DEMO_KEY = 'facely:demographic'
 // 얼굴이 잡히면 3초 카운트다운 (3 → 2 → 1) 후 자동 찰칵.
 const COUNTDOWN_MS = 3_000
+// 로비 라이브 갱신 — Realtime 이 끊겨도 최신을 놓치지 않게 보조 폴링.
+const LOBBY_POLL_MS = 15_000
 
 type Stage =
   | 'entry'
-  | 'name'
   | 'reuse'
   | 'camera'
   | 'confirm'
@@ -67,20 +67,6 @@ const GENDERS: { v: string; ko: string }[] = [
   { v: 'female', ko: '여성' },
 ]
 // 앱 InfoConfirm 과 동일 범위 (AgeGroup teens~seventies, jsonValue "10s".."70s").
-// 밴드 라벨 → 이모지 (웹 4색 팔레트를 지키는 쇼케이스와 동일 문법).
-const BAND_EMOJI: Record<string, string> = {
-  천작지합: '🟢',
-  금슬상화: '🔵',
-  마합가성: '🟠',
-  형극난조: '🔴',
-}
-
-type WebMatrix = {
-  names: string[]
-  pairs: { a: number; b: number; total: number; label: string; emoji: string }[]
-  best: { a: number; b: number; label: string; emoji: string } | null
-}
-
 const AGES: { v: string; ko: string }[] = [
   { v: '10s', ko: '10대' },
   { v: '20s', ko: '20대' },
@@ -91,23 +77,29 @@ const AGES: { v: string; ko: string }[] = [
   { v: '70s', ko: '70대+' },
 ]
 
+// join_battle 실패 코드 → 사용자 문구 (BAD_PASSWORD/NO_MY_FACE 는 별도 분기).
+const JOIN_ERROR_MESSAGES: Record<string, string> = {
+  AGE_NOT_ALLOWED: '이 방의 연령대에 해당하지 않습니다',
+  FULL: '정원이 가득 찼습니다',
+  NOT_RECRUITING: '모집이 끝난 방입니다. 새로고침 후 다시 확인해 주세요.',
+}
+
 export function JoinWizard({
-  team,
+  battle,
+  roster,
   supabaseUrl,
   supabaseAnonKey,
   cdnBase,
-  onProgress,
-  onJoined,
+  onActive,
 }: {
-  team: TeamShowcase
+  battle: BattleSSR['battle']
+  roster: RosterEntry[]
   supabaseUrl: string
   supabaseAnonKey: string
   /** R2 CDN base (cdn.facely.kr) — 내 관상 썸네일 아바타 렌더용. */
   cdnBase: string
   /** 위저드가 entry 를 벗어나면 true — 부모가 초대장 칩을 숨기는 데 쓴다. */
-  onProgress?: (active: boolean) => void
-  /** 참여 성립 시 최신 현황 전달 — 헤더 subtitle 이 '등록 완료' 상태로 바뀐다. */
-  onJoined?: (p: { joined: number; total: number }) => void
+  onActive?: (active: boolean) => void
 }) {
   const [stage, setStage] = useState<Stage>('entry')
   const [session, setSession] = useState<Session | null>(null)
@@ -126,30 +118,25 @@ export function JoinWizard({
     thumbnailKey: string | null
     alias: string | null
   } | null>(null)
-  // 로그인 직후 확인된 내 관상 보유 여부 — 이름 화면 상단에 항상 명시한다.
-  const [faceStatus, setFaceStatus] = useState<'reuse' | 'none' | null>(null)
-  // 이 그룹에 이미 참여한 내 슬롯 — 있으면 이름을 묻지 않고 재참여를 묻는다.
-  const [membership, setMembership] = useState<{
-    name: string
-    metricsId: string
-    thumbnailKey: string | null
-  } | null>(null)
+  // 비밀방 PIN — sessionStorage 로 OAuth 왕복(카카오 리다이렉트가 state 를
+  // 날린다) 후에도 값을 잃지 않는다.
+  const pinStorageKey = `facely:battle-pin:${battle.id}`
+  const [pin, setPin] = useState<string>(() => {
+    if (typeof sessionStorage === 'undefined') return ''
+    try {
+      return sessionStorage.getItem(pinStorageKey) ?? ''
+    } catch {
+      return ''
+    }
+  })
+  // 공약 동의 — 미체크 시 참가 버튼 disabled.
+  const [pledgeConsent, setPledgeConsent] = useState(false)
+  // done 스테이지 라이브 로비 — watchBattle 구독 + 폴링으로 항상 최신.
+  const [liveRoster, setLiveRoster] = useState<RosterEntry[]>(roster)
 
   /** 썸네일 키 → CDN URL (없으면 null). */
   const avatarUrl = (key: string | null | undefined): string | null =>
     key && cdnBase ? `${cdnBase}/${key}` : null
-  // 참여 직후 서버에서 다시 읽은 등록 현황 (loader 데이터는 stale).
-  const [progress, setProgress] = useState<{
-    joined: number
-    total: number
-  } | null>(null)
-  // 전체 참여자 명단 — done 화면 로스터 (미등록은 빈 슬롯).
-  const [roster, setRoster] = useState<
-    { name: string; joined: boolean; thumbnailKey: string | null }[]
-  >([])
-  // 전원 등록 시 [그룹 케미 결과표 보기] — 웹에서 shared 엔진으로 즉석 계산.
-  const [matrix, setMatrix] = useState<WebMatrix | null>(null)
-  const [matrixBusy, setMatrixBusy] = useState(false)
   const [hint, setHint] = useState('얼굴을 화면 안에 맞춰 주세요')
   // 자동 촬영 카운트다운 (2 → 1) — 비디오 위 대형 숫자.
   const [count, setCount] = useState<number | null>(null)
@@ -190,14 +177,11 @@ export function JoinWizard({
   const lastCountRef = useRef<number | null>(null)
   const doneRef = useRef(false)
   const noFaceTimerRef = useRef<number | null>(null)
-  // 확정된 참여 이름 — setState 는 카메라 루프 클로저에 반영되지 않으므로
-  // (stale closure) 합류 이름은 반드시 ref 로 전달한다.
-  const joinNameRef = useRef<string | null>(null)
   // 확인 페이지에서 확정한 metrics 이름(alias) — 클로저 안전하게 ref 로.
   const aliasRef = useRef<string | null>(null)
   // 직전 프레임 landmark — 앱과 동일한 흔들림(stability) 판정용.
   const prevFaceRef = useRef<{ x: number; y: number }[] | null>(null)
-  // 캡처 산출물 — 단계를 넘어도 유지 (name-taken 재시도 시 metrics 재사용).
+  // 캡처 산출물 — 단계를 넘어도 유지 (재시도 시 metrics 재사용).
   const bodyRef = useRef<WebCaptureBody | null>(null)
   const thumbRef = useRef<Blob | null>(null)
   const metricsIdRef = useRef<string | null>(null)
@@ -258,24 +242,20 @@ export function JoinWizard({
         return
       }
       const uid = data.session.user.id
-      const [nick, mine, member] = await Promise.all([
+      const [nick, mine] = await Promise.all([
         fetchNickname(client, uid),
         fetchMyFace(client, uid),
-        fetchMembership(client, team.id, uid),
       ])
       setNickname(nick)
       setExisting(mine)
-      setMembership(member)
       if (cameFromLogin) {
-        // 로그인하고 복귀 — 이미 참여했으면 바로 로스터(done) 화면, 기존
-        // 관상이 있으면 썸네일과 함께 재사용/재촬영 선택, 아니면 이름으로.
-        if (member) {
-          await finishJoin(client)
-        } else if (mine) {
+        // 로그인하고 복귀 — 기존 관상이 있으면 재사용/재촬영 선택, 아니면
+        // 곧장 촬영으로 (이미 참여했다면 join_battle 이 ALREADY_JOINED 로
+        // 알려주고 그대로 로비로 진입한다).
+        if (mine) {
           setStage('reuse')
         } else {
-          setFaceStatus('none')
-          goNameOrSkip(nick)
+          goCapture()
         }
       }
     })
@@ -286,27 +266,40 @@ export function JoinWizard({
   useEffect(() => () => stopCamera(), [])
 
   useEffect(() => {
-    onProgress?.(stage !== 'entry')
+    onActive?.(stage !== 'entry')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage])
 
-  const openSlots = team.members.filter((m) => !m.joined)
+  // done 스테이지 = 라이브 로비 — Realtime 구독 + 15초 폴링, recruiting 이
+  // 아니게 되면 새로고침(SSR 분기가 쇼케이스/fallback 을 렌더한다).
+  useEffect(() => {
+    if (stage !== 'done') return
+    const client = sb()
+    const refetch = async () => {
+      const [b, r] = await Promise.all([
+        fetchBattle(client, battle.id),
+        fetchBattleRoster(client, battle.id),
+      ])
+      if (!b) return
+      if (b.status !== 'recruiting') {
+        window.location.reload()
+        return
+      }
+      setLiveRoster(r)
+    }
+    const channel = watchBattle(client, battle.id, () => void refetch())
+    const poll = window.setInterval(() => void refetch(), LOBBY_POLL_MS)
+    return () => {
+      client.removeChannel(channel)
+      window.clearInterval(poll)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage])
 
   /** 촬영 진입 — 정보 확인은 앱과 동일하게 촬영 **후** DeepFace 추정
    *  prefill 상태로 노출된다. */
   function goCapture() {
     void startCamera()
-  }
-
-  /** 이름 화면 진입 또는 생략 — [name]이 빈 슬롯과 정확히 매칭되면 물어볼
-   *  것이 없으므로 그 자리를 자동 선택하고 촬영 단계로 직행한다. */
-  function goNameOrSkip(name: string | null | undefined) {
-    if (name && openSlots.some((m) => m.name === name)) {
-      joinNameRef.current = name
-      goCapture()
-      return
-    }
-    setStage('name')
   }
 
   function stopCamera() {
@@ -596,8 +589,8 @@ export function JoinWizard({
     }
   }
 
-  /** 저장 시퀀스: 마감 재확인 → metrics(신규 캡처 시, 기존 my-face 덮어쓰기) → 합류. */
-  async function runSave(nameOverride?: string) {
+  /** 저장 시퀀스: metrics(신규 캡처 시, 기존 my-face 덮어쓰기) → join_battle RPC. */
+  async function runSave() {
     const s = sessionRef.current
     if (!s) {
       fail('세션이 만료됐어요. 다시 로그인해 주세요.')
@@ -605,26 +598,21 @@ export function JoinWizard({
     }
     setStage('saving')
     const client = sb()
-    if (!(await isTeamOpen(client, team.id))) {
-      fail('모집이 종료된 그룹입니다.')
-      return
-    }
     if (!metricsIdRef.current) {
       const body = bodyRef.current
       if (!body) {
         fail('촬영 정보가 없어요. 처음부터 다시 시도해 주세요.')
         return
       }
-      // 기존 참여 슬롯의 metrics > 내 관상 순으로 그 row 를 덮어써
-      // my-face 1행·멤버십 1행을 유지한다.
+      // 기존 내 관상 row 를 덮어써 my-face 1행을 유지한다.
       metricsIdRef.current = await saveCapture(client, {
         uid: s.user.id,
         nickname,
         alias: aliasRef.current,
         body,
         thumb: thumbRef.current,
-        id: membership?.metricsId ?? existing?.id ?? undefined,
-        oldKey: membership?.thumbnailKey ?? existing?.thumbnailKey ?? null,
+        id: existing?.id ?? undefined,
+        oldKey: existing?.thumbnailKey ?? null,
         accessToken: s.access_token,
       })
     }
@@ -632,46 +620,29 @@ export function JoinWizard({
       fail('등록에 실패했어요. 잠시 후 다시 시도해 주세요.')
       return
     }
-    // 이미 참여한 슬롯의 재촬영 — metrics id 가 그대로라 명단 변경이 없다.
-    if (membership && metricsIdRef.current === membership.metricsId) {
+    const code = await joinBattle(client, battle.id, pin || undefined)
+    if (code === 'ok' || code === 'ALREADY_JOINED') {
       await finishJoin(client)
       return
     }
-    const joinName = (nameOverride ?? joinNameRef.current ?? '').trim()
-    if (!joinName) {
-      // 빈 이름 합류 금지 — 이름 없는 유령 멤버 행 방지.
-      fail('참여할 이름이 비어 있어요. 처음부터 다시 시도해 주세요.')
+    if (code === 'BAD_PASSWORD') {
+      setNotice('비밀번호가 일치하지 않습니다')
+      setStage('entry')
       return
     }
-    const r = await joinTeam(client, {
-      teamId: team.id,
-      metricsId: metricsIdRef.current,
-      uid: s.user.id,
-      name: joinName,
-    })
-    if (r === 'name-taken') {
-      setNotice(
-        '방금 다른 사람이 그 자리에 들어갔어요. 다른 이름으로 참여해 주세요.',
-      )
-      setStage('name')
+    if (code === 'NO_MY_FACE') {
+      // 방금 저장한 등록 반영이 아직 안 됐을 뿐 — 확인 단계에서 재시도.
+      setNotice('등록이 아직 반영되지 않았어요. 다시 시도해 주세요.')
+      setStage('confirm')
       return
     }
-    if (r === 'failed') {
-      fail('참여에 실패했어요. 잠시 후 다시 시도해 주세요.')
-      return
-    }
-    await finishJoin(client)
+    fail(JOIN_ERROR_MESSAGES[code] ?? '참여에 실패했어요. 잠시 후 다시 시도해 주세요.')
   }
 
-  /** 참여 성립 마무리 — 최신 현황·로스터를 읽고 done 으로. */
+  /** 참여 성립 마무리 — 최신 로스터를 읽고 done(라이브 로비)으로. */
   async function finishJoin(client: SupabaseClient) {
-    const [p, r] = await Promise.all([
-      fetchProgress(client, team.id),
-      fetchRoster(client, team.id),
-    ])
-    setProgress(p)
-    setRoster(r)
-    if (p) onJoined?.(p)
+    const r = await fetchBattleRoster(client, battle.id)
+    setLiveRoster(r)
     setStage('done')
   }
 
@@ -680,24 +651,13 @@ export function JoinWizard({
     const s = sessionRef.current
     if (s) {
       setNotice('')
-      // 이미 참여한 그룹이면 이름을 묻지 않고 재참여 확인으로.
       const client = sb()
-      const member =
-        membership ?? (await fetchMembership(client, team.id, s.user.id))
-      if (member) {
-        setMembership(member)
-        await finishJoin(client)
+      const mine = existing ?? (await fetchMyFace(client, s.user.id))
+      setExisting(mine)
+      if (mine) {
+        setStage('reuse')
       } else {
-        const mine = existing ?? (await fetchMyFace(client, s.user.id))
-        setExisting(mine)
-        if (mine) {
-          setStage('reuse')
-        } else {
-          setFaceStatus('none')
-          const nick = nickname || (await fetchNickname(client, s.user.id))
-          if (nick && !nickname) setNickname(nick)
-          goNameOrSkip(nick)
-        }
+        goCapture()
       }
       return
     }
@@ -711,82 +671,27 @@ export function JoinWizard({
     })
   }
 
-  /** 슬롯 칩 선택 — [다음] 없이 즉시 진행. 직접 입력은 정원 밖 참가를
-   *  만들므로 허용하지 않는다 (빈 슬롯 claim 만 가능). */
-  function onSlotSelect(name: string) {
-    setNotice('')
-    joinNameRef.current = name
-    // 재사용/재촬영 결정은 이름 전에 끝난 상태 — 기존 관상 재사용이면
-    // 바로 합류, 아니면 촬영 (확정 이력 있으면 정보 확인 생략).
-    if (metricsIdRef.current || bodyRef.current) void runSave()
-    else goCapture()
+  function onPinChange(v: string) {
+    setPin(v)
+    try {
+      sessionStorage.setItem(pinStorageKey, v)
+    } catch {
+      /* storage 불가 환경은 무시 — 서버가 최종 검증한다 */
+    }
   }
 
-  /** 기존 내 관상 재사용 — 촬영 없이 이름 선택으로 진행. */
+  /** 기존 내 관상 재사용 — 촬영 없이 바로 합류(정원마감으로 이미 참여
+   *  중이면 join_battle 이 ALREADY_JOINED 로 응답, done 으로 처리). */
   function onReuseExisting() {
     metricsIdRef.current = existing?.id ?? null
-    setFaceStatus('reuse')
-    // alias(우선) 또는 카카오 닉네임이 빈 슬롯과 매칭되면 이름 단계 생략 —
-    // 그 자리로 즉시 합류한다. 매칭되는데 또 물어보는 것은 무의미.
-    const match = [existing?.alias, nickname].find(
-      (n): n is string =>
-        Boolean(n) && team.members.some((m) => !m.joined && m.name === n),
-    )
-    if (match) {
-      joinNameRef.current = match
-      void runSave(match)
-      return
-    }
-    setStage('name')
+    void runSave()
   }
 
-  /** 기존 관상 대신 새로 촬영 — 이름 선택 후 정보/카메라로 이어진다. */
+  /** 기존 관상 대신 새로 촬영. */
   function onReuseRecapture() {
     metricsIdRef.current = null
     bodyRef.current = null
-    setFaceStatus('none')
-    goNameOrSkip(nickname)
-  }
-
-  /** 전원 등록 시 즉석 결과표 — 멤버 전원 raw 를 받아 runCompat 전쌍 계산. */
-  async function onShowMatrix() {
-    if (matrixBusy) return
-    setMatrixBusy(true)
-    try {
-      await import('../lib/shared/face_engine.js')
-      const rows = await fetchMemberBodies(sb(), team.id)
-      if (rows.length < 2) return
-      const pairs: WebMatrix['pairs'] = []
-      let best: WebMatrix['pairs'][number] | null = null
-      for (let i = 0; i < rows.length; i++) {
-        for (let j = i + 1; j < rows.length; j++) {
-          const c = JSON.parse(
-            globalThis.runCompat(rows[i].body, rows[j].body),
-          ) as { total: number; labelKo: string }
-          const p = {
-            a: i,
-            b: j,
-            total: Math.round(c.total),
-            label: c.labelKo,
-            emoji: BAND_EMOJI[c.labelKo] ?? '⚪',
-          }
-          pairs.push(p)
-          if (!best || p.total > best.total) best = p
-        }
-      }
-      setMatrix({
-        names: rows.map((r) => r.name),
-        pairs,
-        best: best
-          ? { a: best.a, b: best.b, label: best.label, emoji: best.emoji }
-          : null,
-      })
-    } catch (e) {
-      console.error('[join] matrix compute failed:', e)
-      setNotice('결과표를 계산하지 못했어요. 잠시 후 다시 시도해 주세요.')
-    } finally {
-      setMatrixBusy(false)
-    }
+    goCapture()
   }
 
   /** 정보 확인 [확인] — 확정값을 body/ref 에 굳히고 저장·합류. */
@@ -810,21 +715,7 @@ export function JoinWizard({
   }
 
   // ── 렌더 ──────────────────────────────────────────────────────────────
-  const allJoined =
-    progress != null && progress.total > 0 && progress.joined >= progress.total
-  // 전원 등록 → 결과표 버튼/테이블 (done·already 공용).
-  const matrixSection = allJoined ? (
-    matrix ? (
-      <MatrixTable matrix={matrix} />
-    ) : (
-      <div>
-        <button className="join-btn" onClick={() => void onShowMatrix()}>
-          {matrixBusy ? '결과표 계산 중…' : '그룹 케미 결과표 보기'}
-        </button>
-        {notice && <p className="join-notice">{notice}</p>}
-      </div>
-    )
-  ) : null
+  const waitCount = Math.max(battle.maxPlayers - liveRoster.length, 0)
   // ref race 방지 — video 는 항상 마운트, 카메라 단계에서만 표시.
   // 캔버스가 video 위에 겹쳐 landmark mesh 오버레이를 그린다 (앱과 동일).
   const video = (
@@ -874,7 +765,41 @@ export function JoinWizard({
 
       {stage === 'entry' && (
         <>
-          <button className="join-btn join-btn--kakao" onClick={onJoinStart}>
+          {battle.visibility === 'private' && (
+            <div className="join-form">
+              <label className="join-field">
+                <span className="join-field-label">참여 비밀번호</span>
+                <input
+                  className="join-select join-name-input"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={pin}
+                  placeholder="4자리 숫자"
+                  onChange={(e) => onPinChange(e.target.value)}
+                />
+              </label>
+            </div>
+          )}
+          {battle.pledge && (
+            <div className="join-pledge">
+              <p className="join-pledge-text">
+                이 방의 공약 — {battle.pledge}
+              </p>
+              <label className="join-pledge-consent">
+                <input
+                  type="checkbox"
+                  checked={pledgeConsent}
+                  onChange={(e) => setPledgeConsent(e.target.checked)}
+                />
+                베스트 케미 두 사람이 이 공약을 실행하는 데 동의합니다
+              </label>
+            </div>
+          )}
+          <button
+            className="join-btn join-btn--kakao"
+            onClick={onJoinStart}
+            disabled={battle.pledge != null && !pledgeConsent}
+          >
             <KakaoTalkIcon />
             카카오로 참여하기
           </button>
@@ -882,35 +807,6 @@ export function JoinWizard({
           <p className="join-sub">
             앱 설치 없이 브라우저에서 관상을 등록할 수 있습니다.
           </p>
-        </>
-      )}
-
-      {stage === 'name' && (
-        <>
-          {faceStatus === 'reuse' && (
-            <p className="join-sub" style={{ margin: '0 0 8px' }}>
-              이미 등록된 내 관상으로 참여합니다. (촬영 없음)
-            </p>
-          )}
-          <p className="join-q">어떤 이름으로 참여할까요?</p>
-          {openSlots.length > 0 ? (
-            <div className="join-chips">
-              {openSlots.map((m) => (
-                <button
-                  key={m.name}
-                  className="join-chip"
-                  onClick={() => onSlotSelect(m.name)}
-                >
-                  {m.name}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <p className="join-sub">
-              빈 자리가 없습니다. 방장에게 자리를 요청해 주세요.
-            </p>
-          )}
-          {notice && <p className="join-notice">{notice}</p>}
         </>
       )}
 
@@ -1013,6 +909,7 @@ export function JoinWizard({
               확인
             </button>
           </div>
+          {notice && <p className="join-notice">{notice}</p>}
         </>
       )}
 
@@ -1024,116 +921,45 @@ export function JoinWizard({
 
       {stage === 'done' && (
         <>
-          {/* 앱 팀룸처럼 — 등록자는 아바타, 미등록자는 점선 빈 슬롯. */}
-          {roster.length > 0 && (
-            <div className="join-roster">
-              {roster.map((m) => (
-                <div key={m.name} className="join-roster-item">
-                  {m.joined && avatarUrl(m.thumbnailKey) ? (
-                    <img
-                      className="join-avatar"
-                      src={avatarUrl(m.thumbnailKey)!}
-                      alt=""
-                    />
-                  ) : m.joined ? (
-                    <div className="join-avatar join-avatar--letter">
-                      {m.name.slice(0, 1)}
-                    </div>
-                  ) : (
-                    <div className="join-avatar join-slot-empty" />
-                  )}
-                  <p
-                    className="join-avatar-name"
-                    style={m.joined ? undefined : { color: '#666' }}
-                  >
-                    {m.name}
-                  </p>
+          <p className="join-q">
+            {liveRoster.length} / {battle.maxPlayers} 명 참가 중
+          </p>
+          {/* 앱 로비처럼 — 참가자는 이니셜 아바타, 빈 자리는 점선 슬롯. */}
+          <div className="join-roster">
+            {liveRoster.map((r) => (
+              <div key={r.userId} className="join-roster-item">
+                <div className="join-avatar join-avatar--letter">
+                  {r.nickname.slice(0, 1)}
                 </div>
-              ))}
-            </div>
-          )}
-          {progress && progress.total - progress.joined > 0 && (
+                <p className="join-avatar-name">{r.nickname}</p>
+              </div>
+            ))}
+            {Array.from({ length: waitCount }).map((_, i) => (
+              <div key={`wait-${i}`} className="join-roster-item">
+                <div className="join-avatar join-slot-empty" />
+                <p className="join-avatar-name" style={{ color: '#666' }}>
+                  대기 중
+                </p>
+              </div>
+            ))}
+          </div>
+          {waitCount > 0 && (
             <p className="join-sub">
-              나머지 {progress.total - progress.joined}명이 등록을 마치면 그룹
-              케미 결과표가 공개됩니다.
+              나머지 {waitCount}명이 등록을 마치면 케미 배틀이 시작됩니다.
             </p>
           )}
-          {matrixSection}
+          {battle.pledge && (
+            <div className="join-pledge">
+              <p className="join-pledge-text">
+                이 방의 공약 — {battle.pledge}
+              </p>
+            </div>
+          )}
           <p className="join-sub" style={{ marginTop: 4 }}>
             얼굴의 측면까지 분석하는 정밀 관상은 앱으로만 가능합니다.
           </p>
         </>
       )}
-    </div>
-  )
-}
-
-/** 즉석 결과표 — /g 쇼케이스와 동일 문법 (이름 + 밴드 이모지, 점수 비노출). */
-function MatrixTable({ matrix }: { matrix: WebMatrix }) {
-  const { names, pairs, best } = matrix
-  const bandOf = (i: number, j: number) => {
-    const a = Math.min(i, j)
-    const b = Math.max(i, j)
-    return pairs.find((p) => p.a === a && p.b === b) ?? null
-  }
-  const head: React.CSSProperties = {
-    fontSize: 12,
-    color: '#666',
-    fontWeight: 400,
-    padding: 4,
-    whiteSpace: 'nowrap',
-  }
-  const cell: React.CSSProperties = {
-    width: 36,
-    height: 36,
-    textAlign: 'center',
-    fontSize: 16,
-    border: '1px solid #f7f7f8',
-    background: '#fff',
-  }
-  return (
-    <div style={{ marginTop: 16 }}>
-      {best && (
-        <div
-          style={{
-            background: '#fff',
-            borderRadius: 12,
-            padding: 12,
-            fontSize: 14,
-            color: '#1a1a1a',
-          }}
-        >
-          🏆 {names[best.a]} × {names[best.b]} {best.emoji} {best.label}
-        </div>
-      )}
-      <div style={{ overflowX: 'auto', marginTop: 12 }}>
-        <table style={{ borderCollapse: 'collapse', margin: '0 auto' }}>
-          <thead>
-            <tr>
-              <th />
-              {names.map((n, j) => (
-                <th key={j} style={head}>
-                  {n}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {names.map((n, i) => (
-              <tr key={i}>
-                <th style={{ ...head, textAlign: 'right', paddingRight: 8 }}>
-                  {n}
-                </th>
-                {names.map((_, j) => (
-                  <td key={j} style={cell}>
-                    {i === j ? '·' : (bandOf(i, j)?.emoji ?? '')}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
     </div>
   )
 }
