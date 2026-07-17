@@ -119,8 +119,8 @@ export default function Group() {
 /** ageMin/ageMax → 라벨. 전연령(둘 다 null) · 정확히 한 decade(N대) · 그 외 범위(N~M세). */
 function ageLabel(min: number | null, max: number | null): string {
   if (min == null || max == null) return "전연령";
-  if (max - min === 9) return `${min}대`;
-  return `${min}~${max}세`;
+  if (min === max) return `${min}대`;
+  return `${min}~${max + 9}세`;
 }
 
 function BattleInvite({

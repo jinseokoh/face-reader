@@ -108,10 +108,10 @@ export async function action({ request, context }: Route.ActionArgs) {
     )
   }
 
-  // 5) 모집 중(open) teams DELETE — closed_at 없는 내 그룹만. team_members 는
+  // 5) 모집 중(recruiting) teams DELETE — 내 그룹만. team_members 는
   // FK cascade. closed 팀은 owner_id 만 null 이 되고 30일 cron 이 정리.
   const teamsDel = await fetch(
-    `${env.SUPABASE_URL}/rest/v1/teams?owner_id=eq.${user.id}&closed_at=is.null`,
+    `${env.SUPABASE_URL}/rest/v1/teams?owner_id=eq.${user.id}&status=eq.recruiting`,
     {
       method: 'DELETE',
       headers: {

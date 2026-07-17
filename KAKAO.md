@@ -22,8 +22,9 @@
   → (비밀방) PIN 입력 → (공약 있으면) 동의 체크 → `join_battle` RPC 로 셀프 조인
   → 로비. 이름 슬롯·빈 슬롯 claim 은 없다 — 정체성은 로그인 계정 하나뿐.
 - **방장 반영**: 로비는 Supabase Realtime(`teams` UPDATE + `team_members`
-  INSERT/DELETE) 구독으로 즉시 반영되고, 채널 단절 시 5초 폴링으로 강등한다.
-  정원이 차면 그 조인 트랜잭션이 곧바로 결과 계산 단계(`revealing`)로 전이한다 —
+  INSERT/DELETE) 구독 + 10초 백업 폴링을 상시 병행해 반영된다 — 이탈(`team_members`
+  DELETE)은 filter 매칭 한계로 폴링이 커버한다. 정원이 차면 그 조인 트랜잭션이
+  곧바로 결과 계산 단계(`revealing`)로 전이한다 —
   방장이 별도로 "결과표 생성"을 누르는 액션은 없다.
 - **앱 미설치 (웹 참여)**: 브라우저로 `/g/{id}` — 모집 중 = 초대장 + **웹 참여
   위저드**(카카오 로그인(supabase-js, 앱과 같은 auth.users) → (비밀방) PIN →

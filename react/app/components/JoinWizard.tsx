@@ -287,6 +287,7 @@ export function JoinWizard({
       }
       setLiveRoster(r)
     }
+    void refetch()
     const channel = watchBattle(client, battle.id, () => void refetch())
     const poll = window.setInterval(() => void refetch(), LOBBY_POLL_MS)
     return () => {

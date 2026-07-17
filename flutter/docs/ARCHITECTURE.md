@@ -162,7 +162,8 @@ snapshot 으로 동결돼 있어 후착은 무해). 이후 열람은 `result_pay
 로비 슬롯의 아바타·쌍 상세 unlock 은 별도로 참가자의 **현재 my-face** 를 live resolve
 한다(`fetchMyFaceThumbnailUrls`/`fetchLiveReport`) — 밴드 계산 입력(snapshot)과 아바타
 표시(live)는 서로 다른 신선도를 쓴다. 로비 라이브 반영은 Realtime(`teams`/
-`team_members` 구독), 채널 단절 시 5초 폴링으로 강등.
+`team_members` 구독) + 10초 백업 폴링 상시 병행 — 이탈(`team_members` DELETE)은
+filter 매칭 한계로 폴링이 커버.
 
 **무료 코인**: rewarded video 3편 = 1🪙 (`ad_rewards`, KST 자정 reset).
 

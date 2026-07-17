@@ -1,6 +1,6 @@
 # HOW-IT-WORKS — facely
 
-**최종 업데이트**: 2026-07-12
+**최종 업데이트**: 2026-07-17
 
 `facely.kr` 의 Cloudflare Workers 앱. 책임:
 

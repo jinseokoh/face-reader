@@ -113,7 +113,8 @@
 
 - 헤더: 방 제목 + "n/N명" 진행. 공약이 있으면 배너 상시 노출.
 - 슬롯 그리드: 입장이 실시간 반영된다(Supabase Realtime — `teams` UPDATE + `team_members`
-  INSERT/DELETE 구독, 채널 단절 시 5초 폴링으로 강등) — 아바타(현재 my-face)+닉네임.
+  INSERT/DELETE 구독 + 10초(앱)/15초(웹) 백업 폴링 상시 병행, 이탈 반영은 폴링이
+  커버) — 아바타(현재 my-face)+닉네임.
 - **QR 코드**: 같은 자리 참가자가 스캔해 셀프 조인 — 현장 참여의 유일한 경로다. 초대
   3버튼(카톡/링크 공유/복사) 상시 공존.
 - 참가자는 [나가기] 가능(방장은 방 삭제만). 정원 충족 시 시작 버튼 없이 자동 전환된다.
@@ -129,8 +130,7 @@
 - 3-2-1 카운트다운 → 🏆 베스트 케미 카드(raw total 최고점 쌍, 점수 무료 공개) → 공약이
   있으면 회수 카드(당첨 두 사람 지목 + 당첨자에게만 오픈채팅 링크 노출) → N×N 밴드
   매트릭스(셀 = 4단 밴드 이모지: 🟢 천작지합 / 🔵 금슬상화 / 🟠 마합가성 / 🔴 형극난조,
-  점수 비노출, **보는 사람 행 최상단 고정**) → 쌍 탭 = 1🪙 unlock(기존 `unlock_compat`
-  그대로).
+  점수 비노출, **보는 사람 행 최상단 고정**) → 쌍 탭 = 1🪙 unlock(`unlock_compat` RPC).
 - 계산은 클라이언트가 한다(`runBattle`, 결정론이라 전원이 같은 결과) — 최초 도달
   클라이언트가 `submit_battle_result` 로 결과를 1회 기록(first-writer-wins), 이후
   열람은 그 payload 를 그대로 렌더.
@@ -221,7 +221,7 @@ python/ (DeepFace FastAPI — 성별·연령·인종 추정)     Supabase (metri
 
 - 궁합 엔진은 Flutter 에만 — react 는 `runBattle`(웹 즉석 계산·backfill)로 같은 shared 엔진을 호출한다. 렌더는 `result_payload` 가 있으면 그대로, 없으면 계산 결과.
 - JS export 는 `runEngine` / `runCompat` / `runMetrics` / `runBattle` 4개.
-- **실시간 = Supabase Realtime** — 케미 배틀 로비는 `teams`(UPDATE) + `team_members`(INSERT/DELETE) `postgres_changes` 구독. 채널 단절·타임아웃 시 5초 폴링으로 강등, 재연결 시 복귀(백그라운드 push 알림은 범위 외).
+- **실시간 = Supabase Realtime** — 케미 배틀 로비는 `teams`(UPDATE) + `team_members`(INSERT/DELETE) `postgres_changes` 구독 + 10초(앱)/15초(웹) 백업 폴링을 상시 병행한다(이탈 반영은 DELETE 필터 매칭 한계로 폴링이 커버, 백그라운드 push 알림은 범위 외).
 
 ---
 
