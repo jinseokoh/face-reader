@@ -22,6 +22,7 @@ import '../../widgets/compact_snack_bar.dart';
 import '../../widgets/primary_button.dart';
 import '../compatibility/compat_unlock_action.dart';
 import 'battle_band.dart';
+import 'battle_match_card.dart';
 
 /// 배틀 결과 — payload(스코어보드)가 없으면 snapshot 으로 계산해 1회 기록
 /// (first-writer-wins)하고, 있으면 그대로 렌더한다.
@@ -82,7 +83,10 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
         });
         return;
       }
-      payload = engine.computeBattle(players).toPayload();
+      payload = engine
+          .computeBattle(players,
+              matchOnly: battle.roomKind == BattleRoomKind.match)
+          .toPayload();
       // 결정론 — 선착 기록만 유효, 실패(후착·비참가자)는 무해.
       try {
         await _service.submitResult(widget.battleId, payload);
@@ -141,6 +145,33 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
     return '참가자';
   }
 
+  String? _genderOf(int slot) {
+    for (final p in _players) {
+      if (p['slot'] == slot) return p['gender'] as String?;
+    }
+    return null;
+  }
+
+  /// 뷰어가 베스트 쌍 본인이면 상대 (userId, slot) — 아니면 null.
+  ({String userId, int slot})? get _bestMatchOther {
+    final myUid = _service.myUid;
+    if (myUid == null) return null;
+    final a = (_best['a'] as num).toInt();
+    final b = (_best['b'] as num).toInt();
+    String? uidOf(int slot) {
+      for (final r in _roster) {
+        if (r.slotNo == slot) return r.userId;
+      }
+      return null;
+    }
+
+    final uidA = uidOf(a);
+    final uidB = uidOf(b);
+    if (uidA == myUid && uidB != null) return (userId: uidB, slot: b);
+    if (uidB == myUid && uidA != null) return (userId: uidA, slot: a);
+    return null;
+  }
+
   int? _bandOf(int a, int b) {
     final lo = a < b ? a : b;
     final hi = a < b ? b : a;
@@ -180,10 +211,20 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
   }
 
   Widget _board() {
+    final matchOther = _bestMatchOther;
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
         _bestCard(),
+        if (matchOther != null) ...[
+          const SizedBox(height: AppSpacing.xl),
+          BattleMatchCard(
+            teamId: widget.battleId,
+            otherUserId: matchOther.userId,
+            otherNickname: _nameOf(matchOther.slot),
+            otherGender: _genderOf(matchOther.slot) ?? 'male',
+          ),
+        ],
         const SizedBox(height: AppSpacing.xl),
         Text('상호 케미 맵', style: AppText.sectionTitle),
         const SizedBox(height: AppSpacing.md),
@@ -224,10 +265,37 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
   }
 
   /// 뷰어 행 최상단 고정 매트릭스 — 셀 = 밴드 색 점.
+  /// match 방은 남(행)×여(열) 직사각(동성 쌍 부재) — 뷰어가 포함된 성별을
+  /// 행 축으로 삼는다. all 방은 기존 정방 유지.
   Widget _matrix() {
-    final slots = [for (final p in _players) (p['slot'] as num).toInt()];
-    if (_mySlot != null && slots.contains(_mySlot)) {
-      slots
+    final rows = <int>[];
+    final cols = <int>[];
+    if (_battle?.roomKind == BattleRoomKind.match) {
+      final males = <int>[];
+      final females = <int>[];
+      for (final p in _players) {
+        final slot = (p['slot'] as num).toInt();
+        if (p['gender'] == 'male') {
+          males.add(slot);
+        } else {
+          females.add(slot);
+        }
+      }
+      final myGender = _mySlot == null ? null : _genderOf(_mySlot!);
+      if (myGender == 'female') {
+        rows.addAll(females);
+        cols.addAll(males);
+      } else {
+        rows.addAll(males);
+        cols.addAll(females);
+      }
+    } else {
+      final slots = [for (final p in _players) (p['slot'] as num).toInt()];
+      rows.addAll(slots);
+      cols.addAll(slots);
+    }
+    if (_mySlot != null && rows.contains(_mySlot)) {
+      rows
         ..remove(_mySlot)
         ..insert(0, _mySlot!);
     }
@@ -247,14 +315,14 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
         children: [
           Row(children: [
             const SizedBox(width: 64),
-            for (final s in slots) nameCell(s, header: true),
+            for (final c in cols) nameCell(c, header: true),
           ]),
-          for (final row in slots)
+          for (final row in rows)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
               child: Row(children: [
                 nameCell(row),
-                for (final col in slots)
+                for (final col in cols)
                   SizedBox(
                     width: 64,
                     child: row == col
