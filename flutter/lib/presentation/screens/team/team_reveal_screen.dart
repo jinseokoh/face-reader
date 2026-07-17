@@ -76,6 +76,13 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
       }
       final players =
           assembleBattlePlayers(roster: roster, snapshot: snapshot);
+      if (players.length < 2) {
+        setState(() {
+          _battle = battle;
+          _phase = _Phase.orphan;
+        });
+        return;
+      }
       payload = engine.computeBattle(players).toPayload();
       // 결정론 — 선착 기록만 유효, 실패(후착·비참가자)는 무해.
       try {

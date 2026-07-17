@@ -98,6 +98,7 @@ class _BattleJoinScreenState extends ConsumerState<BattleJoinScreen> {
         password: battle.isPublic ? null : _pinCtrl.text.trim(),
       );
       ref.invalidate(myBattlesProvider);
+      ref.invalidate(publicBattlesProvider);
       if (mounted) _goInside(battle);
     } catch (e) {
       final err = mapBattleError(e);

@@ -107,6 +107,7 @@ class _TeamLobbyScreenState extends ConsumerState<TeamLobbyScreen> {
       await _service.leaveBattle(widget.battleId);
       if (mounted) {
         ref.invalidate(myBattlesProvider);
+        ref.invalidate(publicBattlesProvider);
         Navigator.of(context).pop();
       }
     } catch (e) {
@@ -132,11 +133,11 @@ class _TeamLobbyScreenState extends ConsumerState<TeamLobbyScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('취소', style: TextStyle(color: AppColors.textHint)),
+            child: Text('취소', style: AppText.body.copyWith(color: AppColors.textHint)),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('삭제', style: TextStyle(color: AppColors.danger)),
+            child: Text('삭제', style: AppText.body.copyWith(color: AppColors.danger)),
           ),
         ],
       ),
@@ -146,6 +147,7 @@ class _TeamLobbyScreenState extends ConsumerState<TeamLobbyScreen> {
       await _service.deleteBattle(widget.battleId);
       if (mounted) {
         ref.invalidate(myBattlesProvider);
+        ref.invalidate(publicBattlesProvider);
         Navigator.of(context).pop();
       }
     } catch (e) {
