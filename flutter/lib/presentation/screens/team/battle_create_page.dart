@@ -104,6 +104,18 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
     setState(() => _busy = true);
     final service = BattleService.instance;
     Battle? battle;
+    final myFace =
+        ref.read(historyProvider).where((r) => r.isMyFace).firstOrNull;
+    if (myFace == null || !await service.ensureMyFaceOnServer(myFace)) {
+      if (mounted) {
+        showTopSnackBar(
+          Overlay.of(context),
+          CompactSnackBar.error(message: '내 관상 서버 등록에 실패했습니다'),
+        );
+        setState(() => _busy = false);
+      }
+      return;
+    }
     try {
       battle = await service.createBattle(
         title: _titleCtrl.text.trim(),

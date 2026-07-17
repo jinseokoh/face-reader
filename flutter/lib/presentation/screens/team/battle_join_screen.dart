@@ -92,6 +92,18 @@ class _BattleJoinScreenState extends ConsumerState<BattleJoinScreen> {
       }
     }
     setState(() => _busy = true);
+    final myFace =
+        ref.read(historyProvider).where((r) => r.isMyFace).firstOrNull;
+    if (myFace == null || !await _service.ensureMyFaceOnServer(myFace)) {
+      if (mounted) {
+        showTopSnackBar(
+          Overlay.of(context),
+          CompactSnackBar.error(message: '내 관상 서버 등록에 실패했습니다'),
+        );
+        setState(() => _busy = false);
+      }
+      return;
+    }
     try {
       await _service.joinBattle(
         widget.battleId,

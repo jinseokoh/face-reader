@@ -1,11 +1,13 @@
 import 'dart:convert';
 
 import 'package:face_engine/domain/models/face_reading_report.dart';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/storage/thumbnail_paths.dart';
 import '../../domain/models/battle.dart';
 import '../../domain/services/share/share_receive_service.dart';
+import 'supabase_service.dart';
 
 /// Chemistry Battle 서버 접점 — 방은 서버 우선(로컬 캐시 없음).
 /// 쓰기는 RPC(security definer)와 owner 직접 insert/delete 뿐,
@@ -53,6 +55,29 @@ class BattleService {
         .select(_teamCols)
         .single();
     return Battle.fromRow(row);
+  }
+
+  /// 조인 전 서버 my-face 보장. 비로그인 등록 → 로그인 직후 조인 경로에서
+  /// 서버 행이 익명(user_id null)으로 남아 join_battle 이 NO_MY_FACE 를
+  /// 던지는 것을 saveMetrics 재호출(고정 행 upsert = 귀속)로 자가 치유.
+  Future<bool> ensureMyFaceOnServer(FaceReadingReport myFace) async {
+    final uid = myUid;
+    if (uid == null) return false;
+    final row = await _client
+        .from('metrics')
+        .select('id')
+        .eq('user_id', uid)
+        .eq('is_my_face', true)
+        .limit(1)
+        .maybeSingle();
+    if (row != null) return true;
+    try {
+      await SupabaseService().saveMetrics(myFace);
+      return true;
+    } catch (e) {
+      debugPrint('[Battle.ensureMyFace] saveMetrics fail: $e');
+      return false;
+    }
   }
 
   Future<void> joinBattle(String battleId, {String? password}) =>
