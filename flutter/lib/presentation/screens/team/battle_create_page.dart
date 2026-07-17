@@ -2,6 +2,7 @@ import 'package:facely/core/theme.dart';
 import 'package:facely/data/services/battle_service.dart';
 import 'package:facely/domain/models/battle.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
+import 'package:facely/presentation/screens/team/battle_title_catalog.dart';
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/presentation/widgets/primary_button.dart';
 import 'package:flutter/material.dart';
@@ -10,8 +11,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
-/// 방 생성 스텝: 이름 → 인원(4~12) → 공개/비밀(+PIN) → 연령대 → 공약(선택)
-/// → [배틀 만들기] = createBattle + joinBattle(셀프 조인) 후 Battle 반환.
+/// 방 생성 스텝 (rev2 — UX §A/§C): ①방 유형 → ②방 제목(카테고리→프리셋) →
+/// ③인원(6/8/10/12) → ④연령대(방장 인접 구간 RangeSlider) → ⑤공개 설정
+/// (공개/비밀 + 썸네일 공개). [배틀 만들기] = createBattle + joinBattle(셀프
+/// 조인) 후 Battle 반환, 조인 실패 시 방 롤백.
 Future<Battle?> showBattleCreatePage(BuildContext context) {
   return showModalBottomSheet<Battle>(
     context: context,
@@ -25,9 +28,7 @@ Future<Battle?> showBattleCreatePage(BuildContext context) {
   );
 }
 
-enum _Step { name, count, access, age, pledge }
-
-const _kPledgePresets = ['🎬 영화', '☕ 커피', '🍜 밥 한 끼', '🎤 노래방'];
+enum _Step { roomKind, title, count, age, visibility }
 
 // battle.dart 의 Battle.ageRangeLabel 표기 규칙과 동일 포맷(로컬 복제).
 String _ageSliderLabel(int start, int end) =>
@@ -41,17 +42,19 @@ class _BattleCreatePage extends ConsumerStatefulWidget {
 }
 
 class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
-  _Step _step = _Step.name;
-  final _titleCtrl = TextEditingController();
+  _Step _step = _Step.roomKind;
   final _pinCtrl = TextEditingController();
-  final _pledgeCtrl = TextEditingController();
+
+  BattleRoomKind? _roomKind;
+  BattleTitleCategory? _categorySel;
+  String? _selectedTitle;
   int _maxPlayers = 8;
-  bool _isPublic = false;
-  int? _ageMin; // null 쌍 = 전연령 (기본값).
+  int? _ageMin;
   int? _ageMax;
-  String? _pledgePreset; // null = 공약 없음, '' = 직접입력 모드
+  bool _isPublic = false;
+  bool _thumbOpen = false;
   bool _busy = false;
-  int? _ownerAgeDecade; // 방장(나) 연령대 — join_battle 연령 게이트 셀프-배제 방지용.
+  int? _ownerAgeDecade; // 방장(나) 연령대 — ④ 슬라이더 bounds 산출용.
 
   @override
   void initState() {
@@ -62,42 +65,60 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
         break;
       }
     }
+    // 진입 게이트(chemistry_screen._create)가 10대를 이미 걸러내므로 여기서는
+    // 항상 20 이상이 온다 — decade 미상(방어적 fallback)만 20 으로 둔다.
+    final decade = _ownerAgeDecade ?? 20;
+    final windows = _windowsFor(decade);
+    final chosen = windows.length == 1 ? windows.first : windows.last;
+    _ageMin = chosen.$1;
+    _ageMax = chosen.$2;
   }
 
   @override
   void dispose() {
-    _titleCtrl.dispose();
     _pinCtrl.dispose();
-    _pledgeCtrl.dispose();
     super.dispose();
   }
 
-  String? get _pledgeValue {
-    if (_pledgePreset == null) return null;
-    final text =
-        _pledgePreset!.isEmpty ? _pledgeCtrl.text.trim() : _pledgePreset!;
-    return text.isEmpty ? null : text;
+  // ④ 연령대 — 방장 decade 가 포함된, 폭 정확히 10(=2-decade) 인 유효 구간들.
+  // 20대/70대는 1개, 그 사이는 2개([D-10,D], [D,D+10]).
+  List<(int, int)> _windowsFor(int decade) {
+    final list = <(int, int)>[];
+    if (decade - 10 >= 20) list.add((decade - 10, decade));
+    if (decade + 10 <= 70) list.add((decade, decade + 10));
+    return list;
   }
 
-  // 공개방 + 공약 → 성인 연령대 강제 (서버 CHECK 와 동일 규칙의 UI 게이트).
-  bool get _pledgeAllowed => !_isPublic || (_ageMin != null && _ageMin! >= 20);
+  (int, int) _snapAgeWindow(int start, int end, int decade) {
+    final windows = _windowsFor(decade);
+    if (windows.length == 1) return windows.first;
+    final center = (start + end) / 2;
+    final centerA = (windows[0].$1 + windows[0].$2) / 2;
+    final centerB = (windows[1].$1 + windows[1].$2) / 2;
+    return (center - centerA).abs() <= (center - centerB).abs()
+        ? windows[0]
+        : windows[1];
+  }
 
-  // 방장은 createBattle 직후 셀프 조인하며 join_battle 도 연령 게이트를
-  // 적용한다 — 방장 본인 연령대를 배제하는 범위를 고르면 고아 방이 생기므로
-  // 그런 범위는 '다음' 버튼을 막는다. 전연령 또는 연령대 모를 땐 게이트 없음.
-  bool get _ageRangeValid {
-    if (_ageMin == null) return true;
-    final decade = _ownerAgeDecade;
-    if (decade == null) return true;
-    return decade >= _ageMin! && decade <= _ageMax!;
+  // ② 방 제목 — 방 유형에 허용되지 않는 카테고리/제목은 숨긴다(disabled 나열 아님).
+  List<BattleTitleCategory> get _visibleCategories => kBattleTitleCatalog
+      .where((c) => c.titles.any((t) => t.allowedKinds.contains(_roomKind)))
+      .toList();
+
+  BattleTitleCategory get _activeCategory {
+    final visible = _visibleCategories;
+    final sel = _categorySel;
+    if (sel != null && visible.contains(sel)) return sel;
+    return visible.first;
   }
 
   bool get _stepValid => switch (_step) {
-        _Step.name => _titleCtrl.text.trim().isNotEmpty,
+        _Step.roomKind => _roomKind != null,
+        _Step.title => _selectedTitle != null,
         _Step.count => true,
-        _Step.access => _isPublic || _pinCtrl.text.trim().length == 4,
-        _Step.age => _ageRangeValid,
-        _Step.pledge => _pledgeValue == null || _pledgeAllowed,
+        _Step.age => true,
+        _Step.visibility =>
+          _isPublic || _pinCtrl.text.trim().length == 4,
       };
 
   Future<void> _create() async {
@@ -118,14 +139,14 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
     }
     try {
       battle = await service.createBattle(
-        title: _titleCtrl.text.trim(),
+        title: _selectedTitle!,
         isPublic: _isPublic,
         password: _isPublic ? null : _pinCtrl.text.trim(),
         maxPlayers: _maxPlayers,
         ageMin: _ageMin,
         ageMax: _ageMax,
-        roomKind: BattleRoomKind.all,
-        thumbOpen: false,
+        roomKind: _roomKind!,
+        thumbOpen: _thumbOpen,
       );
       await service.joinBattle(battle.id,
           password: _isPublic ? null : _pinCtrl.text.trim());
@@ -150,7 +171,7 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
   }
 
   void _next() {
-    if (_step == _Step.pledge) {
+    if (_step == _Step.visibility) {
       _create();
       return;
     }
@@ -158,7 +179,7 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
   }
 
   void _back() {
-    if (_step == _Step.name) {
+    if (_step == _Step.roomKind) {
       Navigator.of(context).pop();
       return;
     }
@@ -198,7 +219,7 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
             Expanded(child: SingleChildScrollView(child: _stepBody())),
             const SizedBox(height: AppSpacing.lg),
             PrimaryButton(
-              label: _step == _Step.pledge ? '배틀 만들기' : '다음',
+              label: _step == _Step.visibility ? '배틀 만들기' : '다음',
               busy: _busy,
               onPressed: _stepValid && !_busy ? _next : null,
             ),
@@ -209,71 +230,179 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
   }
 
   Widget _stepBody() => switch (_step) {
-        _Step.name => _nameStep(),
+        _Step.roomKind => _roomKindStep(),
+        _Step.title => _titleStep(),
         _Step.count => _countStep(),
-        _Step.access => _accessStep(),
         _Step.age => _ageStep(),
-        _Step.pledge => _pledgeStep(),
+        _Step.visibility => _visibilityStep(),
       };
 
-  Widget _nameStep() {
+  Widget _roomKindStep() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('배틀 방 이름', style: AppText.display),
+        Text('어떤 방을 만들까요?', style: AppText.display),
+        const SizedBox(height: AppSpacing.xxl),
+        _choiceTile(
+          selected: _roomKind == BattleRoomKind.match,
+          title: '이성 케미 매칭방',
+          caption: '남녀 자리가 반반으로 고정됩니다. 결과는 남녀 쌍만 계산합니다',
+          onTap: () => setState(() {
+            _roomKind = BattleRoomKind.match;
+            _categorySel = null;
+            _selectedTitle = null;
+          }),
+        ),
+        if (_roomKind == BattleRoomKind.match) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+            child: Text(
+              '베스트 매칭이 되면 두 사람에게 서로의 사진이 공개되고 채팅을 제안할 수 있습니다',
+              style: AppText.caption.copyWith(color: AppColors.textHint),
+            ),
+          ),
+        ],
+        const SizedBox(height: AppSpacing.md),
+        _choiceTile(
+          selected: _roomKind == BattleRoomKind.all,
+          title: '전체 케미 배틀방',
+          caption: '성별 구분 없이 모든 쌍의 케미를 계산합니다',
+          onTap: () => setState(() {
+            _roomKind = BattleRoomKind.all;
+            _categorySel = null;
+            _selectedTitle = null;
+          }),
+        ),
+      ],
+    );
+  }
+
+  Widget _titleStep() {
+    final category = _activeCategory;
+    final categories = _visibleCategories;
+    final titles =
+        category.titles.where((t) => t.allowedKinds.contains(_roomKind));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('방 제목을 고르세요', style: AppText.display),
         const SizedBox(height: AppSpacing.sm),
         Text('방 목록과 초대장에 그대로 보입니다', style: AppText.caption),
         const SizedBox(height: AppSpacing.xxl),
-        TextField(
-          controller: _titleCtrl,
-          autofocus: true,
-          maxLength: 24,
-          style: AppText.body.copyWith(color: AppColors.textPrimary),
-          onChanged: (_) => setState(() {}),
-          decoration: const InputDecoration(hintText: '예: 우리 팀 케미 배틀'),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (final c in categories) ...[
+                _chip(
+                  label: c.name,
+                  selected: c == category,
+                  onTap: () => setState(() {
+                    _categorySel = c;
+                    _selectedTitle = null;
+                  }),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+              ],
+            ],
+          ),
         ),
+        const SizedBox(height: AppSpacing.lg),
+        for (final t in titles) ...[
+          _titleTile(
+            selected: _selectedTitle == t.title,
+            title: t.title,
+            onTap: () => setState(() => _selectedTitle = t.title),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+        ],
       ],
     );
   }
 
   Widget _countStep() {
+    final half = _maxPlayers ~/ 2;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('참가 인원', style: AppText.display),
+        Text('몇 명이 참가하나요?', style: AppText.display),
         const SizedBox(height: AppSpacing.sm),
         Text('정원이 다 차면 배틀이 자동으로 시작됩니다', style: AppText.caption),
         const SizedBox(height: AppSpacing.xxl),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
           children: [
-            IconButton(
-              onPressed: _maxPlayers > 4
-                  ? () => setState(() => _maxPlayers--)
-                  : null,
-              icon: const FaIcon(FontAwesomeIcons.minus, size: 18),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
-              child: Text('$_maxPlayers명', style: AppText.display),
-            ),
-            IconButton(
-              onPressed: _maxPlayers < 12
-                  ? () => setState(() => _maxPlayers++)
-                  : null,
-              icon: const FaIcon(FontAwesomeIcons.plus, size: 18),
-            ),
+            for (final n in [6, 8, 10, 12])
+              _chip(
+                label: '$n명',
+                selected: _maxPlayers == n,
+                onTap: () => setState(() => _maxPlayers = n),
+              ),
           ],
+        ),
+        if (_roomKind == BattleRoomKind.match) ...[
+          const SizedBox(height: AppSpacing.lg),
+          Text('남자 $half명, 여자 $half명', style: AppText.body),
+        ],
+      ],
+    );
+  }
+
+  Widget _ageStep() {
+    final decade = _ownerAgeDecade ?? 20;
+    final lo = (decade - 10) < 20 ? 20 : decade - 10;
+    final hi = (decade + 10) > 70 ? 70 : decade + 10;
+    final divisions = (hi - lo) ~/ 10;
+    final min = _ageMin!;
+    final max = _ageMax!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('참가 연령대', style: AppText.display),
+        const SizedBox(height: AppSpacing.sm),
+        Text('방장의 나이대가 포함된 범위만 고를 수 있습니다', style: AppText.caption),
+        const SizedBox(height: AppSpacing.xxl),
+        Text(_ageSliderLabel(min, max), style: AppText.body),
+        SliderTheme(
+          data: SliderThemeData(
+            activeTrackColor: AppColors.textPrimary,
+            thumbColor: AppColors.textPrimary,
+            inactiveTrackColor: AppColors.border,
+            overlayColor: Colors.transparent,
+            showValueIndicator: ShowValueIndicator.onDrag,
+            valueIndicatorColor: AppColors.textPrimary,
+            valueIndicatorTextStyle:
+                AppText.caption.copyWith(color: Colors.white),
+          ),
+          child: RangeSlider(
+            min: lo.toDouble(),
+            max: hi.toDouble(),
+            divisions: divisions < 1 ? 1 : divisions,
+            labels: RangeLabels('$min대', '$max대'),
+            values: RangeValues(min.toDouble(), max.toDouble()),
+            onChanged: (values) => setState(() {
+              _ageMin = values.start.round();
+              _ageMax = values.end.round();
+            }),
+            onChangeEnd: (values) => setState(() {
+              final snapped = _snapAgeWindow(
+                  values.start.round(), values.end.round(), decade);
+              _ageMin = snapped.$1;
+              _ageMax = snapped.$2;
+            }),
+          ),
         ),
       ],
     );
   }
 
-  Widget _accessStep() {
+  Widget _visibilityStep() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('공개 방식', style: AppText.display),
+        Text('공개 설정', style: AppText.display),
         const SizedBox(height: AppSpacing.xxl),
         _choiceTile(
           selected: _isPublic,
@@ -300,112 +429,27 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
             decoration: const InputDecoration(hintText: '비밀번호 4자리'),
           ),
         ],
-      ],
-    );
-  }
-
-  Widget _ageStep() {
-    final displayMin = _ageMin ?? 10;
-    final displayMax = _ageMax ?? 70;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('참가 연령대', style: AppText.display),
         const SizedBox(height: AppSpacing.xxl),
-        _chip(
-          label: '전연령',
-          selected: _ageMin == null,
-          onTap: () => setState(() {
-            _ageMin = null;
-            _ageMax = null;
-          }),
+        Text('참가자 얼굴 공개', style: AppText.sectionTitle),
+        const SizedBox(height: AppSpacing.md),
+        _choiceTile(
+          selected: _thumbOpen,
+          title: '얼굴 공개',
+          caption: '로비와 결과에서 참가자의 얼굴 썸네일이 보입니다',
+          onTap: () => setState(() => _thumbOpen = true),
         ),
-        const SizedBox(height: AppSpacing.xl),
-        Text(_ageSliderLabel(displayMin, displayMax), style: AppText.body),
-        SliderTheme(
-          data: SliderThemeData(
-            activeTrackColor: AppColors.textPrimary,
-            thumbColor: AppColors.textPrimary,
-            inactiveTrackColor: AppColors.border,
-            overlayColor: Colors.transparent,
-            showValueIndicator: ShowValueIndicator.onDrag,
-            valueIndicatorColor: AppColors.textPrimary,
-            valueIndicatorTextStyle:
-                AppText.caption.copyWith(color: Colors.white),
-          ),
-          child: RangeSlider(
-            min: 10,
-            max: 70,
-            divisions: 6,
-            labels: RangeLabels('$displayMin대', '$displayMax대'),
-            values: RangeValues(displayMin.toDouble(), displayMax.toDouble()),
-            onChanged: (values) => setState(() {
-              _ageMin = values.start.round();
-              _ageMax = values.end.round();
-            }),
-          ),
+        const SizedBox(height: AppSpacing.md),
+        _choiceTile(
+          selected: !_thumbOpen,
+          title: '얼굴 비공개',
+          caption: '얼굴 대신 성별 기본 아이콘이 보입니다',
+          onTap: () => setState(() => _thumbOpen = false),
         ),
-        if (!_ageRangeValid) ...[
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            '방장인 나도 참가하므로 내 연령대가 포함되어야 합니다',
-            style: AppText.caption.copyWith(color: AppColors.danger),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _pledgeStep() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('공약 (선택)', style: AppText.display),
-        const SizedBox(height: AppSpacing.sm),
-        Text('베스트 케미로 뽑힌 두 사람이 실행합니다', style: AppText.caption),
-        if (!_pledgeAllowed) ...[
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            '공개방 공약은 20세 이상 연령대 설정이 필요합니다',
-            style: AppText.caption.copyWith(color: AppColors.danger),
-          ),
-        ],
-        const SizedBox(height: AppSpacing.xxl),
-        Wrap(
-          spacing: AppSpacing.sm,
-          runSpacing: AppSpacing.sm,
-          children: [
-            _chip(
-              label: '공약 없음',
-              selected: _pledgePreset == null,
-              onTap: () => setState(() => _pledgePreset = null),
-            ),
-            for (final preset in _kPledgePresets)
-              _chip(
-                label: preset,
-                selected: _pledgePreset == preset,
-                onTap: _pledgeAllowed
-                    ? () => setState(() => _pledgePreset = preset)
-                    : null,
-              ),
-            _chip(
-              label: '직접입력',
-              selected: _pledgePreset == '',
-              onTap:
-                  _pledgeAllowed ? () => setState(() => _pledgePreset = '') : null,
-            ),
-          ],
+        const SizedBox(height: AppSpacing.lg),
+        Text(
+          '이 설정과 관계없이 베스트 매칭이 되면 두 사람에게는 서로의 사진이 공개됩니다',
+          style: AppText.caption.copyWith(color: AppColors.textHint),
         ),
-        if (_pledgePreset == '') ...[
-          const SizedBox(height: AppSpacing.lg),
-          TextField(
-            controller: _pledgeCtrl,
-            maxLength: 40,
-            style: AppText.body.copyWith(color: AppColors.textPrimary),
-            onChanged: (_) => setState(() {}),
-            decoration: const InputDecoration(hintText: '공약 내용'),
-          ),
-        ],
       ],
     );
   }
@@ -437,6 +481,34 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
             Text(caption, style: AppText.caption),
           ],
         ),
+      ),
+    );
+  }
+
+  /// ② 제목 리스트 전용 축소형 — surface bg, 제목 한 줄만(caption 없음),
+  /// 선택 표현은 border 만(라디오 아이콘 없음, §C.3).
+  Widget _titleTile({
+    required bool selected,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.md,
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(
+            color: selected ? AppColors.textPrimary : AppColors.border,
+          ),
+        ),
+        child: Text(title, style: AppText.body.copyWith(color: AppColors.textPrimary)),
       ),
     );
   }

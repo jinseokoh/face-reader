@@ -31,6 +31,14 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
       final ok = await showLoginBottomSheet(context, ref);
       if (!ok || !mounted) return;
     }
+    // 10대 차단 — UX §A.0. 연령 하한 20 이 스텝 중간이 아니라 문 앞에서 걸려야
+    // 제목까지 고른 뒤 버려지는 낭비가 생기지 않는다.
+    final myFace = ref.read(historyProvider).where((r) => r.isMyFace).firstOrNull;
+    final decade = myFace == null ? null : 10 + myFace.ageGroup.index * 10;
+    if (decade != null && decade < 20) {
+      if (mounted) _showAgeGateDialog(context);
+      return;
+    }
     final battle = await showBattleCreatePage(context);
     if (battle == null || !mounted) return;
     ref.invalidate(myBattlesProvider);
@@ -38,6 +46,30 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
     Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => TeamLobbyScreen(battleId: battle.id),
     ));
+  }
+
+  void _showAgeGateDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+        ),
+        title: const Text('방 만들기 사용불가', style: AppText.modalTitle),
+        content: const Text(
+          '케미 배틀 방 만들기는 20세 이상부터 사용할 수 있습니다. '
+          '내 관상 분석의 나이대가 10대로 확인되어 지금은 만들 수 없습니다.',
+          style: AppText.body,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('확인', style: AppText.subTitle),
+          ),
+        ],
+      ),
+    );
   }
 
   void _openMine(Battle battle) {
