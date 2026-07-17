@@ -4,7 +4,6 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:camera/camera.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/data/services/face_metadata_client.dart';
@@ -14,6 +13,7 @@ import 'package:facely/domain/services/face_metrics_lateral.dart';
 import 'package:facely/presentation/screens/chemistry/face_mesh_painter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mediapipe_face_mesh/mediapipe_face_mesh.dart';
@@ -22,7 +22,7 @@ import 'package:mediapipe_face_mesh/mediapipe_face_mesh.dart';
 ///
 /// 카메라 (face_mesh_page) path 와 시각적으로 동일한 wrapper:
 ///   - 검정 배경 Scaffold
-///   - 검정 AppBar + 흰 글씨 "얼굴 정면" / "얼굴 측면" 타이틀
+///   - 검정 AppBar + 흰 글씨 "얼굴 정면" / "얼굴 45° 측면" 타이틀
 ///   - X 닫기 버튼
 ///
 /// 내부에서 image_picker.pickImage 를 호출하면 OS native picker 가 떠도
@@ -66,7 +66,7 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
             automaticallyImplyLeading: false,
             centerTitle: true,
             title: Text(
-              _isLateralPhase ? '얼굴 측면' : '얼굴 정면',
+              _isLateralPhase ? '얼굴 45° 측면' : '얼굴 정면',
               style: AppText.modalTitle.copyWith(color: Colors.white),
             ),
             actions: [
@@ -91,7 +91,7 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
 
   Future<void> _afterFrontalConfirm() async {
     // 카메라 path 의 측면 instructional modal 과 동일한 스타일 — lateral.png
-    // illustration + "얼굴 측면" 타이틀 + 안내 + [건너뛰기 TextButton] +
+    // illustration + "얼굴 45° 측면" 타이틀 + 안내 + [건너뛰기 TextButton] +
     // [측면사진 선택 검정 ElevatedButton].
     final wantLateral = await showDialog<bool>(
       context: context,
@@ -116,7 +116,7 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
               ),
               const SizedBox(height: 16),
               Text(
-                '얼굴 측면',
+                '얼굴 45° 측면',
                 style: AppText.modalTitle.copyWith(
                   color: const Color(0xFF1F1F1F),
                   fontSize: 22,

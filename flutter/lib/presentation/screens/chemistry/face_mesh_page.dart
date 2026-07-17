@@ -111,7 +111,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
             automaticallyImplyLeading: false,
             centerTitle: true,
             title: Text(
-              _phase == _CapturePhase.frontal ? '얼굴 정면' : '얼굴 측면',
+              _phase == _CapturePhase.frontal ? '얼굴 정면' : '얼굴 45° 측면',
               style: AppText.modalTitle.copyWith(color: Colors.white),
             ),
             actions: [
@@ -624,7 +624,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
       });
       // 측면 안내는 tap-to-proceed modal — 자동 dismiss 안 됨. 사용자가
       // "측면 시작" 누르기 전까지 background camera 의 auto-countdown 도 차단.
-      _showPhaseTitle('얼굴 측면', autoDismiss: false);
+      _showPhaseTitle('얼굴 45° 측면', autoDismiss: false);
       return;
     }
 
