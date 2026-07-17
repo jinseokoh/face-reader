@@ -218,6 +218,21 @@ select pg_temp.act_as(12);
 select public.join_battle('22222222-2222-2222-2222-222222222222', '5678'); -- u12 slot6 female → 자동 시작
 
 -- ⑪ 결과 기록 → best 쌍(slot 2×5 = u8×u11) 이 battle_matches 로 정확히 resolve.
+-- 먼저 malformed best (a==b) 를 submit — exception 으로 생략되고 battle_matches 생성 안 됨.
+select pg_temp.act_as(8);
+select public.submit_battle_result('22222222-2222-2222-2222-222222222222',
+  '{"players":[],"pairs":[],"best":{"a":1,"b":1,"score":1}}');
+do $$
+declare v int;
+begin
+  select count(*) into v from public.battle_matches
+   where team_id = '22222222-2222-2222-2222-222222222222';
+  if v <> 0 then
+    raise exception 'SMOKE_FAIL: malformed best(a==b) 가 battle_matches 를 만들면 안 됨';
+  end if;
+end $$;
+
+-- 정상 payload submit — first-writer-wins 이므로 위 호출이 기록되지 않아 성공.
 select public.submit_battle_result('22222222-2222-2222-2222-222222222222',
   '{"players":[],"pairs":[],"best":{"a":2,"b":5,"score":95}}');
 do $$

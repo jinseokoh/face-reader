@@ -79,7 +79,7 @@ create table battle_messages (
 | RPC | 변경 |
 |---|---|
 | `join_battle` | ① my-face `gender` 파싱(없으면 NO_MY_FACE 준용 새 코드 `NO_GENDER` 불요 — gender 는 body 필수 필드) ② `room_kind='match'` 면 해당 성별 카운트 ≥ max/2 시 **`GENDER_FULL`** ③ insert 에 gender 기록 ④ 시작 수행 시 `battle_matches` 행 생성(best 는 payload 이후 확정되므로 **user_a/user_b 는 submit_battle_result 가 채움** — 아래) |
-| `submit_battle_result` | payload 기록 시 best 쌍의 slot→user 를 roster 로 resolve 해 `battle_matches (team_id, user_a, user_b)` upsert (definer — 클라이언트 위조 불가 지점이므로 payload 의 best 와 roster 만 사용) |
+| `submit_battle_result` | payload 기록 시 best 쌍의 slot→user 를 roster 로 resolve 해 `battle_matches (team_id, user_a, user_b)` upsert. **신뢰 모델**: payload 는 first-writer 클라이언트 산출물 — 참가자가 best 를 위조해 방 안 두 참가자를 강제 페어링할 수는 있으나, 사진은 본래 metrics link-share 공개 모델이라 신규 노출면이 아니고(전원 조인 시 공개 동의), 영향은 오도된 매칭 카드 수준. 수용된 잔여 리스크 (참가자 한정·결과표 이상이 즉시 가시화) |
 | `respond_match(p_team_id, p_accept boolean)` (신규) | 가드: status='completed' · caller ∈ {user_a, user_b}. 본인 consent 기록. 둘 다 true 가 되는 호출에서 `opened_at = now()`. 에러: `NOT_MATCHED`(쌍 아님)·`ALREADY_DECIDED`(재응답 불가 — 거절 즉시 종결 정책) |
 
 - 에러 카피: `GENDER_FULL` → "남자 자리가 다 찼습니다" / "여자 자리가 다 찼습니다" (클라이언트가 본인 성별로 분기).

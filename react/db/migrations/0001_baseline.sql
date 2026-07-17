@@ -817,7 +817,8 @@ create table if not exists public.battle_matches (
   user_b     uuid not null references auth.users(id) on delete cascade,
   a_consent  boolean,
   b_consent  boolean,
-  opened_at  timestamptz            -- 둘 다 true 가 된 시각 = 채팅 개설
+  opened_at  timestamptz,           -- 둘 다 true 가 된 시각 = 채팅 개설
+  check (user_a <> user_b)
 );
 
 alter table public.battle_matches enable row level security;
@@ -865,8 +866,8 @@ create policy "battle_messages_pair_insert"
     )
   );
 
--- Realtime: battle_matches UPDATE(상대 응답 감지) + battle_messages 전체
--- (채팅 왕복). 재실행 안전 (duplicate 무시).
+-- Realtime: battle_matches 변경 감지 (publish 액션은 publication 전역 설정이라 테이블별 제한 불가 — RLS 가 쌍 외 수신을 차단)
+-- + battle_messages 전체(채팅 왕복). 재실행 안전 (duplicate 무시).
 do $$ begin
   alter publication supabase_realtime add table public.battle_matches;
 exception when duplicate_object then null; end $$;
@@ -1005,15 +1006,19 @@ begin
    where id = p_team_id and status = 'revealing' and result_payload is null;
 
   if found then
-    select user_id into v_user_a from team_members
-     where team_id = p_team_id and slot_no = (p_payload->'best'->>'a')::int;
-    select user_id into v_user_b from team_members
-     where team_id = p_team_id and slot_no = (p_payload->'best'->>'b')::int;
-    if v_user_a is not null and v_user_b is not null then
-      insert into battle_matches (team_id, user_a, user_b)
-      values (p_team_id, v_user_a, v_user_b)
-      on conflict (team_id) do nothing;
-    end if;
+    begin
+      select user_id into v_user_a from team_members
+       where team_id = p_team_id and slot_no = (p_payload->'best'->>'a')::int;
+      select user_id into v_user_b from team_members
+       where team_id = p_team_id and slot_no = (p_payload->'best'->>'b')::int;
+      if v_user_a is not null and v_user_b is not null and v_user_a <> v_user_b then
+        insert into battle_matches (team_id, user_a, user_b)
+        values (p_team_id, v_user_a, v_user_b)
+        on conflict (team_id) do nothing;
+      end if;
+    exception when others then
+      null;
+    end;
   end if;
 end;
 $$;
