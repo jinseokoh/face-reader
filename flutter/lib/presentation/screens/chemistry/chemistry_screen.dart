@@ -9,6 +9,7 @@ import '../../providers/battle_provider.dart';
 import '../../providers/history_provider.dart';
 import '../../widgets/emotion_empty_state.dart';
 import '../../widgets/face_scan_pill.dart';
+import '../../widgets/login_bottom_sheet.dart';
 import '../team/battle_create_page.dart';
 import '../team/battle_join_screen.dart';
 import '../team/team_lobby_screen.dart';
@@ -25,6 +26,11 @@ class ChemistryScreen extends ConsumerStatefulWidget {
 
 class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
   Future<void> _create() async {
+    // 로그인 게이트 — 비로그인 owner_id null 이면 RLS 거부. login_bottom_sheet 패턴.
+    if (!BattleService.instance.isLoggedIn) {
+      final ok = await showLoginBottomSheet(context, ref);
+      if (!ok || !mounted) return;
+    }
     final battle = await showBattleCreatePage(context);
     if (battle == null || !mounted) return;
     ref.invalidate(myBattlesProvider);

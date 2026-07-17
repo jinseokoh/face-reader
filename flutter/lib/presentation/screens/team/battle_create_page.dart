@@ -118,6 +118,7 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage> {
           password: _isPublic ? null : _pinCtrl.text.trim());
       if (mounted) Navigator.of(context).pop(battle);
     } catch (e) {
+      debugPrint('createBattle failed: $e');
       // createBattle 은 성공했는데 셀프 조인이 실패하면(예: 연령 게이트) 방장
       // 없는 고아 방이 남는다 — 에러를 보여주기 전에 방부터 지운다.
       if (battle != null) {
