@@ -367,9 +367,13 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
                   horizontal: AppSpacing.sm,
                   vertical: AppSpacing.lg,
                 ),
+                // 쌍 상세 시트의 × 와 동일 스타일 (body×2, textHint) — 통일.
                 child: Text(
                   '×',
-                  style: AppText.body.copyWith(color: AppColors.textHint),
+                  style: AppText.body.copyWith(
+                    color: AppColors.textHint,
+                    fontSize: AppText.body.fontSize! * 2,
+                  ),
                 ),
               ),
               Expanded(child: _bestPerson(b)),
