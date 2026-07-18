@@ -402,43 +402,8 @@ class _MineCard extends ConsumerWidget {
     return '${d.month}월 ${d.day}일까지 결과 유효';
   }
 
-  Future<void> _delete(BuildContext context, WidgetRef ref) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.xl),
-        ),
-        title: const Text('방 삭제', style: AppText.modalTitle),
-        content: const Text('참가자 명단이 함께 삭제됩니다.', style: AppText.body),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(
-              '취소',
-              style: AppText.body.copyWith(color: AppColors.textHint),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(
-              '삭제',
-              style: AppText.body.copyWith(color: AppColors.danger),
-            ),
-          ),
-        ],
-      ),
-    );
-    if (ok != true) return;
-    await BattleService.instance.deleteBattle(battle.id);
-    ref.invalidate(myBattlesProvider);
-    ref.invalidate(publicBattlesProvider);
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isOwner = battle.ownerId == BattleService.instance.myUid;
     return InkWell(
       onTap: battle.status == BattleStatus.expired
           ? null
@@ -452,28 +417,13 @@ class _MineCard extends ConsumerWidget {
           borderRadius: BorderRadius.circular(AppRadius.lg),
           border: Border.all(color: AppColors.border),
         ),
-        child: Row(
-          children: [
-            Expanded(
-              child: _BattleCardBody(
-                title: battle.title,
-                ageLabel: battle.ageRangeLabel,
-                roomKind: battle.roomKind,
-                playerCount: battle.playerCount,
-                maxPlayers: battle.maxPlayers,
-                validity: _validityLabel,
-              ),
-            ),
-            if (isOwner && battle.isRecruiting)
-              IconButton(
-                icon: const FaIcon(
-                  FontAwesomeIcons.trashCan,
-                  size: 16,
-                  color: AppColors.textHint,
-                ),
-                onPressed: () => _delete(context, ref),
-              ),
-          ],
+        child: _BattleCardBody(
+          title: battle.title,
+          ageLabel: battle.ageRangeLabel,
+          roomKind: battle.roomKind,
+          playerCount: battle.playerCount,
+          maxPlayers: battle.maxPlayers,
+          validity: _validityLabel,
         ),
       ),
     );
