@@ -1,16 +1,30 @@
-/// Compat 키 = unlocks.partner_id = **상대(album)의 supabaseId 단독**.
+/// Compat unlock 키 = **무방향 쌍** — 두 인물의 supabaseId 를 정렬해 `lo~hi`.
 ///
-/// "나"는 항상 단일 isMyFace 라 unlock 식별에 내 id 가 필요 없다. 키에서 내
-/// id 를 빼면, **내 사진을 바꿔도(= 새 supabaseId) 같은 상대의 unlock 이 그대로
-/// 유지**된다(재결제 없음). 표시 점수는 현재 내 관상으로 매번 재계산되므로
-/// 내 쪽은 live, 상대 body 는 unlocks.partner_body 로 동결(삭제 보호).
-/// unlocks PK 는 (user_id=내 auth uid, partner_id=상대 id) — 상대당 1 unlock.
+/// 규칙 하나: "1코인 = 두 사람의 궁합 풀이, 구매자에게 영구" — 내 쌍이든
+/// 케미 배틀의 제3자 쌍이든 동일 키 공간을 쓴다 (unlocks PK =
+/// (user_id, a_id, b_id), a<b 정규화). 같은 두 사람은 어디서 만나든 한 번만
+/// 결제된다.
+///
+/// 내 사진 재촬영에도 unlock 이 유지되는 기존 성질은 그대로다 — 로그인
+/// 유저의 my-face row id 는 영구 고정(재촬영은 같은 row 덮어쓰기)이라 내
+/// supabaseId 가 변하지 않는다.
+///
+/// 정렬은 소문자 canonical uuid 문자열 비교 — Postgres uuid 비교(바이트순)와
+/// 동일한 순서다 (hex 문자 사전순 = 바이트순, 하이픈 위치 동일).
 library;
 
 import 'package:face_engine/domain/models/face_reading_report.dart';
 
-/// 상대(album)의 supabaseId 를 unlocks.partner_id 로 반환. 상대 id 가 null 이면 null.
-/// [my] 는 호출부 시그니처 유지를 위해 받되 키에는 쓰지 않는다.
-String? tryPairKey(FaceReadingReport my, FaceReadingReport album) {
-  return album.supabaseId;
+/// 정규화된 쌍 id 목록 `[lo, hi]`. 어느 한쪽 id 가 없거나 동일 인물이면 null.
+List<String>? tryPairIds(FaceReadingReport a, FaceReadingReport b) {
+  final x = a.supabaseId?.toLowerCase();
+  final y = b.supabaseId?.toLowerCase();
+  if (x == null || y == null || x == y) return null;
+  return x.compareTo(y) < 0 ? [x, y] : [y, x];
+}
+
+/// unlock 상태 조회용 합성 키 `lo~hi`. [tryPairIds] 가 null 이면 null.
+String? tryPairKey(FaceReadingReport a, FaceReadingReport b) {
+  final ids = tryPairIds(a, b);
+  return ids == null ? null : '${ids[0]}~${ids[1]}';
 }

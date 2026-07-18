@@ -677,12 +677,15 @@ Future<void> openBattlePairDetail(
   );
   if (unlock != true || !context.mounted) return;
   // 기존 1:1 unlock 흐름 그대로 — 로그인·잔액·중복 unlock 전부 처리.
+  // alias 스냅샷은 payload 닉네임으로 (live 리포트는 alias 가 빈다).
   final ok = await runCompatUnlock(
     context,
     ref,
     my: my,
     album: album,
     confirm: false,
+    myAlias: myName,
+    albumAlias: albumName,
   );
   if (!ok || !context.mounted) return;
   context.pushCompat(my: my, album: album);

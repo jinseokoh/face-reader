@@ -249,26 +249,27 @@ revoke all   on function public.increment_metrics_views(uuid) from public;
 grant execute on function public.increment_metrics_views(uuid) to anon, authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 4. public.unlocks — 궁합 카드 해제 ledger
+-- 4. public.unlocks — 궁합 풀이 해제 ledger (구매자 + 무방향 쌍)
 -- ─────────────────────────────────────────────────────────────────────────────
--- partner_id = 상대 metrics id 단독 (shared compat_pair_key 설계 — 내 사진을
--- 바꿔도 같은 상대의 unlock 이 유지된다). FK 없음 — 스냅샷은 metrics 삭제를 견딘다.
--- INSERT 는 unlock_compat (SECURITY DEFINER) RPC 만 — 코인 차감 + 삽입 트랜잭션.
+-- 규칙 하나: "1코인 = 두 사람의 궁합 풀이, 구매자에게 영구" — 내 쌍이든
+-- 케미 배틀의 제3자 쌍이든 동일. 키 = (구매자, a_id<b_id 정규화 쌍 metrics id).
+-- 내 궁합은 a/b 중 하나가 내 my-face id 인 특수경우일 뿐 (id 는 로그인 유저
+-- 기준 영구 고정이라 재촬영에도 unlock 유지). FK 없음 — 스냅샷은 metrics
+-- 삭제를 견딘다. INSERT 는 unlock_compat RPC 만 — 코인 차감 + 삽입 트랜잭션.
 
 create table if not exists public.unlocks (
-  user_id       uuid        not null references auth.users(id) on delete cascade,
-  partner_id    uuid        not null,
-  user_body     text,      -- 결제 시점 본인 metrics body 스냅샷.
-  partner_body  text,      -- 결제 시점 상대 metrics body 스냅샷.
-                           -- 두 body 를 동결해 구매한 궁합을 self-contained 로 보존.
-                           -- metrics row·로컬 history 에 의존하지 않고 단독 복원/표시.
-  user_alias    text,      -- 결제 시점 본인 닉네임 — admin 표시용.
-  partner_alias text,      -- 결제 시점 상대 alias — 앱 fallback + admin 표시.
-                           -- (body 스냅샷은 PII 정책상 alias 를 담지 않음.
-                           --  unlocks 는 RLS self-read 라 컬럼 저장이 안전.)
-  total_score real,        -- 해제 시점 궁합 총점(0~100). admin 콘솔 정렬·필터용.
-  created_at timestamptz not null default now(),
-  primary key (user_id, partner_id)
+  user_id     uuid        not null references auth.users(id) on delete cascade,
+  a_id        uuid        not null,
+  b_id        uuid        not null,
+  a_body      text,      -- 결제 시점 두 body 스냅샷 — 구매한 궁합을
+  b_body      text,      -- self-contained 로 보존 (방 purge·metrics 삭제 무관).
+  a_alias     text,      -- 결제 시점 두 이름 스냅샷 — 앱 fallback + admin 표시.
+  b_alias     text,      -- (body 스냅샷은 PII 정책상 alias 를 담지 않음.
+                         --  unlocks 는 RLS self-read 라 컬럼 저장이 안전.)
+  total_score real,      -- 해제 시점 궁합 총점(0~100). admin 콘솔 정렬·필터용.
+  created_at  timestamptz not null default now(),
+  primary key (user_id, a_id, b_id),
+  check (a_id < b_id)
 );
 
 alter table public.unlocks enable row level security;
@@ -477,14 +478,18 @@ end; $$;
 drop function if exists public.unlock_compat(text);
 drop function if exists public.unlock_compat(text, real);
 drop function if exists public.unlock_compat(text, real, text, text);
+drop function if exists public.unlock_compat(uuid, real, text, text, text, text);
 
+-- 쌍 (p_a_id < p_b_id 정규화, 클라이언트가 body/alias 를 같은 순서로 정렬해
+-- 전달) 의 풀이 해제 — 내 쌍이든 배틀 제3자 쌍이든 동일 규칙.
 create or replace function public.unlock_compat(
-  p_partner_id    uuid,
-  p_total_score   real default null,
-  p_user_body     text default null,
-  p_partner_body  text default null,
-  p_user_alias    text default null,
-  p_partner_alias text default null
+  p_a_id        uuid,
+  p_b_id        uuid,
+  p_total_score real default null,
+  p_a_body      text default null,
+  p_b_body      text default null,
+  p_a_alias     text default null,
+  p_b_alias     text default null
 )
 returns integer
 language plpgsql security definer set search_path = public
@@ -495,11 +500,12 @@ declare
   v_already boolean;
 begin
   if v_uid is null then raise exception 'not authenticated'; end if;
-  if p_partner_id is null then raise exception 'partner_id required'; end if;
+  if p_a_id is null or p_b_id is null then raise exception 'pair ids required'; end if;
+  if p_a_id >= p_b_id then raise exception 'pair not normalized (a_id < b_id)'; end if;
 
   select exists(
     select 1 from unlocks
-    where user_id = v_uid and partner_id = p_partner_id
+    where user_id = v_uid and a_id = p_a_id and b_id = p_b_id
   ) into v_already;
 
   if v_already then
@@ -513,15 +519,16 @@ begin
   if v_balance is null then return -1; end if;
 
   -- 결제 확정 → body·alias 를 클라이언트가 넘긴 그대로 동결 저장.
-  -- metrics row 존재 여부에 의존하지 않아 (업로드 누락·삭제·만료와 무관)
-  -- 구매한 궁합이 self-contained 로 영구 보존된다.
-  insert into unlocks (user_id, partner_id, user_body, partner_body,
-                       user_alias, partner_alias, total_score)
-    values (v_uid, p_partner_id, p_user_body, p_partner_body,
-            p_user_alias, p_partner_alias, p_total_score);
+  -- metrics row 존재 여부에 의존하지 않아 (업로드 누락·삭제·만료·방 purge 와
+  -- 무관) 구매한 궁합이 self-contained 로 영구 보존된다.
+  insert into unlocks (user_id, a_id, b_id, a_body, b_body,
+                       a_alias, b_alias, total_score)
+    values (v_uid, p_a_id, p_b_id, p_a_body, p_b_body,
+            p_a_alias, p_b_alias, p_total_score);
 
   insert into coins (user_id, kind, amount, balance_after, reference_id, description)
-    values (v_uid, 'spend', -1, v_balance, p_partner_id::text, 'compat-unlock');
+    values (v_uid, 'spend', -1, v_balance,
+            p_a_id::text || '~' || p_b_id::text, 'compat-unlock');
 
   return v_balance;
 end; $$;
@@ -531,12 +538,12 @@ end; $$;
 -- ─────────────────────────────────────────────────────────────────────────────
 revoke execute on function public.grant_coins(integer, text, text, text, text) from public, anon;
 revoke execute on function public.spend_coins(integer, text, text)              from public, anon;
-revoke execute on function public.unlock_compat(uuid, real, text, text, text, text) from public, anon;
+revoke execute on function public.unlock_compat(uuid, uuid, real, text, text, text, text) from public, anon;
 revoke execute on function public.admin_grant_coins(uuid, integer, text)         from public, anon, authenticated;
 
 grant  execute on function public.grant_coins(integer, text, text, text, text) to authenticated;
 grant  execute on function public.spend_coins(integer, text, text)              to authenticated;
-grant  execute on function public.unlock_compat(uuid, real, text, text, text, text) to authenticated;
+grant  execute on function public.unlock_compat(uuid, uuid, real, text, text, text, text) to authenticated;
 grant  execute on function public.admin_grant_coins(uuid, integer, text)         to service_role;
 
 -- ─────────────────────────────────────────────────────────────────────────────

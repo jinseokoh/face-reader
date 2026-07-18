@@ -29,6 +29,10 @@ Future<bool> runCompatUnlock(
   required FaceReadingReport my,
   required FaceReadingReport album,
   bool confirm = true,
+  // 결제 스냅샷용 이름 override — 배틀 쌍은 payload 닉네임을 전달 (live
+  // 리포트는 alias 가 비고, 제3자 쌍에선 구매자 닉네임 fallback 이 오답).
+  String? myAlias,
+  String? albumAlias,
 }) async {
   AnalyticsService.instance.logClickCompat();
   // 1. 로그인 확인.
@@ -54,19 +58,19 @@ Future<bool> runCompatUnlock(
     return false;
   }
 
-  final key = tryPairKey(my, album);
-  if (key == null) {
+  final pairIds = tryPairIds(my, album);
+  final key = pairIds == null ? null : '${pairIds[0]}~${pairIds[1]}';
+  if (pairIds == null || key == null) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('저장된 ID 를 찾을 수 없습니다. 잠시 후 다시 시도해 주세요.')),
+        const SnackBar(content: Text('저장된 ID 를 찾을 수 없습니다. 잠시 후 다시 시도해 주세요.')),
       );
     }
     return false;
   }
 
-  // 이미 unlock 된 상대면 재결제 없이 통과 (partner_id = 상대 id, 내 사진
-  // 교체와 무관하게 유지).
+  // 이미 unlock 된 쌍이면 재결제 없이 통과 — 같은 두 사람은 배틀·1:1 어디서
+  // 만나든 한 번만 결제된다 (무방향 쌍 키).
   final already =
       ref.read(compatUnlocksProvider).asData?.value ?? const <String>{};
   if (already.contains(key)) {
@@ -77,9 +81,12 @@ Future<bool> runCompatUnlock(
   if (auth.coins < 1) {
     if (!context.mounted) return false;
     // 충전 시트 — 구매 성공 시 같은 흐름을 재시도(네비게이션 없이 unlock 만 반영).
-    await PurchaseSheet.show(context, onPurchased: () {
-      runCompatUnlock(context, ref, my: my, album: album, confirm: confirm);
-    });
+    await PurchaseSheet.show(
+      context,
+      onPurchased: () {
+        runCompatUnlock(context, ref, my: my, album: album, confirm: confirm);
+      },
+    );
     return false;
   }
 
@@ -94,14 +101,22 @@ Future<bool> runCompatUnlock(
   // (refine) 에서 점수별 정렬·필터 가능하도록. alias 는 결제 시점 이름 스냅샷
   // (내 쪽 = 프로필 닉네임, 상대 쪽 = 카드에 지정한 이름).
   final preBundle = analyzeCompatibilityFromReports(my: my, album: album);
+  // 쌍 정규화(a<b)에 맞춰 body·alias 도 같은 순서로 정렬.
+  final myIsA = my.supabaseId?.toLowerCase() == pairIds[0];
+  final aReport = myIsA ? my : album;
+  final bReport = myIsA ? album : my;
+  String? aliasOf(FaceReadingReport r) => identical(r, my)
+      ? (myAlias ?? AuthService().currentUser?.nickname)
+      : (albumAlias ?? album.alias);
   final int newBalance;
   try {
     newBalance = await CompatUnlockService().unlock(
-      key,
-      userBody: my.toBodyJson(),
-      partnerBody: album.toBodyJson(),
-      userAlias: AuthService().currentUser?.nickname,
-      partnerAlias: album.alias,
+      aId: pairIds[0],
+      bId: pairIds[1],
+      aBody: aReport.toBodyJson(),
+      bBody: bReport.toBodyJson(),
+      aAlias: aliasOf(aReport),
+      bAlias: aliasOf(bReport),
       totalScore: preBundle.report.total,
     );
   } catch (e, st) {
@@ -117,9 +132,9 @@ Future<bool> runCompatUnlock(
   }
   if (!context.mounted) return false;
   if (newBalance == -1) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('코인이 부족합니다.')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('코인이 부족합니다.')));
     return false;
   }
 
@@ -229,9 +244,7 @@ Future<bool?> _showConfirmDialog(BuildContext context) {
                       ),
                       child: Text(
                         '궁합보기',
-                        style: AppText.subTitle.copyWith(
-                          color: Colors.white,
-                        ),
+                        style: AppText.subTitle.copyWith(color: Colors.white),
                       ),
                     ),
                   ),
