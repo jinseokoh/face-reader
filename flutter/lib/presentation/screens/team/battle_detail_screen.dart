@@ -463,23 +463,28 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
       final perGender = battle.maxPlayers ~/ 2;
       final males = _roster.where((r) => r.gender == 'male').toList();
       final females = _roster.where((r) => r.gender == 'female').toList();
-      return Column(
+      // 남자 왼쪽 열, 여자 오른쪽 열 — 좁은 폭의 meta 는 FittedBox 가 줄인다.
+      return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _genderSection(
-            battle: battle,
-            gender: 'male',
-            label: '남자',
-            entries: males,
-            slotCount: perGender,
+          Expanded(
+            child: _genderSection(
+              battle: battle,
+              gender: 'male',
+              label: '남자',
+              entries: males,
+              slotCount: perGender,
+            ),
           ),
-          const SizedBox(height: AppSpacing.xl),
-          _genderSection(
-            battle: battle,
-            gender: 'female',
-            label: '여자',
-            entries: females,
-            slotCount: perGender,
+          const SizedBox(width: AppSpacing.lg),
+          Expanded(
+            child: _genderSection(
+              battle: battle,
+              gender: 'female',
+              label: '여자',
+              entries: females,
+              slotCount: perGender,
+            ),
           ),
         ],
       );
@@ -693,13 +698,13 @@ class _SlotRow extends StatelessWidget {
                 ),
                 child: ClipOval(child: _avatar()),
               ),
-              // '나' 표식은 아바타 상단 badge — 우측 meta 줄을 차지하지 않는다.
+              // '나' 표식은 아바타 왼쪽 상단 badge — 우측 meta 줄을 차지하지
+              // 않는다.
               if (isMe)
                 Positioned(
                   top: -AppSpacing.xs,
-                  left: 0,
-                  right: 0,
-                  child: Center(child: _meBadge()),
+                  left: -AppSpacing.xs,
+                  child: _meBadge(),
                 ),
             ],
           ),
@@ -721,22 +726,25 @@ class _SlotRow extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
+                    // meta 는 좁은 열(이성방 반폭)에서 잘리는 대신 폰트가
+                    // 줄어들도록 scaleDown — 넉넉하면 caption 원 크기 유지.
                     if (demographic != null) ...[
                       if (!isMe) const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        demographic!,
-                        style: AppText.caption,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(demographic!, style: AppText.caption),
                       ),
                     ],
                     if (archetype != null)
-                      Text(
-                        archetype!,
-                        style: AppText.caption
-                            .copyWith(color: AppColors.textPrimary),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          archetype!,
+                          style: AppText.caption
+                              .copyWith(color: AppColors.textPrimary),
+                        ),
                       ),
                   ],
                 ),
