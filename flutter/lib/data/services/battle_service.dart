@@ -1,5 +1,8 @@
 import 'dart:convert';
 
+import 'package:face_engine/data/enums/age_group.dart';
+import 'package:face_engine/data/enums/ethnicity.dart';
+import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -9,8 +12,13 @@ import '../../domain/models/battle.dart';
 import '../../domain/services/share/share_receive_service.dart';
 import 'supabase_service.dart';
 
-/// 상세 페이지 슬롯 프로필 — my-face 썸네일 URL + 관상 유형(archetype) 라벨.
-typedef BattleSlotProfile = ({String? thumbUrl, String? archetype});
+/// 상세 페이지 슬롯 프로필 — my-face 썸네일 URL + 인구통계 한 줄
+/// ("50대 남성 아시아인") + 관상 유형 한 줄 ("신의형 · 호감형 기질").
+typedef BattleSlotProfile = ({
+  String? thumbUrl,
+  String? demographic,
+  String? archetype,
+});
 
 /// Chemistry Battle 서버 접점 — 방은 서버 우선(로컬 캐시 없음).
 /// 쓰기는 RPC(security definer)와 owner 직접 insert/delete 뿐,
@@ -165,9 +173,9 @@ class BattleService {
     return result;
   }
 
-  /// 상세 페이지 슬롯 표기용 — 각 유저 my-face 의 썸네일 URL + 관상 유형 라벨.
-  /// metrics body 한 번의 조회로 둘 다 뽑는다. 유형은 body 를 엔진으로
-  /// 재계산한 archetype(신의형·연예인형…), 실패한 유저는 해당 값만 null.
+  /// 상세 페이지 슬롯 표기용 — 각 유저 my-face 의 썸네일 URL + meta 두 줄.
+  /// metrics body 한 번의 조회로 전부 뽑는다. meta 는 body 를 엔진으로
+  /// 재계산한 리포트에서 (인구통계·archetype), 실패한 유저는 해당 값만 null.
   Future<Map<String, BattleSlotProfile>> fetchSlotProfiles(
       List<String> userIds) async {
     if (userIds.isEmpty) return const {};
@@ -181,6 +189,7 @@ class BattleService {
       final uid = r['user_id'] as String?;
       if (uid == null) continue;
       String? thumbUrl;
+      String? demographic;
       String? archetype;
       try {
         final bodyStr = r['body'] as String;
@@ -188,11 +197,15 @@ class BattleService {
         final key = body['thumbnailKey'] as String?;
         thumbUrl = key == null ? null : ThumbnailPaths.cdnUrl(key);
         try {
-          archetype =
-              FaceReadingReport.fromJsonString(bodyStr).archetype.primaryLabel;
-        } catch (_) {/* 엔진 재계산 실패 — 유형만 생략 */}
-      } catch (_) {/* malformed body — 아바타·유형 없이 표시 */}
-      result[uid] = (thumbUrl: thumbUrl, archetype: archetype);
+          final report = FaceReadingReport.fromJsonString(bodyStr);
+          demographic = '${report.ageGroup.labelKo} '
+              '${report.gender.labelKo} ${report.ethnicity.labelKo}';
+          archetype = '${report.archetype.primaryLabel} · '
+              '${report.archetype.secondaryLabel} 기질';
+        } catch (_) {/* 엔진 재계산 실패 — meta 만 생략 */}
+      } catch (_) {/* malformed body — 아바타·meta 없이 표시 */}
+      result[uid] =
+          (thumbUrl: thumbUrl, demographic: demographic, archetype: archetype);
     }
     return result;
   }

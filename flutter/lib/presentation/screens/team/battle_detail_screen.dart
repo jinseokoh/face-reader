@@ -405,7 +405,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
         children: [
           _headerCard(battle),
           const SizedBox(height: AppSpacing.xl),
-          _slotGrid(battle),
+          _slotList(battle),
           const SizedBox(height: AppSpacing.xl),
           _qrCard(),
           const SizedBox(height: AppSpacing.xl),
@@ -456,63 +456,47 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
     );
   }
 
-  Widget _slotGrid(Battle battle) {
+  /// 슬롯 = full-width 리스트 행 (아바타 좌 + meta 우) — 방 유형 불문 동일
+  /// 위젯. 이성방은 남/여 섹션으로 나눠 같은 행을 쌓는다.
+  Widget _slotList(Battle battle) {
     if (battle.roomKind == BattleRoomKind.match) {
       final perGender = battle.maxPlayers ~/ 2;
       final males = _roster.where((r) => r.gender == 'male').toList();
       final females = _roster.where((r) => r.gender == 'female').toList();
-      return Row(
+      return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: _genderColumn(
-              battle: battle,
-              gender: 'male',
-              label: '남자',
-              entries: males,
-              slotCount: perGender,
-            ),
+          _genderSection(
+            battle: battle,
+            gender: 'male',
+            label: '남자',
+            entries: males,
+            slotCount: perGender,
           ),
-          const SizedBox(width: AppSpacing.lg),
-          Expanded(
-            child: _genderColumn(
-              battle: battle,
-              gender: 'female',
-              label: '여자',
-              entries: females,
-              slotCount: perGender,
-            ),
+          const SizedBox(height: AppSpacing.xl),
+          _genderSection(
+            battle: battle,
+            gender: 'female',
+            label: '여자',
+            entries: females,
+            slotCount: perGender,
           ),
         ],
       );
     }
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
-        mainAxisSpacing: AppSpacing.lg,
-        crossAxisSpacing: AppSpacing.sm,
-        childAspectRatio: 0.72,
-      ),
-      itemCount: battle.maxPlayers,
-      itemBuilder: (_, i) {
-        final entry = i < _roster.length ? _roster[i] : null;
-        final profile = entry == null ? null : _profiles[entry.userId];
-        return _SlotCell(
-          entry: entry,
-          thumbUrl: profile?.thumbUrl,
-          archetype: profile?.archetype,
-          isMe: entry?.userId == _service.myUid,
-          thumbOpen: battle.thumbOpen,
-        );
-      },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < battle.maxPlayers; i++) ...[
+          if (i > 0) const SizedBox(height: AppSpacing.lg),
+          _slotRow(battle, i < _roster.length ? _roster[i] : null),
+        ],
+      ],
     );
   }
 
-  /// 이성방 남/여 열 — 헤더(성별 아이콘 16px + "남자 N / M")+ 세로 슬롯 목록.
-  /// 색 구분 없이 열 위치·헤더·빈 슬롯 아이콘 세 겹으로 성별을 표현한다.
-  Widget _genderColumn({
+  /// 이성방 남/여 섹션 — 헤더(성별 아이콘 16px + "남자 N / M") + 행 목록.
+  Widget _genderSection({
     required Battle battle,
     required String gender,
     required String label,
@@ -531,25 +515,29 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
           ],
         ),
         const SizedBox(height: AppSpacing.md),
-        for (var i = 0; i < slotCount; i++)
-          Padding(
-            padding: EdgeInsets.only(
-                bottom: i == slotCount - 1 ? 0 : AppSpacing.lg),
-            child: _SlotCell(
-              entry: i < entries.length ? entries[i] : null,
-              thumbUrl: i < entries.length
-                  ? _profiles[entries[i].userId]?.thumbUrl
-                  : null,
-              archetype: i < entries.length
-                  ? _profiles[entries[i].userId]?.archetype
-                  : null,
-              isMe: i < entries.length &&
-                  entries[i].userId == _service.myUid,
-              thumbOpen: battle.thumbOpen,
-              slotGender: gender,
-            ),
+        for (var i = 0; i < slotCount; i++) ...[
+          if (i > 0) const SizedBox(height: AppSpacing.lg),
+          _slotRow(
+            battle,
+            i < entries.length ? entries[i] : null,
+            slotGender: gender,
           ),
+        ],
       ],
+    );
+  }
+
+  Widget _slotRow(Battle battle, BattleRosterEntry? entry,
+      {String? slotGender}) {
+    final profile = entry == null ? null : _profiles[entry.userId];
+    return _SlotRow(
+      entry: entry,
+      thumbUrl: profile?.thumbUrl,
+      demographic: profile?.demographic,
+      archetype: profile?.archetype,
+      isMe: entry?.userId == _service.myUid,
+      thumbOpen: battle.thumbOpen,
+      slotGender: slotGender,
     );
   }
 
@@ -654,39 +642,34 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
 String _genderIconAsset(String gender) =>
     gender == 'male' ? 'assets/icons/male.png' : 'assets/icons/female.png';
 
-class _SlotCell extends StatelessWidget {
+/// 슬롯 행 — 아바타 좌측 + meta 우측 (이름 / 인구통계 / 관상 유형).
+/// 빈 슬롯은 아바타 + "대기 중" 만 세로 중앙 정렬.
+class _SlotRow extends StatelessWidget {
   final BattleRosterEntry? entry;
   final String? thumbUrl;
-  /// 관상 유형 라벨(신의형·연예인형…) — 슬롯의 관심 유도 포인트.
+  /// "50대 남성 아시아인" — my-face 리포트의 인구통계 한 줄.
+  final String? demographic;
+  /// "신의형 · 호감형 기질" — 슬롯의 관심 유도 포인트.
   final String? archetype;
   final bool isMe;
   final bool thumbOpen;
-  /// 이성방 빈 슬롯의 열 성별 — alpha 0.35 성별 아이콘 표시용. 전체방은 null
-  /// (성별 미정 FaIcon `user` 유지).
+  /// 이성방 빈 슬롯의 섹션 성별 — alpha 0.35 성별 아이콘 표시용. 전체방은
+  /// null (성별 미정 FaIcon `user` 유지).
   final String? slotGender;
-  const _SlotCell({
+  const _SlotRow({
     required this.entry,
     required this.thumbUrl,
+    required this.demographic,
     required this.archetype,
     required this.isMe,
     required this.thumbOpen,
     this.slotGender,
   });
 
-  /// 전체방은 성별이 열로 안 드러나므로 "남 신의형" 처럼 성별을 붙이고,
-  /// 이성방은 열 헤더가 성별을 이미 말해주므로 유형만.
-  String? get _archetypeLine {
-    final a = archetype;
-    if (entry == null || a == null) return null;
-    if (slotGender != null) return a;
-    return '${entry!.gender == 'male' ? '남' : '여'} $a';
-  }
-
   @override
   Widget build(BuildContext context) {
     final filled = entry != null;
-    final typeLine = _archetypeLine;
-    return Column(
+    return Row(
       children: [
         Container(
           width: 42,
@@ -701,20 +684,40 @@ class _SlotCell extends StatelessWidget {
           ),
           child: ClipOval(child: _avatar()),
         ),
-        const SizedBox(height: AppSpacing.xs),
-        Text(
-          !filled ? '대기 중' : (isMe ? '나' : entry!.nickname),
-          style: AppText.hint,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: !filled
+              ? Text('대기 중',
+                  style: AppText.body.copyWith(color: AppColors.textHint))
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isMe ? '나' : entry!.nickname,
+                      style: AppText.body,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (demographic != null) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        demographic!,
+                        style: AppText.caption,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    if (archetype != null)
+                      Text(
+                        archetype!,
+                        style: AppText.caption
+                            .copyWith(color: AppColors.textPrimary),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                  ],
+                ),
         ),
-        if (typeLine != null)
-          Text(
-            typeLine,
-            style: AppText.hint.copyWith(color: AppColors.textPrimary),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
       ],
     );
   }
