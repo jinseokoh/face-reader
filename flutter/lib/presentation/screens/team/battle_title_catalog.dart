@@ -48,8 +48,11 @@ const List<BattleTitleCategory> kBattleTitleCatalog = [
     BattleTitlePreset('E만 모이는 케미 배틀', _kBoth),
     BattleTitlePreset('I만 모이는 케미 배틀', _kBoth),
     BattleTitlePreset('N끼리 모인 케미 배틀', _kBoth),
+    BattleTitlePreset('S끼리 모인 케미 배틀', _kBoth),
     BattleTitlePreset('T끼리 모인 케미 배틀', _kBoth),
     BattleTitlePreset('F끼리 모인 케미 배틀', _kBoth),
+    BattleTitlePreset('J끼리 모인 케미 배틀', _kBoth),
+    BattleTitlePreset('P끼리 모인 케미 배틀', _kBoth),
     BattleTitlePreset('MBTI 대신 관상으로 보는 케미 배틀', _kBoth),
   ]),
   BattleTitleCategory('취미', [
