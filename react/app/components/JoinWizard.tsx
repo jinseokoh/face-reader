@@ -57,8 +57,8 @@ type Stage =
 
 // 앱 InfoConfirm 과 동일 필드 — 값은 엔진 enum name.
 const ETHNICITIES: { v: string; ko: string }[] = [
-  { v: 'eastAsian', ko: '동아시아인' },
-  { v: 'southeastAsian', ko: '동남아시아인' },
+  { v: 'eastAsian', ko: '아시아인' },
+  { v: 'southeastAsian', ko: '동남아인' },
   { v: 'caucasian', ko: '백인' },
   { v: 'african', ko: '아프리카인' },
   { v: 'hispanic', ko: '히스패닉' },
@@ -111,7 +111,7 @@ export function JoinWizard({
   const [estimating, setEstimating] = useState(false)
   // 확인 페이지 이름 필드 — default fallback 은 카카오 nickname.
   const [aliasName, setAliasName] = useState('')
-  // 정보 확인 — 3필드 모두 default 보유 (동아시아인/남성/20대), 즉시 진행 가능.
+  // 정보 확인 — 3필드 모두 default 보유 (아시아인/남성/20대), 즉시 진행 가능.
   const [ethnicity, setEthnicity] = useState<string>('eastAsian')
   const [gender, setGender] = useState<string>('male')
   const [age, setAge] = useState<string>('20s')
