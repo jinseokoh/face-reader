@@ -288,7 +288,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
           ),
         ],
         const SizedBox(height: AppSpacing.xl),
-        Text('상호 케미 맵', style: AppText.sectionTitle),
+        Text('그룹 케미 결과표', style: AppText.sectionTitle),
         const SizedBox(height: AppSpacing.md),
         _matrix(),
         if (_mySlot != null) ...[
