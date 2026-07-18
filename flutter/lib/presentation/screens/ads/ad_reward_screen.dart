@@ -96,7 +96,9 @@ class _AdRewardScreenState extends State<AdRewardScreen> {
                   ),
       ),
       bottomNavigationBar: Container(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        // 커스텀 컨테이너는 Material 내비 바와 달리 inset 자동 흡수가 없다.
+        padding: EdgeInsets.fromLTRB(
+            16, 12, 16, 24 + MediaQuery.of(context).viewPadding.bottom),
         color: Colors.black,
         child: Text(
           '끝까지 시청하면 광고 1편으로 카운트됩니다.',

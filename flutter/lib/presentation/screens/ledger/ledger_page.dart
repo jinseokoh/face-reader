@@ -83,7 +83,9 @@ class LedgerPage extends ConsumerWidget {
               },
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(16),
+                // 하단 16 + 제스처 내비 inset.
+                padding: EdgeInsets.fromLTRB(16, 16, 16,
+                    16 + MediaQuery.of(context).viewPadding.bottom),
                 children: [
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),

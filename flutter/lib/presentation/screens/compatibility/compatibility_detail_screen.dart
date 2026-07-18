@@ -112,7 +112,9 @@ class _CompatibilityDetailScreenState
         clipBehavior: Clip.none,
         children: [
           ListView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            // 하단 16 + 제스처 내비 inset — 마지막 카드가 시스템 바에 안 가리게.
+            padding: EdgeInsets.fromLTRB(
+                16, 12, 16, 16 + MediaQuery.of(context).viewPadding.bottom),
             children: [
               _TotalHeader(
                 my: widget.my,
