@@ -33,10 +33,12 @@ declare
   v_me_age  int;
   i         int;
 begin
-  -- '나' = 가장 최근 my-face 의 로그인 소유자.
+  -- '나' = 가장 최근 my-face 의 로그인 소유자 — 재실행 시 가짜 유저의
+  -- my-face 가 더 최신이므로 반드시 제외 (미제외 시 slot 중복으로 전체 롤백).
   select m.user_id, m.body::jsonb into v_me, v_me_body
     from public.metrics m
    where m.is_my_face and m.user_id is not null
+     and m.user_id <> all(v_dummy)
    order by m.updated_at desc limit 1;
   if v_me is null then
     raise exception '로그인 계정의 my-face 가 없습니다 — 앱에서 내 관상 등록 후 실행';
