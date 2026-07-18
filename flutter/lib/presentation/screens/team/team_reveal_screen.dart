@@ -356,7 +356,14 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
       ),
       child: Column(
         children: [
-          Text('🏆 베스트 케미', style: AppText.sectionTitle),
+          // '베스트 매칭' 라벨과 동일 스타일 — caption·gold·w700.
+          Text(
+            '🏆 베스트 케미',
+            style: AppText.caption.copyWith(
+              color: AppColors.gold,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: AppSpacing.md),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
