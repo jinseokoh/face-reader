@@ -165,6 +165,19 @@ class BattleService {
     return result;
   }
 
+  /// 공개 목록 → 상세 라우팅용 — 내가 이미 참가한 방인지 1행 조회.
+  Future<bool> isMember(String battleId) async {
+    final uid = myUid;
+    if (uid == null) return false;
+    final row = await _client
+        .from('battle_roster')
+        .select('user_id')
+        .eq('team_id', battleId)
+        .eq('user_id', uid)
+        .maybeSingle();
+    return row != null;
+  }
+
   /// 로비 슬롯 표기용 — 각 유저 my-face 의 썸네일 URL + 관상 유형 라벨.
   /// metrics body 한 번의 조회로 둘 다 뽑는다. 유형은 body 를 엔진으로
   /// 재계산한 archetype(신의형·연예인형…), 실패한 유저는 해당 값만 null.

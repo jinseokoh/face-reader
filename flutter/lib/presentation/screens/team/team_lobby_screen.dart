@@ -168,7 +168,9 @@ class _TeamLobbyScreenState extends ConsumerState<TeamLobbyScreen> {
     final battle = _battle;
     return Scaffold(
       appBar: AppBar(
-        title: Text(battle?.title ?? '케미 배틀'),
+        // 방 제목은 헤더 카드가 보여준다 — AppBar 는 고정 타이틀 (로딩 중
+        // '케미 배틀' → 방제목으로 바뀌는 깜빡임 제거).
+        title: const Text('케미 배틀 로비'),
         actions: [
           if (battle != null)
             PopupMenuButton<String>(
@@ -214,21 +216,26 @@ class _TeamLobbyScreenState extends ConsumerState<TeamLobbyScreen> {
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(color: AppColors.border),
       ),
+      // 공개 배틀 카드(_PublicCard)와 동일한 결 — 제목 + 연령 pill / 정원.
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Text('${_roster.length} / ${battle.maxPlayers} 명',
-                    style: AppText.display),
-              ),
+              Expanded(child: Text(battle.title, style: AppText.subTitle)),
+              const SizedBox(width: AppSpacing.sm),
               AgeRangePill(label: battle.ageRangeLabel),
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
-          Text('정원이 다 차면 케미 결과표가 자동으로 발표됩니다', style: AppText.caption),
+          Text('${_roster.length} / ${battle.maxPlayers} 명',
+              style: AppText.caption),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            '정원이 다 차면 케미 결과표가 자동으로 발표됩니다',
+            style: AppText.caption.copyWith(color: AppColors.textHint),
+          ),
         ],
       ),
     );

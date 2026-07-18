@@ -220,16 +220,40 @@ class _PublicTab extends ConsumerWidget {
   }
 }
 
-class _PublicCard extends StatelessWidget {
+class _PublicCard extends StatefulWidget {
   final PublicBattle battle;
   const _PublicCard({required this.battle});
 
   @override
+  State<_PublicCard> createState() => _PublicCardState();
+}
+
+class _PublicCardState extends State<_PublicCard> {
+  PublicBattle get battle => widget.battle;
+  bool _navigating = false;
+
+  /// 목적지를 탭 시점에 확정 — 이미 참가한 방이면 곧장 로비로.
+  /// BattleJoinScreen 을 거쳐 replace 하면 페이지 전환이 두 번 보인다.
+  Future<void> _open() async {
+    if (_navigating) return;
+    _navigating = true;
+    try {
+      final joined = await BattleService.instance.isMember(battle.id);
+      if (!mounted) return;
+      await Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => joined
+            ? TeamLobbyScreen(battleId: battle.id)
+            : BattleJoinScreen(battleId: battle.id),
+      ));
+    } finally {
+      _navigating = false;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () => Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => BattleJoinScreen(battleId: battle.id),
-      )),
+      onTap: _open,
       borderRadius: BorderRadius.circular(AppRadius.lg),
       child: Container(
         margin: const EdgeInsets.only(bottom: AppSpacing.sm),

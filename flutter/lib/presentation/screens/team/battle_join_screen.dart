@@ -57,7 +57,7 @@ class _BattleJoinScreenState extends ConsumerState<BattleJoinScreen> {
         roster != null &&
         myUid != null &&
         roster.any((r) => r.userId == myUid)) {
-      _goInside(battle);
+      _goInside(battle, animated: false);
       return;
     }
     setState(() {
@@ -75,12 +75,20 @@ class _BattleJoinScreenState extends ConsumerState<BattleJoinScreen> {
     return (per - count).clamp(0, per);
   }
 
-  void _goInside(Battle battle) {
-    Navigator.of(context).pushReplacement(MaterialPageRoute(
-      builder: (_) => battle.isRecruiting
-          ? TeamLobbyScreen(battleId: widget.battleId)
-          : TeamRevealScreen(battleId: widget.battleId),
-    ));
+  /// [animated] false = 로드 직후 안전망 리다이렉트(다른 기기에서 이미 참가 등).
+  /// 이 화면이 뜨자마자 또 밀려나는 이중 전환 연출을 피하려고 즉시 교체한다.
+  /// 1차 라우팅은 공개 카드 탭의 isMember 판정이 담당.
+  void _goInside(Battle battle, {bool animated = true}) {
+    Widget dest(BuildContext _) => battle.isRecruiting
+        ? TeamLobbyScreen(battleId: widget.battleId)
+        : TeamRevealScreen(battleId: widget.battleId);
+    Navigator.of(context).pushReplacement(animated
+        ? MaterialPageRoute(builder: dest)
+        : PageRouteBuilder(
+            pageBuilder: (context, _, _) => dest(context),
+            transitionDuration: Duration.zero,
+            reverseTransitionDuration: Duration.zero,
+          ));
   }
 
   Future<void> _join() async {
@@ -144,7 +152,7 @@ class _BattleJoinScreenState extends ConsumerState<BattleJoinScreen> {
   Widget build(BuildContext context) {
     final battle = _battle;
     return Scaffold(
-      appBar: AppBar(title: const Text('케미 배틀')),
+      appBar: AppBar(title: const Text('케미 배틀 상세정보')),
       body: SafeArea(
         top: false,
         child: _loading
@@ -191,21 +199,39 @@ class _BattleJoinScreenState extends ConsumerState<BattleJoinScreen> {
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: Text(battle.title, style: AppText.display)),
-            const SizedBox(width: AppSpacing.sm),
-            AgeRangePill(label: battle.ageRangeLabel),
-          ],
+        // 공개 배틀 카드(_PublicCard)·로비 헤더와 동일한 결 —
+        // 제목 + 연령 pill / 정원.
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: Text(battle.title, style: AppText.subTitle)),
+                  const SizedBox(width: AppSpacing.sm),
+                  AgeRangePill(label: battle.ageRangeLabel),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text('$_playerCount / ${battle.maxPlayers} 명',
+                  style: AppText.caption),
+              if (battle.roomKind == BattleRoomKind.match) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Text('남자 ${_remaining('male')}자리 남음',
+                    style: AppText.caption),
+                Text('여자 ${_remaining('female')}자리 남음',
+                    style: AppText.caption),
+              ],
+            ],
+          ),
         ),
-        const SizedBox(height: AppSpacing.sm),
-        Text('$_playerCount / ${battle.maxPlayers} 명', style: AppText.body),
-        if (battle.roomKind == BattleRoomKind.match) ...[
-          const SizedBox(height: AppSpacing.sm),
-          Text('남자 ${_remaining('male')}자리 남음', style: AppText.caption),
-          Text('여자 ${_remaining('female')}자리 남음', style: AppText.caption),
-        ],
         if (!battle.isPublic) ...[
           const SizedBox(height: AppSpacing.xl),
           TextField(
