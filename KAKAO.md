@@ -1,7 +1,7 @@
 # 카카오 초대 — 케미 배틀 원격 참여
 
 방장이 배틀 방을 만들면 방은 즉시 서버에 존재한다. 방장이 `facely.kr/g/{방ID}` 링크를
-카톡으로 보내면, 받은 사람이 링크를 눌러 앱 조인 화면(`BattleJoinScreen`)에서 로그인
+카톡으로 보내면, 받은 사람이 링크를 눌러 앱 상세 페이지(`BattleDetailScreen`)에서 로그인
 + 내 관상 확인(+ 비밀방이면 PIN) + 사진 공개 계약 확인을 마치는 순간 셀프 조인된다.
 
 ## 설계 결정
@@ -13,16 +13,16 @@
 
 ## 동작 흐름
 
-- **방장**: 배틀 생성(방 유형·제목 프리셋·인원·연령대·공개/비밀·썸네일 공개) → 로비 진입 → QR 코드·
+- **방장**: 배틀 생성(방 유형·제목 프리셋·인원·연령대·공개/비밀·썸네일 공개) → 상세 페이지 진입 → QR 코드·
   [카톡 초대]·[링크 공유]·[복사]가 상시 공존. 카톡 초대는 FeedTemplate 카드
   ([참여하기] 버튼, hero = `cdn.facely.kr/assets/og.png`). 카톡 미설치면 OS 공유
   시트 fallback (문구+링크 텍스트).
-- **합류자 (앱 설치)**: 링크 탭 → 유니버설/앱 링크로 앱 직행 → `BattleJoinScreen`
+- **합류자 (앱 설치)**: 링크 탭 → 유니버설/앱 링크로 앱 직행 → `BattleDetailScreen`
   이 방 정보(n/N명·연령대, match 방은 남은 성별 자리) 미리보기 표시 → 로그인 →
   내 관상 확인(없으면 촬영) → (비밀방) PIN 입력 → 사진 공개 계약 확인 →
-  `join_battle` RPC 로 셀프 조인 → 로비. 이름 슬롯·빈 슬롯 claim 은 없다 —
-  정체성은 로그인 계정 하나뿐.
-- **방장 반영**: 로비는 Supabase Realtime(`teams` UPDATE + `team_members`
+  `join_battle` RPC 로 셀프 조인 → 화면 전환 없이 같은 상세 페이지가 참가자 뷰로
+  전환. 이름 슬롯·빈 슬롯 claim 은 없다 — 정체성은 로그인 계정 하나뿐.
+- **방장 반영**: 상세 페이지는 Supabase Realtime(`teams` UPDATE + `team_members`
   INSERT/DELETE) 구독 + 10초 백업 폴링을 상시 병행해 반영된다 — 이탈(`team_members`
   DELETE)은 filter 매칭 한계로 폴링이 커버한다. 정원이 차면 그 조인 트랜잭션이
   곧바로 결과 계산 단계(`revealing`)로 전이한다 —
@@ -60,7 +60,7 @@
 | 서버 접점 (create/join/leave/submit/fetch/watch) | `flutter/lib/data/services/battle_service.dart` |
 | 방 목록·상태 | `flutter/lib/presentation/providers/battle_provider.dart` |
 | 카톡 메시지·링크 | `flutter/lib/domain/services/share/share_publisher.dart` |
-| 로비 / 조인 / 결과 화면 | `team_lobby_screen.dart` / `battle_join_screen.dart` / `team_reveal_screen.dart` |
+| 상세(참가+대기 통합) / 결과 화면 | `battle_detail_screen.dart` / `team_reveal_screen.dart` |
 | 매칭 성사 / 인앱 채팅 | `battle_match_card.dart` / `battle_chat_screen.dart` |
 | DB 스키마 + RPC 상태 머신 | `react/db/migrations/0001_baseline.sql` §11-2~11-6 |
 | 웹 `/g/:id` | `react/app/routes/g.$id.tsx` |
