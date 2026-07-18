@@ -542,6 +542,9 @@ Future<void> openBattlePairDetail(
   final unlock = await showModalBottomSheet<bool>(
     context: context,
     backgroundColor: Colors.white,
+    // 기본 시트는 화면 절반 높이 제한 — 내용(아바타·잠금·CTA·잔액)이 그보다
+    // 길어 잘린다. 내용 높이만큼 시트가 커지게 해 스크롤 없이 전부 노출.
+    isScrollControlled: true,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
     ),
@@ -551,110 +554,106 @@ Future<void> openBattlePairDetail(
       // 시트와 동일 패턴).
       return SafeArea(
         top: false,
-        // 기본 시트 최대 높이(화면 절반 남짓)보다 내용이 길어지는 작은 화면
-        // 대비 — 넘치면 잘리는 대신 스크롤.
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.xxl,
-              AppSpacing.md,
-              AppSpacing.xxl,
-              AppSpacing.xxl,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // 닫기.
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: IconButton(
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    onPressed: () => Navigator.pop(ctx, false),
-                    icon: const FaIcon(
-                      FontAwesomeIcons.xmark,
-                      size: 20,
-                      color: AppColors.textSecondary,
-                    ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.xxl,
+            AppSpacing.md,
+            AppSpacing.xxl,
+            AppSpacing.xxl,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // 닫기.
+              Align(
+                alignment: Alignment.centerRight,
+                child: IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () => Navigator.pop(ctx, false),
+                  icon: const FaIcon(
+                    FontAwesomeIcons.xmark,
+                    size: 20,
+                    color: AppColors.textSecondary,
                   ),
                 ),
-                // 밴드 닷 + 라벨 (점수 비노출).
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 14,
-                      height: 14,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: band.bandColor,
-                      ),
+              ),
+              // 밴드 닷 + 라벨 (점수 비노출).
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 14,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: band.bandColor,
                     ),
-                    const SizedBox(width: AppSpacing.xs),
-                    Text(band.bandLabel, style: AppText.body),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.xl),
-                // 두 인물 — 큰 아바타 + 이름 + 나이·성별.
-                Row(
-                  children: [
-                    Expanded(child: _pairPersonColumn(my, name: myName)),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.sm,
-                      ),
-                      child: Text(
-                        '×',
-                        style: AppText.body.copyWith(
-                          color: AppColors.textHint,
-                          fontSize: AppText.body.fontSize! * 2,
-                        ),
-                      ),
-                    ),
-                    Expanded(child: _pairPersonColumn(album, name: albumName)),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.xl),
-                // 잠금 안내 박스.
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
                   ),
-                  child: Row(
-                    children: [
-                      const FaIcon(
-                        FontAwesomeIcons.lock,
-                        size: 13,
+                  const SizedBox(width: AppSpacing.xs),
+                  Text(band.bandLabel, style: AppText.body),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              // 두 인물 — 큰 아바타 + 이름 + 나이·성별.
+              Row(
+                children: [
+                  Expanded(child: _pairPersonColumn(my, name: myName)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                    ),
+                    child: Text(
+                      '×',
+                      style: AppText.body.copyWith(
                         color: AppColors.textHint,
+                        fontSize: AppText.body.fontSize! * 2,
                       ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: Text(
-                          '상세 풀이는 1코인 지불 후 확인가능합니다.',
-                          style: AppText.caption.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
+                    ),
+                  ),
+                  Expanded(child: _pairPersonColumn(album, name: albumName)),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              // 잠금 안내 박스.
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Row(
+                  children: [
+                    const FaIcon(
+                      FontAwesomeIcons.lock,
+                      size: 13,
+                      color: AppColors.textHint,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        '상세 풀이는 1코인 지불 후 확인가능합니다.',
+                        style: AppText.caption.copyWith(
+                          color: AppColors.textSecondary,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: AppSpacing.lg),
-                PrimaryButton(
-                  label: '1코인으로 풀이 보기',
-                  onPressed: () => Navigator.pop(ctx, true),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  '보유 코인 $coins개',
-                  style: AppText.caption.copyWith(color: AppColors.textHint),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              PrimaryButton(
+                label: '1코인으로 풀이 보기',
+                onPressed: () => Navigator.pop(ctx, true),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                '보유 코인 $coins개',
+                style: AppText.caption.copyWith(color: AppColors.textHint),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
         ),
       );
