@@ -334,7 +334,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
         if (p?.archetype != null)
           Text(
             p!.archetype!,
-            style: AppText.caption.copyWith(color: AppColors.textPrimary),
+            style: AppText.caption,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
