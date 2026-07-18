@@ -10,6 +10,7 @@ import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/services/compat/battle.dart' as engine;
 import 'package:face_engine/domain/services/compat/compat_adapter.dart';
+import 'package:face_engine/domain/services/compat/compat_label.dart';
 
 import '../../../config/router.dart';
 import '../../../core/storage/thumbnail_paths.dart';
@@ -387,7 +388,14 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          Text('$score점', style: AppText.modalTitle),
+          // 점수 + 등급 성어·한자 병기 — 궁합 카드의 '한글 (漢字)' 표기와 동일.
+          Text(
+            _bandOf(a, b) == null
+                ? '$score점'
+                : '$score점 ${CompatLabel.values[_bandOf(a, b)!].korean} '
+                      '(${CompatLabel.values[_bandOf(a, b)!].hanja})',
+            style: AppText.modalTitle,
+          ),
         ],
       ),
     );
@@ -665,11 +673,7 @@ Future<void> openBattlePairDetail(
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  BandDot(
-                    band,
-                    size: 28,
-                    score: bundle.report.total.round(),
-                  ),
+                  BandDot(band, size: 28, score: bundle.report.total.round()),
                   const SizedBox(width: AppSpacing.xs),
                   Text(band.bandLabel, style: AppText.body),
                 ],
