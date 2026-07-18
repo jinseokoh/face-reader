@@ -571,7 +571,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
       children: [
         Expanded(
           child: _inviteTile(
-            icon: FontAwesomeIcons.solidComment,
+            icon: FontAwesomeIcons.kakaoTalk,
             label: '카톡 초대',
             onTap: () => SharePublisher.instance.publishTeamInvite(
               teamTitle: battle.title,
