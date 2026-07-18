@@ -25,9 +25,7 @@ Future<bool> showLoginBottomSheet(BuildContext context, WidgetRef ref) async {
     // 에는 반응 안 함. 모달의 const _LoginSheet 는 동일 instance 라
     // 자식 element 트리는 보존, Padding 만 padding 재적용.
     builder: (ctx) => Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.viewInsetsOf(ctx).bottom,
-      ),
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
       child: const _LoginSheet(),
     ),
   );
@@ -95,9 +93,9 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
                 onChanged: _isLoading
                     ? null
                     : (v) => setState(() {
-                          _isSignUp = v;
-                          _errorMessage = null;
-                        }),
+                        _isSignUp = v;
+                        _errorMessage = null;
+                      }),
               ),
               const SizedBox(height: 24),
               // ── 헤더 (모드별 문구) ───────────────────────────────────
@@ -108,9 +106,7 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
               ),
               const SizedBox(height: 8),
               Text(
-                isSignUp
-                    ? '가입 후 모든 기능을 사용할 수 있습니다.'
-                    : '로그인이 필요합니다.',
+                isSignUp ? '가입 후 모든 기능을 사용할 수 있습니다.' : '로그인이 필요합니다.',
                 textAlign: TextAlign.center,
                 style: AppText.body,
               ),
@@ -120,18 +116,23 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
                 height: 48,
                 child: ElevatedButton.icon(
                   onPressed: _isLoading ? null : _kakaoLogin,
-                  icon: const FaIcon(FontAwesomeIcons.kakaoTalk,
-                      size: 18, color: Color(0xFF3C1E1E)),
+                  icon: const FaIcon(
+                    FontAwesomeIcons.kakaoTalk,
+                    size: 18,
+                    color: Color(0xFF3C1E1E),
+                  ),
                   label: Text(
                     isSignUp ? '카카오로 가입' : '카카오로 로그인',
-                    style: AppText.subTitle
-                        .copyWith(color: const Color(0xFF3C1E1E)),
+                    style: AppText.subTitle.copyWith(
+                      color: const Color(0xFF3C1E1E),
+                    ),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFEE500),
                     foregroundColor: const Color(0xFF3C1E1E),
-                    disabledBackgroundColor:
-                        const Color(0xFFFEE500).withValues(alpha: 0.5),
+                    disabledBackgroundColor: const Color(
+                      0xFFFEE500,
+                    ).withValues(alpha: 0.5),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -147,12 +148,16 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
                   // Apple 공식 white-outline 변형 — 검정 invert CTA 전면 폐기.
                   child: ElevatedButton.icon(
                     onPressed: _isLoading ? null : _appleLogin,
-                    icon: const FaIcon(FontAwesomeIcons.apple,
-                        size: 18, color: AppColors.textPrimary),
+                    icon: const FaIcon(
+                      FontAwesomeIcons.apple,
+                      size: 18,
+                      color: AppColors.textPrimary,
+                    ),
                     label: Text(
                       isSignUp ? 'Apple로 가입' : 'Apple로 로그인',
-                      style: AppText.subTitle
-                          .copyWith(color: AppColors.textPrimary),
+                      style: AppText.subTitle.copyWith(
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.background,
@@ -172,19 +177,12 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
               // ── divider with text ────────────────────────────────────
               Row(
                 children: [
-                  Expanded(
-                      child: Container(
-                          height: 1, color: AppTheme.border)),
+                  Expanded(child: Container(height: 1, color: AppTheme.border)),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Text(
-                      '또는 이메일로',
-                      style: AppText.hint,
-                    ),
+                    child: Text('또는 이메일로', style: AppText.hint),
                   ),
-                  Expanded(
-                      child: Container(
-                          height: 1, color: AppTheme.border)),
+                  Expanded(child: Container(height: 1, color: AppTheme.border)),
                 ],
               ),
               const SizedBox(height: 16),
@@ -221,9 +219,7 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         suffixIcon: IconButton(
-                          tooltip: _obscurePassword
-                              ? '비밀번호 보기'
-                              : '비밀번호 숨기기',
+                          tooltip: _obscurePassword ? '비밀번호 보기' : '비밀번호 숨기기',
                           icon: FaIcon(
                             _obscurePassword
                                 ? FontAwesomeIcons.eye
@@ -232,7 +228,8 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
                             color: AppTheme.textSecondary,
                           ),
                           onPressed: () => setState(
-                              () => _obscurePassword = !_obscurePassword),
+                            () => _obscurePassword = !_obscurePassword,
+                          ),
                         ),
                       ),
                     ),
@@ -251,7 +248,9 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
                 const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 10),
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.danger.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(10),
@@ -271,8 +270,9 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
                       Expanded(
                         child: Text(
                           _errorMessage!,
-                          style: AppText.caption
-                              .copyWith(color: AppColors.danger),
+                          style: AppText.caption.copyWith(
+                            color: AppColors.danger,
+                          ),
                         ),
                       ),
                     ],
@@ -281,14 +281,21 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
               ],
               const SizedBox(height: 16),
               // ── 하단 hint (mode 별) — 같은 톤(textHint·12px)으로 통일.
-              // 가입 모드의 reward 가치는 emoji 로만 시각 차별.
+              // 가입 모드의 reward 가치는 gift 아이콘으로만 시각 차별.
               // 로그인 모드에는 OTP sheet 와 동일 패턴 — "처음이신가요?" 평문 +
               // "가입 페이지로 이동" inline clickable.
               if (isSignUp)
-                Text(
-                  '🎁 첫 가입 시 3코인 지급',
-                  textAlign: TextAlign.center,
-                  style: AppText.hint,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const FaIcon(
+                      FontAwesomeIcons.gift,
+                      size: 12,
+                      color: AppColors.textHint,
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Text('첫 가입 시 3코인 지급', style: AppText.hint),
+                  ],
                 )
               else
                 Text.rich(
@@ -306,10 +313,10 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
                         recognizer: _isLoading
                             ? null
                             : (TapGestureRecognizer()
-                              ..onTap = () => setState(() {
-                                    _isSignUp = true;
-                                    _errorMessage = null;
-                                  })),
+                                ..onTap = () => setState(() {
+                                  _isSignUp = true;
+                                  _errorMessage = null;
+                                })),
                       ),
                     ],
                   ),
@@ -340,11 +347,15 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
   Future<void> _emailSubmit() async {
     final email = _emailCtrl.text.trim();
     final password = _passwordCtrl.text;
-    debugPrint('[Login.emailSubmit] start mode=${_isSignUp ? "signup" : "signin"} '
-        'email=$email pwLen=${password.length}');
+    debugPrint(
+      '[Login.emailSubmit] start mode=${_isSignUp ? "signup" : "signin"} '
+      'email=$email pwLen=${password.length}',
+    );
     if (email.isEmpty || password.length < 6) {
-      debugPrint('[Login.emailSubmit] validation fail '
-          '(email empty=${email.isEmpty} pwLen=${password.length})');
+      debugPrint(
+        '[Login.emailSubmit] validation fail '
+        '(email empty=${email.isEmpty} pwLen=${password.length})',
+      );
       setState(() => _errorMessage = '이메일과 6자 이상 비밀번호를 입력하세요');
       return;
     }
@@ -356,13 +367,18 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
 
     if (_isSignUp) {
       final res = await notifier.signUpWithEmail(email, password);
-      debugPrint('[Login.emailSubmit] signUp outcome=${res.outcome} '
-          'msg=${res.message}');
+      debugPrint(
+        '[Login.emailSubmit] signUp outcome=${res.outcome} '
+        'msg=${res.message}',
+      );
       if (!mounted) return;
       switch (res.outcome) {
         case SignUpOutcome.newAccount:
-          final otpResult =
-              await showOtpVerificationSheet(context, ref, email: email);
+          final otpResult = await showOtpVerificationSheet(
+            context,
+            ref,
+            email: email,
+          );
           debugPrint('[Login.emailSubmit] otpResult=$otpResult');
           if (!mounted) return;
           switch (otpResult) {
@@ -463,8 +479,20 @@ class _ModeSegmented extends StatelessWidget {
       padding: const EdgeInsets.all(3),
       child: Row(
         children: [
-          Expanded(child: _segment(label: '로그인', selected: !isSignUp, onTap: () => onChanged?.call(false))),
-          Expanded(child: _segment(label: '가입', selected: isSignUp, onTap: () => onChanged?.call(true))),
+          Expanded(
+            child: _segment(
+              label: '로그인',
+              selected: !isSignUp,
+              onTap: () => onChanged?.call(false),
+            ),
+          ),
+          Expanded(
+            child: _segment(
+              label: '가입',
+              selected: isSignUp,
+              onTap: () => onChanged?.call(true),
+            ),
+          ),
         ],
       ),
     );

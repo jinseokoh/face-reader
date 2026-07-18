@@ -67,8 +67,10 @@ class _CompatChipsBlock extends StatelessWidget {
 
 class _CompatibilityDetailScreenState
     extends ConsumerState<CompatibilityDetailScreen> {
-  late final CompatibilityBundle _bundle =
-      analyzeCompatibilityFromReports(my: widget.my, album: widget.album);
+  late final CompatibilityBundle _bundle = analyzeCompatibilityFromReports(
+    my: widget.my,
+    album: widget.album,
+  );
 
   /// RepaintBoundary key — off-screen 합성 카드 캡처용.
   final GlobalKey _shareCardKey = GlobalKey();
@@ -114,7 +116,11 @@ class _CompatibilityDetailScreenState
           ListView(
             // 하단 16 + 제스처 내비 inset — 마지막 카드가 시스템 바에 안 가리게.
             padding: EdgeInsets.fromLTRB(
-                16, 12, 16, 16 + MediaQuery.of(context).viewPadding.bottom),
+              16,
+              12,
+              16,
+              16 + MediaQuery.of(context).viewPadding.bottom,
+            ),
             children: [
               _TotalHeader(
                 my: widget.my,
@@ -161,8 +167,7 @@ class _CompatibilityDetailScreenState
       if (!context.mounted) return;
       showTopSnackBar(
         Overlay.of(context),
-        CompactSnackBar.error(
-            message: '카카오톡이 설치되어 있지않아 공유할 수 없습니다'),
+        CompactSnackBar.error(message: '카카오톡이 설치되어 있지않아 공유할 수 없습니다'),
       );
       return;
     }
@@ -195,8 +200,9 @@ class _CompatibilityDetailScreenState
   }
 
   Future<Uint8List> _captureShareCardBytes() async {
-    final boundary = _shareCardKey.currentContext?.findRenderObject()
-        as RenderRepaintBoundary?;
+    final boundary =
+        _shareCardKey.currentContext?.findRenderObject()
+            as RenderRepaintBoundary?;
     if (boundary == null) {
       throw StateError('compat share card boundary not mounted');
     }
@@ -207,7 +213,6 @@ class _CompatibilityDetailScreenState
     }
     return byteData.buffer.asUint8List();
   }
-
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -255,16 +260,22 @@ class _CompatShareSide extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        Text(alias,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppText.caption.copyWith(
-                color: Colors.white, fontWeight: FontWeight.w700)),
+        Text(
+          alias,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppText.caption.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
         const SizedBox(height: 2),
-        Text(demographic,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppText.hint.copyWith(color: _CompatPalette.sand)),
+        Text(
+          demographic,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppText.hint.copyWith(color: _CompatPalette.sand),
+        ),
       ],
     );
   }
@@ -289,13 +300,15 @@ class _NarrativeCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style: AppText.modalTitle.copyWith(
-                  color: AppColors.darkBrown,
-                  fontWeight: FontWeight.w700)),
+          Text(
+            title,
+            style: AppText.modalTitle.copyWith(
+              color: AppColors.darkBrown,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: AppSpacing.md),
-          Text(body,
-              style: AppText.body.copyWith(color: AppColors.darkBrown)),
+          Text(body, style: AppText.body.copyWith(color: AppColors.darkBrown)),
         ],
       ),
     );
@@ -323,8 +336,7 @@ class _NarrativeSections extends StatelessWidget {
     ];
     return Column(
       children: [
-        for (final s in sections)
-          _NarrativeCard(title: s.title, body: s.body),
+        for (final s in sections) _NarrativeCard(title: s.title, body: s.body),
       ],
     );
   }
@@ -342,7 +354,6 @@ class _ShareHashtag extends StatelessWidget {
     final border = isWarm
         ? _CompatPalette.strengthBorder
         : _CompatPalette.weaknessBorder;
-    final prefix = isWarm ? '👍 ' : '👎 ';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
@@ -350,11 +361,25 @@ class _ShareHashtag extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: border),
       ),
-      child: Text('$prefix${chip.label}',
-          style: AppText.caption.copyWith(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FaIcon(
+            isWarm ? FontAwesomeIcons.thumbsUp : FontAwesomeIcons.thumbsDown,
+            size: 12,
+            color: fg,
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Text(
+            chip.label,
+            style: AppText.caption.copyWith(
               color: fg,
               fontWeight: FontWeight.w600,
-              letterSpacing: 0.2)),
+              letterSpacing: 0.2,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -371,9 +396,10 @@ class _SubBar extends StatelessWidget {
         children: [
           SizedBox(
             width: 76,
-            child: Text(row.label,
-                style: AppText.caption.copyWith(
-                    color: AppColors.textPrimary)),
+            child: Text(
+              row.label,
+              style: AppText.caption.copyWith(color: AppColors.textPrimary),
+            ),
           ),
           const SizedBox(width: 6),
           Expanded(
@@ -409,14 +435,9 @@ class _SubBar extends StatelessWidget {
               children: [
                 Text(
                   row.value.toStringAsFixed(0),
-                  style: AppText.subTitle.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: AppText.subTitle.copyWith(fontWeight: FontWeight.w700),
                 ),
-                Text(
-                  ' / 100',
-                  style: AppText.hint.copyWith(fontSize: 10),
-                ),
+                Text(' / 100', style: AppText.hint.copyWith(fontSize: 10)),
               ],
             ),
           ),
@@ -443,20 +464,24 @@ class _SubScorePanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rows = <_SubRow>[
-      _SubRow(CompatSubKind.element.modernKo,
-          subScoreToDisplay(CompatSubKind.element, report.sub.elementScore)!),
-      _SubRow(CompatSubKind.palace.modernKo,
-          subScoreToDisplay(CompatSubKind.palace, report.sub.palaceScore)!),
-      _SubRow(CompatSubKind.qi.modernKo,
-          subScoreToDisplay(CompatSubKind.qi, report.sub.qiScore)!),
+      _SubRow(
+        CompatSubKind.element.modernKo,
+        subScoreToDisplay(CompatSubKind.element, report.sub.elementScore)!,
+      ),
+      _SubRow(
+        CompatSubKind.palace.modernKo,
+        subScoreToDisplay(CompatSubKind.palace, report.sub.palaceScore)!,
+      ),
+      _SubRow(
+        CompatSubKind.qi.modernKo,
+        subScoreToDisplay(CompatSubKind.qi, report.sub.qiScore)!,
+      ),
       _SubRow(
         CompatSubKind.intimacy.modernKo,
         subScoreToDisplay(CompatSubKind.intimacy, report.sub.intimacyScore)!,
       ),
     ];
-    return Column(
-      children: [for (final r in rows) _SubBar(row: r)],
-    );
+    return Column(children: [for (final r in rows) _SubBar(row: r)]);
   }
 }
 
@@ -499,11 +524,14 @@ class _TotalHeader extends StatelessWidget {
         children: [
           Align(
             alignment: Alignment.centerLeft,
-            child: Text('궁합도 과학이다',
-                style: AppText.hint.copyWith(
-                    color: _CompatPalette.sand,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1)),
+            child: Text(
+              '궁합도 과학이다',
+              style: AppText.hint.copyWith(
+                color: _CompatPalette.sand,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1,
+              ),
+            ),
           ),
           const SizedBox(height: 10),
           Row(
@@ -531,35 +559,45 @@ class _TotalHeader extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 6),
-          Text(_labelTagline(label),
-              textAlign: TextAlign.center,
-              style: AppText.caption.copyWith(
-                  color: _CompatPalette.sand,
-                  letterSpacing: 1)),
+          Text(
+            _labelTagline(label),
+            textAlign: TextAlign.center,
+            style: AppText.caption.copyWith(
+              color: _CompatPalette.sand,
+              letterSpacing: 1,
+            ),
+          ),
           const SizedBox(height: 18),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                  child: _CompatShareSide(
-                      report: my,
-                      alias: myAlias,
-                      demographic: myDemographic)),
+                child: _CompatShareSide(
+                  report: my,
+                  alias: myAlias,
+                  demographic: myDemographic,
+                ),
+              ),
               Padding(
                 padding: const EdgeInsets.only(top: 24),
                 // 데이터 glyph — 토큰 anchor + 명시적 크기 유지.
-                child: Text('×',
-                    style: AppText.sectionTitle.copyWith(
-                        color: Colors.white,
-                        fontSize: 32,
-                        fontWeight: FontWeight.w300,
-                        height: 1.0)),
+                child: Text(
+                  '×',
+                  style: AppText.sectionTitle.copyWith(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.w300,
+                    height: 1.0,
+                  ),
+                ),
               ),
               Expanded(
-                  child: _CompatShareSide(
-                      report: album,
-                      alias: albumAlias,
-                      demographic: albumDemographic)),
+                child: _CompatShareSide(
+                  report: album,
+                  alias: albumAlias,
+                  demographic: albumDemographic,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 18),
@@ -567,20 +605,21 @@ class _TotalHeader extends StatelessWidget {
           const SizedBox(height: 16),
           Container(
             width: double.infinity,
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(10),
-              border:
-                  Border.all(color: Colors.white.withValues(alpha: 0.18)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
             ),
-            child: Text(relation,
-                textAlign: TextAlign.center,
-                style: AppText.hint.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1)),
+            child: Text(
+              relation,
+              textAlign: TextAlign.center,
+              style: AppText.hint.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1,
+              ),
+            ),
           ),
         ],
       ),
@@ -643,9 +682,10 @@ class _CompatShareCardComposite extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             _CompatThumb(
-                                path: my.thumbnailPath,
-                                thumbnailKey: my.thumbnailKey,
-                                gender: my.gender),
+                              path: my.thumbnailPath,
+                              thumbnailKey: my.thumbnailKey,
+                              gender: my.gender,
+                            ),
                             const SizedBox(width: 24),
                             Text(
                               '×',
@@ -658,9 +698,10 @@ class _CompatShareCardComposite extends StatelessWidget {
                             ),
                             const SizedBox(width: 24),
                             _CompatThumb(
-                                path: album.thumbnailPath,
-                                thumbnailKey: album.thumbnailKey,
-                                gender: album.gender),
+                              path: album.thumbnailPath,
+                              thumbnailKey: album.thumbnailKey,
+                              gender: album.gender,
+                            ),
                           ],
                         ),
                         const SizedBox(height: 28),
@@ -690,11 +731,11 @@ class _CompatShareCardComposite extends StatelessWidget {
 
 /// 등급별 얼굴 아이콘 — 관계평(위) 줄에 사용. 등급이 좋을수록 더 환한 표정.
 FaIconData _gradeFaceIcon(CompatLabel l) => switch (l) {
-      CompatLabel.cheonjakjihap => FontAwesomeIcons.faceGrinBeam,
-      CompatLabel.geumseulsanghwa => FontAwesomeIcons.faceSmileBeam,
-      CompatLabel.mahapgaseong => FontAwesomeIcons.faceGrin,
-      CompatLabel.hyeonggeuknanjo => FontAwesomeIcons.faceSmile,
-    };
+  CompatLabel.cheonjakjihap => FontAwesomeIcons.faceGrinBeam,
+  CompatLabel.geumseulsanghwa => FontAwesomeIcons.faceSmileBeam,
+  CompatLabel.mahapgaseong => FontAwesomeIcons.faceGrin,
+  CompatLabel.hyeonggeuknanjo => FontAwesomeIcons.faceSmile,
+};
 
 /// 궁합 share card 의 한줄평 row — 관상 카드 `_IconLineRow` 와 동일한
 /// icon(40) + text(42·w500·#333) 패턴. 위 등급별 얼굴(관계평) · 아래 venus-mars(오행평).
@@ -757,8 +798,12 @@ class _CompatThumb extends StatelessWidget {
         color: const Color(0xFFF5F5F5),
         borderRadius: BorderRadius.circular(14),
       ),
-      child: Image.asset(genderAsset,
-          width: size, height: size, fit: BoxFit.cover),
+      child: Image.asset(
+        genderAsset,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+      ),
     );
     if (file != null && file.existsSync()) {
       return ClipRRect(
@@ -769,11 +814,13 @@ class _CompatThumb extends StatelessWidget {
     if (cdn != null) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(14),
-        child: Image.network(cdn,
-            width: size,
-            height: size,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => placeholder),
+        child: Image.network(
+          cdn,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => placeholder,
+        ),
       );
     }
     return placeholder;

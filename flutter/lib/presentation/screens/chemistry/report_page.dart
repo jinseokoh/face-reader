@@ -1974,24 +1974,24 @@ class _TldrChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (bg, fg, border, prefix) = switch (data.tone) {
+    final (bg, fg, border, FaIconData? icon) = switch (data.tone) {
       _ChipTone.warm => (
         _Palette.strengthBg,
         _Palette.strengthFg,
         _Palette.strengthBorder,
-        '👍 ',
+        FontAwesomeIcons.thumbsUp,
       ),
       _ChipTone.cool => (
         _Palette.weaknessBg,
         _Palette.weaknessFg,
         _Palette.weaknessBorder,
-        '👎 ',
+        FontAwesomeIcons.thumbsDown,
       ),
       _ChipTone.accent => (
         _Palette.darkBrown,
         Colors.white,
         _Palette.darkBrown,
-        '',
+        null,
       ),
     };
     return Container(
@@ -2001,13 +2001,22 @@ class _TldrChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: border),
       ),
-      child: Text(
-        '$prefix${data.label}',
-        style: AppText.caption.copyWith(
-          color: fg,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.2,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            FaIcon(icon, size: 12, color: fg),
+            const SizedBox(width: AppSpacing.xs),
+          ],
+          Text(
+            data.label,
+            style: AppText.caption.copyWith(
+              color: fg,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.2,
+            ),
+          ),
+        ],
       ),
     );
   }
