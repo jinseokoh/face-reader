@@ -29,8 +29,11 @@ import 'battle_match_card.dart';
 class TeamRevealScreen extends ConsumerStatefulWidget {
   final String battleId;
   final bool ceremony;
-  const TeamRevealScreen(
-      {super.key, required this.battleId, this.ceremony = false});
+  const TeamRevealScreen({
+    super.key,
+    required this.battleId,
+    this.ceremony = false,
+  });
 
   @override
   ConsumerState<TeamRevealScreen> createState() => _TeamRevealScreenState();
@@ -65,8 +68,9 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
     final roster = await _service.fetchRoster(widget.battleId);
     if (!mounted) return;
     // 참가자 아바타 — 상세 페이지와 같은 소스 (현재 my-face live resolve).
-    final profiles = await _service
-        .fetchSlotProfiles([for (final r in roster) r.userId]);
+    final profiles = await _service.fetchSlotProfiles([
+      for (final r in roster) r.userId,
+    ]);
     if (!mounted) return;
     _profiles = profiles;
     Map<String, dynamic>? payload = battle.resultPayload;
@@ -80,8 +84,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
         });
         return;
       }
-      final players =
-          assembleBattlePlayers(roster: roster, snapshot: snapshot);
+      final players = assembleBattlePlayers(roster: roster, snapshot: snapshot);
       if (players.length < 2) {
         setState(() {
           _battle = battle;
@@ -90,8 +93,10 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
         return;
       }
       payload = engine
-          .computeBattle(players,
-              matchOnly: battle.roomKind == BattleRoomKind.match)
+          .computeBattle(
+            players,
+            matchOnly: battle.roomKind == BattleRoomKind.match,
+          )
           .toPayload();
       // 결정론 — 선착 기록만 유효, 실패(후착·비참가자)는 무해.
       try {
@@ -138,10 +143,12 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
   }
 
   // ── payload 파생 ──────────────────────────────────────────────
-  List<Map<String, dynamic>> get _players =>
-      [for (final p in _payload!['players'] as List) p as Map<String, dynamic>];
-  List<Map<String, dynamic>> get _pairs =>
-      [for (final p in _payload!['pairs'] as List) p as Map<String, dynamic>];
+  List<Map<String, dynamic>> get _players => [
+    for (final p in _payload!['players'] as List) p as Map<String, dynamic>,
+  ];
+  List<Map<String, dynamic>> get _pairs => [
+    for (final p in _payload!['pairs'] as List) p as Map<String, dynamic>,
+  ];
   Map<String, dynamic> get _best => _payload!['best'] as Map<String, dynamic>;
 
   String _nameOf(int slot) {
@@ -206,9 +213,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
     if (gender == null) return _pairIconAvatar(size);
     return ClipOval(
       child: Image.asset(
-        gender == 'male'
-            ? 'assets/icons/male.png'
-            : 'assets/icons/female.png',
+        gender == 'male' ? 'assets/icons/male.png' : 'assets/icons/female.png',
         width: size,
         height: size,
         fit: BoxFit.cover,
@@ -232,22 +237,27 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
       body: SafeArea(
         top: false,
         child: switch (_phase) {
-          _Phase.loading =>
-            const Center(child: CircularProgressIndicator()),
+          _Phase.loading => const Center(child: CircularProgressIndicator()),
           _Phase.countdown => Center(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                child: Text('$_count',
-                    key: ValueKey(_count), style: AppText.display),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: Text(
+                '$_count',
+                key: ValueKey(_count),
+                style: AppText.display,
               ),
             ),
+          ),
           _Phase.orphan => Center(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.huge),
-                child: Text('결과가 생성되지 않은 배틀입니다',
-                    style: AppText.body, textAlign: TextAlign.center),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.huge),
+              child: Text(
+                '결과가 생성되지 않은 배틀입니다',
+                style: AppText.body,
+                textAlign: TextAlign.center,
               ),
             ),
+          ),
           _Phase.board => _board(),
         },
       ),
@@ -354,51 +364,58 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
     }
     // 행(남)·열(여) 셀은 같은 역할 — 아바타 + 이름, 토큰 하나로 통일.
     Widget nameCell(int slot) => SizedBox(
-          width: 64,
-          child: Column(
-            children: [
-              _slotAvatar(slot, size: 24),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                _nameOf(slot),
-                style: AppText.caption,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-              ),
-            ],
+      width: 64,
+      child: Column(
+        children: [
+          _slotAvatar(slot, size: 24),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            _nameOf(slot),
+            style: AppText.caption,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
           ),
-        );
+        ],
+      ),
+    );
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            const SizedBox(width: 64),
-            for (final c in cols) nameCell(c),
-          ]),
+          Row(
+            children: [
+              const SizedBox(width: 64),
+              for (final c in cols) nameCell(c),
+            ],
+          ),
           for (final row in rows)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-              child: Row(children: [
-                nameCell(row),
-                for (final col in cols)
-                  SizedBox(
-                    width: 64,
-                    child: row == col
-                        ? Text('—', style: AppText.hint,
-                            textAlign: TextAlign.center)
-                        : InkWell(
-                            onTap: () => _openPair(row, col),
-                            child: Text(
-                              _bandOf(row, col)?.bandEmoji ?? '',
-                              style: AppText.body,
+              child: Row(
+                children: [
+                  nameCell(row),
+                  for (final col in cols)
+                    SizedBox(
+                      width: 64,
+                      child: row == col
+                          ? Text(
+                              '—',
+                              style: AppText.hint,
                               textAlign: TextAlign.center,
+                            )
+                          : InkWell(
+                              onTap: () => _openPair(row, col),
+                              child: Text(
+                                _bandOf(row, col)?.bandEmoji ?? '',
+                                style: AppText.body,
+                                textAlign: TextAlign.center,
+                              ),
                             ),
-                          ),
-                  ),
-              ]),
+                    ),
+                ],
+              ),
             ),
         ],
       ),
@@ -433,12 +450,17 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
                 Expanded(child: Text(_nameOf(other), style: AppText.subTitle)),
                 Text(band.bandEmoji, style: AppText.body),
                 const SizedBox(width: AppSpacing.xs),
-                Text(band.bandLabel,
-                    style: AppText.caption.copyWith(color: band.bandColor)),
+                Text(
+                  band.bandLabel,
+                  style: AppText.caption.copyWith(color: band.bandColor),
+                ),
                 const SizedBox(width: AppSpacing.sm),
                 // 탭 = 쌍 상세로 이어짐을 알리는 진행 지시자.
-                const FaIcon(FontAwesomeIcons.chevronRight,
-                    size: 12, color: AppColors.textHint),
+                const FaIcon(
+                  FontAwesomeIcons.chevronRight,
+                  size: 12,
+                  color: AppColors.textHint,
+                ),
               ],
             ),
           ),
@@ -525,96 +547,111 @@ Future<void> openBattlePairDetail(
     ),
     builder: (ctx) {
       final coins = ref.read(authProvider)?.coins ?? 0;
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.xxl,
-          AppSpacing.md,
-          AppSpacing.xxl,
-          AppSpacing.xxl,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // 닫기.
-            Align(
-              alignment: Alignment.centerRight,
-              child: IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                onPressed: () => Navigator.pop(ctx, false),
-                icon: const FaIcon(FontAwesomeIcons.xmark,
-                    size: 20, color: AppColors.textSecondary),
-              ),
-            ),
-            // 밴드 닷 + 라벨 (점수 비노출).
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 14,
-                  height: 14,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: band.bandColor,
+      // SafeArea — 제스처 내비에 '보유 코인' 줄이 가리지 않게 (login/purchase
+      // 시트와 동일 패턴).
+      return SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.xxl,
+            AppSpacing.md,
+            AppSpacing.xxl,
+            AppSpacing.xxl,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // 닫기.
+              Align(
+                alignment: Alignment.centerRight,
+                child: IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () => Navigator.pop(ctx, false),
+                  icon: const FaIcon(
+                    FontAwesomeIcons.xmark,
+                    size: 20,
+                    color: AppColors.textSecondary,
                   ),
                 ),
-                const SizedBox(width: AppSpacing.xs),
-                Text(band.bandLabel, style: AppText.body),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            // 두 인물 — 큰 아바타 + 이름 + 나이·성별.
-            Row(
-              children: [
-                Expanded(child: _pairPersonColumn(my, name: myName)),
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-                  child: Text('×',
+              ),
+              // 밴드 닷 + 라벨 (점수 비노출).
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 14,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: band.bandColor,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Text(band.bandLabel, style: AppText.body),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              // 두 인물 — 큰 아바타 + 이름 + 나이·성별.
+              Row(
+                children: [
+                  Expanded(child: _pairPersonColumn(my, name: myName)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                    ),
+                    child: Text(
+                      '×',
                       style: AppText.body.copyWith(
                         color: AppColors.textHint,
                         fontSize: AppText.body.fontSize! * 2,
-                      )),
-                ),
-                Expanded(child: _pairPersonColumn(album, name: albumName)),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            // 잠금 안내 박스.
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
-              child: Row(
-                children: [
-                  const FaIcon(FontAwesomeIcons.lock,
-                      size: 13, color: AppColors.textHint),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      '상세 풀이는 1코인 지불 후 확인가능합니다.',
-                      style: AppText.caption
-                          .copyWith(color: AppColors.textSecondary),
+                      ),
                     ),
                   ),
+                  Expanded(child: _pairPersonColumn(album, name: albumName)),
                 ],
               ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            PrimaryButton(
-              label: '1코인으로 풀이 보기',
-              onPressed: () => Navigator.pop(ctx, true),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              '보유 코인 $coins개',
-              style: AppText.caption.copyWith(color: AppColors.textHint),
-              textAlign: TextAlign.center,
-            ),
-          ],
+              const SizedBox(height: AppSpacing.xl),
+              // 잠금 안내 박스.
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Row(
+                  children: [
+                    const FaIcon(
+                      FontAwesomeIcons.lock,
+                      size: 13,
+                      color: AppColors.textHint,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        '상세 풀이는 1코인 지불 후 확인가능합니다.',
+                        style: AppText.caption.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              PrimaryButton(
+                label: '1코인으로 풀이 보기',
+                onPressed: () => Navigator.pop(ctx, true),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                '보유 코인 $coins개',
+                style: AppText.caption.copyWith(color: AppColors.textHint),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       );
     },
@@ -690,8 +727,11 @@ Widget _pairIconAvatar(double size) {
       color: AppColors.border,
     ),
     child: Center(
-      child: FaIcon(FontAwesomeIcons.user,
-          size: size * 0.45, color: AppColors.textHint),
+      child: FaIcon(
+        FontAwesomeIcons.user,
+        size: size * 0.45,
+        color: AppColors.textHint,
+      ),
     ),
   );
 }

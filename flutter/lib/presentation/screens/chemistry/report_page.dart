@@ -37,7 +37,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
-
 const _nodeLabels = <String, String>{
   'face': '얼굴 전체',
   'forehead': '이마',
@@ -164,9 +163,12 @@ class _ExpandableAttributeBarState extends State<_ExpandableAttributeBar> {
             children: [
               SizedBox(
                 width: 80,
-                child: Text(widget.attribute.labelKo,
-                    style: AppText.sectionTitle
-                        .copyWith(fontWeight: FontWeight.w500)),
+                child: Text(
+                  widget.attribute.labelKo,
+                  style: AppText.sectionTitle.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ),
               Expanded(
                 child: Container(
@@ -190,10 +192,11 @@ class _ExpandableAttributeBarState extends State<_ExpandableAttributeBar> {
               const SizedBox(width: 8),
               SizedBox(
                 width: 36,
-                child: Text(widget.score.toStringAsFixed(1),
-                    textAlign: TextAlign.right,
-                    style: AppText.body
-                        .copyWith(color: _Palette.darkBrown)),
+                child: Text(
+                  widget.score.toStringAsFixed(1),
+                  textAlign: TextAlign.right,
+                  style: AppText.body.copyWith(color: _Palette.darkBrown),
+                ),
               ),
               FaIcon(
                 _expanded
@@ -230,8 +233,9 @@ class _ExpandableAttributeBarState extends State<_ExpandableAttributeBar> {
                     width: 120,
                     child: Text(
                       _contributorLabel(c.id),
-                      style: AppText.caption
-                          .copyWith(color: _Palette.warmBrown),
+                      style: AppText.caption.copyWith(
+                        color: _Palette.warmBrown,
+                      ),
                     ),
                   ),
                   Text(
@@ -279,16 +283,22 @@ class _HeroLine extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: AppText.caption.copyWith(
-                color: tagColor,
-                fontWeight: FontWeight.w700)),
+        Text(
+          label,
+          style: AppText.caption.copyWith(
+            color: tagColor,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(line,
-              style: AppText.caption.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w500)),
+          child: Text(
+            line,
+            style: AppText.caption.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ),
       ],
     );
@@ -305,7 +315,9 @@ class _HeroTop3 extends StatelessWidget {
       children: [
         for (var i = 0; i < top3.length; i++) ...[
           if (i > 0) const SizedBox(width: 10),
-          Expanded(child: _HeroTop3Cell(rank: i + 1, entry: top3[i])),
+          Expanded(
+            child: _HeroTop3Cell(rank: i + 1, entry: top3[i]),
+          ),
         ],
       ],
     );
@@ -330,16 +342,22 @@ class _HeroTop3Cell extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('$rank순위',
-              style: AppText.hint.copyWith(
-                  color: _Palette.sand,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.5)),
+          Text(
+            '$rank순위',
+            style: AppText.hint.copyWith(
+              color: _Palette.sand,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+            ),
+          ),
           const SizedBox(height: 4),
-          Text(entry.key.labelKo,
-              style: AppText.subTitle.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700)),
+          Text(
+            entry.key.labelKo,
+            style: AppText.subTitle.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 6),
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
@@ -357,10 +375,13 @@ class _HeroTop3Cell extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Text(entry.value.toStringAsFixed(1),
-              style: AppText.hint.copyWith(
-                  color: _Palette.sand,
-                  fontWeight: FontWeight.w600)),
+          Text(
+            entry.value.toStringAsFixed(1),
+            style: AppText.hint.copyWith(
+              color: _Palette.sand,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
@@ -451,7 +472,9 @@ class _NodeBar extends StatelessWidget {
                   alignment: Alignment.centerLeft,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: isLeaf ? Colors.transparent : _Palette.darkBrown,
                       borderRadius: BorderRadius.circular(4),
@@ -511,8 +534,7 @@ class _NodeBar extends StatelessWidget {
         final isLastMetric = (++visibleIndex) == visibleTotal;
         final zm = m.zScore;
         final info = _metricInfoById[mid];
-        final label =
-            info?.nameKo ?? metricDisplayLabels[mid] ?? mid;
+        final label = info?.nameKo ?? metricDisplayLabels[mid] ?? mid;
         // z 부호 → higherLabel/lowerLabel. |z| ≲ 0.35 는 평균권 → 중립 문구.
         final String interp;
         if (info == null) {
@@ -559,8 +581,9 @@ class _NodeBar extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 2, left: 2),
                     child: Text(
                       interp,
-                      style: AppText.caption
-                          .copyWith(color: _Palette.warmBrown),
+                      style: AppText.caption.copyWith(
+                        color: _Palette.warmBrown,
+                      ),
                     ),
                   ),
                 if (metricBody != null)
@@ -568,8 +591,9 @@ class _NodeBar extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 4, left: 2, right: 2),
                     child: Text(
                       metricBody,
-                      style: AppText.caption
-                          .copyWith(color: _Palette.warmBrown),
+                      style: AppText.caption.copyWith(
+                        color: _Palette.warmBrown,
+                      ),
                     ),
                   ),
               ],
@@ -638,8 +662,9 @@ class _NodeBar extends StatelessWidget {
             const SizedBox(height: 8),
             for (int ci = 0; ci < combos.length; ci++)
               Padding(
-                padding:
-                    EdgeInsets.only(bottom: ci == combos.length - 1 ? 0 : 8),
+                padding: EdgeInsets.only(
+                  bottom: ci == combos.length - 1 ? 0 : 8,
+                ),
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(10),
@@ -661,8 +686,9 @@ class _NodeBar extends StatelessWidget {
                       Expanded(
                         child: Text(
                           combos[ci].body,
-                          style: AppText.caption
-                              .copyWith(color: _Palette.warmBrown),
+                          style: AppText.caption.copyWith(
+                            color: _Palette.warmBrown,
+                          ),
                         ),
                       ),
                     ],
@@ -786,8 +812,8 @@ class _ReceivedBookmarkAction extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final history = ref.watch(historyProvider);
     final uuid = report.supabaseId;
-    final alreadySaved = uuid != null &&
-        history.any((r) => r.supabaseId == uuid);
+    final alreadySaved =
+        uuid != null && history.any((r) => r.supabaseId == uuid);
     return IconButton(
       icon: FaIcon(
         alreadySaved
@@ -808,8 +834,7 @@ class _ReceivedBookmarkAction extends ConsumerWidget {
         if (!context.mounted) return;
         showTopSnackBar(
           Overlay.of(context),
-          CompactSnackBar.success(
-              message: '내 앨범에 저장했습니다 — 궁합 탭에서 확인 가능'),
+          CompactSnackBar.success(message: '내 앨범에 저장했습니다 — 궁합 탭에서 확인 가능'),
         );
       },
     );
@@ -852,8 +877,11 @@ class _CompatCta extends ConsumerWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const FaIcon(FontAwesomeIcons.circleCheck,
-                size: 14, color: AppColors.gold),
+            const FaIcon(
+              FontAwesomeIcons.circleCheck,
+              size: 14,
+              color: AppColors.gold,
+            ),
             const SizedBox(width: AppSpacing.xs),
             Text(
               '내 관상입니다.',
@@ -880,7 +908,8 @@ class _CompatCta extends ConsumerWidget {
   /// 이동. 결제는 하지 않는다(여건 안 됨). 궁합 탭에서 내 관상 등록을 유도.
   void _onSaveForCompat(BuildContext context, WidgetRef ref) {
     final history = ref.read(historyProvider);
-    final alreadySaved = report.supabaseId != null &&
+    final alreadySaved =
+        report.supabaseId != null &&
         history.any((r) => r.supabaseId == report.supabaseId);
     if (!alreadySaved) {
       ref.read(historyProvider.notifier).add(report);
@@ -897,7 +926,8 @@ class _CompatCta extends ConsumerWidget {
   ) async {
     // 주체적 추가 — 받은 카드가 history 에 없으면 저장(궁합 리스트 노출에 필요).
     final history = ref.read(historyProvider);
-    final alreadySaved = report.supabaseId != null &&
+    final alreadySaved =
+        report.supabaseId != null &&
         history.any((r) => r.supabaseId == report.supabaseId);
     if (!alreadySaved) {
       ref.read(historyProvider.notifier).add(report);
@@ -956,7 +986,8 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     super.initState();
     // 본인 카드인데 R2 thumbnailKey 가 비어있고 로컬 파일이 남아있으면 자가치유
     // 업로드 (재설치로 로컬 파일이 사라지기 전에 영속 이미지 확보). 받은 카드는 skip.
-    if (report.source != AnalysisSource.received && report.thumbnailKey == null) {
+    if (report.source != AnalysisSource.received &&
+        report.thumbnailKey == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ref.read(historyProvider.notifier).backfillThumbnailIfMissing(report);
       });
@@ -1005,8 +1036,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                         )
                       : const FaIcon(FontAwesomeIcons.kakaoTalk, size: 20),
                   tooltip: '카카오 공유',
-                  onPressed:
-                      _isSharing ? null : () => _shareViaKakao(context),
+                  onPressed: _isSharing ? null : () => _shareViaKakao(context),
                 ),
               ],
       ),
@@ -1014,7 +1044,14 @@ class _ReportPageState extends ConsumerState<ReportPage> {
         clipBehavior: Clip.none,
         children: [
           ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+            // 하단 32 + 제스처 내비 inset — edge-to-edge 에서 마지막 카드가
+            // 시스템 바에 가리지 않게.
+            padding: EdgeInsets.fromLTRB(
+              16,
+              8,
+              16,
+              32 + MediaQuery.of(context).viewPadding.bottom,
+            ),
             children: [
               _buildHeader(),
               if (isReceived) ...[
@@ -1056,10 +1093,13 @@ class _ReportPageState extends ConsumerState<ReportPage> {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: _Palette.sand.withValues(alpha: 0.5)),
       ),
-      child: Text(text,
-          style: AppText.caption.copyWith(
-              color: _Palette.darkBrown,
-              fontWeight: FontWeight.w600)),
+      child: Text(
+        text,
+        style: AppText.caption.copyWith(
+          color: _Palette.darkBrown,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 
@@ -1092,10 +1132,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            _Palette.darkBrown,
-            _Palette.warmBrown,
-          ],
+          colors: [_Palette.darkBrown, _Palette.warmBrown],
         ),
         borderRadius: BorderRadius.circular(20),
       ),
@@ -1110,38 +1147,53 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('관상은 과학이다',
-                          style: AppText.hint.copyWith(
-                              color: _Palette.sand,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1)),
+                      Text(
+                        '관상은 과학이다',
+                        style: AppText.hint.copyWith(
+                          color: _Palette.sand,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1,
+                        ),
+                      ),
                       const SizedBox(height: 10),
-                      Text(arch.primaryLabel,
-                          style: AppText.modalTitle.copyWith(
-                              color: Colors.white,
-                              fontSize: 28,
-                              fontWeight: FontWeight.w700,
-                              height: 1.0)),
+                      Text(
+                        arch.primaryLabel,
+                        style: AppText.modalTitle.copyWith(
+                          color: Colors.white,
+                          fontSize: 28,
+                          fontWeight: FontWeight.w700,
+                          height: 1.0,
+                        ),
+                      ),
                       const SizedBox(height: 6),
-                      Text('${arch.secondaryLabel} 기질',
-                          style: AppText.subTitle.copyWith(
-                              color: _Palette.sand,
-                              fontWeight: FontWeight.w500)),
+                      Text(
+                        '${arch.secondaryLabel} 기질',
+                        style: AppText.subTitle.copyWith(
+                          color: _Palette.sand,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                       if (arch.specialArchetype != null) ...[
                         const SizedBox(height: 10),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 5),
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.18),
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.3)),
+                              color: Colors.white.withValues(alpha: 0.3),
+                            ),
                           ),
-                          child: Text(arch.specialArchetype!,
-                              style: AppText.hint.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600)),
+                          child: Text(
+                            arch.specialArchetype!,
+                            style: AppText.hint.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ],
                     ],
@@ -1158,8 +1210,11 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                       fallback: Container(
                         color: Colors.white.withValues(alpha: 0.12),
                         child: const Center(
-                          child: FaIcon(FontAwesomeIcons.user,
-                              color: Colors.white54, size: 18),
+                          child: FaIcon(
+                            FontAwesomeIcons.user,
+                            color: Colors.white54,
+                            size: 18,
+                          ),
                         ),
                       ),
                     ),
@@ -1190,13 +1245,11 @@ class _ReportPageState extends ConsumerState<ReportPage> {
           if (catchphrase.isNotEmpty)
             Container(
               width: double.infinity,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.18)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
               ),
               child: Text(
                 catchphrase,
@@ -1240,18 +1293,21 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('관상 10대 속성',
-            style: AppText.modalTitle
-                .copyWith(fontWeight: FontWeight.w700)),
+        Text(
+          '관상 10대 속성',
+          style: AppText.modalTitle.copyWith(fontWeight: FontWeight.w700),
+        ),
         const SizedBox(height: 12),
-        ...sorted.map((e) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _ExpandableAttributeBar(
-                attribute: e.key,
-                score: e.value,
-                evidence: report.attributes[e.key],
-              ),
-            )),
+        ...sorted.map(
+          (e) => Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _ExpandableAttributeBar(
+              attribute: e.key,
+              score: e.value,
+              evidence: report.attributes[e.key],
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -1266,8 +1322,10 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     return Row(
       children: [
         // nudge 배너·궁합 안내와 동일 토큰 — caption(13) + textHint.
-        Text(timeStr,
-            style: AppText.caption.copyWith(color: AppColors.textHint)),
+        Text(
+          timeStr,
+          style: AppText.caption.copyWith(color: AppColors.textHint),
+        ),
         const Spacer(),
         _badge(report.gender.labelKo),
         const SizedBox(width: 6),
@@ -1284,9 +1342,19 @@ class _ReportPageState extends ConsumerState<ReportPage> {
 
     // 귀(ear) 는 정면 메시에서 측정되지 않는 unsupported 노드 — UI 에서 완전 제외.
     const nodeOrder = [
-      'face', 'upper', 'forehead', 'glabella', 'eyebrow',
-      'middle', 'eye', 'nose', 'cheekbone',
-      'lower', 'philtrum', 'mouth', 'chin',
+      'face',
+      'upper',
+      'forehead',
+      'glabella',
+      'eyebrow',
+      'middle',
+      'eye',
+      'nose',
+      'cheekbone',
+      'lower',
+      'philtrum',
+      'mouth',
+      'chin',
     ];
     const nodeLabels = {
       'face': '얼굴',
@@ -1316,14 +1384,16 @@ class _ReportPageState extends ConsumerState<ReportPage> {
         children: [
           GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTap: () =>
-                setState(() => _showNodeDetails = !_showNodeDetails),
+            onTap: () => setState(() => _showNodeDetails = !_showNodeDetails),
             child: Row(
               children: [
-                Text('부위별 상세 해석',
-                    style: AppText.modalTitle.copyWith(
-                        color: _Palette.darkBrown,
-                        fontWeight: FontWeight.w700)),
+                Text(
+                  '부위별 상세 해석',
+                  style: AppText.modalTitle.copyWith(
+                    color: _Palette.darkBrown,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const Spacer(),
                 FaIcon(
                   _showNodeDetails
@@ -1359,7 +1429,8 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                   metrics: report.metrics,
                   lateralMetrics: report.lateralMetrics,
                   metricIds: nodeById[nodeId]?.metricIds ?? const [],
-                  isZone: nodeId == 'upper' ||
+                  isZone:
+                      nodeId == 'upper' ||
                       nodeId == 'middle' ||
                       nodeId == 'lower',
                   isRoot: nodeId == 'face',
@@ -1380,8 +1451,10 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     // First block is the archetype intro (no header)
     // Others start with "Header\nBody..."
     if (isFirst) {
-      return Text(section.trim(),
-          style: AppText.body.copyWith(color: AppColors.textPrimary));
+      return Text(
+        section.trim(),
+        style: AppText.body.copyWith(color: AppColors.textPrimary),
+      );
     }
 
     final lines = section.split('\n');
@@ -1397,14 +1470,16 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             color: _Palette.darkBrown.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(6),
           ),
-          child: Text(header,
-              style: AppText.sectionTitle.copyWith(
-                  color: _Palette.darkBrown,
-                  fontWeight: FontWeight.w700)),
+          child: Text(
+            header,
+            style: AppText.sectionTitle.copyWith(
+              color: _Palette.darkBrown,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ),
         const SizedBox(height: 8),
-        Text(body,
-            style: AppText.body.copyWith(color: AppColors.textPrimary)),
+        Text(body, style: AppText.body.copyWith(color: AppColors.textPrimary)),
       ],
     );
   }
@@ -1428,10 +1503,13 @@ class _ReportPageState extends ConsumerState<ReportPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('관상 해석',
-              style: AppText.modalTitle.copyWith(
-                  color: _Palette.darkBrown,
-                  fontWeight: FontWeight.w700)),
+          Text(
+            '관상 해석',
+            style: AppText.modalTitle.copyWith(
+              color: _Palette.darkBrown,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 14),
           for (var i = 0; i < sections.length; i++) ...[
             if (i > 0) const SizedBox(height: 14),
@@ -1446,10 +1524,13 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('참고 자료',
-            style: AppText.sectionTitle.copyWith(
-                color: _Palette.darkBrown,
-                fontWeight: FontWeight.w700)),
+        Text(
+          '참고 자료',
+          style: AppText.sectionTitle.copyWith(
+            color: _Palette.darkBrown,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
         const SizedBox(height: 6),
         Text(
           '이 분석이 근거로 삼는 학술·전통 자료입니다.',
@@ -1459,7 +1540,8 @@ class _ReportPageState extends ConsumerState<ReportPage> {
         for (var i = 0; i < _references.length; i++)
           Padding(
             padding: EdgeInsets.only(
-                bottom: i == _references.length - 1 ? 0 : 8),
+              bottom: i == _references.length - 1 ? 0 : 8,
+            ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1468,15 +1550,15 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                   child: Text(
                     '${i + 1}.',
                     style: AppText.hint.copyWith(
-                        color: _Palette.warmBrown,
-                        fontWeight: FontWeight.w600),
+                      color: _Palette.warmBrown,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 Expanded(
                   child: Text(
                     _references[i],
-                    style: AppText.hint
-                        .copyWith(color: _Palette.warmBrown),
+                    style: AppText.hint.copyWith(color: _Palette.warmBrown),
                   ),
                 ),
               ],
@@ -1487,8 +1569,9 @@ class _ReportPageState extends ConsumerState<ReportPage> {
   }
 
   Future<Uint8List> _captureShareCardBytes() async {
-    final boundary = _shareCardKey.currentContext?.findRenderObject()
-        as RenderRepaintBoundary?;
+    final boundary =
+        _shareCardKey.currentContext?.findRenderObject()
+            as RenderRepaintBoundary?;
     if (boundary == null) {
       throw StateError('share card boundary not mounted');
     }
@@ -1531,8 +1614,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
       if (!context.mounted) return;
       showTopSnackBar(
         Overlay.of(context),
-        CompactSnackBar.error(
-            message: '카카오톡이 설치되어 있지않아 공유할 수 없습니다'),
+        CompactSnackBar.error(message: '카카오톡이 설치되어 있지않아 공유할 수 없습니다'),
       );
       return;
     }
@@ -1558,7 +1640,6 @@ class _ReportPageState extends ConsumerState<ReportPage> {
       if (mounted) setState(() => _isSharing = false);
     }
   }
-
 }
 
 // ─── 삼정 Radar (3-axis: 상정·중정·하정 rollUpMeanZ) ───
@@ -1668,10 +1749,7 @@ class _SamjeongRadarPainter extends CustomPainter {
       ..shader = const LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [
-          Color(0xCC5C4033),
-          Color(0x667B5B3A),
-        ],
+        colors: [Color(0xCC5C4033), Color(0x667B5B3A)],
       ).createShader(Rect.fromCircle(center: center, radius: maxR));
     canvas.drawPath(dataPath, fillPaint);
 
@@ -1763,15 +1841,18 @@ class _ShareCardComposite extends StatelessWidget {
     final thumbFile = ThumbnailPaths.resolveFileSync(report.thumbnailPath);
     Widget thumb;
     if (thumbFile != null && thumbFile.existsSync()) {
-      thumb = Image.file(thumbFile,
-          width: thumbSize, height: thumbSize, fit: BoxFit.cover);
+      thumb = Image.file(
+        thumbFile,
+        width: thumbSize,
+        height: thumbSize,
+        fit: BoxFit.cover,
+      );
     } else {
       thumb = Container(
         width: thumbSize,
         height: thumbSize,
         color: const Color(0xFFF5F5F5),
-        child: const Icon(Icons.face,
-            size: 96, color: Color(0xFFAAAAAA)),
+        child: const Icon(Icons.face, size: 96, color: Color(0xFFAAAAAA)),
       );
     }
 
@@ -1895,23 +1976,23 @@ class _TldrChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final (bg, fg, border, prefix) = switch (data.tone) {
       _ChipTone.warm => (
-          _Palette.strengthBg,
-          _Palette.strengthFg,
-          _Palette.strengthBorder,
-          '👍 ',
-        ),
+        _Palette.strengthBg,
+        _Palette.strengthFg,
+        _Palette.strengthBorder,
+        '👍 ',
+      ),
       _ChipTone.cool => (
-          _Palette.weaknessBg,
-          _Palette.weaknessFg,
-          _Palette.weaknessBorder,
-          '👎 ',
-        ),
+        _Palette.weaknessBg,
+        _Palette.weaknessFg,
+        _Palette.weaknessBorder,
+        '👎 ',
+      ),
       _ChipTone.accent => (
-          _Palette.darkBrown,
-          Colors.white,
-          _Palette.darkBrown,
-          '',
-        ),
+        _Palette.darkBrown,
+        Colors.white,
+        _Palette.darkBrown,
+        '',
+      ),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
@@ -1923,9 +2004,10 @@ class _TldrChip extends StatelessWidget {
       child: Text(
         '$prefix${data.label}',
         style: AppText.caption.copyWith(
-            color: fg,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.2),
+          color: fg,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.2,
+        ),
       ),
     );
   }
@@ -1939,8 +2021,8 @@ class _TldrChipData {
 
 // ─── Yin-Yang balance bar (음기 ←→ 양기 축) ───
 class _YinYangBar extends StatelessWidget {
-  static const _yinColor = Color(0xFF2C5AA0);   // 음기 — 깊은 푸른빛(水·月)
-  static const _yangColor = Color(0xFFC0392B);  // 양기 — 불빛 붉음(火·日)
+  static const _yinColor = Color(0xFF2C5AA0); // 음기 — 깊은 푸른빛(水·月)
+  static const _yangColor = Color(0xFFC0392B); // 양기 — 불빛 붉음(火·日)
 
   static const _harmonyColor = Color(0xFF9B7B4F); // 음양 조화 — amber
   final YinYangBalance balance;
@@ -1966,18 +2048,23 @@ class _YinYangBar extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text('음양 균형',
-                  style: AppText.subTitle
-                      .copyWith(color: _Palette.darkBrown)),
+              Text(
+                '음양 균형',
+                style: AppText.subTitle.copyWith(color: _Palette.darkBrown),
+              ),
               const Spacer(),
               Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 3),
+                  horizontal: 10,
+                  vertical: 3,
+                ),
                 decoration: BoxDecoration(
                   color: toneColor.withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                      color: toneColor.withValues(alpha: 0.45), width: 1),
+                    color: toneColor.withValues(alpha: 0.45),
+                    width: 1,
+                  ),
                 ),
                 child: Text(
                   balance.label,
@@ -2005,11 +2092,7 @@ class _YinYangBar extends StatelessWidget {
                         margin: const EdgeInsets.symmetric(vertical: 10),
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [
-                              _yinColor,
-                              _harmonyColor,
-                              _yangColor,
-                            ],
+                            colors: [_yinColor, _harmonyColor, _yangColor],
                             stops: [0.0, 0.5, 1.0],
                           ),
                           borderRadius: BorderRadius.circular(4),
@@ -2035,8 +2118,7 @@ class _YinYangBar extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(7),
-                          border: Border.all(
-                              color: toneColor, width: 2),
+                          border: Border.all(color: toneColor, width: 2),
                           boxShadow: [
                             BoxShadow(
                               color: toneColor.withValues(alpha: 0.35),
@@ -2055,16 +2137,14 @@ class _YinYangBar extends StatelessWidget {
           const SizedBox(height: 8),
           Row(
             children: [
-              Text('음기',
-                  style: AppText.hint.copyWith(color: _yinColor)),
+              Text('음기', style: AppText.hint.copyWith(color: _yinColor)),
               const Spacer(),
               Text(
                 '편향성 ${skew >= 0 ? '+' : ''}${skew.toStringAsFixed(2)}  ·  강도 ${mag.toStringAsFixed(2)}',
                 style: AppText.hint.copyWith(color: _Palette.warmBrown),
               ),
               const Spacer(),
-              Text('양기',
-                  style: AppText.hint.copyWith(color: _yangColor)),
+              Text('양기', style: AppText.hint.copyWith(color: _yangColor)),
             ],
           ),
         ],
@@ -2085,4 +2165,3 @@ class _YinYangBar extends StatelessWidget {
     }
   }
 }
-

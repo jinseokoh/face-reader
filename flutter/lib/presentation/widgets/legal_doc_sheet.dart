@@ -43,42 +43,43 @@ class LegalDocSheet extends ConsumerWidget {
 
     return ConstrainedBox(
       constraints: BoxConstraints(maxHeight: maxHeight),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // grab handle
-          Padding(
-            padding: const EdgeInsets.only(top: 8, bottom: 4),
-            child: Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppTheme.border,
-                borderRadius: BorderRadius.circular(2),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // grab handle
+            Padding(
+              padding: const EdgeInsets.only(top: 8, bottom: 4),
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppTheme.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
-          ),
-          // header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 12, 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(title, style: AppText.modalTitle),
-                ),
-                IconButton(
-                  tooltip: '닫기',
-                  icon: const Icon(Icons.close, size: 22),
-                  color: AppTheme.textHint,
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              ],
+            // header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 12, 8),
+              child: Row(
+                children: [
+                  Expanded(child: Text(title, style: AppText.modalTitle)),
+                  IconButton(
+                    tooltip: '닫기',
+                    icon: const Icon(Icons.close, size: 22),
+                    color: AppTheme.textHint,
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
             ),
-          ),
-          Divider(color: AppTheme.border, height: 1),
-          // body
-          Expanded(child: _DocBody(fetcher: fetcher)),
-        ],
+            Divider(color: AppTheme.border, height: 1),
+            // body
+            Expanded(child: _DocBody(fetcher: fetcher)),
+          ],
+        ),
       ),
     );
   }
@@ -149,8 +150,10 @@ class _DocBodyState extends State<_DocBody> {
             ),
             tableBody: AppText.body.copyWith(fontSize: 13),
             tableBorder: TableBorder.all(color: AppTheme.border, width: 0.8),
-            tableCellsPadding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            tableCellsPadding: const EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 6,
+            ),
             blockSpacing: 12,
             h1Padding: const EdgeInsets.only(bottom: 8),
             h2Padding: const EdgeInsets.only(top: 16, bottom: 6),
