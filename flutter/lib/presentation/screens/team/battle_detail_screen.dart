@@ -595,7 +595,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
         const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: _inviteTile(
-            icon: FontAwesomeIcons.copy,
+            icon: FontAwesomeIcons.link,
             label: '복사',
             onTap: () async {
               await Clipboard.setData(ClipboardData(
