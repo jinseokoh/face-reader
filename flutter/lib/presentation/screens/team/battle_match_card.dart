@@ -143,7 +143,8 @@ class _BattleMatchCardState extends State<BattleMatchCard> {
           const SizedBox(height: AppSpacing.sm),
           Text(widget.otherNickname, style: AppText.sectionTitle),
           const SizedBox(height: AppSpacing.xs),
-          Text('이 사진은 매칭된 두 사람에게만 보입니다', style: AppText.hint),
+          // hint → caption 한 단계 업 — 사진 공개 범위 고지는 읽혀야 한다.
+          Text('이 사진은 매칭된 두 사람에게만 보입니다', style: AppText.caption),
           const SizedBox(height: AppSpacing.xl),
           footer,
         ],
