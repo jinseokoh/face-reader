@@ -363,8 +363,8 @@ class _BattleCardBody extends StatelessWidget {
             const SizedBox(width: AppSpacing.sm),
             FaIcon(
               roomKind == BattleRoomKind.match
-                  ? FontAwesomeIcons.venusMars
-                  : FontAwesomeIcons.userGroup,
+                  ? FontAwesomeIcons.peopleArrows
+                  : FontAwesomeIcons.users,
               size: 14,
               color: AppColors.textHint,
             ),
