@@ -13,7 +13,7 @@ import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
 /// 방 생성 스텝 (rev2 — UX §A/§C): ①방 유형 → ②방 제목(카테고리→프리셋,
 /// 기타 = 자유 입력) → ③인원(6/8/10/12) → ④연령대(방장 인접 구간 RangeSlider)
-/// → ⑤공개 설정(공개/비밀) → ⑥참가자 얼굴 공개. [배틀 만들기] = createBattle
+/// → ⑤공개 설정(공개/비밀) → ⑥모집중 참가자 얼굴 공개. [배틀 만들기] = createBattle
 /// + joinBattle(셀프 조인) 후 Battle 반환, 조인 실패 시 방 롤백.
 Future<Battle?> showBattleCreatePage(BuildContext context) {
   return showModalBottomSheet<Battle>(
@@ -458,7 +458,7 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('참가자 얼굴 공개', style: AppText.display),
+        Text('모집중 참가자 얼굴 공개', style: AppText.display),
         const SizedBox(height: AppSpacing.xxl),
         _choiceTile(
           selected: _thumbOpen,
