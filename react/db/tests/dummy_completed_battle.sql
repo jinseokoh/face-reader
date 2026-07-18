@@ -7,8 +7,9 @@
 -- 만드는 것: match 방 6인(남3·여3) completed 배틀.
 --   '나' = 가장 최근 my-face 를 가진 로그인 계정 (slot 1, 방장, male 열).
 --   가짜 5명 = 준호·민석(남) / 서연·지은·하늘(여). my-face body 는 내 것을
---   복제해 성별·나이대만 패치 (엔진 파싱 유효 → 슬롯 meta·쌍 상세 unlock 동작),
---   썸네일 키는 제거 (기본 아이콘 fallback).
+--   복제해 성별·나이대·썸네일만 패치 (엔진 파싱 유효 → 슬롯 meta·쌍 상세
+--   unlock 동작). 썸네일 = cdn.facely.kr/dummy/{male,female}/N.jpg 실사 이미지
+--   (200x200 아님 — 표시는 BoxFit.cover 원형 크롭이라 무관).
 --   result_payload: 9쌍(남×여) 밴드 + 🏆 베스트 = 나(1)×서연(4) 92점.
 --   battle_matches: 나×서연 성사 카드 pending (앱에서 수락/거절 테스트 가능).
 do $$
@@ -22,6 +23,9 @@ declare
     'dddddddd-0000-0000-0000-000000000005'];
   v_names   text[] := array['준호', '민석', '서연', '지은', '하늘'];
   v_genders text[] := array['male', 'male', 'female', 'female', 'female'];
+  v_thumbs  text[] := array[
+    'dummy/male/1.jpg', 'dummy/male/2.jpg',
+    'dummy/female/1.jpg', 'dummy/female/2.jpg', 'dummy/female/3.jpg'];
   v_me      uuid;
   v_me_nick text;
   v_me_body jsonb;
@@ -56,10 +60,11 @@ begin
             now(), now());
     insert into public.metrics (user_id, body, is_my_face)
     values (v_dummy[i],
-            ((v_me_body - 'thumbnailKey')
+            (v_me_body
               || jsonb_build_object(
                    'gender', v_genders[i],
-                   'ageGroup', v_me_age::text || 's'))::text,
+                   'ageGroup', v_me_age::text || 's',
+                   'thumbnailKey', v_thumbs[i]))::text,
             true);
   end loop;
 
@@ -68,7 +73,7 @@ begin
                             thumb_open, max_players, age_min, age_max, status,
                             started_at, closed_at, created_at)
   values (v_team, v_me, '서울지역 케미 배틀', 'public', 'match',
-          false, 6, v_me_age, v_me_age + 10, 'completed',
+          true, 6, v_me_age, v_me_age + 10, 'completed',
           now() - interval '2 hours', now() - interval '115 minutes',
           now() - interval '3 hours');
 

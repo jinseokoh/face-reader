@@ -45,6 +45,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
   Battle? _battle;
   Map<String, dynamic>? _payload;
   List<BattleRosterEntry> _roster = const [];
+  Map<String, BattleSlotProfile> _profiles = const {};
   int? _mySlot;
   Timer? _countdownTimer;
 
@@ -63,6 +64,11 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
     }
     final roster = await _service.fetchRoster(widget.battleId);
     if (!mounted) return;
+    // 참가자 아바타 — 상세 페이지와 같은 소스 (현재 my-face live resolve).
+    final profiles = await _service
+        .fetchSlotProfiles([for (final r in roster) r.userId]);
+    if (!mounted) return;
+    _profiles = profiles;
     Map<String, dynamic>? payload = battle.resultPayload;
     if (payload == null) {
       final snapshot = battle.chemistrySnapshot;
@@ -172,6 +178,43 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
     return null;
   }
 
+  /// 슬롯 아바타 — 썸네일(thumb_open 방 한정) → 성별 기본 아이콘 → 사람 아이콘.
+  /// 상세 페이지 슬롯과 같은 게이트·fallback 순서.
+  Widget _slotAvatar(int slot, {double size = 28}) {
+    String? uid;
+    for (final r in _roster) {
+      if (r.slotNo == slot) uid = r.userId;
+    }
+    final gender = _genderOf(slot);
+    final thumbUrl = uid == null ? null : _profiles[uid]?.thumbUrl;
+    if ((_battle?.thumbOpen ?? false) && thumbUrl != null) {
+      return ClipOval(
+        child: Image.network(
+          thumbUrl,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _slotIconAvatar(gender, size),
+        ),
+      );
+    }
+    return _slotIconAvatar(gender, size);
+  }
+
+  Widget _slotIconAvatar(String? gender, double size) {
+    if (gender == null) return _pairIconAvatar(size);
+    return ClipOval(
+      child: Image.asset(
+        gender == 'male'
+            ? 'assets/icons/male.png'
+            : 'assets/icons/female.png',
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+      ),
+    );
+  }
+
   int? _bandOf(int a, int b) {
     final lo = a < b ? a : b;
     final hi = a < b ? b : a;
@@ -256,6 +299,15 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
         children: [
           Text('🏆 베스트 케미', style: AppText.sectionTitle),
           const SizedBox(height: AppSpacing.md),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _slotAvatar(a, size: 48),
+              const SizedBox(width: AppSpacing.md),
+              _slotAvatar(b, size: 48),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
           Text('${_nameOf(a)} × ${_nameOf(b)}', style: AppText.display),
           const SizedBox(height: AppSpacing.sm),
           Text('$score점', style: AppText.modalTitle),
@@ -299,14 +351,21 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
         ..remove(_mySlot)
         ..insert(0, _mySlot!);
     }
-    // 행(남)·열(여) 이름은 같은 역할 — 토큰 하나로 통일 (색·크기 분리 금지).
+    // 행(남)·열(여) 셀은 같은 역할 — 아바타 + 이름, 토큰 하나로 통일.
     Widget nameCell(int slot) => SizedBox(
           width: 64,
-          child: Text(
-            _nameOf(slot),
-            style: AppText.caption,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          child: Column(
+            children: [
+              _slotAvatar(slot, size: 24),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                _nameOf(slot),
+                style: AppText.caption,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
         );
     return SingleChildScrollView(
@@ -327,12 +386,14 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
                   SizedBox(
                     width: 64,
                     child: row == col
-                        ? Text('—', style: AppText.hint)
+                        ? Text('—', style: AppText.hint,
+                            textAlign: TextAlign.center)
                         : InkWell(
                             onTap: () => _openPair(row, col),
                             child: Text(
                               _bandOf(row, col)?.bandEmoji ?? '',
                               style: AppText.body,
+                              textAlign: TextAlign.center,
                             ),
                           ),
                   ),
@@ -365,9 +426,12 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
             ),
             child: Row(
               children: [
-                Text(band.bandEmoji, style: AppText.body),
+                // 아바타 · 이름 — (우측) 밴드 이모지 · 등급.
+                _slotAvatar(other, size: 32),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(child: Text(_nameOf(other), style: AppText.subTitle)),
+                Text(band.bandEmoji, style: AppText.body),
+                const SizedBox(width: AppSpacing.xs),
                 Text(band.bandLabel,
                     style: AppText.caption.copyWith(color: band.bandColor)),
               ],
