@@ -15,6 +15,8 @@ class AgeRangePill extends StatelessWidget {
         vertical: 2,
       ),
       decoration: BoxDecoration(
+        // 흰 배경 고정 — 카드 배경(surface/background)과 무관하게 동일 외형.
+        color: Colors.white,
         border: Border.all(color: AppColors.border),
         borderRadius: BorderRadius.circular(AppRadius.sm),
       ),
