@@ -358,7 +358,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
         children: [
           // '베스트 매칭' 라벨과 동일 스타일 — caption·gold·w700.
           Text(
-            '🏆 베스트 케미',
+            '베스트 케미',
             style: AppText.caption.copyWith(
               color: AppColors.gold,
               fontWeight: FontWeight.w700,
