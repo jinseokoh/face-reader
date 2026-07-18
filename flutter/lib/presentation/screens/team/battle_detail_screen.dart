@@ -380,10 +380,11 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
   }
 
   /// 사진 공개 계약 문구 — 정보성 고지, 체크박스 없음. 조인 = 동의(UX §E.1).
+  /// 결과 발표 = 참가자 전원 사진 공개 (thumb_open 은 모집 중 노출만 제어).
   Widget _photoConsentNotice(Battle battle) {
     final text = battle.roomKind == BattleRoomKind.match
-        ? '베스트 매칭이 되면 상대에게 내 사진이 공개되고, 서로 동의하면 1:1 채팅이 열립니다'
-        : '베스트 케미로 뽑히면 상대에게 내 사진이 공개됩니다';
+        ? '결과가 발표되면 참가자 전원에게 서로의 사진이 공개되고, 베스트 매칭이 서로 동의하면 1:1 채팅이 열립니다'
+        : '결과가 발표되면 참가자 전원에게 서로의 사진이 공개됩니다';
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(

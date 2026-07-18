@@ -178,8 +178,9 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
     return null;
   }
 
-  /// 슬롯 아바타 — 썸네일(thumb_open 방 한정) → 성별 기본 아이콘 → 사람 아이콘.
-  /// 상세 페이지 슬롯과 같은 게이트·fallback 순서.
+  /// 슬롯 아바타 — 썸네일 → 성별 기본 아이콘 → 사람 아이콘.
+  /// thumb_open 게이트는 모집 중 상세 페이지에만 적용 — 결과 발표 후는
+  /// 참가자 전원 사진 공개가 계약이다 (조인 동의 문구와 동일).
   Widget _slotAvatar(int slot, {double size = 28}) {
     String? uid;
     for (final r in _roster) {
@@ -187,7 +188,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
     }
     final gender = _genderOf(slot);
     final thumbUrl = uid == null ? null : _profiles[uid]?.thumbUrl;
-    if ((_battle?.thumbOpen ?? false) && thumbUrl != null) {
+    if (thumbUrl != null) {
       return ClipOval(
         child: Image.network(
           thumbUrl,
