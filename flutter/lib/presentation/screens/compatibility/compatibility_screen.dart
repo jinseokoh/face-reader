@@ -225,6 +225,15 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
     ref.invalidate(unlockedPartnerBodiesProvider);
   }
 
+  /// pull-to-refresh — 로컬 히스토리 재계산(관상 탭과 동일) + 서버 unlock
+  /// 캐시 무효화(케미 탭과 동일 패턴).
+  Future<void> _refresh() async {
+    await ref.read(historyProvider.notifier).reloadFromHive();
+    ref.invalidate(compatUnlocksProvider);
+    ref.invalidate(unlockedPairsProvider);
+    ref.invalidate(unlockedPartnerBodiesProvider);
+  }
+
   /// 탭 없이 표시되는 안내 화면 — 내 관상 미설정 한정 (등록 후엔 항상 탭).
   Widget _guideBody(List<FaceReadingReport> others) {
     // 비교할 상대가 하나도 없으면 빈 상태 — 관상 탭과 동일한 §3.8 레시피.
@@ -262,15 +271,25 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
     if (lockedList.isEmpty) {
       // 상대 0명 = 다음 행동(상대 추가) 안내 / 상대는 있는데 미확인 0 =
       // 전부 확인함(happy). 같은 빈 탭이라도 가리키는 곳이 다르다.
-      if (noPartners) {
-        return const EmotionEmptyState(
-          asset: 'assets/images/emotion-love.png',
-          message: '카메라나 앨범으로 상대방의 관상을 추가하세요.',
-        );
-      }
-      return const EmotionEmptyState(
-        asset: 'assets/images/emotion-happy.png',
-        message: '미확인 궁합이 없습니다.',
+      // 빈 상태도 당겨서 새로고침 가능 — 케미 탭과 동일 패턴.
+      return RefreshIndicator(
+        onRefresh: _refresh,
+        color: AppColors.textPrimary,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            const SizedBox(height: 120),
+            noPartners
+                ? const EmotionEmptyState(
+                    asset: 'assets/images/emotion-love.png',
+                    message: '카메라나 앨범으로 상대방의 관상을 추가하세요.',
+                  )
+                : const EmotionEmptyState(
+                    asset: 'assets/images/emotion-happy.png',
+                    message: '미확인 궁합이 없습니다.',
+                  ),
+          ],
+        ),
       );
     }
 
@@ -283,28 +302,33 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
         },
       );
 
-    return ListView(
-      // selector 위 lg(16)/아래 md(12) — 관상 탭 정렬 헤더와 동일 리듬.
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-      children: [
-        SortSelector<_LockedSort>(
-          value: _lockedSort,
-          values: _LockedSort.values,
-          labelOf: (v) => v.label,
-          onChanged: (v) => setState(() => _lockedSort = v),
-        ),
-        const SizedBox(height: 12),
-        ...sorted.map(
-          (other) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _CompatLockedCard(
-              album: other,
-              onUnlockPressed: () =>
-                  _handleUnlockPressed(context, ref, myFace, other),
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      color: AppColors.textPrimary,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        // selector 위 lg(16)/아래 md(12) — 관상 탭 정렬 헤더와 동일 리듬.
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+        children: [
+          SortSelector<_LockedSort>(
+            value: _lockedSort,
+            values: _LockedSort.values,
+            labelOf: (v) => v.label,
+            onChanged: (v) => setState(() => _lockedSort = v),
+          ),
+          const SizedBox(height: 12),
+          ...sorted.map(
+            (other) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _CompatLockedCard(
+                album: other,
+                onUnlockPressed: () =>
+                    _handleUnlockPressed(context, ref, myFace, other),
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -372,9 +396,20 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
     List<UnlockedPair> pairs,
   ) {
     if (pairs.isEmpty) {
-      return const EmotionEmptyState(
-        asset: 'assets/images/emotion-surprise.png',
-        message: '아직 궁합을 보지 않았다니!',
+      // 빈 상태도 당겨서 새로고침 가능 — 케미 탭과 동일 패턴.
+      return RefreshIndicator(
+        onRefresh: _refresh,
+        color: AppColors.textPrimary,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const [
+            SizedBox(height: 120),
+            EmotionEmptyState(
+              asset: 'assets/images/emotion-surprise.png',
+              message: '아직 궁합을 보지 않았다니!',
+            ),
+          ],
+        ),
       );
     }
 
@@ -430,38 +465,46 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
           ]
         : sorted;
 
-    return ListView(
-      // selector 위 lg(16)/아래 md(12) — 관상 탭 정렬 헤더와 동일 리듬.
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-      children: [
-        SortSelector<_UnlockedSort>(
-          value: _unlockedSort,
-          values: _UnlockedSort.values,
-          labelOf: (v) => v.label,
-          onChanged: (v) => setState(() {
-            _unlockedSort = v;
-            ref.read(recentUnlockFocusProvider.notifier).clear();
-          }),
-        ),
-        const SizedBox(height: 12),
-        ...pinned.map(
-          (e) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _CompatListCard(
-              a: e.first.report,
-              b: e.second.report,
-              aName: e.first.name,
-              bName: e.second.name,
-              onTap: () {
-                ref.read(recentUnlockFocusProvider.notifier).clear();
-                AnalyticsService.instance.logClickCompat();
-                context.pushCompat(my: e.first.report, album: e.second.report);
-              },
-              onDelete: () => _confirmDeleteUnlock(context, ref, e.pair),
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      color: AppColors.textPrimary,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        // selector 위 lg(16)/아래 md(12) — 관상 탭 정렬 헤더와 동일 리듬.
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+        children: [
+          SortSelector<_UnlockedSort>(
+            value: _unlockedSort,
+            values: _UnlockedSort.values,
+            labelOf: (v) => v.label,
+            onChanged: (v) => setState(() {
+              _unlockedSort = v;
+              ref.read(recentUnlockFocusProvider.notifier).clear();
+            }),
+          ),
+          const SizedBox(height: 12),
+          ...pinned.map(
+            (e) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _CompatListCard(
+                a: e.first.report,
+                b: e.second.report,
+                aName: e.first.name,
+                bName: e.second.name,
+                onTap: () {
+                  ref.read(recentUnlockFocusProvider.notifier).clear();
+                  AnalyticsService.instance.logClickCompat();
+                  context.pushCompat(
+                    my: e.first.report,
+                    album: e.second.report,
+                  );
+                },
+                onDelete: () => _confirmDeleteUnlock(context, ref, e.pair),
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
