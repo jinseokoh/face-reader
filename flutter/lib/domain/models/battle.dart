@@ -68,7 +68,7 @@ class Battle {
         id: row['id'] as String,
         ownerId: row['owner_id'] as String?,
         title: row['title'] as String,
-        isPublic: (row['visibility'] as String) == 'public',
+        isPublic: !(row['is_private'] as bool? ?? false),
         maxPlayers: (row['max_players'] as num).toInt(),
         ageMin: (row['age_min'] as num?)?.toInt(),
         ageMax: (row['age_max'] as num?)?.toInt(),
@@ -131,6 +131,7 @@ class PublicBattle {
   final int? ageMax;
   final BattleRoomKind roomKind;
   final bool thumbOpen;
+  final bool isPrivate;
   final DateTime createdAt;
   final int playerCount;
 
@@ -142,6 +143,7 @@ class PublicBattle {
     required this.ageMax,
     required this.roomKind,
     required this.thumbOpen,
+    required this.isPrivate,
     required this.createdAt,
     required this.playerCount,
   });
@@ -154,6 +156,7 @@ class PublicBattle {
     ageMax: (row['age_max'] as num?)?.toInt(),
     roomKind: battleRoomKindFrom(row['room_kind'] as String),
     thumbOpen: row['thumb_open'] as bool,
+    isPrivate: row['is_private'] as bool? ?? false,
     createdAt: DateTime.parse(row['created_at'] as String),
     playerCount: (row['player_count'] as num).toInt(),
   );

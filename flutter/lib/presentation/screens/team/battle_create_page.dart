@@ -608,7 +608,7 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
         _choiceTile(
           selected: _isPublic,
           title: '공개방',
-          caption: '공개 배틀 목록에서 누구나 참가할 수 있습니다',
+          caption: '비밀번호 없이 누구나 참가할 수 있습니다',
           onTap: () => setState(() => _isPublic = true),
         ),
         const SizedBox(height: AppSpacing.md),

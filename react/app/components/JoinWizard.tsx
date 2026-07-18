@@ -772,7 +772,7 @@ export function JoinWizard({
 
       {stage === 'entry' && (
         <>
-          {battle.visibility === 'private' && (
+          {battle.isPrivate && (
             <div className="join-form">
               <label className="join-field">
                 <span className="join-field-label">참여 비밀번호</span>
@@ -802,7 +802,7 @@ export function JoinWizard({
           <button
             className="join-btn join-btn--kakao"
             onClick={onJoinStart}
-            disabled={battle.visibility === 'private' && !/^\d{4}$/.test(pin)}
+            disabled={battle.isPrivate && !/^\d{4}$/.test(pin)}
           >
             <KakaoTalkIcon />
             카카오로 참여하기

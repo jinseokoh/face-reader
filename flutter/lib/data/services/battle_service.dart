@@ -37,7 +37,7 @@ class BattleService {
   // teams 는 password 컬럼에 authenticated 권한 grant 가 없어 bare `select()`
   // (select=*) 가 42501 로 실패한다 — grant 된 컬럼만 명시.
   static const _teamCols =
-      'id, owner_id, title, visibility, max_players, age_min, age_max, '
+      'id, owner_id, title, is_private, max_players, age_min, age_max, '
       'room_kind, thumb_open, status, started_at, closed_at, '
       'chemistry_snapshot, result_payload, created_at';
 
@@ -59,7 +59,7 @@ class BattleService {
         .insert({
           'owner_id': myUid,
           'title': title,
-          'visibility': isPublic ? 'public' : 'private',
+          // 공개/비밀 = password 유무 단일 소스 (is_private 는 파생 컬럼).
           'password': ?password,
           'max_players': maxPlayers,
           'age_min': ?ageMin,

@@ -101,8 +101,8 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
             '방을 만들면 참가자들이 각자 들어옵니다.\n'
             '정원이 다 차면 케미 결과표가 자동으로 발표됩니다.\n'
             '결과에서 베스트 케미와 케미 맵이 공개됩니다.\n\n'
-            '공개방은 목록에서 누구나 참가할 수 있고\n'
-            '비밀방은 비밀번호를 아는 사람만 참가합니다.',
+            '모집 중인 방은 모두 목록에 보입니다.\n'
+            '비밀번호가 있는 방은 비밀번호를 알아야 참가할 수 있습니다.',
             style: AppText.body,
           ),
         ),
@@ -281,8 +281,7 @@ class _PublicCardState extends State<_PublicCard> {
           maxPlayers: battle.maxPlayers,
           validity: _recruitDeadlineLabel(battle.createdAt),
           thumbOpen: battle.thumbOpen,
-          // 공개 목록은 public 방만 — 비밀방은 애초에 안 뜬다.
-          isPrivate: false,
+          isPrivate: battle.isPrivate,
         ),
       ),
     );

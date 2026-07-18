@@ -95,7 +95,7 @@ export type BattleSSR = {
   battle: {
     id: string;
     title: string;
-    visibility: string;
+    isPrivate: boolean;
     maxPlayers: number;
     ageMin: number | null;
     ageMax: number | null;
@@ -122,7 +122,7 @@ export async function fetchBattleSSR(
 
   const teamRes = await fetch(
     `${env.SUPABASE_URL}/rest/v1/teams?id=eq.${q}` +
-      `&select=id,title,visibility,max_players,age_min,age_max,room_kind,thumb_open,status,result_payload,chemistry_snapshot`,
+      `&select=id,title,is_private,max_players,age_min,age_max,room_kind,thumb_open,status,result_payload,chemistry_snapshot`,
     { headers },
   );
   if (!teamRes.ok) {
@@ -146,7 +146,7 @@ export async function fetchBattleSSR(
     battle: {
       id: t.id as string,
       title: t.title as string,
-      visibility: t.visibility as string,
+      isPrivate: (t.is_private as boolean) ?? false,
       maxPlayers: t.max_players as number,
       ageMin: (t.age_min as number) ?? null,
       ageMax: (t.age_max as number) ?? null,

@@ -712,13 +712,15 @@ create index if not exists ad_images_active_sort_idx
 -- (players/pairs/best — 점수는 best.score 만).
 -- password 는 column grant 로 클라이언트 SELECT 차단 (§11-4) — 비교는
 -- join_battle 내부에서만. 상태 전이는 RPC 전용 (직접 UPDATE 는 title 만).
+-- 공개/비밀 개념은 password 단일 소스 — 모든 모집 방이 목록에 노출되고,
+-- password 있는 방만 조인 시 PIN 을 요구한다. is_private 는 클라이언트
+-- 표시용 파생 컬럼(password 봉인 유지, 어긋날 수 없음).
 create table if not exists public.teams (
   id                 uuid        primary key default gen_random_uuid(),
   owner_id           uuid        references auth.users(id) on delete set null,
   title              text        not null,
-  visibility         text        not null default 'private'
-                                 check (visibility in ('public', 'private')),
   password           text,
+  is_private         boolean     generated always as (password is not null) stored,
   room_kind          text        not null default 'all'
                                  check (room_kind in ('all', 'match')),
   thumb_open         boolean     not null default false,
@@ -733,16 +735,13 @@ create table if not exists public.teams (
   chemistry_snapshot jsonb,
   result_payload     jsonb,
   created_at         timestamptz not null default now(),
-  updated_at         timestamptz not null default now(),
-  -- 비밀방은 비밀번호 필수, 공개방은 비밀번호 없음.
-  check (visibility <> 'private' or password is not null),
-  check (visibility <> 'public' or password is null)
+  updated_at         timestamptz not null default now()
 );
 
 create index if not exists idx_teams_owner on public.teams (owner_id, updated_at desc);
--- 공개 목록 조회 (public_battles view).
-create index if not exists idx_teams_public_recruiting
-  on public.teams (created_at desc) where visibility = 'public' and status = 'recruiting';
+-- 목록 조회 (public_battles view — 모집 중 전 방).
+create index if not exists idx_teams_recruiting
+  on public.teams (created_at desc) where status = 'recruiting';
 
 alter table public.teams enable row level security;
 
@@ -910,7 +909,7 @@ begin
   select * into v_team from teams where id = p_team_id for update;
   if not found then raise exception 'NOT_FOUND'; end if;
   if v_team.status <> 'recruiting' then raise exception 'NOT_RECRUITING'; end if;
-  if v_team.visibility = 'private'
+  if v_team.password is not null
      and (p_password is null or p_password <> v_team.password) then
     raise exception 'BAD_PASSWORD';
   end if;
@@ -1078,13 +1077,15 @@ grant  execute on function public.submit_battle_result(uuid, jsonb) to authentic
 grant  execute on function public.respond_match(uuid, boolean)     to authenticated;
 
 -- 공개 배틀 목록 — 모집 중 공개방만, 컬럼 화이트리스트 (password 접근 없음).
+-- 모집 중 전 방 노출 — 비밀방도 목록에 보이고(is_private 로 자물쇠 표시),
+-- 입장만 PIN 으로 잠긴다.
 create or replace view public.public_battles with (security_invoker = on) as
-  select t.id, t.title, t.room_kind, t.thumb_open, t.max_players, t.age_min,
-         t.age_max, t.created_at,
+  select t.id, t.title, t.room_kind, t.thumb_open, t.is_private, t.max_players,
+         t.age_min, t.age_max, t.created_at,
          (select count(*)::int from public.team_members tm where tm.team_id = t.id)
            as player_count
     from public.teams t
-   where t.visibility = 'public' and t.status = 'recruiting';
+   where t.status = 'recruiting';
 
 -- 로비·리빌 명단 — team_members 에 users.nickname 을 붙인 읽기 전용 view.
 -- 의도적으로 owner 권한 실행(비-invoker): users RLS(self-read)를 우회해
@@ -1104,7 +1105,7 @@ create or replace view public.battle_roster as
 -- 제외 — 변경 이벤트는 신호이고 본문은 클라이언트가 refetch 한다.
 do $$ begin
   alter publication supabase_realtime add table public.teams
-    (id, owner_id, title, visibility, room_kind, thumb_open, max_players,
+    (id, owner_id, title, is_private, room_kind, thumb_open, max_players,
      age_min, age_max, status, started_at, closed_at, created_at, updated_at);
 exception when duplicate_object then null; end $$;
 do $$ begin
@@ -1141,13 +1142,13 @@ grant select on public.admin_users to service_role;
 -- §11-1 의 blanket grant 가 teams 전 컬럼을 열어 두므로 여기서 다시 좁힌다.
 -- SELECT: password 만 제외 — 비교는 join_battle 내부에서만.
 revoke select on public.teams from anon, authenticated;
-grant select (id, owner_id, title, visibility, room_kind, thumb_open, max_players,
+grant select (id, owner_id, title, is_private, room_kind, thumb_open, max_players,
               age_min, age_max, status, started_at, closed_at,
               chemistry_snapshot, result_payload, created_at, updated_at)
   on public.teams to anon, authenticated;
 -- INSERT: 생성 입력 컬럼만 — status/started_at/snapshot/payload 는 default·RPC 전용.
 revoke insert on public.teams from anon, authenticated;
-grant insert (id, owner_id, title, visibility, password, room_kind, thumb_open,
+grant insert (id, owner_id, title, password, room_kind, thumb_open,
               max_players, age_min, age_max)
   on public.teams to authenticated;
 -- UPDATE: title 만 (방 이름 수정). 상태 전이·payload 는 RPC 전용.

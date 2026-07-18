@@ -218,7 +218,7 @@ export type BattleRow = {
   id: string;
   ownerId: string | null;
   title: string;
-  visibility: "public" | "private";
+  isPrivate: boolean;
   maxPlayers: number;
   ageMin: number | null;
   ageMax: number | null;
@@ -238,14 +238,14 @@ export type RosterEntry = {
 };
 
 const BATTLE_COLS =
-  "id, owner_id, title, visibility, max_players, age_min, age_max, room_kind, thumb_open, status, chemistry_snapshot, result_payload";
+  "id, owner_id, title, is_private, max_players, age_min, age_max, room_kind, thumb_open, status, chemistry_snapshot, result_payload";
 
 function rowToBattle(r: Record<string, unknown>): BattleRow {
   return {
     id: r.id as string,
     ownerId: (r.owner_id as string) ?? null,
     title: r.title as string,
-    visibility: r.visibility as "public" | "private",
+    isPrivate: (r.is_private as boolean) ?? false,
     maxPlayers: r.max_players as number,
     ageMin: (r.age_min as number) ?? null,
     ageMax: (r.age_max as number) ?? null,

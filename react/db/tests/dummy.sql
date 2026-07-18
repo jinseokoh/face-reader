@@ -79,16 +79,16 @@ begin
   end loop;
 
   -- ① match 방 upsert: 3시간 전 생성 → 2시간 전 시작 → 115분 전 종료.
-  insert into public.teams (id, owner_id, title, visibility, room_kind,
+  insert into public.teams (id, owner_id, title, room_kind,
                             thumb_open, max_players, age_min, age_max, status,
                             started_at, closed_at, created_at)
-  values (v_team, v_me, '서울지역 케미 배틀', 'public', 'match',
+  values (v_team, v_me, '서울지역 케미 배틀', 'match',
           true, 6, v_me_age, v_me_age + 10, 'completed',
           now() - interval '2 hours', now() - interval '115 minutes',
           now() - interval '3 hours')
   on conflict (id) do update
     set owner_id = excluded.owner_id, title = excluded.title,
-        visibility = excluded.visibility, password = null,
+        password = null,
         room_kind = excluded.room_kind, thumb_open = excluded.thumb_open,
         max_players = excluded.max_players, age_min = excluded.age_min,
         age_max = excluded.age_max, status = excluded.status,
@@ -138,16 +138,16 @@ begin
   values (v_team, v_me, v_dummy[3]);
 
   -- ② all 방 upsert: 어제 종료.
-  insert into public.teams (id, owner_id, title, visibility, room_kind,
+  insert into public.teams (id, owner_id, title, room_kind,
                             thumb_open, max_players, age_min, age_max, status,
                             started_at, closed_at, created_at)
-  values (v_team2, v_me, '직장인 케미 배틀', 'public', 'all',
+  values (v_team2, v_me, '직장인 케미 배틀', 'all',
           true, 6, v_me_age, v_me_age + 10, 'completed',
           now() - interval '25 hours', now() - interval '24 hours',
           now() - interval '26 hours')
   on conflict (id) do update
     set owner_id = excluded.owner_id, title = excluded.title,
-        visibility = excluded.visibility, password = null,
+        password = null,
         room_kind = excluded.room_kind, thumb_open = excluded.thumb_open,
         max_players = excluded.max_players, age_min = excluded.age_min,
         age_max = excluded.age_max, status = excluded.status,
