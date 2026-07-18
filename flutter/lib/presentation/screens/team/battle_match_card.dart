@@ -156,7 +156,8 @@ class _BattleMatchCardState extends State<BattleMatchCard> {
     decoration: BoxDecoration(
       color: AppColors.background,
       borderRadius: BorderRadius.circular(AppRadius.xl),
-      border: Border.all(color: AppColors.textPrimary),
+      // 베스트 매칭 강조 — 방장 링과 같은 gold 토큰.
+      border: Border.all(color: AppColors.gold),
     ),
     child: child,
   );

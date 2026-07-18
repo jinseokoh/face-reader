@@ -311,7 +311,8 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
       decoration: BoxDecoration(
         color: AppColors.background,
         borderRadius: BorderRadius.circular(AppRadius.xl),
-        border: Border.all(color: AppColors.textPrimary),
+        // 베스트 강조 — 매칭 카드·방장 링과 같은 gold 토큰.
+        border: Border.all(color: AppColors.gold),
       ),
       child: Column(
         children: [
