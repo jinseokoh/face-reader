@@ -283,8 +283,9 @@ class _BattleMatchCardState extends State<BattleMatchCard> {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: AppSpacing.xs),
+        // 30일 purge 정책과 일치하는 사실 카피 ('계속' 은 허위였음).
         Text(
-          '결과표는 계속 볼 수 있습니다',
+          '결과표는 30일간 유효합니다',
           style: AppText.caption,
           textAlign: TextAlign.center,
         ),
