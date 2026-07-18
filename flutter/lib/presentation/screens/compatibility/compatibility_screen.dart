@@ -51,8 +51,10 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
 
   // 미확인/확인 2탭 — 관상 탭과 동일한 inner-tab 구성. 탭 라벨의 개수로
   // 스크롤 없이 존재 여부가 보인다.
-  late final TabController _tabController =
-      TabController(length: 2, vsync: this);
+  late final TabController _tabController = TabController(
+    length: 2,
+    vsync: this,
+  );
 
   // 최초 노출 시 1회 — 개수가 더 많은 탭을 기본 선택 (빈 탭부터 보여주지
   // 않기). 이후엔 사용자의 탭 선택을 존중해 다시 건드리지 않는다.
@@ -68,9 +70,6 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
     final others = history.where((r) => !r.isMyFace).toList(growable: false);
     final unlocksAsync = ref.watch(compatUnlocksProvider);
     final unlocked = unlocksAsync.asData?.value ?? const <String>{};
-    final reconstructed =
-        ref.watch(unlockedPartnerBodiesProvider).asData?.value ??
-        const <FaceReadingReport>[];
     final auth = ref.watch(authProvider);
 
     // 받은 카드 CTA 결제 직후 — '확인' 탭으로 자동 전환 (핀 고정과 결합).
@@ -80,28 +79,19 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
       }
     });
 
-    // 두 섹션 분리 — 로컬 history 기반. (탭 라벨 개수 계산을 위해 build 에서.)
+    // 미확인 = 로컬 상대 중 아직 안 산 쌍. 확인 = 서버 unlocks 쌍 행 전체
+    // (내 쌍 + 배틀 제3자 쌍) — 두 사람의 결제 시점 스냅샷이 source of truth.
     final lockedList = <FaceReadingReport>[];
-    final unlockedList = <FaceReadingReport>[];
+    final unlockedList =
+        ref.watch(unlockedPairsProvider).asData?.value ??
+        const <UnlockedPair>[];
     if (myFace != null) {
-      final localIds = <String>{};
       for (final o in others) {
-        // partner_id = 상대 supabaseId. 내 사진을 바꿔도 같은 상대면 키가
-        // 동일해 unlock 이 유지된다(재결제 없음). 점수는 현재 내 관상으로 재계산.
+        // 무방향 쌍 키 — 내 사진을 바꿔도(내 my-face id 영구 고정) 같은 상대면
+        // 키가 동일해 unlock 이 유지된다. 점수는 현재 내 관상으로 재계산.
         final key = tryPairKey(myFace, o);
-        if (o.supabaseId != null) localIds.add(o.supabaseId!);
         final isUnlocked = key != null && unlocked.contains(key);
-        if (isUnlocked) {
-          unlockedList.add(o);
-        } else {
-          lockedList.add(o);
-        }
-      }
-      // 로컬에 없는 복원 파트너를 unlocked 에 추가 (gap fill).
-      for (final r in reconstructed) {
-        if (r.supabaseId != null && !localIds.contains(r.supabaseId)) {
-          unlockedList.add(r);
-        }
+        if (!isUnlocked) lockedList.add(o);
       }
     }
 
@@ -181,8 +171,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
   Future<void> _confirmDeleteUnlock(
     BuildContext context,
     WidgetRef ref,
-    FaceReadingReport my,
-    FaceReadingReport album,
+    UnlockedPair pair,
   ) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -197,25 +186,26 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text('취소',
-                style: AppText.body.copyWith(color: AppColors.textSecondary)),
+            child: Text(
+              '취소',
+              style: AppText.body.copyWith(color: AppColors.textSecondary),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text('삭제',
-                style: AppText.body.copyWith(color: AppColors.danger)),
+            child: Text(
+              '삭제',
+              style: AppText.body.copyWith(color: AppColors.danger),
+            ),
           ),
         ],
       ),
     );
     if (confirmed != true) return;
 
-    // partner_id = 상대 supabaseId. RLS 가 본인 행만 지운다.
-    final keys = <String>[];
-    final key = tryPairKey(my, album);
-    if (key != null) keys.add(key);
+    // 정확히 해당 쌍의 내 행만 — RLS 가 본인 행만 지운다.
     try {
-      await CompatUnlockService().deleteUnlock(keys);
+      await CompatUnlockService().deleteUnlockPair(pair.aId, pair.bId);
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -227,10 +217,11 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
       }
       return;
     }
-    // unlock·복원 파트너 캐시 무효화 → 확인 리스트에서 사라지고, 로컬 파트너는
+    // unlock·쌍 캐시 무효화 → 확인 리스트에서 사라지고, 로컬 파트너는
     // 미확인으로 복귀.
     ref.read(recentUnlockFocusProvider.notifier).clear();
     ref.invalidate(compatUnlocksProvider);
+    ref.invalidate(unlockedPairsProvider);
     ref.invalidate(unlockedPartnerBodiesProvider);
   }
 
@@ -284,12 +275,13 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
     }
 
     // 미확인 — 시간 기준 정렬만.
-    final sorted = [...lockedList]..sort(
-      (a, b) => switch (_lockedSort) {
-        _LockedSort.newest => b.timestamp.compareTo(a.timestamp),
-        _LockedSort.oldest => a.timestamp.compareTo(b.timestamp),
-      },
-    );
+    final sorted = [...lockedList]
+      ..sort(
+        (a, b) => switch (_lockedSort) {
+          _LockedSort.newest => b.timestamp.compareTo(a.timestamp),
+          _LockedSort.oldest => a.timestamp.compareTo(b.timestamp),
+        },
+      );
 
     return ListView(
       // selector 위 lg(16)/아래 md(12) — 관상 탭 정렬 헤더와 동일 리듬.
@@ -372,57 +364,71 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
     );
   }
 
-  /// 확인 탭 — score/시간 정렬 + 결제 직후 항목 핀 고정.
+  /// 확인 탭 — 구매한 쌍(내 쌍 + 배틀 제3자 쌍) 카드. score/시간 정렬 +
+  /// 결제 직후 항목 핀 고정.
   Widget _unlockedTab(
     BuildContext context,
     FaceReadingReport myFace,
-    List<FaceReadingReport> unlockedList,
+    List<UnlockedPair> pairs,
   ) {
-    if (unlockedList.isEmpty) {
+    if (pairs.isEmpty) {
       return const EmotionEmptyState(
         asset: 'assets/images/emotion-surprise.png',
         message: '아직 궁합을 보지 않았다니!',
       );
     }
 
-    // 확인 — score 정렬 시에만 pipeline 호출 (시간 정렬은 timestamp 만 비교).
-    final List<FaceReadingReport> unlockedSorted;
-    if (_unlockedSort == _UnlockedSort.score) {
-      final scored =
-          unlockedList
-              .map(
-                (o) => (
-                  report: o,
-                  score: analyzeCompatibilityFromReports(
-                    my: myFace,
-                    album: o,
-                  ).report.total,
-                ),
-              )
-              .toList()
-            ..sort((a, b) => b.score.compareTo(a.score));
-      unlockedSorted = scored.map((e) => e.report).toList();
-    } else {
-      unlockedSorted = [...unlockedList]
-        ..sort(
-          (a, b) => switch (_unlockedSort) {
-            _UnlockedSort.newest => b.timestamp.compareTo(a.timestamp),
-            _UnlockedSort.oldest => a.timestamp.compareTo(b.timestamp),
-            _UnlockedSort.score => 0,
-          },
-        );
+    final myId = myFace.supabaseId?.toLowerCase();
+    // 내 쪽은 live 리포트·'나' 표기로 치환 — 표시 점수는 현재 내 관상 재계산
+    // (기존 신선도 규약 유지). 상대·제3자는 결제 시점 스냅샷.
+    ({FaceReadingReport report, String name}) side(
+      String id,
+      FaceReadingReport snap,
+    ) {
+      if (id == myId) return (report: myFace, name: '나');
+      return (
+        report: snap,
+        name: snap.alias ?? '${snap.ageGroup.labelKo} ${snap.gender.labelKo}',
+      );
     }
+
+    final entries = pairs.map((p) {
+      final a = side(p.aId, p.a);
+      final b = side(p.bId, p.b);
+      // 내가 낀 쌍은 나를 앞에 (읽기 규약: 나 × 상대).
+      final meFirst = p.bId == myId;
+      final first = meFirst ? b : a;
+      final second = meFirst ? a : b;
+      return (
+        pair: p,
+        first: first,
+        second: second,
+        score: analyzeCompatibilityFromReports(
+          my: first.report,
+          album: second.report,
+        ).report.total,
+      );
+    }).toList();
+
+    final sorted = [...entries]
+      ..sort(
+        (x, y) => switch (_unlockedSort) {
+          _UnlockedSort.score => y.score.compareTo(x.score),
+          _UnlockedSort.newest => y.pair.createdAt.compareTo(x.pair.createdAt),
+          _UnlockedSort.oldest => x.pair.createdAt.compareTo(y.pair.createdAt),
+        },
+      );
 
     // 방금 결제한 항목(받은 카드 CTA 경유)을 정렬과 무관하게 맨 위로 고정.
     // 사용자가 정렬을 바꾸거나 카드를 누르면 해제(아래 콜백) → 일반 정렬.
     final focusId = ref.watch(recentUnlockFocusProvider);
-    final unlockedPinned =
-        (focusId != null && unlockedSorted.any((r) => r.supabaseId == focusId))
-        ? <FaceReadingReport>[
-            ...unlockedSorted.where((r) => r.supabaseId == focusId),
-            ...unlockedSorted.where((r) => r.supabaseId != focusId),
+    final pinned =
+        (focusId != null && sorted.any((e) => e.pair.contains(focusId)))
+        ? [
+            ...sorted.where((e) => e.pair.contains(focusId)),
+            ...sorted.where((e) => !e.pair.contains(focusId)),
           ]
-        : unlockedSorted;
+        : sorted;
 
     return ListView(
       // selector 위 lg(16)/아래 md(12) — 관상 탭 정렬 헤더와 동일 리듬.
@@ -438,19 +444,20 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
           }),
         ),
         const SizedBox(height: 12),
-        ...unlockedPinned.map(
-          (other) => Padding(
+        ...pinned.map(
+          (e) => Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: _CompatListCard(
-              my: myFace,
-              album: other,
+              a: e.first.report,
+              b: e.second.report,
+              aName: e.first.name,
+              bName: e.second.name,
               onTap: () {
                 ref.read(recentUnlockFocusProvider.notifier).clear();
                 AnalyticsService.instance.logClickCompat();
-                context.pushCompat(my: myFace, album: other);
+                context.pushCompat(my: e.first.report, album: e.second.report);
               },
-              onDelete: () =>
-                  _confirmDeleteUnlock(context, ref, myFace, other),
+              onDelete: () => _confirmDeleteUnlock(context, ref, e.pair),
             ),
           ),
         ),
@@ -460,33 +467,32 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
 }
 
 // ─────────────────────────────────────────────────────────────
-// Unlocked card — 기존 구조 그대로.
+// Unlocked card — 구매한 쌍: 두 아바타 + 두 사람의 이름·인적정보.
 // ─────────────────────────────────────────────────────────────
 
 class _CompatListCard extends StatelessWidget {
-  final FaceReadingReport my;
-  final FaceReadingReport album;
+  final FaceReadingReport a;
+  final FaceReadingReport b;
+  final String aName;
+  final String bName;
   final VoidCallback onTap;
   final VoidCallback onDelete;
   const _CompatListCard({
-    required this.my,
-    required this.album,
+    required this.a,
+    required this.b,
+    required this.aName,
+    required this.bName,
     required this.onTap,
     required this.onDelete,
   });
 
   @override
   Widget build(BuildContext context) {
-    final bundle = analyzeCompatibilityFromReports(my: my, album: album);
+    final bundle = analyzeCompatibilityFromReports(my: a, album: b);
     final r = bundle.report;
     final labelColor = _labelColor(r.label);
-    final alias = album.alias;
-    // 관상 list 와 동일 포맷 — DESIGN.md §0.0.1 통일성.
-    final demographic =
-        '${album.ageGroup.labelKo} '
-        '${album.gender.labelKo} '
-        '${album.ethnicity.labelKo}';
-    final subtitle = alias ?? album.faceShape.korean;
+    String demo(FaceReadingReport x) =>
+        '${x.ageGroup.labelKo} ${x.gender.labelKo}';
 
     return Stack(
       children: [
@@ -508,20 +514,14 @@ class _CompatListCard extends StatelessWidget {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      // 관상 list item 과 동일 사이즈·token (DESIGN.md §0.0.1).
-                      _Thumb(
-                        path: album.thumbnailPath,
-                        thumbnailKey: album.thumbnailKey,
-                        size: 42,
-                        gender: album.gender,
-                      ),
+                      _PairThumbs(a: a, b: b),
                       const SizedBox(width: AppSpacing.md),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              demographic,
+                              '$aName × $bName',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: AppText.sectionTitle.copyWith(
@@ -529,22 +529,13 @@ class _CompatListCard extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: AppSpacing.xs),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                SourceBadge(source: album.source),
-                                const SizedBox(width: AppSpacing.xs),
-                                Flexible(
-                                  child: Text(
-                                    subtitle,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: AppText.caption.copyWith(
-                                      color: AppColors.textHint,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                            Text(
+                              '${demo(a)} × ${demo(b)}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppText.caption.copyWith(
+                                color: AppColors.textHint,
+                              ),
                             ),
                             const SizedBox(height: AppSpacing.sm),
                             Container(
@@ -574,10 +565,7 @@ class _CompatListCard extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 4),
-                            Text(
-                              r.label.modernKo,
-                              style: AppText.hint,
-                            ),
+                            Text(r.label.modernKo, style: AppText.hint),
                           ],
                         ),
                       ),
@@ -673,6 +661,40 @@ class _CompatListCard extends StatelessWidget {
   }
 
   static String _relationKindKo(ElementRelationKind k) => k.modernKo;
+}
+
+/// 쌍 아바타 — 42px 원 두 개를 살짝 겹쳐 (흰 링으로 경계 분리).
+class _PairThumbs extends StatelessWidget {
+  final FaceReadingReport a;
+  final FaceReadingReport b;
+  const _PairThumbs({required this.a, required this.b});
+
+  @override
+  Widget build(BuildContext context) {
+    Widget ring(FaceReadingReport r) => Container(
+      padding: const EdgeInsets.all(2),
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white,
+      ),
+      child: _Thumb(
+        path: r.thumbnailPath,
+        thumbnailKey: r.thumbnailKey,
+        size: 42,
+        gender: r.gender,
+      ),
+    );
+    return SizedBox(
+      width: 78,
+      height: 46,
+      child: Stack(
+        children: [
+          Positioned(left: 0, child: ring(a)),
+          Positioned(left: 32, child: ring(b)),
+        ],
+      ),
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -910,9 +932,7 @@ class _InfoRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Expanded(
-                child: Text(title, style: AppText.subTitle),
-              ),
+              Expanded(child: Text(title, style: AppText.subTitle)),
               Text(weight, style: AppText.hint),
             ],
           ),
@@ -1157,7 +1177,9 @@ class _RegisterMyFaceBannerState extends ConsumerState<_RegisterMyFaceBanner>
               onTap: () => startMyFaceCapture(context, ref),
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md, vertical: 6),
+                  horizontal: AppSpacing.md,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.background,
                   border: Border.all(color: AppColors.textPrimary),

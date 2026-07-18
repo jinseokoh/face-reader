@@ -36,3 +36,12 @@ final compatPartnerSnapshotsProvider =
         myFaceId: _myFaceId(ref),
       );
     });
+
+/// 구매한 쌍 전체 (내 쌍 + 배틀 제3자 쌍) — 궁합 확인 리스트의 source of
+/// truth. auth 변화에 재구독.
+final unlockedPairsProvider = FutureProvider.autoDispose<List<UnlockedPair>>((
+  ref,
+) async {
+  ref.watch(authProvider);
+  return CompatUnlockService().unlockedPairs();
+});
