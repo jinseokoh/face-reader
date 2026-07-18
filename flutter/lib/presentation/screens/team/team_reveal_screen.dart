@@ -299,11 +299,12 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
         ..remove(_mySlot)
         ..insert(0, _mySlot!);
     }
-    Widget nameCell(int slot, {bool header = false}) => SizedBox(
+    // 행(남)·열(여) 이름은 같은 역할 — 토큰 하나로 통일 (색·크기 분리 금지).
+    Widget nameCell(int slot) => SizedBox(
           width: 64,
           child: Text(
             _nameOf(slot),
-            style: header ? AppText.hint : AppText.caption,
+            style: AppText.caption,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -315,7 +316,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
         children: [
           Row(children: [
             const SizedBox(width: 64),
-            for (final c in cols) nameCell(c, header: true),
+            for (final c in cols) nameCell(c),
           ]),
           for (final row in rows)
             Padding(
