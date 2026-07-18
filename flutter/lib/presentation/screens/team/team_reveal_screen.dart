@@ -405,12 +405,18 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
                               style: AppText.hint,
                               textAlign: TextAlign.center,
                             )
+                          : _bandOf(row, col) == null
+                          ? const SizedBox.shrink()
                           : InkWell(
                               onTap: () => _openPair(row, col),
-                              child: Text(
-                                _bandOf(row, col)?.bandEmoji ?? '',
-                                style: AppText.body,
-                                textAlign: TextAlign.center,
+                              // 탭 영역 확보용 세로 padding — 점은 14.
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: AppSpacing.xs,
+                                ),
+                                child: Center(
+                                  child: BandDot(_bandOf(row, col)!),
+                                ),
                               ),
                             ),
                     ),
@@ -444,11 +450,11 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
             ),
             child: Row(
               children: [
-                // 아바타 · 이름 — (우측) 밴드 이모지 · 등급.
+                // 아바타 · 이름 — (우측) 밴드 점 · 등급.
                 _slotAvatar(other, size: 32),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(child: Text(_nameOf(other), style: AppText.subTitle)),
-                Text(band.bandEmoji, style: AppText.body),
+                BandDot(band),
                 const SizedBox(width: AppSpacing.xs),
                 Text(
                   band.bandLabel,
@@ -475,7 +481,14 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
       spacing: AppSpacing.md,
       children: [
         for (int band = 0; band < 4; band++)
-          Text('${band.bandEmoji} ${band.bandLabel}', style: AppText.hint),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              BandDot(band, size: 10),
+              const SizedBox(width: AppSpacing.xs),
+              Text(band.bandLabel, style: AppText.hint),
+            ],
+          ),
       ],
     );
   }
@@ -583,14 +596,7 @@ Future<void> openBattlePairDetail(
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
-                    width: 14,
-                    height: 14,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: band.bandColor,
-                    ),
-                  ),
+                  BandDot(band),
                   const SizedBox(width: AppSpacing.xs),
                   Text(band.bandLabel, style: AppText.body),
                 ],
