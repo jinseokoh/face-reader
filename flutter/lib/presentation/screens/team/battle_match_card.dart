@@ -234,7 +234,7 @@ class _BattleMatchCardState extends State<BattleMatchCard> {
       children: [
         Text(
           '${widget.otherNickname}님의 선택을 기다리고 있습니다',
-          style: AppText.body,
+          style: AppText.caption,
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: AppSpacing.xs),
@@ -250,7 +250,12 @@ class _BattleMatchCardState extends State<BattleMatchCard> {
   Widget _openFooter() {
     return Column(
       children: [
-        Text('채팅방이 열렸습니다', style: AppText.body, textAlign: TextAlign.center),
+        // 상태 고지 계열은 전부 caption 하나 — 사진 공개 고지와 동일 토큰.
+        Text(
+          '채팅방이 열렸습니다',
+          style: AppText.caption,
+          textAlign: TextAlign.center,
+        ),
         const SizedBox(height: AppSpacing.lg),
         PrimaryButton(
           label: '채팅 시작하기',
@@ -273,7 +278,7 @@ class _BattleMatchCardState extends State<BattleMatchCard> {
       children: [
         Text(
           '이번에는 채팅방이 열리지 않았습니다',
-          style: AppText.body,
+          style: AppText.caption,
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: AppSpacing.xs),
