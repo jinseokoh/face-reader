@@ -9,7 +9,7 @@ import '../../domain/models/battle.dart';
 import '../../domain/services/share/share_receive_service.dart';
 import 'supabase_service.dart';
 
-/// 로비 슬롯 프로필 — my-face 썸네일 URL + 관상 유형(archetype) 라벨.
+/// 상세 페이지 슬롯 프로필 — my-face 썸네일 URL + 관상 유형(archetype) 라벨.
 typedef BattleSlotProfile = ({String? thumbUrl, String? archetype});
 
 /// Chemistry Battle 서버 접점 — 방은 서버 우선(로컬 캐시 없음).
@@ -143,7 +143,7 @@ class BattleService {
     return [for (final r in rows) Battle.fromRow(r)];
   }
 
-  /// 로비 아바타 — 참가자들의 현재 my-face 썸네일 CDN URL. 없으면 null.
+  /// 참가자 아바타 — 참가자들의 현재 my-face 썸네일 CDN URL. 없으면 null.
   Future<Map<String, String?>> fetchMyFaceThumbnailUrls(
       List<String> userIds) async {
     if (userIds.isEmpty) return const {};
@@ -165,20 +165,7 @@ class BattleService {
     return result;
   }
 
-  /// 공개 목록 → 상세 라우팅용 — 내가 이미 참가한 방인지 1행 조회.
-  Future<bool> isMember(String battleId) async {
-    final uid = myUid;
-    if (uid == null) return false;
-    final row = await _client
-        .from('battle_roster')
-        .select('user_id')
-        .eq('team_id', battleId)
-        .eq('user_id', uid)
-        .maybeSingle();
-    return row != null;
-  }
-
-  /// 로비 슬롯 표기용 — 각 유저 my-face 의 썸네일 URL + 관상 유형 라벨.
+  /// 상세 페이지 슬롯 표기용 — 각 유저 my-face 의 썸네일 URL + 관상 유형 라벨.
   /// metrics body 한 번의 조회로 둘 다 뽑는다. 유형은 body 를 엔진으로
   /// 재계산한 archetype(신의형·연예인형…), 실패한 유저는 해당 값만 null.
   Future<Map<String, BattleSlotProfile>> fetchSlotProfiles(
@@ -225,7 +212,7 @@ class BattleService {
     return _receive.fetchByUuid(id);
   }
 
-  /// 로비 라이브 — teams UPDATE(status 전이) + team_members INSERT/DELETE.
+  /// 상세 페이지 라이브 — teams UPDATE(status 전이) + team_members INSERT/DELETE.
   /// 콜백은 신호일 뿐: 수신 시 호출부가 fetchBattle/fetchRoster 로 refetch.
   RealtimeChannel watchBattle(String battleId, void Function() onChange) {
     final channel = _client.channel('battle:$battleId')

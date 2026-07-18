@@ -12,11 +12,10 @@ import '../../widgets/emotion_empty_state.dart';
 import '../../widgets/face_scan_pill.dart';
 import '../../widgets/login_bottom_sheet.dart';
 import '../team/battle_create_page.dart';
-import '../team/battle_join_screen.dart';
-import '../team/team_lobby_screen.dart';
+import '../team/battle_detail_screen.dart';
 import '../team/team_reveal_screen.dart';
 
-/// 케미 탭 = Chemistry Battle 로비 브라우저.
+/// 케미 탭 = Chemistry Battle 방 목록 브라우저.
 /// 내부 2탭: 공개 배틀(목록에서 발견·참가) / 내 배틀(진행·완료).
 class ChemistryScreen extends ConsumerStatefulWidget {
   const ChemistryScreen({super.key});
@@ -45,7 +44,7 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
     ref.invalidate(myBattlesProvider);
     ref.invalidate(publicBattlesProvider);
     Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => TeamLobbyScreen(battleId: battle.id),
+      builder: (_) => BattleDetailScreen(battleId: battle.id),
     ));
   }
 
@@ -76,7 +75,7 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
   void _openMine(Battle battle) {
     Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => battle.isRecruiting
-          ? TeamLobbyScreen(battleId: battle.id)
+          ? BattleDetailScreen(battleId: battle.id)
           : TeamRevealScreen(battleId: battle.id),
     ));
   }
@@ -230,24 +229,12 @@ class _PublicCard extends StatefulWidget {
 
 class _PublicCardState extends State<_PublicCard> {
   PublicBattle get battle => widget.battle;
-  bool _navigating = false;
 
-  /// 목적지를 탭 시점에 확정 — 이미 참가한 방이면 곧장 로비로.
-  /// BattleJoinScreen 을 거쳐 replace 하면 페이지 전환이 두 번 보인다.
-  Future<void> _open() async {
-    if (_navigating) return;
-    _navigating = true;
-    try {
-      final joined = await BattleService.instance.isMember(battle.id);
-      if (!mounted) return;
-      await Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => joined
-            ? TeamLobbyScreen(battleId: battle.id)
-            : BattleJoinScreen(battleId: battle.id),
-      ));
-    } finally {
-      _navigating = false;
-    }
+  /// 참가 여부 분기는 상세 페이지가 화면 안에서 처리 — 탭은 진입만.
+  void _open() {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => BattleDetailScreen(battleId: battle.id),
+    ));
   }
 
   @override

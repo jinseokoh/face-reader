@@ -486,7 +486,7 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
         _choiceTile(
           selected: _thumbOpen,
           title: '얼굴 공개',
-          caption: '로비와 결과에서 참가자의 얼굴 썸네일이 보입니다',
+          caption: '상세 페이지와 결과에서 참가자의 얼굴 썸네일이 보입니다',
           onTap: () => setState(() => _thumbOpen = true),
         ),
         const SizedBox(height: AppSpacing.md),
