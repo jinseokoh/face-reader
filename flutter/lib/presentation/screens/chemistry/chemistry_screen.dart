@@ -280,6 +280,9 @@ class _PublicCardState extends State<_PublicCard> {
           playerCount: battle.playerCount,
           maxPlayers: battle.maxPlayers,
           validity: _recruitDeadlineLabel(battle.createdAt),
+          thumbOpen: battle.thumbOpen,
+          // 공개 목록은 public 방만 — 비밀방은 애초에 안 뜬다.
+          isPrivate: false,
         ),
       ),
     );
@@ -301,6 +304,8 @@ class _BattleCardBody extends StatelessWidget {
   final int? playerCount;
   final int maxPlayers;
   final String validity;
+  final bool thumbOpen;
+  final bool isPrivate;
   const _BattleCardBody({
     required this.title,
     required this.ageLabel,
@@ -308,6 +313,8 @@ class _BattleCardBody extends StatelessWidget {
     required this.playerCount,
     required this.maxPlayers,
     required this.validity,
+    required this.thumbOpen,
+    required this.isPrivate,
   });
 
   @override
@@ -330,9 +337,38 @@ class _BattleCardBody extends StatelessWidget {
         const SizedBox(height: AppSpacing.xs),
         Text('$kind $count', style: AppText.caption),
         const SizedBox(height: AppSpacing.xs),
-        Text(
-          validity,
-          style: AppText.caption.copyWith(color: AppColors.textHint),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: Text(
+                validity,
+                style: AppText.caption.copyWith(color: AppColors.textHint),
+              ),
+            ),
+            // 우측 하단 상태 아이콘 — 얼굴 공개 / 비밀방 / 방 유형.
+            FaIcon(
+              thumbOpen ? FontAwesomeIcons.eye : FontAwesomeIcons.eyeSlash,
+              size: 14,
+              color: AppColors.textHint,
+            ),
+            if (isPrivate) ...[
+              const SizedBox(width: AppSpacing.sm),
+              const FaIcon(
+                FontAwesomeIcons.lock,
+                size: 14,
+                color: AppColors.textHint,
+              ),
+            ],
+            const SizedBox(width: AppSpacing.sm),
+            FaIcon(
+              roomKind == BattleRoomKind.match
+                  ? FontAwesomeIcons.venusMars
+                  : FontAwesomeIcons.userGroup,
+              size: 14,
+              color: AppColors.textHint,
+            ),
+          ],
         ),
       ],
     );
@@ -424,6 +460,8 @@ class _MineCard extends ConsumerWidget {
           playerCount: battle.playerCount,
           maxPlayers: battle.maxPlayers,
           validity: _validityLabel,
+          thumbOpen: battle.thumbOpen,
+          isPrivate: !battle.isPublic,
         ),
       ),
     );
