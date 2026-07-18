@@ -133,9 +133,10 @@ class _BattleMatchCardState extends State<BattleMatchCard> {
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
+          // display(28) → appBarTitle(20) 한 단계 다운 — SongMyung 계열 유지.
           Text(
             '${widget.otherNickname}님과 매칭되었습니다',
-            style: AppText.display,
+            style: AppText.appBarTitle,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: AppSpacing.lg),
