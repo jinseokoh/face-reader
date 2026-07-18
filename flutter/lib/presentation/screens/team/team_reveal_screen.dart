@@ -434,6 +434,10 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
                 const SizedBox(width: AppSpacing.xs),
                 Text(band.bandLabel,
                     style: AppText.caption.copyWith(color: band.bandColor)),
+                const SizedBox(width: AppSpacing.sm),
+                // 탭 = 쌍 상세로 이어짐을 알리는 진행 지시자.
+                const FaIcon(FontAwesomeIcons.chevronRight,
+                    size: 12, color: AppColors.textHint),
               ],
             ),
           ),
@@ -486,7 +490,16 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
       );
       return;
     }
-    await openBattlePairDetail(context, ref, my: my, album: album);
+    // live 리포트는 alias 가 비어 있으므로 (fetchByUuid 수신 규약) 이름은
+    // payload 닉네임을 명시 전달.
+    await openBattlePairDetail(
+      context,
+      ref,
+      my: my,
+      album: album,
+      myName: _nameOf(firstUid == uidA ? slotA : slotB),
+      albumName: _nameOf(firstUid == uidA ? slotB : slotA),
+    );
   }
 }
 
@@ -498,6 +511,8 @@ Future<void> openBattlePairDetail(
   WidgetRef ref, {
   required FaceReadingReport my,
   required FaceReadingReport album,
+  String? myName,
+  String? albumName,
 }) async {
   final bundle = analyzeCompatibilityFromReports(my: my, album: album);
   final band = bundle.report.label.index;
@@ -551,7 +566,7 @@ Future<void> openBattlePairDetail(
             // 두 인물 — 큰 아바타 + 이름 + 나이·성별.
             Row(
               children: [
-                Expanded(child: _pairPersonColumn(my)),
+                Expanded(child: _pairPersonColumn(my, name: myName)),
                 Padding(
                   padding:
                       const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
@@ -561,7 +576,7 @@ Future<void> openBattlePairDetail(
                         fontSize: AppText.body.fontSize! * 2,
                       )),
                 ),
-                Expanded(child: _pairPersonColumn(album)),
+                Expanded(child: _pairPersonColumn(album, name: albumName)),
               ],
             ),
             const SizedBox(height: AppSpacing.xl),
@@ -617,14 +632,14 @@ Future<void> openBattlePairDetail(
 }
 
 /// 페어 시트용 세로 인물 — 큰 아바타 + 이름 + 나이·성별.
-Widget _pairPersonColumn(FaceReadingReport r) {
+Widget _pairPersonColumn(FaceReadingReport r, {String? name}) {
   return Column(
     mainAxisSize: MainAxisSize.min,
     children: [
       _pairAvatar(r, size: 64),
       const SizedBox(height: AppSpacing.sm),
       Text(
-        r.alias ?? '${r.ageGroup.labelKo} ${r.gender.labelKo}',
+        name ?? r.alias ?? '${r.ageGroup.labelKo} ${r.gender.labelKo}',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: AppText.body.copyWith(
