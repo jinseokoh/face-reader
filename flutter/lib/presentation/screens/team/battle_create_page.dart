@@ -463,7 +463,7 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
         _choiceTile(
           selected: _thumbOpen,
           title: '얼굴 공개',
-          caption: '모집 중 상세 페이지에서도 참가자의 얼굴 썸네일이 보입니다',
+          caption: '모집 중 참가자의 얼굴 썸네일이 보입니다',
           onTap: () => setState(() => _thumbOpen = true),
         ),
         const SizedBox(height: AppSpacing.md),
@@ -475,7 +475,7 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
         ),
         const SizedBox(height: AppSpacing.lg),
         Text(
-          '이 설정과 관계없이 베스트 매칭이 되면 두 사람에게는 서로의 사진이 공개됩니다',
+          '최종 결과표에는 얼굴이 모두에게 공개됩니다. 이 설정은 모집중에 공개할지 여부를 결정합니다',
           style: AppText.caption.copyWith(color: AppColors.textHint),
         ),
       ],
