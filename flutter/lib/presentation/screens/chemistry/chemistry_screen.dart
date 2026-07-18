@@ -33,7 +33,10 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
     }
     // 10대 차단 — UX §A.0. 연령 하한 20 이 스텝 중간이 아니라 문 앞에서 걸려야
     // 제목까지 고른 뒤 버려지는 낭비가 생기지 않는다.
-    final myFace = ref.read(historyProvider).where((r) => r.isMyFace).firstOrNull;
+    final myFace = ref
+        .read(historyProvider)
+        .where((r) => r.isMyFace)
+        .firstOrNull;
     final decade = myFace == null ? null : 10 + myFace.ageGroup.index * 10;
     if (decade != null && decade < 20) {
       if (mounted) _showAgeGateDialog(context);
@@ -43,9 +46,11 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
     if (battle == null || !mounted) return;
     ref.invalidate(myBattlesProvider);
     ref.invalidate(publicBattlesProvider);
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => BattleDetailScreen(battleId: battle.id),
-    ));
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BattleDetailScreen(battleId: battle.id),
+      ),
+    );
   }
 
   void _showAgeGateDialog(BuildContext context) {
@@ -73,11 +78,13 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
   }
 
   void _openMine(Battle battle) {
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => battle.isRecruiting
-          ? BattleDetailScreen(battleId: battle.id)
-          : TeamRevealScreen(battleId: battle.id),
-    ));
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => battle.isRecruiting
+            ? BattleDetailScreen(battleId: battle.id)
+            : TeamRevealScreen(battleId: battle.id),
+      ),
+    );
   }
 
   void _showInfoDialog(BuildContext context) {
@@ -134,7 +141,10 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
                   labelColor: AppColors.textPrimary,
                   unselectedLabelColor: AppColors.textHint,
                   indicatorColor: AppColors.textPrimary,
-                  tabs: [Tab(text: '공개 배틀'), Tab(text: '내 배틀')],
+                  tabs: [
+                    Tab(text: '공개 배틀'),
+                    Tab(text: '내 배틀'),
+                  ],
                 )
               : null,
         ),
@@ -167,7 +177,9 @@ class _CreatePill extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         child: Container(
           padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md, vertical: 6),
+            horizontal: AppSpacing.md,
+            vertical: 6,
+          ),
           decoration: BoxDecoration(
             color: AppColors.background,
             borderRadius: BorderRadius.circular(999),
@@ -176,7 +188,9 @@ class _CreatePill extends StatelessWidget {
           child: Text(
             '배틀 만들기',
             style: AppText.caption.copyWith(
-                color: AppColors.textPrimary, fontWeight: FontWeight.w700),
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       ),
@@ -194,21 +208,28 @@ class _PublicTab extends ConsumerWidget {
       onRefresh: () async => ref.invalidate(publicBattlesProvider),
       child: battles.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, _) => ListView(children: [
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.huge),
-            child: Text('목록을 불러오지 못했습니다\n당겨서 새로고침',
-                style: AppText.caption, textAlign: TextAlign.center),
-          ),
-        ]),
+        error: (_, _) => ListView(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.huge),
+              child: Text(
+                '목록을 불러오지 못했습니다\n당겨서 새로고침',
+                style: AppText.caption,
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        ),
         data: (list) => list.isEmpty
-            ? ListView(children: const [
-                SizedBox(height: 120),
-                EmotionEmptyState(
-                  asset: 'assets/images/emotion-frown.png',
-                  message: '모집 중인 공개 배틀이 없습니다',
-                ),
-              ])
+            ? ListView(
+                children: const [
+                  SizedBox(height: 120),
+                  EmotionEmptyState(
+                    asset: 'assets/images/emotion-frown.png',
+                    message: '모집 중인 공개 배틀이 없습니다',
+                  ),
+                ],
+              )
             : ListView.builder(
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 itemCount: list.length,
@@ -232,9 +253,11 @@ class _PublicCardState extends State<_PublicCard> {
 
   /// 참가 여부 분기는 상세 페이지가 화면 안에서 처리 — 탭은 진입만.
   void _open() {
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => BattleDetailScreen(battleId: battle.id),
-    ));
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BattleDetailScreen(battleId: battle.id),
+      ),
+    );
   }
 
   @override
@@ -250,23 +273,68 @@ class _PublicCardState extends State<_PublicCard> {
           borderRadius: BorderRadius.circular(AppRadius.lg),
           border: Border.all(color: AppColors.border),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: Text(battle.title, style: AppText.subTitle)),
-                const SizedBox(width: AppSpacing.sm),
-                AgeRangePill(label: battle.ageRangeLabel),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text('${battle.playerCount} / ${battle.maxPlayers} 명',
-                style: AppText.caption),
-          ],
+        child: _BattleCardBody(
+          title: battle.title,
+          ageLabel: battle.ageRangeLabel,
+          roomKind: battle.roomKind,
+          playerCount: battle.playerCount,
+          maxPlayers: battle.maxPlayers,
+          validity: _recruitDeadlineLabel(battle.createdAt),
         ),
       ),
+    );
+  }
+}
+
+/// 모집 마감 = 생성 + 48h (cron expire 정책과 동일).
+String _recruitDeadlineLabel(DateTime createdAt) {
+  final d = createdAt.toLocal().add(const Duration(hours: 48));
+  return '${d.month}월 ${d.day}일 ${d.hour}시까지 모집';
+}
+
+/// 공개 배틀·내 배틀 공용 카드 본문 — 제목+연령 pill / 유형·정원 / 유효 시한.
+/// 두 목록의 item 은 이 위젯 하나로 같은 결을 강제한다.
+class _BattleCardBody extends StatelessWidget {
+  final String title;
+  final String ageLabel;
+  final BattleRoomKind roomKind;
+  final int? playerCount;
+  final int maxPlayers;
+  final String validity;
+  const _BattleCardBody({
+    required this.title,
+    required this.ageLabel,
+    required this.roomKind,
+    required this.playerCount,
+    required this.maxPlayers,
+    required this.validity,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final kind = roomKind == BattleRoomKind.match ? '이성 매칭' : '전체 케미';
+    final count = playerCount == null
+        ? '$maxPlayers 명'
+        : '$playerCount / $maxPlayers 명';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: Text(title, style: AppText.subTitle)),
+            const SizedBox(width: AppSpacing.sm),
+            AgeRangePill(label: ageLabel),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text('$kind $count', style: AppText.caption),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          validity,
+          style: AppText.caption.copyWith(color: AppColors.textHint),
+        ),
+      ],
     );
   }
 }
@@ -282,21 +350,28 @@ class _MineTab extends ConsumerWidget {
       onRefresh: () async => ref.invalidate(myBattlesProvider),
       child: battles.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, _) => ListView(children: [
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.huge),
-            child: Text('목록을 불러오지 못했습니다\n당겨서 새로고침',
-                style: AppText.caption, textAlign: TextAlign.center),
-          ),
-        ]),
+        error: (_, _) => ListView(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.huge),
+              child: Text(
+                '목록을 불러오지 못했습니다\n당겨서 새로고침',
+                style: AppText.caption,
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        ),
         data: (list) => list.isEmpty
-            ? ListView(children: const [
-                SizedBox(height: 120),
-                EmotionEmptyState(
-                  asset: 'assets/images/emotion-laugh.png',
-                  message: '참가 중인 배틀이 없습니다',
-                ),
-              ])
+            ? ListView(
+                children: const [
+                  SizedBox(height: 120),
+                  EmotionEmptyState(
+                    asset: 'assets/images/emotion-laugh.png',
+                    message: '참가 중인 배틀이 없습니다',
+                  ),
+                ],
+              )
             : ListView.builder(
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 itemCount: list.length,
@@ -313,12 +388,19 @@ class _MineCard extends ConsumerWidget {
   final void Function(Battle) onOpen;
   const _MineCard({required this.battle, required this.onOpen});
 
-  String get _statusLabel => switch (battle.status) {
-        BattleStatus.recruiting => '모집 중',
-        BattleStatus.revealing => '결과 공개 중',
-        BattleStatus.completed => '완료',
-        BattleStatus.expired => '종료',
-      };
+  /// 유효 시한 줄 — 모집 중 = 마감 시각, 완료 = 30일 purge 시한 (사실 카피).
+  String get _validityLabel => switch (battle.status) {
+    BattleStatus.recruiting => _recruitDeadlineLabel(battle.createdAt),
+    BattleStatus.revealing => '결과 공개 중',
+    BattleStatus.completed =>
+      battle.closedAt == null ? '완료' : _resultValidLabel(battle.closedAt!),
+    BattleStatus.expired => '인원 미달로 종료',
+  };
+
+  static String _resultValidLabel(DateTime closedAt) {
+    final d = closedAt.toLocal().add(const Duration(days: 30));
+    return '${d.month}월 ${d.day}일까지 결과 유효';
+  }
 
   Future<void> _delete(BuildContext context, WidgetRef ref) async {
     final ok = await showDialog<bool>(
@@ -333,11 +415,17 @@ class _MineCard extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('취소', style: AppText.body.copyWith(color: AppColors.textHint)),
+            child: Text(
+              '취소',
+              style: AppText.body.copyWith(color: AppColors.textHint),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text('삭제', style: AppText.body.copyWith(color: AppColors.danger)),
+            child: Text(
+              '삭제',
+              style: AppText.body.copyWith(color: AppColors.danger),
+            ),
           ),
         ],
       ),
@@ -367,19 +455,22 @@ class _MineCard extends ConsumerWidget {
         child: Row(
           children: [
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(battle.title, style: AppText.subTitle),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(_statusLabel, style: AppText.caption),
-                ],
+              child: _BattleCardBody(
+                title: battle.title,
+                ageLabel: battle.ageRangeLabel,
+                roomKind: battle.roomKind,
+                playerCount: battle.playerCount,
+                maxPlayers: battle.maxPlayers,
+                validity: _validityLabel,
               ),
             ),
             if (isOwner && battle.isRecruiting)
               IconButton(
-                icon: const FaIcon(FontAwesomeIcons.trashCan,
-                    size: 16, color: AppColors.textHint),
+                icon: const FaIcon(
+                  FontAwesomeIcons.trashCan,
+                  size: 16,
+                  color: AppColors.textHint,
+                ),
                 onPressed: () => _delete(context, ref),
               ),
           ],

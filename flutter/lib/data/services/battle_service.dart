@@ -153,7 +153,20 @@ class BattleService {
         .select(_teamCols)
         .inFilter('id', ids)
         .order('created_at', ascending: false);
-    return [for (final r in rows) Battle.fromRow(r)];
+    // 방별 현재 인원 — 카드 정원 표기용 (공개 목록 view 의 player_count 대응).
+    final memberAll = await _client
+        .from('team_members')
+        .select('team_id')
+        .inFilter('team_id', ids);
+    final counts = <String, int>{};
+    for (final r in memberAll) {
+      final id = r['team_id'] as String;
+      counts[id] = (counts[id] ?? 0) + 1;
+    }
+    return [
+      for (final r in rows)
+        Battle.fromRow(r, playerCount: counts[r['id'] as String] ?? 0),
+    ];
   }
 
   /// 참가자 아바타 — 참가자들의 현재 my-face 썸네일 CDN URL. 없으면 null.

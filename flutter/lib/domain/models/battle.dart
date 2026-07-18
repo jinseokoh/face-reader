@@ -41,6 +41,9 @@ class Battle {
   final Map<String, dynamic>? resultPayload;
   final DateTime createdAt;
 
+  /// 현재 참가 인원 — 목록 조회(fetchMyBattles)가 채운다. 단건 조회는 null.
+  final int? playerCount;
+
   const Battle({
     required this.id,
     required this.ownerId,
@@ -57,9 +60,11 @@ class Battle {
     required this.chemistrySnapshot,
     required this.resultPayload,
     required this.createdAt,
+    this.playerCount,
   });
 
-  factory Battle.fromRow(Map<String, dynamic> row) => Battle(
+  factory Battle.fromRow(Map<String, dynamic> row, {int? playerCount}) =>
+      Battle(
         id: row['id'] as String,
         ownerId: row['owner_id'] as String?,
         title: row['title'] as String,
@@ -79,6 +84,7 @@ class Battle {
         chemistrySnapshot: row['chemistry_snapshot'] as Map<String, dynamic>?,
         resultPayload: row['result_payload'] as Map<String, dynamic>?,
         createdAt: DateTime.parse(row['created_at'] as String),
+        playerCount: playerCount,
       );
 
   bool get isRecruiting => status == BattleStatus.recruiting;
@@ -141,16 +147,16 @@ class PublicBattle {
   });
 
   factory PublicBattle.fromRow(Map<String, dynamic> row) => PublicBattle(
-        id: row['id'] as String,
-        title: row['title'] as String,
-        maxPlayers: (row['max_players'] as num).toInt(),
-        ageMin: (row['age_min'] as num?)?.toInt(),
-        ageMax: (row['age_max'] as num?)?.toInt(),
-        roomKind: battleRoomKindFrom(row['room_kind'] as String),
-        thumbOpen: row['thumb_open'] as bool,
-        createdAt: DateTime.parse(row['created_at'] as String),
-        playerCount: (row['player_count'] as num).toInt(),
-      );
+    id: row['id'] as String,
+    title: row['title'] as String,
+    maxPlayers: (row['max_players'] as num).toInt(),
+    ageMin: (row['age_min'] as num?)?.toInt(),
+    ageMax: (row['age_max'] as num?)?.toInt(),
+    roomKind: battleRoomKindFrom(row['room_kind'] as String),
+    thumbOpen: row['thumb_open'] as bool,
+    createdAt: DateTime.parse(row['created_at'] as String),
+    playerCount: (row['player_count'] as num).toInt(),
+  );
 
   String get ageRangeLabel => _ageRangeLabel(ageMin, ageMax);
 }
@@ -210,15 +216,15 @@ class BattleMatch {
   });
 
   factory BattleMatch.fromRow(Map<String, dynamic> row) => BattleMatch(
-        teamId: row['team_id'] as String,
-        userA: row['user_a'] as String,
-        userB: row['user_b'] as String,
-        aConsent: row['a_consent'] as bool?,
-        bConsent: row['b_consent'] as bool?,
-        openedAt: row['opened_at'] == null
-            ? null
-            : DateTime.parse(row['opened_at'] as String),
-      );
+    teamId: row['team_id'] as String,
+    userA: row['user_a'] as String,
+    userB: row['user_b'] as String,
+    aConsent: row['a_consent'] as bool?,
+    bConsent: row['b_consent'] as bool?,
+    openedAt: row['opened_at'] == null
+        ? null
+        : DateTime.parse(row['opened_at'] as String),
+  );
 
   bool get isOpen => openedAt != null;
 
@@ -247,12 +253,12 @@ class BattleMessage {
   });
 
   factory BattleMessage.fromRow(Map<String, dynamic> row) => BattleMessage(
-        id: row['id'] as String,
-        teamId: row['team_id'] as String,
-        senderId: row['sender_id'] as String,
-        body: row['body'] as String,
-        createdAt: DateTime.parse(row['created_at'] as String),
-      );
+    id: row['id'] as String,
+    teamId: row['team_id'] as String,
+    senderId: row['sender_id'] as String,
+    body: row['body'] as String,
+    createdAt: DateTime.parse(row['created_at'] as String),
+  );
 }
 
 /// chemistry_snapshot({user_id: body}) + roster → 엔진 입력.
@@ -268,12 +274,14 @@ List<BattlePlayer> assembleBattlePlayers({
     final body = snapshot[entry.userId];
     if (body == null) continue;
     final report = FaceReadingReport.fromJsonString(jsonEncode(body));
-    players.add(BattlePlayer(
-      slot: entry.slotNo,
-      name: entry.nickname,
-      gender: entry.gender,
-      report: report,
-    ));
+    players.add(
+      BattlePlayer(
+        slot: entry.slotNo,
+        name: entry.nickname,
+        gender: entry.gender,
+        report: report,
+      ),
+    );
   }
   players.sort((a, b) => a.slot.compareTo(b.slot));
   return players;
