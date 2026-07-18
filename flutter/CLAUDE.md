@@ -21,6 +21,7 @@
 5. **chip/pill 단일톤.** 하나의 chip/pill 안에서 색·크기 분리 금지. priority 차이는 줄 분리 또는 background tint 로만.
 6. **가운데점(`·`) 남발 금지.** 한 줄에 두 의미 우겨넣지 않는다. 줄 바꿈으로 분리.
 7. **같은 역할 = 같은 위젯.** 역할이 같은 두 modal/카드/리스트 아이템은 동일 base widget 공유. 새로 만들기 전에 기존 컴포넌트 재사용을 본다.
+8. **하단 시스템 바 inset 필수.** edge-to-edge 라 제스처 내비가 콘텐츠를 가린다. 모든 새 화면·bottom sheet 는 `SafeArea` 로 감싸거나, 스크롤 하단 padding 에 `MediaQuery.of(context).viewPadding.bottom` 을 가산할 것 (탭 내부는 셸 BottomNavigationBar 가 흡수하므로 예외). 커스텀 bottom bar Container 는 자동 inset 이 없다.
 
 상세 컴포넌트 레시피·토큰 표·마이그레이션 가이드는 [`docs/DESIGN.md`](docs/DESIGN.md).
 
