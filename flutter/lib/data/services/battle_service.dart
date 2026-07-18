@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/ethnicity.dart';
+import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:flutter/foundation.dart';
@@ -12,11 +13,14 @@ import '../../domain/models/battle.dart';
 import '../../domain/services/share/share_receive_service.dart';
 import 'supabase_service.dart';
 
-/// 상세 페이지 슬롯 프로필 — my-face 썸네일 URL + 인구통계 한 줄
-/// ("50대 남성 아시아인") + 관상 유형 한 줄 ("신의형 · 호감형 기질").
+/// 슬롯 프로필 — my-face 썸네일 URL + meta 부품. 화면이 조합한다:
+/// 상세 슬롯 = "$ageGender $ethnicity", 베스트 카드 = "$ageGender $faceShape",
+/// archetype 은 공용 ("신의형 · 호감형 기질").
 typedef BattleSlotProfile = ({
   String? thumbUrl,
-  String? demographic,
+  String? ageGender,
+  String? ethnicity,
+  String? faceShape,
   String? archetype,
 });
 
@@ -91,20 +95,19 @@ class BattleService {
     }
   }
 
-  Future<void> joinBattle(String battleId, {String? password}) =>
-      _client.rpc('join_battle', params: {
-        'p_team_id': battleId,
-        'p_password': ?password,
-      });
+  Future<void> joinBattle(String battleId, {String? password}) => _client.rpc(
+    'join_battle',
+    params: {'p_team_id': battleId, 'p_password': ?password},
+  );
 
   Future<void> leaveBattle(String battleId) =>
       _client.rpc('leave_battle', params: {'p_team_id': battleId});
 
   Future<void> submitResult(String battleId, Map<String, dynamic> payload) =>
-      _client.rpc('submit_battle_result', params: {
-        'p_team_id': battleId,
-        'p_payload': payload,
-      });
+      _client.rpc(
+        'submit_battle_result',
+        params: {'p_team_id': battleId, 'p_payload': payload},
+      );
 
   Future<void> deleteBattle(String battleId) =>
       _client.from('teams').delete().eq('id', battleId);
@@ -139,8 +142,10 @@ class BattleService {
   Future<List<Battle>> fetchMyBattles() async {
     final uid = myUid;
     if (uid == null) return const [];
-    final memberRows =
-        await _client.from('team_members').select('team_id').eq('user_id', uid);
+    final memberRows = await _client
+        .from('team_members')
+        .select('team_id')
+        .eq('user_id', uid);
     final ids = [for (final r in memberRows) r['team_id'] as String];
     if (ids.isEmpty) return const [];
     final rows = await _client
@@ -153,7 +158,8 @@ class BattleService {
 
   /// 참가자 아바타 — 참가자들의 현재 my-face 썸네일 CDN URL. 없으면 null.
   Future<Map<String, String?>> fetchMyFaceThumbnailUrls(
-      List<String> userIds) async {
+    List<String> userIds,
+  ) async {
     if (userIds.isEmpty) return const {};
     final rows = await _client
         .from('metrics')
@@ -168,7 +174,9 @@ class BattleService {
         final body = jsonDecode(r['body'] as String) as Map<String, dynamic>;
         final key = body['thumbnailKey'] as String?;
         result[uid] = key == null ? null : ThumbnailPaths.cdnUrl(key);
-      } catch (_) {/* malformed body — fallback 아바타 */}
+      } catch (_) {
+        /* malformed body — fallback 아바타 */
+      }
     }
     return result;
   }
@@ -177,7 +185,8 @@ class BattleService {
   /// metrics body 한 번의 조회로 전부 뽑는다. meta 는 body 를 엔진으로
   /// 재계산한 리포트에서 (인구통계·archetype), 실패한 유저는 해당 값만 null.
   Future<Map<String, BattleSlotProfile>> fetchSlotProfiles(
-      List<String> userIds) async {
+    List<String> userIds,
+  ) async {
     if (userIds.isEmpty) return const {};
     final rows = await _client
         .from('metrics')
@@ -189,7 +198,9 @@ class BattleService {
       final uid = r['user_id'] as String?;
       if (uid == null) continue;
       String? thumbUrl;
-      String? demographic;
+      String? ageGender;
+      String? ethnicity;
+      String? faceShape;
       String? archetype;
       try {
         final bodyStr = r['body'] as String;
@@ -198,14 +209,25 @@ class BattleService {
         thumbUrl = key == null ? null : ThumbnailPaths.cdnUrl(key);
         try {
           final report = FaceReadingReport.fromJsonString(bodyStr);
-          demographic = '${report.ageGroup.labelKo} '
-              '${report.gender.labelKo} ${report.ethnicity.labelKo}';
-          archetype = '${report.archetype.primaryLabel} · '
+          ageGender = '${report.ageGroup.labelKo} ${report.gender.labelKo}';
+          ethnicity = report.ethnicity.labelKo;
+          faceShape = report.faceShape.korean;
+          archetype =
+              '${report.archetype.primaryLabel} · '
               '${report.archetype.secondaryLabel} 기질';
-        } catch (_) {/* 엔진 재계산 실패 — meta 만 생략 */}
-      } catch (_) {/* malformed body — 아바타·meta 없이 표시 */}
-      result[uid] =
-          (thumbUrl: thumbUrl, demographic: demographic, archetype: archetype);
+        } catch (_) {
+          /* 엔진 재계산 실패 — meta 만 생략 */
+        }
+      } catch (_) {
+        /* malformed body — 아바타·meta 없이 표시 */
+      }
+      result[uid] = (
+        thumbUrl: thumbUrl,
+        ageGender: ageGender,
+        ethnicity: ethnicity,
+        faceShape: faceShape,
+        archetype: archetype,
+      );
     }
     return result;
   }
@@ -268,11 +290,10 @@ class BattleService {
     return row == null ? null : BattleMatch.fromRow(row);
   }
 
-  Future<void> respondMatch(String teamId, bool accept) =>
-      _client.rpc('respond_match', params: {
-        'p_team_id': teamId,
-        'p_accept': accept,
-      });
+  Future<void> respondMatch(String teamId, bool accept) => _client.rpc(
+    'respond_match',
+    params: {'p_team_id': teamId, 'p_accept': accept},
+  );
 
   Future<List<BattleMessage>> fetchMessages(String teamId) async {
     final rows = await _client
@@ -285,12 +306,9 @@ class BattleService {
   }
 
   /// sender_id 는 RLS 가 auth.uid() 일치를 강제 — 명시적으로 실어 보낸다.
-  Future<void> sendMessage(String teamId, String body) =>
-      _client.from('battle_messages').insert({
-        'team_id': teamId,
-        'sender_id': myUid,
-        'body': body,
-      });
+  Future<void> sendMessage(String teamId, String body) => _client
+      .from('battle_messages')
+      .insert({'team_id': teamId, 'sender_id': myUid, 'body': body});
 
   /// 매칭·채팅 라이브 — battle_matches UPDATE(상대 응답) + battle_messages
   /// INSERT(새 메시지). 콜백은 신호일 뿐: 수신 시 호출부가 refetch.

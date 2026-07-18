@@ -545,7 +545,9 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
     return _SlotRow(
       entry: entry,
       thumbUrl: profile?.thumbUrl,
-      demographic: profile?.demographic,
+      demographic: profile?.ageGender == null
+          ? null
+          : '${profile!.ageGender} ${profile.ethnicity ?? ''}'.trim(),
       archetype: profile?.archetype,
       isMe: entry?.userId == _service.myUid,
       thumbOpen: battle.thumbOpen,

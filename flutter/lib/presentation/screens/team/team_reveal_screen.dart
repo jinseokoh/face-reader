@@ -302,6 +302,46 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
     );
   }
 
+  /// 베스트 인물 1열 — 아바타 + 이름 + "나이 성별 얼굴형" + "유형 · 기질".
+  Widget _bestPerson(int slot) {
+    String? uid;
+    for (final r in _roster) {
+      if (r.slotNo == slot) uid = r.userId;
+    }
+    final p = uid == null ? null : _profiles[uid];
+    final shapeLine = p?.ageGender == null
+        ? null
+        : '${p!.ageGender} ${p.faceShape ?? ''}'.trim();
+    return Column(
+      children: [
+        _slotAvatar(slot, size: 48),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          _nameOf(slot),
+          style: AppText.subTitle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        if (shapeLine != null) ...[
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            shapeLine,
+            style: AppText.caption,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+        if (p?.archetype != null)
+          Text(
+            p!.archetype!,
+            style: AppText.caption.copyWith(color: AppColors.textPrimary),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+      ],
+    );
+  }
+
   Widget _bestCard() {
     final a = (_best['a'] as num).toInt();
     final b = (_best['b'] as num).toInt();
@@ -319,15 +359,22 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
           Text('🏆 베스트 케미', style: AppText.sectionTitle),
           const SizedBox(height: AppSpacing.md),
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _slotAvatar(a, size: 48),
-              const SizedBox(width: AppSpacing.md),
-              _slotAvatar(b, size: 48),
+              Expanded(child: _bestPerson(a)),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: AppSpacing.lg,
+                ),
+                child: Text(
+                  '×',
+                  style: AppText.body.copyWith(color: AppColors.textHint),
+                ),
+              ),
+              Expanded(child: _bestPerson(b)),
             ],
           ),
-          const SizedBox(height: AppSpacing.sm),
-          Text('${_nameOf(a)} × ${_nameOf(b)}', style: AppText.display),
           const SizedBox(height: AppSpacing.sm),
           Text('$score점', style: AppText.modalTitle),
         ],
