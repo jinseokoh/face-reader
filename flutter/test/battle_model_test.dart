@@ -124,7 +124,7 @@ void main() {
     final battle = Battle.fromRow({
       'id': 'b2',
       'owner_id': 'u1',
-      'title': '이성 매칭방',
+      'title': '이성 케미방',
       'visibility': 'private',
       'max_players': 8,
       'age_min': 20,

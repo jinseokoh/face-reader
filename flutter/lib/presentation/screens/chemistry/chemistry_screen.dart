@@ -312,7 +312,7 @@ class _BattleCardBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final kind = roomKind == BattleRoomKind.match ? '이성 매칭' : '전체 케미';
+    final kind = roomKind == BattleRoomKind.match ? '이성 케미' : '전체 케미';
     final count = playerCount == null
         ? '$maxPlayers 명'
         : '$playerCount / $maxPlayers 명';

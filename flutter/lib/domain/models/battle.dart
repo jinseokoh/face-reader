@@ -12,7 +12,7 @@ enum BattleStatus { recruiting, revealing, completed, expired }
 BattleStatus battleStatusFrom(String raw) =>
     BattleStatus.values.firstWhere((s) => s.name == raw);
 
-/// 방 유형 — 'all'(전체 케미) / 'match'(남녀 반반 이성 매칭).
+/// 방 유형 — 'all'(전체 케미) / 'match'(남녀 반반 이성 케미).
 enum BattleRoomKind { all, match }
 
 BattleRoomKind battleRoomKindFrom(String raw) =>
