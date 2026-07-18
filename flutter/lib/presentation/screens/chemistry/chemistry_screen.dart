@@ -352,18 +352,16 @@ class _BattleCardBody extends StatelessWidget {
               size: 14,
               color: AppColors.textHint,
             ),
-            if (isPrivate) ...[
-              const SizedBox(width: AppSpacing.sm),
-              const FaIcon(
-                FontAwesomeIcons.lock,
-                size: 14,
-                color: AppColors.textHint,
-              ),
-            ],
+            const SizedBox(width: AppSpacing.sm),
+            FaIcon(
+              isPrivate ? FontAwesomeIcons.lock : FontAwesomeIcons.lockOpen,
+              size: 14,
+              color: AppColors.textHint,
+            ),
             const SizedBox(width: AppSpacing.sm),
             FaIcon(
               roomKind == BattleRoomKind.match
-                  ? FontAwesomeIcons.peopleArrows
+                  ? FontAwesomeIcons.children
                   : FontAwesomeIcons.users,
               size: 14,
               color: AppColors.textHint,
