@@ -669,20 +669,40 @@ class _SlotRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final filled = entry != null;
+    final hasMeta = demographic != null || archetype != null;
     return Row(
       children: [
-        Container(
+        SizedBox(
           width: 42,
           height: 42,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: filled
-                  ? (entry!.isOwner ? AppColors.gold : AppColors.border)
-                  : AppColors.border,
-            ),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: filled
+                        ? (entry!.isOwner
+                            ? AppColors.gold
+                            : AppColors.border)
+                        : AppColors.border,
+                  ),
+                ),
+                child: ClipOval(child: _avatar()),
+              ),
+              // '나' 표식은 아바타 상단 badge — 우측 meta 줄을 차지하지 않는다.
+              if (isMe)
+                Positioned(
+                  top: -AppSpacing.xs,
+                  left: 0,
+                  right: 0,
+                  child: Center(child: _meBadge()),
+                ),
+            ],
           ),
-          child: ClipOval(child: _avatar()),
         ),
         const SizedBox(width: AppSpacing.md),
         Expanded(
@@ -692,14 +712,17 @@ class _SlotRow extends StatelessWidget {
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      isMe ? '나' : entry!.nickname,
-                      style: AppText.body,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    // 이름 줄은 남이면 항상, 나는 meta 가 없을 때만 (badge 가
+                    // 신원을 대신하므로 meta 두 줄이 아바타 바로 우측에 온다).
+                    if (!isMe || !hasMeta)
+                      Text(
+                        isMe ? '나' : entry!.nickname,
+                        style: AppText.body,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     if (demographic != null) ...[
-                      const SizedBox(height: AppSpacing.xs),
+                      if (!isMe) const SizedBox(height: AppSpacing.xs),
                       Text(
                         demographic!,
                         style: AppText.caption,
@@ -719,6 +742,26 @@ class _SlotRow extends StatelessWidget {
                 ),
         ),
       ],
+    );
+  }
+
+  /// '나' badge — AgeRangePill 의 outlined pill 레시피, 아바타 위에 얹히므로
+  /// 흰 배경으로 원 테두리를 가리고 textPrimary 로 강조.
+  Widget _meBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xs,
+        vertical: 2,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: AppColors.textPrimary),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+      ),
+      child: Text(
+        '나',
+        style: AppText.hint.copyWith(color: AppColors.textPrimary),
+      ),
     );
   }
 
