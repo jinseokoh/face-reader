@@ -107,8 +107,9 @@ class _BattleMatchCardState extends State<BattleMatchCard> {
 
     final myUid = _service.myUid;
     final myConsent = myUid == null ? null : match.consentOf(myUid);
-    final theirConsent =
-        myUid == null ? null : match.consentOf(match.otherOf(myUid));
+    final theirConsent = myUid == null
+        ? null
+        : match.consentOf(match.otherOf(myUid));
 
     final Widget footer;
     if (match.isOpen) {
@@ -126,8 +127,10 @@ class _BattleMatchCardState extends State<BattleMatchCard> {
         children: [
           Text(
             '베스트 매칭',
-            style: AppText.caption
-                .copyWith(color: AppColors.gold, fontWeight: FontWeight.w700),
+            style: AppText.caption.copyWith(
+              color: AppColors.gold,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
@@ -149,14 +152,14 @@ class _BattleMatchCardState extends State<BattleMatchCard> {
   }
 
   Widget _card({required Widget child}) => Container(
-        padding: const EdgeInsets.all(AppSpacing.xl),
-        decoration: BoxDecoration(
-          color: AppColors.background,
-          borderRadius: BorderRadius.circular(AppRadius.xl),
-          border: Border.all(color: AppColors.textPrimary),
-        ),
-        child: child,
-      );
+    padding: const EdgeInsets.all(AppSpacing.xl),
+    decoration: BoxDecoration(
+      color: AppColors.background,
+      borderRadius: BorderRadius.circular(AppRadius.xl),
+      border: Border.all(color: AppColors.textPrimary),
+    ),
+    child: child,
+  );
 
   /// 상대 200×200 얼굴 사진 — thumb_open 무관 항상 시도, 실패 시 성별 아이콘.
   Widget _photo() {
@@ -182,14 +185,14 @@ class _BattleMatchCardState extends State<BattleMatchCard> {
   }
 
   Widget _genderFallback() => Center(
-        child: Image.asset(
-          widget.otherGender == 'male'
-              ? 'assets/icons/male.png'
-              : 'assets/icons/female.png',
-          width: 88,
-          height: 88,
-        ),
-      );
+    child: Image.asset(
+      widget.otherGender == 'male'
+          ? 'assets/icons/male.png'
+          : 'assets/icons/female.png',
+      width: 88,
+      height: 88,
+    ),
+  );
 
   Widget _questionFooter() {
     return Column(
@@ -249,12 +252,14 @@ class _BattleMatchCardState extends State<BattleMatchCard> {
         const SizedBox(height: AppSpacing.lg),
         PrimaryButton(
           label: '채팅 시작하기',
-          onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => BattleChatScreen(
-              teamId: widget.teamId,
-              otherNickname: widget.otherNickname,
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => BattleChatScreen(
+                teamId: widget.teamId,
+                otherNickname: widget.otherNickname,
+              ),
             ),
-          )),
+          ),
         ),
       ],
     );

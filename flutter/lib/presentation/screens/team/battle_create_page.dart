@@ -92,9 +92,11 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
   // ② 방 제목 — 방 유형에 허용되지 않는 카테고리/제목은 숨긴다(disabled 나열 아님).
   // 자유 입력(기타)은 방 유형과 무관하게 항상 보인다.
   List<BattleTitleCategory> get _visibleCategories => kBattleTitleCatalog
-      .where((c) =>
-          c.isCustom ||
-          c.titles.any((t) => t.allowedKinds.contains(_roomKind)))
+      .where(
+        (c) =>
+            c.isCustom ||
+            c.titles.any((t) => t.allowedKinds.contains(_roomKind)),
+      )
       .toList();
 
   BattleTitleCategory get _activeCategory {
@@ -105,21 +107,22 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
   }
 
   bool get _stepValid => switch (_step) {
-        _Step.roomKind => _roomKind != null,
-        _Step.title => _selectedTitle != null,
-        _Step.count => true,
-        _Step.age => true,
-        _Step.visibility =>
-          _isPublic || _pinCtrl.text.trim().length == 4,
-        _Step.thumb => true,
-      };
+    _Step.roomKind => _roomKind != null,
+    _Step.title => _selectedTitle != null,
+    _Step.count => true,
+    _Step.age => true,
+    _Step.visibility => _isPublic || _pinCtrl.text.trim().length == 4,
+    _Step.thumb => true,
+  };
 
   Future<void> _create() async {
     setState(() => _busy = true);
     final service = BattleService.instance;
     Battle? battle;
-    final myFace =
-        ref.read(historyProvider).where((r) => r.isMyFace).firstOrNull;
+    final myFace = ref
+        .read(historyProvider)
+        .where((r) => r.isMyFace)
+        .firstOrNull;
     if (myFace == null || !await service.ensureMyFaceOnServer(myFace)) {
       if (mounted) {
         showTopSnackBar(
@@ -141,8 +144,10 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
         roomKind: _roomKind!,
         thumbOpen: _thumbOpen,
       );
-      await service.joinBattle(battle.id,
-          password: _isPublic ? null : _pinCtrl.text.trim());
+      await service.joinBattle(
+        battle.id,
+        password: _isPublic ? null : _pinCtrl.text.trim(),
+      );
       if (mounted) Navigator.of(context).pop(battle);
     } catch (e) {
       debugPrint('createBattle failed: $e');
@@ -189,7 +194,8 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
         padding: EdgeInsets.only(
           left: AppSpacing.lg,
           right: AppSpacing.lg,
-          bottom: MediaQuery.of(context).viewInsets.bottom +
+          bottom:
+              MediaQuery.of(context).viewInsets.bottom +
               MediaQuery.of(context).viewPadding.bottom +
               AppSpacing.lg,
         ),
@@ -225,13 +231,13 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
   }
 
   Widget _stepBody() => switch (_step) {
-        _Step.roomKind => _roomKindStep(),
-        _Step.title => _titleStep(),
-        _Step.count => _countStep(),
-        _Step.age => _ageStep(),
-        _Step.visibility => _visibilityStep(),
-        _Step.thumb => _thumbStep(),
-      };
+    _Step.roomKind => _roomKindStep(),
+    _Step.title => _titleStep(),
+    _Step.count => _countStep(),
+    _Step.age => _ageStep(),
+    _Step.visibility => _visibilityStep(),
+    _Step.thumb => _thumbStep(),
+  };
 
   Widget _roomKindStep() {
     return Column(
@@ -280,8 +286,8 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
     final titles = category.isCustom
         ? const <BattleTitlePreset>[]
         : category.titles
-            .where((t) => t.allowedKinds.contains(_roomKind))
-            .toList();
+              .where((t) => t.allowedKinds.contains(_roomKind))
+              .toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -301,8 +307,9 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
                     setState(() {
                       _categorySel = c;
                       final custom = _customTitleCtrl.text.trim();
-                      _selectedTitle =
-                          c.isCustom && custom.isNotEmpty ? custom : null;
+                      _selectedTitle = c.isCustom && custom.isNotEmpty
+                          ? custom
+                          : null;
                     });
                     _listAnim.forward(from: 0);
                   },
@@ -355,14 +362,19 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
     final start = total <= 1 ? 0.0 : index * 0.55 / (total - 1);
     final anim = CurvedAnimation(
       parent: _listAnim,
-      curve: Interval(start, (start + 0.45).clamp(0.0, 1.0),
-          curve: Curves.easeOutCubic),
+      curve: Interval(
+        start,
+        (start + 0.45).clamp(0.0, 1.0),
+        curve: Curves.easeOutCubic,
+      ),
     );
     return FadeTransition(
       opacity: anim,
       child: SlideTransition(
-        position: Tween<Offset>(begin: const Offset(0, -0.25), end: Offset.zero)
-            .animate(anim),
+        position: Tween<Offset>(
+          begin: const Offset(0, -0.25),
+          end: Offset.zero,
+        ).animate(anim),
         child: child,
       ),
     );
@@ -420,8 +432,9 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
             overlayColor: Colors.transparent,
             showValueIndicator: ShowValueIndicator.onDrag,
             valueIndicatorColor: AppColors.textPrimary,
-            valueIndicatorTextStyle:
-                AppText.caption.copyWith(color: Colors.white),
+            valueIndicatorTextStyle: AppText.caption.copyWith(
+              color: Colors.white,
+            ),
           ),
           child: RangeSlider(
             min: lo.toDouble(),
@@ -559,7 +572,10 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
             color: selected ? AppColors.textPrimary : AppColors.border,
           ),
         ),
-        child: Text(title, style: AppText.body.copyWith(color: AppColors.textPrimary)),
+        child: Text(
+          title,
+          style: AppText.body.copyWith(color: AppColors.textPrimary),
+        ),
       ),
     );
   }

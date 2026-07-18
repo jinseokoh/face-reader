@@ -32,8 +32,7 @@ class BattleDetailScreen extends ConsumerStatefulWidget {
   const BattleDetailScreen({super.key, required this.battleId});
 
   @override
-  ConsumerState<BattleDetailScreen> createState() =>
-      _BattleDetailScreenState();
+  ConsumerState<BattleDetailScreen> createState() => _BattleDetailScreenState();
 }
 
 class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
@@ -72,8 +71,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
     return myUid != null && _roster.any((r) => r.userId == myUid);
   }
 
-  bool get _isOwner =>
-      _battle != null && _battle!.ownerId == _service.myUid;
+  bool get _isOwner => _battle != null && _battle!.ownerId == _service.myUid;
 
   Future<void> _refresh() async {
     final seq = ++_refreshSeq;
@@ -91,8 +89,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
       final roster = await _service.fetchRoster(widget.battleId);
       if (!mounted || seq != _refreshSeq) return;
       final myUid = _service.myUid;
-      final joined =
-          myUid != null && roster.any((r) => r.userId == myUid);
+      final joined = myUid != null && roster.any((r) => r.userId == myUid);
       // 시작된 방의 참가자는 리빌로 — 최초 로드면 전환 연출 없이 즉시 교체
       // (상세가 떴다가 밀려나는 이중 전환 방지), 대기 중 시작이면 연출 전환.
       if (battle.status != BattleStatus.recruiting && joined) {
@@ -102,8 +99,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
       // 관상 유형(archetype)은 얼굴 공개 여부와 무관하게 슬롯에 노출한다.
       // 썸네일 URL 은 thumb_open=true 인 방에서만 사용 (_SlotCell 게이트).
       final profiles = joined
-          ? await _service
-              .fetchSlotProfiles([for (final r in roster) r.userId])
+          ? await _service.fetchSlotProfiles([for (final r in roster) r.userId])
           : _profiles;
       if (!mounted || seq != _refreshSeq) return;
       setState(() {
@@ -120,16 +116,18 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
     if (_navigatedToReveal) return;
     _navigatedToReveal = true;
     Widget dest(BuildContext _) => TeamRevealScreen(
-          battleId: widget.battleId,
-          ceremony: !battle.hasResult,
-        );
-    Navigator.of(context).pushReplacement(animated
-        ? MaterialPageRoute(builder: dest)
-        : PageRouteBuilder(
-            pageBuilder: (context, _, _) => dest(context),
-            transitionDuration: Duration.zero,
-            reverseTransitionDuration: Duration.zero,
-          ));
+      battleId: widget.battleId,
+      ceremony: !battle.hasResult,
+    );
+    Navigator.of(context).pushReplacement(
+      animated
+          ? MaterialPageRoute(builder: dest)
+          : PageRouteBuilder(
+              pageBuilder: (context, _, _) => dest(context),
+              transitionDuration: Duration.zero,
+              reverseTransitionDuration: Duration.zero,
+            ),
+    );
   }
 
   // ── 참가 (미참가자) ─────────────────────────────────────────────────────
@@ -149,18 +147,18 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
       if (!ok || !mounted) return;
     }
     // ② my-face 게이트.
-    final hasMyFace =
-        ref.read(historyProvider).any((r) => r.isMyFace);
+    final hasMyFace = ref.read(historyProvider).any((r) => r.isMyFace);
     if (!hasMyFace) {
       await startMyFaceCapture(context, ref);
-      if (!mounted ||
-          !ref.read(historyProvider).any((r) => r.isMyFace)) {
+      if (!mounted || !ref.read(historyProvider).any((r) => r.isMyFace)) {
         return;
       }
     }
     setState(() => _busy = true);
-    final myFace =
-        ref.read(historyProvider).where((r) => r.isMyFace).firstOrNull;
+    final myFace = ref
+        .read(historyProvider)
+        .where((r) => r.isMyFace)
+        .firstOrNull;
     if (myFace == null || !await _service.ensureMyFaceOnServer(myFace)) {
       if (mounted) {
         showTopSnackBar(
@@ -241,13 +239,17 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('취소',
-                style: AppText.body.copyWith(color: AppColors.textHint)),
+            child: Text(
+              '취소',
+              style: AppText.body.copyWith(color: AppColors.textHint),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text('삭제',
-                style: AppText.body.copyWith(color: AppColors.danger)),
+            child: Text(
+              '삭제',
+              style: AppText.body.copyWith(color: AppColors.danger),
+            ),
           ),
         ],
       ),
@@ -300,13 +302,12 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : _notFound || battle == null
-                ? Center(
-                    child: Text('존재하지 않는 방입니다', style: AppText.body))
-                : !battle.isRecruiting
-                    ? _closedBody(battle)
-                    : member
-                        ? _memberBody(battle)
-                        : _joinBody(battle),
+            ? Center(child: Text('존재하지 않는 방입니다', style: AppText.body))
+            : !battle.isRecruiting
+            ? _closedBody(battle)
+            : member
+            ? _memberBody(battle)
+            : _joinBody(battle),
       ),
     );
   }
@@ -332,8 +333,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
                 label: '결과 보기',
                 onPressed: () => Navigator.of(context).pushReplacement(
                   MaterialPageRoute(
-                    builder: (_) =>
-                        TeamRevealScreen(battleId: widget.battleId),
+                    builder: (_) => TeamRevealScreen(battleId: widget.battleId),
                   ),
                 ),
               ),
@@ -439,10 +439,11 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
-          Text('${_roster.length} / ${battle.maxPlayers} 명',
-              style: AppText.caption),
-          if (showRemaining &&
-              battle.roomKind == BattleRoomKind.match) ...[
+          Text(
+            '${_roster.length} / ${battle.maxPlayers} 명',
+            style: AppText.caption,
+          ),
+          if (showRemaining && battle.roomKind == BattleRoomKind.match) ...[
             const SizedBox(height: AppSpacing.sm),
             Text('남자 ${_remaining('male')}자리 남음', style: AppText.caption),
             Text('여자 ${_remaining('female')}자리 남음', style: AppText.caption),
@@ -516,8 +517,10 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
           children: [
             Image.asset(_genderIconAsset(gender), width: 16, height: 16),
             const SizedBox(width: AppSpacing.xs),
-            Text('$label ${entries.length} / $slotCount',
-                style: AppText.sectionTitle),
+            Text(
+              '$label ${entries.length} / $slotCount',
+              style: AppText.sectionTitle,
+            ),
           ],
         ),
         const SizedBox(height: AppSpacing.md),
@@ -533,8 +536,11 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
     );
   }
 
-  Widget _slotRow(Battle battle, BattleRosterEntry? entry,
-      {String? slotGender}) {
+  Widget _slotRow(
+    Battle battle,
+    BattleRosterEntry? entry, {
+    String? slotGender,
+  }) {
     final profile = entry == null ? null : _profiles[entry.userId];
     return _SlotRow(
       entry: entry,
@@ -560,8 +566,11 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
         children: [
           QrImageView(data: url, size: 160),
           const SizedBox(height: AppSpacing.sm),
-          Text('같은 자리에서는 이 코드를 스캔해 참가합니다',
-              style: AppText.caption, textAlign: TextAlign.center),
+          Text(
+            '같은 자리에서는 이 코드를 스캔해 참가합니다',
+            style: AppText.caption,
+            textAlign: TextAlign.center,
+          ),
         ],
       ),
     );
@@ -599,9 +608,11 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
             icon: FontAwesomeIcons.link,
             label: '복사',
             onTap: () async {
-              await Clipboard.setData(ClipboardData(
-                  text: SharePublisher.instance
-                      .teamInviteUrl(widget.battleId)));
+              await Clipboard.setData(
+                ClipboardData(
+                  text: SharePublisher.instance.teamInviteUrl(widget.battleId),
+                ),
+              );
               if (mounted) {
                 showTopSnackBar(
                   Overlay.of(context),
@@ -633,10 +644,13 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
           children: [
             FaIcon(icon, size: 16, color: AppColors.textPrimary),
             const SizedBox(height: AppSpacing.xs),
-            Text(label,
-                style: AppText.caption.copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w700)),
+            Text(
+              label,
+              style: AppText.caption.copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ],
         ),
       ),
@@ -653,12 +667,15 @@ String _genderIconAsset(String gender) =>
 class _SlotRow extends StatelessWidget {
   final BattleRosterEntry? entry;
   final String? thumbUrl;
+
   /// "50대 남성 아시아인" — my-face 리포트의 인구통계 한 줄.
   final String? demographic;
+
   /// "신의형 · 호감형 기질" — 슬롯의 관심 유도 포인트.
   final String? archetype;
   final bool isMe;
   final bool thumbOpen;
+
   /// 이성방 빈 슬롯의 섹션 성별 — alpha 0.35 성별 아이콘 표시용. 전체방은
   /// null (성별 미정 FaIcon `user` 유지).
   final String? slotGender;
@@ -691,9 +708,7 @@ class _SlotRow extends StatelessWidget {
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: filled
-                        ? (entry!.isOwner
-                            ? AppColors.gold
-                            : AppColors.border)
+                        ? (entry!.isOwner ? AppColors.gold : AppColors.border)
                         : AppColors.border,
                   ),
                 ),
@@ -713,8 +728,10 @@ class _SlotRow extends StatelessWidget {
         const SizedBox(width: AppSpacing.md),
         Expanded(
           child: !filled
-              ? Text('대기 중',
-                  style: AppText.body.copyWith(color: AppColors.textHint))
+              ? Text(
+                  '대기 중',
+                  style: AppText.body.copyWith(color: AppColors.textHint),
+                )
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -743,8 +760,9 @@ class _SlotRow extends StatelessWidget {
                         alignment: Alignment.centerLeft,
                         child: Text(
                           archetype!,
-                          style: AppText.caption
-                              .copyWith(color: AppColors.textPrimary),
+                          style: AppText.caption.copyWith(
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                       ),
                   ],
@@ -779,8 +797,12 @@ class _SlotRow extends StatelessWidget {
       final gender = slotGender;
       if (gender == null) {
         return const Center(
-            child: FaIcon(FontAwesomeIcons.user,
-                size: 16, color: AppColors.border));
+          child: FaIcon(
+            FontAwesomeIcons.user,
+            size: 16,
+            color: AppColors.border,
+          ),
+        );
       }
       return Opacity(
         opacity: 0.35,
@@ -793,11 +815,22 @@ class _SlotRow extends StatelessWidget {
     }
     return thumbUrl == null
         ? const Center(
-            child: FaIcon(FontAwesomeIcons.solidUser,
-                size: 16, color: AppColors.textHint))
-        : Image.network(thumbUrl!, fit: BoxFit.cover,
+            child: FaIcon(
+              FontAwesomeIcons.solidUser,
+              size: 16,
+              color: AppColors.textHint,
+            ),
+          )
+        : Image.network(
+            thumbUrl!,
+            fit: BoxFit.cover,
             errorBuilder: (_, _, _) => const Center(
-                child: FaIcon(FontAwesomeIcons.solidUser,
-                    size: 16, color: AppColors.textHint)));
+              child: FaIcon(
+                FontAwesomeIcons.solidUser,
+                size: 16,
+                color: AppColors.textHint,
+              ),
+            ),
+          );
   }
 }

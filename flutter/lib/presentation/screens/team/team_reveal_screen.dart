@@ -49,6 +49,10 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
   Map<String, dynamic>? _payload;
   List<BattleRosterEntry> _roster = const [];
   Map<String, BattleSlotProfile> _profiles = const {};
+
+  /// 쌍 점수 ('lo-hi' 키) — payload 는 점수를 싣지 않으므로 snapshot 으로
+  /// 로컬 재계산 (결정론이라 payload 밴드와 항상 일치).
+  Map<String, int> _scores = const {};
   int? _mySlot;
   Timer? _countdownTimer;
 
@@ -73,10 +77,24 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
     ]);
     if (!mounted) return;
     _profiles = profiles;
+    // snapshot 재계산 — payload 유무와 무관하게 dot 점수 소스로 항상 수행.
+    engine.BattleResult? computed;
+    final snapshot = battle.chemistrySnapshot;
+    if (snapshot != null) {
+      final players = assembleBattlePlayers(roster: roster, snapshot: snapshot);
+      if (players.length >= 2) {
+        computed = engine.computeBattle(
+          players,
+          matchOnly: battle.roomKind == BattleRoomKind.match,
+        );
+      }
+    }
+    _scores = computed == null
+        ? const {}
+        : {for (final p in computed.pairs) '${p.a}-${p.b}': p.total.round()};
     Map<String, dynamic>? payload = battle.resultPayload;
     if (payload == null) {
-      final snapshot = battle.chemistrySnapshot;
-      if (snapshot == null) {
+      if (computed == null) {
         // revealing 고아(스냅샷 부재는 구조상 없지만 completed+payload null 안전망).
         setState(() {
           _battle = battle;
@@ -84,20 +102,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
         });
         return;
       }
-      final players = assembleBattlePlayers(roster: roster, snapshot: snapshot);
-      if (players.length < 2) {
-        setState(() {
-          _battle = battle;
-          _phase = _Phase.orphan;
-        });
-        return;
-      }
-      payload = engine
-          .computeBattle(
-            players,
-            matchOnly: battle.roomKind == BattleRoomKind.match,
-          )
-          .toPayload();
+      payload = computed.toPayload();
       // 결정론 — 선착 기록만 유효, 실패(후착·비참가자)는 무해.
       try {
         await _service.submitResult(widget.battleId, payload);
@@ -229,6 +234,8 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
     }
     return null;
   }
+
+  int? _scoreOf(int a, int b) => _scores[a < b ? '$a-$b' : '$b-$a'];
 
   @override
   Widget build(BuildContext context) {
@@ -409,13 +416,16 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
                           ? const SizedBox.shrink()
                           : InkWell(
                               onTap: () => _openPair(row, col),
-                              // 탭 영역 확보용 세로 padding — 점은 14.
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
                                   vertical: AppSpacing.xs,
                                 ),
                                 child: Center(
-                                  child: BandDot(_bandOf(row, col)!),
+                                  child: BandDot(
+                                    _bandOf(row, col)!,
+                                    size: 28,
+                                    score: _scoreOf(row, col),
+                                  ),
                                 ),
                               ),
                             ),
@@ -454,7 +464,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
                 _slotAvatar(other, size: 32),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(child: Text(_nameOf(other), style: AppText.subTitle)),
-                BandDot(band),
+                BandDot(band, size: 28, score: _scoreOf(_mySlot!, other)),
                 const SizedBox(width: AppSpacing.xs),
                 Text(
                   band.bandLabel,

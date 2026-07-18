@@ -88,21 +88,21 @@ class _BattleChatScreenState extends State<BattleChatScreen> {
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : _messages.isEmpty
-                      ? const Center(
-                          child: Text('첫 메시지를 보내보세요', style: AppText.hint),
-                        )
-                      : ListView.builder(
-                          reverse: true,
-                          padding: const EdgeInsets.all(AppSpacing.lg),
-                          itemCount: _messages.length,
-                          itemBuilder: (ctx, i) {
-                            final msg = _messages[_messages.length - 1 - i];
-                            return _MessageBubble(
-                              message: msg,
-                              isMine: msg.senderId == myUid,
-                            );
-                          },
-                        ),
+                  ? const Center(
+                      child: Text('첫 메시지를 보내보세요', style: AppText.hint),
+                    )
+                  : ListView.builder(
+                      reverse: true,
+                      padding: const EdgeInsets.all(AppSpacing.lg),
+                      itemCount: _messages.length,
+                      itemBuilder: (ctx, i) {
+                        final msg = _messages[_messages.length - 1 - i];
+                        return _MessageBubble(
+                          message: msg,
+                          isMine: msg.senderId == myUid,
+                        );
+                      },
+                    ),
             ),
             _inputBar(),
           ],
@@ -114,7 +114,9 @@ class _BattleChatScreenState extends State<BattleChatScreen> {
   Widget _inputBar() {
     return Container(
       padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
       decoration: const BoxDecoration(
         border: Border(top: BorderSide(color: AppColors.border)),
       ),
@@ -164,15 +166,19 @@ class _MessageBubble extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
         child: Column(
-          crossAxisAlignment:
-              isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment: isMine
+              ? CrossAxisAlignment.end
+              : CrossAxisAlignment.start,
           children: [
             ConstrainedBox(
               constraints: BoxConstraints(
-                  maxWidth: MediaQuery.of(context).size.width * 0.72),
+                maxWidth: MediaQuery.of(context).size.width * 0.72,
+              ),
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   borderRadius: BorderRadius.circular(AppRadius.lg),
