@@ -388,11 +388,12 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          // 점수 + 등급 성어·한자 병기 — 궁합 카드의 '한글 (漢字)' 표기와 동일.
+          // 등급 성어·한자 병기 — 궁합 카드의 '한글 (漢字)' 표기와 동일.
+          // 점수는 매트릭스·순위 dot 이 이미 노출하므로 여기선 성어만.
           Text(
             _bandOf(a, b) == null
                 ? '$score점'
-                : '$score점 ${CompatLabel.values[_bandOf(a, b)!].korean} '
+                : '${CompatLabel.values[_bandOf(a, b)!].korean} '
                       '(${CompatLabel.values[_bandOf(a, b)!].hanja})',
             style: AppText.modalTitle,
           ),
