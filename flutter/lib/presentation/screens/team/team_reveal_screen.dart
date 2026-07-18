@@ -661,11 +661,15 @@ Future<void> openBattlePairDetail(
                   ),
                 ),
               ),
-              // 밴드 닷 + 라벨 (점수 비노출).
+              // 밴드 닷 — 매트릭스·순위와 동일 표준 (28px + 가운데 점수).
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  BandDot(band),
+                  BandDot(
+                    band,
+                    size: 28,
+                    score: bundle.report.total.round(),
+                  ),
                   const SizedBox(width: AppSpacing.xs),
                   Text(band.bandLabel, style: AppText.body),
                 ],
