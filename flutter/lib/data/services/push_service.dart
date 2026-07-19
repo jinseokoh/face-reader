@@ -41,6 +41,7 @@ class PushService {
   Future<void> initialize() async {
     if (_inited) return;
     _inited = true;
+    debugPrint('[Push] initialize start');
     // Android 13+ 알림 권한 — 거부해도 앱 동작에는 영향 없음.
     await _messaging.requestPermission();
     // 포그라운드 표시용 로컬 알림 — 탭 payload = team_id.
@@ -73,6 +74,7 @@ class PushService {
     AuthService().profileStream.listen((u) {
       if (u != null) unawaited(_register());
     });
+    debugPrint('[Push] initialize done, token=${_token?.substring(0, 12)}…');
   }
 
   Future<void> _register() async {
@@ -101,6 +103,9 @@ class PushService {
   /// 포그라운드 수신 — FCM 은 자동 표시하지 않으므로 같은 내용의 시스템
   /// 알림을 로컬로 띄운다 (백그라운드 수신과 동일한 모양·탭 동작).
   void _onForeground(RemoteMessage m) {
+    debugPrint(
+      '[Push] onMessage ${DateTime.now()} title=${m.notification?.title}',
+    );
     final n = m.notification;
     if (n == null) return;
     _local.show(
