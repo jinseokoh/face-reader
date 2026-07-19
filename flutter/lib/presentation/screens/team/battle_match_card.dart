@@ -264,6 +264,7 @@ class _BattleMatchCardState extends State<BattleMatchCard> {
             MaterialPageRoute(
               builder: (_) => BattleChatScreen(
                 teamId: widget.teamId,
+                otherUserId: widget.otherUserId,
                 otherNickname: widget.otherNickname,
               ),
             ),

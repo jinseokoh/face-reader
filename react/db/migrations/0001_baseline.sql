@@ -881,6 +881,60 @@ do $$ begin
   alter publication supabase_realtime add table public.battle_messages;
 exception when duplicate_object then null; end $$;
 
+-- 채팅 신고 — 스토어 UGC 정책(신고 경로 필수) 충족. 방 30일 purge 후에도
+-- 운영 감사 흔적이 남도록 FK 없이 uuid 만 기록한다. select 정책 없음 —
+-- 열람은 service role(운영) 전용.
+create table if not exists public.battle_reports (
+  id          uuid primary key default gen_random_uuid(),
+  team_id     uuid not null,
+  reporter_id uuid not null,
+  reported_id uuid not null,
+  reason      text not null check (char_length(reason) <= 200),
+  created_at  timestamptz not null default now(),
+  check (reporter_id <> reported_id)
+);
+
+alter table public.battle_reports enable row level security;
+
+drop policy if exists "battle_reports_pair_insert" on public.battle_reports;
+
+-- insert: 신고자 = 본인이면서 해당 매치 쌍의 당사자, 피신고자 = 그 상대만.
+create policy "battle_reports_pair_insert"
+  on public.battle_reports for insert
+  with check (
+    reporter_id = auth.uid()
+    and exists (
+      select 1 from public.battle_matches m
+       where m.team_id = battle_reports.team_id
+         and ((auth.uid() = m.user_a and battle_reports.reported_id = m.user_b)
+           or (auth.uid() = m.user_b and battle_reports.reported_id = m.user_a))
+    )
+  );
+
+-- 차단 — 쌍이 다시는 같은 배틀방에서 만나지 않도록 join_battle 이 양방향
+-- 거부한다. 목록(public_battles)은 "차단한 사람이 방장인 방"만 요청자별로
+-- 숨긴다 (참가자 케이스는 조인 시점 게이트가 담당). 본인 행만 읽기/쓰기.
+create table if not exists public.user_blocks (
+  blocker_id uuid not null references auth.users(id) on delete cascade,
+  blocked_id uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (blocker_id, blocked_id),
+  check (blocker_id <> blocked_id)
+);
+
+alter table public.user_blocks enable row level security;
+
+drop policy if exists "user_blocks_self_read"   on public.user_blocks;
+drop policy if exists "user_blocks_self_insert" on public.user_blocks;
+drop policy if exists "user_blocks_self_delete" on public.user_blocks;
+
+create policy "user_blocks_self_read"
+  on public.user_blocks for select using (blocker_id = auth.uid());
+create policy "user_blocks_self_insert"
+  on public.user_blocks for insert with check (blocker_id = auth.uid());
+create policy "user_blocks_self_delete"
+  on public.user_blocks for delete using (blocker_id = auth.uid());
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 11-5. Battle RPC 상태 머신 + 공개 목록 view + Realtime
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -925,6 +979,20 @@ begin
   if v_age is null or v_gender is null then raise exception 'NO_MY_FACE'; end if;
   if v_age < v_team.age_min or v_age > v_team.age_max then
     raise exception 'AGE_NOT_ALLOWED';
+  end if;
+
+  -- 차단 게이트 — 로스터(방장 포함)에 내가 차단한 사람이 있으면 사실대로
+  -- (BLOCKED_MEMBER), 나를 차단한 사람이 있으면 차단 사실이 새지 않는 중립
+  -- 코드(NOT_JOINABLE)로 거부. 링크·QR 직접 진입도 여기서 막힌다.
+  if exists (select 1 from team_members tm
+              join user_blocks b on b.blocked_id = tm.user_id
+             where tm.team_id = p_team_id and b.blocker_id = v_uid) then
+    raise exception 'BLOCKED_MEMBER';
+  end if;
+  if exists (select 1 from team_members tm
+              join user_blocks b on b.blocker_id = tm.user_id
+             where tm.team_id = p_team_id and b.blocked_id = v_uid) then
+    raise exception 'NOT_JOINABLE';
   end if;
 
   select count(*), coalesce(max(slot_no), 0) into v_count, v_slot
@@ -1078,14 +1146,20 @@ grant  execute on function public.respond_match(uuid, boolean)     to authentica
 
 -- 공개 배틀 목록 — 모집 중 공개방만, 컬럼 화이트리스트 (password 접근 없음).
 -- 모집 중 전 방 노출 — 비밀방도 목록에 보이고(is_private 로 자물쇠 표시),
--- 입장만 PIN 으로 잠긴다.
+-- 입장만 PIN 으로 잠긴다. 요청자가 차단한 사람이 방장인 방은 숨긴다
+-- (invoker 실행이라 user_blocks RLS 가 본인 차단 행만 보게 한다 — 비로그인은
+-- 차단 행이 없어 전 방 노출).
 create or replace view public.public_battles with (security_invoker = on) as
   select t.id, t.title, t.room_kind, t.thumb_open, t.is_private, t.max_players,
          t.age_min, t.age_max, t.created_at,
          (select count(*)::int from public.team_members tm where tm.team_id = t.id)
            as player_count
     from public.teams t
-   where t.status = 'recruiting';
+   where t.status = 'recruiting'
+     and not exists (
+       select 1 from public.user_blocks b
+        where b.blocker_id = auth.uid() and b.blocked_id = t.owner_id
+     );
 
 -- 로비·리빌 명단 — team_members 에 users.nickname 을 붙인 읽기 전용 view.
 -- 의도적으로 owner 권한 실행(비-invoker): users RLS(self-read)를 우회해
@@ -1097,6 +1171,15 @@ create or replace view public.battle_roster as
          u.nickname
     from public.team_members tm
     join public.users u on u.id = tm.user_id;
+
+-- 내 차단 목록 — battle_roster 와 같은 owner 실행 view 패턴으로 users RLS
+-- (self-read)를 우회해 차단 상대의 "닉네임만" 노출한다. 행 범위는 본인 차단
+-- 행만 (auth.uid() 필터).
+create or replace view public.my_blocks as
+  select b.blocker_id, b.blocked_id, b.created_at, u.nickname
+    from public.user_blocks b
+    join public.users u on u.id = b.blocked_id
+   where b.blocker_id = auth.uid();
 
 -- Realtime: 로비 라이브 반영 — teams UPDATE(status 전이) + team_members
 -- INSERT/DELETE(입장·이탈). 재실행 안전 (duplicate 무시).
@@ -1164,6 +1247,7 @@ revoke update, delete on public.battle_messages from anon, authenticated;
 -- owner 권한 실행이면 RLS 우회 쓰기 통로가 된다 (final review Critical).
 revoke insert, update, delete on public.public_battles from anon, authenticated;
 revoke insert, update, delete on public.battle_roster  from anon, authenticated;
+revoke insert, update, delete on public.my_blocks      from anon, authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 12. 광고 시스템 현황 메모 (모든 오브젝트 ad_* 네이밍)

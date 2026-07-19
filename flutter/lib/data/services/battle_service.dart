@@ -24,6 +24,9 @@ typedef BattleSlotProfile = ({
   String? archetype,
 });
 
+/// 차단 목록 행 — my_blocks view 의 상대 id + 닉네임.
+typedef BlockedUser = ({String userId, String nickname});
+
 /// Chemistry Battle 서버 접점 — 방은 서버 우선(로컬 캐시 없음).
 /// 쓰기는 RPC(security definer)와 owner 직접 insert/delete 뿐,
 /// 읽기는 teams(컬럼 grant)·battle_roster·public_battles view.
@@ -322,6 +325,47 @@ class BattleService {
   Future<void> sendMessage(String teamId, String body) => _client
       .from('battle_messages')
       .insert({'team_id': teamId, 'sender_id': myUid, 'body': body});
+
+  /// 채팅 상대 신고 — RLS 가 신고자 본인·매치 쌍 당사자·피신고자=상대를 강제.
+  Future<void> reportChatUser({
+    required String teamId,
+    required String reportedId,
+    required String reason,
+  }) => _client.from('battle_reports').insert({
+    'team_id': teamId,
+    'reporter_id': myUid,
+    'reported_id': reportedId,
+    'reason': reason,
+  });
+
+  /// 상대 차단 — 이후 서로의 배틀방 조인이 양방향으로 거부되고(join_battle
+  /// 게이트), 상대가 방장인 방은 공개 목록에서 숨는다. 중복 차단은 no-op.
+  Future<void> blockUser(String blockedId) => _client
+      .from('user_blocks')
+      .upsert({
+        'blocker_id': myUid!,
+        'blocked_id': blockedId,
+      }, ignoreDuplicates: true);
+
+  Future<void> unblockUser(String blockedId) => _client
+      .from('user_blocks')
+      .delete()
+      .match({'blocker_id': myUid!, 'blocked_id': blockedId});
+
+  /// 내 차단 목록 — my_blocks view (본인 행 + 상대 닉네임만 노출).
+  Future<List<BlockedUser>> fetchBlockedUsers() async {
+    final rows = await _client
+        .from('my_blocks')
+        .select()
+        .order('created_at', ascending: false);
+    return [
+      for (final r in rows)
+        (
+          userId: r['blocked_id'] as String,
+          nickname: (r['nickname'] as String?) ?? '사용자',
+        ),
+    ];
+  }
 
   /// 매칭·채팅 라이브 — battle_matches UPDATE(상대 응답) + battle_messages
   /// INSERT(새 메시지). 콜백은 신호일 뿐: 수신 시 호출부가 refetch.

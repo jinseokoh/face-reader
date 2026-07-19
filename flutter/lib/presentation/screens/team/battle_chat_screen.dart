@@ -12,11 +12,13 @@ import '../../widgets/compact_snack_bar.dart';
 /// 입력바, watchMatch(battle_messages INSERT) 로 신규 메시지 refetch.
 class BattleChatScreen extends StatefulWidget {
   final String teamId;
+  final String otherUserId;
   final String otherNickname;
 
   const BattleChatScreen({
     super.key,
     required this.teamId,
+    required this.otherUserId,
     required this.otherNickname,
   });
 
@@ -56,6 +58,117 @@ class _BattleChatScreenState extends State<BattleChatScreen> {
     });
   }
 
+  /// 신고 사유 프리셋 — 스토어 UGC 정책의 신고 경로. 선택 즉시 접수.
+  static const _reportReasons = ['스팸·광고', '욕설·비방', '음란·성적 발언', '기타 부적절한 행위'];
+
+  Future<void> _report() async {
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+        ),
+        title: const Text('신고하기', style: AppText.modalTitle),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final r in _reportReasons)
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(r),
+                style: TextButton.styleFrom(alignment: Alignment.centerLeft),
+                child: Text(r, style: AppText.body),
+              ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(
+              '취소',
+              style: AppText.body.copyWith(color: AppColors.textHint),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (reason == null || !mounted) return;
+    try {
+      await _service.reportChatUser(
+        teamId: widget.teamId,
+        reportedId: widget.otherUserId,
+        reason: reason,
+      );
+      if (mounted) {
+        showTopSnackBar(
+          Overlay.of(context),
+          CompactSnackBar.success(message: '신고가 접수되었습니다'),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        showTopSnackBar(
+          Overlay.of(context),
+          CompactSnackBar.error(message: mapBattleError(e).labelKo),
+        );
+      }
+    }
+  }
+
+  /// 차단 — 무통보·같은 방 조인 불가라는 결과를 확인 다이얼로그에 명시해
+  /// 충동 차단을 줄인다. 성공 시 채팅을 닫는다. 해제는 설정 > 차단 목록.
+  Future<void> _block() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+        ),
+        title: const Text('차단하기', style: AppText.modalTitle),
+        content: const Text(
+          '차단하면 상대에게 알리지 않고, 앞으로 같은 배틀방에 함께 참가할 수 없게 됩니다. 설정의 차단 목록에서 해제할 수 있습니다.',
+          style: AppText.body,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(
+              '취소',
+              style: AppText.body.copyWith(color: AppColors.textHint),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(
+              '차단',
+              style: AppText.body.copyWith(color: AppColors.danger),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      await _service.blockUser(widget.otherUserId);
+      if (mounted) {
+        showTopSnackBar(
+          Overlay.of(context),
+          CompactSnackBar.success(message: '차단했습니다'),
+        );
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        showTopSnackBar(
+          Overlay.of(context),
+          CompactSnackBar.error(message: mapBattleError(e).labelKo),
+        );
+      }
+    }
+  }
+
   Future<void> _send() async {
     final text = _controller.text.trim();
     if (text.isEmpty || _sending) return;
@@ -80,7 +193,19 @@ class _BattleChatScreenState extends State<BattleChatScreen> {
   Widget build(BuildContext context) {
     final myUid = _service.myUid;
     return Scaffold(
-      appBar: AppBar(title: Text(widget.otherNickname)),
+      appBar: AppBar(
+        title: Text(widget.otherNickname),
+        actions: [
+          PopupMenuButton<String>(
+            icon: const FaIcon(FontAwesomeIcons.ellipsisVertical, size: 18),
+            onSelected: (v) => v == 'report' ? _report() : _block(),
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'report', child: Text('신고하기')),
+              PopupMenuItem(value: 'block', child: Text('차단하기')),
+            ],
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Column(
           children: [

@@ -177,6 +177,10 @@ enum BattleJoinError {
   genderFull('GENDER_FULL', '이 방의 남녀 자리 중 한쪽이 다 찼습니다'),
   full('FULL', '정원이 가득 찼습니다'),
   alreadyJoined('ALREADY_JOINED', '이미 참가한 방입니다'),
+  // 차단 게이트 — 차단자에겐 사실대로, 차단당한 쪽에는 차단 사실이 새지
+  // 않는 중립 카피 (서버 join_battle 이 방향별로 다른 코드를 낸다).
+  blockedMember('BLOCKED_MEMBER', '차단한 사람이 참가 중인 방입니다'),
+  notJoinable('NOT_JOINABLE', '참가할 수 없는 방입니다'),
   ownerCannotLeave('OWNER_CANNOT_LEAVE', '방장은 나갈 수 없습니다'),
   notLeavable('NOT_LEAVABLE', '지금은 나갈 수 없습니다'),
   notParticipant('NOT_PARTICIPANT', '참가자가 아닙니다'),

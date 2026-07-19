@@ -3,6 +3,7 @@ import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:facely/presentation/widgets/account_deletion_dialog.dart';
 import 'package:facely/presentation/widgets/legal_doc_sheet.dart';
 import 'package:facely/presentation/widgets/login_entry_button.dart';
+import 'package:facely/presentation/screens/settings/blocked_users_screen.dart';
 import 'package:facely/presentation/widgets/purchase_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -154,6 +155,13 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => LegalDocSheet.showPrivacy(context, ref),
           ),
           if (isLoggedIn) ...[
+            _menuItem(
+              icon: FontAwesomeIcons.userSlash,
+              title: '차단 목록',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const BlockedUsersScreen()),
+              ),
+            ),
             _menuItem(
               icon: FontAwesomeIcons.userXmark,
               title: '회원 탈퇴',
