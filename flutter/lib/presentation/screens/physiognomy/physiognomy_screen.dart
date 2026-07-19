@@ -492,83 +492,99 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: NestedScrollView(
-        headerSliverBuilder: (ctx, innerBoxIsScrolled) => [
-          SliverOverlapAbsorber(
-            handle: NestedScrollView.sliverOverlapAbsorberHandleFor(ctx),
-            sliver: SliverAppBar(
-              pinned: true,
-              // 내 관상 프로필 슬롯 제거 (2026-06-12) — 등록 상태는 AppBar
-              // pill 라벨이 전달하고, 리스트 카드의 gold '내 관상' 배지가
-              // 식별을 맡는다. 헤더는 타이틀 + TabBar 만.
-              title: const Text('관상'),
-              actions: [
-                // 미등록 = 내 관상 등록 / 등록 후 = 상대방 관상 추가.
-                const FaceScanPill(),
-                IconButton(
-                  icon: const FaIcon(FontAwesomeIcons.circleInfo, size: 20),
-                  onPressed: () => _showInfoDialog(context),
-                ),
-              ],
-              // 궁합 탭과 동일 규칙 — 내부 탭은 내 관상 등록 후에만 나타난다.
-              // 미등록 상태에선 탭 없이 단일 리스트 (카드별 SourceBadge 가
-              // 소스를 전달). 탭 라벨엔 개수 노출 (스크롤 없이 존재 여부 인지).
-              bottom: hasMyFace
-                  ? TabBar(
-                      controller: tabController,
-                      labelColor: AppColors.textPrimary,
-                      unselectedLabelColor: AppColors.textHint,
-                      indicatorColor: AppColors.textPrimary,
-                      tabs: [
-                        Tab(
-                          text: '카메라 '
-                              '(${history.where((r) => r.source == AnalysisSource.camera).length})',
-                        ),
-                        Tab(
-                          text: '앨범 '
-                              '(${history.where((r) => r.source == AnalysisSource.album).length})',
-                        ),
-                        // 탭 이름은 '북마크' — 공유받은 카드 중 북마크로 담은
-                        // 것만 오는 보관함이라 동작·아이콘과 일치. 카드의
-                        // SourceBadge '공유받음' 은 출처 표기라 그대로.
-                        Tab(
-                          text: '북마크 '
-                              '(${history.where((r) => r.source == AnalysisSource.received).length})',
-                        ),
-                      ],
-                    )
-                  : null,
-            ),
-          ),
-        ],
-        body: hasMyFace
-            ? TabBarView(
-                controller: tabController,
-                children: [
-                  // 탭별 빈 상태 이미지 분리 — 케미 탭(laugh/shrug)과 같은
-                  // 원칙: 나란한 탭이 같은 그림이면 지루하다.
-                  _buildList(history, const [AnalysisSource.camera], hasMyFace,
-                      emptyAsset: 'assets/images/emotion-anger.png'),
-                  _buildList(history, const [AnalysisSource.album], hasMyFace,
-                      emptyAsset: 'assets/images/emotion-frown.png'),
-                  // 공유받음 — 상시 노출 (0개 포함). 빈 상태가 "공유받기"
-                  // 라는 기능의 존재를 학습시킨다 (구조 고정 원칙).
-                  _buildList(
-                      history, const [AnalysisSource.received], hasMyFace,
-                      emptyAsset: 'assets/images/emotion-smile.png',
-                      emptyMessage:
-                          '공유받은 관상 카드를 북마크하면 여기에 보관됩니다.'),
+      // NestedScrollView 는 최상단 당김을 outer 스크롤이 흡수하므로
+      // RefreshIndicator 는 inner 가 아닌 여기(전체)를 감싸야 트리거된다
+      // (궁합·케미 탭과 동일한 pull-to-refresh 체감).
+      body: RefreshIndicator(
+        onRefresh: _handleRefresh,
+        color: AppColors.textPrimary,
+        child: NestedScrollView(
+          headerSliverBuilder: (ctx, innerBoxIsScrolled) => [
+            SliverOverlapAbsorber(
+              handle: NestedScrollView.sliverOverlapAbsorberHandleFor(ctx),
+              sliver: SliverAppBar(
+                pinned: true,
+                // 내 관상 프로필 슬롯 제거 (2026-06-12) — 등록 상태는 AppBar
+                // pill 라벨이 전달하고, 리스트 카드의 gold '내 관상' 배지가
+                // 식별을 맡는다. 헤더는 타이틀 + TabBar 만.
+                title: const Text('관상'),
+                actions: [
+                  // 미등록 = 내 관상 등록 / 등록 후 = 상대방 관상 추가.
+                  const FaceScanPill(),
+                  IconButton(
+                    icon: const FaIcon(FontAwesomeIcons.circleInfo, size: 20),
+                    onPressed: () => _showInfoDialog(context),
+                  ),
                 ],
-              )
-            : _buildList(
-                history,
-                const [
+                // 궁합 탭과 동일 규칙 — 내부 탭은 내 관상 등록 후에만 나타난다.
+                // 미등록 상태에선 탭 없이 단일 리스트 (카드별 SourceBadge 가
+                // 소스를 전달). 탭 라벨엔 개수 노출 (스크롤 없이 존재 여부 인지).
+                bottom: hasMyFace
+                    ? TabBar(
+                        controller: tabController,
+                        labelColor: AppColors.textPrimary,
+                        unselectedLabelColor: AppColors.textHint,
+                        indicatorColor: AppColors.textPrimary,
+                        tabs: [
+                          Tab(
+                            text:
+                                '카메라 '
+                                '(${history.where((r) => r.source == AnalysisSource.camera).length})',
+                          ),
+                          Tab(
+                            text:
+                                '앨범 '
+                                '(${history.where((r) => r.source == AnalysisSource.album).length})',
+                          ),
+                          // 탭 이름은 '북마크' — 공유받은 카드 중 북마크로 담은
+                          // 것만 오는 보관함이라 동작·아이콘과 일치. 카드의
+                          // SourceBadge '공유받음' 은 출처 표기라 그대로.
+                          Tab(
+                            text:
+                                '북마크 '
+                                '(${history.where((r) => r.source == AnalysisSource.received).length})',
+                          ),
+                        ],
+                      )
+                    : null,
+              ),
+            ),
+          ],
+          body: hasMyFace
+              ? TabBarView(
+                  controller: tabController,
+                  children: [
+                    // 탭별 빈 상태 이미지 분리 — 케미 탭(laugh/shrug)과 같은
+                    // 원칙: 나란한 탭이 같은 그림이면 지루하다.
+                    _buildList(
+                      history,
+                      const [AnalysisSource.camera],
+                      hasMyFace,
+                      emptyAsset: 'assets/images/emotion-anger.png',
+                    ),
+                    _buildList(
+                      history,
+                      const [AnalysisSource.album],
+                      hasMyFace,
+                      emptyAsset: 'assets/images/emotion-frown.png',
+                    ),
+                    // 공유받음 — 상시 노출 (0개 포함). 빈 상태가 "공유받기"
+                    // 라는 기능의 존재를 학습시킨다 (구조 고정 원칙).
+                    _buildList(
+                      history,
+                      const [AnalysisSource.received],
+                      hasMyFace,
+                      emptyAsset: 'assets/images/emotion-smile.png',
+                      emptyMessage: '공유받은 관상 카드를 북마크하면 여기에 보관됩니다.',
+                    ),
+                  ],
+                )
+              : _buildList(history, const [
                   AnalysisSource.camera,
                   AnalysisSource.album,
                   AnalysisSource.received,
-                ],
-                hasMyFace,
-              ),
+                ], hasMyFace),
+        ),
       ),
     );
   }
@@ -614,79 +630,73 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
     final allEmpty = groups.isEmpty;
 
     return Builder(
-      builder: (context) => RefreshIndicator(
-        onRefresh: _handleRefresh,
-        color: AppColors.textPrimary,
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            // NestedScrollView 의 outer SliverOverlapAbsorber 와 짝.
-            // 인너 스크롤이 헤더 collapse 를 정확히 트리거하도록 보장.
-            SliverOverlapInjector(
-              handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
-            ),
-            if (allEmpty)
-              // §3.8 일러스트 빈 상태 — 궁합 탭과 동일한 공용 EmotionEmptyState.
-              SliverFillRemaining(
-                hasScrollBody: false,
-                child: EmotionEmptyState(
-                  asset: emptyAsset,
-                  message: emptyMessage,
+      builder: (context) => CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          // NestedScrollView 의 outer SliverOverlapAbsorber 와 짝.
+          // 인너 스크롤이 헤더 collapse 를 정확히 트리거하도록 보장.
+          SliverOverlapInjector(
+            handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+          ),
+          if (allEmpty)
+            // §3.8 일러스트 빈 상태 — 궁합 탭과 동일한 공용 EmotionEmptyState.
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: EmotionEmptyState(
+                asset: emptyAsset,
+                message: emptyMessage,
+              ),
+            )
+          else ...[
+            for (var gi = 0; gi < groups.length; gi++) ...[
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  gi == 0 ? AppSpacing.lg : AppSpacing.xl,
+                  AppSpacing.lg,
+                  AppSpacing.md,
                 ),
-              )
-            else ...[
-              for (var gi = 0; gi < groups.length; gi++) ...[
-                SliverPadding(
-                  padding: EdgeInsets.fromLTRB(
-                    AppSpacing.lg,
-                    gi == 0 ? AppSpacing.lg : AppSpacing.xl,
-                    AppSpacing.lg,
-                    AppSpacing.md,
-                  ),
-                  sliver: SliverToBoxAdapter(
-                    child: _RecentListHeader(
-                      order: _sortOrder,
-                      onChanged: (v) => setState(() => _sortOrder = v),
-                      // sort popup 은 첫 section 에만 — 한 tab 당 1개.
-                      showSortToggle: gi == 0,
-                    ),
+                sliver: SliverToBoxAdapter(
+                  child: _RecentListHeader(
+                    order: _sortOrder,
+                    onChanged: (v) => setState(() => _sortOrder = v),
+                    // sort popup 은 첫 section 에만 — 한 tab 당 1개.
+                    showSortToggle: gi == 0,
                   ),
                 ),
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.lg,
-                  ),
-                  sliver: SliverList.builder(
-                    itemCount: groups[gi].$2.length,
-                    itemBuilder: (ctx, i) {
-                      final (origIdx, report) = groups[gi].$2[i];
-                      return _PhysiognomyItem(
-                        report: report,
-                        index: origIdx,
-                        source: groups[gi].$1,
-                      );
-                    },
-                  ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                sliver: SliverList.builder(
+                  itemCount: groups[gi].$2.length,
+                  itemBuilder: (ctx, i) {
+                    final (origIdx, report) = groups[gi].$2[i];
+                    return _PhysiognomyItem(
+                      report: report,
+                      index: origIdx,
+                      source: groups[gi].$1,
+                    );
+                  },
                 ),
-              ],
-              if (!hasMyFace)
-                const SliverPadding(
-                  padding: EdgeInsets.fromLTRB(
-                    AppSpacing.lg,
-                    AppSpacing.xs,
-                    AppSpacing.lg,
-                    AppSpacing.xxl,
-                  ),
-                  sliver: SliverToBoxAdapter(child: _ProfileHintCard()),
-                )
-              else
-                const SliverPadding(
-                  padding: EdgeInsets.only(bottom: AppSpacing.lg),
-                  sliver: SliverToBoxAdapter(child: SizedBox.shrink()),
-                ),
+              ),
             ],
+            if (!hasMyFace)
+              const SliverPadding(
+                padding: EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.xs,
+                  AppSpacing.lg,
+                  AppSpacing.xxl,
+                ),
+                sliver: SliverToBoxAdapter(child: _ProfileHintCard()),
+              )
+            else
+              const SliverPadding(
+                padding: EdgeInsets.only(bottom: AppSpacing.lg),
+                sliver: SliverToBoxAdapter(child: SizedBox.shrink()),
+              ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -750,8 +760,7 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
       initialIndex: prevIndex.clamp(0, length - 1),
     );
     c.addListener(() {
-      if (!c.indexIsChanging &&
-          ref.read(historyTabProvider) != c.index) {
+      if (!c.indexIsChanging && ref.read(historyTabProvider) != c.index) {
         ref.read(historyTabProvider.notifier).selectTab(c.index);
       }
     });
@@ -768,7 +777,8 @@ class _ProfileHintCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return const EmotionEmptyState(
       asset: 'assets/images/emotion-sad.png',
-      message: '점3개 (더보기 메뉴) 버튼을 누르면 이미 등록한\n'
+      message:
+          '점3개 (더보기 메뉴) 버튼을 누르면 이미 등록한\n'
           '사진을 내 관상으로 변경할 수 도 있습니다. ',
     );
   }
