@@ -279,19 +279,13 @@ class _PublicCardState extends State<_PublicCard> {
           roomKind: battle.roomKind,
           playerCount: battle.playerCount,
           maxPlayers: battle.maxPlayers,
-          validity: _recruitDeadlineLabel(battle.createdAt),
+          validity: '모집중',
           thumbOpen: battle.thumbOpen,
           isPrivate: battle.isPrivate,
         ),
       ),
     );
   }
-}
-
-/// 모집 마감 = 생성 + 48h (cron expire 정책과 동일).
-String _recruitDeadlineLabel(DateTime createdAt) {
-  final d = createdAt.toLocal().add(const Duration(hours: 48));
-  return '${d.month}월 ${d.day}일 ${d.hour}시까지 모집';
 }
 
 /// 공개 배틀·내 배틀 공용 카드 본문 — 제목+연령 pill / 유형·정원 / 유효 시한.
@@ -421,9 +415,9 @@ class _MineCard extends ConsumerWidget {
   final void Function(Battle) onOpen;
   const _MineCard({required this.battle, required this.onOpen});
 
-  /// 유효 시한 줄 — 모집 중 = 마감 시각, 완료 = 30일 purge 시한 (사실 카피).
+  /// 유효 시한 줄 — 모집 중 = 상태 그대로, 완료 = 30일 purge 시한 (사실 카피).
   String get _validityLabel => switch (battle.status) {
-    BattleStatus.recruiting => _recruitDeadlineLabel(battle.createdAt),
+    BattleStatus.recruiting => '모집중',
     BattleStatus.revealing => '결과 공개 중',
     BattleStatus.completed =>
       battle.closedAt == null ? '완료' : _resultValidLabel(battle.closedAt!),
