@@ -17,7 +17,7 @@ String? _myFaceId(Ref ref) =>
     ref.watch(historyProvider).where((r) => r.isMyFace).firstOrNull?.supabaseId;
 
 /// unlocks 스냅샷에서 복원한 **내 쌍** 파트너 리포트 목록 (로컬에 없는 갭
-/// 메우기용 — 배틀 제3자 쌍은 제외). auth 변화에 재구독.
+/// 메우기용 — 매칭 제3자 쌍은 제외). auth 변화에 재구독.
 final unlockedPartnerBodiesProvider =
     FutureProvider.autoDispose<List<FaceReadingReport>>((ref) async {
       ref.watch(authProvider);
@@ -37,7 +37,7 @@ final compatPartnerSnapshotsProvider =
       );
     });
 
-/// 구매한 쌍 전체 (내 쌍 + 배틀 제3자 쌍) — 궁합 확인 리스트의 source of
+/// 구매한 쌍 전체 (내 쌍 + 매칭 제3자 쌍) — 궁합 확인 리스트의 source of
 /// truth. auth 변화에 재구독.
 final unlockedPairsProvider = FutureProvider.autoDispose<List<UnlockedPair>>((
   ref,

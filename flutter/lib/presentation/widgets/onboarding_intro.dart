@@ -40,8 +40,8 @@ const _kPages = [
   _OnboardingPageData(
     asset: 'assets/images/onboarding3.png',
     title: '케미',
-    chips: ['케미 배틀 무료'],
-    body: '배틀 방을 만들면 참가자들이 각자 들어옵니다\n인원이 모이면 케미 결과가 공개됩니다.',
+    chips: ['케미 매칭 무료'],
+    body: '매칭 방을 만들면 참가자들이 각자 들어옵니다\n인원이 모이면 케미 결과가 공개됩니다.',
     warm: true,
   ),
   _OnboardingPageData(

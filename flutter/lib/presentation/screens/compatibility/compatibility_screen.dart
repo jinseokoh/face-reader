@@ -80,7 +80,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
     });
 
     // 미확인 = 로컬 상대 중 아직 안 산 쌍. 확인 = 서버 unlocks 쌍 행 전체
-    // (내 쌍 + 배틀 제3자 쌍) — 두 사람의 결제 시점 스냅샷이 source of truth.
+    // (내 쌍 + 매칭 제3자 쌍) — 두 사람의 결제 시점 스냅샷이 source of truth.
     final lockedList = <FaceReadingReport>[];
     final unlockedList =
         ref.watch(unlockedPairsProvider).asData?.value ??
@@ -388,7 +388,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
     );
   }
 
-  /// 확인 탭 — 구매한 쌍(내 쌍 + 배틀 제3자 쌍) 카드. score/시간 정렬 +
+  /// 확인 탭 — 구매한 쌍(내 쌍 + 매칭 제3자 쌍) 카드. score/시간 정렬 +
   /// 결제 직후 항목 핀 고정.
   Widget _unlockedTab(
     BuildContext context,

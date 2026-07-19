@@ -240,7 +240,7 @@ class _BattleMatchCardState extends State<BattleMatchCard> {
         ),
         const SizedBox(height: AppSpacing.xs),
         Text(
-          '채팅방이 열리면 이 화면과 배틀 결과에서 들어갈 수 있습니다',
+          '채팅방이 열리면 이 화면과 매칭 결과에서 들어갈 수 있습니다',
           style: AppText.caption,
           textAlign: TextAlign.center,
         ),

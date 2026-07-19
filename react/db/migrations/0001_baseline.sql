@@ -252,7 +252,7 @@ grant execute on function public.increment_metrics_views(uuid) to anon, authenti
 -- 4. public.unlocks — 궁합 풀이 해제 ledger (구매자 + 무방향 쌍)
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 규칙 하나: "1코인 = 두 사람의 궁합 풀이, 구매자에게 영구" — 내 쌍이든
--- 케미 배틀의 제3자 쌍이든 동일. 키 = (구매자, a_id<b_id 정규화 쌍 metrics id).
+-- 케미 매칭의 제3자 쌍이든 동일. 키 = (구매자, a_id<b_id 정규화 쌍 metrics id).
 -- 내 궁합은 a/b 중 하나가 내 my-face id 인 특수경우일 뿐 (id 는 로그인 유저
 -- 기준 영구 고정이라 재촬영에도 unlock 유지). FK 없음 — 스냅샷은 metrics
 -- 삭제를 견딘다. INSERT 는 unlock_compat RPC 만 — 코인 차감 + 삽입 트랜잭션.
@@ -481,7 +481,7 @@ drop function if exists public.unlock_compat(text, real, text, text);
 drop function if exists public.unlock_compat(uuid, real, text, text, text, text);
 
 -- 쌍 (p_a_id < p_b_id 정규화, 클라이언트가 body/alias 를 같은 순서로 정렬해
--- 전달) 의 풀이 해제 — 내 쌍이든 배틀 제3자 쌍이든 동일 규칙.
+-- 전달) 의 풀이 해제 — 내 쌍이든 매칭 제3자 쌍이든 동일 규칙.
 create or replace function public.unlock_compat(
   p_a_id        uuid,
   p_b_id        uuid,
@@ -775,7 +775,7 @@ create trigger teams_touch
   for each row execute procedure public.touch_teams_updated_at();
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 11-3. public.team_members — 배틀 참가자 (전원 로그인 셀프 조인)
+-- 11-3. public.team_members — 매칭 참가자 (전원 로그인 셀프 조인)
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 참가자 = 로그인 사용자. 이름·얼굴 컬럼 없음 — 표시 이름은 users.nickname,
 -- 얼굴은 조회 시 user_id → 현재 my-face live resolve (시작 후엔 teams.
@@ -914,7 +914,7 @@ create policy "team_reports_pair_insert"
 -- 차단 — 비용은 전부 차단자가 진다. 차단자는 상대가 있는 방에 못 들어가고
 -- (BLOCKED_MEMBER), 차단당한 쪽은 어디든 참가 가능 — 불이익도, 차단 사실을
 -- 눈치챌 단서도 없다. 예외는 서로가 만든 방 하나: 상호 비공개 (목록에서
--- 숨기고 직접 진입은 NOT_FOUND). 제3자 방에서 두 사람이 같이 배틀하게 되면
+-- 숨기고 직접 진입은 NOT_FOUND). 제3자 방에서 두 사람이 같이 매칭하게 되면
 -- 그 쌍의 발표 점수를 엔진이 상한 60점(형극난조 확정)으로 눌러 베스트·매칭
 -- 카드로 이어지지 않게 한다 (snapshot.blocked 동결 — join_team 참고).
 -- 차단 순간 같이 있던 모집 중 방에서는 차단자가 자동 퇴장(트리거). 본인 행만
@@ -1195,7 +1195,7 @@ grant  execute on function public.leave_team(uuid)               to authenticate
 grant  execute on function public.submit_team_result(uuid, jsonb) to authenticated;
 grant  execute on function public.respond_match(uuid, boolean)     to authenticated;
 
--- 공개 배틀 목록 — 모집 중 공개방만, 컬럼 화이트리스트 (password 접근 없음).
+-- 공개 매칭 목록 — 모집 중 공개방만, 컬럼 화이트리스트 (password 접근 없음).
 -- 모집 중 전 방 노출 — 비밀방도 목록에 보이고(is_private 로 자물쇠 표시),
 -- 입장만 PIN 으로 잠긴다. 방장과 차단 관계면 방향 무관 숨김 (상호 비공개) —
 -- "나를 차단한 방장" 방향은 user_blocks RLS(본인 행만)로는 볼 수 없어

@@ -89,7 +89,7 @@ export async function incrementMetricsViews(env: Env, id: string): Promise<void>
   }
 }
 
-// ── 케미 배틀 — /g/:id 쇼케이스/초대장 ──────────────────────────────
+// ── 케미 매칭 — /g/:id 쇼케이스/초대장 ──────────────────────────────
 
 export type BattleSSR = {
   battle: {

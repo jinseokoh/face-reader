@@ -1,12 +1,12 @@
--- 종료된 케미 배틀 dummy 시드 — Supabase SQL Editor 에서 전체 실행.
+-- 종료된 케미 매칭 dummy 시드 — Supabase SQL Editor 에서 전체 실행.
 --
 -- 지워지는 것: 이 스크립트가 만든 dummy 만 (고정 UUID 방 2개 + 가짜 유저
 -- 5명 + 그들의 metrics·참가행, FK cascade). 실사용자 데이터는 안 건드림.
 -- 재실행 안전 — 돌릴 때마다 지우고 새로 만든다.
 --
--- 방 ① 서울지역 케미 배틀 — match 6인(남3·여3), thumb_open.
+-- 방 ① 서울지역 케미 매칭 — match 6인(남3·여3), thumb_open.
 --      베스트 = 나(1)×서연(4) 92점, 매칭 카드 pending (수락/거절 테스트).
--- 방 ② 직장인 케미 배틀 — all 6인(6×6 정방 15쌍), thumb_open.
+-- 방 ② 직장인 케미 매칭 — all 6인(6×6 정방 15쌍), thumb_open.
 --      베스트 = 나(1)×지은(5) 89점, 매칭 수락 완료 → 채팅 개설 + 선메시지 2개.
 --
 -- '나' = 가장 최근 my-face 를 가진 로그인 계정. 가짜 5명의 my-face 는 내
@@ -82,7 +82,7 @@ begin
   insert into public.teams (id, owner_id, title, room_kind,
                             thumb_open, max_players, age_min, age_max, status,
                             started_at, closed_at, created_at)
-  values (v_team, v_me, '서울지역 케미 배틀', 'match',
+  values (v_team, v_me, '서울지역 케미 매칭', 'match',
           true, 6, v_me_age, v_me_age + 10, 'completed',
           now() - interval '2 hours', now() - interval '115 minutes',
           now() - interval '3 hours')
@@ -141,7 +141,7 @@ begin
   insert into public.teams (id, owner_id, title, room_kind,
                             thumb_open, max_players, age_min, age_max, status,
                             started_at, closed_at, created_at)
-  values (v_team2, v_me, '직장인 케미 배틀', 'all',
+  values (v_team2, v_me, '직장인 케미 매칭', 'all',
           true, 6, v_me_age, v_me_age + 10, 'completed',
           now() - interval '25 hours', now() - interval '24 hours',
           now() - interval '26 hours')

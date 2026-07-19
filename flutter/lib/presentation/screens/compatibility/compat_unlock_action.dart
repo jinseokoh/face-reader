@@ -29,7 +29,7 @@ Future<bool> runCompatUnlock(
   required FaceReadingReport my,
   required FaceReadingReport album,
   bool confirm = true,
-  // 결제 스냅샷용 이름 override — 배틀 쌍은 payload 닉네임을 전달 (live
+  // 결제 스냅샷용 이름 override — 매칭 쌍은 payload 닉네임을 전달 (live
   // 리포트는 alias 가 비고, 제3자 쌍에선 구매자 닉네임 fallback 이 오답).
   String? myAlias,
   String? albumAlias,
@@ -69,7 +69,7 @@ Future<bool> runCompatUnlock(
     return false;
   }
 
-  // 이미 unlock 된 쌍이면 재결제 없이 통과 — 같은 두 사람은 배틀·1:1 어디서
+  // 이미 unlock 된 쌍이면 재결제 없이 통과 — 같은 두 사람은 매칭·1:1 어디서
   // 만나든 한 번만 결제된다 (무방향 쌍 키).
   final already =
       ref.read(compatUnlocksProvider).asData?.value ?? const <String>{};

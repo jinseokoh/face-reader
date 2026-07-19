@@ -24,7 +24,7 @@ import '../compatibility/compat_unlock_action.dart';
 import 'battle_band.dart';
 import 'battle_match_card.dart';
 
-/// 배틀 결과 — payload(스코어보드)가 없으면 snapshot 으로 계산해 1회 기록
+/// 매칭 결과 — payload(스코어보드)가 없으면 snapshot 으로 계산해 1회 기록
 /// (first-writer-wins)하고, 있으면 그대로 렌더한다.
 class TeamRevealScreen extends ConsumerStatefulWidget {
   final String battleId;
@@ -241,7 +241,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_battle?.title ?? '케미 배틀')),
+      appBar: AppBar(title: Text(_battle?.title ?? '케미 매칭')),
       body: SafeArea(
         top: false,
         child: switch (_phase) {
@@ -260,7 +260,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.huge),
               child: Text(
-                '결과가 생성되지 않은 배틀입니다',
+                '결과가 생성되지 않은 매칭입니다',
                 style: AppText.body,
                 textAlign: TextAlign.center,
               ),
@@ -622,7 +622,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
 }
 
 /// 쌍 상세 unlock 시트 — runCompatUnlock/pushCompat 호출과 동일 계약.
-/// 무료 = 밴드 닷 + 라벨만(케미 배틀 payload 는 best 외 점수를 싣지 않는다,
+/// 무료 = 밴드 닷 + 라벨만(케미 매칭 payload 는 best 외 점수를 싣지 않는다,
 /// A2 정책) → [1🪙 상세 보기] → runCompatUnlock → 성공 시 pushCompat.
 Future<void> openBattlePairDetail(
   BuildContext context,

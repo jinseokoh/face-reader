@@ -23,7 +23,7 @@ import {
 import type { BattleSSR } from '../lib/supabase'
 
 /**
- * /g/:id 참여 위저드 — 앱 미설치자가 브라우저에서 케미 배틀 참가를 끝까지 완료한다.
+ * /g/:id 참여 위저드 — 앱 미설치자가 브라우저에서 케미 매칭 참가를 끝까지 완료한다.
  * entry(PIN·공약 동의) → (kakao) → (reuse) → camera → confirm → saving → done(라이브 로비)
  * 스펙: docs/superpowers/specs/2026-07-16-chemistry-battle-design.md §8
  *
@@ -952,7 +952,7 @@ export function JoinWizard({
           </div>
           {waitCount > 0 && (
             <p className="join-sub">
-              나머지 {waitCount}명이 등록을 마치면 케미 배틀이 시작됩니다.
+              나머지 {waitCount}명이 등록을 마치면 케미 매칭이 시작됩니다.
             </p>
           )}
           <p className="join-sub" style={{ marginTop: 4 }}>

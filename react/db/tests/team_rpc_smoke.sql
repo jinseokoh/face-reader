@@ -55,7 +55,7 @@ $$;
 select pg_temp.act_as(1);
 insert into public.teams (id, owner_id, title, visibility, password, max_players,
                           age_min, age_max)
-values ('11111111-1111-1111-1111-111111111111', auth.uid(), '스모크 배틀',
+values ('11111111-1111-1111-1111-111111111111', auth.uid(), '스모크 매칭',
         'private', '1234', 6, 20, 30);
 
 -- ② 방장 조인 (비밀번호 필요).
@@ -192,7 +192,7 @@ end $$;
 select pg_temp.act_as(7);
 insert into public.teams (id, owner_id, title, visibility, password, room_kind,
                           max_players, age_min, age_max)
-values ('22222222-2222-2222-2222-222222222222', auth.uid(), '매칭 배틀',
+values ('22222222-2222-2222-2222-222222222222', auth.uid(), '매칭 매칭',
         'private', '5678', 'match', 6, 20, 30);
 select public.join_team('22222222-2222-2222-2222-222222222222', '5678'); -- u7 slot1 male
 select pg_temp.act_as(8);
@@ -293,7 +293,7 @@ end $$;
 select pg_temp.act_as(1);
 insert into public.teams (id, owner_id, title, visibility, max_players,
                           age_min, age_max)
-values ('33333333-3333-3333-3333-333333333333', auth.uid(), '채팅 배틀',
+values ('33333333-3333-3333-3333-333333333333', auth.uid(), '채팅 매칭',
         'public', 6, 20, 30);
 select public.join_team('33333333-3333-3333-3333-333333333333', null);
 select pg_temp.act_as(2);

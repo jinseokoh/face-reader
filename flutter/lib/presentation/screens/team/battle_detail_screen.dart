@@ -21,7 +21,7 @@ import '../../widgets/my_face_capture_flow.dart';
 import '../../widgets/primary_button.dart';
 import 'team_reveal_screen.dart';
 
-/// 케미 배틀 상세 페이지 — 참가 여부와 무관한 단일 진입점.
+/// 케미 매칭 상세 페이지 — 참가 여부와 무관한 단일 진입점.
 /// 미참가자에겐 참가 폼(PIN·사진 공개 동의·참가 CTA), 참가자에겐 슬롯
 /// 그리드·QR·초대가 같은 화면 안에서 분기된다. 조인 성공도 화면 전환 없이
 /// in-place 로 참가자 뷰가 된다 (멤버 판정 리다이렉트 없음).
@@ -282,7 +282,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
       appBar: AppBar(
         // 방 제목은 헤더 카드가 보여준다 — AppBar 는 고정 타이틀 (로딩 중
         // 타이틀이 방제목으로 바뀌는 깜빡임 제거).
-        title: const Text('케미 배틀 상세정보'),
+        title: const Text('케미 매칭 상세정보'),
         actions: [
           if (battle != null && member && battle.isRecruiting)
             PopupMenuButton<String>(
@@ -416,7 +416,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
     );
   }
 
-  /// 공개 배틀 카드(_PublicCard)와 동일한 결 — 제목 + 연령 pill / 정원.
+  /// 공개 매칭 카드(_PublicCard)와 동일한 결 — 제목 + 연령 pill / 정원.
   /// [showRemaining] = 미참가 이성방에서 성별 남은 자리 표시 (참가자 뷰는
   /// 슬롯 열 헤더가 같은 정보를 보여주므로 생략).
   Widget _headerCard(Battle battle, {bool showRemaining = false}) {

@@ -16,7 +16,7 @@ import '../team/battle_detail_screen.dart';
 import '../team/team_reveal_screen.dart';
 
 /// 케미 탭 = Chemistry Battle 방 목록 브라우저.
-/// 내부 2탭: 공개 배틀(목록에서 발견·참가) / 내 배틀(진행·완료).
+/// 내부 2탭: 공개 매칭(목록에서 발견·참가) / 내 매칭(진행·완료).
 class ChemistryScreen extends ConsumerStatefulWidget {
   const ChemistryScreen({super.key});
 
@@ -63,7 +63,7 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
         ),
         title: const Text('방 만들기 사용불가', style: AppText.modalTitle),
         content: const Text(
-          '케미 배틀 방 만들기는 20세 이상부터 사용할 수 있습니다. '
+          '케미 매칭 방 만들기는 20세 이상부터 사용할 수 있습니다. '
           '내 관상 분석의 나이대가 10대로 확인되어 지금은 만들 수 없습니다.',
           style: AppText.body,
         ),
@@ -95,7 +95,7 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.xl),
         ),
-        title: const Text('케미 배틀', style: AppText.modalTitle),
+        title: const Text('케미 매칭', style: AppText.modalTitle),
         content: const SingleChildScrollView(
           child: Text(
             '방을 만들면 참가자들이 각자 들어옵니다.\n'
@@ -131,7 +131,7 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
               _CreatePill(onTap: _create),
             IconButton(
               icon: const FaIcon(FontAwesomeIcons.circleInfo, size: 20),
-              tooltip: '케미 배틀에 대하여',
+              tooltip: '케미 매칭에 대하여',
               onPressed: () => _showInfoDialog(context),
             ),
           ],
@@ -142,8 +142,8 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
                   unselectedLabelColor: AppColors.textHint,
                   indicatorColor: AppColors.textPrimary,
                   tabs: [
-                    Tab(text: '공개 배틀'),
-                    Tab(text: '내 배틀'),
+                    Tab(text: '공개 매칭'),
+                    Tab(text: '내 매칭'),
                   ],
                 )
               : null,
@@ -151,7 +151,7 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
         body: !hasMyFace
             ? const EmotionEmptyState(
                 asset: 'assets/images/emotion-shrug.png',
-                message: '내 관상을 등록하면 케미 배틀에 참가할 수 있습니다',
+                message: '내 관상을 등록하면 케미 매칭에 참가할 수 있습니다',
               )
             : TabBarView(
                 children: [
@@ -186,7 +186,7 @@ class _CreatePill extends StatelessWidget {
             border: Border.all(color: AppColors.textPrimary),
           ),
           child: Text(
-            '배틀 만들기',
+            '매칭 만들기',
             style: AppText.caption.copyWith(
               color: AppColors.textPrimary,
               fontWeight: FontWeight.w700,
@@ -211,7 +211,7 @@ class _PublicTabState extends ConsumerState<_PublicTab> {
   @override
   Widget build(BuildContext context) {
     final battles = ref.watch(publicBattlesProvider);
-    // 공개 목록엔 방장 정보가 없다 (public_teams 화이트리스트) — 내 배틀
+    // 공개 목록엔 방장 정보가 없다 (public_teams 화이트리스트) — 내 매칭
     // 목록과 대조해 내가 방장인 방을 식별한다.
     final myUid = BattleService.instance.myUid;
     final mineIds = {
@@ -241,7 +241,7 @@ class _PublicTabState extends ConsumerState<_PublicTab> {
                 SizedBox(height: 120),
                 EmotionEmptyState(
                   asset: 'assets/images/emotion-frown.png',
-                  message: '모집 중인 공개 배틀이 없습니다',
+                  message: '모집 중인 공개 매칭이 없습니다',
                 ),
               ],
             );
@@ -323,7 +323,7 @@ class _PublicCardState extends State<_PublicCard> {
   }
 }
 
-/// 공개 배틀·내 배틀 공용 카드 본문 — 제목+연령 pill / 유형·정원 / 유효 시한.
+/// 공개 매칭·내 매칭 공용 카드 본문 — 제목+연령 pill / 유형·정원 / 유효 시한.
 /// 두 목록의 item 은 이 위젯 하나로 같은 결을 강제한다.
 class _BattleCardBody extends StatelessWidget {
   final String title;
@@ -335,7 +335,7 @@ class _BattleCardBody extends StatelessWidget {
   final bool thumbOpen;
   final bool isPrivate;
 
-  /// 내 배틀 전용 — 내가 방장인 방에 '방장' pill (연령 pill 과 동일 레시피).
+  /// 내 매칭 전용 — 내가 방장인 방에 '방장' pill (연령 pill 과 동일 레시피).
   final bool isOwner;
   const _BattleCardBody({
     required this.title,
@@ -446,7 +446,7 @@ class _MineTabState extends ConsumerState<_MineTab> {
                 SizedBox(height: 120),
                 EmotionEmptyState(
                   asset: 'assets/images/emotion-laugh.png',
-                  message: '참가 중인 배틀이 없습니다',
+                  message: '참가 중인 매칭이 없습니다',
                 ),
               ],
             );

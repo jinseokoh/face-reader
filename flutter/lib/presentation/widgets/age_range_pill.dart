@@ -1,8 +1,8 @@
 import 'package:facely/core/theme.dart';
 import 'package:flutter/material.dart';
 
-/// 배틀 연령대 outlined pill — SourceBadge 의 pill 레시피와 동일
-/// (border 만, radius sm). 상세 페이지 헤더·공개 배틀 카드 우측 상단 공용.
+/// 매칭 연령대 outlined pill — SourceBadge 의 pill 레시피와 동일
+/// (border 만, radius sm). 상세 페이지 헤더·공개 매칭 카드 우측 상단 공용.
 class AgeRangePill extends StatelessWidget {
   final String label;
   const AgeRangePill({super.key, required this.label});

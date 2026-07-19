@@ -338,7 +338,7 @@ class BattleService {
     'reason': reason,
   });
 
-  /// 상대 차단 — 이후 서로의 배틀방 조인이 양방향으로 거부되고(join_team
+  /// 상대 차단 — 이후 서로의 매칭방 조인이 양방향으로 거부되고(join_team
   /// 게이트), 상대가 방장인 방은 공개 목록에서 숨는다. 중복 차단은 no-op.
   Future<void> blockUser(String blockedId) => _client
       .from('user_blocks')

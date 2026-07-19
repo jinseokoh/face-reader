@@ -29,7 +29,7 @@ class UnlockedPair {
 
 /// unlocks 테이블 + unlock_compat RPC 래퍼.
 ///
-/// 키 = (구매자, a_id<b_id 정규화 쌍) — 내 쌍이든 케미 배틀의 제3자 쌍이든
+/// 키 = (구매자, a_id<b_id 정규화 쌍) — 내 쌍이든 케미 매칭의 제3자 쌍이든
 /// 동일 규칙 ("1코인 = 두 사람의 궁합 풀이, 구매자에게 영구").
 /// RLS 가 user_id = auth.uid() 로 SELECT 를 제한 → 조회는 자동으로 현
 /// 사용자 것만 반환. INSERT 정책은 없고 `unlock_compat` RPC (SECURITY DEFINER)
@@ -55,7 +55,7 @@ class CompatUnlockService {
 
   /// unlocks 의 결제 시점 상대 스냅샷을 [FaceReadingReport] 로 복원.
   /// **내 쌍만** — a/b 중 하나가 [myFaceId] 인 행에서 상대 쪽을 뽑는다
-  /// (배틀 제3자 쌍은 내 궁합 목록·지갑에 섞지 않는다).
+  /// (매칭 제3자 쌍은 내 궁합 목록·지갑에 섞지 않는다).
   Future<List<FaceReadingReport>> reconstructUnlockedPartners({
     required String? myFaceId,
   }) async {
@@ -117,7 +117,7 @@ class CompatUnlockService {
     return map;
   }
 
-  /// 구매한 쌍 전체 — 내 쌍·배틀 제3자 쌍 모두. 확인 리스트의 source of
+  /// 구매한 쌍 전체 — 내 쌍·매칭 제3자 쌍 모두. 확인 리스트의 source of
   /// truth (양쪽 body·alias 를 결제 시점 스냅샷에서 복원, 로컬 무의존).
   Future<List<UnlockedPair>> unlockedPairs() async {
     if (_client.auth.currentUser == null) return const [];

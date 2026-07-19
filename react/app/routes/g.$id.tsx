@@ -14,7 +14,7 @@ import {
 import { fetchBattleSSR } from "../lib/supabase";
 
 /**
- * `GET /g/:id` — 케미 배틀 (Plan 3). 한 라우트, status 4분기:
+ * `GET /g/:id` — 케미 매칭 (Plan 3). 한 라우트, status 4분기:
  *   - recruiting = 초대장(공약·연령대·n/N 노출) + JoinWizard
  *   - revealing/completed + payload = 결과 쇼케이스 (🏆 Best 카드 + 밴드 매트릭스)
  *   - revealing/completed + payload 없음 + snapshot 있음 = 클라이언트 즉석 계산
@@ -48,14 +48,14 @@ export const meta: Route.MetaFunction = ({ data }) => {
   const { battle, roster, canonicalUrl, ogImage } = data;
   const title =
     battle.status === "recruiting"
-      ? `${battle.title} — 케미 배틀 참가`
-      : `${battle.title} — 케미 배틀 결과`;
+      ? `${battle.title} — 케미 매칭 참가`
+      : `${battle.title} — 케미 매칭 결과`;
   const description =
     battle.status === "recruiting"
       ? `${roster.length} / ${battle.maxPlayers} 명 모집 중`
       : battle.status === "expired"
-        ? "인원이 모이지 않아 종료된 배틀입니다"
-        : "케미 배틀 결과가 공개되었습니다";
+        ? "인원이 모이지 않아 종료된 매칭입니다"
+        : "케미 매칭 결과가 공개되었습니다";
   return [
     { title },
     { name: "description", content: description },
@@ -179,8 +179,8 @@ function BattleClosedNotice({ expired }: { expired: boolean }) {
     <section style={{ textAlign: "center", padding: "24px 16px" }}>
       <p style={{ color: "#666", fontSize: 14, margin: 0 }}>
         {expired
-          ? "인원이 모이지 않아 종료된 배틀입니다"
-          : "결과가 생성되지 않은 배틀입니다"}
+          ? "인원이 모이지 않아 종료된 매칭입니다"
+          : "결과가 생성되지 않은 매칭입니다"}
       </p>
     </section>
   );

@@ -70,7 +70,7 @@ Future<void> _openCustomTitleWithKeyboard(
   await tester.pumpAndSettle();
 
   // ① 방 유형 → 다음.
-  await tester.tap(find.text('전체 케미 배틀방'));
+  await tester.tap(find.text('전체 케미 매칭방'));
   await tester.pump();
   await tester.tap(find.text('다음'));
   await tester.pumpAndSettle();

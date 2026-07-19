@@ -182,7 +182,7 @@ void main() {
 
     final pub = PublicBattle.fromRow({
       'id': 'b1',
-      'title': '점심 케미 배틀',
+      'title': '점심 케미 매칭',
       'max_players': 6,
       'age_min': null,
       'age_max': null,

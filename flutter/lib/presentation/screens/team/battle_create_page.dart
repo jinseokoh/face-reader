@@ -13,7 +13,7 @@ import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
 /// 방 생성 스텝 (rev2 — UX §A/§C): ①방 유형 → ②방 제목(카테고리→프리셋,
 /// 기타 = 자유 입력) → ③인원(6/8/10/12) → ④연령대(방장 인접 구간 RangeSlider)
-/// → ⑤공개 설정(공개/비밀) → ⑥모집중 참가자 얼굴 공개. [배틀 만들기] = createBattle
+/// → ⑤공개 설정(공개/비밀) → ⑥모집중 참가자 얼굴 공개. [매칭 만들기] = createBattle
 /// + joinBattle(셀프 조인) 후 Battle 반환, 조인 실패 시 방 롤백.
 Future<Battle?> showBattleCreatePage(BuildContext context) {
   return showModalBottomSheet<Battle>(
@@ -132,7 +132,7 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
             ),
             const SizedBox(height: AppSpacing.lg),
             PrimaryButton(
-              label: _step == _Step.thumb ? '배틀 만들기' : '다음',
+              label: _step == _Step.thumb ? '매칭 만들기' : '다음',
               busy: _busy,
               onPressed: _stepValid && !_busy ? _next : null,
             ),
@@ -440,7 +440,7 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
         const SizedBox(height: AppSpacing.md),
         _choiceTile(
           selected: _roomKind == BattleRoomKind.all,
-          title: '전체 케미 배틀방',
+          title: '전체 케미 매칭방',
           caption: '성별 구분 없이 모든 전체 쌍의 케미를 계산합니다',
           onTap: () => setState(() {
             _roomKind = BattleRoomKind.all;
