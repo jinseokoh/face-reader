@@ -81,6 +81,7 @@ class LedgerPage extends ConsumerWidget {
                 ref.invalidate(walletHistoryProvider);
                 await ref.read(walletHistoryProvider.future);
               },
+              color: AppColors.textPrimary,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 // 하단 16 + 제스처 내비 inset.
