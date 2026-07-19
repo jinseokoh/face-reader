@@ -31,12 +31,24 @@ class PushService {
   String? _token;
   bool _inited = false;
 
-  static const _channel = AndroidNotificationChannel(
+  static const _matchChannel = AndroidNotificationChannel(
     'match',
     '매칭 알림',
     description: '케미 매칭 수락·거절 알림',
     importance: Importance.high,
   );
+
+  static const _chatChannel = AndroidNotificationChannel(
+    'chat',
+    '채팅 알림',
+    description: '매칭 상대의 채팅 메시지 알림',
+    importance: Importance.high,
+  );
+
+  /// 지금 보고 있는 채팅방 — 그 방의 메시지 알림은 배너를 생략한다
+  /// (Realtime 이 말풍선을 즉시 그리므로 배너는 이중 소음).
+  /// BattleChatScreen 이 진입/이탈 시 설정·해제.
+  String? activeChatTeamId;
 
   Future<void> initialize() async {
     if (_inited) return;
@@ -50,20 +62,20 @@ class PushService {
         android: AndroidInitializationSettings('@mipmap/launcher_icon'),
         iOS: DarwinInitializationSettings(),
       ),
-      onDidReceiveNotificationResponse: (resp) => _open(resp.payload),
+      onDidReceiveNotificationResponse: (resp) =>
+          _openFromPayload(resp.payload),
     );
-    await _local
+    final android = _local
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.createNotificationChannel(_channel);
+        >();
+    await android?.createNotificationChannel(_matchChannel);
+    await android?.createNotificationChannel(_chatChannel);
     FirebaseMessaging.onMessage.listen(_onForeground);
-    FirebaseMessaging.onMessageOpenedApp.listen(
-      (m) => _open(m.data['team_id']),
-    );
+    FirebaseMessaging.onMessageOpenedApp.listen(_openFromMessage);
     // 종료 상태에서 알림 탭으로 시작된 경우.
     final initial = await _messaging.getInitialMessage();
-    if (initial != null) _open(initial.data['team_id']);
+    if (initial != null) _openFromMessage(initial);
     _messaging.onTokenRefresh.listen((t) {
       _token = t;
       unawaited(_register());
@@ -102,30 +114,49 @@ class PushService {
 
   /// 포그라운드 수신 — FCM 은 자동 표시하지 않으므로 같은 내용의 시스템
   /// 알림을 로컬로 띄운다 (백그라운드 수신과 동일한 모양·탭 동작).
+  /// 예외: 지금 보고 있는 채팅방의 메시지는 배너 생략.
   void _onForeground(RemoteMessage m) {
     debugPrint(
       '[Push] onMessage ${DateTime.now()} title=${m.notification?.title}',
     );
     final n = m.notification;
     if (n == null) return;
+    final kind = m.data['kind'] as String?;
+    final teamId = m.data['team_id'] as String?;
+    if (kind == 'chat' && teamId != null && teamId == activeChatTeamId) return;
+    final channel = kind == 'chat' ? _chatChannel : _matchChannel;
     _local.show(
       id: m.messageId.hashCode,
       title: n.title,
       body: n.body,
       notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
-          _channel.id,
-          _channel.name,
-          channelDescription: _channel.description,
+          channel.id,
+          channel.name,
+          channelDescription: channel.description,
           importance: Importance.high,
           priority: Priority.high,
         ),
       ),
-      payload: m.data['team_id'] as String?,
+      // 로컬 알림 payload 는 문자열 하나 — "kind:teamId" 로 합쳐 싣는다.
+      payload: teamId == null ? null : '${kind ?? 'match'}:$teamId',
     );
   }
 
-  void _open(Object? teamId) {
-    if (teamId is String && teamId.isNotEmpty) router.push('/g/$teamId');
+  void _openFromMessage(RemoteMessage m) =>
+      _open(m.data['kind'] as String?, m.data['team_id'] as String?);
+
+  /// 로컬 알림 탭 payload("kind:teamId") 해석.
+  void _openFromPayload(String? payload) {
+    if (payload == null || payload.isEmpty) return;
+    final sep = payload.indexOf(':');
+    if (sep < 0) return;
+    _open(payload.substring(0, sep), payload.substring(sep + 1));
+  }
+
+  void _open(String? kind, String? teamId) {
+    if (teamId == null || teamId.isEmpty) return;
+    // 채팅 메시지는 채팅방 직행, 매칭 응답은 방 결과(매칭 카드)로.
+    router.push(kind == 'chat' ? '/chat/$teamId' : '/g/$teamId');
   }
 }

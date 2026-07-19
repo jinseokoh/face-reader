@@ -5,11 +5,13 @@ import 'package:go_router/go_router.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/app.dart';
 import 'package:facely/core/theme.dart';
+import 'package:facely/data/services/battle_service.dart';
 import 'package:facely/domain/services/share/share_receive_service.dart';
 import 'package:facely/presentation/screens/compatibility/compatibility_detail_screen.dart';
 import 'package:facely/presentation/screens/chemistry/info_confirm_screen.dart';
 import 'package:facely/presentation/screens/chemistry/report_page.dart';
 import 'package:facely/presentation/screens/ledger/ledger_page.dart';
+import 'package:facely/presentation/screens/team/battle_chat_screen.dart';
 import 'package:facely/presentation/screens/team/battle_detail_screen.dart';
 import 'package:facely/domain/models/capture_result.dart';
 import 'package:facely/domain/models/face_metadata.dart';
@@ -81,6 +83,13 @@ final router = GoRouter(
       path: '/g/:id',
       builder: (ctx, state) =>
           BattleDetailScreen(battleId: state.pathParameters['id']!),
+    ),
+    // 채팅 푸시 딥링크 — 매칭 쌍·닉네임 resolve 후 채팅방 직행.
+    // 매칭이 없거나 미개설이면 방 상세로 후퇴.
+    GoRoute(
+      path: '/chat/:id',
+      builder: (ctx, state) =>
+          _ChatRouteWrapper(teamId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/capture/confirm',
@@ -183,6 +192,52 @@ extension CompatPushExtension on BuildContext {
     go(
       '/r/$a~$b',
       extra: _CompatExtras(my: my, album: album),
+    );
+  }
+}
+
+/// 채팅 푸시 deep-link wrapper — 매칭 쌍(상대 uid)·로스터 닉네임을 resolve
+/// 해 BattleChatScreen 을 연다. 실패·미개설이면 방 상세로 후퇴.
+class _ChatRouteWrapper extends StatefulWidget {
+  final String teamId;
+  const _ChatRouteWrapper({required this.teamId});
+
+  @override
+  State<_ChatRouteWrapper> createState() => _ChatRouteWrapperState();
+}
+
+class _ChatRouteWrapperState extends State<_ChatRouteWrapper> {
+  late final Future<Widget> _future = _resolve();
+
+  Future<Widget> _resolve() async {
+    final svc = BattleService.instance;
+    final uid = svc.myUid;
+    if (uid != null) {
+      try {
+        final match = await svc.fetchMatch(widget.teamId);
+        if (match != null && match.isOpen) {
+          final other = match.otherOf(uid);
+          final roster = await svc.fetchRoster(widget.teamId);
+          var nickname = '상대';
+          for (final r in roster) {
+            if (r.userId == other) nickname = r.nickname;
+          }
+          return BattleChatScreen(
+            teamId: widget.teamId,
+            otherUserId: other,
+            otherNickname: nickname,
+          );
+        }
+      } catch (_) {}
+    }
+    return BattleDetailScreen(battleId: widget.teamId);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Widget>(
+      future: _future,
+      builder: (ctx, snap) => snap.data ?? const _LoadingScaffold(),
     );
   }
 }

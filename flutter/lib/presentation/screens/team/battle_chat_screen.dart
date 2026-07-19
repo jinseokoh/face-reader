@@ -5,6 +5,7 @@ import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
 import '../../../core/theme.dart';
 import '../../../data/services/battle_service.dart';
+import '../../../data/services/push_service.dart';
 import '../../../domain/models/battle.dart';
 import '../../widgets/compact_snack_bar.dart';
 
@@ -37,12 +38,17 @@ class _BattleChatScreenState extends State<BattleChatScreen> {
   @override
   void initState() {
     super.initState();
+    // 이 방을 보는 동안은 이 방의 메시지 푸시 배너를 생략 (Realtime 이 그린다).
+    PushService.instance.activeChatTeamId = widget.teamId;
     _load();
     _channel = _service.watchMatch(widget.teamId, _load);
   }
 
   @override
   void dispose() {
+    if (PushService.instance.activeChatTeamId == widget.teamId) {
+      PushService.instance.activeChatTeamId = null;
+    }
     final ch = _channel;
     if (ch != null) _service.unwatch(ch);
     _controller.dispose();
@@ -61,7 +67,9 @@ class _BattleChatScreenState extends State<BattleChatScreen> {
   /// 신고 사유 프리셋 — 스토어 UGC 정책의 신고 경로. 선택 즉시 접수.
   static const _reportReasons = ['스팸·광고', '욕설·비방', '음란·성적 발언', '기타 부적절한 행위'];
 
-  Future<void> _report() async {
+  /// [message] 를 주면 개별 메시지 신고 — 사유에 메시지 본문을 함께 접수해
+  /// 운영이 맥락을 본다 (말풍선 길게 누르기 진입).
+  Future<void> _report({BattleMessage? message}) async {
     final reason = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -69,7 +77,10 @@ class _BattleChatScreenState extends State<BattleChatScreen> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.xl),
         ),
-        title: const Text('신고하기', style: AppText.modalTitle),
+        title: Text(
+          message == null ? '신고하기' : '메시지 신고',
+          style: AppText.modalTitle,
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -94,11 +105,15 @@ class _BattleChatScreenState extends State<BattleChatScreen> {
       ),
     );
     if (reason == null || !mounted) return;
+    // 메시지 신고는 본문을 사유에 동봉 — 서버 check(200자) 안으로 자른다.
+    final packed = message == null
+        ? reason
+        : '[메시지] $reason · "${message.body}"'.characters.take(200).toString();
     try {
       await _service.reportChatUser(
         teamId: widget.teamId,
         reportedId: widget.otherUserId,
-        reason: reason,
+        reason: packed,
       );
       if (mounted) {
         showTopSnackBar(
@@ -222,9 +237,14 @@ class _BattleChatScreenState extends State<BattleChatScreen> {
                       itemCount: _messages.length,
                       itemBuilder: (ctx, i) {
                         final msg = _messages[_messages.length - 1 - i];
+                        final isMine = msg.senderId == myUid;
                         return _MessageBubble(
                           message: msg,
-                          isMine: msg.senderId == myUid,
+                          isMine: isMine,
+                          // 상대 메시지만 길게 눌러 신고 (스토어 UGC 정책).
+                          onLongPress: isMine
+                              ? null
+                              : () => _report(message: msg),
                         );
                       },
                     ),
@@ -276,10 +296,16 @@ class _BattleChatScreenState extends State<BattleChatScreen> {
 }
 
 /// 버블 = surface+border 카드 레시피 단일톤 — 좌우 정렬로만 발신자 구분.
+/// [onLongPress] — 상대 메시지 신고 진입 (내 메시지는 null).
 class _MessageBubble extends StatelessWidget {
   final BattleMessage message;
   final bool isMine;
-  const _MessageBubble({required this.message, required this.isMine});
+  final VoidCallback? onLongPress;
+  const _MessageBubble({
+    required this.message,
+    required this.isMine,
+    this.onLongPress,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -299,17 +325,20 @@ class _MessageBubble extends StatelessWidget {
               constraints: BoxConstraints(
                 maxWidth: MediaQuery.of(context).size.width * 0.72,
               ),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md,
-                  vertical: AppSpacing.sm,
+              child: GestureDetector(
+                onLongPress: onLongPress,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.sm,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Text(message.body, style: AppText.body),
                 ),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Text(message.body, style: AppText.body),
               ),
             ),
             const SizedBox(height: 2),

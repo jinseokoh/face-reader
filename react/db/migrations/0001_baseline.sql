@@ -1046,6 +1046,40 @@ create trigger team_matches_notify
   after update on public.team_matches
   for each row execute function public.notify_match_response();
 
+-- 채팅 메시지 INSERT → Worker(/api/push/chat) — 상대에게 FCM 발송.
+-- 대상 = 그 방 매칭 쌍에서 보낸이의 반대편. 비밀 미설정이면 조용히 통과.
+create or replace function public.notify_chat_message()
+returns trigger
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_target uuid;
+  v_secret text;
+begin
+  select case when m.user_a = new.sender_id then m.user_b else m.user_a end
+    into v_target
+    from team_matches m
+   where m.team_id = new.team_id;
+  if v_target is null or v_target = new.sender_id then return new; end if;
+  select value into v_secret from app_secrets where key = 'push_webhook_secret';
+  if v_secret is null then return new; end if;
+  perform net.http_post(
+    url     := 'https://facely.kr/api/push/chat',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json', 'x-push-secret', v_secret),
+    body    := jsonb_build_object(
+      'team_id', new.team_id, 'target', v_target,
+      'sender', new.sender_id, 'preview', left(new.body, 80))
+  );
+  return new;
+end;
+$$;
+
+drop trigger if exists team_messages_notify on public.team_messages;
+create trigger team_messages_notify
+  after insert on public.team_messages
+  for each row execute function public.notify_chat_message();
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 11-5. Battle RPC 상태 머신 + 공개 목록 view + Realtime
 -- ─────────────────────────────────────────────────────────────────────────────
