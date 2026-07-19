@@ -296,6 +296,17 @@ class BattleService {
   Future<void> unwatch(RealtimeChannel channel) =>
       _client.removeChannel(channel);
 
+  /// 채팅방이 열린 내 매칭의 team_id 집합 — 내 매칭 카드 강조용.
+  /// RLS(pair_read)가 내 쌍 행만 돌려주므로 필터는 opened 여부 하나면 된다.
+  Future<Set<String>> fetchOpenChatTeamIds() async {
+    if (myUid == null) return const {};
+    final rows = await _client
+        .from('team_matches')
+        .select('team_id')
+        .not('opened_at', 'is', null);
+    return {for (final r in rows) r['team_id'] as String};
+  }
+
   /// 매칭 성사 상태 — RLS 상 쌍 본인에게만 row 가 보인다(남에겐 null).
   Future<BattleMatch?> fetchMatch(String teamId) async {
     final row = await _client
@@ -340,9 +351,8 @@ class BattleService {
 
   /// 상대 차단 — 이후 서로의 매칭방 조인이 양방향으로 거부되고(join_team
   /// 게이트), 상대가 방장인 방은 공개 목록에서 숨는다. 중복 차단은 no-op.
-  Future<void> blockUser(String blockedId) => _client
-      .from('user_blocks')
-      .upsert({
+  Future<void> blockUser(String blockedId) =>
+      _client.from('user_blocks').upsert({
         'blocker_id': myUid!,
         'blocked_id': blockedId,
       }, ignoreDuplicates: true);

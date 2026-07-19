@@ -4,6 +4,10 @@ import '../../../core/theme.dart';
 
 // 기존 케미 4밴드 색 승계 (신규 색상 도입 금지).
 const _kBandGreen = Color(0xFF2E7D32);
+
+/// 밴드 밖 강조 재사용 — 채팅방 열린 매칭 카드 배경·테두리 (신규 색 금지,
+/// 천생연분 초록 승계).
+const kBandGreen = _kBandGreen;
 const _kBandBlue = Color(0xFF1565C0);
 const _kBandOrange = Color(0xFFEF6C00);
 const _kBandRed = Color(0xFFD32F2F);

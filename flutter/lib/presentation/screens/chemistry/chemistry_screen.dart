@@ -11,6 +11,7 @@ import '../../widgets/age_range_pill.dart';
 import '../../widgets/emotion_empty_state.dart';
 import '../../widgets/face_scan_pill.dart';
 import '../../widgets/login_bottom_sheet.dart';
+import '../team/battle_band.dart';
 import '../team/battle_create_page.dart';
 import '../team/battle_detail_screen.dart';
 import '../team/team_reveal_screen.dart';
@@ -423,8 +424,14 @@ class _MineTabState extends ConsumerState<_MineTab> {
   @override
   Widget build(BuildContext context) {
     final battles = ref.watch(myBattlesProvider);
+    // 채팅방 열린 매칭 — 카드 초록 강조 (관상탭 내 관상 금색과 같은 문법).
+    final openChats =
+        ref.watch(openChatTeamsProvider).value ?? const <String>{};
     return RefreshIndicator(
-      onRefresh: () async => ref.invalidate(myBattlesProvider),
+      onRefresh: () async {
+        ref.invalidate(myBattlesProvider);
+        ref.invalidate(openChatTeamsProvider);
+      },
       child: battles.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => ListView(
@@ -470,7 +477,11 @@ class _MineTabState extends ConsumerState<_MineTab> {
                     labelOf: (f) => f.label,
                     onChanged: (f) => setState(() => _filter = f),
                   )
-                : _MineCard(battle: filtered[i - 1], onOpen: widget.onOpen),
+                : _MineCard(
+                    battle: filtered[i - 1],
+                    onOpen: widget.onOpen,
+                    hasOpenChat: openChats.contains(filtered[i - 1].id),
+                  ),
           );
         },
       ),
@@ -481,7 +492,14 @@ class _MineTabState extends ConsumerState<_MineTab> {
 class _MineCard extends ConsumerWidget {
   final Battle battle;
   final void Function(Battle) onOpen;
-  const _MineCard({required this.battle, required this.onOpen});
+
+  /// 채팅방 열림 — 초록 tint 배경 + 초록 1px border (내 관상 금색과 같은 문법).
+  final bool hasOpenChat;
+  const _MineCard({
+    required this.battle,
+    required this.onOpen,
+    this.hasOpenChat = false,
+  });
 
   /// 유효 시한 줄 — 모집 중 = 상태 그대로, 완료 = 30일 purge 시한 (사실 카피).
   String get _validityLabel => switch (battle.status) {
@@ -508,9 +526,13 @@ class _MineCard extends ConsumerWidget {
         margin: const EdgeInsets.only(bottom: AppSpacing.sm),
         padding: const EdgeInsets.all(AppSpacing.lg),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: hasOpenChat
+              ? kBandGreen.withValues(alpha: 0.08)
+              : AppColors.surface,
           borderRadius: BorderRadius.circular(AppRadius.lg),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(
+            color: hasOpenChat ? kBandGreen : AppColors.border,
+          ),
         ),
         child: _BattleCardBody(
           title: battle.title,
