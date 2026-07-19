@@ -211,6 +211,14 @@ class _PublicTabState extends ConsumerState<_PublicTab> {
   @override
   Widget build(BuildContext context) {
     final battles = ref.watch(publicBattlesProvider);
+    // 공개 목록엔 방장 정보가 없다 (public_teams 화이트리스트) — 내 배틀
+    // 목록과 대조해 내가 방장인 방을 식별한다.
+    final myUid = BattleService.instance.myUid;
+    final mineIds = {
+      for (final b
+          in ref.watch(myBattlesProvider).valueOrNull ?? const <Battle>[])
+        if (b.ownerId != null && b.ownerId == myUid) b.id,
+    };
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(publicBattlesProvider),
       child: battles.when(
@@ -255,7 +263,10 @@ class _PublicTabState extends ConsumerState<_PublicTab> {
                     labelOf: (o) => o.label,
                     onChanged: (o) => setState(() => _order = o),
                   )
-                : _PublicCard(battle: sorted[i - 1]),
+                : _PublicCard(
+                    battle: sorted[i - 1],
+                    isOwner: mineIds.contains(sorted[i - 1].id),
+                  ),
           );
         },
       ),
@@ -265,7 +276,8 @@ class _PublicTabState extends ConsumerState<_PublicTab> {
 
 class _PublicCard extends StatefulWidget {
   final PublicBattle battle;
-  const _PublicCard({required this.battle});
+  final bool isOwner;
+  const _PublicCard({required this.battle, this.isOwner = false});
 
   @override
   State<_PublicCard> createState() => _PublicCardState();
@@ -305,6 +317,7 @@ class _PublicCardState extends State<_PublicCard> {
           validity: '모집중',
           thumbOpen: battle.thumbOpen,
           isPrivate: battle.isPrivate,
+          isOwner: widget.isOwner,
         ),
       ),
     );
