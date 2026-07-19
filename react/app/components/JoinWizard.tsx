@@ -952,7 +952,7 @@ export function JoinWizard({
           </div>
           {waitCount > 0 && (
             <p className="join-sub">
-              나머지 {waitCount}명이 등록을 마치면 케미 매칭이 시작됩니다.
+              나머지 {waitCount}명이 등록을 마치면 매칭이 시작됩니다.
             </p>
           )}
           <p className="join-sub" style={{ marginTop: 4 }}>

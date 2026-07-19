@@ -21,7 +21,7 @@ import '../../widgets/my_face_capture_flow.dart';
 import '../../widgets/primary_button.dart';
 import 'team_reveal_screen.dart';
 
-/// 케미 매칭 상세 페이지 — 참가 여부와 무관한 단일 진입점.
+/// 케미 그룹 상세 페이지 — 참가 여부와 무관한 단일 진입점.
 /// 미참가자에겐 참가 폼(PIN·사진 공개 동의·참가 CTA), 참가자에겐 슬롯
 /// 그리드·QR·초대가 같은 화면 안에서 분기된다. 조인 성공도 화면 전환 없이
 /// in-place 로 참가자 뷰가 된다 (멤버 판정 리다이렉트 없음).
@@ -234,7 +234,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.xl),
         ),
-        title: const Text('방 삭제', style: AppText.modalTitle),
+        title: const Text('그룹 삭제', style: AppText.modalTitle),
         content: const Text('참가자 명단이 함께 삭제됩니다.', style: AppText.body),
         actions: [
           TextButton(
@@ -282,7 +282,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
       appBar: AppBar(
         // 방 제목은 헤더 카드가 보여준다 — AppBar 는 고정 타이틀 (로딩 중
         // 타이틀이 방제목으로 바뀌는 깜빡임 제거).
-        title: const Text('케미 매칭 상세정보'),
+        title: const Text('케미 그룹 상세정보'),
         actions: [
           if (battle != null && member && battle.isRecruiting)
             PopupMenuButton<String>(
@@ -292,7 +292,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
                 if (!_isOwner)
                   const PopupMenuItem(value: 'leave', child: Text('나가기')),
                 if (_isOwner)
-                  const PopupMenuItem(value: 'delete', child: Text('방 삭제')),
+                  const PopupMenuItem(value: 'delete', child: Text('그룹 삭제')),
               ],
             ),
         ],
@@ -302,7 +302,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : _notFound || battle == null
-            ? Center(child: Text('존재하지 않는 방입니다', style: AppText.body))
+            ? Center(child: Text('존재하지 않는 그룹입니다', style: AppText.body))
             : !battle.isRecruiting
             ? _closedBody(battle)
             : member
@@ -322,8 +322,8 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
           children: [
             Text(
               battle.status == BattleStatus.expired
-                  ? '인원이 모이지 않아 종료된 방입니다'
-                  : '이미 시작된 방입니다',
+                  ? '인원이 모이지 않아 종료된 그룹입니다'
+                  : '이미 시작된 그룹입니다',
               style: AppText.body,
               textAlign: TextAlign.center,
             ),
@@ -350,6 +350,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
     final canJoin = battle.isPublic || _pinCtrl.text.trim().length == 4;
     return RefreshIndicator(
       onRefresh: _refresh,
+      color: AppColors.textPrimary,
       child: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
@@ -401,6 +402,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
   Widget _memberBody(Battle battle) {
     return RefreshIndicator(
       onRefresh: _refresh,
+      color: AppColors.textPrimary,
       child: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
@@ -416,7 +418,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
     );
   }
 
-  /// 공개 매칭 카드(_PublicCard)와 동일한 결 — 제목 + 연령 pill / 정원.
+  /// 공개 그룹 카드(_PublicCard)와 동일한 결 — 제목 + 연령 pill / 정원.
   /// [showRemaining] = 미참가 이성방에서 성별 남은 자리 표시 (참가자 뷰는
   /// 슬롯 열 헤더가 같은 정보를 보여주므로 생략).
   Widget _headerCard(Battle battle, {bool showRemaining = false}) {

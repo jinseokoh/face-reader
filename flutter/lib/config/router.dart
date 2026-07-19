@@ -77,7 +77,7 @@ final router = GoRouter(
         ),
       ],
     ),
-    // 케미 매칭 초대 — `/g/{battleId}` → 상세 페이지. BattleDetailScreen 이
+    // 케미 그룹 초대 — `/g/{battleId}` → 상세 페이지. BattleDetailScreen 이
     // 서버 fetch + 합류 처리를 책임 (web `/g/:id` 와 path 동일).
     GoRoute(
       path: '/g/:id',

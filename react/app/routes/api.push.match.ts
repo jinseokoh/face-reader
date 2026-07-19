@@ -61,7 +61,7 @@ export async function action({ request, context }: Route.ActionArgs) {
     get<{ title: string }>(`teams?select=title&id=eq.${team_id}`),
   ])
   const nick = nicks[0]?.nickname ?? '상대'
-  const roomTitle = teams[0]?.title ?? '케미 매칭'
+  const roomTitle = teams[0]?.title ?? '케미 그룹'
 
   let title: string
   let kind: string

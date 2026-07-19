@@ -13,7 +13,7 @@ import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
 /// 방 생성 스텝 (rev2 — UX §A/§C): ①방 유형 → ②방 제목(카테고리→프리셋,
 /// 기타 = 자유 입력) → ③인원(6/8/10/12) → ④연령대(방장 인접 구간 RangeSlider)
-/// → ⑤공개 설정(공개/비밀) → ⑥모집중 참가자 얼굴 공개. [매칭 만들기] = createBattle
+/// → ⑤공개 설정(공개/비밀) → ⑥모집중 참가자 얼굴 공개. [그룹 만들기] = createBattle
 /// + joinBattle(셀프 조인) 후 Battle 반환, 조인 실패 시 방 롤백.
 Future<Battle?> showBattleCreatePage(BuildContext context) {
   return showModalBottomSheet<Battle>(
@@ -132,7 +132,7 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
             ),
             const SizedBox(height: AppSpacing.lg),
             PrimaryButton(
-              label: _step == _Step.thumb ? '매칭 만들기' : '다음',
+              label: _step == _Step.thumb ? '그룹 만들기' : '다음',
               busy: _busy,
               onPressed: _stepValid && !_busy ? _next : null,
             ),
@@ -415,11 +415,11 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('어떤 방을 만들까요?', style: AppText.display),
+        Text('어떤 그룹을 만들까요?', style: AppText.display),
         const SizedBox(height: AppSpacing.xxl),
         _choiceTile(
           selected: _roomKind == BattleRoomKind.match,
-          title: '이성 케미 매칭방',
+          title: '이성 케미 매칭그룹',
           caption: '남녀 반반으로 고정되고 결과는 남녀 쌍만 계산합니다',
           onTap: () => setState(() {
             _roomKind = BattleRoomKind.match;
@@ -440,7 +440,7 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
         const SizedBox(height: AppSpacing.md),
         _choiceTile(
           selected: _roomKind == BattleRoomKind.all,
-          title: '전체 케미 매칭방',
+          title: '전체 케미 매칭그룹',
           caption: '성별 구분 없이 모든 전체 쌍의 케미를 계산합니다',
           onTap: () => setState(() {
             _roomKind = BattleRoomKind.all;
@@ -498,9 +498,9 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
               .where((t) => t.allowedKinds.contains(_roomKind))
               .toList();
     final header = [
-      Text('방 제목을 고르세요', style: AppText.display),
+      Text('그룹 제목을 고르세요', style: AppText.display),
       const SizedBox(height: AppSpacing.sm),
-      Text('방 목록과 초대장에 보입니다', style: AppText.caption),
+      Text('그룹 목록과 초대장에 보입니다', style: AppText.caption),
       const SizedBox(height: AppSpacing.xxl),
       SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -548,7 +548,7 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
                   final t = v.trim();
                   _selectedTitle = t.isEmpty ? null : t;
                 }),
-                decoration: const InputDecoration(hintText: '방 제목을 직접 입력하세요'),
+                decoration: const InputDecoration(hintText: '그룹 제목을 직접 입력하세요'),
               ),
             ),
           ],
@@ -624,14 +624,14 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
         const SizedBox(height: AppSpacing.xxl),
         _choiceTile(
           selected: _isPublic,
-          title: '공개방',
+          title: '공개 그룹',
           caption: '비밀번호 없이 누구나 참가할 수 있습니다',
           onTap: () => setState(() => _isPublic = true),
         ),
         const SizedBox(height: AppSpacing.md),
         _choiceTile(
           selected: !_isPublic,
-          title: '비밀방',
+          title: '비밀 그룹',
           caption: '비밀번호를 아는 사람만 참가할 수 있습니다',
           onTap: () => setState(() => _isPublic = false),
         ),

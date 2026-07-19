@@ -6,7 +6,7 @@ import '../../../data/services/battle_service.dart';
 import '../../widgets/compact_snack_bar.dart';
 
 /// 설정 > 차단 목록 — 차단 상대 닉네임 + [해제]. 해제하면 다시 같은
-/// 매칭방 참가가 가능해진다 (재차단은 매칭 채팅에서만 가능하므로 확인
+/// 매칭그룹 참가가 가능해진다 (재차단은 매칭 채팅에서만 가능하므로 확인
 /// 다이얼로그를 거친다).
 class BlockedUsersScreen extends StatefulWidget {
   const BlockedUsersScreen({super.key});
@@ -45,7 +45,7 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
         ),
         title: const Text('차단 해제', style: AppText.modalTitle),
         content: Text(
-          '${user.nickname}님과 다시 같은 매칭방에 참가할 수 있게 됩니다.',
+          '${user.nickname}님과 다시 같은 매칭그룹에 참가할 수 있게 됩니다.',
           style: AppText.body,
         ),
         actions: [

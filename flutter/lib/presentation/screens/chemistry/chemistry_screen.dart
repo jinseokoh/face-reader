@@ -17,7 +17,7 @@ import '../team/battle_detail_screen.dart';
 import '../team/team_reveal_screen.dart';
 
 /// 케미 탭 = Chemistry Battle 방 목록 브라우저.
-/// 내부 2탭: 공개 매칭(목록에서 발견·참가) / 내 매칭(진행·완료).
+/// 내부 2탭: 공개 그룹(목록에서 발견·참가) / 내 그룹(진행·완료).
 class ChemistryScreen extends ConsumerStatefulWidget {
   const ChemistryScreen({super.key});
 
@@ -62,9 +62,9 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.xl),
         ),
-        title: const Text('방 만들기 사용불가', style: AppText.modalTitle),
+        title: const Text('그룹 만들기 사용불가', style: AppText.modalTitle),
         content: const Text(
-          '케미 매칭 방 만들기는 20세 이상부터 사용할 수 있습니다. '
+          '케미 그룹 만들기는 20세 이상부터 사용할 수 있습니다. '
           '내 관상 분석의 나이대가 10대로 확인되어 지금은 만들 수 없습니다.',
           style: AppText.body,
         ),
@@ -96,14 +96,18 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.xl),
         ),
-        title: const Text('케미 매칭', style: AppText.modalTitle),
+        title: const Text('케미 그룹', style: AppText.modalTitle),
         content: const SingleChildScrollView(
           child: Text(
-            '방을 만들면 참가자들이 각자 들어옵니다.\n'
-            '정원이 다 차면 케미 결과표가 자동으로 발표됩니다.\n'
-            '결과에서 베스트 케미와 케미 맵이 공개됩니다.\n\n'
-            '모집 중인 방은 모두 목록에 보입니다.\n'
-            '비밀번호가 있는 방은 비밀번호를 알아야 참가할 수 있습니다.',
+            '6, 8, 10, 12명 정원의 그룹을 만들어 온라인에서 만나는 '
+            '다양한 사람들과 서로 케미가 좋은지 확인하는 기능입니다.\n'
+            '정원이 다 차면 그룹 케미 결과표가 자동으로 발표됩니다.\n\n'
+            '공개 그룹에는 누구나 언제든 참가할 수 있고,\n'
+            '[그룹 만들기]로 원하는 그룹을 직접 만들 수도 있습니다.\n\n'
+            '지인들끼리만 모이고 싶다면 비밀번호를 설정한 비밀 그룹을 '
+            '만드세요.\n'
+            '공유하기로 카카오톡 등 원하는 채널을 통해 그룹에 초대할 수 '
+            '있습니다.',
             style: AppText.body,
           ),
         ),
@@ -132,7 +136,7 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
               _CreatePill(onTap: _create),
             IconButton(
               icon: const FaIcon(FontAwesomeIcons.circleInfo, size: 20),
-              tooltip: '케미 매칭에 대하여',
+              tooltip: '케미 그룹에 대하여',
               onPressed: () => _showInfoDialog(context),
             ),
           ],
@@ -143,8 +147,8 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
                   unselectedLabelColor: AppColors.textHint,
                   indicatorColor: AppColors.textPrimary,
                   tabs: [
-                    Tab(text: '공개 매칭'),
-                    Tab(text: '내 매칭'),
+                    Tab(text: '공개 그룹'),
+                    Tab(text: '내 그룹'),
                   ],
                 )
               : null,
@@ -152,7 +156,7 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
         body: !hasMyFace
             ? const EmotionEmptyState(
                 asset: 'assets/images/emotion-shrug.png',
-                message: '내 관상을 등록하면 케미 매칭에 참가할 수 있습니다',
+                message: '내 관상을 등록하면 케미 그룹에 참가할 수 있습니다',
               )
             : TabBarView(
                 children: [
@@ -187,7 +191,7 @@ class _CreatePill extends StatelessWidget {
             border: Border.all(color: AppColors.textPrimary),
           ),
           child: Text(
-            '매칭 만들기',
+            '그룹 만들기',
             style: AppText.caption.copyWith(
               color: AppColors.textPrimary,
               fontWeight: FontWeight.w700,
@@ -212,7 +216,7 @@ class _PublicTabState extends ConsumerState<_PublicTab> {
   @override
   Widget build(BuildContext context) {
     final battles = ref.watch(publicBattlesProvider);
-    // 공개 목록엔 방장 정보가 없다 (public_teams 화이트리스트) — 내 매칭
+    // 공개 목록엔 방장 정보가 없다 (public_teams 화이트리스트) — 내 그룹
     // 목록과 대조해 내가 방장인 방을 식별한다.
     final myUid = BattleService.instance.myUid;
     final mineIds = {
@@ -221,6 +225,7 @@ class _PublicTabState extends ConsumerState<_PublicTab> {
     };
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(publicBattlesProvider),
+      color: AppColors.textPrimary,
       child: battles.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => ListView(
@@ -242,7 +247,7 @@ class _PublicTabState extends ConsumerState<_PublicTab> {
                 SizedBox(height: 120),
                 EmotionEmptyState(
                   asset: 'assets/images/emotion-frown.png',
-                  message: '모집 중인 공개 매칭이 없습니다',
+                  message: '모집 중인 공개 그룹이 없습니다',
                 ),
               ],
             );
@@ -324,7 +329,7 @@ class _PublicCardState extends State<_PublicCard> {
   }
 }
 
-/// 공개 매칭·내 매칭 공용 카드 본문 — 제목+연령 pill / 유형·정원 / 유효 시한.
+/// 공개 그룹·내 그룹 공용 카드 본문 — 제목+연령 pill / 유형·정원 / 유효 시한.
 /// 두 목록의 item 은 이 위젯 하나로 같은 결을 강제한다.
 class _BattleCardBody extends StatelessWidget {
   final String title;
@@ -336,7 +341,7 @@ class _BattleCardBody extends StatelessWidget {
   final bool thumbOpen;
   final bool isPrivate;
 
-  /// 내 매칭 전용 — 내가 방장인 방에 '방장' pill (연령 pill 과 동일 레시피).
+  /// 내 그룹 전용 — 내가 방장인 방에 '방장' pill (연령 pill 과 동일 레시피).
   final bool isOwner;
   const _BattleCardBody({
     required this.title,
@@ -424,7 +429,7 @@ class _MineTabState extends ConsumerState<_MineTab> {
   @override
   Widget build(BuildContext context) {
     final battles = ref.watch(myBattlesProvider);
-    // 채팅방 열린 매칭 — 카드 초록 강조 (관상탭 내 관상 금색과 같은 문법).
+    // 채팅방 열린 그룹 — 카드 초록 강조 (관상탭 내 관상 금색과 같은 문법).
     final openChats =
         ref.watch(openChatTeamsProvider).value ?? const <String>{};
     return RefreshIndicator(
@@ -432,6 +437,7 @@ class _MineTabState extends ConsumerState<_MineTab> {
         ref.invalidate(myBattlesProvider);
         ref.invalidate(openChatTeamsProvider);
       },
+      color: AppColors.textPrimary,
       child: battles.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => ListView(
@@ -453,7 +459,7 @@ class _MineTabState extends ConsumerState<_MineTab> {
                 SizedBox(height: 120),
                 EmotionEmptyState(
                   asset: 'assets/images/emotion-laugh.png',
-                  message: '참가 중인 매칭이 없습니다',
+                  message: '참가 중인 그룹이 없습니다',
                 ),
               ],
             );

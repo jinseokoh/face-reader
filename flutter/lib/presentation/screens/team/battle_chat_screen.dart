@@ -143,7 +143,7 @@ class _BattleChatScreenState extends State<BattleChatScreen> {
         ),
         title: const Text('차단하기', style: AppText.modalTitle),
         content: const Text(
-          '차단하면 상대에게 알리지 않고, 앞으로 같은 매칭방에 함께 참가할 수 없게 됩니다. 설정의 차단 목록에서 해제할 수 있습니다.',
+          '차단하면 상대에게 알리지 않고, 앞으로 같은 매칭그룹에 함께 참가할 수 없게 됩니다. 설정의 차단 목록에서 해제할 수 있습니다.',
           style: AppText.body,
         ),
         actions: [

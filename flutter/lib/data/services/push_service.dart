@@ -34,7 +34,7 @@ class PushService {
   static const _matchChannel = AndroidNotificationChannel(
     'match',
     '매칭 알림',
-    description: '케미 매칭 수락·거절 알림',
+    description: '케미 그룹 매칭 수락·거절 알림',
     importance: Importance.high,
   );
 
