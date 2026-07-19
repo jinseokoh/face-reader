@@ -215,8 +215,7 @@ class _PublicTabState extends ConsumerState<_PublicTab> {
     // 목록과 대조해 내가 방장인 방을 식별한다.
     final myUid = BattleService.instance.myUid;
     final mineIds = {
-      for (final b
-          in ref.watch(myBattlesProvider).valueOrNull ?? const <Battle>[])
+      for (final b in ref.watch(myBattlesProvider).value ?? const <Battle>[])
         if (b.ownerId != null && b.ownerId == myUid) b.id,
     };
     return RefreshIndicator(
