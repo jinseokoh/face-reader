@@ -1017,9 +1017,12 @@ declare
   v_accepted  boolean;
   v_secret    text;
 begin
-  if new.a_consent is distinct from old.a_consent then
+  -- null 전이(응답 철회 — 운영·시험 리셋에서만 발생)는 알릴 사건이 아니다.
+  if new.a_consent is distinct from old.a_consent
+     and new.a_consent is not null then
     v_responder := new.user_a; v_target := new.user_b; v_accepted := new.a_consent;
-  elsif new.b_consent is distinct from old.b_consent then
+  elsif new.b_consent is distinct from old.b_consent
+     and new.b_consent is not null then
     v_responder := new.user_b; v_target := new.user_a; v_accepted := new.b_consent;
   else
     return new;
