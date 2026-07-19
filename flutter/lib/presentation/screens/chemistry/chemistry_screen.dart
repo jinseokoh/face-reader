@@ -198,11 +198,18 @@ class _CreatePill extends StatelessWidget {
   }
 }
 
-class _PublicTab extends ConsumerWidget {
+class _PublicTab extends ConsumerStatefulWidget {
   const _PublicTab();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_PublicTab> createState() => _PublicTabState();
+}
+
+class _PublicTabState extends ConsumerState<_PublicTab> {
+  _SortOrder _order = _SortOrder.newest;
+
+  @override
+  Widget build(BuildContext context) {
     final battles = ref.watch(publicBattlesProvider);
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(publicBattlesProvider),
@@ -220,21 +227,37 @@ class _PublicTab extends ConsumerWidget {
             ),
           ],
         ),
-        data: (list) => list.isEmpty
-            ? ListView(
-                children: const [
-                  SizedBox(height: 120),
-                  EmotionEmptyState(
-                    asset: 'assets/images/emotion-frown.png',
-                    message: '모집 중인 공개 배틀이 없습니다',
-                  ),
-                ],
-              )
-            : ListView.builder(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                itemCount: list.length,
-                itemBuilder: (ctx, i) => _PublicCard(battle: list[i]),
-              ),
+        data: (list) {
+          if (list.isEmpty) {
+            return ListView(
+              children: const [
+                SizedBox(height: 120),
+                EmotionEmptyState(
+                  asset: 'assets/images/emotion-frown.png',
+                  message: '모집 중인 공개 배틀이 없습니다',
+                ),
+              ],
+            );
+          }
+          final sorted = [...list]
+            ..sort(
+              (a, b) => _order == _SortOrder.newest
+                  ? b.createdAt.compareTo(a.createdAt)
+                  : a.createdAt.compareTo(b.createdAt),
+            );
+          return ListView.builder(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            itemCount: sorted.length + 1,
+            itemBuilder: (ctx, i) => i == 0
+                ? _ListSelector<_SortOrder>(
+                    value: _order,
+                    values: _SortOrder.values,
+                    labelOf: (o) => o.label,
+                    onChanged: (o) => setState(() => _order = o),
+                  )
+                : _PublicCard(battle: sorted[i - 1]),
+          );
+        },
       ),
     );
   }
@@ -299,6 +322,9 @@ class _BattleCardBody extends StatelessWidget {
   final String validity;
   final bool thumbOpen;
   final bool isPrivate;
+
+  /// 내 배틀 전용 — 내가 방장인 방에 '방장' pill (연령 pill 과 동일 레시피).
+  final bool isOwner;
   const _BattleCardBody({
     required this.title,
     required this.ageLabel,
@@ -308,6 +334,7 @@ class _BattleCardBody extends StatelessWidget {
     required this.validity,
     required this.thumbOpen,
     required this.isPrivate,
+    this.isOwner = false,
   });
 
   @override
@@ -324,6 +351,10 @@ class _BattleCardBody extends StatelessWidget {
           children: [
             Expanded(child: Text(title, style: AppText.subTitle)),
             const SizedBox(width: AppSpacing.sm),
+            if (isOwner) ...[
+              const AgeRangePill(label: '방장'),
+              const SizedBox(width: AppSpacing.xs),
+            ],
             AgeRangePill(label: ageLabel),
           ],
         ),
@@ -366,12 +397,19 @@ class _BattleCardBody extends StatelessWidget {
   }
 }
 
-class _MineTab extends ConsumerWidget {
+class _MineTab extends ConsumerStatefulWidget {
   final void Function(Battle) onOpen;
   const _MineTab({required this.onOpen});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_MineTab> createState() => _MineTabState();
+}
+
+class _MineTabState extends ConsumerState<_MineTab> {
+  _MineFilter _filter = _MineFilter.all;
+
+  @override
+  Widget build(BuildContext context) {
     final battles = ref.watch(myBattlesProvider);
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(myBattlesProvider),
@@ -389,22 +427,40 @@ class _MineTab extends ConsumerWidget {
             ),
           ],
         ),
-        data: (list) => list.isEmpty
-            ? ListView(
-                children: const [
-                  SizedBox(height: 120),
-                  EmotionEmptyState(
-                    asset: 'assets/images/emotion-laugh.png',
-                    message: '참가 중인 배틀이 없습니다',
-                  ),
-                ],
-              )
-            : ListView.builder(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                itemCount: list.length,
-                itemBuilder: (ctx, i) =>
-                    _MineCard(battle: list[i], onOpen: onOpen),
-              ),
+        data: (list) {
+          if (list.isEmpty) {
+            return ListView(
+              children: const [
+                SizedBox(height: 120),
+                EmotionEmptyState(
+                  asset: 'assets/images/emotion-laugh.png',
+                  message: '참가 중인 배틀이 없습니다',
+                ),
+              ],
+            );
+          }
+          final filtered = [
+            for (final b in list)
+              if (switch (_filter) {
+                _MineFilter.all => true,
+                _MineFilter.recruiting => b.status == BattleStatus.recruiting,
+                _MineFilter.closed => b.status != BattleStatus.recruiting,
+              })
+                b,
+          ];
+          return ListView.builder(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            itemCount: filtered.length + 1,
+            itemBuilder: (ctx, i) => i == 0
+                ? _ListSelector<_MineFilter>(
+                    value: _filter,
+                    values: _MineFilter.values,
+                    labelOf: (f) => f.label,
+                    onChanged: (f) => setState(() => _filter = f),
+                  )
+                : _MineCard(battle: filtered[i - 1], onOpen: widget.onOpen),
+          );
+        },
       ),
     );
   }
@@ -453,8 +509,87 @@ class _MineCard extends ConsumerWidget {
           validity: _validityLabel,
           thumbOpen: battle.thumbOpen,
           isPrivate: !battle.isPublic,
+          isOwner:
+              battle.ownerId != null &&
+              battle.ownerId == BattleService.instance.myUid,
         ),
       ),
     );
   }
+}
+
+/// 리스트 상단 우측 selector — 관상·궁합 탭의 정렬 selector 와 동일 레시피
+/// (caption 라벨 + chevronDown popup).
+class _ListSelector<T> extends StatelessWidget {
+  final T value;
+  final List<T> values;
+  final String Function(T) labelOf;
+  final ValueChanged<T> onChanged;
+  const _ListSelector({
+    required this.value,
+    required this.values,
+    required this.labelOf,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        PopupMenuButton<T>(
+          tooltip: '필터',
+          initialValue: value,
+          padding: EdgeInsets.zero,
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+          onSelected: onChanged,
+          itemBuilder: (ctx) => [
+            for (final v in values)
+              PopupMenuItem<T>(
+                value: v,
+                child: Text(labelOf(v), style: AppText.body),
+              ),
+          ],
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  labelOf(value),
+                  style: AppText.caption.copyWith(color: AppColors.textHint),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                const FaIcon(
+                  FontAwesomeIcons.chevronDown,
+                  size: 12,
+                  color: AppColors.textHint,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+enum _SortOrder {
+  newest('최신순'),
+  oldest('오래된순');
+
+  final String label;
+  const _SortOrder(this.label);
+}
+
+enum _MineFilter {
+  all('전체'),
+  recruiting('모집중'),
+  closed('모집완료');
+
+  final String label;
+  const _MineFilter(this.label);
 }
