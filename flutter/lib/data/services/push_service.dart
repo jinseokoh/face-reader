@@ -45,7 +45,7 @@ class PushService {
     await _messaging.requestPermission();
     // 포그라운드 표시용 로컬 알림 — 탭 payload = team_id.
     await _local.initialize(
-      const InitializationSettings(
+      settings: const InitializationSettings(
         android: AndroidInitializationSettings('@mipmap/launcher_icon'),
         iOS: DarwinInitializationSettings(),
       ),
@@ -104,10 +104,10 @@ class PushService {
     final n = m.notification;
     if (n == null) return;
     _local.show(
-      m.messageId.hashCode,
-      n.title,
-      n.body,
-      NotificationDetails(
+      id: m.messageId.hashCode,
+      title: n.title,
+      body: n.body,
+      notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
           _channel.id,
           _channel.name,
