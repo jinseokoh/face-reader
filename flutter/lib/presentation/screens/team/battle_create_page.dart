@@ -90,8 +90,12 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
 
   @override
   Widget build(BuildContext context) {
+    final keyboard = MediaQuery.of(context).viewInsets.bottom;
     return FractionallySizedBox(
-      heightFactor: 0.92,
+      // 키보드가 올라오면 시트를 허용 최대 높이로 — 0.92 고정인 채 안쪽
+      // padding 만 키우면 내용 공간이 키보드만큼 줄어 ② 자유 입력(기타)에서
+      // 세로 overflow 가 난다 (test/battle_create_overflow_test.dart).
+      heightFactor: keyboard > 0 ? 1.0 : 0.92,
       child: Padding(
         padding: EdgeInsets.only(
           left: AppSpacing.lg,
@@ -490,76 +494,86 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
         : category.titles
               .where((t) => t.allowedKinds.contains(_roomKind))
               .toList();
+    final header = [
+      Text('방 제목을 고르세요', style: AppText.display),
+      const SizedBox(height: AppSpacing.sm),
+      Text('방 목록과 초대장에 보입니다', style: AppText.caption),
+      const SizedBox(height: AppSpacing.xxl),
+      SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            for (final c in categories) ...[
+              _chip(
+                label: c.name,
+                selected: c == category,
+                onTap: () {
+                  setState(() {
+                    _categorySel = c;
+                    final custom = _customTitleCtrl.text.trim();
+                    _selectedTitle = c.isCustom && custom.isNotEmpty
+                        ? custom
+                        : null;
+                  });
+                  _listAnim.forward(from: 0);
+                },
+              ),
+              const SizedBox(width: AppSpacing.sm),
+            ],
+          ],
+        ),
+      ),
+      const SizedBox(height: AppSpacing.lg),
+    ];
+    // 기타(자유 입력)는 스크롤할 프리셋 리스트가 없으므로 헤더까지 통째로
+    // 스크롤 — 키보드가 세로 공간을 좁혀도 overflow 하지 않는다
+    // (test/battle_create_overflow_test.dart).
+    if (category.isCustom) {
+      return SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ...header,
+            _cascadeItem(
+              index: 0,
+              total: 1,
+              child: TextField(
+                controller: _customTitleCtrl,
+                maxLength: 30,
+                style: AppText.body.copyWith(color: AppColors.textPrimary),
+                onChanged: (v) => setState(() {
+                  final t = v.trim();
+                  _selectedTitle = t.isEmpty ? null : t;
+                }),
+                decoration: const InputDecoration(hintText: '방 제목을 직접 입력하세요'),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('방 제목을 고르세요', style: AppText.display),
-        const SizedBox(height: AppSpacing.sm),
-        Text('방 목록과 초대장에 그대로 보입니다', style: AppText.caption),
-        const SizedBox(height: AppSpacing.xxl),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              for (final c in categories) ...[
-                _chip(
-                  label: c.name,
-                  selected: c == category,
-                  onTap: () {
-                    setState(() {
-                      _categorySel = c;
-                      final custom = _customTitleCtrl.text.trim();
-                      _selectedTitle = c.isCustom && custom.isNotEmpty
-                          ? custom
-                          : null;
-                    });
-                    _listAnim.forward(from: 0);
-                  },
-                ),
-                const SizedBox(width: AppSpacing.sm),
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(height: AppSpacing.lg),
+        ...header,
         // 제목 리스트만 스크롤 — 위의 타이틀·카피·카테고리 chip 은 항상 고정.
         Expanded(
           child: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (category.isCustom)
+                for (final (i, t) in titles.indexed) ...[
                   _cascadeItem(
-                    index: 0,
-                    total: 1,
-                    child: TextField(
-                      controller: _customTitleCtrl,
-                      maxLength: 30,
-                      style: AppText.body.copyWith(
-                        color: AppColors.textPrimary,
-                      ),
-                      onChanged: (v) => setState(() {
-                        final t = v.trim();
-                        _selectedTitle = t.isEmpty ? null : t;
-                      }),
-                      decoration: const InputDecoration(
-                        hintText: '방 제목을 직접 입력하세요',
-                      ),
+                    index: i,
+                    total: titles.length,
+                    child: _titleTile(
+                      selected: _selectedTitle == t.title,
+                      title: t.title,
+                      onTap: () => setState(() => _selectedTitle = t.title),
                     ),
-                  )
-                else
-                  for (final (i, t) in titles.indexed) ...[
-                    _cascadeItem(
-                      index: i,
-                      total: titles.length,
-                      child: _titleTile(
-                        selected: _selectedTitle == t.title,
-                        title: t.title,
-                        onTap: () => setState(() => _selectedTitle = t.title),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                  ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                ],
               ],
             ),
           ),
