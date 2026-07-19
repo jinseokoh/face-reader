@@ -188,6 +188,9 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
             thumbColor: AppColors.textPrimary,
             inactiveTrackColor: AppColors.border,
             overlayColor: Colors.transparent,
+            // 두 knob 이 같은 눈금에 겹치도록 허용 — 기본 8px 간격 제한이
+            // "30대만" 같은 단일 나이대(min == max) 선택을 막는다.
+            minThumbSeparation: 0,
             showValueIndicator: ShowValueIndicator.onDrag,
             valueIndicatorColor: AppColors.textPrimary,
             valueIndicatorTextStyle: AppText.caption.copyWith(
