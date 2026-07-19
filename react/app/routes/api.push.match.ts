@@ -157,7 +157,16 @@ export async function action({ request, context }: Route.ActionArgs) {
               token,
               notification: { title, body: messageBody },
               data: { team_id, kind },
-              android: { priority: 'HIGH' },
+              android: {
+                priority: 'HIGH',
+                // 앱이 생성해 둔 중요도 높음 채널 — 채널 미지정이면 기본
+                // 채널(중요도 보통)로 빠져 소리·화면 팝업 없이 조용히 쌓인다.
+                notification: {
+                  channel_id: 'match',
+                  notification_priority: 'PRIORITY_HIGH',
+                  default_sound: true,
+                },
+              },
             },
           }),
         },
