@@ -496,7 +496,11 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
       children: [
         for (var i = 0; i < battle.maxPlayers; i++) ...[
           if (i > 0) const SizedBox(height: AppSpacing.lg),
-          _slotRow(battle, i < _roster.length ? _roster[i] : null),
+          _slotRow(
+            battle,
+            i < _roster.length ? _roster[i] : null,
+            index: i + 1,
+          ),
         ],
       ],
     );
@@ -529,6 +533,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
           _slotRow(
             battle,
             i < entries.length ? entries[i] : null,
+            index: i + 1,
             slotGender: gender,
           ),
         ],
@@ -539,11 +544,13 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
   Widget _slotRow(
     Battle battle,
     BattleRosterEntry? entry, {
+    required int index,
     String? slotGender,
   }) {
     final profile = entry == null ? null : _profiles[entry.userId];
     return _SlotRow(
       entry: entry,
+      slotIndex: index,
       thumbUrl: profile?.thumbUrl,
       demographic: profile?.ageGender == null
           ? null
@@ -678,6 +685,9 @@ class _SlotRow extends StatelessWidget {
   final bool isMe;
   final bool thumbOpen;
 
+  /// 목록 내 슬롯 번호(1부터) — 이성방은 남/여 열 각각 1부터 센다.
+  final int slotIndex;
+
   /// 이성방 빈 슬롯의 섹션 성별 — alpha 0.35 성별 아이콘 표시용. 전체방은
   /// null (성별 미정 FaIcon `user` 유지).
   final String? slotGender;
@@ -688,6 +698,7 @@ class _SlotRow extends StatelessWidget {
     required this.archetype,
     required this.isMe,
     required this.thumbOpen,
+    required this.slotIndex,
     this.slotGender,
   });
 
@@ -716,14 +727,12 @@ class _SlotRow extends StatelessWidget {
                 ),
                 child: ClipOval(child: _avatar()),
               ),
-              // '나' 표식은 아바타 왼쪽 상단 badge — 우측 meta 줄을 차지하지
-              // 않는다.
-              if (isMe)
-                Positioned(
-                  top: -AppSpacing.xs,
-                  left: -AppSpacing.xs,
-                  child: _meBadge(),
-                ),
+              // 슬롯 번호 badge — 아바타 왼쪽 상단, 내 슬롯만 숫자 대신 '나'.
+              Positioned(
+                top: -AppSpacing.xs,
+                left: -AppSpacing.xs,
+                child: _slotBadge(),
+              ),
             ],
           ),
         ),
@@ -774,9 +783,9 @@ class _SlotRow extends StatelessWidget {
     );
   }
 
-  /// '나' badge — AgeRangePill 의 outlined pill 레시피, 아바타 위에 얹히므로
-  /// 흰 배경으로 원 테두리를 가리고 textPrimary 로 강조.
-  Widget _meBadge() {
+  /// 슬롯 번호·'나' badge — AgeRangePill 의 outlined pill 레시피, 아바타 위에
+  /// 얹히므로 흰 배경으로 원 테두리를 가리고 textPrimary 로 강조.
+  Widget _slotBadge() {
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.xs,
@@ -788,7 +797,7 @@ class _SlotRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.sm),
       ),
       child: Text(
-        '나',
+        isMe ? '나' : '$slotIndex',
         style: AppText.hint.copyWith(color: AppColors.textPrimary),
       ),
     );
