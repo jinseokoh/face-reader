@@ -49,8 +49,8 @@ begin
 
   -- 이전 dummy 상태 정리 — 방·참가행·메시지는 항상 이 스크립트가 다시 만드는
   -- 대상이라 통째로 리셋, 유저·metrics·방 행 자체는 아래에서 upsert.
-  delete from public.battle_messages where team_id in (v_team, v_team2);
-  delete from public.battle_matches  where team_id in (v_team, v_team2);
+  delete from public.team_messages where team_id in (v_team, v_team2);
+  delete from public.team_matches  where team_id in (v_team, v_team2);
   delete from public.team_members    where team_id in (v_team, v_team2);
   delete from public.metrics         where user_id = any(v_dummy);
 
@@ -103,7 +103,7 @@ begin
     values (v_team, v_dummy[i], i + 1, v_genders[i], false);
   end loop;
 
-  -- snapshot 동결 — join_battle 시작 트랜잭션과 동일한 집계 쿼리.
+  -- snapshot 동결 — join_team 시작 트랜잭션과 동일한 집계 쿼리.
   update public.teams
      set chemistry_snapshot = (
            select jsonb_object_agg(tm.user_id::text, mf.body::jsonb)
@@ -134,7 +134,7 @@ begin
    where id = v_team;
 
   -- ① 베스트 쌍(나×서연) 매칭 카드 — 양쪽 미응답 pending.
-  insert into public.battle_matches (team_id, user_a, user_b)
+  insert into public.team_matches (team_id, user_a, user_b)
   values (v_team, v_me, v_dummy[3]);
 
   -- ② all 방 upsert: 어제 종료.
@@ -195,10 +195,10 @@ begin
    where id = v_team2;
 
   -- ② 베스트 쌍(나×지은) — 둘 다 수락 완료, 채팅 개설 + 상대 선메시지 2개.
-  insert into public.battle_matches (team_id, user_a, user_b,
+  insert into public.team_matches (team_id, user_a, user_b,
                                      a_consent, b_consent, opened_at)
   values (v_team2, v_me, v_dummy[4], true, true, now() - interval '23 hours');
-  insert into public.battle_messages (team_id, sender_id, body, created_at)
+  insert into public.team_messages (team_id, sender_id, body, created_at)
   values
     (v_team2, v_dummy[4], '안녕하세요, 베스트 나왔길래 인사드려요',
      now() - interval '22 hours'),

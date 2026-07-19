@@ -4,8 +4,8 @@ import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/services/compat/battle.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 
-/// Chemistry Battle 클라이언트 모델 — Plan 1 서버 계약(teams·battle_roster·
-/// public_battles·RPC 에러 문자열)의 Dart 표현. 서버가 SSOT, 여기는 파싱만.
+/// Chemistry Battle 클라이언트 모델 — Plan 1 서버 계약(teams·team_roster·
+/// public_teams·RPC 에러 문자열)의 Dart 표현. 서버가 SSOT, 여기는 파싱만.
 
 enum BattleStatus { recruiting, revealing, completed, expired }
 
@@ -202,7 +202,7 @@ BattleJoinError mapBattleError(Object e) {
 String genderFullLabel(String myGender) =>
     myGender == 'male' ? '남자 자리가 다 찼습니다' : '여자 자리가 다 찼습니다';
 
-/// 매칭 성사 — submit_battle_result 가 best 쌍을 확정해 생성, respond_match
+/// 매칭 성사 — submit_team_result 가 best 쌍을 확정해 생성, respond_match
 /// 로 쌍 각자가 채팅 개설에 동의. consent: null=무응답, true=수락, false=거절.
 class BattleMatch {
   final String teamId;
@@ -269,7 +269,7 @@ class BattleMessage {
 
 /// chemistry_snapshot({user_id: body}) + roster → 엔진 입력.
 /// snapshot 에 없는 참가자(계정 삭제 극단 케이스)는 제외. slot 오름차순.
-/// gender 는 roster(join_battle 조인 시점 서버 강제값)에서 읽는다 — report
+/// gender 는 roster(join_team 조인 시점 서버 강제값)에서 읽는다 — report
 /// 재파싱이 아닌 서버와 동일 소스.
 List<BattlePlayer> assembleBattlePlayers({
   required List<BattleRosterEntry> roster,

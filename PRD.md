@@ -83,8 +83,8 @@
 
 | 수신자 상태             | 요구사항                                                                                                             | 구현 상태                                                        |
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| 앱 사용자               | 로그인 → 내 관상 있으면 바로 `join_battle`, 없으면 촬영 후 조인                                                       | ✅ 구현 (`BattleDetailScreen`)                                     |
-| 앱 미사용자              | React 웹(`/g/{id}`)에서 **셀프 조인 완결** — 카카오 로그인 → (비밀방) PIN → 사진 공개 계약 → 정면 캡처 → `join_battle`  | ✅ 구현 (`JoinWizard`)                                             |
+| 앱 사용자               | 로그인 → 내 관상 있으면 바로 `join_team`, 없으면 촬영 후 조인                                                       | ✅ 구현 (`BattleDetailScreen`)                                     |
+| 앱 미사용자              | React 웹(`/g/{id}`)에서 **셀프 조인 완결** — 카카오 로그인 → (비밀방) PIN → 사진 공개 계약 → 정면 캡처 → `join_team`  | ✅ 구현 (`JoinWizard`)                                             |
 | 앱 미사용자 → 설치 전환 | **웹 캡처의 관상 데이터를 앱에서 재사용** — 설치 후 다시 찍지 않는다. React 앱도 **카카오 로그인** 지원              | ✅ 구현 (앱 로그인 rehydrate + react 카카오 로그인·capture 귀속) |
 
 ---
@@ -128,7 +128,7 @@
 - 참가자는 [나가기] 가능(방장은 방 삭제만). 정원 충족 시 시작 버튼 없이 자동 전환된다.
 - 미참가자 뷰(딥링크 `/g/:id` 진입 포함): 방 정보 미리보기(match 방은 남은 성별 자리
   표기) → 로그인 → 내 관상 보장(없으면 촬영) → (비밀방) PIN 입력 → 사진 공개 계약
-  확인 → `join_battle` RPC 로 셀프 조인.
+  확인 → `join_team` RPC 로 셀프 조인.
 - 정체성은 로그인 계정(`users.nickname`) 하나뿐 — 이름 슬롯·빈 슬롯 claim 은 없다.
 
 #### 결과 화면
@@ -138,7 +138,7 @@
   4단 밴드 색 점(앱은 BandDot 단일 위젯 — 초록 천생연분 / 파랑 금슬화합 / 주황 상부상조 / 빨강 형극난조, 점 가운데 점수 상시 노출(snapshot 로컬 재계산 — payload 는 여전히 best.score 만), 웹만 이모지·점수 없음),
   **보는 사람 행 최상단 고정**) → 쌍 탭 = 1🪙 unlock(`unlock_compat` RPC).
 - 계산은 클라이언트가 한다(`runBattle`, 결정론이라 전원이 같은 결과) — 최초 도달
-  클라이언트가 `submit_battle_result` 로 결과를 1회 기록(first-writer-wins), 이후
+  클라이언트가 `submit_team_result` 로 결과를 1회 기록(first-writer-wins), 이후
   열람은 그 payload 를 그대로 렌더.
 
 #### 매칭 성사 + 인앱 채팅 (방 유형 무관)
@@ -146,7 +146,7 @@
 - 베스트 쌍 두 사람에게만 결과 직후 매칭 성사 카드 — 서로의 200×200 사진 공개(성사
   단계는 `thumb_open` 무관 항상 공개, 조인 시 사진 공개 계약이 근거) + "채팅방을
   열까요?" 상호 동의(`respond_match` RPC, 수락/거절 1회 — 재응답 불가).
-- 둘 다 수락 → 인앱 1:1 채팅(`battle_messages`, Realtime) — 내 배틀 탭에 [채팅] 진입점.
+- 둘 다 수락 → 인앱 1:1 채팅(`team_messages`, Realtime) — 내 배틀 탭에 [채팅] 진입점.
   한쪽 거절 → 즉시 종결("이번에는 채팅방이 열리지 않았습니다"). 무응답 → 30일 purge 와
   함께 자연 소멸. 채팅 수명 = teams 30일 purge cascade.
 - 베스트 쌍이 아닌 참가자에겐 이 단계 자체가 없다.
@@ -156,7 +156,7 @@
 - 차단당한 쪽은 아무 불이익이 없고 차단 사실을 눈치챌 단서도 없다 — 어느 방이든
   참가 가능. 차단자는 상대가 있는 방에 못 들어간다(`BLOCKED_MEMBER`, 사실대로 안내
   — 자기 차단 목록은 본인이 아니 새는 것이 없다).
-- 서로가 만든 방만 **상호 비공개** — 목록(`public_battles`)에서 양방향 숨김, 링크
+- 서로가 만든 방만 **상호 비공개** — 목록(`public_teams`)에서 양방향 숨김, 링크
   직접 진입도 `NOT_FOUND`(존재하지 않는 방과 같은 중립 코드).
 - 차단하는 순간 두 사람이 같이 있던 모집 중 방에서는 차단자가 자동 퇴장(트리거).
   차단자가 방장인 방만 예외로 상대가 나가진다(방장 자리 보전).
@@ -165,7 +165,7 @@
   자기모순(1등인데 채팅 없음)이 없고, 베스트·매칭 카드로 이어지지 않으며, 차단당한
   쪽에는 "궁합이 나쁘다"로만 보인다. 차단 쌍은 시작 시 `chemistry_snapshot.blocked`
   ([[slotA,slotB]])로 동결 — 전 클라이언트 동일 재계산. 시작 후에 생긴 차단은
-  `submit_battle_result` 가 매칭 카드 생성 직전 한 번 더 걸러낸다.
+  `submit_team_result` 가 매칭 카드 생성 직전 한 번 더 걸러낸다.
 - 유료 풀이(1🪙)는 실제 관상 분석 그대로 — 상한은 배틀 결과표에만 적용된다(같은 두
   얼굴을 궁합 탭에서 돌리면 어차피 실제 점수가 나오는 상품이므로 풀이까지 조작하지
   않는다).
@@ -176,13 +176,13 @@
   남은 성별 자리) 노출 + [카카오로 참여하기] → 카카오 로그인(supabase-js PKCE, 앱과
   같은 `auth.users`) → (비밀방) PIN → 사진 공개 계약 → 정면 캡처(MediaPipe client-only)
   → `runMetrics` → metrics(`user_id`·`is_my_face`) + R2 200px 썸네일 저장 →
-  `join_battle` RPC 로 셀프 조인. 카톡 인앱 웹뷰는 카메라가 막혀 있어 **외부 브라우저
+  `join_team` RPC 로 셀프 조인. 카톡 인앱 웹뷰는 카메라가 막혀 있어 **외부 브라우저
   자동 탈출** 후 재오픈.
 - **결과 공개(payload 있음) = 쇼케이스**: 🏆 베스트 케미 카드 + 밴드 매트릭스(`match`
   방은 남×여 직사각 — `players[].gender` 사용). 사진 없음, 점수는 베스트만. 매칭
   성사·채팅은 앱 전용 — 웹은 "앱에서 확인" 안내.
 - **결과 공개(payload 없음, snapshot 있음)**: 브라우저가 `runBattle` 로 즉석 계산해
-  렌더하고, 로그인 참가자면 `submit_battle_result` 로 정본을 backfill.
+  렌더하고, 로그인 참가자면 `submit_team_result` 로 정본을 backfill.
 - **종료**(`expired`, 또는 `completed` 인데 payload·snapshot 둘 다 없음): 종료 안내.
 - 공개 배틀 목록은 이번 범위 밖(앱 전용) — 웹은 링크 조인 + 쇼케이스만.
 
@@ -237,7 +237,7 @@
 
 - **탈퇴** (`/api/account/delete`): 본인 metrics 전부 hard delete + R2 썸네일 삭제 + 모집 중(open, `closed_at is null`) teams 삭제. metrics FK 는 `on delete cascade` — endpoint 우회 경로(관리 콘솔 등)에서도 고아 row 가 남지 않는 안전망.
 - **90일 미활동 anon metrics**: `user_id IS NULL` + `updated_at < 90일` row 를 매일 cron(`cleanupStaleMetrics`)이 R2 썸네일과 함께 삭제. 공유 링크 조회가 `updated_at` 을 touch 하므로 아직 보는 카드는 생존. 로그인 유저 소유 row 는 cron 대상 아님 (내 관상 백업 보호 — 삭제는 탈퇴만).
-- **48h 자동 종료**: 모집 48h 초과한 `recruiting` 방을 매시 cron(`expireStaleTeams`)이 인원 무관 `expired` 처리 — 정원 충족은 `join_battle` RPC 트랜잭션이 그 자리에서 처리하므로 cron 은 시작을 수행하지 않는다. `completeOrphanReveals` 가 `revealing` 24h 고아 방 completed 안전망을 추가로 담당.
+- **48h 자동 종료**: 모집 48h 초과한 `recruiting` 방을 매시 cron(`expireStaleTeams`)이 인원 무관 `expired` 처리 — 정원 충족은 `join_team` RPC 트랜잭션이 그 자리에서 처리하므로 cron 은 시작을 수행하지 않는다. `completeOrphanReveals` 가 `revealing` 24h 고아 방 completed 안전망을 추가로 담당.
 - **완료/종료 후 30일 teams 삭제**(`purgeExpiredTeams`): `result_payload` 의 멤버 실명 보존 기한. 만료 *표시*는 클라이언트가 `closed_at + 30일` 계산, cron 은 실삭제만.
 - **`unlocks.partner_body` 는 의도된 보존**: 코인으로 구매한 궁합의 self-contained 스냅샷 — 상대가 탈퇴해도 구매자의 결과는 유지된다 (숫자 metrics 만, 사진 썸네일은 탈퇴 시 R2 에서 삭제되므로 재식별 위험 낮음).
 
@@ -253,12 +253,12 @@
 ```
 shared/ (face_engine, 순수 Dart SSOT) ── path dep ──▶ flutter/ (앱 셸)
         └── dart compile js -O1 ──▶ react/ (facely.kr Workers — share 카드 SSR + /g 초대장·쇼케이스·웹 티저)
-python/ (DeepFace FastAPI — 성별·연령·인종 추정)     Supabase (metrics·coins·unlocks·teams·team_members·battle_matches·battle_messages)
+python/ (DeepFace FastAPI — 성별·연령·인종 추정)     Supabase (metrics·coins·unlocks·teams·team_members·team_matches·team_messages)
 ```
 
 - 궁합 엔진은 Flutter 에만 — react 는 `runBattle`(웹 즉석 계산·backfill)로 같은 shared 엔진을 호출한다. 렌더는 `result_payload` 가 있으면 그대로, 없으면 계산 결과.
 - JS export 는 `runEngine` / `runCompat` / `runMetrics` / `runBattle` 4개.
-- **실시간 = Supabase Realtime** — 케미 배틀 상세 페이지는 `teams`(UPDATE) + `team_members`(INSERT/DELETE) `postgres_changes` 구독 + 10초(앱)/15초(웹) 백업 폴링을 상시 병행한다(이탈 반영은 DELETE 필터 매칭 한계로 폴링이 커버, 백그라운드 push 알림은 범위 외). 매칭 성사(`battle_matches` UPDATE)·인앱 채팅(`battle_messages` INSERT)도 같은 Realtime — 쌍 외 수신은 RLS 가 차단.
+- **실시간 = Supabase Realtime** — 케미 배틀 상세 페이지는 `teams`(UPDATE) + `team_members`(INSERT/DELETE) `postgres_changes` 구독 + 10초(앱)/15초(웹) 백업 폴링을 상시 병행한다(이탈 반영은 DELETE 필터 매칭 한계로 폴링이 커버, 백그라운드 push 알림은 범위 외). 매칭 성사(`team_matches` UPDATE)·인앱 채팅(`team_messages` INSERT)도 같은 Realtime — 쌍 외 수신은 RLS 가 차단.
 
 ---
 

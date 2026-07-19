@@ -20,7 +20,7 @@
 - **합류자 (앱 설치)**: 링크 탭 → 유니버설/앱 링크로 앱 직행 → `BattleDetailScreen`
   이 방 정보(n/N명·연령대, match 방은 남은 성별 자리) 미리보기 표시 → 로그인 →
   내 관상 확인(없으면 촬영) → (비밀방) PIN 입력 → 사진 공개 계약 확인 →
-  `join_battle` RPC 로 셀프 조인 → 화면 전환 없이 같은 상세 페이지가 참가자 뷰로
+  `join_team` RPC 로 셀프 조인 → 화면 전환 없이 같은 상세 페이지가 참가자 뷰로
   전환. 이름 슬롯·빈 슬롯 claim 은 없다 — 정체성은 로그인 계정 하나뿐.
 - **방장 반영**: 상세 페이지는 Supabase Realtime(`teams` UPDATE + `team_members`
   INSERT/DELETE) 구독 + 10초 백업 폴링을 상시 병행해 반영된다 — 이탈(`team_members`
@@ -29,7 +29,7 @@
   방장이 별도로 "결과표 생성"을 누르는 액션은 없다.
 - **앱 미설치 (웹 참여)**: 브라우저로 `/g/{id}` — 모집 중 = 초대장 + **웹 참여
   위저드**(카카오 로그인(supabase-js, 앱과 같은 auth.users) → (비밀방) PIN →
-  사진 공개 계약 → 정면 캡처 → metrics+R2 썸네일 저장 → `join_battle` RPC 로 셀프
+  사진 공개 계약 → 정면 캡처 → metrics+R2 썸네일 저장 → `join_team` RPC 로 셀프
   조인) / 결과 공개 = `result_payload` 있으면 쇼케이스, 없으면 클라이언트가
   `runBattle` 로 즉석 계산 / 종료 = 안내. 웹 참여자가 나중에 앱 설치 후 같은
   카카오 계정으로 로그인하면 rehydrate 가 캡처를 자동 복원하고, 조인한 방은
@@ -39,8 +39,8 @@
 
 ## 전제 조건
 
-- 서버: `0001_baseline.sql` §11-2~11-6 적용(teams·team_members·battle_matches·
-  battle_messages + RLS + RPC 상태 머신 + view + Realtime), AASA·assetlinks 에 `/g/*`.
+- 서버: `0001_baseline.sql` §11-2~11-6 적용(teams·team_members·team_matches·
+  team_messages + RLS + RPC 상태 머신 + view + Realtime), AASA·assetlinks 에 `/g/*`.
 - 방장: 로그인 + 내 관상 등록. 합류자: 앱(로그인 + 내 관상) 또는 웹(카카오 로그인
   + 웹 캡처). 웹 로그인 복귀에는 Supabase Auth Redirect URLs 에
   `https://facely.kr/g/*` 등록 필요.
@@ -51,7 +51,7 @@
 |---|---|
 | deferred deep link 없음 | 설치 직후 자동 입장 불가 — 카톡 재탭 패턴 (외부 SDK 회피, 의도적) |
 | 링크 = 누구나 읽기 | UUID 아는 사람은 방 제목·참가자 닉네임 열람 (링크 공유 모델, 인지된 설계) |
-| 카카오 오픈채팅 미사용 | 오픈링크 자동 발행 API 는 도메인 ID 발급이 제휴 게이트 — 매칭 성사 후 대화는 인앱 1:1 채팅(`battle_messages`)이 담당 (rev2, 공약·`chat_url` 폐기) |
+| 카카오 오픈채팅 미사용 | 오픈링크 자동 발행 API 는 도메인 ID 발급이 제휴 게이트 — 매칭 성사 후 대화는 인앱 1:1 채팅(`team_messages`)이 담당 (rev2, 공약·`chat_url` 폐기) |
 
 ## 코드 위치
 

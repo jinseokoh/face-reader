@@ -9,7 +9,7 @@ do $$ begin
   alter publication supabase_realtime drop table public.teams;
 exception when undefined_object then null; end $$;
 
-drop view if exists public.public_battles;
+drop view if exists public.public_teams;
 alter table public.teams drop column if exists visibility cascade;
 alter table public.teams add column if not exists is_private boolean
   generated always as (password is not null) stored;
@@ -18,7 +18,7 @@ drop index if exists idx_teams_public_recruiting;
 create index if not exists idx_teams_recruiting
   on public.teams (created_at desc) where status = 'recruiting';
 
-create or replace view public.public_battles with (security_invoker = on) as
+create or replace view public.public_teams with (security_invoker = on) as
   select t.id, t.title, t.room_kind, t.thumb_open, t.is_private, t.max_players,
          t.age_min, t.age_max, t.created_at,
          (select count(*)::int from public.team_members tm where tm.team_id = t.id)
@@ -26,7 +26,7 @@ create or replace view public.public_battles with (security_invoker = on) as
     from public.teams t
    where t.status = 'recruiting';
 
-create or replace function public.join_battle(p_team_id uuid, p_password text default null)
+create or replace function public.join_team(p_team_id uuid, p_password text default null)
 returns void
 language plpgsql security definer set search_path = public
 as $$

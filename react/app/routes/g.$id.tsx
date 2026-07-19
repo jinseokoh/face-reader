@@ -81,7 +81,7 @@ export default function Group() {
       <>
         {!wizardActive && <BattleInvite data={data} />}
         {/* 미설치자 웹 참여 위저드 (미리보기 겸용) — 카카오 로그인 →
-            (비밀방) PIN → (공약) 동의 → 정면 캡처 → join_battle 까지
+            (비밀방) PIN → (공약) 동의 → 정면 캡처 → join_team 까지
             브라우저에서 완결. */}
         <JoinWizard
           battle={battle}

@@ -293,7 +293,7 @@ export async function fetchBattleRoster(
   battleId: string,
 ): Promise<RosterEntry[]> {
   const { data } = await sb
-    .from("battle_roster")
+    .from("team_roster")
     .select("user_id, slot_no, is_owner, nickname, gender")
     .eq("team_id", battleId)
     .order("slot_no", { ascending: true });
@@ -306,13 +306,13 @@ export async function fetchBattleRoster(
   }));
 }
 
-/** join_battle RPC — 성공 'ok', 실패는 서버 에러 코드 문자열 그대로. */
+/** join_team RPC — 성공 'ok', 실패는 서버 에러 코드 문자열 그대로. */
 export async function joinBattle(
   sb: SupabaseClient,
   battleId: string,
   password?: string,
 ): Promise<string> {
-  const { error } = await sb.rpc("join_battle", {
+  const { error } = await sb.rpc("join_team", {
     p_team_id: battleId,
     ...(password ? { p_password: password } : {}),
   });
@@ -330,7 +330,7 @@ export async function submitBattleResult(
   payload: BattlePayload,
 ): Promise<void> {
   // first-writer-wins — 실패(후착·비참가자) 무해.
-  await sb.rpc("submit_battle_result", {
+  await sb.rpc("submit_team_result", {
     p_team_id: battleId,
     p_payload: payload,
   });

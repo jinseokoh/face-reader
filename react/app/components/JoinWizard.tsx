@@ -79,7 +79,7 @@ const AGES: { v: string; ko: string }[] = [
   { v: '70s', ko: '70대+' },
 ]
 
-// join_battle 실패 코드 → 사용자 문구 (BAD_PASSWORD/NO_MY_FACE 는 별도 분기).
+// join_team 실패 코드 → 사용자 문구 (BAD_PASSWORD/NO_MY_FACE 는 별도 분기).
 const JOIN_ERROR_MESSAGES: Record<string, string> = {
   AGE_NOT_ALLOWED: '이 방의 연령대에 해당하지 않습니다',
   GENDER_FULL: '이 방의 남녀 자리 중 한쪽이 다 찼습니다',
@@ -251,7 +251,7 @@ export function JoinWizard({
       setExisting(mine)
       if (cameFromLogin) {
         // 로그인하고 복귀 — 기존 관상이 있으면 재사용/재촬영 선택, 아니면
-        // 곧장 촬영으로 (이미 참여했다면 join_battle 이 ALREADY_JOINED 로
+        // 곧장 촬영으로 (이미 참여했다면 join_team 이 ALREADY_JOINED 로
         // 알려주고 그대로 로비로 진입한다).
         if (mine) {
           setStage('reuse')
@@ -591,7 +591,7 @@ export function JoinWizard({
     }
   }
 
-  /** 저장 시퀀스: metrics(신규 캡처 시, 기존 my-face 덮어쓰기) → join_battle RPC. */
+  /** 저장 시퀀스: metrics(신규 캡처 시, 기존 my-face 덮어쓰기) → join_team RPC. */
   async function runSave() {
     const s = sessionRef.current
     if (!s) {
@@ -688,7 +688,7 @@ export function JoinWizard({
   }
 
   /** 기존 내 관상 재사용 — 촬영 없이 바로 합류(정원마감으로 이미 참여
-   *  중이면 join_battle 이 ALREADY_JOINED 로 응답, done 으로 처리). */
+   *  중이면 join_team 이 ALREADY_JOINED 로 응답, done 으로 처리). */
   function onReuseExisting() {
     metricsIdRef.current = existing?.id ?? null
     void runSave()

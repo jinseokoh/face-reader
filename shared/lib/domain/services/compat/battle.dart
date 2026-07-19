@@ -13,7 +13,7 @@ class BattlePlayer {
   final int slot;
   final String name;
 
-  /// 'male' | 'female' — join_battle 조인 시점 my-face body 에서 기록된 값.
+  /// 'male' | 'female' — join_team 조인 시점 my-face body 에서 기록된 값.
   final String gender;
   final FaceReadingReport report;
 

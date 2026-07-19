@@ -28,7 +28,7 @@
 --   • tables    : users · coins · metrics · unlocks · bonus_recipients · ad_rewards
 --                 · ad_videos (custom video, §11-0) · ad_images (홈 배너, §11-0b)
 --                 · teams · team_members (Chemistry Battle 로비, §11-2/11-3/11-4)
---                 · battle_matches · battle_messages (매칭·채팅, §11-6)
+--                 · team_matches · team_messages (매칭·채팅, §11-6)
 --   • views     : admin_users (users + auth.users.email · service_role 전용)
 --   • triggers  : handle_new_user (auth.users → public.users + 보너스 3 코인)
 --                 touch_metrics_updated_at (views++ 시 updated_at 자동 갱신)
@@ -703,7 +703,7 @@ create index if not exists ad_images_active_sort_idx
 -- 11-2. public.teams — Chemistry Battle 방 (게임 로비, 서버 우선)
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 방은 생성 즉시 서버에 존재한다 (로컬 우선/lazy sync 폐기). 참가자는 이름
--- 선등록 없이 join_battle RPC 로 셀프 조인. 시작 조건은 정원 충족 하나뿐 —
+-- 선등록 없이 join_team RPC 로 셀프 조인. 시작 조건은 정원 충족 하나뿐 —
 -- 모이면 시작, 48h 안에 안 모이면 expired (cron).
 --
 -- chemistry_snapshot = 시작 트랜잭션이 동결한 {user_id: metrics body} — 엔진
@@ -711,7 +711,7 @@ create index if not exists ad_images_active_sort_idx
 -- result_payload = 클라이언트가 snapshot 으로 계산해 1회 기록하는 스코어보드
 -- (players/pairs/best — 점수는 best.score 만).
 -- password 는 column grant 로 클라이언트 SELECT 차단 (§11-4) — 비교는
--- join_battle 내부에서만. 상태 전이는 RPC 전용 (직접 UPDATE 는 title 만).
+-- join_team 내부에서만. 상태 전이는 RPC 전용 (직접 UPDATE 는 title 만).
 -- 공개/비밀 개념은 password 단일 소스 — 모든 모집 방이 목록에 노출되고,
 -- password 있는 방만 조인 시 PIN 을 요구한다. is_private 는 클라이언트
 -- 표시용 파생 컬럼(password 봉인 유지, 어긋날 수 없음).
@@ -739,7 +739,7 @@ create table if not exists public.teams (
 );
 
 create index if not exists idx_teams_owner on public.teams (owner_id, updated_at desc);
--- 목록 조회 (public_battles view — 모집 중 전 방).
+-- 목록 조회 (public_teams view — 모집 중 전 방).
 create index if not exists idx_teams_recruiting
   on public.teams (created_at desc) where status = 'recruiting';
 
@@ -780,7 +780,7 @@ create trigger teams_touch
 -- 참가자 = 로그인 사용자. 이름·얼굴 컬럼 없음 — 표시 이름은 users.nickname,
 -- 얼굴은 조회 시 user_id → 현재 my-face live resolve (시작 후엔 teams.
 -- chemistry_snapshot 이 입력). 계정 삭제 = FK cascade 로 참가 행 소멸 →
--- 슬롯 자동 반환. 쓰기는 전부 RPC (join_battle / leave_battle) — 직접
+-- 슬롯 자동 반환. 쓰기는 전부 RPC (join_team / leave_team) — 직접
 -- insert/update/delete 정책 없음 (RLS deny by default).
 create table if not exists public.team_members (
   id        uuid        primary key default gen_random_uuid(),
@@ -811,13 +811,13 @@ create policy "team_members_public_read"
   on public.team_members for select using (true);
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 11-6. public.battle_matches / public.battle_messages — 매칭 성사·인앱 채팅
+-- 11-6. public.team_matches / public.team_messages — 매칭 성사·인앱 채팅
 -- ─────────────────────────────────────────────────────────────────────────────
--- best 쌍의 채팅 개설 상호 동의. battle 당 1행, 행 자체는 submit_battle_result
+-- best 쌍의 채팅 개설 상호 동의. 방당 1행, 행 자체는 submit_team_result
 -- 가 생성한다 (best 는 payload 확정 이후에만 알 수 있다). consent: null=무응답,
 -- true=수락, false=거절 — 거절은 즉시 종결(재응답 불가). 쓰기는 전부 RPC
--- (submit_battle_result / respond_match) — 직접 insert/update/delete 정책 없음.
-create table if not exists public.battle_matches (
+-- (submit_team_result / respond_match) — 직접 insert/update/delete 정책 없음.
+create table if not exists public.team_matches (
   team_id    uuid primary key references public.teams(id) on delete cascade,
   user_a     uuid not null references auth.users(id) on delete cascade,
   user_b     uuid not null references auth.users(id) on delete cascade,
@@ -827,64 +827,64 @@ create table if not exists public.battle_matches (
   check (user_a <> user_b)
 );
 
-alter table public.battle_matches enable row level security;
+alter table public.team_matches enable row level security;
 
-drop policy if exists "battle_matches_pair_read" on public.battle_matches;
+drop policy if exists "team_matches_pair_read" on public.team_matches;
 
 -- 읽기: 해당 쌍 본인만 — 타 참가자에게 동의 현황 비노출.
-create policy "battle_matches_pair_read"
-  on public.battle_matches for select
+create policy "team_matches_pair_read"
+  on public.team_matches for select
   using (auth.uid() = user_a or auth.uid() = user_b);
 
 -- 인앱 1:1 채팅 — 성사된 쌍 전용. 방 삭제(30일 purge)와 함께 cascade.
-create table if not exists public.battle_messages (
+create table if not exists public.team_messages (
   id         uuid primary key default gen_random_uuid(),
-  team_id    uuid not null references public.battle_matches(team_id) on delete cascade,
+  team_id    uuid not null references public.team_matches(team_id) on delete cascade,
   sender_id  uuid not null references auth.users(id) on delete cascade,
   body       text not null check (char_length(body) <= 500),
   created_at timestamptz not null default now()
 );
 
-alter table public.battle_messages enable row level security;
+alter table public.team_messages enable row level security;
 
-drop policy if exists "battle_messages_pair_read"   on public.battle_messages;
-drop policy if exists "battle_messages_pair_insert" on public.battle_messages;
+drop policy if exists "team_messages_pair_read"   on public.team_messages;
+drop policy if exists "team_messages_pair_insert" on public.team_messages;
 
 -- 읽기/쓰기 모두 opened_at 이 찍힌(채팅 개설) 매치의 쌍 본인만.
 -- insert 는 sender_id 위조 방지로 auth.uid() 강제.
-create policy "battle_messages_pair_read"
-  on public.battle_messages for select
+create policy "team_messages_pair_read"
+  on public.team_messages for select
   using (exists (
-    select 1 from public.battle_matches m
-     where m.team_id = battle_messages.team_id
+    select 1 from public.team_matches m
+     where m.team_id = team_messages.team_id
        and m.opened_at is not null
        and (auth.uid() = m.user_a or auth.uid() = m.user_b)
   ));
-create policy "battle_messages_pair_insert"
-  on public.battle_messages for insert
+create policy "team_messages_pair_insert"
+  on public.team_messages for insert
   with check (
     sender_id = auth.uid()
     and exists (
-      select 1 from public.battle_matches m
-       where m.team_id = battle_messages.team_id
+      select 1 from public.team_matches m
+       where m.team_id = team_messages.team_id
          and m.opened_at is not null
          and (auth.uid() = m.user_a or auth.uid() = m.user_b)
     )
   );
 
--- Realtime: battle_matches 변경 감지 (publish 액션은 publication 전역 설정이라 테이블별 제한 불가 — RLS 가 쌍 외 수신을 차단)
--- + battle_messages 전체(채팅 왕복). 재실행 안전 (duplicate 무시).
+-- Realtime: team_matches 변경 감지 (publish 액션은 publication 전역 설정이라 테이블별 제한 불가 — RLS 가 쌍 외 수신을 차단)
+-- + team_messages 전체(채팅 왕복). 재실행 안전 (duplicate 무시).
 do $$ begin
-  alter publication supabase_realtime add table public.battle_matches;
+  alter publication supabase_realtime add table public.team_matches;
 exception when duplicate_object then null; end $$;
 do $$ begin
-  alter publication supabase_realtime add table public.battle_messages;
+  alter publication supabase_realtime add table public.team_messages;
 exception when duplicate_object then null; end $$;
 
 -- 채팅 신고 — 스토어 UGC 정책(신고 경로 필수) 충족. 방 30일 purge 후에도
 -- 운영 감사 흔적이 남도록 FK 없이 uuid 만 기록한다. select 정책 없음 —
 -- 열람은 service role(운영) 전용.
-create table if not exists public.battle_reports (
+create table if not exists public.team_reports (
   id          uuid primary key default gen_random_uuid(),
   team_id     uuid not null,
   reporter_id uuid not null,
@@ -894,20 +894,20 @@ create table if not exists public.battle_reports (
   check (reporter_id <> reported_id)
 );
 
-alter table public.battle_reports enable row level security;
+alter table public.team_reports enable row level security;
 
-drop policy if exists "battle_reports_pair_insert" on public.battle_reports;
+drop policy if exists "team_reports_pair_insert" on public.team_reports;
 
 -- insert: 신고자 = 본인이면서 해당 매치 쌍의 당사자, 피신고자 = 그 상대만.
-create policy "battle_reports_pair_insert"
-  on public.battle_reports for insert
+create policy "team_reports_pair_insert"
+  on public.team_reports for insert
   with check (
     reporter_id = auth.uid()
     and exists (
-      select 1 from public.battle_matches m
-       where m.team_id = battle_reports.team_id
-         and ((auth.uid() = m.user_a and battle_reports.reported_id = m.user_b)
-           or (auth.uid() = m.user_b and battle_reports.reported_id = m.user_a))
+      select 1 from public.team_matches m
+       where m.team_id = team_reports.team_id
+         and ((auth.uid() = m.user_a and team_reports.reported_id = m.user_b)
+           or (auth.uid() = m.user_b and team_reports.reported_id = m.user_a))
     )
   );
 
@@ -916,7 +916,7 @@ create policy "battle_reports_pair_insert"
 -- 눈치챌 단서도 없다. 예외는 서로가 만든 방 하나: 상호 비공개 (목록에서
 -- 숨기고 직접 진입은 NOT_FOUND). 제3자 방에서 두 사람이 같이 배틀하게 되면
 -- 그 쌍의 발표 점수를 엔진이 상한 60점(형극난조 확정)으로 눌러 베스트·매칭
--- 카드로 이어지지 않게 한다 (snapshot.blocked 동결 — join_battle 참고).
+-- 카드로 이어지지 않게 한다 (snapshot.blocked 동결 — join_team 참고).
 -- 차단 순간 같이 있던 모집 중 방에서는 차단자가 자동 퇴장(트리거). 본인 행만
 -- 읽기/쓰기.
 create table if not exists public.user_blocks (
@@ -975,7 +975,7 @@ create trigger user_blocks_auto_leave
 -- 조인: recruiting · 정원 미달 · 미중복 · 비밀번호 · 연령대 · 성별 정원(match
 -- 방) · my-face 존재. 마지막 참가자의 트랜잭션이 chemistry_snapshot 동결 +
 -- revealing 전이까지 수행.
-create or replace function public.join_battle(p_team_id uuid, p_password text default null)
+create or replace function public.join_team(p_team_id uuid, p_password text default null)
 returns void
 language plpgsql security definer set search_path = public
 as $$
@@ -994,7 +994,7 @@ begin
   select * into v_team from teams where id = p_team_id for update;
   if not found then raise exception 'NOT_FOUND'; end if;
   -- 방장이 나를 차단한 방은 상호 비공개 — 존재하지 않는 방과 같은 중립
-  -- 코드로 숨긴다 (목록 숨김은 public_battles 가 담당, 직접 링크는 여기).
+  -- 코드로 숨긴다 (목록 숨김은 public_teams 가 담당, 직접 링크는 여기).
   if exists (select 1 from user_blocks b
               where b.blocker_id = v_team.owner_id and b.blocked_id = v_uid) then
     raise exception 'NOT_FOUND';
@@ -1083,7 +1083,7 @@ end;
 $$;
 
 -- 이탈: recruiting 중 본인만 (방장은 방 삭제로만 접는다).
-create or replace function public.leave_battle(p_team_id uuid)
+create or replace function public.leave_team(p_team_id uuid)
 returns void
 language plpgsql security definer set search_path = public
 as $$
@@ -1105,9 +1105,9 @@ $$;
 -- 결과 기록: revealing 방의 참가자가 1회. first-writer-wins — 입력이
 -- snapshot 으로 동결돼 전원이 같은 payload 를 내므로 후착은 무해 no-op.
 -- 최초 기록 성공 시 payload 의 best 쌍(slot) 을 roster 로 resolve 해
--- battle_matches 행을 만든다 — payload 의 best 와 roster 만 신뢰하는
+-- team_matches 행을 만든다 — payload 의 best 와 roster 만 신뢰하는
 -- definer 전용 지점 (클라이언트가 임의 상대를 지목해 위조할 수 없다).
-create or replace function public.submit_battle_result(p_team_id uuid, p_payload jsonb)
+create or replace function public.submit_team_result(p_team_id uuid, p_payload jsonb)
 returns void
 language plpgsql security definer set search_path = public
 as $$
@@ -1137,7 +1137,7 @@ begin
          and not exists (select 1 from user_blocks ub
                           where (ub.blocker_id = v_user_a and ub.blocked_id = v_user_b)
                              or (ub.blocker_id = v_user_b and ub.blocked_id = v_user_a)) then
-        insert into battle_matches (team_id, user_a, user_b)
+        insert into team_matches (team_id, user_a, user_b)
         values (p_team_id, v_user_a, v_user_b)
         on conflict (team_id) do nothing;
       end if;
@@ -1164,7 +1164,7 @@ begin
     raise exception 'NOT_MATCHED';
   end if;
 
-  select * into v_match from battle_matches where team_id = p_team_id for update;
+  select * into v_match from team_matches where team_id = p_team_id for update;
   if not found or (v_uid <> v_match.user_a and v_uid <> v_match.user_b) then
     raise exception 'NOT_MATCHED';
   end if;
@@ -1174,35 +1174,35 @@ begin
   end if;
 
   if v_uid = v_match.user_a then
-    update battle_matches set a_consent = p_accept where team_id = p_team_id;
+    update team_matches set a_consent = p_accept where team_id = p_team_id;
   else
-    update battle_matches set b_consent = p_accept where team_id = p_team_id;
+    update team_matches set b_consent = p_accept where team_id = p_team_id;
   end if;
 
-  update battle_matches
+  update team_matches
      set opened_at = now()
    where team_id = p_team_id and opened_at is null
      and a_consent is true and b_consent is true;
 end;
 $$;
 
-revoke execute on function public.join_battle(uuid, text)          from public, anon;
-revoke execute on function public.leave_battle(uuid)               from public, anon;
-revoke execute on function public.submit_battle_result(uuid, jsonb) from public, anon;
+revoke execute on function public.join_team(uuid, text)          from public, anon;
+revoke execute on function public.leave_team(uuid)               from public, anon;
+revoke execute on function public.submit_team_result(uuid, jsonb) from public, anon;
 revoke execute on function public.respond_match(uuid, boolean)     from public, anon;
-grant  execute on function public.join_battle(uuid, text)          to authenticated;
-grant  execute on function public.leave_battle(uuid)               to authenticated;
-grant  execute on function public.submit_battle_result(uuid, jsonb) to authenticated;
+grant  execute on function public.join_team(uuid, text)          to authenticated;
+grant  execute on function public.leave_team(uuid)               to authenticated;
+grant  execute on function public.submit_team_result(uuid, jsonb) to authenticated;
 grant  execute on function public.respond_match(uuid, boolean)     to authenticated;
 
 -- 공개 배틀 목록 — 모집 중 공개방만, 컬럼 화이트리스트 (password 접근 없음).
 -- 모집 중 전 방 노출 — 비밀방도 목록에 보이고(is_private 로 자물쇠 표시),
 -- 입장만 PIN 으로 잠긴다. 방장과 차단 관계면 방향 무관 숨김 (상호 비공개) —
 -- "나를 차단한 방장" 방향은 user_blocks RLS(본인 행만)로는 볼 수 없어
--- battle_roster 와 같은 owner 실행 view 로 양방향을 필터한다. 노출 컬럼은
+-- team_roster 와 같은 owner 실행 view 로 양방향을 필터한다. 노출 컬럼은
 -- 종전과 동일 화이트리스트라 owner 실행이 새로 여는 정보는 없다. 비로그인은
 -- 차단 행이 없어 전 방 노출.
-create or replace view public.public_battles with (security_invoker = off) as
+create or replace view public.public_teams with (security_invoker = off) as
   select t.id, t.title, t.room_kind, t.thumb_open, t.is_private, t.max_players,
          t.age_min, t.age_max, t.created_at,
          (select count(*)::int from public.team_members tm where tm.team_id = t.id)
@@ -1220,13 +1220,13 @@ create or replace view public.public_battles with (security_invoker = off) as
 -- 참가자 "닉네임만" 노출한다 (coins·kakao_user_id 등은 select 목록에 없음).
 -- 읽기 범위 = 방과 동일 link-share 모델. 다중 테이블 join 이라 auto-update
 -- 불가지만 §11-4 에서 write revoke 로 이중 봉인.
-create or replace view public.battle_roster as
+create or replace view public.team_roster as
   select tm.team_id, tm.user_id, tm.slot_no, tm.gender, tm.is_owner, tm.joined_at,
          u.nickname
     from public.team_members tm
     join public.users u on u.id = tm.user_id;
 
--- 내 차단 목록 — battle_roster 와 같은 owner 실행 view 패턴으로 users RLS
+-- 내 차단 목록 — team_roster 와 같은 owner 실행 view 패턴으로 users RLS
 -- (self-read)를 우회해 차단 상대의 "닉네임만" 노출한다. 행 범위는 본인 차단
 -- 행만 (auth.uid() 필터).
 create or replace view public.my_blocks as
@@ -1277,7 +1277,7 @@ grant select on public.admin_users to service_role;
 -- 11-4. teams column grants — password 봉인 + 상태 전이 RPC 전용화
 -- ─────────────────────────────────────────────────────────────────────────────
 -- §11-1 의 blanket grant 가 teams 전 컬럼을 열어 두므로 여기서 다시 좁힌다.
--- SELECT: password 만 제외 — 비교는 join_battle 내부에서만.
+-- SELECT: password 만 제외 — 비교는 join_team 내부에서만.
 revoke select on public.teams from anon, authenticated;
 grant select (id, owner_id, title, is_private, room_kind, thumb_open, max_players,
               age_min, age_max, status, started_at, closed_at,
@@ -1293,14 +1293,14 @@ revoke update on public.teams from anon, authenticated;
 grant update (title) on public.teams to authenticated;
 -- team_members 직접 쓰기 차단 — RPC (security definer) 전용.
 revoke insert, update, delete on public.team_members from anon, authenticated;
--- battle_matches 직접 쓰기 차단 — RPC (submit_battle_result/respond_match) 전용.
-revoke insert, update, delete on public.battle_matches from anon, authenticated;
--- battle_messages: update/delete 차단 (불변 로그) — insert 는 RLS 정책이 쌍 본인만 허용.
-revoke update, delete on public.battle_messages from anon, authenticated;
--- view 쓰기 봉인 — public_battles 는 단일 테이블이라 auto-updatable,
+-- team_matches 직접 쓰기 차단 — RPC (submit_team_result/respond_match) 전용.
+revoke insert, update, delete on public.team_matches from anon, authenticated;
+-- team_messages: update/delete 차단 (불변 로그) — insert 는 RLS 정책이 쌍 본인만 허용.
+revoke update, delete on public.team_messages from anon, authenticated;
+-- view 쓰기 봉인 — public_teams 는 단일 테이블이라 auto-updatable,
 -- owner 권한 실행이면 RLS 우회 쓰기 통로가 된다 (final review Critical).
-revoke insert, update, delete on public.public_battles from anon, authenticated;
-revoke insert, update, delete on public.battle_roster  from anon, authenticated;
+revoke insert, update, delete on public.public_teams from anon, authenticated;
+revoke insert, update, delete on public.team_roster  from anon, authenticated;
 revoke insert, update, delete on public.my_blocks      from anon, authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────────

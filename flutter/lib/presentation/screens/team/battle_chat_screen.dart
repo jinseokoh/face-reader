@@ -9,7 +9,7 @@ import '../../../domain/models/battle.dart';
 import '../../widgets/compact_snack_bar.dart';
 
 /// 매칭 성사 쌍 전용 1:1 인앱 채팅 — 최소 구성(rev2 §5): 메시지 리스트 +
-/// 입력바, watchMatch(battle_messages INSERT) 로 신규 메시지 refetch.
+/// 입력바, watchMatch(team_messages INSERT) 로 신규 메시지 refetch.
 class BattleChatScreen extends StatefulWidget {
   final String teamId;
   final String otherUserId;

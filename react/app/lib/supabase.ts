@@ -108,7 +108,7 @@ export type BattleSSR = {
   roster: { userId: string; slotNo: number; isOwner: boolean; nickname: string; gender: string }[];
 };
 
-/** teams + battle_roster 를 anon 으로 read (link-share, RLS public read). */
+/** teams + team_roster 를 anon 으로 read (link-share, RLS public read). */
 export async function fetchBattleSSR(
   env: Env,
   id: string,
@@ -134,7 +134,7 @@ export async function fetchBattleSSR(
   const t = teams[0];
 
   const rosterRes = await fetch(
-    `${env.SUPABASE_URL}/rest/v1/battle_roster?team_id=eq.${q}` +
+    `${env.SUPABASE_URL}/rest/v1/team_roster?team_id=eq.${q}` +
       `&select=user_id,slot_no,is_owner,nickname,gender&order=slot_no.asc`,
     { headers },
   );

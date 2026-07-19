@@ -29,7 +29,7 @@ typedef BlockedUser = ({String userId, String nickname});
 
 /// Chemistry Battle 서버 접점 — 방은 서버 우선(로컬 캐시 없음).
 /// 쓰기는 RPC(security definer)와 owner 직접 insert/delete 뿐,
-/// 읽기는 teams(컬럼 grant)·battle_roster·public_battles view.
+/// 읽기는 teams(컬럼 grant)·team_roster·public_teams view.
 class BattleService {
   BattleService._();
   static final BattleService instance = BattleService._();
@@ -76,7 +76,7 @@ class BattleService {
   }
 
   /// 조인 전 서버 my-face 보장. 비로그인 등록 → 로그인 직후 조인 경로에서
-  /// 서버 행이 익명(user_id null)으로 남아 join_battle 이 NO_MY_FACE 를
+  /// 서버 행이 익명(user_id null)으로 남아 join_team 이 NO_MY_FACE 를
   /// 던지는 것을 saveMetrics 재호출(고정 행 upsert = 귀속)로 자가 치유.
   Future<bool> ensureMyFaceOnServer(FaceReadingReport myFace) async {
     final uid = myUid;
@@ -99,16 +99,16 @@ class BattleService {
   }
 
   Future<void> joinBattle(String battleId, {String? password}) => _client.rpc(
-    'join_battle',
+    'join_team',
     params: {'p_team_id': battleId, 'p_password': ?password},
   );
 
   Future<void> leaveBattle(String battleId) =>
-      _client.rpc('leave_battle', params: {'p_team_id': battleId});
+      _client.rpc('leave_team', params: {'p_team_id': battleId});
 
   Future<void> submitResult(String battleId, Map<String, dynamic> payload) =>
       _client.rpc(
-        'submit_battle_result',
+        'submit_team_result',
         params: {'p_team_id': battleId, 'p_payload': payload},
       );
 
@@ -126,7 +126,7 @@ class BattleService {
 
   Future<List<BattleRosterEntry>> fetchRoster(String battleId) async {
     final rows = await _client
-        .from('battle_roster')
+        .from('team_roster')
         .select()
         .eq('team_id', battleId)
         .order('slot_no', ascending: true);
@@ -135,7 +135,7 @@ class BattleService {
 
   Future<List<PublicBattle>> fetchPublicBattles() async {
     final rows = await _client
-        .from('public_battles')
+        .from('public_teams')
         .select()
         .order('created_at', ascending: false)
         .limit(50);
@@ -299,7 +299,7 @@ class BattleService {
   /// 매칭 성사 상태 — RLS 상 쌍 본인에게만 row 가 보인다(남에겐 null).
   Future<BattleMatch?> fetchMatch(String teamId) async {
     final row = await _client
-        .from('battle_matches')
+        .from('team_matches')
         .select()
         .eq('team_id', teamId)
         .maybeSingle();
@@ -313,7 +313,7 @@ class BattleService {
 
   Future<List<BattleMessage>> fetchMessages(String teamId) async {
     final rows = await _client
-        .from('battle_messages')
+        .from('team_messages')
         .select()
         .eq('team_id', teamId)
         .order('created_at', ascending: true)
@@ -323,7 +323,7 @@ class BattleService {
 
   /// sender_id 는 RLS 가 auth.uid() 일치를 강제 — 명시적으로 실어 보낸다.
   Future<void> sendMessage(String teamId, String body) => _client
-      .from('battle_messages')
+      .from('team_messages')
       .insert({'team_id': teamId, 'sender_id': myUid, 'body': body});
 
   /// 채팅 상대 신고 — RLS 가 신고자 본인·매치 쌍 당사자·피신고자=상대를 강제.
@@ -331,14 +331,14 @@ class BattleService {
     required String teamId,
     required String reportedId,
     required String reason,
-  }) => _client.from('battle_reports').insert({
+  }) => _client.from('team_reports').insert({
     'team_id': teamId,
     'reporter_id': myUid,
     'reported_id': reportedId,
     'reason': reason,
   });
 
-  /// 상대 차단 — 이후 서로의 배틀방 조인이 양방향으로 거부되고(join_battle
+  /// 상대 차단 — 이후 서로의 배틀방 조인이 양방향으로 거부되고(join_team
   /// 게이트), 상대가 방장인 방은 공개 목록에서 숨는다. 중복 차단은 no-op.
   Future<void> blockUser(String blockedId) => _client
       .from('user_blocks')
@@ -367,14 +367,14 @@ class BattleService {
     ];
   }
 
-  /// 매칭·채팅 라이브 — battle_matches UPDATE(상대 응답) + battle_messages
+  /// 매칭·채팅 라이브 — team_matches UPDATE(상대 응답) + team_messages
   /// INSERT(새 메시지). 콜백은 신호일 뿐: 수신 시 호출부가 refetch.
   RealtimeChannel watchMatch(String teamId, void Function() onChange) {
     final channel = _client.channel('battle_match:$teamId')
       ..onPostgresChanges(
         event: PostgresChangeEvent.update,
         schema: 'public',
-        table: 'battle_matches',
+        table: 'team_matches',
         filter: PostgresChangeFilter(
           type: PostgresChangeFilterType.eq,
           column: 'team_id',
@@ -385,7 +385,7 @@ class BattleService {
       ..onPostgresChanges(
         event: PostgresChangeEvent.insert,
         schema: 'public',
-        table: 'battle_messages',
+        table: 'team_messages',
         filter: PostgresChangeFilter(
           type: PostgresChangeFilterType.eq,
           column: 'team_id',
