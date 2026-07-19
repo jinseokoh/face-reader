@@ -138,3 +138,12 @@ export type TeamReport = {
   reason: string;
   created_at: string;
 };
+
+// 매칭 채팅 메시지 (team_messages) — 신고 상세의 대화 열람용.
+export type TeamMessage = {
+  id: string;
+  team_id: string;
+  sender_id: string;
+  body: string;
+  created_at: string;
+};

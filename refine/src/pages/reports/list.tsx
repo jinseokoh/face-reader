@@ -1,5 +1,5 @@
 import { DateField, List, useTable } from "@refinedev/antd";
-import { useMany } from "@refinedev/core";
+import { useMany, useNavigation } from "@refinedev/core";
 import { Avatar, Space, Table, Tag, Tooltip, Typography } from "antd";
 import { UserLink } from "../../components/user-link";
 import type { AppUser, TeamReport } from "../../types";
@@ -10,6 +10,7 @@ const { Text } = Typography;
  *  reason 이 "[메시지]" 로 시작하면 개별 메시지 신고(본문 동봉), 아니면
  *  사용자 단위 신고. 방이 30일 purge 로 사라져도 행은 남는다(FK 없음). */
 export const ReportList = () => {
+  const { show } = useNavigation();
   const { tableProps, result } = useTable<TeamReport>({
     resource: "team_reports",
     syncWithLocation: true,
@@ -54,7 +55,16 @@ export const ReportList = () => {
 
   return (
     <List title="신고 접수">
-      <Table {...tableProps} rowKey="id" size="middle" scroll={{ x: 1100 }}>
+      <Table
+        {...tableProps}
+        rowKey="id"
+        size="middle"
+        scroll={{ x: 1100 }}
+        onRow={(r) => ({
+          onClick: () => show("team_reports", r.id),
+          style: { cursor: "pointer" },
+        })}
+      >
         <Table.Column<TeamReport>
           title="신고자"
           dataIndex="reporter_id"

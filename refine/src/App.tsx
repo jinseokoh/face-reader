@@ -37,7 +37,7 @@ import { AdVideoCreate, AdVideoList } from './pages/ad-videos'
 import { CoinList } from './pages/coins'
 import { DashboardPage } from './pages/dashboard'
 import { MetricList, MetricShow } from './pages/metrics'
-import { ReportList } from './pages/reports'
+import { ReportList, ReportShow } from './pages/reports'
 import { TeamList, TeamShow } from './pages/teams'
 import { UnlockList, UnlockShow } from './pages/unlocks'
 import { UserList, UserShow } from './pages/users'
@@ -96,6 +96,7 @@ function App() {
                   {
                     name: 'team_reports',
                     list: '/reports',
+                    show: '/reports/show/:id',
                     meta: { label: '신고 reports', icon: <FlagOutlined /> },
                   },
                   {
@@ -144,7 +145,10 @@ function App() {
                       <Route path="show/:id" element={<MetricShow />} />
                     </Route>
                     <Route path="/coins" element={<CoinList />} />
-                    <Route path="/reports" element={<ReportList />} />
+                    <Route path="/reports">
+                      <Route index element={<ReportList />} />
+                      <Route path="show/:id" element={<ReportShow />} />
+                    </Route>
                     <Route path="/unlocks">
                       <Route index element={<UnlockList />} />
                       <Route path="show/:id" element={<UnlockShow />} />
