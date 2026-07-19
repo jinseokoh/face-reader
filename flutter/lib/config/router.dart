@@ -27,7 +27,12 @@ import 'package:facely/domain/models/face_metadata.dart';
 /// **Modal 은 router 외부** — `showModalBottomSheet` / `showDialog` 로 열리는
 /// `FaceMeshPage`, `AlbumCapturePage` 등은 history stack 의미가 약해 router
 /// 등록 안 함.
+/// 전역 root navigator key — 푸시 알림처럼 위젯 트리 밖에서 overlay/네비게이션
+/// context 가 필요한 서비스가 사용한다.
+final rootNavigatorKey = GlobalKey<NavigatorState>();
+
 final router = GoRouter(
+  navigatorKey: rootNavigatorKey,
   initialLocation: '/main',
   // cold-start 시 GoRouter 가 플랫폼 딥링크(`/r/{uuid}`)를 자체 소비해 `/main`
   // 없이 ReportPage 로 직행 + DeepLinkService(app_links)도 push → 같은 화면 2장
@@ -152,7 +157,10 @@ extension CompatPushExtension on BuildContext {
       );
       return;
     }
-    push('/r/$a~$b', extra: _CompatExtras(my: my, album: album));
+    push(
+      '/r/$a~$b',
+      extra: _CompatExtras(my: my, album: album),
+    );
   }
 
   /// pushCompat 의 `go` 버전 — 상세를 최상위 라우트로 띄워 (스택을 접어) 닫을 때
@@ -172,7 +180,10 @@ extension CompatPushExtension on BuildContext {
       );
       return;
     }
-    go('/r/$a~$b', extra: _CompatExtras(my: my, album: album));
+    go(
+      '/r/$a~$b',
+      extra: _CompatExtras(my: my, album: album),
+    );
   }
 }
 
@@ -281,8 +292,11 @@ class _ShareErrorScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const FaIcon(FontAwesomeIcons.faceFrown,
-                  size: 56, color: AppColors.border),
+              const FaIcon(
+                FontAwesomeIcons.faceFrown,
+                size: 56,
+                color: AppColors.border,
+              ),
               const SizedBox(height: AppSpacing.lg),
               Text(
                 '카드를 찾을 수 없어요',
@@ -292,10 +306,7 @@ class _ShareErrorScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),
-              const Text(
-                '만료됐거나 link 가 잘못됐어요',
-                style: AppText.hint,
-              ),
+              const Text('만료됐거나 link 가 잘못됐어요', style: AppText.hint),
               const SizedBox(height: AppSpacing.xl),
               TextButton(
                 onPressed: () => context.go('/main'),

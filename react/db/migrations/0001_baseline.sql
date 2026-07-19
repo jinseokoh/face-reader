@@ -52,6 +52,7 @@
 -- 0. extensions
 -- ─────────────────────────────────────────────────────────────────────────────
 create extension if not exists "pgcrypto";  -- gen_random_uuid()
+create extension if not exists "pg_net";    -- 매칭 푸시 webhook (net.http_post)
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 1. public.users — 프로필 + 코인 잔액 SoT
@@ -965,6 +966,82 @@ drop trigger if exists user_blocks_auto_leave on public.user_blocks;
 create trigger user_blocks_auto_leave
   after insert on public.user_blocks
   for each row execute function public.block_auto_leave();
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 11-4b. 매칭 응답 푸시 — push_tokens + team_matches trigger → Worker → FCM
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 기기 FCM token — 로그인 세션마다 앱이 upsert (token 이 PK: 기기당 1행,
+-- 계정 전환 시 user_id 만 갈아탄다). 로그아웃 시 앱이 본인 행 삭제.
+create table if not exists public.push_tokens (
+  user_id    uuid        not null references auth.users(id) on delete cascade,
+  token      text        primary key,
+  platform   text        not null default 'android',
+  updated_at timestamptz not null default now()
+);
+
+alter table public.push_tokens enable row level security;
+
+drop policy if exists "push_tokens_self_select" on public.push_tokens;
+drop policy if exists "push_tokens_self_insert" on public.push_tokens;
+drop policy if exists "push_tokens_self_update" on public.push_tokens;
+drop policy if exists "push_tokens_self_delete" on public.push_tokens;
+
+create policy "push_tokens_self_select"
+  on public.push_tokens for select using (user_id = auth.uid());
+create policy "push_tokens_self_insert"
+  on public.push_tokens for insert with check (user_id = auth.uid());
+create policy "push_tokens_self_update"
+  on public.push_tokens for update
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy "push_tokens_self_delete"
+  on public.push_tokens for delete using (user_id = auth.uid());
+
+-- 서버 전용 비밀 저장소 — API 로 절대 노출 금지 (RLS 켜고 정책 없음 + revoke).
+-- push_webhook_secret 값은 baseline 에 싣지 않는다 — 운영 patch 로 1회 insert.
+create table if not exists public.app_secrets (
+  key   text primary key,
+  value text not null
+);
+alter table public.app_secrets enable row level security;
+revoke all on public.app_secrets from anon, authenticated;
+
+-- consent 변경 → Worker(/api/push/match) 로 webhook — 상대에게 FCM 발송.
+-- 비밀 미설정이면 조용히 통과 (푸시만 안 나감, 매칭 흐름 무영향).
+create or replace function public.notify_match_response()
+returns trigger
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_target    uuid;
+  v_responder uuid;
+  v_accepted  boolean;
+  v_secret    text;
+begin
+  if new.a_consent is distinct from old.a_consent then
+    v_responder := new.user_a; v_target := new.user_b; v_accepted := new.a_consent;
+  elsif new.b_consent is distinct from old.b_consent then
+    v_responder := new.user_b; v_target := new.user_a; v_accepted := new.b_consent;
+  else
+    return new;
+  end if;
+  select value into v_secret from app_secrets where key = 'push_webhook_secret';
+  if v_secret is null then return new; end if;
+  perform net.http_post(
+    url     := 'https://facely.kr/api/push/match',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json', 'x-push-secret', v_secret),
+    body    := jsonb_build_object(
+      'team_id', new.team_id, 'target', v_target, 'responder', v_responder,
+      'accepted', v_accepted, 'opened', new.opened_at is not null)
+  );
+  return new;
+end;
+$$;
+
+drop trigger if exists team_matches_notify on public.team_matches;
+create trigger team_matches_notify
+  after update on public.team_matches
+  for each row execute function public.notify_match_response();
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 11-5. Battle RPC 상태 머신 + 공개 목록 view + Realtime

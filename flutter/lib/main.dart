@@ -10,6 +10,7 @@ import 'package:facely/data/services/auth_service.dart';
 import 'package:facely/data/services/coin_service.dart';
 import 'package:facely/data/services/deep_link_service.dart';
 import 'package:facely/data/services/face_shape_classifier.dart';
+import 'package:facely/data/services/push_service.dart';
 import 'package:facely/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
@@ -58,9 +59,7 @@ void main() async {
 /// 실측 0.5~1초 (Firebase/Supabase/Hive/Auth/DeepLink).
 Future<void> _bootstrap() async {
   timeago.setLocaleMessages('ko', timeago.KoMessages());
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   KakaoSdk.init(nativeAppKey: dotenv.env['KAKAO_NATIVE_APP_KEY']!);
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL']!,
@@ -90,6 +89,8 @@ void _warmUpNonCritical() {
   // face-shape TFLite — 분석 시점에만 필요. 실패 시 호출부가 legacy LDA fallback.
   unawaited(FaceShapeClassifier.instance.load().catchError((Object _) {}));
   unawaited(AnalyticsService.instance.logAppOpen().catchError((Object _) {}));
+  // 매칭 응답 푸시 — token 등록 + 수신 배선. 권한 거부·실패 무시.
+  unawaited(PushService.instance.initialize().catchError((Object _) {}));
 }
 
 /// 부팅 게이트 — [_bootstrap] 진행 동안 수묵화 + 타이틀 스플래시를 그리고,
@@ -175,10 +176,7 @@ class _BootSplash extends StatelessWidget {
                   style: AppText.body.copyWith(color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                TextButton(
-                  onPressed: onRetry,
-                  child: const Text('다시 시도'),
-                ),
+                TextButton(onPressed: onRetry, child: const Text('다시 시도')),
               ],
             ],
           ),

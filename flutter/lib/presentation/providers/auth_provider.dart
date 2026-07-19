@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:facely/data/services/auth_service.dart';
+import 'package:facely/data/services/push_service.dart';
 import 'package:facely/data/services/supabase_service.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
 
@@ -41,17 +42,23 @@ class AuthNotifier extends Notifier<AuthUser?> {
   }
 
   Future<({bool ok, String? message})> loginWithEmail(
-      String email, String password) async {
+    String email,
+    String password,
+  ) async {
     return AuthService().loginWithEmail(email, password);
   }
 
   Future<({SignUpOutcome outcome, String? message})> signUpWithEmail(
-      String email, String password) async {
+    String email,
+    String password,
+  ) async {
     return AuthService().signUpWithEmail(email, password);
   }
 
   Future<({bool ok, String? message})> verifyEmailOtp(
-      String email, String token) async {
+    String email,
+    String token,
+  ) async {
     return AuthService().verifyEmailOtp(email, token);
   }
 
@@ -60,10 +67,14 @@ class AuthNotifier extends Notifier<AuthUser?> {
   }
 
   Future<void> logout() async {
+    // 세션이 살아 있을 때 이 기기의 푸시 token 을 지운다 — 로그아웃한
+    // 기기로 매칭 알림이 가지 않게 (signOut 후엔 RLS 를 못 통과한다).
+    await PushService.instance.unregister();
     await AuthService().logout();
   }
 
   Future<({bool ok, String? message})> deleteAccount() async {
+    await PushService.instance.unregister();
     return AuthService().deleteAccount();
   }
 

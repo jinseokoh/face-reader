@@ -67,6 +67,7 @@ dependencies:
   face_engine:
     path: ../shared
   sentry: ^9.21.0
+  firebase_messaging: ^16.4.3
 
 dev_dependencies:
   flutter_test:

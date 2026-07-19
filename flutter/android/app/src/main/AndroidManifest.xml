@@ -1,6 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission
         android:name="android.permission.CAMERA"/>
+    <!-- Android 13+ 알림 표시 — 매칭 응답 푸시. 런타임 요청은 PushService. -->
+    <uses-permission
+        android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
         android:label="관상은 과학이다"
         android:name="${applicationName}"

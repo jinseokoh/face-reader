@@ -14,4 +14,5 @@ export default [
   route("/api/r2/delete", "./routes/api.r2.delete.ts"),
   route("/api/analyze", "./routes/api.analyze.ts"),
   route("/api/account/delete", "./routes/api.account.delete.ts"),
+  route("/api/push/match", "./routes/api.push.match.ts"),
 ] satisfies RouteConfig;
