@@ -9,7 +9,6 @@ import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/services/compat/battle.dart' as engine;
-import 'package:face_engine/domain/services/compat/compat_adapter.dart';
 import 'package:face_engine/domain/services/compat/compat_label.dart';
 
 import '../../../config/router.dart';
@@ -87,6 +86,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
         computed = engine.computeBattle(
           players,
           matchOnly: battle.roomKind == BattleRoomKind.match,
+          blockedKeys: blockedKeysFromSnapshot(snapshot),
         );
       }
     }
@@ -605,12 +605,16 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
       return;
     }
     // live 리포트는 alias 가 비어 있으므로 (fetchByUuid 수신 규약) 이름은
-    // payload 닉네임을 명시 전달.
+    // payload 닉네임을 명시 전달. 밴드·점수도 결과표와 같은 소스(payload
+    // band + snapshot 재계산 점수)를 전달 — 시트 자체 재계산은 차단 쌍의
+    // 상한 60점을 몰라 결과표와 어긋난다.
     await openBattlePairDetail(
       context,
       ref,
       my: my,
       album: album,
+      band: _bandOf(slotA, slotB) ?? 0,
+      score: _scoreOf(slotA, slotB),
       myName: _nameOf(firstUid == uidA ? slotA : slotB),
       albumName: _nameOf(firstUid == uidA ? slotB : slotA),
     );
@@ -625,11 +629,11 @@ Future<void> openBattlePairDetail(
   WidgetRef ref, {
   required FaceReadingReport my,
   required FaceReadingReport album,
+  required int band,
+  int? score,
   String? myName,
   String? albumName,
 }) async {
-  final bundle = analyzeCompatibilityFromReports(my: my, album: album);
-  final band = bundle.report.label.index;
   final unlock = await showModalBottomSheet<bool>(
     context: context,
     backgroundColor: Colors.white,
@@ -674,7 +678,7 @@ Future<void> openBattlePairDetail(
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  BandDot(band, size: 28, score: bundle.report.total.round()),
+                  BandDot(band, size: 28, score: score),
                   const SizedBox(width: AppSpacing.xs),
                   Text(band.bandLabel, style: AppText.body),
                 ],

@@ -39,14 +39,16 @@ FaceReadingReport _fakeReport(
   final frontalZ = <String, double>{};
   for (final info in metricInfoList) {
     final bias = t.bias[info.id] ?? 0.0;
-    frontalZ[info.id] =
-        (bias + _normal(rng) * 0.85).clamp(-3.5, 3.5).toDouble();
+    frontalZ[info.id] = (bias + _normal(rng) * 0.85)
+        .clamp(-3.5, 3.5)
+        .toDouble();
   }
   final lateralZ = <String, double>{};
   for (final info in lateralMetricInfoList) {
     final bias = t.bias[info.id] ?? 0.0;
-    lateralZ[info.id] =
-        (bias + _normal(rng) * 0.85).clamp(-3.5, 3.5).toDouble();
+    lateralZ[info.id] = (bias + _normal(rng) * 0.85)
+        .clamp(-3.5, 3.5)
+        .toDouble();
   }
   final tree = scoreTree({...frontalZ, ...lateralZ});
   final nodeScores = <String, NodeEvidence>{};
@@ -132,10 +134,7 @@ void main() {
   test('정렬 = 순위 — pairs 는 raw total 내림차순, best = pairs[0]', () {
     final result = computeBattle(_players(6));
     for (int i = 1; i < result.pairs.length; i++) {
-      expect(
-        result.pairs[i - 1].total >= result.pairs[i].total,
-        isTrue,
-      );
+      expect(result.pairs[i - 1].total >= result.pairs[i].total, isTrue);
     }
     expect(identical(result.best, result.pairs.first), isTrue);
   });
@@ -209,6 +208,41 @@ void main() {
     for (final p in players) {
       expect((p as Map)['gender'], anyOf('male', 'female'));
     }
+  });
+
+  test('차단 쌍 — 상한 60점·형극난조 확정·베스트 제외, 다른 쌍은 불변', () {
+    final players = _players(6);
+    final open = computeBattle(players);
+    final key = battlePairKey(open.best.a, open.best.b);
+    final result = computeBattle(players, blockedKeys: {key});
+
+    final blockedPair = result.pairs.firstWhere(
+      (p) => battlePairKey(p.a, p.b) == key,
+    );
+    expect(blockedPair.blocked, isTrue);
+    expect(blockedPair.total, lessThanOrEqualTo(kBattleBlockCap));
+    expect(blockedPair.label, CompatLabel.hyeonggeuknanjo);
+    expect(battlePairKey(result.best.a, result.best.b), isNot(key));
+
+    for (final p in result.pairs.where((p) => !p.blocked)) {
+      final original = open.pairs.firstWhere((o) => o.a == p.a && o.b == p.b);
+      expect(p.total, original.total);
+      expect(p.label, original.label);
+    }
+  });
+
+  test('전 쌍 차단 극단 — best 는 pairs.first 로 후퇴', () {
+    const pairs = [
+      BattlePair(
+        a: 1,
+        b: 2,
+        total: 60,
+        label: CompatLabel.hyeonggeuknanjo,
+        blocked: true,
+      ),
+    ];
+    const result = BattleResult(players: [], pairs: pairs);
+    expect(identical(result.best, pairs.first), isTrue);
   });
 
   test('all 모드(matchOnly 기본값 false) — pairs 수 N(N-1)/2 유지, 동성 쌍 포함', () {

@@ -65,17 +65,18 @@ void main() {
   _setRunMetrics = ((String landmarksJson) {
     final raw = jsonDecode(landmarksJson) as List;
     final pts = [
-      for (final p in raw)
-        [(p[0] as num).toDouble(), (p[1] as num).toDouble()],
+      for (final p in raw) [(p[0] as num).toDouble(), (p[1] as num).toDouble()],
     ];
     return jsonEncode(WebFaceMetrics(pts).computeAll());
   }).toJS;
 
   // Chemistry Battle — chemistry_snapshot 기반 배틀 집계 (rev2 §3 payload 계약).
   // 입력: {"roomKind":"match"|"all","players":[{"slot":1,"name":"지은",
-  //   "gender":"female","body":{…metrics body…}}, …]} — roomKind 누락 시 'all'.
+  //   "gender":"female","body":{…metrics body…}}, …],
+  //   "blocked":[[1,4],…]} — roomKind 누락 시 'all', blocked 누락 시 없음.
   // 출력: {"players":[…],"pairs":[…],"best":{…}} — pairs 정렬 = 순위.
   // roomKind=='match' 면 이성 쌍만 pairs 에 담긴다(matchOnly).
+  // blocked 쌍(snapshot 동결 차단 관계)은 상한 60점 + 베스트 제외.
   _setRunBattle = ((String battleJson) {
     final raw = jsonDecode(battleJson) as Map<String, dynamic>;
     final matchOnly = raw['roomKind'] == 'match';
@@ -88,7 +89,15 @@ void main() {
           report: FaceReadingReport.fromJsonString(jsonEncode(p['body'])),
         ),
     ];
-    return jsonEncode(computeBattle(players, matchOnly: matchOnly).toPayload());
+    final blockedKeys = {
+      for (final p in raw['blocked'] as List? ?? const [])
+        battlePairKey((p[0] as num).toInt(), (p[1] as num).toInt()),
+    };
+    return jsonEncode(computeBattle(
+      players,
+      matchOnly: matchOnly,
+      blockedKeys: blockedKeys,
+    ).toPayload());
   }).toJS;
 }
 

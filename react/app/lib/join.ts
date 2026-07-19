@@ -359,7 +359,9 @@ export function watchBattle(
     .subscribe();
 }
 
-/** snapshot({user_id: body}) + roster → runBattle. 입력 부족 시 null. */
+/** snapshot({user_id: body, blocked?: [[slot,slot]]}) + roster → runBattle.
+ *  blocked = 시작 시 동결된 차단 쌍 — 엔진이 상한 60점(형극난조)으로 눌러
+ *  베스트에서 제외한다. 입력 부족 시 null. */
 export function computeBattlePayload(
   roster: RosterEntry[],
   snapshot: Record<string, unknown>,
@@ -374,7 +376,8 @@ export function computeBattlePayload(
       body: snapshot[r.userId],
     }));
   if (players.length < 2) return null;
+  const blocked = Array.isArray(snapshot.blocked) ? snapshot.blocked : [];
   return JSON.parse(
-    globalThis.runBattle(JSON.stringify({ roomKind, players })),
+    globalThis.runBattle(JSON.stringify({ roomKind, players, blocked })),
   ) as BattlePayload;
 }

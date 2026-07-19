@@ -911,9 +911,14 @@ create policy "battle_reports_pair_insert"
     )
   );
 
--- 차단 — 쌍이 다시는 같은 배틀방에서 만나지 않도록 join_battle 이 양방향
--- 거부한다. 목록(public_battles)은 "차단한 사람이 방장인 방"만 요청자별로
--- 숨긴다 (참가자 케이스는 조인 시점 게이트가 담당). 본인 행만 읽기/쓰기.
+-- 차단 — 비용은 전부 차단자가 진다. 차단자는 상대가 있는 방에 못 들어가고
+-- (BLOCKED_MEMBER), 차단당한 쪽은 어디든 참가 가능 — 불이익도, 차단 사실을
+-- 눈치챌 단서도 없다. 예외는 서로가 만든 방 하나: 상호 비공개 (목록에서
+-- 숨기고 직접 진입은 NOT_FOUND). 제3자 방에서 두 사람이 같이 배틀하게 되면
+-- 그 쌍의 발표 점수를 엔진이 상한 60점(형극난조 확정)으로 눌러 베스트·매칭
+-- 카드로 이어지지 않게 한다 (snapshot.blocked 동결 — join_battle 참고).
+-- 차단 순간 같이 있던 모집 중 방에서는 차단자가 자동 퇴장(트리거). 본인 행만
+-- 읽기/쓰기.
 create table if not exists public.user_blocks (
   blocker_id uuid not null references auth.users(id) on delete cascade,
   blocked_id uuid not null references auth.users(id) on delete cascade,
@@ -934,6 +939,32 @@ create policy "user_blocks_self_insert"
   on public.user_blocks for insert with check (blocker_id = auth.uid());
 create policy "user_blocks_self_delete"
   on public.user_blocks for delete using (blocker_id = auth.uid());
+
+-- 차단 순간, 두 사람이 같이 있는 모집 중 방에서 차단자가 자동 퇴장한다
+-- (차단 비용은 차단자 부담). 차단자가 방장인 방만은 방장 자리를 비울 수
+-- 없으므로 상대가 나가진다 — 자기 공간 보호 예외. 시작된 방(revealing~)은
+-- 되돌리지 않는다 — snapshot 재확인·엔진 상한이 결과를 무해화.
+create or replace function public.block_auto_leave()
+returns trigger
+language plpgsql security definer set search_path = public
+as $$
+begin
+  delete from team_members tm
+   using teams t, team_members other
+   where t.id = tm.team_id and t.status = 'recruiting'
+     and other.team_id = tm.team_id
+     and ((tm.user_id = new.blocker_id and other.user_id = new.blocked_id
+           and t.owner_id <> new.blocker_id)
+       or (tm.user_id = new.blocked_id and other.user_id = new.blocker_id
+           and t.owner_id = new.blocker_id));
+  return new;
+end;
+$$;
+
+drop trigger if exists user_blocks_auto_leave on public.user_blocks;
+create trigger user_blocks_auto_leave
+  after insert on public.user_blocks
+  for each row execute function public.block_auto_leave();
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 11-5. Battle RPC 상태 머신 + 공개 목록 view + Realtime
@@ -962,6 +993,12 @@ begin
   -- 방 행 잠금 — 동시 조인의 정원 검사를 직렬화 (race 원천 차단).
   select * into v_team from teams where id = p_team_id for update;
   if not found then raise exception 'NOT_FOUND'; end if;
+  -- 방장이 나를 차단한 방은 상호 비공개 — 존재하지 않는 방과 같은 중립
+  -- 코드로 숨긴다 (목록 숨김은 public_battles 가 담당, 직접 링크는 여기).
+  if exists (select 1 from user_blocks b
+              where b.blocker_id = v_team.owner_id and b.blocked_id = v_uid) then
+    raise exception 'NOT_FOUND';
+  end if;
   if v_team.status <> 'recruiting' then raise exception 'NOT_RECRUITING'; end if;
   if v_team.password is not null
      and (p_password is null or p_password <> v_team.password) then
@@ -982,17 +1019,14 @@ begin
   end if;
 
   -- 차단 게이트 — 로스터(방장 포함)에 내가 차단한 사람이 있으면 사실대로
-  -- (BLOCKED_MEMBER), 나를 차단한 사람이 있으면 차단 사실이 새지 않는 중립
-  -- 코드(NOT_JOINABLE)로 거부. 링크·QR 직접 진입도 여기서 막힌다.
+  -- 거부 (차단자는 자기 차단 목록을 아니 새는 것이 없다). 차단당한 쪽은
+  -- 여기서 막지 않는다 — 막으면 로스터를 본 뒤라 차단 사실이 역산되고,
+  -- 남의 선택으로 참가를 거부당하는 부당함도 있다. 같이 시작되는 경우는
+  -- snapshot.blocked 동결 + 엔진 상한 60점이 결과를 무해화한다.
   if exists (select 1 from team_members tm
               join user_blocks b on b.blocked_id = tm.user_id
              where tm.team_id = p_team_id and b.blocker_id = v_uid) then
     raise exception 'BLOCKED_MEMBER';
-  end if;
-  if exists (select 1 from team_members tm
-              join user_blocks b on b.blocker_id = tm.user_id
-             where tm.team_id = p_team_id and b.blocked_id = v_uid) then
-    raise exception 'NOT_JOINABLE';
   end if;
 
   select count(*), coalesce(max(slot_no), 0) into v_count, v_slot
@@ -1017,6 +1051,9 @@ begin
 
   -- 정원 충족 = 유일한 시작 조건. 입력(snapshot)을 서버가 동결 — 시작 후
   -- 재촬영이 결과에 영향을 못 주는 치팅 방어 + 전 클라이언트 동일 입력.
+  -- blocked = 로스터 내 차단 쌍(방향 무관)의 slot 쌍 — 엔진이 이 쌍의 발표
+  -- 점수를 상한 60점(형극난조)으로 눌러 베스트·매칭에서 배제한다. key 는
+  -- user_id(uuid) 와 충돌하지 않아 {user_id: body} 소비자에 무해.
   if v_count + 1 = v_team.max_players then
     update teams
        set status = 'revealing',
@@ -1030,7 +1067,16 @@ begin
                   order by m.updated_at desc limit 1
                ) mf on true
               where tm.team_id = p_team_id
-           )
+           ) || jsonb_build_object('blocked', coalesce((
+             select jsonb_agg(jsonb_build_array(x.slot_no, y.slot_no))
+               from team_members x
+               join team_members y
+                 on y.team_id = x.team_id and x.slot_no < y.slot_no
+              where x.team_id = p_team_id
+                and exists (select 1 from user_blocks ub
+                             where (ub.blocker_id = x.user_id and ub.blocked_id = y.user_id)
+                                or (ub.blocker_id = y.user_id and ub.blocked_id = x.user_id))
+           ), '[]'::jsonb))
      where id = p_team_id;
   end if;
 end;
@@ -1085,7 +1131,12 @@ begin
        where team_id = p_team_id and slot_no = (p_payload->'best'->>'a')::int;
       select user_id into v_user_b from team_members
        where team_id = p_team_id and slot_no = (p_payload->'best'->>'b')::int;
-      if v_user_a is not null and v_user_b is not null and v_user_a <> v_user_b then
+      -- 최후 방어선 — 시작 후에 생긴 차단(snapshot 동결이 못 본 것)까지
+      -- 여기서 걸러 매칭 카드·채팅이 열리지 않게 한다.
+      if v_user_a is not null and v_user_b is not null and v_user_a <> v_user_b
+         and not exists (select 1 from user_blocks ub
+                          where (ub.blocker_id = v_user_a and ub.blocked_id = v_user_b)
+                             or (ub.blocker_id = v_user_b and ub.blocked_id = v_user_a)) then
         insert into battle_matches (team_id, user_a, user_b)
         values (p_team_id, v_user_a, v_user_b)
         on conflict (team_id) do nothing;
@@ -1146,10 +1197,12 @@ grant  execute on function public.respond_match(uuid, boolean)     to authentica
 
 -- 공개 배틀 목록 — 모집 중 공개방만, 컬럼 화이트리스트 (password 접근 없음).
 -- 모집 중 전 방 노출 — 비밀방도 목록에 보이고(is_private 로 자물쇠 표시),
--- 입장만 PIN 으로 잠긴다. 요청자가 차단한 사람이 방장인 방은 숨긴다
--- (invoker 실행이라 user_blocks RLS 가 본인 차단 행만 보게 한다 — 비로그인은
--- 차단 행이 없어 전 방 노출).
-create or replace view public.public_battles with (security_invoker = on) as
+-- 입장만 PIN 으로 잠긴다. 방장과 차단 관계면 방향 무관 숨김 (상호 비공개) —
+-- "나를 차단한 방장" 방향은 user_blocks RLS(본인 행만)로는 볼 수 없어
+-- battle_roster 와 같은 owner 실행 view 로 양방향을 필터한다. 노출 컬럼은
+-- 종전과 동일 화이트리스트라 owner 실행이 새로 여는 정보는 없다. 비로그인은
+-- 차단 행이 없어 전 방 노출.
+create or replace view public.public_battles with (security_invoker = off) as
   select t.id, t.title, t.room_kind, t.thumb_open, t.is_private, t.max_players,
          t.age_min, t.age_max, t.created_at,
          (select count(*)::int from public.team_members tm where tm.team_id = t.id)
@@ -1158,7 +1211,8 @@ create or replace view public.public_battles with (security_invoker = on) as
    where t.status = 'recruiting'
      and not exists (
        select 1 from public.user_blocks b
-        where b.blocker_id = auth.uid() and b.blocked_id = t.owner_id
+        where (b.blocker_id = auth.uid() and b.blocked_id = t.owner_id)
+           or (b.blocker_id = t.owner_id and b.blocked_id = auth.uid())
      );
 
 -- 로비·리빌 명단 — team_members 에 users.nickname 을 붙인 읽기 전용 view.
