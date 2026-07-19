@@ -128,3 +128,13 @@ export type Unlock = {
   total_score: number | null;
   created_at: string;
 };
+
+// 채팅 신고 (team_reports) — 사용자 단위 + [메시지] prefix 는 개별 메시지 신고.
+export type TeamReport = {
+  id: string;
+  team_id: string;
+  reporter_id: string;
+  reported_id: string;
+  reason: string;
+  created_at: string;
+};

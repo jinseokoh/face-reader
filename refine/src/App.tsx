@@ -15,6 +15,7 @@ import {
     AppstoreOutlined,
     ClusterOutlined,
     DollarOutlined,
+    FlagOutlined,
     PictureOutlined,
     PlaySquareOutlined,
     ScanOutlined,
@@ -36,6 +37,7 @@ import { AdVideoCreate, AdVideoList } from './pages/ad-videos'
 import { CoinList } from './pages/coins'
 import { DashboardPage } from './pages/dashboard'
 import { MetricList, MetricShow } from './pages/metrics'
+import { ReportList } from './pages/reports'
 import { TeamList, TeamShow } from './pages/teams'
 import { UnlockList, UnlockShow } from './pages/unlocks'
 import { UserList, UserShow } from './pages/users'
@@ -92,6 +94,11 @@ function App() {
                     meta: { label: '코인 coins', icon: <DollarOutlined /> },
                   },
                   {
+                    name: 'team_reports',
+                    list: '/reports',
+                    meta: { label: '신고 reports', icon: <FlagOutlined /> },
+                  },
+                  {
                     name: 'ad_videos',
                     list: '/ad-videos',
                     create: '/ad-videos/create',
@@ -137,6 +144,7 @@ function App() {
                       <Route path="show/:id" element={<MetricShow />} />
                     </Route>
                     <Route path="/coins" element={<CoinList />} />
+                    <Route path="/reports" element={<ReportList />} />
                     <Route path="/unlocks">
                       <Route index element={<UnlockList />} />
                       <Route path="show/:id" element={<UnlockShow />} />
