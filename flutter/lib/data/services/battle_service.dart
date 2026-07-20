@@ -103,6 +103,15 @@ class BattleService {
     params: {'p_team_id': battleId, 'p_password': ?password},
   );
 
+  /// 비밀방 문 앞 PIN 검증 — 목록 탭 → 상세 진입 전 dialog 용. password 는
+  /// 봉인 유지(boolean 만 반환), 최종 검증은 join_team 이 다시 한다.
+  Future<bool> checkPassword(String battleId, String password) async =>
+      await _client.rpc(
+            'check_team_password',
+            params: {'p_team_id': battleId, 'p_password': password},
+          )
+          as bool;
+
   Future<void> leaveBattle(String battleId) =>
       _client.rpc('leave_team', params: {'p_team_id': battleId});
 

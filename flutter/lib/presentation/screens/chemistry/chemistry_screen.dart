@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
 import '../../../core/theme.dart';
 import '../../../data/services/battle_service.dart';
@@ -8,6 +10,7 @@ import '../../../domain/models/battle.dart';
 import '../../providers/battle_provider.dart';
 import '../../providers/history_provider.dart';
 import '../../widgets/age_range_pill.dart';
+import '../../widgets/compact_snack_bar.dart';
 import '../../widgets/emotion_empty_state.dart';
 import '../../widgets/face_scan_pill.dart';
 import '../../widgets/login_bottom_sheet.dart';
@@ -187,7 +190,15 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
     );
   }
 
+  /// 내 그룹 = 전부 참가 중 — 비밀 그룹이어도 비밀번호 재확인 없이 진입
+  /// (비밀번호는 입장 자격 검사, 멤버 재인증 아님). 생략 사유는 스낵바로.
   void _openMine(Battle battle) {
+    if (!battle.isPublic) {
+      showTopSnackBar(
+        Overlay.of(context),
+        CompactSnackBar.info(message: '이미 참가한 그룹이라 비밀번호 없이 들어갑니다'),
+      );
+    }
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => battle.isRecruiting
@@ -507,7 +518,15 @@ class _MineTabState extends ConsumerState<_MineTab> {
 class _PublicCard extends StatefulWidget {
   final PublicBattle battle;
   final bool isOwner;
-  const _PublicCard({required this.battle, this.isOwner = false});
+
+  /// 내가 이미 참가 중인 그룹 — 비밀번호는 입장 자격 검사이지 멤버 재인증이
+  /// 아니므로 (오픈채팅 비밀방과 동일 모델) dialog 없이 바로 진입한다.
+  final bool isJoined;
+  const _PublicCard({
+    required this.battle,
+    this.isOwner = false,
+    this.isJoined = false,
+  });
 
   @override
   State<_PublicCard> createState() => _PublicCardState();
@@ -545,11 +564,125 @@ class _PublicCardState extends State<_PublicCard> {
   }
 
   /// 참가 여부 분기는 상세 페이지가 화면 안에서 처리 — 탭은 진입만.
-  void _open() {
+  /// 미참가 비밀 그룹은 문 앞 dialog 가 check_team_password RPC 로 검증한
+  /// 비밀번호를 받아야만 상세로 진입하고, 그 값을 참가 폼에 채워 넘긴다
+  /// (조인 시 join_team 이 같은 비교를 다시 한다).
+  Future<void> _open() async {
+    String? pin;
+    if (battle.isPrivate && !widget.isJoined) {
+      pin = await showDialog<String>(
+        context: context,
+        builder: (_) => _PinDialog(battleId: battle.id),
+      );
+      if (pin == null || !mounted) return;
+    }
+    // 참가 중인 비밀 그룹 — dialog 생략 사유를 스낵바로 알린다.
+    if (battle.isPrivate && widget.isJoined) {
+      showTopSnackBar(
+        Overlay.of(context),
+        CompactSnackBar.info(message: '이미 참가한 그룹이라 비밀번호 없이 들어갑니다'),
+      );
+    }
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => BattleDetailScreen(battleId: battle.id),
+        builder: (_) =>
+            BattleDetailScreen(battleId: battle.id, initialPin: pin),
       ),
+    );
+  }
+}
+
+/// 비밀 그룹 문 앞 비밀번호 입력 dialog — 상세 참가 폼의 PIN 입력과 동일 스펙
+/// (숫자 4자리). 확인 시 check_team_password RPC 로 서버 검증하고, 일치할
+/// 때만 입력값을 pop 으로 돌려준다. 불일치·통신 실패는 dialog 안 errorText.
+class _PinDialog extends StatefulWidget {
+  final String battleId;
+  const _PinDialog({required this.battleId});
+
+  @override
+  State<_PinDialog> createState() => _PinDialogState();
+}
+
+class _PinDialogState extends State<_PinDialog> {
+  final _ctrl = TextEditingController();
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final pin = _ctrl.text.trim();
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final ok = await BattleService.instance.checkPassword(
+        widget.battleId,
+        pin,
+      );
+      if (!mounted) return;
+      if (ok) {
+        Navigator.pop(context, pin);
+        return;
+      }
+      setState(() {
+        _busy = false;
+        _error = BattleJoinError.badPassword.labelKo;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = BattleJoinError.unknown.labelKo;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ready = _ctrl.text.trim().length == 4 && !_busy;
+    return AlertDialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+      ),
+      title: const Text('비밀 그룹', style: AppText.modalTitle),
+      content: TextField(
+        controller: _ctrl,
+        autofocus: true,
+        keyboardType: TextInputType.number,
+        maxLength: 4,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        style: AppText.body.copyWith(color: AppColors.textPrimary),
+        onChanged: (_) => setState(() => _error = null),
+        decoration: InputDecoration(
+          hintText: '비밀번호 4자리',
+          errorText: _error,
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _busy ? null : () => Navigator.pop(context),
+          child: Text(
+            '취소',
+            style: AppText.body.copyWith(color: AppColors.textHint),
+          ),
+        ),
+        TextButton(
+          onPressed: ready ? _submit : null,
+          child: Text(
+            '확인',
+            style: AppText.subTitle.copyWith(
+              color: ready ? AppColors.textPrimary : AppColors.textHint,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -568,12 +701,14 @@ class _PublicTabState extends ConsumerState<_PublicTab> {
   Widget build(BuildContext context) {
     final battles = ref.watch(publicBattlesProvider);
     // 공개 목록엔 방장 정보가 없다 (public_teams 화이트리스트) — 내 그룹
-    // 목록과 대조해 내가 방장인 방을 식별한다.
+    // 목록과 대조해 내가 방장인 방·이미 참가한 방을 식별한다.
     final myUid = BattleService.instance.myUid;
+    final myBattles = ref.watch(myBattlesProvider).value ?? const <Battle>[];
     final mineIds = {
-      for (final b in ref.watch(myBattlesProvider).value ?? const <Battle>[])
+      for (final b in myBattles)
         if (b.ownerId != null && b.ownerId == myUid) b.id,
     };
+    final joinedIds = {for (final b in myBattles) b.id};
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(publicBattlesProvider),
       color: AppColors.textPrimary,
@@ -622,6 +757,7 @@ class _PublicTabState extends ConsumerState<_PublicTab> {
                 : _PublicCard(
                     battle: sorted[i - 1],
                     isOwner: mineIds.contains(sorted[i - 1].id),
+                    isJoined: joinedIds.contains(sorted[i - 1].id),
                   ),
           );
         },

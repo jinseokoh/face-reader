@@ -29,7 +29,14 @@ import 'team_reveal_screen.dart';
 /// 안전망. 정원 충족(status=revealing)을 감지하면 참가자만 리빌로 넘어간다.
 class BattleDetailScreen extends ConsumerStatefulWidget {
   final String battleId;
-  const BattleDetailScreen({super.key, required this.battleId});
+
+  /// 목록에서 문 앞 dialog 로 받은 비밀 그룹 비밀번호 — 참가 폼에 미리 채운다.
+  final String? initialPin;
+  const BattleDetailScreen({
+    super.key,
+    required this.battleId,
+    this.initialPin,
+  });
 
   @override
   ConsumerState<BattleDetailScreen> createState() => _BattleDetailScreenState();
@@ -52,6 +59,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
   @override
   void initState() {
     super.initState();
+    _pinCtrl.text = widget.initialPin ?? '';
     _refresh();
     _channel = _service.watchBattle(widget.battleId, _refresh);
     _poll = Timer.periodic(const Duration(seconds: 10), (_) => _refresh());
@@ -441,7 +449,9 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
+          // 목록 카드(_BattleCardBody)와 동일 문구 — 방 유형 + 정원.
           Text(
+            '${battle.roomKind == BattleRoomKind.match ? '이성 케미' : '전체 케미'} '
             '${_roster.length} / ${battle.maxPlayers} 명',
             style: AppText.caption,
           ),
@@ -475,7 +485,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
             child: _genderSection(
               battle: battle,
               gender: 'male',
-              label: '남자',
+              label: '남',
               entries: males,
               slotCount: perGender,
             ),
@@ -485,7 +495,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
             child: _genderSection(
               battle: battle,
               gender: 'female',
-              label: '여자',
+              label: '여',
               entries: females,
               slotCount: perGender,
             ),
@@ -508,7 +518,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
     );
   }
 
-  /// 이성방 남/여 섹션 — 헤더(성별 아이콘 16px + "남자 N / M") + 행 목록.
+  /// 이성방 남/여 섹션 — 헤더("남 N / M") + 행 목록.
   Widget _genderSection({
     required Battle battle,
     required String gender,
@@ -519,15 +529,9 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Image.asset(_genderIconAsset(gender), width: 16, height: 16),
-            const SizedBox(width: AppSpacing.xs),
-            Text(
-              '$label ${entries.length} / $slotCount',
-              style: AppText.sectionTitle,
-            ),
-          ],
+        Text(
+          '$label ${entries.length} / $slotCount',
+          style: AppText.sectionTitle,
         ),
         const SizedBox(height: AppSpacing.md),
         for (var i = 0; i < slotCount; i++) ...[

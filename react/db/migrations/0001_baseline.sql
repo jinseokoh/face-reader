@@ -1196,6 +1196,21 @@ begin
 end;
 $$;
 
+-- 비밀방 문 앞 PIN 검증 — 목록 탭 → 상세 진입 전 dialog 용. password 봉인은
+-- 유지(boolean 만 반환)하고, 조인 시 join_team 이 같은 비교를 다시 한다.
+-- 비밀번호 없는 방·없는 방 id 는 각각 true/false. anon 도 목록을 탭할 수
+-- 있어 anon 까지 grant — 4자리 PIN oracle 노출은 join_team 과 동일 수위.
+create or replace function public.check_team_password(p_team_id uuid, p_password text)
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select exists (
+    select 1 from teams t
+     where t.id = p_team_id
+       and (t.password is null or t.password = p_password)
+  );
+$$;
+
 -- 이탈: recruiting 중 본인만 (방장은 방 삭제로만 접는다).
 create or replace function public.leave_team(p_team_id uuid)
 returns void
@@ -1300,6 +1315,8 @@ begin
 end;
 $$;
 
+revoke execute on function public.check_team_password(uuid, text) from public;
+grant  execute on function public.check_team_password(uuid, text) to anon, authenticated;
 revoke execute on function public.join_team(uuid, text)          from public, anon;
 revoke execute on function public.leave_team(uuid)               from public, anon;
 revoke execute on function public.submit_team_result(uuid, jsonb) from public, anon;
