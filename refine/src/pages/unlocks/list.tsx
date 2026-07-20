@@ -55,14 +55,15 @@ export const UnlockList = () => {
 
   const invalidate = useInvalidate();
 
-  /** unlock 삭제 — (user_id, partner_id) 복합 키. 스냅샷 body 도 함께 사라져
+  /** unlock 삭제 — (user_id, a_id, b_id) 복합 키. 스냅샷 body 도 함께 사라져
    *  사용자는 재열람에 코인을 다시 써야 한다. */
   const handleDelete = async (r: Unlock) => {
     const { error } = await adminClient
       .from("unlocks")
       .delete()
       .eq("user_id", r.user_id)
-      .eq("partner_id", r.partner_id);
+      .eq("a_id", r.a_id)
+      .eq("b_id", r.b_id);
     if (error) {
       message.error(`삭제 실패: ${error.message}`);
       return;
@@ -75,7 +76,7 @@ export const UnlockList = () => {
     <List title="궁합 리스트">
       <Table
         {...tableProps}
-        rowKey={(r) => `${r.user_id}~${r.partner_id}`}
+        rowKey={(r) => `${r.user_id}~${r.a_id}~${r.b_id}`}
         size="middle"
         scroll={{ x: 1100 }}
       >
@@ -115,18 +116,13 @@ export const UnlockList = () => {
           }}
         />
         <Table.Column<Unlock>
-          title="상대"
-          dataIndex="partner_id"
-          render={(v: string, r: Unlock) => (
-            <Space>
-              {r.partner_alias ? (
-                <Text strong>{r.partner_alias}</Text>
-              ) : (
-                <Text type="secondary">(이름 없음)</Text>
-              )}
-              <Text code copyable={{ text: v }} style={{ fontSize: 11 }}>
-                {v.slice(0, 8)}…
-              </Text>
+          title="궁합 쌍"
+          dataIndex="a_id"
+          render={(_: string, r: Unlock) => (
+            <Space size={4}>
+              <Text strong>{r.a_alias ?? "(이름 없음)"}</Text>
+              <Text type="secondary">·</Text>
+              <Text strong>{r.b_alias ?? "(이름 없음)"}</Text>
             </Space>
           )}
         />
@@ -141,11 +137,16 @@ export const UnlockList = () => {
         />
         <Table.Column<Unlock>
           title="메뉴"
-          dataIndex="partner_id"
+          dataIndex="a_id"
           fixed="right"
-          render={(partnerId: string, r: Unlock) => (
+          render={(_: string, r: Unlock) => (
             <Space size={4}>
-              <ShowButton hideText size="small" recordItemId={partnerId} />
+              {/* 복합 키를 단일 route param 으로 — show 가 ~ 로 다시 쪼갠다. */}
+              <ShowButton
+                hideText
+                size="small"
+                recordItemId={`${r.user_id}~${r.a_id}~${r.b_id}`}
+              />
               <Popconfirm
                 title="궁합 unlock 삭제"
                 description="이 궁합 잠금해제 기록을 삭제합니다. 사용자가 다시 보려면 코인을 재차감해야 하며 되돌릴 수 없습니다."

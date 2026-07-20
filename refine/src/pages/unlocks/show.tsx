@@ -11,24 +11,28 @@ import { CompatHeroCard } from "../metrics/HeroCard";
 const { Text } = Typography;
 
 export const UnlockShow = () => {
+  // route :id = `${user_id}~${a_id}~${b_id}` — 복합 PK 를 단일 param 에 인코딩.
   const { id } = useParams<{ id: string }>();
-  const partnerId = id ? decodeURIComponent(id) : "";
+  const [userId, aId, bId] = (id ? decodeURIComponent(id) : "").split("~");
 
   // 결제 시점 body 스냅샷이 해석 소스 — metrics row 삭제와 무관.
   const { result: unlockResult, query: unlockQuery } = useList<Unlock>({
     resource: "unlocks",
-    filters: [{ field: "partner_id", operator: "eq", value: partnerId }],
-    sorters: [{ field: "created_at", order: "desc" }],
+    filters: [
+      { field: "user_id", operator: "eq", value: userId },
+      { field: "a_id", operator: "eq", value: aId },
+      { field: "b_id", operator: "eq", value: bId },
+    ],
     pagination: { pageSize: 1 },
-    queryOptions: { enabled: Boolean(partnerId) },
+    queryOptions: { enabled: Boolean(userId && aId && bId) },
   });
   const unlock = (unlockResult?.data ?? [])[0];
-  const hasSnapshot = Boolean(unlock?.user_body && unlock?.partner_body);
+  const hasSnapshot = Boolean(unlock?.a_body && unlock?.b_body);
 
   const compat = useMemo<{ out?: CompatOutput; error?: string }>(() => {
     if (!hasSnapshot) return {};
     try {
-      return { out: runCompat(unlock!.user_body!, unlock!.partner_body!) };
+      return { out: runCompat(unlock!.a_body!, unlock!.b_body!) };
     } catch (e) {
       return { error: e instanceof Error ? e.message : String(e) };
     }
@@ -40,16 +44,21 @@ export const UnlockShow = () => {
     <Show isLoading={isLoading} title="궁합 해석">
       <Space direction="vertical" size="large" style={{ width: "100%" }}>
         <Descriptions column={2} bordered size="small">
-          <Descriptions.Item label="partner_id (상대 metrics)" span={2}>
-            <Text code copyable={{ text: partnerId }} style={{ fontSize: 12 }}>
-              {partnerId}
+          <Descriptions.Item label="a_id (metrics)">
+            <Text code copyable={{ text: aId }} style={{ fontSize: 12 }}>
+              {aId}
             </Text>
           </Descriptions.Item>
-          <Descriptions.Item label="본인 (user_alias)">
-            {unlock?.user_alias ?? <Text type="secondary">-</Text>}
+          <Descriptions.Item label="b_id (metrics)">
+            <Text code copyable={{ text: bId }} style={{ fontSize: 12 }}>
+              {bId}
+            </Text>
           </Descriptions.Item>
-          <Descriptions.Item label="상대 (partner_alias)">
-            {unlock?.partner_alias ?? <Text type="secondary">-</Text>}
+          <Descriptions.Item label="a_alias">
+            {unlock?.a_alias ?? <Text type="secondary">-</Text>}
+          </Descriptions.Item>
+          <Descriptions.Item label="b_alias">
+            {unlock?.b_alias ?? <Text type="secondary">-</Text>}
           </Descriptions.Item>
         </Descriptions>
 
@@ -78,8 +87,8 @@ export const UnlockShow = () => {
         {compat.out && (
           <CompatHeroCard
             compat={compat.out}
-            thumbA={metricThumbUrl(unlock?.user_body ?? undefined)}
-            thumbB={metricThumbUrl(unlock?.partner_body ?? undefined)}
+            thumbA={metricThumbUrl(unlock?.a_body ?? undefined)}
+            thumbB={metricThumbUrl(unlock?.b_body ?? undefined)}
           />
         )}
       </Space>

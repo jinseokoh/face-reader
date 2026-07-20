@@ -382,20 +382,19 @@ export const UserShow = () => {
 
       {unlocks.length > 0 && (
         <Card title={`궁합 unlock (${unlocks.length}건)`} style={{ marginTop: 16 }}>
-          <Table dataSource={unlocks} rowKey="partner_id" size="small">
+          <Table
+            dataSource={unlocks}
+            rowKey={(r) => `${r.a_id}~${r.b_id}`}
+            size="small"
+          >
             <Table.Column<Unlock>
-              title="상대"
-              dataIndex="partner_id"
-              render={(v: string, r: Unlock) => (
-                <Space>
-                  {r.partner_alias ? (
-                    <Text strong>{r.partner_alias}</Text>
-                  ) : (
-                    <Text type="secondary">-</Text>
-                  )}
-                  <Text code style={{ fontSize: 11 }}>
-                    {v.slice(0, 8)}…
-                  </Text>
+              title="궁합 쌍"
+              dataIndex="a_id"
+              render={(_: string, r: Unlock) => (
+                <Space size={4}>
+                  <Text strong>{r.a_alias ?? "-"}</Text>
+                  <Text type="secondary">·</Text>
+                  <Text strong>{r.b_alias ?? "-"}</Text>
                 </Space>
               )}
             />
