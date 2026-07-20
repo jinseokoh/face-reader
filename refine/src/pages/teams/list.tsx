@@ -14,9 +14,16 @@ import type { AppUser, Team, TeamMember } from "../../types";
 const { Text } = Typography;
 
 function statusTag(t: Team) {
-  if (!t.closed_at) return <Tag color="green">모집 중</Tag>;
-  if (t.matrix_payload) return <Tag color="blue">결과표 완성</Tag>;
-  return <Tag>종료</Tag>;
+  switch (t.status) {
+    case "recruiting":
+      return <Tag color="green">모집 중</Tag>;
+    case "revealing":
+      return <Tag color="blue">발표 중</Tag>;
+    case "completed":
+      return <Tag color="blue">완료</Tag>;
+    default:
+      return <Tag>인원 미달 종료</Tag>;
+  }
 }
 
 export const TeamList = () => {
@@ -41,7 +48,7 @@ export const TeamList = () => {
     (usersResult ?? []).map((u) => [u.id, u]),
   );
 
-  // 페이지에 보이는 그룹들의 멤버를 한 번에 — 등록 현황(M/N) 계산용.
+  // 페이지에 보이는 그룹들의 멤버를 한 번에 — 참가 현황(M/N) 계산용.
   const teamIds = teams.map((t) => t.id);
   const { result: membersResult } = useList<TeamMember>({
     resource: "team_members",
@@ -49,12 +56,9 @@ export const TeamList = () => {
     pagination: { mode: "off" },
     queryOptions: { enabled: teamIds.length > 0 },
   });
-  const counts = new Map<string, { joined: number; total: number }>();
+  const counts = new Map<string, number>();
   for (const m of membersResult?.data ?? []) {
-    const c = counts.get(m.team_id) ?? { joined: 0, total: 0 };
-    c.total += 1;
-    if (m.metrics_id != null) c.joined += 1;
-    counts.set(m.team_id, c);
+    counts.set(m.team_id, (counts.get(m.team_id) ?? 0) + 1);
   }
 
   return (
@@ -94,14 +98,20 @@ export const TeamList = () => {
           }}
         />
         <Table.Column<Team>
-          title="등록"
+          title="비밀"
+          dataIndex="is_private"
+          render={(v: boolean) =>
+            v ? <Tag>비밀</Tag> : <Tag color="cyan">공개</Tag>
+          }
+        />
+        <Table.Column<Team>
+          title="인원"
           dataIndex="id"
-          render={(id: string) => {
-            const c = counts.get(id);
-            if (!c) return <Text type="secondary">-</Text>;
+          render={(id: string, t: Team) => {
+            const joined = counts.get(id) ?? 0;
             return (
-              <Tag color={c.joined >= c.total ? "blue" : "default"}>
-                {c.joined}/{c.total}
+              <Tag color={joined >= t.max_players ? "blue" : "default"}>
+                {joined}/{t.max_players}
               </Tag>
             );
           }}

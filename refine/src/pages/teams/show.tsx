@@ -1,50 +1,48 @@
-import { CloseOutlined } from "@ant-design/icons";
 import { DateField, Show } from "@refinedev/antd";
-import { useInvalidate, useList, useMany } from "@refinedev/core";
+import { useList, useMany } from "@refinedev/core";
 import {
   Alert,
-  App,
   Avatar,
-  Button,
   Descriptions,
-  Popconfirm,
   Space,
   Table,
   Tag,
+  Tooltip,
   Typography,
 } from "antd";
 import { useParams } from "react-router";
 import { Link } from "react-router";
 import { UserLink } from "../../components/user-link";
-import { adminClient } from "../../providers/data";
 import type { AppUser, MetricEntry, Team, TeamMember } from "../../types";
 import { metricThumbUrl } from "../../types";
 
 const { Text, Title } = Typography;
 
+/** result_payload band 코드(0~3) — 앱 BattleBand 와 동일 라벨·색. */
+const BAND_LABEL = ["천생연분", "금슬화합", "상부상조", "형극난조"];
+const BAND_COLOR = ["#2E7D32", "#1565C0", "#EF6C00", "#D32F2F"];
+
+function statusTag(t: Team) {
+  switch (t.status) {
+    case "recruiting":
+      return <Tag color="green">모집 중</Tag>;
+    case "revealing":
+      return <Tag color="blue">발표 중</Tag>;
+    case "completed":
+      return <Tag color="blue">완료</Tag>;
+    default:
+      return <Tag>인원 미달 종료</Tag>;
+  }
+}
+
+function ageLabel(t: Team) {
+  if (t.age_min == null || t.age_max == null) return "전연령";
+  if (t.age_min === t.age_max) return `${t.age_min}대`;
+  return `${t.age_min}대~${t.age_max}대`;
+}
+
 export const TeamShow = () => {
   const { id } = useParams<{ id: string }>();
-  const { message } = App.useApp();
-  const invalidate = useInvalidate();
-
-  /** 슬롯 비우기 — team_members.metrics_id 만 null 로. metrics row 와
-   *  R2 썸네일은 보존한다 (그룹에서의 연결만 해제). */
-  const handleUnregister = async (memberId: string) => {
-    try {
-      const { error } = await adminClient
-        .from("team_members")
-        .update({ metrics_id: null })
-        .eq("id", memberId);
-      if (error) {
-        message.error(`슬롯 비우기 실패: ${error.message}`);
-        return;
-      }
-      message.success("슬롯을 대기로 전환 (metrics·썸네일은 보존)");
-      invalidate({ resource: "team_members", invalidates: ["list"] });
-    } catch (e) {
-      message.error(`실패: ${e instanceof Error ? e.message : String(e)}`);
-    }
-  };
 
   const {
     result: { data: teamRows },
@@ -59,42 +57,54 @@ export const TeamShow = () => {
   const { result: membersResult } = useList<TeamMember>({
     resource: "team_members",
     filters: [{ field: "team_id", operator: "eq", value: id }],
-    sorters: [{ field: "joined_at", order: "asc" }],
+    sorters: [{ field: "slot_no", order: "asc" }],
     pagination: { mode: "off" },
     queryOptions: { enabled: Boolean(id) },
   });
   const members = membersResult?.data ?? [];
+  const memberUserIds = Array.from(new Set(members.map((m) => m.user_id)));
 
-  const metricsIds = members
-    .map((m) => m.metrics_id)
-    .filter((v): v is string => Boolean(v));
-  const {
-    result: { data: metricsRows },
-  } = useMany<MetricEntry>({
-    resource: "metrics",
-    ids: metricsIds,
-    queryOptions: { enabled: metricsIds.length > 0 },
-  });
-  const metricById = new Map<string, MetricEntry>(
-    (metricsRows ?? []).map((m) => [m.id, m]),
-  );
-
-  // 멤버 → metrics.user_id → users — 계정 추적 컬럼용.
-  const memberUserIds = (metricsRows ?? [])
-    .map((m) => m.user_id)
-    .filter((v): v is string => Boolean(v));
+  // 닉네임·프로필 — team_members.user_id → users.
   const {
     result: { data: memberUsers },
   } = useMany<AppUser>({
     resource: "users",
-    ids: Array.from(new Set(memberUserIds)),
+    ids: memberUserIds,
     queryOptions: { enabled: memberUserIds.length > 0 },
   });
   const userById = new Map<string, AppUser>(
     (memberUsers ?? []).map((u) => [u.id, u]),
   );
 
-  const payload = team?.matrix_payload ?? null;
+  // 아바타·관상 row 링크 — 각 참가자의 my-face metrics row.
+  const { result: metricsResult } = useList<MetricEntry>({
+    resource: "metrics",
+    filters: [
+      { field: "user_id", operator: "in", value: memberUserIds },
+      { field: "is_my_face", operator: "eq", value: true },
+    ],
+    pagination: { mode: "off" },
+    queryOptions: { enabled: memberUserIds.length > 0 },
+  });
+  const metricByUser = new Map<string, MetricEntry>(
+    (metricsResult?.data ?? [])
+      .filter((m): m is MetricEntry & { user_id: string } =>
+        Boolean(m.user_id),
+      )
+      .map((m) => [m.user_id, m]),
+  );
+
+  const payload = team?.result_payload ?? null;
+  const players = payload
+    ? [...payload.players].sort((x, y) => x.slot - y.slot)
+    : [];
+  const pairBySlots = new Map(
+    (payload?.pairs ?? []).map((p) => [
+      `${Math.min(p.a, p.b)}-${Math.max(p.a, p.b)}`,
+      p,
+    ]),
+  );
+  const nameBySlot = new Map(players.map((p) => [p.slot, p.name]));
 
   return (
     <Show isLoading={teamQuery.isLoading} title="케미 그룹">
@@ -102,7 +112,10 @@ export const TeamShow = () => {
         {team && (
           <Descriptions column={2} bordered size="small">
             <Descriptions.Item label="그룹명" span={2}>
-              <Text strong>{team.title}</Text>
+              <Space>
+                <Text strong>{team.title}</Text>
+                {team.is_private ? <Tag>비밀</Tag> : <Tag color="cyan">공개</Tag>}
+              </Space>
             </Descriptions.Item>
             <Descriptions.Item label="웹 링크" span={2}>
               <Text
@@ -113,14 +126,37 @@ export const TeamShow = () => {
                 https://facely.kr/g/{team.id}
               </Text>
             </Descriptions.Item>
+            <Descriptions.Item label="유형">
+              {team.room_kind === "match" ? "이성 케미" : "전체 케미"}
+            </Descriptions.Item>
+            <Descriptions.Item label="비밀번호">
+              {team.password ? (
+                <Text code copyable>
+                  {team.password}
+                </Text>
+              ) : (
+                <Text type="secondary">-</Text>
+              )}
+            </Descriptions.Item>
+            <Descriptions.Item label="정원">
+              {members.length} / {team.max_players} 명
+            </Descriptions.Item>
+            <Descriptions.Item label="연령대">{ageLabel(team)}</Descriptions.Item>
+            <Descriptions.Item label="상태">{statusTag(team)}</Descriptions.Item>
             <Descriptions.Item label="생성">
               <DateField value={team.created_at} format="YYYY-MM-DD HH:mm" />
             </Descriptions.Item>
-            <Descriptions.Item label="마감">
+            <Descriptions.Item label="시작 · 마감">
+              {team.started_at ? (
+                <DateField value={team.started_at} format="YYYY-MM-DD HH:mm" />
+              ) : (
+                <Text type="secondary">-</Text>
+              )}
+              {" · "}
               {team.closed_at ? (
                 <DateField value={team.closed_at} format="YYYY-MM-DD HH:mm" />
               ) : (
-                <Tag color="green">모집 중</Tag>
+                <Text type="secondary">-</Text>
               )}
             </Descriptions.Item>
           </Descriptions>
@@ -134,93 +170,55 @@ export const TeamShow = () => {
             size="small"
             pagination={false}
           >
+            <Table.Column<TeamMember> title="슬롯" dataIndex="slot_no" width={56} />
             <Table.Column<TeamMember>
               title="멤버"
-              dataIndex="name"
-              render={(name: string, m) => {
-                const metric = m.metrics_id
-                  ? metricById.get(m.metrics_id)
-                  : undefined;
-                const thumb = metricThumbUrl(metric?.body);
+              dataIndex="user_id"
+              render={(uid: string, m) => {
+                const u = userById.get(uid);
+                const thumb = metricThumbUrl(metricByUser.get(uid)?.body);
                 return (
                   <Space>
-                    <Avatar src={thumb ?? undefined} size={32}>
-                      {name[0]}
+                    <Avatar
+                      src={thumb ?? u?.profile_image_url ?? undefined}
+                      size={32}
+                    >
+                      {u?.nickname?.[0] ?? "?"}
                     </Avatar>
-                    <Text strong>{name}</Text>
+                    <UserLink id={uid}>
+                      <Text strong>{u?.nickname ?? `${uid.slice(0, 8)}…`}</Text>
+                    </UserLink>
                     {m.is_owner && <Tag color="gold">방장</Tag>}
                   </Space>
                 );
               }}
             />
             <Table.Column<TeamMember>
-              title="등록"
-              dataIndex="metrics_id"
-              render={(v: string | null, m) =>
-                v ? (
-                  <Space size={4}>
-                    <Tag color="blue">등록</Tag>
-                    <Popconfirm
-                      title="슬롯 비우기"
-                      description={`'${m.name}' 슬롯을 대기(빈 슬롯)로 되돌립니다. metrics·썸네일은 삭제되지 않습니다.`}
-                      okText="Yes"
-                      cancelText="No"
-                      okButtonProps={{ danger: true }}
-                      onConfirm={() => handleUnregister(m.id)}
-                    >
-                      <Button
-                        size="small"
-                        type="text"
-                        danger
-                        icon={<CloseOutlined />}
-                      />
-                    </Popconfirm>
-                  </Space>
+              title="성별"
+              dataIndex="gender"
+              render={(g: string) =>
+                g === "male" ? (
+                  <Tag color="blue">남</Tag>
                 ) : (
-                  <Tag>대기</Tag>
+                  <Tag color="magenta">여</Tag>
                 )
               }
             />
             <Table.Column<TeamMember>
-              title="사용자"
-              dataIndex="metrics_id"
-              render={(v: string | null) => {
-                const uid = v ? metricById.get(v)?.user_id : null;
-                if (!uid)
-                  return v ? (
-                    <Tag color="default">anon</Tag>
-                  ) : (
-                    <Text type="secondary">-</Text>
-                  );
-                const u = userById.get(uid);
-                return (
-                  <Space size={6}>
-                    <Avatar src={u?.profile_image_url ?? undefined} size={20}>
-                      {u?.nickname?.[0] ?? "?"}
-                    </Avatar>
-                    <UserLink id={uid}>
-                      <Text strong style={{ fontSize: 12 }}>
-                        {u?.nickname ?? `${uid.slice(0, 8)}…`}
-                      </Text>
-                    </UserLink>
-                  </Space>
-                );
-              }}
-            />
-            <Table.Column<TeamMember>
               title="관상 row"
-              dataIndex="metrics_id"
-              render={(v: string | null) =>
-                v ? (
-                  <Link to={`/metrics/show/${v}`}>
+              dataIndex="user_id"
+              render={(uid: string) => {
+                const mid = metricByUser.get(uid)?.id;
+                return mid ? (
+                  <Link to={`/metrics/show/${mid}`}>
                     <Text code style={{ fontSize: 11 }}>
-                      {v.slice(0, 8)}…
+                      {mid.slice(0, 8)}…
                     </Text>
                   </Link>
                 ) : (
                   <Text type="secondary">-</Text>
-                )
-              }
+                );
+              }}
             />
             <Table.Column<TeamMember>
               title="합류"
@@ -234,32 +232,51 @@ export const TeamShow = () => {
 
         {payload ? (
           <div>
-            <Title level={5}>결과표 (matrix_payload)</Title>
+            <Title level={5}>결과표 (result_payload)</Title>
             <div style={{ overflowX: "auto" }}>
               <table style={{ borderCollapse: "collapse" }}>
                 <thead>
                   <tr>
                     <th />
-                    {payload.members.map((n, j) => (
-                      <th key={j} style={headCell}>
-                        {n}
+                    {players.map((p) => (
+                      <th key={p.slot} style={headCell}>
+                        {p.name}
                       </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {payload.members.map((n, i) => (
-                    <tr key={i}>
-                      <th style={{ ...headCell, textAlign: "right" }}>{n}</th>
-                      {payload.members.map((_, j) => {
-                        const a = Math.min(i, j);
-                        const b = Math.max(i, j);
-                        const pair = payload.pairs.find(
-                          (p) => p.a === a && p.b === b,
-                        );
+                  {players.map((row) => (
+                    <tr key={row.slot}>
+                      <th style={{ ...headCell, textAlign: "right" }}>
+                        {row.name}
+                      </th>
+                      {players.map((col) => {
+                        if (row.slot === col.slot)
+                          return (
+                            <td key={col.slot} style={bodyCell}>
+                              ·
+                            </td>
+                          );
+                        const a = Math.min(row.slot, col.slot);
+                        const b = Math.max(row.slot, col.slot);
+                        const pair = pairBySlots.get(`${a}-${b}`);
+                        // 이성방 동성 쌍은 pairs 에 없다 — 빈 칸.
+                        if (!pair) return <td key={col.slot} style={bodyCell} />;
                         return (
-                          <td key={j} style={bodyCell} title={pair?.l}>
-                            {i === j ? "·" : (pair?.e ?? "")}
+                          <td key={col.slot} style={bodyCell}>
+                            <Tooltip title={BAND_LABEL[pair.band] ?? pair.band}>
+                              <span
+                                style={{
+                                  display: "inline-block",
+                                  width: 14,
+                                  height: 14,
+                                  borderRadius: "50%",
+                                  background:
+                                    BAND_COLOR[pair.band] ?? "#999",
+                                }}
+                              />
+                            </Tooltip>
                           </td>
                         );
                       })}
@@ -268,13 +285,22 @@ export const TeamShow = () => {
                 </tbody>
               </table>
             </div>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              베스트 매칭: {nameBySlot.get(payload.best.a) ?? payload.best.a} ·{" "}
+              {nameBySlot.get(payload.best.b) ?? payload.best.b} (
+              {payload.best.score}점)
+            </Text>
           </div>
-        ) : team?.closed_at ? (
+        ) : team && team.status !== "recruiting" ? (
           <Alert
             type="warning"
             showIcon
             message="결과표 없음"
-            description="닫힌 그룹이지만 matrix_payload 가 없습니다 — 전원 미충족 상태로 48h cron 이 마감했을 수 있습니다."
+            description={
+              team.status === "expired"
+                ? "인원이 모이지 않아 종료된 그룹입니다 — 결과표가 만들어지지 않습니다."
+                : "시작된 그룹이지만 result_payload 가 아직 없습니다 — 참가자가 결과 화면을 열면 기록됩니다."
+            }
           />
         ) : null}
       </Space>

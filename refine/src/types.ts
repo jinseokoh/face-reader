@@ -64,31 +64,40 @@ export function metricThumbUrl(body: string | null | undefined): string | null {
   }
 }
 
-// 케미 그룹 — 방장이 push 한 teams row (마감 시 matrix_payload 보관).
+// 케미 그룹 — teams row (서버 계약 SSOT: react/db/migrations/0001_baseline.sql).
 export type Team = {
   id: string;
   owner_id: string | null;
   title: string;
+  /** service_role 클라이언트만 읽힌다 (anon/authenticated 는 컬럼 grant 봉인). */
+  password: string | null;
+  is_private: boolean;
+  max_players: number;
+  age_min: number | null;
+  age_max: number | null;
+  room_kind: "all" | "match";
+  thumb_open: boolean;
+  status: "recruiting" | "revealing" | "completed" | "expired";
+  started_at: string | null;
   closed_at: string | null;
-  matrix_payload: TeamMatrixPayload | null;
+  result_payload: TeamResultPayload | null;
   created_at: string;
   updated_at: string;
 };
 
-/** 마감 시 앱이 올린 결과표 — 이름 + 밴드만 (점수·landmark 없음). */
-export type TeamMatrixPayload = {
-  v: number;
-  title: string;
-  members: string[];
-  pairs: { a: number; b: number; e: string; l: string; c: string }[];
-  best: { a: number; b: number }[];
+/** 발표 시 앱이 올린 결과표 — a/b 는 slot 번호, band = 0~3, 점수는 best 만. */
+export type TeamResultPayload = {
+  players: { slot: number; name: string; gender: string }[];
+  pairs: { a: number; b: number; band: number }[];
+  best: { a: number; b: number; score: number };
 };
 
 export type TeamMember = {
   id: string;
   team_id: string;
-  metrics_id: string | null;
-  name: string;
+  user_id: string;
+  slot_no: number;
+  gender: "male" | "female";
   is_owner: boolean;
   joined_at: string;
 };
