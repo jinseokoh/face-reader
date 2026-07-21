@@ -22,12 +22,12 @@ import 'package:facely/data/constants/node_text_blocks.dart';
 import 'package:facely/domain/services/report_assembler.dart';
 import 'package:facely/domain/services/share/share_publisher.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
-import 'package:facely/presentation/providers/compat_unlock_provider.dart';
+import 'package:facely/presentation/providers/compatibility_provider.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/widgets/primary_button.dart';
 import 'package:facely/presentation/providers/recent_unlock_focus_provider.dart';
 import 'package:facely/presentation/providers/tab_provider.dart';
-import 'package:facely/presentation/screens/compatibility/compat_unlock_action.dart';
+import 'package:facely/presentation/screens/compatibility/compatibility_unlock_action.dart';
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/presentation/widgets/detail_avatar.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
@@ -891,8 +891,8 @@ class _CompatCta extends ConsumerWidget {
         ),
       );
     }
-    final unlocksAsync = ref.watch(compatUnlocksProvider);
-    final unlocked = unlocksAsync.asData?.value ?? const <String>{};
+    final compatibilityKeysAsync = ref.watch(compatibilityKeysProvider);
+    final unlocked = compatibilityKeysAsync.asData?.value ?? const <String>{};
     // partner_id = 상대 supabaseId (내 사진 교체와 무관).
     final key = tryPairKey(myFace, report);
     final isUnlocked = key != null && unlocked.contains(key);
@@ -935,7 +935,7 @@ class _CompatCta extends ConsumerWidget {
 
     if (!isUnlocked) {
       // 미결제 — 버튼이 비용을 고지했으므로 확인 다이얼로그 없이 1코인 결제.
-      final ok = await runCompatUnlock(
+      final ok = await runCompatibilityUnlock(
         context,
         ref,
         my: myFace,

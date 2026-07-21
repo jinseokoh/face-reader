@@ -346,7 +346,7 @@ class AuthService {
   /// 회원 탈퇴 — Cloudflare Worker `/api/account/delete` 호출:
   ///   1) R2 thumbnail 일괄 삭제
   ///   2) public.metrics row 삭제
-  ///   3) auth.users 삭제 (cascade 로 users/coins/unlocks 자동 삭제)
+  ///   3) auth.users 삭제 (cascade 로 users/coins/compatibilities 자동 삭제)
   ///
   /// 성공 시 local Hive 비우고 signOut. 재가입 시 bonus_recipients 영구
   /// 테이블 덕분에 보너스 코인 자동으로 0 지급.

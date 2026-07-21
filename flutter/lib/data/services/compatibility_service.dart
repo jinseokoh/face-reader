@@ -5,14 +5,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:face_engine/domain/models/face_reading_report.dart';
 
-/// 구매한 궁합 쌍 1건 — unlocks 행의 양쪽을 결제 시점 스냅샷으로 복원한 것.
-class UnlockedPair {
+/// 구매한 궁합 쌍 1건 — compatibilities 행의 양쪽을 결제 시점 스냅샷으로 복원한 것.
+class CompatibilityPair {
   final String aId;
   final String bId;
   final FaceReadingReport a;
   final FaceReadingReport b;
   final DateTime createdAt;
-  const UnlockedPair({
+  const CompatibilityPair({
     required this.aId,
     required this.bId,
     required this.a,
@@ -27,17 +27,17 @@ class UnlockedPair {
   }
 }
 
-/// unlocks 테이블 + unlock_compat RPC 래퍼.
+/// compatibilities 테이블 + unlock_compat RPC 래퍼.
 ///
 /// 키 = (구매자, a_id<b_id 정규화 쌍) — 내 쌍이든 케미 매칭의 제3자 쌍이든
 /// 동일 규칙 ("1코인 = 두 사람의 궁합 풀이, 구매자에게 영구").
 /// RLS 가 user_id = auth.uid() 로 SELECT 를 제한 → 조회는 자동으로 현
 /// 사용자 것만 반환. INSERT 정책은 없고 `unlock_compat` RPC (SECURITY DEFINER)
 /// 만 쓰기를 수행해 코인 차감과 unlock 삽입을 한 트랜잭션으로 묶는다.
-class CompatUnlockService {
-  static final CompatUnlockService _instance = CompatUnlockService._();
-  factory CompatUnlockService() => _instance;
-  CompatUnlockService._();
+class CompatibilityService {
+  static final CompatibilityService _instance = CompatibilityService._();
+  factory CompatibilityService() => _instance;
+  CompatibilityService._();
 
   SupabaseClient get _client => Supabase.instance.client;
 
@@ -45,18 +45,18 @@ class CompatUnlockService {
   Future<Set<String>> list() async {
     if (_client.auth.currentUser == null) return const {};
     try {
-      final rows = await _client.from('unlocks').select('a_id, b_id');
+      final rows = await _client.from('compatibilities').select('a_id, b_id');
       return {for (final r in rows) '${r['a_id']}~${r['b_id']}'};
     } catch (e) {
-      debugPrint('[CompatUnlock] list error: $e');
+      debugPrint('[Compatibility] list error: $e');
       return const {};
     }
   }
 
-  /// unlocks 의 결제 시점 상대 스냅샷을 [FaceReadingReport] 로 복원.
+  /// compatibilities 의 결제 시점 상대 스냅샷을 [FaceReadingReport] 로 복원.
   /// **내 쌍만** — a/b 중 하나가 [myFaceId] 인 행에서 상대 쪽을 뽑는다
   /// (매칭 제3자 쌍은 내 궁합 목록·지갑에 섞지 않는다).
-  Future<List<FaceReadingReport>> reconstructUnlockedPartners({
+  Future<List<FaceReadingReport>> reconstructPartners({
     required String? myFaceId,
   }) async {
     return (await partnerSnapshotsByPartnerId(
@@ -80,11 +80,11 @@ class CompatUnlockService {
     final List<dynamic> rows;
     try {
       rows = await _client
-          .from('unlocks')
+          .from('compatibilities')
           .select('a_id, b_id, a_body, b_body, a_alias, b_alias')
           .or('a_id.eq.$my,b_id.eq.$my');
     } catch (e) {
-      debugPrint('[CompatUnlock] partner snapshot fetch error: $e');
+      debugPrint('[Compatibility] partner snapshot fetch error: $e');
       return const {};
     }
     final map = <String, FaceReadingReport>{};
@@ -110,7 +110,7 @@ class CompatUnlockService {
         );
       } catch (e) {
         debugPrint(
-          '[CompatUnlock] partner snapshot decode failed partnerId=$partnerId: $e',
+          '[Compatibility] partner snapshot decode failed partnerId=$partnerId: $e',
         );
       }
     }
@@ -119,25 +119,25 @@ class CompatUnlockService {
 
   /// 구매한 쌍 전체 — 내 쌍·매칭 제3자 쌍 모두. 확인 리스트의 source of
   /// truth (양쪽 body·alias 를 결제 시점 스냅샷에서 복원, 로컬 무의존).
-  Future<List<UnlockedPair>> unlockedPairs() async {
+  Future<List<CompatibilityPair>> pairs() async {
     if (_client.auth.currentUser == null) return const [];
     final List<dynamic> rows;
     try {
       rows = await _client
-          .from('unlocks')
+          .from('compatibilities')
           .select('a_id, b_id, a_body, b_body, a_alias, b_alias, created_at')
           .order('created_at', ascending: false);
     } catch (e) {
-      debugPrint('[CompatUnlock] pairs fetch error: $e');
+      debugPrint('[Compatibility] pairs fetch error: $e');
       return const [];
     }
-    final pairs = <UnlockedPair>[];
+    final pairs = <CompatibilityPair>[];
     for (final r in rows) {
       final a = _decodeSide(r['a_id'], r['a_body'], r['a_alias']);
       final b = _decodeSide(r['b_id'], r['b_body'], r['b_alias']);
       if (a == null || b == null) continue;
       pairs.add(
-        UnlockedPair(
+        CompatibilityPair(
           aId: (r['a_id'] as String).toLowerCase(),
           bId: (r['b_id'] as String).toLowerCase(),
           a: a,
@@ -166,7 +166,7 @@ class CompatUnlockService {
         }),
       );
     } catch (e) {
-      debugPrint('[CompatUnlock] pair side decode failed id=$id: $e');
+      debugPrint('[Compatibility] pair side decode failed id=$id: $e');
       return null;
     }
   }
@@ -202,7 +202,7 @@ class CompatUnlockService {
       },
     );
     debugPrint(
-      '[CompatUnlock] unlock $aId~$bId → $result (${result.runtimeType})',
+      '[Compatibility] unlock $aId~$bId → $result (${result.runtimeType})',
     );
     if (result is int) return result;
     if (result is num) return result.toInt();
@@ -213,10 +213,10 @@ class CompatUnlockService {
   }
 
   /// 확인 리스트에서 "내 목록에서 제거" — 정확히 해당 쌍의 내 행만 삭제.
-  /// RLS(`unlocks_self_delete`)가 user_id 로 스코프. 코인 환불 없음.
-  Future<void> deleteUnlockPair(String aId, String bId) async {
+  /// RLS(`compatibilities_self_delete`)가 user_id 로 스코프. 코인 환불 없음.
+  Future<void> deletePair(String aId, String bId) async {
     await _client
-        .from('unlocks')
+        .from('compatibilities')
         .delete()
         .eq('a_id', aId.toLowerCase())
         .eq('b_id', bId.toLowerCase());

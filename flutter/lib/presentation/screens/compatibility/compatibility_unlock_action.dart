@@ -4,10 +4,10 @@ import 'package:face_engine/domain/services/compat/compat_pair_key.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/data/services/analytics_service.dart';
 import 'package:facely/data/services/auth_service.dart';
-import 'package:facely/data/services/compat_unlock_service.dart';
+import 'package:facely/data/services/compatibility_service.dart';
 import 'package:facely/data/services/supabase_service.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
-import 'package:facely/presentation/providers/compat_unlock_provider.dart';
+import 'package:facely/presentation/providers/compatibility_provider.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 import 'package:facely/presentation/widgets/purchase_sheet.dart';
@@ -23,7 +23,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 ///
 /// 반환: 결제되어(또는 이미 unlock 돼) 결과 진입이 가능하면 true. 취소·로그인
 /// 실패·잔액 부족·RPC 오류면 false.
-Future<bool> runCompatUnlock(
+Future<bool> runCompatibilityUnlock(
   BuildContext context,
   WidgetRef ref, {
   required FaceReadingReport my,
@@ -72,7 +72,7 @@ Future<bool> runCompatUnlock(
   // 이미 unlock 된 쌍이면 재결제 없이 통과 — 같은 두 사람은 매칭·1:1 어디서
   // 만나든 한 번만 결제된다 (무방향 쌍 키).
   final already =
-      ref.read(compatUnlocksProvider).asData?.value ?? const <String>{};
+      ref.read(compatibilityKeysProvider).asData?.value ?? const <String>{};
   if (already.contains(key)) {
     return true;
   }
@@ -84,7 +84,7 @@ Future<bool> runCompatUnlock(
     await PurchaseSheet.show(
       context,
       onPurchased: () {
-        runCompatUnlock(context, ref, my: my, album: album, confirm: confirm);
+        runCompatibilityUnlock(context, ref, my: my, album: album, confirm: confirm);
       },
     );
     return false;
@@ -110,7 +110,7 @@ Future<bool> runCompatUnlock(
       : (albumAlias ?? album.alias);
   final int newBalance;
   try {
-    newBalance = await CompatUnlockService().unlock(
+    newBalance = await CompatibilityService().unlock(
       aId: pairIds[0],
       bId: pairIds[1],
       aBody: aReport.toBodyJson(),
@@ -120,7 +120,7 @@ Future<bool> runCompatUnlock(
       totalScore: preBundle.report.total,
     );
   } catch (e, st) {
-    debugPrint('[CompatUnlock] unlock failed: $e\n$st');
+    debugPrint('[Compatibility] unlock failed: $e\n$st');
     if (!context.mounted) return false;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -140,7 +140,7 @@ Future<bool> runCompatUnlock(
 
   // 6. 갱신.
   await auth.refreshCoins();
-  ref.invalidate(compatUnlocksProvider);
+  ref.invalidate(compatibilityKeysProvider);
   return true;
 }
 

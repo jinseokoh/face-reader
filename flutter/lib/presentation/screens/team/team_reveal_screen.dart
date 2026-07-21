@@ -20,7 +20,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/battle_provider.dart';
 import '../../widgets/compact_snack_bar.dart';
 import '../../widgets/primary_button.dart';
-import '../compatibility/compat_unlock_action.dart';
+import '../compatibility/compatibility_unlock_action.dart';
 import 'battle_band.dart';
 import 'battle_match_card.dart';
 
@@ -572,7 +572,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
   }
 
   /// 쌍 상세 = 기존 궁합 unlock 흐름 (1🪙). 두 참가자의 현재 my-face 를
-  /// live resolve 해 기존 runCompatUnlock → pushCompat 계약으로 넘긴다.
+  /// live resolve 해 기존 runCompatibilityUnlock → pushCompat 계약으로 넘긴다.
   Future<void> _openPair(int slotA, int slotB) async {
     String? uidOf(int slot) {
       for (final r in _roster) {
@@ -621,9 +621,9 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
   }
 }
 
-/// 쌍 상세 unlock 시트 — runCompatUnlock/pushCompat 호출과 동일 계약.
+/// 쌍 상세 unlock 시트 — runCompatibilityUnlock/pushCompat 호출과 동일 계약.
 /// 무료 = 밴드 닷 + 라벨만(케미 그룹 payload 는 best 외 점수를 싣지 않는다,
-/// A2 정책) → [1🪙 상세 보기] → runCompatUnlock → 성공 시 pushCompat.
+/// A2 정책) → [1🪙 상세 보기] → runCompatibilityUnlock → 성공 시 pushCompat.
 Future<void> openBattlePairDetail(
   BuildContext context,
   WidgetRef ref, {
@@ -750,7 +750,7 @@ Future<void> openBattlePairDetail(
   if (unlock != true || !context.mounted) return;
   // 기존 1:1 unlock 흐름 그대로 — 로그인·잔액·중복 unlock 전부 처리.
   // alias 스냅샷은 payload 닉네임으로 (live 리포트는 alias 가 빈다).
-  final ok = await runCompatUnlock(
+  final ok = await runCompatibilityUnlock(
     context,
     ref,
     my: my,

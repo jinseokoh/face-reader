@@ -17,7 +17,7 @@ import type { Route } from './+types/api.account.delete'
  *      주인 없는 좀비 방으로 남지 않게. 발표된(closed) 팀은 30일 수명주기
  *      cron 이 정리 (참여자들이 결과를 계속 볼 수 있어야 하므로 즉시 삭제 X)
  *   6) service_role admin API 로 auth.users DELETE → cascade 로
- *      users/coins/unlocks/metrics 자동 삭제, teams.owner_id 는 set null
+ *      users/coins/compatibilities/metrics 자동 삭제, teams.owner_id 는 set null
  *
  * 재가입 보너스 farming 방지: handle_new_user 트리거가 bonus_recipients 영구
  * 테이블을 조회하므로 같은 email/kakao_id 로 재가입해도 보너스 0.
@@ -128,7 +128,7 @@ export async function action({ request, context }: Route.ActionArgs) {
     )
   }
 
-  // 6) auth.users DELETE (admin) — cascade: users/coins/unlocks/metrics
+  // 6) auth.users DELETE (admin) — cascade: users/coins/compatibilities/metrics
   const authDel = await fetch(
     `${env.SUPABASE_URL}/auth/v1/admin/users/${user.id}`,
     {

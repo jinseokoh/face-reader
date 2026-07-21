@@ -6,7 +6,7 @@
 
 1. **R2 presign URL 발급** (`POST /api/r2/presign`) — 모바일 앱이 분석용 임시 이미지·공유 thumbnail 을 R2 에 직접 PUT 할 수 있도록 단기 SigV4 URL 만 발급. 객체 자체엔 손 안 댄다.
 2. **공유 link 의 SSR host** (`GET /r/{uuid}`) — 받는 사람이 카톡에서 link 탭했을 때 OG 카드·리포트·딥링크·스토어 fallback. Supabase `metrics` 행을 **read-only** 로 fetch.
-3. **계정 삭제 admin endpoint** (`POST /api/account/delete`) — 사용자 JWT 검증 후 R2 thumbnails 일괄 삭제 + metrics row 삭제 + Supabase admin API 로 `auth.users` 삭제 (cascade 로 users/coins/unlocks). `SUPABASE_SERVICE_ROLE_KEY` 사용.
+3. **계정 삭제 admin endpoint** (`POST /api/account/delete`) — 사용자 JWT 검증 후 R2 thumbnails 일괄 삭제 + metrics row 삭제 + Supabase admin API 로 `auth.users` 삭제 (cascade 로 users/coins/compatibilities). `SUPABASE_SERVICE_ROLE_KEY` 사용.
 4. **landing & 정적 문서** (`/`, `/app`, `/terms`, `/privacy`, `/contact`) — hero / 이용약관 / 개인정보처리방침 / 개인정보 삭제 요청 폼.
 5. **케미 매칭 웹 참가** (`GET /g/:id` + client `JoinWizard`) — 앱 미설치 참가자가 브라우저에서 카카오 로그인(supabase-js PKCE, 앱과 같은 `auth.users`) 후 (비밀방) PIN 입력 → 사진 공개 계약 확인 → 정면 캡처 → `join_team` RPC 로 셀프 조인한다. match 방은 초대장에 남은 성별 자리를 표기하고, 성별 정원이 차면 RPC 가 `GENDER_FULL` 로 거부한다("남자/여자 자리가 다 찼습니다"). write 는 전부 클라이언트 → Supabase 직통 (metrics upsert + `join_team`/`submit_team_result` RPC 호출) + `/api/r2/presign` 썸네일 PUT — Worker(`fetchBattleSSR`)는 읽기만 한다. 정원이 차면 RPC 트랜잭션이 `chemistry_snapshot` 을 동결하고 상태를 `revealing` 으로 전이하며, 결과 공개는 `result_payload` 가 있으면 그대로 렌더하고(쇼케이스 매트릭스: `all` 방 = N×N, `match` 방 = `players[].gender` 로 남×여 직사각) 없으면 클라이언트가 `runBattle` 로 즉석 계산한 뒤 로그인 참가자가 `submit_team_result` 로 backfill 한다. 베스트 쌍의 매칭 성사·인앱 채팅은 앱 전용 — 웹은 "앱에서 확인" 안내만. 선행 조건: Supabase Auth Redirect URLs 에 `https://facely.kr/g/*` 등록. 이후 앱 설치 + 같은 카카오 로그인 시 rehydrate 가 캡처를 자동 복원하고, 조인한 매칭은 `team_members` 로 이미 서버에 귀속돼 있어 별도 복원 없이 "내 매칭" 목록에 나타난다.
 6. **Cron Triggers** (`workers/cron.ts`) — 매시 `expireStaleTeams`(모집 48h 초과 방 expired 처리) + `completeOrphanReveals`(`revealing` 24h 고아 방 completed 안전망), 매일 `cleanupStaleMetrics`(90일 미활동 anon metrics + R2 썸네일 삭제) + `purgeExpiredTeams`(종료 후 30일 지난 teams 삭제, 멤버는 FK cascade).
@@ -88,7 +88,7 @@
 
 **외부 자원**:
 
-- Supabase Postgres + REST — 공유 카드 SSOT `metrics` 테이블 (UUID PK, `body` TEXT(JSON 문자열), `user_id`, `alias`, `is_my_face`, `views`, `created_at`, `updated_at`) + 코인 경제 테이블 `users`/`coins`/`unlocks`/`ad_rewards` (Flutter ↔ Supabase 직통, Worker 미관여). 익명 분석은 `user_id=null`, 로그인 후 재공유 시 본인 소유로 claim (§5.3). DDL SSOT: `react/db/migrations/0001_baseline.sql`.
+- Supabase Postgres + REST — 공유 카드 SSOT `metrics` 테이블 (UUID PK, `body` TEXT(JSON 문자열), `user_id`, `alias`, `is_my_face`, `views`, `created_at`, `updated_at`) + 코인 경제 테이블 `users`/`coins`/`compatibilities`/`ad_rewards` (Flutter ↔ Supabase 직통, Worker 미관여). 익명 분석은 `user_id=null`, 로그인 후 재공유 시 본인 소유로 claim (§5.3). DDL SSOT: `react/db/migrations/0001_baseline.sql`.
 - App Store / Play Store — bundle ID `com.scienceintegration.facely`
 
 ---
@@ -486,7 +486,7 @@ $$ language sql;
 > 그 외 분석 데이터는 전부 `body` 안. Worker SSR 은 `id,body` 만 SELECT 해서 엔진에 던진다.
 >
 > **코인 경제 테이블** (Flutter ↔ Supabase 직통, Worker 미관여): `users`(프로필+coins 잔액),
-> `coins`(거래 원장), `unlocks`(결제한 궁합의 owner/partner body 스냅샷 + total_score),
+> `coins`(거래 원장), `compatibilities`(결제한 궁합의 owner/partner body 스냅샷 + total_score),
 > `ad_rewards`(일일 무료 코인 진행도), `bonus_recipients`. RPC: `unlock_compat`·`spend_coins`·
 > `grant_coins`·`ad_reward_status`·`ad_reward_record_view`·`handle_new_user`. 모두 baseline.sql SSOT.
 
@@ -534,7 +534,7 @@ $$ language sql;
 
 - 사용자 이름·생년월일·landmark 좌표 (정규화된 rawValue 만; 좌표 X)
 - archetype / 점수 / 친밀 챕터 본문 / 갈등 시나리오 본문 — engine 매 load 재계산 (react/CLAUDE.md §5)
-- **관계형 메타**: `kind`, `partnerUuid`, `pairedWith`, `compat*` 등 — 1인 측정 데이터 외 금지. 페어링은 URL 이 표현 (결제 궁합 스냅샷은 `unlocks` 테이블이 별도 보존).
+- **관계형 메타**: `kind`, `partnerUuid`, `pairedWith`, `compat*` 등 — 1인 측정 데이터 외 금지. 페어링은 URL 이 표현 (결제 궁합 스냅샷은 `compatibilities` 테이블이 별도 보존).
 
 Worker SSR 이 `body.metrics` + `lateralMetrics` 만으로 shared engine 을 호출해서 archetype·score 를 매번 산출. 룰 업데이트 시 과거 카드도 새 해석으로 자동 갱신.
 
@@ -568,7 +568,7 @@ create policy "metrics_owner_delete" on metrics for delete
   using (user_id is null or user_id = auth.uid());
 ```
 
-`coins`/`ad_rewards`/`unlocks` 는 `user_id = auth.uid()` self-read 만, write 는 SECURITY DEFINER RPC 경유 (직접 write 없음).
+`coins`/`ad_rewards`/`compatibilities` 는 `user_id = auth.uid()` self-read 만, write 는 SECURITY DEFINER RPC 경유 (직접 write 없음).
 
 ---
 
@@ -812,7 +812,7 @@ pnpm cf-typegen      # Cloudflare.Env 타입 재생성
 - **default**: 시간 기반 자동 만료 X. 대신 **inactivity 기반** — `/r/{id}` fetch 마다 `views++` + `updated_at` 갱신 (§5.2 RPC), `updated_at < now() - 90 days` 인 행이 정리 대상.
 - **active 보호**: 본인이 자기 카드 가끔 보거나, 친구가 카톡 link 클릭만 해도 자동 보호. 정말 아무도 안 보는 카드만 정리.
 - **정리 실행 (현행)**: 운영자가 refine 콘솔에서 service-role 로 `delete from metrics where updated_at < now() - interval '90 days'` 수동 실행. **cron 미구현** — 데이터 누적이 무시할 단계라 운영 부담을 미룸 (필요 시 Cloudflare Cron Trigger 로 승격, backlog). orphan R2 thumbnail 정리는 별개 작업.
-- **right to erasure (회원 탈퇴)**: `POST /api/account/delete` 구현됨 — 사용자 JWT 검증 → 해당 user 의 metrics thumbnailKey 수집 → R2 일괄 DELETE → metrics row DELETE → Supabase admin API 로 `auth.users` 삭제 (cascade 로 users/coins/unlocks). service-role 사용. 순서 **R2 먼저 → DB 나중** (orphan 방지).
+- **right to erasure (회원 탈퇴)**: `POST /api/account/delete` 구현됨 — 사용자 JWT 검증 → 해당 user 의 metrics thumbnailKey 수집 → R2 일괄 DELETE → metrics row DELETE → Supabase admin API 로 `auth.users` 삭제 (cascade 로 users/coins/compatibilities). service-role 사용. 순서 **R2 먼저 → DB 나중** (orphan 방지).
 - **본인 소유 모델**: 로그인 사용자의 카드는 `metrics.user_id` 로 묶임 — 익명(`user_id=null`) 으로 만든 카드도 로그인 후 재공유 시 claim (§5.3). 미공유 분석은 애초에 업로드 안 됨 (로컬 Hive 전용).
 
 ### 12.3 동의 / privacy policy

@@ -14,13 +14,13 @@ import 'package:facely/config/router.dart';
 import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/data/services/analytics_service.dart';
-import 'package:facely/data/services/compat_unlock_service.dart';
+import 'package:facely/data/services/compatibility_service.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
-import 'package:facely/presentation/providers/compat_unlock_provider.dart';
+import 'package:facely/presentation/providers/compatibility_provider.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/providers/recent_unlock_focus_provider.dart';
 import 'package:facely/presentation/providers/tab_provider.dart';
-import 'package:facely/presentation/screens/compatibility/compat_unlock_action.dart';
+import 'package:facely/presentation/screens/compatibility/compatibility_unlock_action.dart';
 import 'package:facely/presentation/widgets/coin_chip.dart';
 import 'package:facely/presentation/widgets/emotion_empty_state.dart';
 import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
@@ -68,8 +68,8 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
         .cast<FaceReadingReport?>()
         .firstOrNull;
     final others = history.where((r) => !r.isMyFace).toList(growable: false);
-    final unlocksAsync = ref.watch(compatUnlocksProvider);
-    final unlocked = unlocksAsync.asData?.value ?? const <String>{};
+    final compatibilityKeysAsync = ref.watch(compatibilityKeysProvider);
+    final unlocked = compatibilityKeysAsync.asData?.value ?? const <String>{};
     final auth = ref.watch(authProvider);
 
     // 받은 카드 CTA 결제 직후 — '확인' 탭으로 자동 전환 (핀 고정과 결합).
@@ -79,12 +79,12 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
       }
     });
 
-    // 미확인 = 로컬 상대 중 아직 안 산 쌍. 확인 = 서버 unlocks 쌍 행 전체
+    // 미확인 = 로컬 상대 중 아직 안 산 쌍. 확인 = 서버 compatibilities 쌍 행 전체
     // (내 쌍 + 매칭 제3자 쌍) — 두 사람의 결제 시점 스냅샷이 source of truth.
     final lockedList = <FaceReadingReport>[];
     final unlockedList =
-        ref.watch(unlockedPairsProvider).asData?.value ??
-        const <UnlockedPair>[];
+        ref.watch(compatibilityPairsProvider).asData?.value ??
+        const <CompatibilityPair>[];
     if (myFace != null) {
       for (final o in others) {
         // 무방향 쌍 키 — 내 사진을 바꿔도(내 my-face id 영구 고정) 같은 상대면
@@ -103,7 +103,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
 
     // 최초 노출 기본 탭 = 개수가 더 많은 쪽. unlock 데이터가 async 라 로드
     // 완료(asData) 후 첫 build 에 판정해야 확인 개수를 오판하지 않는다.
-    if (showTabs && !_appliedInitialTab && unlocksAsync.asData != null) {
+    if (showTabs && !_appliedInitialTab && compatibilityKeysAsync.asData != null) {
       _appliedInitialTab = true;
       if (unlockedList.length > lockedList.length) _tabController.index = 1;
     }
@@ -171,7 +171,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
   Future<void> _confirmDeleteUnlock(
     BuildContext context,
     WidgetRef ref,
-    UnlockedPair pair,
+    CompatibilityPair pair,
   ) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -205,7 +205,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
 
     // 정확히 해당 쌍의 내 행만 — RLS 가 본인 행만 지운다.
     try {
-      await CompatUnlockService().deleteUnlockPair(pair.aId, pair.bId);
+      await CompatibilityService().deletePair(pair.aId, pair.bId);
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -220,18 +220,18 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
     // unlock·쌍 캐시 무효화 → 확인 리스트에서 사라지고, 로컬 파트너는
     // 미확인으로 복귀.
     ref.read(recentUnlockFocusProvider.notifier).clear();
-    ref.invalidate(compatUnlocksProvider);
-    ref.invalidate(unlockedPairsProvider);
-    ref.invalidate(unlockedPartnerBodiesProvider);
+    ref.invalidate(compatibilityKeysProvider);
+    ref.invalidate(compatibilityPairsProvider);
+    ref.invalidate(compatibilityPartnerBodiesProvider);
   }
 
   /// pull-to-refresh — 로컬 히스토리 재계산(관상 탭과 동일) + 서버 unlock
   /// 캐시 무효화(케미 탭과 동일 패턴).
   Future<void> _refresh() async {
     await ref.read(historyProvider.notifier).reloadFromHive();
-    ref.invalidate(compatUnlocksProvider);
-    ref.invalidate(unlockedPairsProvider);
-    ref.invalidate(unlockedPartnerBodiesProvider);
+    ref.invalidate(compatibilityKeysProvider);
+    ref.invalidate(compatibilityPairsProvider);
+    ref.invalidate(compatibilityPartnerBodiesProvider);
   }
 
   /// 탭 없이 표시되는 안내 화면 — 내 관상 미설정 한정 (등록 후엔 항상 탭).
@@ -250,7 +250,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
   }
 
   /// 잠금 카드의 [궁합보기] → 공용 1코인 unlock 흐름(확인 다이얼로그 포함).
-  /// 성공 시 compatUnlocksProvider 가 invalidate 돼 카드가 '확인' 섹션으로
+  /// 성공 시 compatibilityKeysProvider 가 invalidate 돼 카드가 '확인' 섹션으로
   /// 자동 이동한다 (별도 네비게이션 없음).
   Future<void> _handleUnlockPressed(
     BuildContext context,
@@ -258,7 +258,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
     FaceReadingReport my,
     FaceReadingReport album,
   ) async {
-    await runCompatUnlock(context, ref, my: my, album: album);
+    await runCompatibilityUnlock(context, ref, my: my, album: album);
   }
 
   /// 미확인 탭 — 시간 정렬 + 잠금 카드 리스트.
@@ -393,7 +393,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
   Widget _unlockedTab(
     BuildContext context,
     FaceReadingReport myFace,
-    List<UnlockedPair> pairs,
+    List<CompatibilityPair> pairs,
   ) {
     if (pairs.isEmpty) {
       // 빈 상태도 당겨서 새로고침 가능 — 케미 탭과 동일 패턴.

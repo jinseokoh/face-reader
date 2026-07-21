@@ -7,7 +7,7 @@ import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/domain/models/coin_transaction.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
-import 'package:facely/presentation/providers/compat_unlock_provider.dart';
+import 'package:facely/presentation/providers/compatibility_provider.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/providers/wallet_provider.dart';
 import 'package:facely/presentation/widgets/login_entry_button.dart';
@@ -173,10 +173,10 @@ class _TransactionTile extends ConsumerWidget {
     final amountColor =
         isCredit ? const Color(0xFF2E7D32) : const Color(0xFFC62828);
 
-    // 결제 시점 partner 스냅샷(unlocks.partner_body) 에서 해석 — 로컬 히스토리
+    // 결제 시점 partner 스냅샷(compatibilities.partner_body) 에서 해석 — 로컬 히스토리
     // 의존 없이 기기·재설치 무관하게 사진·인적정보가 항상 뜬다.
     final snapshots =
-        ref.watch(compatPartnerSnapshotsProvider).asData?.value ?? const {};
+        ref.watch(compatibilityPartnerSnapshotsProvider).asData?.value ?? const {};
     final album = _resolveAlbum(snapshots);
     // 이름 우선순위: 로컬 history 의 현재 이름(개명 반영) → 결제 시점
     // partner_alias 스냅샷 (재설치·새 기기 fallback).

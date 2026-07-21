@@ -25,7 +25,7 @@
 --     • R2(cdn.facely.kr) 썸네일 객체는 supabase 와 무관 — 별도로 남는다.
 --
 -- 포함:
---   • tables    : users · coins · metrics · unlocks · bonus_recipients · ad_rewards
+--   • tables    : users · coins · metrics · compatibilities · bonus_recipients · ad_rewards
 --                 · ad_videos (custom video, §11-0) · ad_images (홈 배너, §11-0b)
 --                 · teams · team_members (Chemistry Battle 로비, §11-2/11-3/11-4)
 --                 · team_matches · team_messages (매칭·채팅, §11-6)
@@ -250,7 +250,7 @@ revoke all   on function public.increment_metrics_views(uuid) from public;
 grant execute on function public.increment_metrics_views(uuid) to anon, authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 4. public.unlocks — 궁합 풀이 해제 ledger (구매자 + 무방향 쌍)
+-- 4. public.compatibilities — 구매한 궁합 레코드 (구매자 + 무방향 쌍)
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 규칙 하나: "1코인 = 두 사람의 궁합 풀이, 구매자에게 영구" — 내 쌍이든
 -- 케미 매칭의 제3자 쌍이든 동일. 키 = (구매자, a_id<b_id 정규화 쌍 metrics id).
@@ -258,7 +258,7 @@ grant execute on function public.increment_metrics_views(uuid) to anon, authenti
 -- 기준 영구 고정이라 재촬영에도 unlock 유지). FK 없음 — 스냅샷은 metrics
 -- 삭제를 견딘다. INSERT 는 unlock_compat RPC 만 — 코인 차감 + 삽입 트랜잭션.
 
-create table if not exists public.unlocks (
+create table if not exists public.compatibilities (
   user_id     uuid        not null references auth.users(id) on delete cascade,
   a_id        uuid        not null,
   b_id        uuid        not null,
@@ -266,24 +266,24 @@ create table if not exists public.unlocks (
   b_body      text,      -- self-contained 로 보존 (방 purge·metrics 삭제 무관).
   a_alias     text,      -- 결제 시점 두 이름 스냅샷 — 앱 fallback + admin 표시.
   b_alias     text,      -- (body 스냅샷은 PII 정책상 alias 를 담지 않음.
-                         --  unlocks 는 RLS self-read 라 컬럼 저장이 안전.)
+                         --  compatibilities 는 RLS self-read 라 컬럼 저장이 안전.)
   total_score real,      -- 해제 시점 궁합 총점(0~100). admin 콘솔 정렬·필터용.
   created_at  timestamptz not null default now(),
   primary key (user_id, a_id, b_id),
   check (a_id < b_id)
 );
 
-alter table public.unlocks enable row level security;
+alter table public.compatibilities enable row level security;
 
-drop policy if exists "unlocks_self_read" on public.unlocks;
-create policy "unlocks_self_read"
-  on public.unlocks for select using (user_id = auth.uid());
+drop policy if exists "compatibilities_self_read" on public.compatibilities;
+create policy "compatibilities_self_read"
+  on public.compatibilities for select using (user_id = auth.uid());
 
 -- 사용자가 확인 리스트에서 "내 목록에서 제거" — 본인 unlock 행만 삭제 가능.
 -- (INSERT 는 여전히 unlock_compat RPC 만. 코인 환불 없음 — 단순 ledger 제거.)
-drop policy if exists "unlocks_self_delete" on public.unlocks;
-create policy "unlocks_self_delete"
-  on public.unlocks for delete using (user_id = auth.uid());
+drop policy if exists "compatibilities_self_delete" on public.compatibilities;
+create policy "compatibilities_self_delete"
+  on public.compatibilities for delete using (user_id = auth.uid());
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 5. public.bonus_recipients — 가입 보너스 dedup ledger (영구)
@@ -471,7 +471,7 @@ begin
 end; $$;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 9. RPC: unlock_compat — 궁합 카드 해제 (1 코인 차감 + unlocks insert)
+-- 9. RPC: unlock_compat — 궁합 카드 해제 (1 코인 차감 + compatibilities insert)
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 이미 해제됐으면 idempotent — 잔액만 반환.
 -- 잔액 부족이면 -1.
@@ -505,7 +505,7 @@ begin
   if p_a_id >= p_b_id then raise exception 'pair not normalized (a_id < b_id)'; end if;
 
   select exists(
-    select 1 from unlocks
+    select 1 from compatibilities
     where user_id = v_uid and a_id = p_a_id and b_id = p_b_id
   ) into v_already;
 
@@ -522,7 +522,7 @@ begin
   -- 결제 확정 → body·alias 를 클라이언트가 넘긴 그대로 동결 저장.
   -- metrics row 존재 여부에 의존하지 않아 (업로드 누락·삭제·만료·방 purge 와
   -- 무관) 구매한 궁합이 self-contained 로 영구 보존된다.
-  insert into unlocks (user_id, a_id, b_id, a_body, b_body,
+  insert into compatibilities (user_id, a_id, b_id, a_body, b_body,
                        a_alias, b_alias, total_score)
     values (v_uid, p_a_id, p_b_id, p_a_body, p_b_body,
             p_a_alias, p_b_alias, p_total_score);
