@@ -68,26 +68,35 @@ class _BattleCardBody extends StatelessWidget {
           children: [
             Expanded(child: Text(title, style: AppText.subTitle)),
             const SizedBox(width: AppSpacing.sm),
-            if (isOwner) ...[
-              const AgeRangePill(label: '방장'),
-              const SizedBox(width: AppSpacing.xs),
-            ],
             AgeRangePill(label: ageLabel),
           ],
         ),
         const SizedBox(height: AppSpacing.xs),
-        Text('$kind $count', style: AppText.caption),
+        // 방 유형은 invert pill badge(연령 pill 과 동일 위젯) + 정원 텍스트.
+        Row(
+          children: [
+            AgeRangePill(label: kind, invert: true),
+            const SizedBox(width: AppSpacing.sm),
+            Text(count, style: AppText.caption),
+          ],
+        ),
         const SizedBox(height: AppSpacing.xs),
         Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
+          // tailwind items-center 상당 — pill·텍스트·아이콘 수직 중앙 정렬.
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            // 좌하단 — 내가 방장인 방은 '방장' pill 을 상태 텍스트 왼쪽에.
+            if (isOwner) ...[
+              const AgeRangePill(label: '방장'),
+              const SizedBox(width: AppSpacing.sm),
+            ],
             Expanded(
               child: Text(
                 validity,
                 style: AppText.caption.copyWith(color: AppColors.textHint),
               ),
             ),
-            // 우측 하단 상태 아이콘 — 얼굴 공개 / 비밀방 / 방 유형.
+            // 우측 하단 상태 아이콘 — 얼굴 공개 / 비밀방.
             FaIcon(
               thumbOpen ? FontAwesomeIcons.eye : FontAwesomeIcons.eyeSlash,
               size: 14,
@@ -96,14 +105,6 @@ class _BattleCardBody extends StatelessWidget {
             const SizedBox(width: AppSpacing.sm),
             FaIcon(
               isPrivate ? FontAwesomeIcons.lock : FontAwesomeIcons.lockOpen,
-              size: 14,
-              color: AppColors.textHint,
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            FaIcon(
-              roomKind == BattleRoomKind.match
-                  ? FontAwesomeIcons.children
-                  : FontAwesomeIcons.users,
               size: 14,
               color: AppColors.textHint,
             ),
