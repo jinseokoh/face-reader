@@ -172,6 +172,95 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
     }
   }
 
+  /// Pull-to-refresh 서버 동기화 — 서버 metrics 가 진실. 알려진 uuid 는 서버
+  /// 내용으로 교체, 서버에만 있는 row 는 복원, 서버에서 사라진 소유 row 는
+  /// 로컬에서도 제거한다 (다른 기기·웹에서의 삭제 반영). 받은 카드
+  /// (source=received, 남의 row 라 fetchMyMetrics 에 안 나옴)와 supabaseId
+  /// 없는 로컬 전용 카드는 대상 아님. 비로그인·네트워크 실패는 무해 —
+  /// 로컬 그대로 두고 다음 당김에서 재시도.
+  Future<void> syncFromServer() async {
+    final user = AuthService().currentUser;
+    if (user == null) return;
+    try {
+      // 미귀속 익명 row 를 먼저 귀속 — 아래에서 fetchMyMetrics 부재 = 서버
+      // 삭제로 판정하므로, claim 없이 fetch 하면 아직 user_id 가 null 인
+      // 익명 카드가 삭제로 오판된다. (claim 은 id 범위·is-null 필터라 멱등.)
+      final ids = state.map((r) => r.supabaseId).whereType<String>().toList();
+      if (ids.isNotEmpty) {
+        String? myFaceId;
+        for (final r in state) {
+          if (r.isMyFace) {
+            myFaceId = r.supabaseId;
+            break;
+          }
+        }
+        await SupabaseService().claimAnonymousMetrics(
+          ids,
+          myFaceId: myFaceId,
+          nickname: user.nickname,
+        );
+      }
+      final rows = await SupabaseService().fetchMyMetrics();
+      final ownedLocally = state.any(
+        (r) => r.supabaseId != null && r.source != AnalysisSource.received,
+      );
+      // 방어: 소유 카드가 로컬에 있는데 서버가 0행이면 동기화 중단 — auth
+      // 상태 불일치(세션 만료 등)로 빈 응답이 온 경우 전량 삭제를 막는다.
+      if (rows.isEmpty && ownedLocally) {
+        _log('sync ABORT — server 0 rows but local has owned cards. '
+            'auth 불일치 의심 — 로컬 유지.');
+        return;
+      }
+      final byId = {
+        for (final row in rows)
+          if (row['id'] is String) row['id'] as String: row,
+      };
+      final next = <FaceReadingReport>[];
+      var replaced = 0;
+      var removed = 0;
+      for (final r in state) {
+        final id = r.supabaseId;
+        if (id == null || r.source == AnalysisSource.received) {
+          next.add(r);
+          continue;
+        }
+        final row = byId.remove(id);
+        if (row == null) {
+          removed++; // 다른 기기에서 삭제된 row — 로컬에서도 제거.
+          continue;
+        }
+        final fresh = _reportFromRow(row);
+        if (fresh == null) {
+          next.add(r); // 서버 body 파싱 실패 — 로컬 유지.
+          continue;
+        }
+        // 같은 capture(동일 thumbnailKey)면 이 기기의 로컬 썸네일 파일 우선.
+        if (fresh.thumbnailKey == r.thumbnailKey) {
+          fresh.thumbnailPath = r.thumbnailPath;
+        }
+        // 내 관상의 로컬 표기는 '나' — 서버 alias(nickname)는 서버 전용.
+        if (fresh.isMyFace) fresh.alias = null;
+        next.add(fresh);
+        replaced++;
+      }
+      // 남은 서버 row = 로컬 미보유 — 새 기기·웹 티저 capture 복원.
+      var restored = 0;
+      for (final row in byId.values) {
+        final report = _reportFromRow(row);
+        if (report == null) continue;
+        if (report.isMyFace) report.alias = null;
+        next.add(report);
+        restored++;
+      }
+      _log('sync: replaced=$replaced removed=$removed restored=$restored');
+      _normalizeMyFace(next);
+      state = next;
+      await _saveToHive();
+    } catch (e) {
+      _log('sync error: $e');
+    }
+  }
+
   /// metrics row → FaceReadingReport. 공유받기(fetchByUuid)와 같은
   /// body-override 파싱이되, 소유자 관점이라 source·isMyFace·alias 를 살린다.
   /// thumbnailPath 는 이 기기에 파일이 없으므로 null — 리스트가 thumbnailKey

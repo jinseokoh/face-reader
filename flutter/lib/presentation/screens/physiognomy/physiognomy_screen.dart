@@ -690,12 +690,14 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
     );
   }
 
-  /// Pull-to-refresh: Hive capture 은 그대로, 해석만 현재 엔진(weight matrix ·
-  /// rule · quantile) 으로 재계산. 새 공식이 기존 리포트에 즉시 반영된다.
+  /// Pull-to-refresh: ① 서버 metrics 동기화 (교체·복원·삭제 반영, 비로그인
+  /// 이면 skip) → ② 전체를 현재 엔진(weight matrix · rule · quantile) 으로
+  /// 재계산. 새 공식과 다른 기기의 변경이 기존 리포트에 즉시 반영된다.
   Future<void> _handleRefresh() async {
     // ignore: avoid_print
     print('[PhysiognomyScreen] pull-to-refresh START');
     final before = ref.read(historyProvider).length;
+    await ref.read(historyProvider.notifier).syncFromServer();
     await ref.read(historyProvider.notifier).reloadFromHive();
     final after = ref.read(historyProvider).length;
     // ignore: avoid_print
