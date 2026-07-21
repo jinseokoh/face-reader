@@ -41,7 +41,7 @@ const _kPages = [
     asset: 'assets/images/onboarding3.png',
     title: '케미',
     chips: ['케미 그룹 무료'],
-    body: '그룹을 만들면 참가자들이 각자 들어옵니다\n인원이 모이면 케미 결과가 공개됩니다.',
+    body: '케미 그룹을 만들면 누구나 참여 가능하고\n인원이 모이면 케미 결과가 공개됩니다.',
     warm: true,
   ),
   _OnboardingPageData(

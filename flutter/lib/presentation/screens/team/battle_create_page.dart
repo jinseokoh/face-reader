@@ -482,7 +482,7 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
         ),
         const SizedBox(height: AppSpacing.lg),
         Text(
-          '최종 결과표에는 얼굴이 모두에게 공개됩니다. 이 설정은 모집중에 공개할지 여부를 결정합니다',
+          '최종 케미 결과표를 발표할 때에는 얼굴 썸네일이 모두에게 공개됩니다. 이 옵션은 결과 발표 전에도, 썸네일 사진을 공개할지 결정합니다.',
           style: AppText.caption.copyWith(color: AppColors.textHint),
         ),
       ],
