@@ -25,7 +25,7 @@ import {
 import { GiftOutlined } from "@ant-design/icons";
 import { useState } from "react";
 import { adminClient } from "../../providers/data";
-import type { AppUser, CoinEntry, MetricEntry, Unlock } from "../../types";
+import type { AppUser, CoinEntry, MetricEntry, Compatibility } from "../../types";
 import { metricThumbUrl, parseDemographics } from "../../types";
 
 const { Title, Text } = Typography;
@@ -74,8 +74,8 @@ export const UserShow = () => {
       queryOptions: { enabled: !!userId },
     });
 
-  const { result: unlocksResult } = useList<Unlock>({
-    resource: "unlocks",
+  const { result: compatibilitiesResult } = useList<Compatibility>({
+    resource: "compatibilities",
     filters: userId ? [{ field: "user_id", operator: "eq", value: userId }] : [],
     sorters: [{ field: "created_at", order: "desc" }],
     pagination: { pageSize: 50 },
@@ -84,7 +84,7 @@ export const UserShow = () => {
 
   const metrics = metricsResult?.data ?? [];
   const coins = coinsResult?.data ?? [];
-  const unlocks = unlocksResult?.data ?? [];
+  const compatibilities = compatibilitiesResult?.data ?? [];
 
   const totalPurchased = coins
     .filter((c) => c.kind === "purchase")
@@ -227,7 +227,7 @@ export const UserShow = () => {
             </Col>
             <Col xs={12} md={6}>
               <Card>
-                <Statistic title="궁합 unlock" value={unlocks.length} />
+                <Statistic title="구매한 궁합" value={compatibilities.length} />
               </Card>
             </Col>
             <Col xs={12} md={12}>
@@ -380,17 +380,17 @@ export const UserShow = () => {
         )}
       </Card>
 
-      {unlocks.length > 0 && (
-        <Card title={`궁합 unlock (${unlocks.length}건)`} style={{ marginTop: 16 }}>
+      {compatibilities.length > 0 && (
+        <Card title={`구매한 궁합 (${compatibilities.length}건)`} style={{ marginTop: 16 }}>
           <Table
-            dataSource={unlocks}
+            dataSource={compatibilities}
             rowKey={(r) => `${r.a_id}~${r.b_id}`}
             size="small"
           >
-            <Table.Column<Unlock>
+            <Table.Column<Compatibility>
               title="궁합 쌍"
               dataIndex="a_id"
-              render={(_: string, r: Unlock) => (
+              render={(_: string, r: Compatibility) => (
                 <Space size={4}>
                   <Text strong>{r.a_alias ?? "-"}</Text>
                   <Text type="secondary">·</Text>
@@ -398,7 +398,7 @@ export const UserShow = () => {
                 </Space>
               )}
             />
-            <Table.Column<Unlock>
+            <Table.Column<Compatibility>
               title="시각"
               dataIndex="created_at"
               render={(v: string) => (

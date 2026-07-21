@@ -14,7 +14,7 @@ import {
 } from "antd";
 import { UserLink } from "../../components/user-link";
 import { adminClient } from "../../providers/data";
-import type { AppUser, Unlock } from "../../types";
+import type { AppUser, Compatibility } from "../../types";
 
 const { Text } = Typography;
 
@@ -33,8 +33,8 @@ function scoreLabel(s: number): string {
   return "형극난조";
 }
 
-export const UnlockList = () => {
-  const { tableProps, result } = useTable<Unlock>({
+export const CompatibilityList = () => {
+  const { tableProps, result } = useTable<Compatibility>({
     syncWithLocation: true,
     sorters: { initial: [{ field: "created_at", order: "desc" }] },
   });
@@ -55,11 +55,11 @@ export const UnlockList = () => {
 
   const invalidate = useInvalidate();
 
-  /** unlock 삭제 — (user_id, a_id, b_id) 복합 키. 스냅샷 body 도 함께 사라져
+  /** 구매한 궁합 삭제 — (user_id, a_id, b_id) 복합 키. 스냅샷 body 도 함께 사라져
    *  사용자는 재열람에 코인을 다시 써야 한다. */
-  const handleDelete = async (r: Unlock) => {
+  const handleDelete = async (r: Compatibility) => {
     const { error } = await adminClient
-      .from("unlocks")
+      .from("compatibilities")
       .delete()
       .eq("user_id", r.user_id)
       .eq("a_id", r.a_id)
@@ -68,8 +68,8 @@ export const UnlockList = () => {
       message.error(`삭제 실패: ${error.message}`);
       return;
     }
-    message.success("궁합 unlock 삭제됨");
-    invalidate({ resource: "unlocks", invalidates: ["list"] });
+    message.success("구매한 궁합 삭제됨");
+    invalidate({ resource: "compatibilities", invalidates: ["list"] });
   };
 
   return (
@@ -80,7 +80,7 @@ export const UnlockList = () => {
         size="middle"
         scroll={{ x: 1100 }}
       >
-        <Table.Column<Unlock>
+        <Table.Column<Compatibility>
           title="사용자"
           dataIndex="user_id"
           render={(uid: string) => {
@@ -101,7 +101,7 @@ export const UnlockList = () => {
             );
           }}
         />
-        <Table.Column<Unlock>
+        <Table.Column<Compatibility>
           title="점수"
           dataIndex="total_score"
           sorter
@@ -115,10 +115,10 @@ export const UnlockList = () => {
             );
           }}
         />
-        <Table.Column<Unlock>
+        <Table.Column<Compatibility>
           title="궁합 쌍"
           dataIndex="a_id"
-          render={(_: string, r: Unlock) => (
+          render={(_: string, r: Compatibility) => (
             <Space size={4}>
               <Text strong>{r.a_alias ?? "(이름 없음)"}</Text>
               <Text type="secondary">·</Text>
@@ -126,7 +126,7 @@ export const UnlockList = () => {
             </Space>
           )}
         />
-        <Table.Column<Unlock>
+        <Table.Column<Compatibility>
           title="해제 시각"
           dataIndex="created_at"
           sorter
@@ -135,11 +135,11 @@ export const UnlockList = () => {
             <DateField value={v} format="YYYY-MM-DD HH:mm" />
           )}
         />
-        <Table.Column<Unlock>
+        <Table.Column<Compatibility>
           title="메뉴"
           dataIndex="a_id"
           fixed="right"
-          render={(_: string, r: Unlock) => (
+          render={(_: string, r: Compatibility) => (
             <Space size={4}>
               {/* 복합 키를 단일 route param 으로 — show 가 ~ 로 다시 쪼갠다. */}
               <ShowButton
@@ -148,7 +148,7 @@ export const UnlockList = () => {
                 recordItemId={`${r.user_id}~${r.a_id}~${r.b_id}`}
               />
               <Popconfirm
-                title="궁합 unlock 삭제"
+                title="구매한 궁합 삭제"
                 description="이 궁합 잠금해제 기록을 삭제합니다. 사용자가 다시 보려면 코인을 재차감해야 하며 되돌릴 수 없습니다."
                 okText="Yes"
                 cancelText="No"

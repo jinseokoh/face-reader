@@ -3,21 +3,21 @@ import { useList } from "@refinedev/core";
 import { Alert, Descriptions, Space, Typography } from "antd";
 import { useMemo } from "react";
 import { useParams } from "react-router";
-import type { Unlock } from "../../types";
+import type { Compatibility } from "../../types";
 import { metricThumbUrl } from "../../types";
 import { runCompat, type CompatOutput } from "../../lib/share-engine";
 import { CompatHeroCard } from "../metrics/HeroCard";
 
 const { Text } = Typography;
 
-export const UnlockShow = () => {
+export const CompatibilityShow = () => {
   // route :id = `${user_id}~${a_id}~${b_id}` — 복합 PK 를 단일 param 에 인코딩.
   const { id } = useParams<{ id: string }>();
   const [userId, aId, bId] = (id ? decodeURIComponent(id) : "").split("~");
 
   // 결제 시점 body 스냅샷이 해석 소스 — metrics row 삭제와 무관.
-  const { result: unlockResult, query: unlockQuery } = useList<Unlock>({
-    resource: "unlocks",
+  const { result: compatibilityResult, query: compatibilityQuery } = useList<Compatibility>({
+    resource: "compatibilities",
     filters: [
       { field: "user_id", operator: "eq", value: userId },
       { field: "a_id", operator: "eq", value: aId },
@@ -26,19 +26,19 @@ export const UnlockShow = () => {
     pagination: { pageSize: 1 },
     queryOptions: { enabled: Boolean(userId && aId && bId) },
   });
-  const unlock = (unlockResult?.data ?? [])[0];
-  const hasSnapshot = Boolean(unlock?.a_body && unlock?.b_body);
+  const compatibility = (compatibilityResult?.data ?? [])[0];
+  const hasSnapshot = Boolean(compatibility?.a_body && compatibility?.b_body);
 
   const compat = useMemo<{ out?: CompatOutput; error?: string }>(() => {
     if (!hasSnapshot) return {};
     try {
-      return { out: runCompat(unlock!.a_body!, unlock!.b_body!) };
+      return { out: runCompat(compatibility!.a_body!, compatibility!.b_body!) };
     } catch (e) {
       return { error: e instanceof Error ? e.message : String(e) };
     }
-  }, [hasSnapshot, unlock]);
+  }, [hasSnapshot, compatibility]);
 
-  const isLoading = unlockQuery.isLoading;
+  const isLoading = compatibilityQuery.isLoading;
 
   return (
     <Show isLoading={isLoading} title="궁합 해석">
@@ -55,10 +55,10 @@ export const UnlockShow = () => {
             </Text>
           </Descriptions.Item>
           <Descriptions.Item label="a_alias">
-            {unlock?.a_alias ?? <Text type="secondary">-</Text>}
+            {compatibility?.a_alias ?? <Text type="secondary">-</Text>}
           </Descriptions.Item>
           <Descriptions.Item label="b_alias">
-            {unlock?.b_alias ?? <Text type="secondary">-</Text>}
+            {compatibility?.b_alias ?? <Text type="secondary">-</Text>}
           </Descriptions.Item>
         </Descriptions>
 
@@ -67,7 +67,7 @@ export const UnlockShow = () => {
             type="warning"
             showIcon
             message="복원 불가"
-            description="unlock 행에 body 스냅샷이 없어 해석할 수 없습니다."
+            description="compatibilities 행에 body 스냅샷이 없어 해석할 수 없습니다."
           />
         )}
 
@@ -87,8 +87,8 @@ export const UnlockShow = () => {
         {compat.out && (
           <CompatHeroCard
             compat={compat.out}
-            thumbA={metricThumbUrl(unlock?.a_body ?? undefined)}
-            thumbB={metricThumbUrl(unlock?.b_body ?? undefined)}
+            thumbA={metricThumbUrl(compatibility?.a_body ?? undefined)}
+            thumbB={metricThumbUrl(compatibility?.b_body ?? undefined)}
           />
         )}
       </Space>

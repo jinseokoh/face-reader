@@ -35,7 +35,7 @@ export const UserList = () => {
 
   /** 회원 탈퇴 — react /api/account/delete 와 동일 순서:
    *  썸네일 수집 → R2 삭제 → metrics 삭제 → 모집 중 teams 삭제 →
-   *  auth.users 삭제 (cascade: users/coins/unlocks). */
+   *  auth.users 삭제 (cascade: users/coins/compatibilities). */
   const handleDelete = async (record: AppUser) => {
     try {
       const { data: rows } = await adminClient

@@ -39,7 +39,7 @@ import { DashboardPage } from './pages/dashboard'
 import { MetricList, MetricShow } from './pages/metrics'
 import { ReportList, ReportShow } from './pages/reports'
 import { TeamList, TeamShow } from './pages/teams'
-import { UnlockList, UnlockShow } from './pages/unlocks'
+import { CompatibilityList, CompatibilityShow } from './pages/compatibilities'
 import { UserList, UserShow } from './pages/users'
 import authProvider from './providers/auth'
 import { dataProvider } from './providers/data'
@@ -77,10 +77,10 @@ function App() {
                     meta: { label: '관상 metrics', icon: <ScanOutlined /> },
                   },
                   {
-                    name: 'unlocks',
-                    list: '/unlocks',
-                    show: '/unlocks/show/:id',
-                    meta: { label: '궁합 unlocks', icon: <UnlockOutlined /> },
+                    name: 'compatibilities',
+                    list: '/compatibilities',
+                    show: '/compatibilities/show/:id',
+                    meta: { label: '궁합 compatibilities', icon: <UnlockOutlined /> },
                   },
                   {
                     name: 'teams',
@@ -149,9 +149,9 @@ function App() {
                       <Route index element={<ReportList />} />
                       <Route path="show/:id" element={<ReportShow />} />
                     </Route>
-                    <Route path="/unlocks">
-                      <Route index element={<UnlockList />} />
-                      <Route path="show/:id" element={<UnlockShow />} />
+                    <Route path="/compatibilities">
+                      <Route index element={<CompatibilityList />} />
+                      <Route path="show/:id" element={<CompatibilityShow />} />
                     </Route>
                     <Route path="/teams">
                       <Route index element={<TeamList />} />

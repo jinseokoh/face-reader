@@ -123,7 +123,7 @@ export type AdImage = {
   created_at: string;
 };
 
-export type Unlock = {
+export type Compatibility = {
   user_id: string;
   /** 궁합 쌍 metrics id — a_id < b_id 정규화, FK 없음(스냅샷은 삭제를 견딘다). */
   a_id: string;

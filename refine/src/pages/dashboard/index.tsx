@@ -143,7 +143,7 @@ export const DashboardPage = () => {
               valueStyle={{ color: '#cf1322' }}
             />
             <Text type="secondary" style={{ fontSize: 12 }}>
-              궁합 unlock 등 spend 합
+              궁합 compatibility 등 spend 합
             </Text>
           </Card>
         </Col>
