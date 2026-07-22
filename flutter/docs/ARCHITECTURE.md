@@ -16,7 +16,7 @@ python/ (DeepFace FastAPI)          Supabase (metrics·coins·compatibilities·t
 
 ## 1. 앱 화면 구조
 
-**4-Tab IndexedStack** (`app.dart::MainApp`, 탭 상태 = `selectedTabProvider`).
+**5-Tab IndexedStack** (`app.dart::MainApp`, 탭 상태 = `selectedTabProvider`).
 세로 고정 (`SystemChrome.setPreferredOrientations([portraitUp])`).
 
 | Tab | Screen | 역할 |
@@ -24,7 +24,13 @@ python/ (DeepFace FastAPI)          Supabase (metrics·coins·compatibilities·t
 | 0 | `PhysiognomyScreen` | 관상 — 내부 3탭 고정(카메라/앨범/북마크, 개수 표기) + 14-node 리포트 진입 |
 | 1 | `CompatibilityScreen` | 궁합 — 내부 2탭(미확인/확인), 1🪙 unlock |
 | 2 | `ChemistryScreen` | 케미 — 내부 2탭(내가 만든/초대받은 그룹) |
-| 3 | `SettingsScreen` | 설정 · 프로필 이름 수정 · 약관 · 로그인/탈퇴 |
+| 3 | `ChatTabScreen` | 채팅 — 열린 매칭 채팅 목록(`openChatsProvider`), 안읽음 gold dot |
+| 4 | `SettingsScreen` | 설정 · 프로필 이름 수정 · 약관 · 로그인/탈퇴 |
+
+채팅 접근 경로: ① 채팅 탭(아이콘에 안읽음 dot 뱃지) ② 전역 새 메시지 밴드 —
+안읽은 채팅이 있으면 어느 탭에서든 바텀 탭바 위에 노출, 탭하면 채팅방(1개) 또는
+채팅 탭(여러 개) ③ 푸시 딥링크 `/chat/:id`. 안읽음 판정은 Hive `prefs` 의
+`chat_last_seen:{teamId}` (로컬 전용, `BattleChatScreen` 이 메시지 로드마다 갱신).
 
 공통 규칙: 내부 탭은 내 관상 등록 후 상시 노출(0개 포함), 최초 노출 시 개수 많은 탭
 기본 선택(1회). 내 관상 미등록이면 관상·궁합·케미 AppBar 에 [내 관상 등록]

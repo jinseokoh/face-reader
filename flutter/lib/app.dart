@@ -10,8 +10,11 @@ import 'package:facely/core/hive/hive_setup.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/data/services/auth_service.dart';
 import 'package:facely/data/services/deep_link_service.dart';
+import 'package:facely/domain/models/battle.dart';
+import 'package:facely/presentation/providers/battle_provider.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/providers/tab_provider.dart';
+import 'package:facely/presentation/screens/chat/chat_tab_screen.dart';
 import 'package:facely/presentation/screens/compatibility/compatibility_screen.dart';
 import 'package:facely/presentation/screens/chemistry/chemistry_screen.dart';
 import 'package:facely/presentation/screens/physiognomy/physiognomy_screen.dart';
@@ -164,51 +167,168 @@ class _MainAppState extends ConsumerState<MainApp> {
     );
   }
 
+  /// 채팅 탭의 IndexedStack index — 뱃지·밴드·탭 전환이 공유.
+  static const _chatTabIndex = 3;
+
   @override
   Widget build(BuildContext context) {
     final selectedIndex = ref.watch(selectedTabProvider);
+    // 안읽음 뱃지·새 메시지 밴드 — 로드 전/실패 시엔 없는 것으로 취급.
+    final chats =
+        ref.watch(openChatsProvider).asData?.value ?? const <OpenChat>[];
+    final unread = [for (final c in chats) if (c.hasUnread) c];
 
     return Scaffold(
-      body: Stack(
+      body: Column(
         children: [
-          // 탭 순서 = 인원수 위계: 1인 관상 → 2인 궁합 → 다인 교감 → 설정.
-          IndexedStack(
-            index: selectedIndex,
-            children: const [
-              PhysiognomyScreen(),
-              CompatibilityScreen(),
-              ChemistryScreen(),
-              SettingsScreen(),
-            ],
+          Expanded(
+            // 탭 순서 = 인원수 위계: 1인 관상 → 2인 궁합 → 다인 교감 →
+            // 그 결과물인 채팅 → 설정.
+            child: IndexedStack(
+              index: selectedIndex,
+              children: const [
+                PhysiognomyScreen(),
+                CompatibilityScreen(),
+                ChemistryScreen(),
+                ChatTabScreen(),
+                SettingsScreen(),
+              ],
+            ),
           ),
+          // 새 메시지 밴드 — 어느 탭에서든 바텀 탭바 위 같은 자리.
+          // 채팅 탭에선 목록이 이미 보이므로 숨김.
+          if (unread.isNotEmpty && selectedIndex != _chatTabIndex)
+            _UnreadChatBand(
+              unread: unread,
+              onTap: () => _openUnread(unread),
+            ),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: selectedIndex,
-        onTap: (i) => ref.read(selectedTabProvider.notifier).selectTab(i),
+        onTap: _onTabSelected,
         backgroundColor: Colors.white,
         selectedItemColor: AppTheme.textPrimary,
         unselectedItemColor: AppTheme.textHint,
         type: BottomNavigationBarType.fixed,
         elevation: 8,
-        items: const [
-          BottomNavigationBarItem(
+        items: [
+          const BottomNavigationBarItem(
             icon: FaIcon(FontAwesomeIcons.person, size: 22),
             label: '관상',
           ),
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: FaIcon(FontAwesomeIcons.peoplePulling, size: 22),
             label: '궁합',
           ),
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: FaIcon(FontAwesomeIcons.peopleGroup, size: 22),
             label: '케미',
           ),
           BottomNavigationBarItem(
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const FaIcon(FontAwesomeIcons.comment, size: 22),
+                if (unread.isNotEmpty)
+                  Positioned(
+                    top: -2,
+                    right: -4,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: AppColors.gold,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            label: '채팅',
+          ),
+          const BottomNavigationBarItem(
             icon: FaIcon(FontAwesomeIcons.userGear, size: 22),
             label: '설정',
           ),
         ],
+      ),
+    );
+  }
+
+  void _onTabSelected(int i) {
+    // 채팅 탭 진입마다 목록·안읽음 상태 재조회 (Realtime 미구독 보완).
+    if (i == _chatTabIndex) ref.invalidate(openChatsProvider);
+    ref.read(selectedTabProvider.notifier).selectTab(i);
+  }
+
+  Future<void> _openUnread(List<OpenChat> unread) async {
+    if (unread.length == 1) {
+      await context.push('/chat/${unread.first.teamId}');
+      if (mounted) ref.invalidate(openChatsProvider);
+      return;
+    }
+    ref.invalidate(openChatsProvider);
+    ref.read(selectedTabProvider.notifier).selectTab(_chatTabIndex);
+  }
+}
+
+/// 전역 새 메시지 밴드 — 미니플레이어 패턴. 안읽은 채팅이 있을 때만 뜨고,
+/// 탭하면 해당 채팅방(1개) 또는 채팅 탭(여러 개)으로 보낸다.
+class _UnreadChatBand extends StatelessWidget {
+  final List<OpenChat> unread;
+  final VoidCallback onTap;
+  const _UnreadChatBand({required this.unread, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final first = unread.first;
+    final preview = first.lastMessage?.body ?? '';
+    return Material(
+      color: Colors.white,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.md,
+          ),
+          decoration: const BoxDecoration(
+            border: Border(top: BorderSide(color: AppTheme.border)),
+          ),
+          child: Row(
+            children: [
+              const FaIcon(
+                FontAwesomeIcons.solidComment,
+                size: 18,
+                color: AppTheme.textPrimary,
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('새 메시지 ${unread.length}개', style: AppText.subTitle),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      '${first.otherNickname}: $preview',
+                      style: AppText.caption,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              const FaIcon(
+                FontAwesomeIcons.chevronRight,
+                size: 14,
+                color: AppTheme.textHint,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

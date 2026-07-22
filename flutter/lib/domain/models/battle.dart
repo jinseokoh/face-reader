@@ -243,6 +243,26 @@ class BattleMatch {
   String otherOf(String uid) => uid == userA ? userB : userA;
 }
 
+/// 채팅 탭 리스트 한 줄 — 열린 매칭 채팅방의 요약.
+/// [hasUnread] 는 Hive 로컬 last-seen 기준 (provider 가 채운다).
+class OpenChat {
+  final String teamId;
+  final String otherUserId;
+  final String otherNickname;
+  final String? photoUrl;
+  final BattleMessage? lastMessage;
+  final bool hasUnread;
+
+  const OpenChat({
+    required this.teamId,
+    required this.otherUserId,
+    required this.otherNickname,
+    required this.photoUrl,
+    required this.lastMessage,
+    required this.hasUnread,
+  });
+}
+
 class BattleMessage {
   final String id;
   final String teamId;

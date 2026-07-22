@@ -316,6 +316,71 @@ class BattleService {
     return {for (final r in rows) r['team_id'] as String};
   }
 
+  /// 채팅 탭 리스트 — 열린 매칭 전부의 상대·썸네일·마지막 메시지 요약.
+  /// unread 판정은 provider 몫 (여기선 hasUnread=false 로 채운다).
+  /// 마지막 메시지 최신순, 메시지 없는 방은 뒤로.
+  Future<List<OpenChat>> fetchOpenChats() async {
+    final uid = myUid;
+    if (uid == null) return const [];
+    final matchRows = await _client
+        .from('team_matches')
+        .select()
+        .not('opened_at', 'is', null);
+    final matches = [for (final r in matchRows) BattleMatch.fromRow(r)];
+    if (matches.isEmpty) return const [];
+
+    final teamIds = [for (final m in matches) m.teamId];
+    final otherIds = [for (final m in matches) m.otherOf(uid)];
+    final results = await Future.wait<dynamic>([
+      _client
+          .from('team_roster')
+          .select('team_id, user_id, nickname')
+          .inFilter('team_id', teamIds),
+      fetchMyFaceThumbnailUrls(otherIds),
+      for (final id in teamIds)
+        _client
+            .from('team_messages')
+            .select()
+            .eq('team_id', id)
+            .order('created_at', ascending: false)
+            .limit(1)
+            .maybeSingle(),
+    ]);
+
+    // (teamId, userId) → nickname. 상대 계정 삭제로 로스터가 없으면 '상대'.
+    final nicknames = <String, String>{
+      for (final r in results[0] as List)
+        '${r['team_id']}:${r['user_id']}': (r['nickname'] as String?) ?? '상대',
+    };
+    final thumbs = results[1] as Map<String, String?>;
+
+    final chats = <OpenChat>[];
+    for (var i = 0; i < matches.length; i++) {
+      final m = matches[i];
+      final other = otherIds[i];
+      final lastRow = results[2 + i] as Map<String, dynamic>?;
+      chats.add(
+        OpenChat(
+          teamId: m.teamId,
+          otherUserId: other,
+          otherNickname: nicknames['${m.teamId}:$other'] ?? '상대',
+          photoUrl: thumbs[other],
+          lastMessage: lastRow == null ? null : BattleMessage.fromRow(lastRow),
+          hasUnread: false,
+        ),
+      );
+    }
+    chats.sort((a, b) {
+      final at = a.lastMessage?.createdAt;
+      final bt = b.lastMessage?.createdAt;
+      if (at == null && bt == null) return 0;
+      if (at == null) return 1;
+      if (bt == null) return -1;
+      return bt.compareTo(at);
+    });
+    return chats;
+  }
+
   /// 매칭 성사 상태 — RLS 상 쌍 본인에게만 row 가 보인다(남에겐 null).
   Future<BattleMatch?> fetchMatch(String teamId) async {
     final row = await _client

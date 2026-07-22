@@ -119,8 +119,9 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
               const SizedBox(width: AppSpacing.md),
               CoinChip(
                 coins: auth.coins,
+                // 설정 탭 — 채팅 탭 신설로 index 4.
                 onTap: () =>
-                    ref.read(selectedTabProvider.notifier).selectTab(3),
+                    ref.read(selectedTabProvider.notifier).selectTab(4),
               ),
             ],
           ],
