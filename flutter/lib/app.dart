@@ -229,7 +229,7 @@ class _MainAppState extends ConsumerState<MainApp> {
             icon: Stack(
               clipBehavior: Clip.none,
               children: [
-                const FaIcon(FontAwesomeIcons.comment, size: 22),
+                const FaIcon(FontAwesomeIcons.solidComment, size: 22),
                 if (unread.isNotEmpty)
                   Positioned(
                     top: -2,
@@ -248,7 +248,7 @@ class _MainAppState extends ConsumerState<MainApp> {
             label: '채팅',
           ),
           const BottomNavigationBarItem(
-            icon: FaIcon(FontAwesomeIcons.userGear, size: 22),
+            icon: FaIcon(FontAwesomeIcons.gears, size: 22),
             label: '설정',
           ),
         ],

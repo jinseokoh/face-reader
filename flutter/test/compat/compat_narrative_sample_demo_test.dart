@@ -18,6 +18,7 @@ import 'package:face_engine/domain/services/compat/compat_label.dart';
 import 'package:face_engine/domain/services/compat/compat_narrative.dart';
 import 'package:face_engine/domain/services/compat/compat_pipeline.dart';
 import 'package:face_engine/domain/services/compat/five_element.dart';
+import 'package:face_engine/domain/services/compat/intimacy.dart';
 import 'package:face_engine/domain/services/physiognomy_scoring.dart';
 
 double _normal(Random rng) {
@@ -210,5 +211,58 @@ void main() {
     final n = buildCompatNarrative(report: r, pairSeed: 3);
     _printNarrative('평범한 중간형', r, n);
     expect(n.sectionsInOrder.length, 5);
+  });
+
+  test('■ spicy 전 조합 — 남/여 POV × high/mid/low 끌림 챕터 전문', () {
+    // intimacy 축을 버킷 방향으로 미는 bias. 정확 버킷은 seed 탐색으로 확보.
+    const biasByBucket = <String, Map<String, double>>{
+      'high': {
+        'eyeFissureRatio': 1.2,
+        'lipFullnessRatio': 1.4,
+        'mouthCornerAngle': 0.9,
+        'eyeCanthalTilt': 0.9,
+      },
+      'mid': {},
+      'low': {
+        'eyeFissureRatio': -1.2,
+        'lipFullnessRatio': -1.2,
+        'mouthCornerAngle': -1.0,
+        'eyeCanthalTilt': -1.0,
+      },
+    };
+    String bucketOf(double s) => s >= 65 ? 'high' : (s >= 45 ? 'mid' : 'low');
+
+    for (final myGender in [Gender.male, Gender.female]) {
+      for (final bucket in ['high', 'mid', 'low']) {
+        CompatibilityReport? found;
+        for (int seed = 0; seed < 500 && found == null; seed++) {
+          final rng = Random(9000 + seed);
+          final my = _person(rng,
+              biasMap: biasByBucket[bucket]!,
+              shape: FaceShape.oval,
+              gender: myGender,
+              age: AgeGroup.thirties);
+          final al = _person(rng,
+              biasMap: biasByBucket[bucket]!,
+              shape: FaceShape.round,
+              gender: myGender == Gender.male ? Gender.female : Gender.male,
+              age: AgeGroup.forties);
+          final r = analyzeCompatibility(my: my, album: al);
+          if (bucketOf(r.sub.intimacyScore) == bucket) found = r;
+        }
+        expect(found, isNotNull, reason: 'spicy $bucket 샘플 탐색 실패');
+        expect(found!.intimacy.tone, IntimacyTone.spicy);
+        final n = buildCompatNarrative(report: found, pairSeed: 7);
+        // ignore: avoid_print
+        print('\n${'=' * 72}');
+        // ignore: avoid_print
+        print('■ spicy · POV=${myGender == Gender.male ? '남' : '여'} · '
+            'bucket=$bucket (raw ${found.sub.intimacyScore.toStringAsFixed(1)})');
+        // ignore: avoid_print
+        print('=' * 72);
+        // ignore: avoid_print
+        print(n.intimacyChapter);
+      }
+    }
   });
 }

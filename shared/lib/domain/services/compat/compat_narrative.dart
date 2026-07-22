@@ -175,10 +175,12 @@ List<CompatFinding> _gatherFindings(CompatibilityReport r) {
 // ─────────────── intimacy chapter ───────────────
 //
 // 모든 페어에서 노출되는 섹션. 분량 = opener + 4 axis 산문체 + closer 로 통일.
-// tone 분기는 opener/closer 의 어휘만 결정 (axis 산문은 공통):
+// tone 분기:
 //   - pure:    동성 페어·10대·70대 포함 → 점잖은 산문
 //   - flirty:  20대·60대 포함 이성 페어 → 미묘한 긴장
-//   - spicy:   양쪽 30~50 이성 페어 → 들킬 듯한 분위기
+//   - spicy:   양쪽 30~50 이성 페어 → 타블로이드 기사체
+// pure/flirty 는 opener/closer 만 톤별이고 axis 산문은 공통 pool 을 쓴다.
+// spicy 는 axis 산문까지 전용 pool — 챕터 전체가 한 기사로 읽히게 한다.
 //
 // bucket 분류:
 //   - high (65 이상): 강한 끌림
@@ -236,9 +238,10 @@ String _intimacyChapter(CompatibilityReport r, int pairSeed) {
   }
 
   // Axis 문단 — 모든 톤에서 4 axis 산문체로 출력 (cause + observation + advice).
-  // 톤 분기는 opener/closer 의 어휘만, axis 산문은 공통 — 얼굴 근거 설명이라
-  // 톤 변화 의미 작고 분량 풍부함 우선.
-  final axisDetails = intimacyAxisDetailsByGender[r.myGender] ??
+  // spicy 는 전용 pool 로 챕터 전체 기사 톤 유지, pure/flirty 는 공통 pool.
+  final axisDetails = (tone == IntimacyTone.spicy
+          ? intimacySpicyAxisDetailsByGender[r.myGender]
+          : intimacyAxisDetailsByGender[r.myGender]) ??
       const <String, IntimacyAxisDetail>{};
   for (final comp in r.intimacy.components) {
     final sign = _intimacySign(comp.value);
