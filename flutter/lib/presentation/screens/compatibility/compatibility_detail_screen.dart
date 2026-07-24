@@ -22,6 +22,7 @@ import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/presentation/widgets/detail_avatar.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
+import 'package:facely/presentation/widgets/source_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:go_router/go_router.dart';
@@ -250,6 +251,8 @@ class _CompatShareSide extends StatelessWidget {
         DetailAvatar(
           thumbnailPath: report.thumbnailPath,
           thumbnailKey: report.thumbnailKey,
+          // border 색은 전 탭 공통 source 규칙 (카메라 gold / 앨범 lightGray).
+          borderColor: sourceBorderColor(report.source),
           fallback: Image.asset(
             report.gender == Gender.male
                 ? 'assets/icons/male.png'

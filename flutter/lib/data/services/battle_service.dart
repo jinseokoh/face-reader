@@ -18,11 +18,22 @@ import 'supabase_service.dart';
 /// archetype 은 공용 ("신의형 · 호감형 기질").
 typedef BattleSlotProfile = ({
   String? thumbUrl,
+  AnalysisSource? source,
   String? ageGender,
   String? ethnicity,
   String? faceShape,
   String? archetype,
 });
+
+/// my-face 썸네일 부품 — CDN URL + 촬영 경로 (아바타 border 색 규칙용).
+typedef MyFaceThumb = ({String? url, AnalysisSource? source});
+
+/// metrics body 의 `source` 문자열 → enum. 미상·파싱 실패는 null.
+AnalysisSource? _sourceFrom(Map<String, dynamic> body) {
+  final raw = body['source'] as String?;
+  if (raw == null) return null;
+  return AnalysisSource.values.where((s) => s.name == raw).firstOrNull;
+}
 
 /// 차단 목록 행 — my_blocks view 의 상대 id + 닉네임.
 typedef BlockedUser = ({String userId, String nickname});
@@ -181,8 +192,9 @@ class BattleService {
     ];
   }
 
-  /// 참가자 아바타 — 참가자들의 현재 my-face 썸네일 CDN URL. 없으면 null.
-  Future<Map<String, String?>> fetchMyFaceThumbnailUrls(
+  /// 참가자 아바타 — 참가자들의 현재 my-face 썸네일 CDN URL + 촬영 경로.
+  /// 없으면 url/source 둘 다 null.
+  Future<Map<String, MyFaceThumb>> fetchMyFaceThumbnailUrls(
     List<String> userIds,
   ) async {
     if (userIds.isEmpty) return const {};
@@ -191,14 +203,19 @@ class BattleService {
         .select('user_id, body')
         .inFilter('user_id', userIds)
         .eq('is_my_face', true);
-    final result = <String, String?>{for (final id in userIds) id: null};
+    final result = <String, MyFaceThumb>{
+      for (final id in userIds) id: (url: null, source: null),
+    };
     for (final r in rows) {
       final uid = r['user_id'] as String?;
       if (uid == null) continue;
       try {
         final body = jsonDecode(r['body'] as String) as Map<String, dynamic>;
         final key = body['thumbnailKey'] as String?;
-        result[uid] = key == null ? null : ThumbnailPaths.cdnUrl(key);
+        result[uid] = (
+          url: key == null ? null : ThumbnailPaths.cdnUrl(key),
+          source: _sourceFrom(body),
+        );
       } catch (_) {
         /* malformed body — fallback 아바타 */
       }
@@ -223,6 +240,7 @@ class BattleService {
       final uid = r['user_id'] as String?;
       if (uid == null) continue;
       String? thumbUrl;
+      AnalysisSource? source;
       String? ageGender;
       String? ethnicity;
       String? faceShape;
@@ -232,6 +250,7 @@ class BattleService {
         final body = jsonDecode(bodyStr) as Map<String, dynamic>;
         final key = body['thumbnailKey'] as String?;
         thumbUrl = key == null ? null : ThumbnailPaths.cdnUrl(key);
+        source = _sourceFrom(body);
         try {
           final report = FaceReadingReport.fromJsonString(bodyStr);
           ageGender = '${report.ageGroup.labelKo} ${report.gender.labelKo}';
@@ -248,6 +267,7 @@ class BattleService {
       }
       result[uid] = (
         thumbUrl: thumbUrl,
+        source: source,
         ageGender: ageGender,
         ethnicity: ethnicity,
         faceShape: faceShape,
@@ -352,7 +372,7 @@ class BattleService {
       for (final r in results[0] as List)
         '${r['team_id']}:${r['user_id']}': (r['nickname'] as String?) ?? '상대',
     };
-    final thumbs = results[1] as Map<String, String?>;
+    final thumbs = results[1] as Map<String, MyFaceThumb>;
 
     final chats = <OpenChat>[];
     for (var i = 0; i < matches.length; i++) {
@@ -364,7 +384,8 @@ class BattleService {
           teamId: m.teamId,
           otherUserId: other,
           otherNickname: nicknames['${m.teamId}:$other'] ?? '상대',
-          photoUrl: thumbs[other],
+          photoUrl: thumbs[other]?.url,
+          photoSource: thumbs[other]?.source,
           lastMessage: lastRow == null ? null : BattleMessage.fromRow(lastRow),
           hasUnread: false,
         ),

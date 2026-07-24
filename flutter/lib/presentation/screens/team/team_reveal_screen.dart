@@ -20,6 +20,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/battle_provider.dart';
 import '../../widgets/compact_snack_bar.dart';
 import '../../widgets/primary_button.dart';
+import '../../widgets/source_badge.dart';
 import '../compatibility/compatibility_unlock_action.dart';
 import 'battle_band.dart';
 import 'battle_match_card.dart';
@@ -201,18 +202,27 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
     }
     final gender = _genderOf(slot);
     final thumbUrl = uid == null ? null : _profiles[uid]?.thumbUrl;
-    if (thumbUrl != null) {
-      return ClipOval(
-        child: Image.network(
-          thumbUrl,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => _slotIconAvatar(gender, size),
+    final inner = thumbUrl == null
+        ? _slotIconAvatar(gender, size)
+        : Image.network(
+            thumbUrl,
+            width: size,
+            height: size,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => _slotIconAvatar(gender, size),
+          );
+    // border 색은 전 탭 공통 source 규칙 (카메라 gold / 앨범 lightGray).
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: sourceBorderColor(uid == null ? null : _profiles[uid]?.source),
         ),
-      );
-    }
-    return _slotIconAvatar(gender, size);
+      ),
+      child: ClipOval(child: inner),
+    );
   }
 
   Widget _slotIconAvatar(String? gender, double size) {
@@ -792,24 +802,29 @@ Widget _pairPersonColumn(FaceReadingReport r, {String? name}) {
 /// 사람 아이콘.
 Widget _pairAvatar(FaceReadingReport r, {double size = 28}) {
   final file = ThumbnailPaths.resolveFileSync(r.thumbnailPath);
-  if (file != null && file.existsSync()) {
-    return ClipOval(
-      child: Image.file(file, width: size, height: size, fit: BoxFit.cover),
-    );
-  }
   final cdn = ThumbnailPaths.cdnUrl(r.thumbnailKey);
-  if (cdn != null) {
-    return ClipOval(
-      child: Image.network(
-        cdn,
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => _pairIconAvatar(size),
-      ),
+  Widget inner = _pairIconAvatar(size);
+  if (file != null && file.existsSync()) {
+    inner = Image.file(file, width: size, height: size, fit: BoxFit.cover);
+  } else if (cdn != null) {
+    inner = Image.network(
+      cdn,
+      width: size,
+      height: size,
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) => _pairIconAvatar(size),
     );
   }
-  return _pairIconAvatar(size);
+  // border 색은 전 탭 공통 source 규칙 (카메라 gold / 앨범 lightGray).
+  return Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      border: Border.all(color: sourceBorderColor(r.source)),
+    ),
+    child: ClipOval(child: inner),
+  );
 }
 
 Widget _pairIconAvatar(double size) {

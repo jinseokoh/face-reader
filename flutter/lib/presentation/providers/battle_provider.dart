@@ -37,6 +37,7 @@ final openChatsProvider = FutureProvider<List<OpenChat>>((ref) async {
         otherUserId: c.otherUserId,
         otherNickname: c.otherNickname,
         photoUrl: c.photoUrl,
+        photoSource: c.photoSource,
         lastMessage: c.lastMessage,
         hasUnread: _isUnread(c.lastMessage, myUid, prefs.get(chatLastSeenKey(c.teamId))),
       ),

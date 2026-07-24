@@ -5,6 +5,7 @@ import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
+import 'package:facely/presentation/widgets/source_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
@@ -152,7 +153,11 @@ class _HeaderAvatar extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: AppColors.gold, width: 1.5),
+        // border 색은 전 탭 공통 source 규칙 (카메라 gold / 앨범 lightGray).
+        border: Border.all(
+          color: sourceBorderColor(myFace?.source),
+          width: 1.5,
+        ),
       ),
       child: ClipOval(child: inner),
     );

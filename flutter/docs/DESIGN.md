@@ -111,7 +111,7 @@ gold border (gold = "나" 시각 언어).
 - 다크 hero = promo·일회성 강조 (리포트 archetype hero 등). file-local gradient +
   `AppRadius.xl` + gold eyebrow + white title.
 - 옅은 sliver header = persistent identity (화면 chrome). white bg · radius 0 ·
-  bottom 0.5px border · avatar 42px gold ring · title `subTitle` w700.
+  bottom 0.5px border · avatar 42px ring(§3.5 source 규칙) · title `subTitle` w700.
 - 같은 정체성 정보를 두 톤으로 동시에 쓰지 않는다.
 
 ### 3.5 아바타
@@ -120,6 +120,11 @@ gold border (gold = "나" 시각 언어).
 - **상세 페이지 아바타**: 공용 `DetailAvatar` — **56px 원형 + 1.5px ring**
   (다크 카드 = white 30% 기본값, 흰 배경 = `borderColor: AppColors.border`).
   이미지는 ClipOval 로 ring 안쪽, 배경 fill 금지(안티앨리어스 헤일로 원인).
+- **border 색 = source 규칙 (전 탭 공통)**: `sourceBorderColor(source)`
+  (source_badge.dart) — 카메라 촬영 사진은 `AppColors.gold`, 앨범 사진·source
+  미상·공유받음은 `AppColors.border`(lightGray). ring 은 source 만 말한다 —
+  다른 의미(방장 등)를 border 색에 싣지 않는다. refine 관상 리스트도 동일 hex
+  (#C9A876 / #E0E0E0) 사용.
 - **이미지 3단 fallback (전 화면 공통)**: 로컬 파일 → CDN(`thumbnailKey`) → fallback
   (user 아이콘/성별 png). 새 아바타 렌더러는 반드시 3단을 지킨다.
 

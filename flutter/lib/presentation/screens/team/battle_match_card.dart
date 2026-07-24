@@ -63,7 +63,8 @@ class _BattleMatchCardState extends State<BattleMatchCard> {
     if (!mounted) return;
     setState(() {
       _match = results[0] as BattleMatch?;
-      _photoUrl = (results[1] as Map<String, String?>)[widget.otherUserId];
+      _photoUrl =
+          (results[1] as Map<String, MyFaceThumb>)[widget.otherUserId]?.url;
       _loading = false;
     });
   }

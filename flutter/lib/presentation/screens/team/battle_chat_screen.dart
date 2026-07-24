@@ -1,3 +1,4 @@
+import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:hive_ce_flutter/hive_ce_flutter.dart';
@@ -11,6 +12,7 @@ import '../../../data/services/push_service.dart';
 import '../../../domain/models/battle.dart';
 import '../../providers/battle_provider.dart';
 import '../../widgets/compact_snack_bar.dart';
+import '../../widgets/source_badge.dart';
 
 // 메신저 레이아웃 전용 화면 국지 상수 — 색은 전부 AppColors 토큰 사용.
 const _kBubbleRadius = 18.0;
@@ -42,6 +44,7 @@ class _BattleChatScreenState extends State<BattleChatScreen> {
   List<BattleMessage> _messages = const [];
   RealtimeChannel? _channel;
   String? _otherPhotoUrl;
+  AnalysisSource? _otherPhotoSource;
   bool _loading = true;
   bool _sending = false;
 
@@ -53,8 +56,13 @@ class _BattleChatScreenState extends State<BattleChatScreen> {
     _load();
     _channel = _service.watchMatch(widget.teamId, _load);
     // 상대 아바타 — 매칭 카드와 같은 my-face 썸네일, 실패 시 아이콘 fallback.
-    _service.fetchMyFaceThumbnailUrls([widget.otherUserId]).then((urls) {
-      if (mounted) setState(() => _otherPhotoUrl = urls[widget.otherUserId]);
+    _service.fetchMyFaceThumbnailUrls([widget.otherUserId]).then((thumbs) {
+      if (mounted) {
+        setState(() {
+          _otherPhotoUrl = thumbs[widget.otherUserId]?.url;
+          _otherPhotoSource = thumbs[widget.otherUserId]?.source;
+        });
+      }
     });
   }
 
@@ -287,6 +295,7 @@ class _BattleChatScreenState extends State<BattleChatScreen> {
                                   _minuteKey(msg.createdAt),
                           nickname: widget.otherNickname,
                           photoUrl: _otherPhotoUrl,
+                          photoSource: _otherPhotoSource,
                           // 상대 메시지만 길게 눌러 신고 (스토어 UGC 정책).
                           onLongPress: isMine
                               ? null
@@ -366,6 +375,7 @@ class _MessageRow extends StatelessWidget {
   final bool showTime;
   final String nickname;
   final String? photoUrl;
+  final AnalysisSource? photoSource;
   final VoidCallback? onLongPress;
   const _MessageRow({
     required this.message,
@@ -374,6 +384,7 @@ class _MessageRow extends StatelessWidget {
     required this.showTime,
     required this.nickname,
     required this.photoUrl,
+    required this.photoSource,
     this.onLongPress,
   });
 
@@ -509,7 +520,8 @@ class _MessageRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadius.xl),
-        border: Border.all(color: AppColors.border),
+        // border 색은 source 규칙 (카메라 gold / 앨범 lightGray).
+        border: Border.all(color: sourceBorderColor(photoSource)),
       ),
       child: photoUrl == null
           ? fallback

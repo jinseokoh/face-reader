@@ -726,6 +726,7 @@ class _PairThumbs extends StatelessWidget {
         thumbnailKey: r.thumbnailKey,
         size: 42,
         gender: r.gender,
+        source: r.source,
       ),
     );
     return SizedBox(
@@ -795,6 +796,7 @@ class _CompatLockedCard extends ConsumerWidget {
                 thumbnailKey: album.thumbnailKey,
                 size: 42,
                 gender: album.gender,
+                source: album.source,
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
@@ -1303,11 +1305,13 @@ class _Thumb extends StatelessWidget {
   final String? thumbnailKey;
   final double size;
   final Gender? gender;
+  final AnalysisSource? source;
   const _Thumb({
     required this.path,
     required this.size,
     this.thumbnailKey,
     this.gender,
+    this.source,
   });
 
   @override
@@ -1316,10 +1320,12 @@ class _Thumb extends StatelessWidget {
     // 1순위 로컬 파일(thumbnailPath) → 2순위 CDN(thumbnailKey) → gender fallback.
     // 받은 카드·결제 궁합 복원 파트너는 thumbnailPath=null 이지만 thumbnailKey 는
     // 들고 있으므로 CDN 으로 실제 얼굴을 띄운다.
+    // border 는 source 규칙 (sourceBorderColor — 카메라 gold / 앨범 lightGray).
     final file = ThumbnailPaths.resolveFileSync(path);
     final cdn = ThumbnailPaths.cdnUrl(thumbnailKey);
+    Widget inner = _networkOrFallback(radius, cdn);
     if (file != null) {
-      return ClipOval(
+      inner = ClipOval(
         child: Image.file(
           file,
           width: size,
@@ -1329,7 +1335,15 @@ class _Thumb extends StatelessWidget {
         ),
       );
     }
-    return _networkOrFallback(radius, cdn);
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: sourceBorderColor(source), width: 1.5),
+      ),
+      child: inner,
+    );
   }
 
   /// thumbnail 없을 때 gender 기본 아바타. male/female 은 png 에셋,

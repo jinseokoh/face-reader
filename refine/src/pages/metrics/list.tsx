@@ -26,6 +26,14 @@ const SOURCE_COLOR: Record<string, string> = {
   album: "green",
 };
 
+/** 아바타 border 색 — Flutter 앱과 동일 규칙 (sourceBorderColor):
+ *  카메라 gold(AppColors.gold) / 앨범·미상 lightGray(AppColors.border). */
+const AVATAR_BORDER: Record<string, string> = {
+  camera: "#C9A876",
+  album: "#E0E0E0",
+};
+const AVATAR_BORDER_DEFAULT = "#E0E0E0";
+
 const GENDER_LABEL: Record<string, string> = {
   male: "남",
   female: "여",
@@ -165,8 +173,18 @@ export const MetricList = () => {
           dataIndex="body"
           render={(_: unknown, record: MetricEntry) => {
             const url = metricThumbUrl(record.body);
+            const source = parseDemographics(record.body).source;
             return (
-              <Avatar src={url ?? undefined} size={40} shape="circle">
+              <Avatar
+                src={url ?? undefined}
+                size={40}
+                shape="circle"
+                style={{
+                  border: `2px solid ${
+                    (source && AVATAR_BORDER[source]) ?? AVATAR_BORDER_DEFAULT
+                  }`,
+                }}
+              >
                 {record.alias?.[0] ?? "?"}
               </Avatar>
             );

@@ -250,6 +250,10 @@ class OpenChat {
   final String otherUserId;
   final String otherNickname;
   final String? photoUrl;
+
+  /// 상대 my-face 사진의 촬영 경로 — 아바타 border 색 규칙
+  /// (카메라 gold / 앨범 lightGray) 에 사용. metrics body 파싱 실패 시 null.
+  final AnalysisSource? photoSource;
   final BattleMessage? lastMessage;
   final bool hasUnread;
 
@@ -258,6 +262,7 @@ class OpenChat {
     required this.otherUserId,
     required this.otherNickname,
     required this.photoUrl,
+    required this.photoSource,
     required this.lastMessage,
     required this.hasUnread,
   });

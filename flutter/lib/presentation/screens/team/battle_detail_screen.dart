@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,6 +20,7 @@ import '../../widgets/compact_snack_bar.dart';
 import '../../widgets/login_bottom_sheet.dart';
 import '../../widgets/my_face_capture_flow.dart';
 import '../../widgets/primary_button.dart';
+import '../../widgets/source_badge.dart';
 import 'team_reveal_screen.dart';
 
 /// male/female 성별 기본 아이콘 asset 경로.
@@ -676,6 +678,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
       entry: entry,
       slotIndex: index,
       thumbUrl: profile?.thumbUrl,
+      thumbSource: profile?.source,
       demographic: profile?.ageGender == null
           ? null
           : '${profile!.ageGender} ${profile.ethnicity ?? ''}'.trim(),
@@ -692,6 +695,9 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
 class _SlotRow extends StatelessWidget {
   final BattleRosterEntry? entry;
   final String? thumbUrl;
+
+  /// my-face 사진의 촬영 경로 — border 색 규칙 (카메라 gold / 앨범 lightGray).
+  final AnalysisSource? thumbSource;
 
   /// "50대 남성 아시아인" — my-face 리포트의 인구통계 한 줄.
   final String? demographic;
@@ -710,6 +716,7 @@ class _SlotRow extends StatelessWidget {
   const _SlotRow({
     required this.entry,
     required this.thumbUrl,
+    required this.thumbSource,
     required this.demographic,
     required this.archetype,
     required this.isMe,
@@ -735,9 +742,12 @@ class _SlotRow extends StatelessWidget {
                 height: 42,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
+                  // border 색은 전 탭 공통 source 규칙 (카메라 gold /
+                  // 앨범 lightGray). ring 은 source 만 말한다 — 방장 gold
+                  // ring 표기는 이 규칙과 충돌해 폐기 (2026-07-24).
                   border: Border.all(
                     color: filled
-                        ? (entry!.isOwner ? AppColors.gold : AppColors.border)
+                        ? sourceBorderColor(thumbSource)
                         : AppColors.border,
                   ),
                 ),

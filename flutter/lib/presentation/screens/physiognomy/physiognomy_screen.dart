@@ -302,26 +302,31 @@ class _PhysiognomyItem extends ConsumerWidget {
     // 1순위 로컬 파일 → 2순위 CDN(thumbnailKey) → 소스 아이콘 fallback.
     // 공유받은 카드·로그인 rehydrate 복원 카드는 thumbnailPath=null 이지만
     // thumbnailKey 가 있어 CDN 으로 실제 얼굴을 띄운다 (궁합 아바타와 동일).
+    // border 는 source 규칙 (sourceBorderColor — 카메라 gold / 앨범 lightGray).
     const size = 42.0;
+    Widget inner = _sourceIconAvatar(report, size);
     final file = ThumbnailPaths.resolveFileSync(report.thumbnailPath);
-    if (file != null && file.existsSync()) {
-      return ClipOval(
-        child: Image.file(file, width: size, height: size, fit: BoxFit.cover),
-      );
-    }
     final cdn = ThumbnailPaths.cdnUrl(report.thumbnailKey);
-    if (cdn != null) {
-      return ClipOval(
-        child: Image.network(
-          cdn,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => _sourceIconAvatar(report, size),
-        ),
+    if (file != null && file.existsSync()) {
+      inner = Image.file(file, width: size, height: size, fit: BoxFit.cover);
+    } else if (cdn != null) {
+      inner = Image.network(
+        cdn,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _sourceIconAvatar(report, size),
       );
     }
-    return _sourceIconAvatar(report, size);
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: sourceBorderColor(report.source), width: 1.5),
+      ),
+      child: ClipOval(child: inner),
+    );
   }
 
   Widget _sourceIconAvatar(FaceReadingReport report, double size) {

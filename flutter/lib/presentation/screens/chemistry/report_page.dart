@@ -31,6 +31,7 @@ import 'package:facely/presentation/screens/compatibility/compatibility_unlock_a
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/presentation/widgets/detail_avatar.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
+import 'package:facely/presentation/widgets/source_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -1207,6 +1208,9 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                     DetailAvatar(
                       thumbnailPath: report.thumbnailPath,
                       thumbnailKey: report.thumbnailKey,
+                      // border 색은 전 탭 공통 source 규칙
+                      // (카메라 gold / 앨범 lightGray).
+                      borderColor: sourceBorderColor(report.source),
                       fallback: Container(
                         color: Colors.white.withValues(alpha: 0.12),
                         child: const Center(

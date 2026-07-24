@@ -1,3 +1,4 @@
+import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -8,6 +9,7 @@ import '../../../domain/models/battle.dart';
 import '../../providers/battle_provider.dart';
 import '../../providers/tab_provider.dart';
 import '../../widgets/emotion_empty_state.dart';
+import '../../widgets/source_badge.dart';
 
 /// 채팅 탭 — 열린 매칭 채팅방 목록 (카카오톡 채팅 목록 parity 레이아웃).
 /// 행: squircle 아바타 / 닉네임 + 마지막 메시지 / 시간 + 안읽음 dot.
@@ -136,7 +138,7 @@ class _ChatTile extends ConsumerWidget {
         ),
         child: Row(
           children: [
-            _Avatar(photoUrl: chat.photoUrl),
+            _Avatar(photoUrl: chat.photoUrl, photoSource: chat.photoSource),
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
@@ -184,9 +186,11 @@ class _ChatTile extends ConsumerWidget {
 }
 
 /// 채팅방 화면 아바타와 동일 레시피 (surface + border squircle).
+/// border 색은 source 규칙 (sourceBorderColor — 카메라 gold / 앨범 lightGray).
 class _Avatar extends StatelessWidget {
   final String? photoUrl;
-  const _Avatar({required this.photoUrl});
+  final AnalysisSource? photoSource;
+  const _Avatar({required this.photoUrl, required this.photoSource});
 
   @override
   Widget build(BuildContext context) {
@@ -201,7 +205,7 @@ class _Avatar extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadius.xl),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: sourceBorderColor(photoSource)),
       ),
       child: url == null
           ? fallback
