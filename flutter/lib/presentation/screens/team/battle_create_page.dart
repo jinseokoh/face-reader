@@ -12,7 +12,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
 /// 방 생성 스텝 (rev2 — UX §A/§C): ①방 유형 → ②방 제목(카테고리→프리셋,
-/// 기타 = 자유 입력) → ③인원(6/8/10/12) → ④연령대(방장 인접 구간 RangeSlider)
+/// 기타 = 자유 입력) → ③인원(6/8/10/12) → ④연령대(방장 인접 구간 multi-select chip)
 /// → ⑤공개 설정(공개/비밀) → ⑥모집중 참가자 얼굴 공개. [그룹 만들기] = createBattle
 /// + joinBattle(셀프 조인) 후 Battle 반환, 조인 실패 시 방 롤백.
 Future<Battle?> showBattleCreatePage(BuildContext context) {
@@ -130,6 +130,15 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
                   ? _titleStep()
                   : SingleChildScrollView(child: _stepBody()),
             ),
+            // ① 방 유형 설명 — 어느 유형을 골라도 [다음] 버튼 바로 위에 노출.
+            if (_step == _Step.roomKind && _roomKind != null) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                '베스트 매칭이 되면 채팅방을 열 수 있는 권한을 드립니다. '
+                '이 때 두 명 모두 동의하는 경우에만 채팅방이 열립니다.',
+                style: AppText.caption.copyWith(color: AppColors.textHint),
+              ),
+            ],
             const SizedBox(height: AppSpacing.lg),
             PrimaryButton(
               label: _step == _Step.thumb ? '그룹 만들기' : '다음',
@@ -171,7 +180,6 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
     final decade = _ownerAgeDecade ?? 20;
     final lo = (decade - 10) < 20 ? 20 : decade - 10;
     final hi = (decade + 10) > 70 ? 70 : decade + 10;
-    final divisions = (hi - lo) ~/ 10;
     final min = _ageMin!;
     final max = _ageMax!;
     return Column(
@@ -182,38 +190,49 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
         Text('방장의 나이대가 포함된 범위만 고를 수 있습니다', style: AppText.caption),
         const SizedBox(height: AppSpacing.xxl),
         Text(_ageSliderLabel(min, max), style: AppText.body),
-        SliderTheme(
-          data: SliderThemeData(
-            activeTrackColor: AppColors.textPrimary,
-            thumbColor: AppColors.textPrimary,
-            inactiveTrackColor: AppColors.border,
-            overlayColor: Colors.transparent,
-            // 두 knob 이 같은 눈금에 겹치도록 허용 — 기본 8px 간격 제한이
-            // "30대만" 같은 단일 나이대(min == max) 선택을 막는다.
-            minThumbSeparation: 0,
-            showValueIndicator: ShowValueIndicator.onDrag,
-            valueIndicatorColor: AppColors.textPrimary,
-            valueIndicatorTextStyle: AppText.caption.copyWith(
-              color: Colors.white,
-            ),
-          ),
-          child: RangeSlider(
-            min: lo.toDouble(),
-            max: hi.toDouble(),
-            divisions: divisions < 1 ? 1 : divisions,
-            labels: RangeLabels('$min대', '$max대'),
-            values: RangeValues(min.toDouble(), max.toDouble()),
-            // 방장 decade 는 항상 범위에 포함 — 넘어가려는 thumb 만 되돌린다.
-            onChanged: (values) => setState(() {
-              final start = values.start.round();
-              final end = values.end.round();
-              _ageMin = start > decade ? decade : start;
-              _ageMax = end < decade ? decade : end;
-            }),
-          ),
+        const SizedBox(height: AppSpacing.md),
+        // multi-select chip — age_min/age_max 가 연속 구간 모델이지만, 선택
+        // 가능 폭이 방장 인접 구간(decade±10)이고 방장 decade 가 항상 선택
+        // 고정이라 어떤 토글 조합도 연속 구간으로 유지된다.
+        // 표시는 5칸만 — 방장 나이대에서 제일 먼 나이대 한 칸을 잘라낸다.
+        Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
+          children: [
+            for (int d = decade <= 40 ? 20 : 30;
+                d <= (decade <= 40 ? 60 : 70);
+                d += 10)
+              _chip(
+                label: d == 70 ? '70+' : '$d대',
+                selected: d >= min && d <= max,
+                onTap: d < lo || d > hi
+                    ? null
+                    : d == decade
+                    ? () {} // 방장 나이대 — 항상 포함, 해제 불가.
+                    : () => _toggleAgeDecade(d),
+              ),
+          ],
         ),
       ],
     );
+  }
+
+  /// 인접 구간 chip 토글 — 선택 해제되는 쪽은 항상 구간의 끝단이므로
+  /// (가운데는 방장 decade 고정) min/max 한쪽만 밀면 연속성이 보존된다.
+  void _toggleAgeDecade(int d) {
+    setState(() {
+      final min = _ageMin!;
+      final max = _ageMax!;
+      if (d < min) {
+        _ageMin = d;
+      } else if (d > max) {
+        _ageMax = d;
+      } else if (d == min) {
+        _ageMin = d + 10;
+      } else if (d == max) {
+        _ageMax = d - 10;
+      }
+    });
   }
 
   void _back() {
@@ -427,16 +446,6 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
             _selectedTitle = null;
           }),
         ),
-        if (_roomKind == BattleRoomKind.match) ...[
-          const SizedBox(height: AppSpacing.sm),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-            child: Text(
-              '베스트 매칭이 되면 두 사람에게 서로의 사진이 공개되고 채팅을 제안할 수 있습니다',
-              style: AppText.caption.copyWith(color: AppColors.textHint),
-            ),
-          ),
-        ],
         const SizedBox(height: AppSpacing.md),
         _choiceTile(
           selected: _roomKind == BattleRoomKind.all,
