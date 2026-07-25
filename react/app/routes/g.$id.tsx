@@ -125,14 +125,76 @@ function ageLabel(min: number | null, max: number | null): string {
   return `${min}대~${max}대`;
 }
 
+// 앱 enum labelKo 와 동일 매핑 (shared age_group.dart / ethnicity.dart).
+const AGE_GROUP_LABEL: Record<string, string> = {
+  teens: "10대",
+  twenties: "20대",
+  thirties: "30대",
+  forties: "40대",
+  fifties: "50대",
+  sixties: "60대",
+  seventies: "70대",
+  eighties: "80대",
+  nineties: "90대",
+};
+const ETHNICITY_LABEL: Record<string, string> = {
+  eastAsian: "아시아인",
+  caucasian: "백인",
+  african: "아프리카인",
+  southeastAsian: "동남아인",
+  hispanic: "히스패닉",
+  middleEastern: "중동인",
+};
+
+/** 참가자 칩 라벨 — "30대 여성 아시아인" 인구통계 풀이. metrics 없으면 닉네임. */
+function rosterChipLabel(r: {
+  nickname: string;
+  gender: string;
+  ageGroup: string | null;
+  ethnicity: string | null;
+}): string {
+  const age = r.ageGroup ? AGE_GROUP_LABEL[r.ageGroup] : null;
+  if (!age) return r.nickname;
+  const genderKo = r.gender === "male" ? "남성" : "여성";
+  const eth = r.ethnicity ? ETHNICITY_LABEL[r.ethnicity] : null;
+  return `${age} ${genderKo}${eth ? ` ${eth}` : ""}`;
+}
+
 function BattleInvite({
   data,
 }: {
   data: ReturnType<typeof useLoaderData<typeof loader>>;
 }) {
-  const { battle, roster } = data;
+  const { battle, roster, cdnBase } = data;
   const waitCount = Math.max(battle.maxPlayers - roster.length, 0);
   const isMatch = battle.roomKind === "match";
+  const chip = (r: (typeof roster)[number]) => (
+    <span key={r.userId} className="invite-chip">
+      {battle.thumbOpen && r.thumbKey && (
+        <img
+          className={`invite-avatar${
+            r.thumbSource === "camera" ? " invite-avatar--camera" : ""
+          }`}
+          src={`${cdnBase}/${r.thumbKey}`}
+          alt=""
+        />
+      )}
+      {rosterChipLabel(r)}
+    </span>
+  );
+  // match 방 빈자리는 성별 아이콘(public/male.png·female.png), all 방은 텍스트.
+  const waitChips = (count: number, keyPrefix: string, iconSrc?: string) =>
+    Array.from({ length: count }).map((_, i) => (
+      <span
+        key={`${keyPrefix}-${i}`}
+        className="invite-chip invite-chip--wait"
+      >
+        {iconSrc && (
+          <img className="invite-wait-icon" src={iconSrc} alt="" />
+        )}
+        대기 중
+      </span>
+    ));
   return (
     <section style={{ textAlign: "center", padding: "24px 16px" }}>
       <h1 style={{ fontSize: 24, color: "#1a1a1a", margin: 0 }}>
@@ -143,33 +205,41 @@ function BattleInvite({
         {ageLabel(battle.ageMin, battle.ageMax)}
       </p>
       {isMatch && (
-        <>
-          <p style={{ color: "#666", fontSize: 14, marginTop: 4 }}>
-            남녀 반반 매칭그룹
-          </p>
-          <p style={{ color: "#666", fontSize: 14, marginTop: 4 }}>
-            남자 {remainingGenderSlots(roster, battle.maxPlayers, "male")}자리 남음
-          </p>
-          <p style={{ color: "#666", fontSize: 14, marginTop: 4 }}>
-            여자 {remainingGenderSlots(roster, battle.maxPlayers, "female")}자리 남음
-          </p>
-        </>
+        <p style={{ color: "#666", fontSize: 14, marginTop: 4 }}>
+          이성 케미, 남녀 반반 그룹
+        </p>
       )}
       <div className="join-consent">
         <p className="join-consent-text">{photoConsentText(battle.roomKind)}</p>
       </div>
-      <div className="invite-chips">
-        {roster.map((r) => (
-          <span key={r.userId} className="invite-chip">
-            {r.nickname}
-          </span>
-        ))}
-        {Array.from({ length: waitCount }).map((_, i) => (
-          <span key={`wait-${i}`} className="invite-chip invite-chip--wait">
-            대기 중
-          </span>
-        ))}
-      </div>
+      {isMatch ? (
+        // 앱 battle_detail 과 동일한 축 분리 — 왼쪽 남자, 오른쪽 여자.
+        <div className="invite-cols">
+          <div className="invite-col">
+            <p className="invite-col-head">남자</p>
+            {roster.filter((r) => r.gender === "male").map(chip)}
+            {waitChips(
+              remainingGenderSlots(roster, battle.maxPlayers, "male"),
+              "wait-m",
+              "/male.png",
+            )}
+          </div>
+          <div className="invite-col">
+            <p className="invite-col-head">여자</p>
+            {roster.filter((r) => r.gender === "female").map(chip)}
+            {waitChips(
+              remainingGenderSlots(roster, battle.maxPlayers, "female"),
+              "wait-f",
+              "/female.png",
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="invite-chips">
+          {roster.map(chip)}
+          {waitChips(waitCount, "wait")}
+        </div>
+      )}
     </section>
   );
 }

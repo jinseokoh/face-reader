@@ -730,6 +730,9 @@ textarea.form-input {
   margin-top: 16px;
 }
 .invite-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: #fff;
   border: 1px solid #ddd;
   border-radius: 10px;
@@ -740,6 +743,44 @@ textarea.form-input {
 .invite-chip--wait {
   color: var(--caption);
   border-style: dashed;
+}
+/* match 방 초대장 — 앱 battle_detail 과 동일한 남(좌)/여(우) 축 분리 */
+.invite-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 16px;
+}
+.invite-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.invite-col-head {
+  font-size: 12px;
+  color: var(--caption);
+  margin: 0;
+}
+/* thumb_open 방의 참가자 아바타 — border 는 촬영 경로 규칙:
+   카메라 gold(앱 AppColors.gold 와 동일 hex) / 그 외 흑색 */
+.invite-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: 6px;
+  border: 2px solid var(--ink);
+}
+.invite-avatar--camera {
+  border-color: #c9a876;
+}
+/* 빈자리 성별 아이콘 — dashed 칩과 함께 대기 상태로 읽히게 흐리게 */
+.invite-wait-icon {
+  width: 24px;
+  height: 24px;
+  opacity: 0.45;
+  margin-right: 6px;
 }
 .join {
   text-align: center;

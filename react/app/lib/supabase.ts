@@ -105,7 +105,21 @@ export type BattleSSR = {
     resultPayload: unknown | null;
     chemistrySnapshot: Record<string, unknown> | null;
   };
-  roster: { userId: string; slotNo: number; isOwner: boolean; nickname: string; gender: string }[];
+  roster: {
+    userId: string;
+    slotNo: number;
+    isOwner: boolean;
+    nickname: string;
+    gender: string;
+    /** my-face 썸네일 R2 키 — 아바타는 thumb_open 방에서만 노출. 없으면 null. */
+    thumbKey: string | null;
+    /** metrics body 의 촬영 경로("camera"/"album") — 아바타 border 색 규칙. */
+    thumbSource: string | null;
+    /** metrics body 의 AgeGroup enum name ("thirties" 등) — 인구통계 라벨용. */
+    ageGroup: string | null;
+    /** metrics body 의 Ethnicity enum name ("eastAsian" 등) — 인구통계 라벨용. */
+    ethnicity: string | null;
+  }[];
 };
 
 /** teams + team_roster 를 anon 으로 read (link-share, RLS public read). */
@@ -142,6 +156,47 @@ export async function fetchBattleSSR(
     ? ((await rosterRes.json()) as Record<string, unknown>[])
     : [];
 
+  // 참가자 my-face metrics body 파싱 — 썸네일 키 + 촬영 경로(source, 아바타
+  // border 규칙) + 인구통계(ageGroup·ethnicity, 칩 라벨). 아바타 노출 여부는
+  // UI 에서 thumb_open 으로 게이트한다.
+  const thumbs = new Map<
+    string,
+    {
+      key: string | null;
+      source: string | null;
+      ageGroup: string | null;
+      ethnicity: string | null;
+    }
+  >();
+  if (rosterRows.length > 0) {
+    const ids = rosterRows.map((r) => r.user_id as string).join(",");
+    const metricsRes = await fetch(
+      `${env.SUPABASE_URL}/rest/v1/metrics?user_id=in.(${ids})` +
+        `&is_my_face=eq.true&select=user_id,body`,
+      { headers },
+    );
+    if (metricsRes.ok) {
+      for (const m of (await metricsRes.json()) as Record<string, unknown>[]) {
+        try {
+          const body = JSON.parse(m.body as string) as {
+            thumbnailKey?: string;
+            source?: string;
+            ageGroup?: string;
+            ethnicity?: string;
+          };
+          thumbs.set(m.user_id as string, {
+            key: body.thumbnailKey ?? null,
+            source: body.source ?? null,
+            ageGroup: body.ageGroup ?? null,
+            ethnicity: body.ethnicity ?? null,
+          });
+        } catch {
+          /* malformed body — 아바타 없이 렌더 */
+        }
+      }
+    }
+  }
+
   return {
     battle: {
       id: t.id as string,
@@ -162,6 +217,10 @@ export async function fetchBattleSSR(
       isOwner: r.is_owner as boolean,
       nickname: (r.nickname as string) ?? "참가자",
       gender: r.gender as string,
+      thumbKey: thumbs.get(r.user_id as string)?.key ?? null,
+      thumbSource: thumbs.get(r.user_id as string)?.source ?? null,
+      ageGroup: thumbs.get(r.user_id as string)?.ageGroup ?? null,
+      ethnicity: thumbs.get(r.user_id as string)?.ethnicity ?? null,
     })),
   };
 }

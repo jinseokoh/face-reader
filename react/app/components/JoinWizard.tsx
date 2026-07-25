@@ -13,7 +13,6 @@ import {
   fetchBattleRoster,
   fetchMyFace,
   joinBattle,
-  photoConsentText,
   remainingGenderSlots,
   saveCapture,
   watchBattle,
@@ -790,15 +789,10 @@ export function JoinWizard({
           {battle.roomKind === 'match' && (
             <p className="join-sub">
               남자 {remainingGenderSlots(roster, battle.maxPlayers, 'male')}자리 남음
-              <br />
+              {' · '}
               여자 {remainingGenderSlots(roster, battle.maxPlayers, 'female')}자리 남음
             </p>
           )}
-          <div className="join-consent">
-            <p className="join-consent-text">
-              {photoConsentText(battle.roomKind)}
-            </p>
-          </div>
           <button
             className="join-btn join-btn--kakao"
             onClick={onJoinStart}
@@ -809,7 +803,7 @@ export function JoinWizard({
           </button>
           {notice && <p className="join-notice">{notice}</p>}
           <p className="join-sub">
-            앱 설치 없이 브라우저에서 관상을 등록할 수 있습니다.
+            앱 설치 없이 브라우저에서 관상을 등록하려면 카카오로 참여하기 를 누르세요.
           </p>
         </>
       )}
