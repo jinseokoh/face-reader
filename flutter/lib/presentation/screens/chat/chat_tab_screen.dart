@@ -248,7 +248,7 @@ class _EmptyChats extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         const EmotionEmptyState(
-          asset: 'assets/images/emotion-love.png',
+          asset: 'assets/images/emotion-namaste.png',
           message: '베스트 매칭 후 두 사람이 모두 동의하면\n여기에 1:1 채팅방이 생깁니다.',
         ),
         const SizedBox(height: AppSpacing.xl),
@@ -265,7 +265,7 @@ class _EmptyChats extends StatelessWidget {
               borderRadius: BorderRadius.circular(999),
               border: Border.all(color: AppColors.textPrimary),
             ),
-            child: const Text('케미 그룹 보러 가기', style: AppText.subTitle),
+            child: const Text('케미 그룹 보러가기', style: AppText.subTitle),
           ),
         ),
       ],

@@ -498,6 +498,10 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
           _headerCard(battle, showRemaining: true),
+          // 참가 전에도 누가 있는지 보고 판단할 수 있게 로스터를 먼저
+          // 보여준다 — 웹 초대장(/g/:id)과 동일한 정보량.
+          const SizedBox(height: AppSpacing.xl),
+          _slotList(battle),
           if (!battle.isPublic) ...[
             const SizedBox(height: AppSpacing.xl),
             TextField(
@@ -627,9 +631,11 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
       }
       // 관상 유형(archetype)은 얼굴 공개 여부와 무관하게 슬롯에 노출한다.
       // 썸네일 URL 은 thumb_open=true 인 방에서만 사용 (_SlotCell 게이트).
-      final profiles = joined
-          ? await _service.fetchSlotProfiles([for (final r in roster) r.userId])
-          : _profiles;
+      // 미참가자에게도 로스터를 보여주므로 참가 여부와 무관하게 로드 —
+      // 웹 초대장(/g/:id)이 익명에게 읽는 것과 같은 public read 데이터다.
+      final profiles = await _service.fetchSlotProfiles([
+        for (final r in roster) r.userId,
+      ]);
       if (!mounted || seq != _refreshSeq) return;
       setState(() {
         _battle = battle;
@@ -821,25 +827,24 @@ class _SlotRow extends StatelessWidget {
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 이름 줄은 남이면 항상, 나는 meta 가 없을 때만 (badge 가
-                    // 신원을 대신하므로 meta 두 줄이 아바타 바로 우측에 온다).
-                    if (!isMe || !hasMeta)
+                    // 이름(alias) 줄은 노출하지 않는다 — 슬롯의 정보는
+                    // 인구통계 + 관상 유형 두 줄이 전부 (2026-07-25).
+                    // meta 가 아예 없으면 별명 대신 부재 표시만.
+                    if (!hasMeta)
                       Text(
-                        isMe ? '나' : entry!.nickname,
-                        style: AppText.body,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        '(정보없음)',
+                        style: AppText.body.copyWith(
+                          color: AppColors.textHint,
+                        ),
                       ),
                     // meta 는 좁은 열(이성방 반폭)에서 잘리는 대신 폰트가
                     // 줄어들도록 scaleDown — 넉넉하면 caption 원 크기 유지.
-                    if (demographic != null) ...[
-                      if (!isMe) const SizedBox(height: AppSpacing.xs),
+                    if (demographic != null)
                       FittedBox(
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerLeft,
                         child: Text(demographic!, style: AppText.caption),
                       ),
-                    ],
                     if (archetype != null)
                       FittedBox(
                         fit: BoxFit.scaleDown,
