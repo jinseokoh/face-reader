@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -37,31 +40,24 @@ class _BattleCardBody extends StatelessWidget {
   final BattleRoomKind roomKind;
   final int? playerCount;
   final int maxPlayers;
-  final String validity;
   final bool thumbOpen;
   final bool isPrivate;
 
-  /// 내 그룹 전용 — 내가 방장인 방에 '방장' pill (연령 pill 과 동일 레시피).
-  final bool isOwner;
+  /// 좌하단 참가자 미니 아바타 — 상태 무관 모든 카드 공통.
+  final String teamId;
 
   /// 인원 미달 종료 방 — 제목을 hint 색으로 낮춰 살아 있는 방과 구분.
   final bool dimTitle;
-
-  /// 모집중 방만 — 좌하단에 pill·상태 텍스트 대신 참가자 미니 아바타를
-  /// 그릴 방 id. null 이면 기존 pill + validity 렌더.
-  final String? avatarsTeamId;
   const _BattleCardBody({
     required this.title,
     required this.ageLabel,
     required this.roomKind,
     required this.playerCount,
     required this.maxPlayers,
-    required this.validity,
     required this.thumbOpen,
     required this.isPrivate,
-    this.isOwner = false,
+    required this.teamId,
     this.dimTitle = false,
-    this.avatarsTeamId,
   });
 
   @override
@@ -108,35 +104,16 @@ class _BattleCardBody extends StatelessWidget {
           ],
         ),
         // 아바타 줄은 위 정원 텍스트와 붙으면 답답해서 sm(8px)으로 벌린다.
-        SizedBox(
-          height: avatarsTeamId != null ? AppSpacing.sm : AppSpacing.xs,
-        ),
+        const SizedBox(height: AppSpacing.sm),
         Row(
-          // tailwind items-center 상당 — pill·텍스트·아이콘 수직 중앙 정렬.
+          // tailwind items-center 상당 — 아바타·아이콘 수직 중앙 정렬.
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // 좌하단 — 모집중이면 pill·상태 텍스트 대신 참가자 미니 아바타
-            // (궁합 확인 탭 pair 아바타의 1/2 스케일). 그 외 상태는 기존
-            // '방장' pill + 상태 텍스트 유지.
-            if (avatarsTeamId != null)
-              Expanded(
-                child: _RosterAvatars(
-                  teamId: avatarsTeamId!,
-                  thumbOpen: thumbOpen,
-                ),
-              )
-            else ...[
-              if (isOwner) ...[
-                const AgeRangePill(label: '방장'),
-                const SizedBox(width: AppSpacing.sm),
-              ],
-              Expanded(
-                child: Text(
-                  validity,
-                  style: AppText.caption.copyWith(color: AppColors.textHint),
-                ),
-              ),
-            ],
+            // 좌하단 — 상태 무관 참가자 미니 아바타 (궁합 확인 탭 pair
+            // 아바타의 1/2 스케일). 종료 표시는 카드의 corner ribbon 담당.
+            Expanded(
+              child: _RosterAvatars(teamId: teamId, thumbOpen: thumbOpen),
+            ),
             // 우측 하단 상태 아이콘 — 얼굴 공개 / 비밀방.
             FaIcon(
               thumbOpen ? FontAwesomeIcons.eye : FontAwesomeIcons.eyeSlash,
@@ -167,32 +144,26 @@ class _RosterAvatars extends ConsumerWidget {
   static const _kThumb = 21.0;
   static const _kBox = 23.0; // thumb + 흰 ring 1px×2
   static const _kStep = 16.0;
-  static const _kMaxShown = 8;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final avatars =
         ref.watch(battleRosterAvatarsProvider(teamId)).value ?? const [];
     if (avatars.isEmpty) return const SizedBox(height: _kBox);
-    final shown = avatars.take(_kMaxShown).toList();
-    final extra = avatars.length - shown.length;
-    return Row(
-      children: [
-        SizedBox(
-          width: _kBox + _kStep * (shown.length - 1),
-          height: _kBox,
-          child: Stack(
-            children: [
-              for (var i = 0; i < shown.length; i++)
-                Positioned(left: _kStep * i, child: _ring(shown[i])),
-            ],
-          ),
+    // 정원 최대 12명까지 자르지 않고 전부 — 좁으면 FittedBox 가 줄인다.
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: SizedBox(
+        width: _kBox + _kStep * (avatars.length - 1),
+        height: _kBox,
+        child: Stack(
+          children: [
+            for (var i = 0; i < avatars.length; i++)
+              Positioned(left: _kStep * i, child: _ring(avatars[i])),
+          ],
         ),
-        if (extra > 0) ...[
-          const SizedBox(width: AppSpacing.xs),
-          Text('+$extra', style: AppText.hint),
-        ],
-      ],
+      ),
     );
   }
 
@@ -217,10 +188,11 @@ class _RosterAvatars extends ConsumerWidget {
           ),
         ),
         child: showPhoto
-            ? Image.network(
-                a.url!,
+            ? CachedNetworkImage(
+                imageUrl: a.url!,
                 fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => _genderIcon(a.gender),
+                placeholder: (_, _) => Container(color: AppColors.surface),
+                errorWidget: (_, _, _) => _genderIcon(a.gender),
               )
             : _genderIcon(a.gender),
       ),
@@ -497,23 +469,16 @@ class _MineCard extends ConsumerWidget {
     this.hasOpenChat = false,
   });
 
-  /// 유효 시한 줄 — 모집 중 = 상태 그대로, 완료 = 30일 purge 시한 (사실 카피).
-  String get _validityLabel => switch (battle.status) {
-    BattleStatus.recruiting => '모집중',
-    BattleStatus.revealing => '결과 공개 중',
-    BattleStatus.completed =>
-      battle.closedAt == null ? '완료' : _resultValidLabel(battle.closedAt!),
-    BattleStatus.expired => '인원 미달로 종료',
-  };
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final expired = battle.status == BattleStatus.expired;
     return InkWell(
       onTap: () => onOpen(battle),
       borderRadius: BorderRadius.circular(AppRadius.lg),
       child: Container(
         margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        // ribbon 이 카드 radius 밖으로 삐져나가지 않게 clip.
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: hasOpenChat
               ? kBandGreen.withValues(alpha: 0.08)
@@ -523,30 +488,55 @@ class _MineCard extends ConsumerWidget {
             color: hasOpenChat ? kBandGreen : AppColors.border,
           ),
         ),
-        child: _BattleCardBody(
-          title: battle.title,
-          ageLabel: battle.ageRangeLabel,
-          roomKind: battle.roomKind,
-          playerCount: battle.playerCount,
-          maxPlayers: battle.maxPlayers,
-          validity: _validityLabel,
-          thumbOpen: battle.thumbOpen,
-          isPrivate: !battle.isPublic,
-          isOwner:
-              battle.ownerId != null &&
-              battle.ownerId == BattleService.instance.myUid,
-          dimTitle: battle.status == BattleStatus.expired,
-          avatarsTeamId: battle.status == BattleStatus.recruiting
-              ? battle.id
-              : null,
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: _BattleCardBody(
+                title: battle.title,
+                ageLabel: battle.ageRangeLabel,
+                roomKind: battle.roomKind,
+                playerCount: battle.playerCount,
+                maxPlayers: battle.maxPlayers,
+                thumbOpen: battle.thumbOpen,
+                isPrivate: !battle.isPublic,
+                teamId: battle.id,
+                dimTitle: expired,
+              ),
+            ),
+            if (expired)
+              const Positioned(right: -35, bottom: 8, child: _ExpiredRibbon()),
+          ],
         ),
       ),
     );
   }
+}
 
-  static String _resultValidLabel(DateTime closedAt) {
-    final d = closedAt.toLocal().add(const Duration(days: 30));
-    return '${d.month}월 ${d.day}일까지 결과 유효';
+/// 종료 방 corner ribbon — 카드 우하단을 대각선으로 가로지르는 밴드.
+/// 배경색만 있는 흰 밴드(border 없음) + danger 텍스트. 글자는 정원 표기
+/// "1 / 8 명"과 동일한 caption 토큰, height 1.0 으로 밴드 정중앙 정렬.
+class _ExpiredRibbon extends StatelessWidget {
+  const _ExpiredRibbon();
+
+  @override
+  Widget build(BuildContext context) {
+    return Transform.rotate(
+      angle: -math.pi / 4,
+      child: Container(
+        width: 130,
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        color: Colors.white,
+        child: Text(
+          '종료',
+          style: AppText.caption.copyWith(
+            color: AppColors.danger,
+            height: 1.0,
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -678,11 +668,9 @@ class _PublicCardState extends State<_PublicCard> {
           roomKind: battle.roomKind,
           playerCount: battle.playerCount,
           maxPlayers: battle.maxPlayers,
-          validity: '모집중',
           thumbOpen: battle.thumbOpen,
           isPrivate: battle.isPrivate,
-          isOwner: widget.isOwner,
-          avatarsTeamId: battle.id,
+          teamId: battle.id,
         ),
       ),
     );
