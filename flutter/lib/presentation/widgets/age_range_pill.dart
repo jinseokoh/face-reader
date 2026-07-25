@@ -44,16 +44,16 @@ class AgeRangePill extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // 아이콘끼리는 2px overlap — 나란히 두면 커플이 아니라 남남으로
+          // 아이콘끼리는 1px overlap — 나란히 두면 커플이 아니라 남남으로
           // 보인다. translate 는 layout 폭을 안 줄이므로 텍스트 앞 여백에서
           // 겹친 만큼 되돌려 시각 간격을 xs 로 유지한다.
           for (var i = 0; i < icons.length; i++)
             Transform.translate(
-              offset: Offset(-2.0 * i, 0),
+              offset: Offset(-1.0 * i, 0),
               child: FaIcon(icons[i], size: 10, color: fgColor),
             ),
           if (icons.isNotEmpty)
-            SizedBox(width: AppSpacing.xs - 2.0 * (icons.length - 1)),
+            SizedBox(width: AppSpacing.xs - 1.0 * (icons.length - 1)),
           Text(label, style: AppText.hint.copyWith(color: fgColor)),
         ],
       ),

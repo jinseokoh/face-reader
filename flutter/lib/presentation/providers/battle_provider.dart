@@ -25,6 +25,12 @@ final matchProposalsProvider = FutureProvider<List<MatchProposal>>(
   (ref) => BattleService.instance.fetchPendingMatchProposals(),
 );
 
+/// 케미 리스트 카드의 참가자 미니 아바타 — teamId 별 캐시(family).
+final battleRosterAvatarsProvider =
+    FutureProvider.family<List<RosterAvatar>, String>(
+      (ref, teamId) => BattleService.instance.fetchTeamRosterAvatars(teamId),
+    );
+
 /// 마지막으로 채팅방을 본 시각의 Hive prefs 키 — 안읽음 판정 기준.
 /// BattleChatScreen 이 메시지 로드마다 갱신, openChatsProvider 가 읽는다.
 String chatLastSeenKey(String teamId) => 'chat_last_seen:$teamId';

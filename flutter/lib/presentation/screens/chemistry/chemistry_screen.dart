@@ -10,6 +10,7 @@ import '../../../domain/models/battle.dart';
 import '../../providers/battle_provider.dart';
 import '../../providers/history_provider.dart';
 import '../../widgets/age_range_pill.dart';
+import '../../widgets/source_badge.dart';
 import '../../widgets/compact_snack_bar.dart';
 import '../../widgets/emotion_empty_state.dart';
 import '../../widgets/face_scan_pill.dart';
@@ -45,6 +46,10 @@ class _BattleCardBody extends StatelessWidget {
 
   /// 인원 미달 종료 방 — 제목을 hint 색으로 낮춰 살아 있는 방과 구분.
   final bool dimTitle;
+
+  /// 모집중 방만 — 좌하단에 pill·상태 텍스트 대신 참가자 미니 아바타를
+  /// 그릴 방 id. null 이면 기존 pill + validity 렌더.
+  final String? avatarsTeamId;
   const _BattleCardBody({
     required this.title,
     required this.ageLabel,
@@ -56,6 +61,7 @@ class _BattleCardBody extends StatelessWidget {
     required this.isPrivate,
     this.isOwner = false,
     this.dimTitle = false,
+    this.avatarsTeamId,
   });
 
   @override
@@ -101,22 +107,36 @@ class _BattleCardBody extends StatelessWidget {
             Text(count, style: AppText.caption),
           ],
         ),
-        const SizedBox(height: AppSpacing.xs),
+        // 아바타 줄은 위 정원 텍스트와 붙으면 답답해서 sm(8px)으로 벌린다.
+        SizedBox(
+          height: avatarsTeamId != null ? AppSpacing.sm : AppSpacing.xs,
+        ),
         Row(
           // tailwind items-center 상당 — pill·텍스트·아이콘 수직 중앙 정렬.
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // 좌하단 — 내가 방장인 방은 '방장' pill 을 상태 텍스트 왼쪽에.
-            if (isOwner) ...[
-              const AgeRangePill(label: '방장'),
-              const SizedBox(width: AppSpacing.sm),
-            ],
-            Expanded(
-              child: Text(
-                validity,
-                style: AppText.caption.copyWith(color: AppColors.textHint),
+            // 좌하단 — 모집중이면 pill·상태 텍스트 대신 참가자 미니 아바타
+            // (궁합 확인 탭 pair 아바타의 1/2 스케일). 그 외 상태는 기존
+            // '방장' pill + 상태 텍스트 유지.
+            if (avatarsTeamId != null)
+              Expanded(
+                child: _RosterAvatars(
+                  teamId: avatarsTeamId!,
+                  thumbOpen: thumbOpen,
+                ),
+              )
+            else ...[
+              if (isOwner) ...[
+                const AgeRangePill(label: '방장'),
+                const SizedBox(width: AppSpacing.sm),
+              ],
+              Expanded(
+                child: Text(
+                  validity,
+                  style: AppText.caption.copyWith(color: AppColors.textHint),
+                ),
               ),
-            ),
+            ],
             // 우측 하단 상태 아이콘 — 얼굴 공개 / 비밀방.
             FaIcon(
               thumbOpen ? FontAwesomeIcons.eye : FontAwesomeIcons.eyeSlash,
@@ -134,6 +154,86 @@ class _BattleCardBody extends StatelessWidget {
       ],
     );
   }
+}
+
+/// 모집중 카드 좌하단 참가자 아바타 — 궁합 확인 탭 pair 아바타(42 thumb +
+/// 2 ring, step 32)의 정확히 1/2 스케일(21 + 1, step 16) overlap 배치.
+/// thumb_open=false 방은 사진 대신 성별 아이콘 (상세 _SlotCell 게이트와 동일).
+class _RosterAvatars extends ConsumerWidget {
+  final String teamId;
+  final bool thumbOpen;
+  const _RosterAvatars({required this.teamId, required this.thumbOpen});
+
+  static const _kThumb = 21.0;
+  static const _kBox = 23.0; // thumb + 흰 ring 1px×2
+  static const _kStep = 16.0;
+  static const _kMaxShown = 8;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final avatars =
+        ref.watch(battleRosterAvatarsProvider(teamId)).value ?? const [];
+    if (avatars.isEmpty) return const SizedBox(height: _kBox);
+    final shown = avatars.take(_kMaxShown).toList();
+    final extra = avatars.length - shown.length;
+    return Row(
+      children: [
+        SizedBox(
+          width: _kBox + _kStep * (shown.length - 1),
+          height: _kBox,
+          child: Stack(
+            children: [
+              for (var i = 0; i < shown.length; i++)
+                Positioned(left: _kStep * i, child: _ring(shown[i])),
+            ],
+          ),
+        ),
+        if (extra > 0) ...[
+          const SizedBox(width: AppSpacing.xs),
+          Text('+$extra', style: AppText.hint),
+        ],
+      ],
+    );
+  }
+
+  Widget _ring(RosterAvatar a) {
+    final showPhoto = thumbOpen && a.url != null;
+    return Container(
+      padding: const EdgeInsets.all(1),
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white,
+      ),
+      child: Container(
+        width: _kThumb,
+        height: _kThumb,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.surface,
+          // 사진일 때만 촬영 경로 border 규칙 — 아이콘 fallback 은 기본 border.
+          border: Border.all(
+            color: showPhoto ? sourceBorderColor(a.source) : AppColors.border,
+          ),
+        ),
+        child: showPhoto
+            ? Image.network(
+                a.url!,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => _genderIcon(a.gender),
+              )
+            : _genderIcon(a.gender),
+      ),
+    );
+  }
+
+  Widget _genderIcon(String gender) => Center(
+    child: Image.asset(
+      gender == 'male' ? 'assets/icons/male.png' : 'assets/icons/female.png',
+      width: 11,
+      height: 11,
+    ),
+  );
 }
 
 class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
@@ -436,6 +536,9 @@ class _MineCard extends ConsumerWidget {
               battle.ownerId != null &&
               battle.ownerId == BattleService.instance.myUid,
           dimTitle: battle.status == BattleStatus.expired,
+          avatarsTeamId: battle.status == BattleStatus.recruiting
+              ? battle.id
+              : null,
         ),
       ),
     );
@@ -579,6 +682,7 @@ class _PublicCardState extends State<_PublicCard> {
           thumbOpen: battle.thumbOpen,
           isPrivate: battle.isPrivate,
           isOwner: widget.isOwner,
+          avatarsTeamId: battle.id,
         ),
       ),
     );

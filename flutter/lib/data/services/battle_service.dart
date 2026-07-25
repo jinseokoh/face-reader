@@ -53,6 +53,9 @@ typedef MatchProposal = ({
 /// 매칭 응답 시한 — respond_match RPC 의 48시간 가드와 동일 기준.
 const matchResponseWindow = Duration(hours: 48);
 
+/// 케미 리스트 카드의 참가자 미니 아바타 재료 — slot 순.
+typedef RosterAvatar = ({String? url, AnalysisSource? source, String gender});
+
 /// Chemistry Battle 서버 접점 — 방은 서버 우선(로컬 캐시 없음).
 /// 쓰기는 RPC(security definer)와 owner 직접 insert/delete 뿐,
 /// 읽기는 teams(컬럼 grant)·team_roster·public_teams view.
@@ -488,6 +491,25 @@ class BattleService {
       return at.compareTo(bt);
     });
     return proposals;
+  }
+
+  /// 케미 리스트 카드용 — 한 방의 참가자 아바타(썸네일·촬영경로·성별) slot 순.
+  Future<List<RosterAvatar>> fetchTeamRosterAvatars(String teamId) async {
+    final rows = await _client
+        .from('team_roster')
+        .select('user_id, gender')
+        .eq('team_id', teamId)
+        .order('slot_no', ascending: true);
+    final ids = [for (final r in rows) r['user_id'] as String];
+    final thumbs = await fetchMyFaceThumbnailUrls(ids);
+    return [
+      for (final r in rows)
+        (
+          url: thumbs[r['user_id'] as String]?.url,
+          source: thumbs[r['user_id'] as String]?.source,
+          gender: (r['gender'] as String?) ?? 'male',
+        ),
+    ];
   }
 
   /// 매칭 성사 상태 — RLS 상 쌍 본인에게만 row 가 보인다(남에겐 null).
