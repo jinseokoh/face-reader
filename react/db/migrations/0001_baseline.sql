@@ -1437,7 +1437,7 @@ grant select on public.admin_users to service_role;
 revoke select on public.teams from anon, authenticated;
 grant select (id, owner_id, title, is_private, room_kind, max_players,
               age_min, age_max, status, started_at, closed_at,
-              chemistry_snapshot, result_payload, created_at, updated_at)
+              chemistry_snapshot, result_payload, views, created_at, updated_at)
   on public.teams to anon, authenticated;
 -- INSERT: 생성 입력 컬럼만 — status/started_at/snapshot/payload 는 default·RPC 전용.
 revoke insert on public.teams from anon, authenticated;
