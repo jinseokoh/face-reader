@@ -38,6 +38,7 @@ class Battle {
   final DateTime? closedAt;
   final Map<String, dynamic>? chemistrySnapshot;
   final Map<String, dynamic>? resultPayload;
+  final int views;
   final DateTime createdAt;
 
   /// 현재 참가 인원 — 목록 조회(fetchMyBattles)가 채운다. 단건 조회는 null.
@@ -57,6 +58,7 @@ class Battle {
     required this.closedAt,
     required this.chemistrySnapshot,
     required this.resultPayload,
+    this.views = 0,
     required this.createdAt,
     this.playerCount,
   });
@@ -80,6 +82,7 @@ class Battle {
             : DateTime.parse(row['closed_at'] as String),
         chemistrySnapshot: row['chemistry_snapshot'] as Map<String, dynamic>?,
         resultPayload: row['result_payload'] as Map<String, dynamic>?,
+        views: (row['views'] as num?)?.toInt() ?? 0,
         createdAt: DateTime.parse(row['created_at'] as String),
         playerCount: playerCount,
       );

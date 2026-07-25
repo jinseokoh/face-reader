@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:flutter/material.dart';
@@ -137,6 +138,10 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
   void initState() {
     super.initState();
     _pinCtrl.text = widget.initialPin ?? '';
+    // 조회수 — 진입 1회, 실패는 무시 (표시는 다음 fetch 몫).
+    unawaited(
+      _service.incrementTeamViews(widget.battleId).catchError((_) {}),
+    );
     _refresh();
     _channel = _service.watchBattle(widget.battleId, _refresh);
     _poll = Timer.periodic(const Duration(seconds: 10), (_) => _refresh());
@@ -342,16 +347,36 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
             Text('남자 ${_remaining('male')}자리 남음', style: AppText.caption),
             Text('여자 ${_remaining('female')}자리 남음', style: AppText.caption),
           ],
-          const SizedBox(height: AppSpacing.xs),
+          const SizedBox(height: AppSpacing.sm),
           Text(
-            '${battle.maxPlayers - _roster.length}명이 더 모이면 '
-            '케미 결과표가 자동으로 발표됩니다',
+            _headerMeta(battle),
             style: AppText.caption.copyWith(color: AppColors.textHint),
           ),
         ],
       ),
     );
   }
+
+  /// 헤더 메타 — 생성 시각 / 열람 기한 / 조회수. 기한 상수는 cron SSOT
+  /// (react/workers/cron.ts — 모집 48h 만료, closed_at+30일 purge)와 동일.
+  String _headerMeta(Battle battle) {
+    final created = battle.createdAt.toLocal();
+    final lines = ['${_fmtDateTime(created)}에 만든 그룹입니다'];
+    if (battle.isRecruiting) {
+      lines.add(
+        '${_fmtDateTime(created.add(const Duration(hours: 48)))}까지 모집합니다',
+      );
+    } else if (battle.closedAt != null) {
+      final until = battle.closedAt!.toLocal().add(const Duration(days: 30));
+      lines.add('${_fmtDateTime(until)}까지 볼 수 있습니다');
+    }
+    lines.add('조회수 ${battle.views}회');
+    return lines.join('\n');
+  }
+
+  String _fmtDateTime(DateTime t) =>
+      '${t.month}월 ${t.day}일 '
+      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 
   Widget _inviteRow(Battle battle) {
     return Row(
@@ -390,7 +415,9 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
                   text: SharePublisher.instance.teamInviteUrl(widget.battleId),
                 ),
               );
-              if (mounted) {
+              // Android 13+ 는 시스템 클립보드 토스트가 뜨므로 앱 스낵바는
+              // 중복 — 시스템 토스트가 없는 iOS 에서만 띄운다.
+              if (Platform.isIOS && mounted) {
                 showTopSnackBar(
                   Overlay.of(context),
                   CompactSnackBar.success(message: '링크를 복사했습니다'),
@@ -563,9 +590,14 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
           _headerCard(battle),
           const SizedBox(height: AppSpacing.xl),
           _slotList(battle),
-          const SizedBox(height: AppSpacing.xl),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            '${battle.maxPlayers - _roster.length}명이 더 모이면 '
+            '케미 결과표가 자동으로 발표됩니다',
+            style: AppText.caption.copyWith(color: AppColors.textHint),
+            textAlign: TextAlign.center,
+          ),
           _qrCard(),
-          const SizedBox(height: AppSpacing.xl),
           _inviteRow(battle),
         ],
       ),
@@ -590,24 +622,16 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
 
   Widget _qrCard() {
     final url = SharePublisher.instance.teamInviteUrl(widget.battleId);
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        children: [
-          QrImageView(data: url, size: 160),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            'QR 코드를 스캔하면 참가 페이지로 이동할 수 있습니다.',
-            style: AppText.caption,
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
+    return Column(
+      children: [
+        QrImageView(data: url, size: 160),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          'QR 코드를 스캔하면 참가 페이지로 이동할 수 있습니다.',
+          style: AppText.caption,
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 

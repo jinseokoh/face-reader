@@ -71,7 +71,7 @@ class BattleService {
   static const _teamCols =
       'id, owner_id, title, is_private, max_players, age_min, age_max, '
       'room_kind, status, started_at, closed_at, '
-      'chemistry_snapshot, result_payload, created_at';
+      'chemistry_snapshot, result_payload, views, created_at';
 
   String? get myUid => _client.auth.currentUser?.id;
   bool get isLoggedIn => myUid != null;
@@ -150,6 +150,12 @@ class BattleService {
 
   Future<void> deleteBattle(String battleId) =>
       _client.from('teams').delete().eq('id', battleId);
+
+  /// 조회수++ — 상세 페이지 진입 1회 (increment_metrics_views 와 동일 문법).
+  Future<void> incrementTeamViews(String battleId) => _client.rpc(
+    'increment_team_views',
+    params: {'p_team_id': battleId},
+  );
 
   Future<Battle?> fetchBattle(String battleId) async {
     final row = await _client

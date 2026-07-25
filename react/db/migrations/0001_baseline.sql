@@ -734,6 +734,7 @@ create table if not exists public.teams (
   closed_at          timestamptz,
   chemistry_snapshot jsonb,
   result_payload     jsonb,
+  views              integer     not null default 0,
   created_at         timestamptz not null default now(),
   updated_at         timestamptz not null default now()
 );
@@ -773,6 +774,21 @@ drop trigger if exists teams_touch on public.teams;
 create trigger teams_touch
   before update on public.teams
   for each row execute procedure public.touch_teams_updated_at();
+
+-- 원자적 views++ (상세 페이지 진입마다, increment_metrics_views 와 동일 문법).
+-- security definer 라 teams_owner_update 정책을 우회 — 조회수는 방장 소유가
+-- 아니라 모든 방문자가 올린다.
+create or replace function public.increment_team_views(p_team_id uuid)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  update public.teams set views = views + 1 where id = p_team_id;
+$$;
+
+revoke all   on function public.increment_team_views(uuid) from public;
+grant execute on function public.increment_team_views(uuid) to anon, authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 11-3. public.team_members — 매칭 참가자 (전원 로그인 셀프 조인)
