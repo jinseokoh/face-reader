@@ -146,7 +146,7 @@ class SharePublisher {
   }) async {
     final url = teamInviteUrl(roomId);
     final text =
-        '[$teamTitle] 관상학으로 풀어보는 나와 케미가 좋은 사람찾기에 참여해 보세요.';
+        '관상은 과학이다 [$teamTitle] 그룹에 참여해서 나와 케미가 가장 잘맞는 사람을 찾아보세요.';
     if (await isKakaoTalkInstalled()) {
       // executionParams: 앱 설치 시 '참여하기' 가 카톡 인앱 브라우저를 거치지 않고
       // 앱을 바로 실행한다 (`kakao{appkey}://kakaolink?g={roomId}`). 미설치면
@@ -166,7 +166,7 @@ class SharePublisher {
           content: Content(
             title: teamTitle,
             description:
-                '관상학으로 풀어보는 나와 케미가 좋은 사람찾기에 참여해 보세요.',
+                '관상은 과학이다. 그룹에 참여해서 나와 케미가 가장 잘맞는 사람을 찾아보세요.',
             imageUrl: Uri.parse('https://cdn.facely.kr/assets/og.png'),
             imageWidth: 800,
             imageHeight: 420,
@@ -196,7 +196,7 @@ class SharePublisher {
   }) async {
     final url = teamInviteUrl(roomId);
     final text =
-        '[$teamTitle] 관상학으로 풀어보는 나와 케미가 좋은 사람찾기에 참여해 보세요.';
+        '관상은 과학이다 [$teamTitle] 그룹에 참여해서 나와 케미가 가장 잘맞는 사람을 찾아보세요.';
     await SharePlus.instance.share(
       ShareParams(
         text: '$text\n$url',
