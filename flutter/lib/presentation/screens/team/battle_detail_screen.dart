@@ -324,6 +324,15 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
                     ? '이성 케미'
                     : '전체 케미',
                 invert: true,
+                icons: battle.roomKind == BattleRoomKind.match
+                    ? const [
+                        FontAwesomeIcons.child,
+                        FontAwesomeIcons.childDress,
+                      ]
+                    : const [
+                        FontAwesomeIcons.childReaching,
+                        FontAwesomeIcons.childReaching,
+                      ],
               ),
               const SizedBox(width: AppSpacing.sm),
               Text(
