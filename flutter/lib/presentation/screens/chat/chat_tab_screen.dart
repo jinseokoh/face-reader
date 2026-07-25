@@ -7,8 +7,10 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme.dart';
 import '../../../domain/models/battle.dart';
 import '../../providers/battle_provider.dart';
+import '../../providers/history_provider.dart';
 import '../../providers/tab_provider.dart';
 import '../../widgets/emotion_empty_state.dart';
+import '../../widgets/face_scan_pill.dart';
 import '../../widgets/source_badge.dart';
 import 'match_proposal_sheet.dart';
 
@@ -21,44 +23,60 @@ class ChatTabScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 관상·궁합·케미 탭과 동일 규칙 — 미등록이면 [내 관상 등록] pill +
+    // 안내 empty state, 본 화면은 등록 후에만.
+    final hasMyFace = ref.watch(historyProvider).any((r) => r.isMyFace);
     final chats = ref.watch(openChatsProvider);
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('채팅'),
-        actions: const [_MatchProposalBadge()],
-      ),
-      body: RefreshIndicator(
-        onRefresh: () {
-          ref.invalidate(matchProposalsProvider);
-          return ref.refresh(openChatsProvider.future);
-        },
-        color: AppColors.textPrimary,
-        child: chats.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (_, _) => _fillScroll(
-            const EmotionEmptyState(
-              asset: 'assets/images/emotion-sad.png',
-              message: '채팅 목록을 불러오지 못했습니다.\n아래로 당겨 새로고침하세요.',
-            ),
+        actions: [
+          if (!hasMyFace) const FaceScanPill() else const _MatchProposalBadge(),
+          IconButton(
+            icon: const FaIcon(FontAwesomeIcons.circleInfo, size: 20),
+            tooltip: '매칭 채팅에 대하여',
+            onPressed: () => _showInfoDialog(context),
           ),
-          data: (list) => list.isEmpty
-              ? _fillScroll(
-                  _EmptyChats(
-                    onGoChemistry: () =>
-                        ref.read(selectedTabProvider.notifier).selectTab(2),
-                  ),
-                )
-              : ListView.builder(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(
-                    vertical: AppSpacing.sm,
-                  ),
-                  itemCount: list.length,
-                  itemBuilder: (ctx, i) => _ChatTile(chat: list[i]),
-                ),
-        ),
+        ],
       ),
+      body: !hasMyFace
+          ? const EmotionEmptyState(
+              asset: 'assets/images/emotion-yawn.png',
+              message: '채팅에 참여하려면 내관상을 등록하세요',
+            )
+          : RefreshIndicator(
+              onRefresh: () {
+                ref.invalidate(matchProposalsProvider);
+                return ref.refresh(openChatsProvider.future);
+              },
+              color: AppColors.textPrimary,
+              child: chats.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (_, _) => _fillScroll(
+                  const EmotionEmptyState(
+                    asset: 'assets/images/emotion-sad.png',
+                    message: '채팅 목록을 불러오지 못했습니다.\n아래로 당겨 새로고침하세요.',
+                  ),
+                ),
+                data: (list) => list.isEmpty
+                    ? _fillScroll(
+                        _EmptyChats(
+                          onGoChemistry: () => ref
+                              .read(selectedTabProvider.notifier)
+                              .selectTab(2),
+                        ),
+                      )
+                    : ListView.builder(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: AppSpacing.sm,
+                        ),
+                        itemCount: list.length,
+                        itemBuilder: (ctx, i) => _ChatTile(chat: list[i]),
+                      ),
+              ),
+            ),
     );
   }
 
@@ -66,48 +84,36 @@ class ChatTabScreen extends ConsumerWidget {
   Widget _fillScroll(Widget child) {
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
-      slivers: [
-        SliverFillRemaining(hasScrollBody: false, child: child),
-      ],
+      slivers: [SliverFillRemaining(hasScrollBody: false, child: child)],
     );
   }
-}
 
-/// appbar 우상단 베스트 매칭 뱃지 — 미결 제안이 있을 때만 노출.
-/// 탭하면 매칭 제안 시트 (사진 + 채팅방 열기/넘어가기).
-class _MatchProposalBadge extends ConsumerWidget {
-  const _MatchProposalBadge();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final count = ref.watch(matchProposalsProvider).value?.length ?? 0;
-    if (count == 0) return const SizedBox.shrink();
-    return IconButton(
-      onPressed: () => showMatchProposalSheet(context),
-      icon: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          const FaIcon(
-            FontAwesomeIcons.solidHeart,
-            size: 18,
-            color: AppColors.gold,
+  /// 케미 탭 info 다이얼로그와 동일 레시피 — 매칭 채팅 규칙 안내.
+  void _showInfoDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+        ),
+        title: const Text('매칭 채팅', style: AppText.modalTitle),
+        content: const SingleChildScrollView(
+          child: Text(
+            '케미 그룹에서 최고의 케미를 보인 베스트 매칭 한 쌍에게는 '
+            '1:1 채팅 기회가 주어집니다.\n\n'
+            '두 사람 모두 원하는 경우에만 채팅방이 열리고, 한쪽이라도 '
+            '거부하면 열리지 않습니다. 응답은 결과 발표 후 48시간 동안 '
+            '가능합니다.\n\n'
+            '응답을 기다리는 매칭 제안은 우상단 하트 뱃지에서, 열린 '
+            '채팅방은 이 화면의 목록에서 확인할 수 있습니다.',
+            style: AppText.body,
           ),
-          Positioned(
-            right: -6,
-            top: -6,
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.xs,
-              ),
-              decoration: const BoxDecoration(
-                color: AppColors.textPrimary,
-                shape: BoxShape.circle,
-              ),
-              child: Text(
-                '$count',
-                style: AppText.hint.copyWith(color: Colors.white),
-              ),
-            ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('닫기', style: AppText.subTitle),
           ),
         ],
       ),
@@ -115,38 +121,35 @@ class _MatchProposalBadge extends ConsumerWidget {
   }
 }
 
-/// 빈 상태 — 채팅방 생성 조건 안내 + 케미 탭 전환 CTA.
-class _EmptyChats extends StatelessWidget {
-  final VoidCallback onGoChemistry;
-  const _EmptyChats({required this.onGoChemistry});
+/// 채팅방 화면 아바타와 동일 레시피 (surface + border squircle).
+/// border 색은 source 규칙 (sourceBorderColor — 카메라 gold / 앨범 lightGray).
+class _Avatar extends StatelessWidget {
+  final String? photoUrl;
+  final AnalysisSource? photoSource;
+  const _Avatar({required this.photoUrl, required this.photoSource});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const EmotionEmptyState(
-          asset: 'assets/images/emotion-love.png',
-          message: '베스트 매칭 후 두 사람이 모두 동의하면\n여기에 1:1 채팅방이 생깁니다.',
-        ),
-        const SizedBox(height: AppSpacing.xl),
-        InkWell(
-          onTap: onGoChemistry,
-          borderRadius: BorderRadius.circular(999),
-          child: Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.xl,
-              vertical: AppSpacing.sm,
+    const fallback = Center(
+      child: FaIcon(FontAwesomeIcons.user, size: 18, color: AppColors.textHint),
+    );
+    final url = photoUrl;
+    return Container(
+      width: 48,
+      height: 48,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        border: Border.all(color: sourceBorderColor(photoSource)),
+      ),
+      child: url == null
+          ? fallback
+          : Image.network(
+              url,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => fallback,
             ),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: AppColors.textPrimary),
-            ),
-            child: const Text('케미 그룹 보러 가기', style: AppText.subTitle),
-          ),
-        ),
-      ],
     );
   }
 }
@@ -156,21 +159,6 @@ class _EmptyChats extends StatelessWidget {
 class _ChatTile extends ConsumerWidget {
   final OpenChat chat;
   const _ChatTile({required this.chat});
-
-  /// 오늘 = '오후 3:13', 어제 = '어제', 그 외 = 'M월 d일'.
-  static String _timeLabel(DateTime t) {
-    final l = t.toLocal();
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final day = DateTime(l.year, l.month, l.day);
-    if (day == today) {
-      final h12 = l.hour % 12 == 0 ? 12 : l.hour % 12;
-      final mm = l.minute.toString().padLeft(2, '0');
-      return '${l.hour < 12 ? '오전' : '오후'} $h12:$mm';
-    }
-    if (today.difference(day).inDays == 1) return '어제';
-    return '${l.month}월 ${l.day}일';
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -232,37 +220,95 @@ class _ChatTile extends ConsumerWidget {
       ),
     );
   }
+
+  /// 오늘 = '오후 3:13', 어제 = '어제', 그 외 = 'M월 d일'.
+  static String _timeLabel(DateTime t) {
+    final l = t.toLocal();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(l.year, l.month, l.day);
+    if (day == today) {
+      final h12 = l.hour % 12 == 0 ? 12 : l.hour % 12;
+      final mm = l.minute.toString().padLeft(2, '0');
+      return '${l.hour < 12 ? '오전' : '오후'} $h12:$mm';
+    }
+    if (today.difference(day).inDays == 1) return '어제';
+    return '${l.month}월 ${l.day}일';
+  }
 }
 
-/// 채팅방 화면 아바타와 동일 레시피 (surface + border squircle).
-/// border 색은 source 규칙 (sourceBorderColor — 카메라 gold / 앨범 lightGray).
-class _Avatar extends StatelessWidget {
-  final String? photoUrl;
-  final AnalysisSource? photoSource;
-  const _Avatar({required this.photoUrl, required this.photoSource});
+/// 빈 상태 — 채팅방 생성 조건 안내 + 케미 탭 전환 CTA.
+class _EmptyChats extends StatelessWidget {
+  final VoidCallback onGoChemistry;
+  const _EmptyChats({required this.onGoChemistry});
 
   @override
   Widget build(BuildContext context) {
-    const fallback = Center(
-      child: FaIcon(FontAwesomeIcons.user, size: 18, color: AppColors.textHint),
-    );
-    final url = photoUrl;
-    return Container(
-      width: 48,
-      height: 48,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-        border: Border.all(color: sourceBorderColor(photoSource)),
-      ),
-      child: url == null
-          ? fallback
-          : Image.network(
-              url,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => fallback,
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const EmotionEmptyState(
+          asset: 'assets/images/emotion-love.png',
+          message: '베스트 매칭 후 두 사람이 모두 동의하면\n여기에 1:1 채팅방이 생깁니다.',
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        InkWell(
+          onTap: onGoChemistry,
+          borderRadius: BorderRadius.circular(999),
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.xl,
+              vertical: AppSpacing.sm,
             ),
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: AppColors.textPrimary),
+            ),
+            child: const Text('케미 그룹 보러 가기', style: AppText.subTitle),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// appbar 우상단 베스트 매칭 뱃지 — 미결 제안이 있을 때만 노출.
+/// 탭하면 매칭 제안 시트 (사진 + 채팅방 열기/넘어가기).
+class _MatchProposalBadge extends ConsumerWidget {
+  const _MatchProposalBadge();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final count = ref.watch(matchProposalsProvider).value?.length ?? 0;
+    if (count == 0) return const SizedBox.shrink();
+    return IconButton(
+      onPressed: () => showMatchProposalSheet(context),
+      icon: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          const FaIcon(
+            FontAwesomeIcons.solidHeart,
+            size: 18,
+            color: AppColors.gold,
+          ),
+          Positioned(
+            right: -6,
+            top: -6,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+              decoration: const BoxDecoration(
+                color: AppColors.textPrimary,
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                '$count',
+                style: AppText.hint.copyWith(color: Colors.white),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
