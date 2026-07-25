@@ -9,6 +9,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show RealtimeChannel;
+import 'package:timeago/timeago.dart' as timeago;
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
 import '../../../core/theme.dart';
@@ -348,30 +349,43 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
             Text('여자 ${_remaining('female')}자리 남음', style: AppText.caption),
           ],
           const SizedBox(height: AppSpacing.sm),
-          Text(
-            _headerMeta(battle),
-            style: AppText.caption.copyWith(color: AppColors.textHint),
-          ),
+          _headerMeta(battle),
         ],
       ),
     );
   }
 
-  /// 헤더 메타 — 생성 시각 / 열람 기한 / 조회수. 기한 상수는 cron SSOT
-  /// (react/workers/cron.ts — 모집 48h 만료, closed_at+30일 purge)와 동일.
-  String _headerMeta(Battle battle) {
-    final created = battle.createdAt.toLocal();
-    final lines = ['${_fmtDateTime(created)}에 만든 그룹입니다'];
+  /// 헤더 메타 — 생성(좌) · 모집 마감/열람 기한(우) 한 줄 + 조회수 줄.
+  /// 기한 상수는 cron SSOT (react/workers/cron.ts — 모집 48h 만료,
+  /// closed_at+30일 purge)와 동일. timeago 상대 표기 (ledger 탭과 동일 문법).
+  Widget _headerMeta(Battle battle) {
+    final hint = AppText.caption.copyWith(color: AppColors.textHint);
+    String? right;
     if (battle.isRecruiting) {
-      lines.add(
-        '${_fmtDateTime(created.add(const Duration(hours: 48)))}까지 모집합니다',
-      );
+      final deadline = battle.createdAt.add(const Duration(hours: 48));
+      right =
+          '${timeago.format(deadline, locale: 'ko', allowFromNow: true)} '
+          '모집마감';
     } else if (battle.closedAt != null) {
       final until = battle.closedAt!.toLocal().add(const Duration(days: 30));
-      lines.add('${_fmtDateTime(until)}까지 볼 수 있습니다');
+      right = '${_fmtDateTime(until)}까지 열람 가능';
     }
-    lines.add('조회수 ${battle.views}회');
-    return lines.join('\n');
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              '${timeago.format(battle.createdAt, locale: 'ko')} 생성',
+              style: hint,
+            ),
+            if (right != null) Text(right, style: hint),
+          ],
+        ),
+        Text('조회수 ${battle.views}회', style: hint),
+      ],
+    );
   }
 
   String _fmtDateTime(DateTime t) =>
@@ -631,6 +645,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
           style: AppText.caption,
           textAlign: TextAlign.center,
         ),
+        const SizedBox(height: AppSpacing.sm),
       ],
     );
   }
