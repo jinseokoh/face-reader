@@ -344,7 +344,8 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
           ],
           const SizedBox(height: AppSpacing.xs),
           Text(
-            '정원이 다 차면 케미 결과표가 자동으로 발표됩니다',
+            '${battle.maxPlayers - _roster.length}명이 더 모이면 '
+            '케미 결과표가 자동으로 발표됩니다',
             style: AppText.caption.copyWith(color: AppColors.textHint),
           ),
         ],
