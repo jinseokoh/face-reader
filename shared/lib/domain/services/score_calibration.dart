@@ -109,6 +109,51 @@ Map<Attribute, ({double mean, double std})> calibrateMeanStd({
 
 // ───────── sampler internals ─────────
 
+/// 캘리브레이션 z 샘플 한 벌 — metric z map + 그 샘플의 얼굴형.
+class CalibratedZSample {
+  final Map<String, double> z;
+  final FaceShape shape;
+  const CalibratedZSample(this.z, this.shape);
+}
+
+/// 캘리브레이션과 **동일한 상관구조**(bone·mid factor 모델)로 metric z 를
+/// 한 벌 샘플링한다 — fairness·special 발동률 등 분포 검증 테스트는 반드시
+/// 이 generator 를 써야 quantile 테이블과 같은 세계를 측정한다 (독립 정규
+/// 샘플은 marginal 을 49~77% 로 왜곡해 편향을 만들거나 숨긴다).
+///
+/// rng 소비 순서는 기존 `_simulateRaws` 내부와 동일 — quantile 테이블
+/// 재현성이 이 순서에 걸려 있으므로 변경 금지.
+CalibratedZSample sampleCalibratedZ(Random rng, {FaceShape? fixedShape}) {
+  double normal() {
+    double u1, u2;
+    do {
+      u1 = rng.nextDouble();
+    } while (u1 == 0.0);
+    u2 = rng.nextDouble();
+    return sqrt(-2.0 * log(u1)) * cos(2.0 * pi * u2);
+  }
+
+  // 샘플 단위 공통 성분 2 개.
+  final zBone = normal();
+  final zMid = normal();
+  final shape = fixedShape ?? drawShape(rng);
+  final bias = _shapeMetricBias[shape] ?? const <String, double>{};
+
+  final z = <String, double>{};
+  for (final info in metricInfoList) {
+    final bLoad = _boneLoadings[info.id] ?? 0.0;
+    final mLoad = _midLoadings[info.id] ?? 0.0;
+    // 분산 보존: σ_idio² + σ_bone² + σ_mid² = 1 이 되도록 idio 를 축소.
+    final idioW = sqrt((1 - bLoad * bLoad - mLoad * mLoad).clamp(0.05, 1.0));
+    final shapeBias = bias[info.id] ?? 0.0;
+    final raw =
+        _inputMean + shapeBias + _inputStd *
+            (bLoad * zBone + mLoad * zMid + idioW * normal());
+    z[info.id] = raw.clamp(-3.5, 3.5);
+  }
+  return CalibratedZSample(z, shape);
+}
+
 /// bone-structure 공통 성분이 얼마나 실리는지 per-metric. 0.6 = 강한 bone
 /// 신호(뼈대·광대·턱 등), 0.3 = 중간(이마·코 shape), 0.0 = 무관(눈 fissure 등).
 const _boneLoadings = <String, double>{
@@ -206,34 +251,10 @@ Map<Attribute, List<double>> _simulateRaws({
   final rng = Random(seed);
   final raws = {for (final a in Attribute.values) a: <double>[]};
 
-  double normal() {
-    double u1, u2;
-    do {
-      u1 = rng.nextDouble();
-    } while (u1 == 0.0);
-    u2 = rng.nextDouble();
-    return sqrt(-2.0 * log(u1)) * cos(2.0 * pi * u2);
-  }
-
   for (int i = 0; i < samples; i++) {
-    // 샘플 단위 공통 성분 2 개.
-    final zBone = normal();
-    final zMid = normal();
-    final shape = fixedShape ?? drawShape(rng);
-    final bias = _shapeMetricBias[shape] ?? const <String, double>{};
-
-    final z = <String, double>{};
-    for (final info in metricInfoList) {
-      final bLoad = _boneLoadings[info.id] ?? 0.0;
-      final mLoad = _midLoadings[info.id] ?? 0.0;
-      // 분산 보존: σ_idio² + σ_bone² + σ_mid² = 1 이 되도록 idio 를 축소.
-      final idioW = sqrt((1 - bLoad * bLoad - mLoad * mLoad).clamp(0.05, 1.0));
-      final shapeBias = bias[info.id] ?? 0.0;
-      final raw =
-          _inputMean + shapeBias + _inputStd *
-              (bLoad * zBone + mLoad * zMid + idioW * normal());
-      z[info.id] = raw.clamp(-3.5, 3.5);
-    }
+    final sample = sampleCalibratedZ(rng, fixedShape: fixedShape);
+    final z = sample.z;
+    final shape = sample.shape;
 
     final tree = scoreTree(z);
     final scores = deriveAttributeScores(

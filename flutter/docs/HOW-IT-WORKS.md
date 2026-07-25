@@ -153,18 +153,23 @@ root 1 + 삼정 3 (upper/middle/lower) + leaf 10 (이마·미간·눈썹 / 눈·
 **Archetype**: 상위 2 속성 → primary/secondary. 복합 조건 시 special (`archetype.dart`,
 shape-gated overlay 포함):
 
+special 판정은 **원 normalized score** 기준 (gender prior 는 ranking 전용).
+임계값은 5.0~10.0 스케일에서 9.0=상위 ~15%, 9.5=상위 ~7%, ≤6.0=하위 ~20%
+(2026-07-25 재설계 — 과거 7.5/7.0 은 중앙값 근처라 98% 가 special 을 받고
+제왕형이 58% 를 독식했다. 재발 가드: archetype_fairness_test 의 rate cap.)
+
 | ID | 조건 | Label |
 |---|---|---|
-| SP-1 | wealth≥7.5 AND leadership≥7.0 | 제왕상 |
-| SP-2 | sensuality≥7.5 AND attractiveness≥7.5 | 도화상 |
-| SP-3 | intelligence≥7.5 AND stability≥7.0 | 군사상 |
-| SP-4 | sociability≥7.5 AND attractiveness≥7.0 | 연예인상 |
-| SP-5 | wealth≥7.0 AND trustworthiness≥7.0 | 복덕상 |
-| SP-6 | leadership≥7.0 AND stability≥7.0 AND trust≥7.0 | 대인상 |
-| SP-7 | libido≥7.5 AND sensuality≥7.0 | 풍류상 |
-| SP-8 | intelligence≥7.0 AND emotionality≥7.0 | 천재상 |
-| SP-9 | stability≤3.0 AND emotionality≥7.5 | 광인상 |
-| SP-10 | trust≤3.0 AND sociability≥7.0 | 사기상 |
+| SP-1 | wealth≥9.5 AND leadership≥9.5 | 제왕상 |
+| SP-2 | sensuality≥9.5 AND attractiveness≥9.5 | 도화상 |
+| SP-3 | intelligence≥9.5 AND stability≥9.5 | 군사상 |
+| SP-4 | sociability≥9.5 AND attractiveness≥9.0 | 연예인상 |
+| SP-5 | wealth≥9.5 AND trustworthiness≥9.0 | 복덕상 |
+| SP-6 | leadership≥9.0 AND stability≥9.0 AND trust≥8.5 | 대인상 |
+| SP-7 | libido≥9.5 AND sensuality≥9.0 | 풍류상 |
+| SP-8 | intelligence≥9.5 AND emotionality≥9.0 | 천재상 |
+| SP-9 | stability≤5.5 AND emotionality≥9.0 | 광인상 |
+| SP-10 | trust≤6.0 AND sociability≥8.5 | 사기상 |
 
 ## 5. Normalize (raw → 5.0~10.0)
 

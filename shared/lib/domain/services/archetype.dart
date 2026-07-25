@@ -118,7 +118,9 @@ ArchetypeResult classifyArchetype(
     primaryLabel: _archetypeLabels[primary]!,
     secondaryLabel: _archetypeLabels[secondary]!,
     specialArchetype:
-        _checkShapeSpecial(shape, adjusted, topSet) ?? _checkSpecial(adjusted),
+        // special 판정은 **원 score** — gender prior 는 ranking 전용이라는
+        // 계약 준수 (prior 누출이 남성 제왕형·여성 매력형을 증폭시켰다).
+        _checkShapeSpecial(shape, scores, topSet) ?? _checkSpecial(scores),
   );
 }
 
@@ -202,46 +204,51 @@ String? _checkShapeSpecial(
 }
 
 String? _checkSpecial(Map<Attribute, double> s) {
-  // SP-1: 제왕형 — 재물·리더십 둘 다 높음
-  if (s[Attribute.wealth]! >= 7.5 && s[Attribute.leadership]! >= 7.0) {
+  // 스케일 주의 — normalize 출력은 5.0~10.0 이고 rank blend 가 개인별 top
+  // attribute 를 8.0 이상으로 보장한다. 따라서 "높음" 판정선은 9.0(상위
+  // ~15%)·9.5(상위 ~7%), "낮음" 판정선은 6.0(하위 ~20%) 이 실제 희소 구간.
+  // (과거 7.5/7.0 은 중앙값 근처라 전체의 98% 가 special 을 받았고, ≤3.0
+  // 저점 규칙은 최저점이 5.0 이라 영원히 죽어 있었다 — 2026-07-25 재설계.)
+  // SP-1: 제왕형 — 재물·리더십 둘 다 독보적으로 높음
+  if (s[Attribute.wealth]! >= 9.5 && s[Attribute.leadership]! >= 9.5) {
     return '제왕형';
   }
-  // SP-2: 매력형 — 관능·매력 둘 다 매우 높음
-  if (s[Attribute.sensuality]! >= 7.5 && s[Attribute.attractiveness]! >= 7.5) {
+  // SP-2: 매력형 — 관능·매력 둘 다 독보적으로 높음
+  if (s[Attribute.sensuality]! >= 9.5 && s[Attribute.attractiveness]! >= 9.5) {
     return '매력형';
   }
-  // SP-3: 책사형 — 통찰·안정 둘 다 높음
-  if (s[Attribute.intelligence]! >= 7.5 && s[Attribute.stability]! >= 7.0) {
+  // SP-3: 책사형 — 통찰·안정 둘 다 독보적으로 높음
+  if (s[Attribute.intelligence]! >= 9.5 && s[Attribute.stability]! >= 9.5) {
     return '책사형';
   }
-  // SP-4: 스타형 — 사교·매력 둘 다 높음
-  if (s[Attribute.sociability]! >= 7.5 && s[Attribute.attractiveness]! >= 7.0) {
+  // SP-4: 스타형 — 사교·매력 둘 다 독보적으로 높음
+  if (s[Attribute.sociability]! >= 9.5 && s[Attribute.attractiveness]! >= 9.0) {
     return '스타형';
   }
-  // SP-5: 복덕형 — 재물·신뢰 둘 다 높음
-  if (s[Attribute.wealth]! >= 7.0 && s[Attribute.trustworthiness]! >= 7.0) {
+  // SP-5: 복덕형 — 재물·신뢰 둘 다 독보적으로 높음
+  if (s[Attribute.wealth]! >= 9.5 && s[Attribute.trustworthiness]! >= 9.0) {
     return '복덕형';
   }
-  // SP-6: 큰그릇형 — 리더십·안정·신뢰 셋 다 높음
-  if (s[Attribute.leadership]! >= 7.0 &&
-      s[Attribute.stability]! >= 7.0 &&
-      s[Attribute.trustworthiness]! >= 7.0) {
+  // SP-6: 큰그릇형 — 리더십·안정·신뢰 셋 다 매우 높음
+  if (s[Attribute.leadership]! >= 9.0 &&
+      s[Attribute.stability]! >= 9.0 &&
+      s[Attribute.trustworthiness]! >= 8.5) {
     return '큰그릇형';
   }
-  // SP-7: 풍류형 — 정열·관능 둘 다 높음
-  if (s[Attribute.libido]! >= 7.5 && s[Attribute.sensuality]! >= 7.0) {
+  // SP-7: 풍류형 — 정열·관능 둘 다 독보적으로 높음
+  if (s[Attribute.libido]! >= 9.5 && s[Attribute.sensuality]! >= 9.0) {
     return '풍류형';
   }
-  // SP-8: 천재형 — 통찰·감성 둘 다 높음
-  if (s[Attribute.intelligence]! >= 7.0 && s[Attribute.emotionality]! >= 7.0) {
+  // SP-8: 천재형 — 통찰·감성 둘 다 독보적으로 높음
+  if (s[Attribute.intelligence]! >= 9.5 && s[Attribute.emotionality]! >= 9.0) {
     return '천재형';
   }
-  // SP-9: 광인형 — 안정 낮고 감성 매우 높음
-  if (s[Attribute.stability]! <= 3.0 && s[Attribute.emotionality]! >= 7.5) {
+  // SP-9: 광인형 — 안정 극단적으로 낮고 감성 매우 높음
+  if (s[Attribute.stability]! <= 5.5 && s[Attribute.emotionality]! >= 9.0) {
     return '광인형';
   }
-  // SP-10: 사기꾼형 — 신뢰 낮고 사교 높음
-  if (s[Attribute.trustworthiness]! <= 3.0 && s[Attribute.sociability]! >= 7.0) {
+  // SP-10: 사기꾼형 — 신뢰 매우 낮고 사교 높음
+  if (s[Attribute.trustworthiness]! <= 6.0 && s[Attribute.sociability]! >= 8.5) {
     return '사기꾼형';
   }
   return null;

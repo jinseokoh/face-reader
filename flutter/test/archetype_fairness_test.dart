@@ -10,7 +10,6 @@ import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:face_engine/data/constants/face_reference_data.dart';
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/attribute.dart';
 import 'package:face_engine/data/enums/ethnicity.dart';
@@ -19,21 +18,12 @@ import 'package:face_engine/domain/services/archetype.dart';
 import 'package:face_engine/domain/services/attribute_derivation.dart';
 import 'package:face_engine/domain/services/attribute_normalize.dart';
 import 'package:face_engine/domain/services/physiognomy_scoring.dart';
+import 'package:face_engine/domain/services/score_calibration.dart';
 
-double _normal(Random rng) {
-  double u1, u2;
-  do {
-    u1 = rng.nextDouble();
-  } while (u1 == 0.0);
-  u2 = rng.nextDouble();
-  return sqrt(-2.0 * log(u1)) * cos(2.0 * pi * u2);
-}
-
-// Realistic input distribution: matches what calibration uses (N(0.2, 0.85))
-const double _inputMean = 0.2;
-const double _inputStd = 0.85;
-double _realisticZ(Random rng) =>
-    (_normal(rng) * _inputStd + _inputMean).clamp(-3.5, 3.5);
+// 입력은 반드시 캘리브레이션과 동일한 generator(sampleCalibratedZ) —
+// quantile 테이블이 만들어진 세계와 같은 세계를 측정해야 공정성 검증이
+// 성립한다. (과거 독립 N(0.2, 0.85) 샘플은 marginal 을 49~77% 로 왜곡해
+// 제왕형 57% 같은 실제 편향을 테스트가 보지 못했다 — 2026-07-25.)
 
 void main() {
   test('archetype primary distribution is fair (within ±5%)', () {
@@ -44,19 +34,18 @@ void main() {
 
     for (int i = 0; i < samples; i++) {
       final gender = i.isEven ? Gender.male : Gender.female;
-      final z = <String, double>{};
-      for (final info in metricInfoList) {
-        z[info.id] = _realisticZ(rng);
-      }
+      final sample = sampleCalibratedZ(rng);
       final raws = deriveAttributeScores(
-        tree: scoreTree(z),
+        tree: scoreTree(sample.z),
         gender: gender,
         ethnicity: Ethnicity.eastAsian,
         ageGroup: AgeGroup.thirties,
         hasLateral: false,
+        faceShape: sample.shape,
+        shapeConfidence: 0.8,
       );
-      final normalized = normalizeAllScores(raws, gender);
-      final archetype = classifyArchetype(normalized, gender);
+      final normalized = normalizeAllScores(raws, gender, shape: sample.shape);
+      final archetype = classifyArchetype(normalized, gender, shape: sample.shape);
       counts[archetype.primary] = counts[archetype.primary]! + 1;
     }
 
@@ -75,16 +64,58 @@ void main() {
     // ±5% 안이면 leadership 쏠림 같은 심각한 편향은 사라진 것으로 간주.
     for (final entry in counts.entries) {
       final pct = entry.value / samples;
-      // Lower bound widened to 0.01 after 2026-04-14 threshold uplift — some
-      // archetypes become rare because their trigger rules need score ≥ |2|
-      // on both axes. TODO: rebalance for tighter bound.
-      expect(pct, greaterThan(0.01),
-          reason: '${entry.key.name} too rare: ${(pct * 100).toStringAsFixed(2)}%');
-      // Upper bound widened to 0.22 after 2026-04-14 rule threshold uplift
-      // (>=1→>=2). Rules fire less often → one archetype becomes more common
-      // as fallback. TODO: rebalance base scores for tighter bound.
-      expect(pct, lessThan(0.30),
-          reason: '${entry.key.name} too common: ${(pct * 100).toStringAsFixed(2)}%');
+      // 2026-07-25 재보정 후 실측: 최저 trust 5.8% / 최고 libido 16.0%.
+      // 잔여 편차는 bone·mid factor 상관구조의 구조적 산물 (상관 높은
+      // attribute 끼리 top-1 을 나눠 갖는다). 여유 1.5%p 를 둔 hard bound —
+      // 이 밖으로 나가면 랭킹 편향이 재발한 것이다.
+      expect(pct, greaterThan(0.043),
+          reason: '\${entry.key.name} too rare: \${(pct * 100).toStringAsFixed(2)}%');
+      expect(pct, lessThan(0.175),
+          reason: '\${entry.key.name} too common: \${(pct * 100).toStringAsFixed(2)}%');
     }
+  });
+
+  test('special archetype rates stay rare and gender-balanced', () {
+    const samples = 20000;
+    final rng = Random(42);
+    final counts = <String, int>{};
+    var none = 0;
+
+    for (int i = 0; i < samples; i++) {
+      final gender = i.isEven ? Gender.male : Gender.female;
+      final sample = sampleCalibratedZ(rng);
+      final raws = deriveAttributeScores(
+        tree: scoreTree(sample.z),
+        gender: gender,
+        ethnicity: Ethnicity.eastAsian,
+        ageGroup: AgeGroup.thirties,
+        hasLateral: false,
+        faceShape: sample.shape,
+        shapeConfidence: 0.8,
+      );
+      final normalized = normalizeAllScores(raws, gender, shape: sample.shape);
+      final r = classifyArchetype(normalized, gender, shape: sample.shape);
+      final sp = r.specialArchetype;
+      if (sp == null) {
+        none++;
+      } else {
+        counts[sp] = (counts[sp] ?? 0) + 1;
+      }
+    }
+
+    final totalSpecial = samples - none;
+    // 2026-07-25 재설계 실측: special 전체 23.9%, 단일 최고 2.6%(큰그릇형).
+    // 과거 임계값(7.5/7.0 — 5~10 스케일의 중앙값 근처)에서는 98.2% 가
+    // special 을 받고 제왕형이 57.6% 를 독식했다. 재발 방지 hard cap.
+    expect(totalSpecial / samples, lessThan(0.30),
+        reason: 'special 전체 발동률 \${(totalSpecial / samples * 100).toStringAsFixed(1)}% — 특수 상이 흔해졌다');
+    for (final e in counts.entries) {
+      expect(e.value / samples, lessThan(0.04),
+          reason: '\${e.key} \${(e.value / samples * 100).toStringAsFixed(2)}% — 단일 special 독식 재발');
+    }
+    // 저점 규칙(광인형·사기꾼형)은 최저점 5.0 스케일에서 임계 ≤3.0 으로
+    // 영원히 죽어 있던 전례가 있다 — 발동 0 이면 다시 죽은 것.
+    expect(counts['광인형'] ?? 0, greaterThan(0), reason: '광인형 dead rule');
+    expect(counts['사기꾼형'] ?? 0, greaterThan(0), reason: '사기꾼형 dead rule');
   });
 }

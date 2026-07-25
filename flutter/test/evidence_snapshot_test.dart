@@ -106,16 +106,16 @@ void main() {
 A:A-M01, A:A-M02, A:A-M03, O:O-CH, O:O-CK, O:O-CKC, O:O-CKE, O:O-EB1, O:O-EM, O:O-EM2, O:O-PH1, P:P-03, P:P-05, P:P-09, P:P-MJ, Z:Z-11, Z:Z-12, Z:Z-FH, Z:Z-LFR
 
 == normalized scores ==
-wealth           9.3
+wealth           9.1
 leadership       8.7
 intelligence     8.0
-sociability      10.0
+sociability      9.8
 emotionality     9.5
-stability        9.1
-sensuality       8.3
-trustworthiness  8.9
-attractiveness   8.5
-libido           9.8
+stability        9.3
+sensuality       8.5
+trustworthiness  8.3
+attractiveness   8.9
+libido           10.0
 
 == wealth top-3 contributors ==
 Z-11=0.50, P-09=0.50, A-M01=0.50
