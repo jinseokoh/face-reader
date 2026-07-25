@@ -208,8 +208,8 @@ class _BattleMatchCardState extends State<BattleMatchCard> {
         ),
         const SizedBox(height: AppSpacing.sm),
         Text(
-          '두 사람 모두 열기를 선택하면 채팅방이 열립니다. 응답은 24시간 동안 '
-          '가능하고, 선택은 되돌릴 수 없습니다.',
+          '두 사람 모두 열기를 선택하면 채팅방이 열립니다. 응답은 결과 발표 후 '
+          '48시간 동안 가능하고, 선택은 되돌릴 수 없습니다.',
           style: AppText.caption,
           textAlign: TextAlign.center,
         ),

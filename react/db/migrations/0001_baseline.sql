@@ -1292,6 +1292,16 @@ begin
   if not exists (select 1 from teams where id = p_team_id and status = 'completed') then
     raise exception 'NOT_MATCHED';
   end if;
+  -- 응답 시한 — 결과 발표(closed_at) 후 48시간. 지나면 자동 '넘어가기' 취급
+  -- (클라이언트도 같은 기준으로 제안을 숨긴다: fetchPendingMatchProposals).
+  if exists (
+    select 1 from teams
+     where id = p_team_id
+       and closed_at is not null
+       and closed_at + interval '48 hours' < now()
+  ) then
+    raise exception 'MATCH_EXPIRED';
+  end if;
 
   select * into v_match from team_matches where team_id = p_team_id for update;
   if not found or (v_uid <> v_match.user_a and v_uid <> v_match.user_b) then

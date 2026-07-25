@@ -19,6 +19,12 @@ final openChatTeamsProvider = FutureProvider<Set<String>>(
   (ref) => BattleService.instance.fetchOpenChatTeamIds(),
 );
 
+/// 미결 베스트 매칭 제안 — 채팅 탭 appbar 뱃지 + 매칭 제안 시트.
+/// 갱신은 ref.invalidate (응답 직후·당겨서 새로고침).
+final matchProposalsProvider = FutureProvider<List<MatchProposal>>(
+  (ref) => BattleService.instance.fetchPendingMatchProposals(),
+);
+
 /// 마지막으로 채팅방을 본 시각의 Hive prefs 키 — 안읽음 판정 기준.
 /// BattleChatScreen 이 메시지 로드마다 갱신, openChatsProvider 가 읽는다.
 String chatLastSeenKey(String teamId) => 'chat_last_seen:$teamId';

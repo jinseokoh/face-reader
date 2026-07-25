@@ -38,6 +38,21 @@ AnalysisSource? _sourceFrom(Map<String, dynamic> body) {
 /// 차단 목록 행 — my_blocks view 의 상대 id + 닉네임.
 typedef BlockedUser = ({String userId, String nickname});
 
+/// 미결 베스트 매칭 제안 — 채팅 탭 뱃지·매칭 제안 시트 렌더 재료.
+typedef MatchProposal = ({
+  BattleMatch match,
+  String teamTitle,
+  DateTime? decideBy, // 결과 발표(closed_at) + 48h. closed_at 미상이면 null.
+  String otherUserId,
+  String otherNickname,
+  String otherGender,
+  String? photoUrl,
+  AnalysisSource? photoSource,
+});
+
+/// 매칭 응답 시한 — respond_match RPC 의 48시간 가드와 동일 기준.
+const matchResponseWindow = Duration(hours: 48);
+
 /// Chemistry Battle 서버 접점 — 방은 서버 우선(로컬 캐시 없음).
 /// 쓰기는 RPC(security definer)와 owner 직접 insert/delete 뿐,
 /// 읽기는 teams(컬럼 grant)·team_roster·public_teams view.
@@ -400,6 +415,79 @@ class BattleService {
       return bt.compareTo(at);
     });
     return chats;
+  }
+
+  /// 아직 결론이 나지 않은 내 베스트 매칭 제안 목록 — 채팅 탭 뱃지·시트용.
+  /// 포함: 내 결정 대기(null) + 상대 결정 대기(내 true). 제외: 한쪽 거절,
+  /// 개설됨, 응답 시한(결과 발표 + [matchResponseWindow]) 경과 = 자동 넘어감.
+  Future<List<MatchProposal>> fetchPendingMatchProposals() async {
+    final uid = myUid;
+    if (uid == null) return const [];
+    final rows = await _client
+        .from('team_matches')
+        .select()
+        .isFilter('opened_at', null);
+    final matches = [for (final r in rows) BattleMatch.fromRow(r)]
+        .where(
+          (m) =>
+              m.consentOf(uid) != false &&
+              m.consentOf(m.otherOf(uid)) != false,
+        )
+        .toList();
+    if (matches.isEmpty) return const [];
+
+    final teamIds = [for (final m in matches) m.teamId];
+    final otherIds = [for (final m in matches) m.otherOf(uid)];
+    final results = await Future.wait<dynamic>([
+      _client.from('teams').select('id, title, closed_at').inFilter('id', teamIds),
+      _client
+          .from('team_roster')
+          .select('team_id, user_id, nickname, gender')
+          .inFilter('team_id', teamIds),
+      fetchMyFaceThumbnailUrls(otherIds),
+    ]);
+    final teams = {
+      for (final r in results[0] as List) r['id'] as String: r,
+    };
+    final roster = {
+      for (final r in results[1] as List)
+        '${r['team_id']}:${r['user_id']}': r,
+    };
+    final thumbs = results[2] as Map<String, MyFaceThumb>;
+
+    final now = DateTime.now().toUtc();
+    final proposals = <MatchProposal>[];
+    for (var i = 0; i < matches.length; i++) {
+      final m = matches[i];
+      final team = teams[m.teamId];
+      if (team == null) continue; // 방 삭제(30일 purge 등) — 제안도 소멸.
+      final closedAt = team['closed_at'] == null
+          ? null
+          : DateTime.parse(team['closed_at'] as String);
+      final decideBy = closedAt?.add(matchResponseWindow);
+      if (decideBy != null && now.isAfter(decideBy)) continue;
+      final other = roster['${m.teamId}:${otherIds[i]}'];
+      proposals.add((
+        match: m,
+        teamTitle: (team['title'] as String?) ?? '케미 그룹',
+        decideBy: decideBy,
+        otherUserId: otherIds[i],
+        otherNickname: (other?['nickname'] as String?) ?? '상대',
+        otherGender: (other?['gender'] as String?) ?? 'male',
+        photoUrl: thumbs[otherIds[i]]?.url,
+        photoSource: thumbs[otherIds[i]]?.source,
+      ));
+    }
+    // 시한 임박 순 — 시한 미상(closed_at null)은 뒤로.
+    proposals.sort((a, b) {
+      final at = a.decideBy;
+      final bt = b.decideBy;
+      if (at == null && bt == null) return 0;
+      if (at == null) return 1;
+      if (bt == null) return -1;
+      return at.compareTo(bt);
+    });
+    return proposals;
   }
 
   /// 매칭 성사 상태 — RLS 상 쌍 본인에게만 row 가 보인다(남에겐 null).

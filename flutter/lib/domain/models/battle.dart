@@ -183,6 +183,7 @@ enum BattleJoinError {
   ownerCannotLeave('OWNER_CANNOT_LEAVE', '방장은 나갈 수 없습니다'),
   notLeavable('NOT_LEAVABLE', '지금은 나갈 수 없습니다'),
   notParticipant('NOT_PARTICIPANT', '참가자가 아닙니다'),
+  matchExpired('MATCH_EXPIRED', '응답 기한(결과 발표 후 48시간)이 지났습니다'),
   unknown('UNKNOWN', '잠시 후 다시 시도해 주세요');
 
   final String code;

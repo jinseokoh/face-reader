@@ -10,6 +10,7 @@ import '../../providers/battle_provider.dart';
 import '../../providers/tab_provider.dart';
 import '../../widgets/emotion_empty_state.dart';
 import '../../widgets/source_badge.dart';
+import 'match_proposal_sheet.dart';
 
 /// 채팅 탭 — 열린 매칭 채팅방 목록 (카카오톡 채팅 목록 parity 레이아웃).
 /// 행: squircle 아바타 / 닉네임 + 마지막 메시지 / 시간 + 안읽음 dot.
@@ -23,9 +24,15 @@ class ChatTabScreen extends ConsumerWidget {
     final chats = ref.watch(openChatsProvider);
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(title: const Text('채팅')),
+      appBar: AppBar(
+        title: const Text('채팅'),
+        actions: const [_MatchProposalBadge()],
+      ),
       body: RefreshIndicator(
-        onRefresh: () => ref.refresh(openChatsProvider.future),
+        onRefresh: () {
+          ref.invalidate(matchProposalsProvider);
+          return ref.refresh(openChatsProvider.future);
+        },
         color: AppColors.textPrimary,
         child: chats.when(
           loading: () => const Center(child: CircularProgressIndicator()),
@@ -66,6 +73,48 @@ class ChatTabScreen extends ConsumerWidget {
   }
 }
 
+/// appbar 우상단 베스트 매칭 뱃지 — 미결 제안이 있을 때만 노출.
+/// 탭하면 매칭 제안 시트 (사진 + 채팅방 열기/넘어가기).
+class _MatchProposalBadge extends ConsumerWidget {
+  const _MatchProposalBadge();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final count = ref.watch(matchProposalsProvider).value?.length ?? 0;
+    if (count == 0) return const SizedBox.shrink();
+    return IconButton(
+      onPressed: () => showMatchProposalSheet(context),
+      icon: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          const FaIcon(
+            FontAwesomeIcons.solidHeart,
+            size: 18,
+            color: AppColors.gold,
+          ),
+          Positioned(
+            right: -6,
+            top: -6,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.xs,
+              ),
+              decoration: const BoxDecoration(
+                color: AppColors.textPrimary,
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                '$count',
+                style: AppText.hint.copyWith(color: Colors.white),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// 빈 상태 — 채팅방 생성 조건 안내 + 케미 탭 전환 CTA.
 class _EmptyChats extends StatelessWidget {
   final VoidCallback onGoChemistry;
@@ -78,7 +127,7 @@ class _EmptyChats extends StatelessWidget {
       children: [
         const EmotionEmptyState(
           asset: 'assets/images/emotion-love.png',
-          message: '케미 그룹에서 베스트 매칭이 되면\n여기에 1:1 채팅방이 생깁니다.',
+          message: '베스트 매칭 후 두 사람이 모두 동의하면\n여기에 1:1 채팅방이 생깁니다.',
         ),
         const SizedBox(height: AppSpacing.xl),
         InkWell(
