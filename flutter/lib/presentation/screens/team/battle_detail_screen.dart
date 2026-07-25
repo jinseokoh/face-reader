@@ -608,7 +608,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
           Text(
             '${battle.maxPlayers - _roster.length}명이 더 모이면 '
             '케미 결과표가 자동으로 발표됩니다',
-            style: AppText.caption.copyWith(color: AppColors.textHint),
+            style: AppText.caption,
             textAlign: TextAlign.center,
           ),
           _qrCard(),
@@ -639,13 +639,12 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
     return Column(
       children: [
         QrImageView(data: url, size: 160),
-        const SizedBox(height: AppSpacing.sm),
         Text(
           'QR 코드를 스캔하면 참가 페이지로 이동할 수 있습니다.',
           style: AppText.caption,
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: AppSpacing.lg),
       ],
     );
   }
