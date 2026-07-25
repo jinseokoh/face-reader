@@ -492,7 +492,14 @@ class _MineCard extends ConsumerWidget {
               ),
             ),
             if (expired)
-              const Positioned(right: -35, bottom: 8, child: _ExpiredRibbon()),
+              // 밴드 중심이 우변·하변에서 같은 거리(20px)에 있어야 잘린
+              // 구간 정중앙에 글자가 온다: 중심 x = 130/2 - 45 = 20,
+              // 중심 y = 10 + 20/2 = 20.
+              const Positioned(
+                right: -45,
+                bottom: 10,
+                child: _ExpiredRibbon(),
+              ),
           ],
         ),
       ),
@@ -512,13 +519,13 @@ class _ExpiredRibbon extends StatelessWidget {
       angle: -math.pi / 4,
       child: Container(
         width: 130,
+        height: 20,
         alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(vertical: 3),
-        color: Colors.white,
+        color: AppColors.danger,
         child: Text(
           '종료',
           style: AppText.caption.copyWith(
-            color: AppColors.danger,
+            color: Colors.white,
             height: 1.0,
           ),
         ),
