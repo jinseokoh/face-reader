@@ -242,6 +242,12 @@ export function JoinWizard({
         return
       }
       const uid = data.session.user.id
+      // 이미 이 그룹에 참여한 세션 — 초대장 레이아웃을 그대로 두고 로비
+      // 문구만 붙이는 done 스테이지로 (kakao 버튼·안내 레이블 없음).
+      if (roster.some((r) => r.userId === uid)) {
+        setStage('done')
+        return
+      }
       const [nick, mine] = await Promise.all([
         fetchNickname(client, uid),
         fetchMyFace(client, uid),
@@ -266,7 +272,9 @@ export function JoinWizard({
   useEffect(() => () => stopCamera(), [])
 
   useEffect(() => {
-    onActive?.(stage !== 'entry')
+    // done(참여됨)도 entry 처럼 초대장(BattleInvite)을 유지 — 로그인 전후
+    // 화면 구성이 갈라지지 않게 한다.
+    onActive?.(stage !== 'entry' && stage !== 'done')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage])
 
@@ -628,7 +636,7 @@ export function JoinWizard({
       } catch {
         /* storage 불가 환경은 무시 */
       }
-      await finishJoin(client)
+      finishJoin()
       return
     }
     if (code === 'BAD_PASSWORD') {
@@ -645,11 +653,10 @@ export function JoinWizard({
     fail(JOIN_ERROR_MESSAGES[code] ?? '참여에 실패했어요. 잠시 후 다시 시도해 주세요.')
   }
 
-  /** 참여 성립 마무리 — 최신 로스터를 읽고 done(라이브 로비)으로. */
-  async function finishJoin(client: SupabaseClient) {
-    const r = await fetchBattleRoster(client, battle.id)
-    setLiveRoster(r)
-    setStage('done')
+  /** 참여 성립 마무리 — 새로고침해 SSR 초대장에 내 슬롯(아바타·라벨)을
+   *  반영한다. 재마운트 시 로스터에 있는 세션은 곧장 done 으로 진입. */
+  function finishJoin() {
+    window.location.reload()
   }
 
   // ── 액션 핸들러 ────────────────────────────────────────────────────────
@@ -919,34 +926,12 @@ export function JoinWizard({
 
       {stage === 'done' && (
         <>
-          <p className="join-q">
-            {liveRoster.length} / {battle.maxPlayers} 명 참가 중
-          </p>
-          {/* 앱 로비처럼 — 참가자는 이니셜 아바타, 빈 자리는 점선 슬롯. */}
-          <div className="join-roster">
-            {liveRoster.map((r) => (
-              <div key={r.userId} className="join-roster-item">
-                <div className="join-avatar join-avatar--letter">
-                  {r.nickname.slice(0, 1)}
-                </div>
-                <p className="join-avatar-name">{r.nickname}</p>
-                <p className="join-gender-badge">
-                  {r.gender === 'male' ? '남' : '여'}
-                </p>
-              </div>
-            ))}
-            {Array.from({ length: waitCount }).map((_, i) => (
-              <div key={`wait-${i}`} className="join-roster-item">
-                <div className="join-avatar join-slot-empty" />
-                <p className="join-avatar-name" style={{ color: '#666' }}>
-                  대기 중
-                </p>
-              </div>
-            ))}
-          </div>
+          {/* 로스터는 위 초대장(BattleInvite)이 그대로 보여준다 — 여기는
+              참여 완료 상태 문구만. Realtime/폴링이 status 변화를 감지하면
+              새로고침으로 쇼케이스 분기로 넘어간다. */}
           {waitCount > 0 && (
             <p className="join-sub">
-              나머지 {waitCount}명이 등록을 마치면 매칭이 시작됩니다.
+              나는 이미 참여중입니다. 나머지 {waitCount}명이 등록을 마치면 매칭이 시작됩니다.
             </p>
           )}
           <p className="join-sub" style={{ marginTop: 4 }}>
