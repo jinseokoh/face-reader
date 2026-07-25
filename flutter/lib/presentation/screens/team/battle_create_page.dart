@@ -438,18 +438,29 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
   Widget _roomKindIcons() {
     final kind = _roomKind;
     if (kind == null) return const SizedBox.shrink();
-    final icons = kind == BattleRoomKind.match
+    final match = kind == BattleRoomKind.match;
+    final icons = match
         ? const [FontAwesomeIcons.child, FontAwesomeIcons.childDress]
         : const [
             FontAwesomeIcons.childReaching,
             FontAwesomeIcons.childReaching,
           ];
-    return Row(
+    return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        FaIcon(icons[0], size: 32, color: AppColors.textHint),
-        const SizedBox(width: 2),
-        FaIcon(icons[1], size: 32, color: AppColors.textHint),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FaIcon(icons[0], size: 32, color: AppColors.textHint),
+            const SizedBox(width: 2),
+            FaIcon(icons[1], size: 32, color: AppColors.textHint),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          match ? '남녀 비율 반반' : '남녀 비율 자유',
+          style: AppText.caption.copyWith(color: AppColors.textHint),
+        ),
       ],
     );
   }
@@ -463,7 +474,7 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
         _choiceTile(
           selected: _roomKind == BattleRoomKind.match,
           title: '이성 케미 매칭그룹',
-          caption: '남녀 반반으로 고정되고 결과는 남녀 쌍만 계산합니다',
+          caption: '남녀 비율이 똑같고 케미 결과는 남녀 쌍만 계산합니다',
           onTap: () => setState(() {
             _roomKind = BattleRoomKind.match;
             _categorySel = null;
