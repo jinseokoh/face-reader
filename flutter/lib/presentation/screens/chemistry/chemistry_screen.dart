@@ -42,6 +42,9 @@ class _BattleCardBody extends StatelessWidget {
 
   /// 내 그룹 전용 — 내가 방장인 방에 '방장' pill (연령 pill 과 동일 레시피).
   final bool isOwner;
+
+  /// 인원 미달 종료 방 — 제목을 hint 색으로 낮춰 살아 있는 방과 구분.
+  final bool dimTitle;
   const _BattleCardBody({
     required this.title,
     required this.ageLabel,
@@ -52,6 +55,7 @@ class _BattleCardBody extends StatelessWidget {
     required this.thumbOpen,
     required this.isPrivate,
     this.isOwner = false,
+    this.dimTitle = false,
   });
 
   @override
@@ -66,7 +70,14 @@ class _BattleCardBody extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(child: Text(title, style: AppText.subTitle)),
+            Expanded(
+              child: Text(
+                title,
+                style: dimTitle
+                    ? AppText.subTitle.copyWith(color: AppColors.textHint)
+                    : AppText.subTitle,
+              ),
+            ),
             const SizedBox(width: AppSpacing.sm),
             AgeRangePill(label: ageLabel),
           ],
@@ -388,9 +399,7 @@ class _MineCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return InkWell(
-      onTap: battle.status == BattleStatus.expired
-          ? null
-          : () => onOpen(battle),
+      onTap: () => onOpen(battle),
       borderRadius: BorderRadius.circular(AppRadius.lg),
       child: Container(
         margin: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -416,6 +425,7 @@ class _MineCard extends ConsumerWidget {
           isOwner:
               battle.ownerId != null &&
               battle.ownerId == BattleService.instance.myUid,
+          dimTitle: battle.status == BattleStatus.expired,
         ),
       ),
     );

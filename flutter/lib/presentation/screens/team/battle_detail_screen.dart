@@ -89,7 +89,11 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
         // 타이틀이 방제목으로 바뀌는 깜빡임 제거).
         title: const Text('케미 그룹 상세정보'),
         actions: [
-          if (battle != null && member && battle.isRecruiting)
+          // 모집 중 멤버(나가기/삭제) + 인원 미달 종료 방의 방장(삭제).
+          if (battle != null &&
+              member &&
+              (battle.isRecruiting ||
+                  (_isOwner && battle.status == BattleStatus.expired)))
             PopupMenuButton<String>(
               icon: const FaIcon(FontAwesomeIcons.ellipsisVertical, size: 18),
               onSelected: (v) => v == 'leave' ? _leave() : _delete(),
@@ -108,6 +112,8 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
             ? const Center(child: CircularProgressIndicator())
             : _notFound || battle == null
             ? Center(child: Text('존재하지 않는 그룹입니다', style: AppText.body))
+            : battle.status == BattleStatus.expired && member
+            ? _expiredBody(battle)
             : !battle.isRecruiting
             ? _closedBody(battle)
             : member
@@ -514,6 +520,29 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
 
   // ── 참가자 body ────────────────────────────────────────────────────────
 
+  /// 인원 미달 종료 방의 멤버 뷰 — 내용(헤더·참가자)은 그대로 보여주되
+  /// 죽은 방에 사람을 부르는 QR·초대는 뺀다. 방장 삭제는 AppBar 메뉴.
+  Widget _expiredBody(Battle battle) {
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      color: AppColors.textPrimary,
+      child: ListView(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        children: [
+          _headerCard(battle),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            '인원이 모이지 않아 종료된 그룹입니다',
+            style: AppText.caption.copyWith(color: AppColors.textHint),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          _slotList(battle),
+        ],
+      ),
+    );
+  }
+
   Widget _memberBody(Battle battle) {
     return RefreshIndicator(
       onRefresh: _refresh,
@@ -652,17 +681,37 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
         ],
       );
     }
-    return Column(
+    // 전체 방 — match 방과 같은 좌우 2열 배치 + '참여 n / N' 레이블.
+    final half = battle.maxPlayers ~/ 2;
+    Widget column(int start, int count) => Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (var i = 0; i < battle.maxPlayers; i++) ...[
-          if (i > 0) const SizedBox(height: AppSpacing.lg),
+        for (var i = start; i < start + count; i++) ...[
+          if (i > start) const SizedBox(height: AppSpacing.lg),
           _slotRow(
             battle,
             i < _roster.length ? _roster[i] : null,
             index: i + 1,
           ),
         ],
+      ],
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '참여 ${_roster.length} / ${battle.maxPlayers}',
+          style: AppText.sectionTitle,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: column(0, half)),
+            const SizedBox(width: AppSpacing.lg),
+            Expanded(child: column(half, battle.maxPlayers - half)),
+          ],
+        ),
       ],
     );
   }

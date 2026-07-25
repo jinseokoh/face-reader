@@ -217,24 +217,6 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
     );
   }
 
-  /// 인접 구간 chip 토글 — 선택 해제되는 쪽은 항상 구간의 끝단이므로
-  /// (가운데는 방장 decade 고정) min/max 한쪽만 밀면 연속성이 보존된다.
-  void _toggleAgeDecade(int d) {
-    setState(() {
-      final min = _ageMin!;
-      final max = _ageMax!;
-      if (d < min) {
-        _ageMin = d;
-      } else if (d > max) {
-        _ageMax = d;
-      } else if (d == min) {
-        _ageMin = d + 10;
-      } else if (d == max) {
-        _ageMax = d - 10;
-      }
-    });
-  }
-
   void _back() {
     if (_step == _Step.roomKind) {
       Navigator.of(context).pop();
@@ -450,7 +432,7 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
         _choiceTile(
           selected: _roomKind == BattleRoomKind.all,
           title: '전체 케미 매칭그룹',
-          caption: '성별 구분 없이 모든 전체 쌍의 케미를 계산합니다',
+          caption: '남녀 구분 없이 모든 전체 쌍의 케미를 계산합니다',
           onTap: () => setState(() {
             _roomKind = BattleRoomKind.all;
             _categorySel = null;
@@ -623,6 +605,24 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
         ),
       ),
     );
+  }
+
+  /// 인접 구간 chip 토글 — 선택 해제되는 쪽은 항상 구간의 끝단이므로
+  /// (가운데는 방장 decade 고정) min/max 한쪽만 밀면 연속성이 보존된다.
+  void _toggleAgeDecade(int d) {
+    setState(() {
+      final min = _ageMin!;
+      final max = _ageMax!;
+      if (d < min) {
+        _ageMin = d;
+      } else if (d > max) {
+        _ageMax = d;
+      } else if (d == min) {
+        _ageMin = d + 10;
+      } else if (d == max) {
+        _ageMax = d - 10;
+      }
+    });
   }
 
   Widget _visibilityStep() {
