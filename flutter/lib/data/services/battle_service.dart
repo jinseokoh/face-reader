@@ -70,7 +70,7 @@ class BattleService {
   // (select=*) 가 42501 로 실패한다 — grant 된 컬럼만 명시.
   static const _teamCols =
       'id, owner_id, title, is_private, max_players, age_min, age_max, '
-      'room_kind, thumb_open, status, started_at, closed_at, '
+      'room_kind, status, started_at, closed_at, '
       'chemistry_snapshot, result_payload, created_at';
 
   String? get myUid => _client.auth.currentUser?.id;
@@ -84,7 +84,6 @@ class BattleService {
     int? ageMin,
     int? ageMax,
     required BattleRoomKind roomKind,
-    required bool thumbOpen,
   }) async {
     final row = await _client
         .from('teams')
@@ -97,7 +96,6 @@ class BattleService {
           'age_min': ?ageMin,
           'age_max': ?ageMax,
           'room_kind': roomKind.name,
-          'thumb_open': thumbOpen,
         })
         .select(_teamCols)
         .single();

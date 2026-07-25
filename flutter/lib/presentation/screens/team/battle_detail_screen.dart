@@ -576,11 +576,10 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
   }
 
   /// 사진 공개 계약 문구 — 정보성 고지, 체크박스 없음. 조인 = 동의(UX §E.1).
-  /// 결과 발표 = 참가자 전원 사진 공개 (thumb_open 은 모집 중 노출만 제어).
   Widget _photoConsentNotice(Battle battle) {
     final text = battle.roomKind == BattleRoomKind.match
-        ? '결과가 발표되면 참가자 전원에게 서로의 사진이 공개되고, 베스트 매칭이 서로 동의하면 1:1 채팅이 열립니다'
-        : '결과가 발표되면 참가자 전원에게 서로의 사진이 공개됩니다';
+        ? '참가하면 참가자 전원에게 서로의 사진이 공개되고, 베스트 매칭이 서로 동의하면 1:1 채팅이 열립니다'
+        : '참가하면 참가자 전원에게 서로의 사진이 공개됩니다';
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
@@ -639,7 +638,6 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
         return;
       }
       // 관상 유형(archetype)은 얼굴 공개 여부와 무관하게 슬롯에 노출한다.
-      // 썸네일 URL 은 thumb_open=true 인 방에서만 사용 (_SlotCell 게이트).
       // 미참가자에게도 로스터를 보여주므로 참가 여부와 무관하게 로드 —
       // 웹 초대장(/g/:id)이 익명에게 읽는 것과 같은 public read 데이터다.
       final profiles = await _service.fetchSlotProfiles([
@@ -748,7 +746,6 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
           : '${profile!.ageGender} ${profile.ethnicity ?? ''}'.trim(),
       archetype: profile?.archetype,
       isMe: entry?.userId == _service.myUid,
-      thumbOpen: battle.thumbOpen,
       slotGender: slotGender,
     );
   }
@@ -769,7 +766,6 @@ class _SlotRow extends StatelessWidget {
   /// "신의형 · 호감형 기질" — 슬롯의 관심 유도 포인트.
   final String? archetype;
   final bool isMe;
-  final bool thumbOpen;
 
   /// 목록 내 슬롯 번호(1부터) — 이성방은 남/여 열 각각 1부터 센다.
   final int slotIndex;
@@ -784,7 +780,6 @@ class _SlotRow extends StatelessWidget {
     required this.demographic,
     required this.archetype,
     required this.isMe,
-    required this.thumbOpen,
     required this.slotIndex,
     this.slotGender,
   });
@@ -888,10 +883,6 @@ class _SlotRow extends StatelessWidget {
         opacity: 0.35,
         child: Image.asset(_genderIconAsset(gender), fit: BoxFit.cover),
       );
-    }
-    // thumb_open=false — 얼굴 썸네일 대신 참가자 성별 기본 아이콘.
-    if (!thumbOpen) {
-      return Image.asset(_genderIconAsset(entry!.gender), fit: BoxFit.cover);
     }
     return thumbUrl == null
         ? const Center(

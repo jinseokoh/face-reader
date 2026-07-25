@@ -40,7 +40,6 @@ class _BattleCardBody extends StatelessWidget {
   final BattleRoomKind roomKind;
   final int? playerCount;
   final int maxPlayers;
-  final bool thumbOpen;
   final bool isPrivate;
 
   /// 좌하단 참가자 미니 아바타 — 상태 무관 모든 카드 공통.
@@ -54,7 +53,6 @@ class _BattleCardBody extends StatelessWidget {
     required this.roomKind,
     required this.playerCount,
     required this.maxPlayers,
-    required this.thumbOpen,
     required this.isPrivate,
     required this.teamId,
     this.dimTitle = false,
@@ -111,16 +109,8 @@ class _BattleCardBody extends StatelessWidget {
           children: [
             // 좌하단 — 상태 무관 참가자 미니 아바타 (궁합 확인 탭 pair
             // 아바타의 1/2 스케일). 종료 표시는 카드의 corner ribbon 담당.
-            Expanded(
-              child: _RosterAvatars(teamId: teamId, thumbOpen: thumbOpen),
-            ),
-            // 우측 하단 상태 아이콘 — 얼굴 공개 / 비밀방.
-            FaIcon(
-              thumbOpen ? FontAwesomeIcons.eye : FontAwesomeIcons.eyeSlash,
-              size: 14,
-              color: AppColors.textHint,
-            ),
-            const SizedBox(width: AppSpacing.sm),
+            Expanded(child: _RosterAvatars(teamId: teamId)),
+            // 우측 하단 상태 아이콘 — 비밀방 여부.
             FaIcon(
               isPrivate ? FontAwesomeIcons.lock : FontAwesomeIcons.lockOpen,
               size: 14,
@@ -133,13 +123,11 @@ class _BattleCardBody extends StatelessWidget {
   }
 }
 
-/// 모집중 카드 좌하단 참가자 아바타 — 궁합 확인 탭 pair 아바타(42 thumb +
+/// 카드 좌하단 참가자 아바타 — 궁합 확인 탭 pair 아바타(42 thumb +
 /// 2 ring, step 32)의 정확히 1/2 스케일(21 + 1, step 16) overlap 배치.
-/// thumb_open=false 방은 사진 대신 성별 아이콘 (상세 _SlotCell 게이트와 동일).
 class _RosterAvatars extends ConsumerWidget {
   final String teamId;
-  final bool thumbOpen;
-  const _RosterAvatars({required this.teamId, required this.thumbOpen});
+  const _RosterAvatars({required this.teamId});
 
   static const _kThumb = 21.0;
   static const _kBox = 23.0; // thumb + 흰 ring 1px×2
@@ -168,7 +156,7 @@ class _RosterAvatars extends ConsumerWidget {
   }
 
   Widget _ring(RosterAvatar a) {
-    final showPhoto = thumbOpen && a.url != null;
+    final showPhoto = a.url != null;
     return Container(
       padding: const EdgeInsets.all(1),
       decoration: const BoxDecoration(
@@ -498,7 +486,6 @@ class _MineCard extends ConsumerWidget {
                 roomKind: battle.roomKind,
                 playerCount: battle.playerCount,
                 maxPlayers: battle.maxPlayers,
-                thumbOpen: battle.thumbOpen,
                 isPrivate: !battle.isPublic,
                 teamId: battle.id,
                 dimTitle: expired,
@@ -668,7 +655,6 @@ class _PublicCardState extends State<_PublicCard> {
           roomKind: battle.roomKind,
           playerCount: battle.playerCount,
           maxPlayers: battle.maxPlayers,
-          thumbOpen: battle.thumbOpen,
           isPrivate: battle.isPrivate,
           teamId: battle.id,
         ),

@@ -33,7 +33,6 @@ class Battle {
   final int? ageMin;
   final int? ageMax;
   final BattleRoomKind roomKind;
-  final bool thumbOpen;
   final BattleStatus status;
   final DateTime? startedAt;
   final DateTime? closedAt;
@@ -53,7 +52,6 @@ class Battle {
     required this.ageMin,
     required this.ageMax,
     required this.roomKind,
-    required this.thumbOpen,
     required this.status,
     required this.startedAt,
     required this.closedAt,
@@ -73,7 +71,6 @@ class Battle {
         ageMin: (row['age_min'] as num?)?.toInt(),
         ageMax: (row['age_max'] as num?)?.toInt(),
         roomKind: battleRoomKindFrom(row['room_kind'] as String),
-        thumbOpen: row['thumb_open'] as bool,
         status: battleStatusFrom(row['status'] as String),
         startedAt: row['started_at'] == null
             ? null
@@ -130,7 +127,6 @@ class PublicBattle {
   final int? ageMin;
   final int? ageMax;
   final BattleRoomKind roomKind;
-  final bool thumbOpen;
   final bool isPrivate;
   final DateTime createdAt;
   final int playerCount;
@@ -142,7 +138,6 @@ class PublicBattle {
     required this.ageMin,
     required this.ageMax,
     required this.roomKind,
-    required this.thumbOpen,
     required this.isPrivate,
     required this.createdAt,
     required this.playerCount,
@@ -155,7 +150,6 @@ class PublicBattle {
     ageMin: (row['age_min'] as num?)?.toInt(),
     ageMax: (row['age_max'] as num?)?.toInt(),
     roomKind: battleRoomKindFrom(row['room_kind'] as String),
-    thumbOpen: row['thumb_open'] as bool,
     isPrivate: row['is_private'] as bool? ?? false,
     createdAt: DateTime.parse(row['created_at'] as String),
     playerCount: (row['player_count'] as num).toInt(),

@@ -724,7 +724,6 @@ create table if not exists public.teams (
   is_private         boolean     generated always as (password is not null) stored,
   room_kind          text        not null default 'all'
                                  check (room_kind in ('all', 'match')),
-  thumb_open         boolean     not null default false,
   max_players        int         not null default 8
                                  check (max_players in (6, 8, 10, 12)),
   age_min            int         not null check (age_min >= 20),
@@ -1344,7 +1343,7 @@ grant  execute on function public.respond_match(uuid, boolean)     to authentica
 -- 종전과 동일 화이트리스트라 owner 실행이 새로 여는 정보는 없다. 비로그인은
 -- 차단 행이 없어 전 방 노출.
 create or replace view public.public_teams with (security_invoker = off) as
-  select t.id, t.title, t.room_kind, t.thumb_open, t.is_private, t.max_players,
+  select t.id, t.title, t.room_kind, t.is_private, t.max_players,
          t.age_min, t.age_max, t.created_at,
          (select count(*)::int from public.team_members tm where tm.team_id = t.id)
            as player_count
@@ -1383,7 +1382,7 @@ create or replace view public.my_blocks as
 -- 제외 — 변경 이벤트는 신호이고 본문은 클라이언트가 refetch 한다.
 do $$ begin
   alter publication supabase_realtime add table public.teams
-    (id, owner_id, title, is_private, room_kind, thumb_open, max_players,
+    (id, owner_id, title, is_private, room_kind, max_players,
      age_min, age_max, status, started_at, closed_at, created_at, updated_at);
 exception when duplicate_object then null; end $$;
 do $$ begin
@@ -1420,13 +1419,13 @@ grant select on public.admin_users to service_role;
 -- §11-1 의 blanket grant 가 teams 전 컬럼을 열어 두므로 여기서 다시 좁힌다.
 -- SELECT: password 만 제외 — 비교는 join_team 내부에서만.
 revoke select on public.teams from anon, authenticated;
-grant select (id, owner_id, title, is_private, room_kind, thumb_open, max_players,
+grant select (id, owner_id, title, is_private, room_kind, max_players,
               age_min, age_max, status, started_at, closed_at,
               chemistry_snapshot, result_payload, created_at, updated_at)
   on public.teams to anon, authenticated;
 -- INSERT: 생성 입력 컬럼만 — status/started_at/snapshot/payload 는 default·RPC 전용.
 revoke insert on public.teams from anon, authenticated;
-grant insert (id, owner_id, title, password, room_kind, thumb_open,
+grant insert (id, owner_id, title, password, room_kind,
               max_players, age_min, age_max)
   on public.teams to authenticated;
 -- UPDATE: title 만 (방 이름 수정). 상태 전이·payload 는 RPC 전용.

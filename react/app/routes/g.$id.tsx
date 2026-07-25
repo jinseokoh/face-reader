@@ -170,7 +170,7 @@ function BattleInvite({
   const isMatch = battle.roomKind === "match";
   const chip = (r: (typeof roster)[number]) => (
     <span key={r.userId} className="invite-chip">
-      {battle.thumbOpen && r.thumbKey && (
+      {r.thumbKey && (
         <img
           className={`invite-avatar${
             r.thumbSource === "camera" ? " invite-avatar--camera" : ""

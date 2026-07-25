@@ -165,7 +165,7 @@ class _BattleMatchCardState extends State<BattleMatchCard> {
     child: child,
   );
 
-  /// 상대 200×200 얼굴 사진 — thumb_open 무관 항상 시도, 실패 시 성별 아이콘.
+  /// 상대 200×200 얼굴 사진 — 실패 시 성별 아이콘.
   Widget _photo() {
     return Container(
       width: 200,

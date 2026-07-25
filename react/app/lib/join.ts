@@ -223,7 +223,6 @@ export type BattleRow = {
   ageMin: number | null;
   ageMax: number | null;
   roomKind: "all" | "match";
-  thumbOpen: boolean;
   status: BattleStatus;
   chemistrySnapshot: Record<string, unknown> | null;
   resultPayload: BattlePayload | null;
@@ -238,7 +237,7 @@ export type RosterEntry = {
 };
 
 const BATTLE_COLS =
-  "id, owner_id, title, is_private, max_players, age_min, age_max, room_kind, thumb_open, status, chemistry_snapshot, result_payload";
+  "id, owner_id, title, is_private, max_players, age_min, age_max, room_kind, status, chemistry_snapshot, result_payload";
 
 function rowToBattle(r: Record<string, unknown>): BattleRow {
   return {
@@ -250,7 +249,6 @@ function rowToBattle(r: Record<string, unknown>): BattleRow {
     ageMin: (r.age_min as number) ?? null,
     ageMax: (r.age_max as number) ?? null,
     roomKind: r.room_kind as "all" | "match",
-    thumbOpen: r.thumb_open as boolean,
     status: r.status as BattleStatus,
     chemistrySnapshot:
       (r.chemistry_snapshot as Record<string, unknown>) ?? null,

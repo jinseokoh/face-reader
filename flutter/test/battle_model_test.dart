@@ -102,7 +102,6 @@ void main() {
       'age_min': 20,
       'age_max': 30,
       'room_kind': 'all',
-      'thumb_open': false,
       'status': 'recruiting',
       'started_at': null,
       'closed_at': null,
@@ -117,10 +116,9 @@ void main() {
     expect(battle.hasResult, isFalse);
     expect(battle.ageRangeLabel, '20대~30대');
     expect(battle.roomKind, BattleRoomKind.all);
-    expect(battle.thumbOpen, isFalse);
   });
 
-  test('Battle.fromRow — room_kind=match·thumb_open=true 파싱', () {
+  test('Battle.fromRow — room_kind=match 파싱', () {
     final battle = Battle.fromRow({
       'id': 'b2',
       'owner_id': 'u1',
@@ -130,7 +128,6 @@ void main() {
       'age_min': 20,
       'age_max': 30,
       'room_kind': 'match',
-      'thumb_open': true,
       'status': 'recruiting',
       'started_at': null,
       'closed_at': null,
@@ -139,7 +136,6 @@ void main() {
       'created_at': '2026-07-16T09:00:00Z',
     });
     expect(battle.roomKind, BattleRoomKind.match);
-    expect(battle.thumbOpen, isTrue);
   });
 
   test('ageRangeLabel — 전연령·단일 decade·범위', () {
@@ -152,8 +148,7 @@ void main() {
           'age_min': lo,
           'age_max': hi,
           'room_kind': 'all',
-          'thumb_open': false,
-          'status': 'expired',
+              'status': 'expired',
           'started_at': null,
           'closed_at': null,
           'chemistry_snapshot': null,
@@ -187,14 +182,12 @@ void main() {
       'age_min': null,
       'age_max': null,
       'room_kind': 'match',
-      'thumb_open': true,
       'created_at': '2026-07-16T09:00:00Z',
       'player_count': 2,
     });
     expect(pub.playerCount, 2);
     expect(pub.ageRangeLabel, '전연령');
     expect(pub.roomKind, BattleRoomKind.match);
-    expect(pub.thumbOpen, isTrue);
   });
 
   test('mapBattleError — 서버 에러 계약 문자열 매핑', () {

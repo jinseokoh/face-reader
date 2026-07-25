@@ -13,7 +13,7 @@ import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
 /// 방 생성 스텝 (rev2 — UX §A/§C): ①방 유형 → ②방 제목(카테고리→프리셋,
 /// 기타 = 자유 입력) → ③인원(6/8/10/12) → ④연령대(방장 인접 구간 multi-select chip)
-/// → ⑤공개 설정(공개/비밀) → ⑥모집중 참가자 얼굴 공개. [그룹 만들기] = createBattle
+/// → ⑤공개 설정(공개/비밀). [그룹 만들기] = createBattle
 /// + joinBattle(셀프 조인) 후 Battle 반환, 조인 실패 시 방 롤백.
 Future<Battle?> showBattleCreatePage(BuildContext context) {
   return showModalBottomSheet<Battle>(
@@ -58,7 +58,6 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
   int? _ageMin;
   int? _ageMax;
   bool _isPublic = false;
-  bool _thumbOpen = false;
   bool _busy = false;
   int? _ownerAgeDecade; // 방장(나) 연령대 — ④ 슬라이더 bounds 산출용.
 
@@ -75,7 +74,6 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
     _Step.count => true,
     _Step.age => true,
     _Step.visibility => _isPublic || _pinCtrl.text.trim().length == 4,
-    _Step.thumb => true,
   };
 
   // ② 방 제목 — 방 유형에 허용되지 않는 카테고리/제목은 숨긴다(disabled 나열 아님).
@@ -124,10 +122,33 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
             ),
             const SizedBox(height: AppSpacing.xl),
             // ② 제목 스텝은 자체 스크롤 (헤더·카테고리 chip 고정) — 나머지
-            // 스텝은 통짜 스크롤.
+            // 스텝은 통짜 스크롤. ① 방 유형 스텝은 타일 아래 남는 여백
+            // 가운데에 선택한 유형의 커플 아이콘을 띄운다.
             Expanded(
               child: _step == _Step.title
                   ? _titleStep()
+                  : _step == _Step.roomKind
+                  // 내용이 넘치는 작은 화면에서는 스크롤로 전환되고, 여유가
+                  // 있으면 아이콘이 남는 여백의 세로 중앙에 온다.
+                  ? LayoutBuilder(
+                      builder: (ctx, cons) => SingleChildScrollView(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight: cons.maxHeight,
+                          ),
+                          child: IntrinsicHeight(
+                            child: Column(
+                              children: [
+                                _roomKindStep(),
+                                Expanded(
+                                  child: Center(child: _roomKindIcons()),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
                   : SingleChildScrollView(child: _stepBody()),
             ),
             // ① 방 유형 설명 — 어느 유형을 골라도 [다음] 버튼 바로 위에 노출.
@@ -141,7 +162,7 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
             ],
             const SizedBox(height: AppSpacing.lg),
             PrimaryButton(
-              label: _step == _Step.thumb ? '그룹 만들기' : '다음',
+              label: _step == _Step.visibility ? '그룹 만들기' : '다음',
               busy: _busy,
               onPressed: _stepValid && !_busy ? _next : null,
             ),
@@ -377,7 +398,6 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
         ageMin: _ageMin,
         ageMax: _ageMax,
         roomKind: _roomKind!,
-        thumbOpen: _thumbOpen,
       );
       await service.joinBattle(
         battle.id,
@@ -404,12 +424,34 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
   }
 
   void _next() {
-    if (_step == _Step.thumb) {
+    if (_step == _Step.visibility) {
       _create();
       return;
     }
     setState(() => _step = _Step.values[_step.index + 1]);
     if (_step == _Step.title) _listAnim.forward(from: 0);
+  }
+
+  /// ① 방 유형 선택 시 타일과 [다음] 버튼 사이 여백 가운데 커플 아이콘 —
+  /// 케미 카드의 방 유형 pill 아이콘과 동일 조합 (이성 child+childDress /
+  /// 전체 childReaching×2).
+  Widget _roomKindIcons() {
+    final kind = _roomKind;
+    if (kind == null) return const SizedBox.shrink();
+    final icons = kind == BattleRoomKind.match
+        ? const [FontAwesomeIcons.child, FontAwesomeIcons.childDress]
+        : const [
+            FontAwesomeIcons.childReaching,
+            FontAwesomeIcons.childReaching,
+          ];
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FaIcon(icons[0], size: 32, color: AppColors.textHint),
+        const SizedBox(width: 2),
+        FaIcon(icons[1], size: 32, color: AppColors.textHint),
+      ],
+    );
   }
 
   Widget _roomKindStep() {
@@ -449,36 +491,7 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
     _Step.count => _countStep(),
     _Step.age => _ageStep(),
     _Step.visibility => _visibilityStep(),
-    _Step.thumb => _thumbStep(),
   };
-
-  Widget _thumbStep() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('모집중 참가자 얼굴 공개', style: AppText.display),
-        const SizedBox(height: AppSpacing.xxl),
-        _choiceTile(
-          selected: _thumbOpen,
-          title: '얼굴 공개',
-          caption: '모집 중 참가자의 얼굴 썸네일이 보입니다',
-          onTap: () => setState(() => _thumbOpen = true),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        _choiceTile(
-          selected: !_thumbOpen,
-          title: '얼굴 비공개',
-          caption: '얼굴 대신 성별 기본 아이콘이 보입니다',
-          onTap: () => setState(() => _thumbOpen = false),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        Text(
-          '최종 케미 결과표를 발표할 때에는 얼굴 썸네일이 모두에게 공개됩니다. 이 옵션은 결과 발표 전에도, 썸네일 사진을 공개할지 결정합니다.',
-          style: AppText.caption.copyWith(color: AppColors.textHint),
-        ),
-      ],
-    );
-  }
 
   Widget _titleStep() {
     final category = _activeCategory;
@@ -661,4 +674,4 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
   }
 }
 
-enum _Step { roomKind, title, count, age, visibility, thumb }
+enum _Step { roomKind, title, count, age, visibility }

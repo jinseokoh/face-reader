@@ -193,7 +193,6 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
   }
 
   /// 슬롯 아바타 — 썸네일 → 성별 기본 아이콘 → 사람 아이콘.
-  /// thumb_open 게이트는 모집 중 상세 페이지에만 적용 — 결과 발표 후는
   /// 참가자 전원 사진 공개가 계약이다 (조인 동의 문구와 동일).
   Widget _slotAvatar(int slot, {double size = 28}) {
     String? uid;

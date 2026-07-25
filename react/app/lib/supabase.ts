@@ -100,7 +100,6 @@ export type BattleSSR = {
     ageMin: number | null;
     ageMax: number | null;
     roomKind: "all" | "match";
-    thumbOpen: boolean;
     status: string;
     resultPayload: unknown | null;
     chemistrySnapshot: Record<string, unknown> | null;
@@ -111,7 +110,7 @@ export type BattleSSR = {
     isOwner: boolean;
     nickname: string;
     gender: string;
-    /** my-face 썸네일 R2 키 — 아바타는 thumb_open 방에서만 노출. 없으면 null. */
+    /** my-face 썸네일 R2 키. 없으면 null. */
     thumbKey: string | null;
     /** metrics body 의 촬영 경로("camera"/"album") — 아바타 border 색 규칙. */
     thumbSource: string | null;
@@ -136,7 +135,7 @@ export async function fetchBattleSSR(
 
   const teamRes = await fetch(
     `${env.SUPABASE_URL}/rest/v1/teams?id=eq.${q}` +
-      `&select=id,title,is_private,max_players,age_min,age_max,room_kind,thumb_open,status,result_payload,chemistry_snapshot`,
+      `&select=id,title,is_private,max_players,age_min,age_max,room_kind,status,result_payload,chemistry_snapshot`,
     { headers },
   );
   if (!teamRes.ok) {
@@ -157,8 +156,7 @@ export async function fetchBattleSSR(
     : [];
 
   // 참가자 my-face metrics body 파싱 — 썸네일 키 + 촬영 경로(source, 아바타
-  // border 규칙) + 인구통계(ageGroup·ethnicity, 칩 라벨). 아바타 노출 여부는
-  // UI 에서 thumb_open 으로 게이트한다.
+  // border 규칙) + 인구통계(ageGroup·ethnicity, 칩 라벨).
   const thumbs = new Map<
     string,
     {
@@ -206,7 +204,6 @@ export async function fetchBattleSSR(
       ageMin: (t.age_min as number) ?? null,
       ageMax: (t.age_max as number) ?? null,
       roomKind: t.room_kind as "all" | "match",
-      thumbOpen: t.thumb_open as boolean,
       status: t.status as string,
       resultPayload: t.result_payload ?? null,
       chemistrySnapshot: (t.chemistry_snapshot as Record<string, unknown>) ?? null,
