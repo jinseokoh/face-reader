@@ -4,6 +4,7 @@ import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show RealtimeChannel;
@@ -23,9 +24,9 @@ import '../../widgets/primary_button.dart';
 import '../../widgets/source_badge.dart';
 import 'team_reveal_screen.dart';
 
-/// male/female 성별 기본 아이콘 asset 경로.
+/// male/female 성별 실루엣 svg asset 경로.
 String _genderIconAsset(String gender) =>
-    gender == 'male' ? 'assets/icons/male.png' : 'assets/icons/female.png';
+    gender == 'male' ? 'assets/svgs/male.svg' : 'assets/svgs/female.svg';
 
 /// 케미 그룹 상세 페이지 — 참가 여부와 무관한 단일 진입점.
 /// 미참가자에겐 참가 폼(PIN·사진 공개 동의·참가 CTA), 참가자에겐 슬롯
@@ -293,7 +294,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
     );
   }
 
-  /// 공개 그룹 카드(_PublicCard)와 동일한 결 — 제목 + 연령 pill / 정원.
+  /// 공개 그룹 카드(_PublicCard)와 동일한 결 — 제목 1줄 / 유형·연령 pill.
   /// [showRemaining] = 미참가 이성방에서 성별 남은 자리 표시 (참가자 뷰는
   /// 슬롯 열 헤더가 같은 정보를 보여주므로 생략).
   Widget _headerCard(Battle battle, {bool showRemaining = false}) {
@@ -307,16 +308,14 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: Text(battle.title, style: AppText.subTitle)),
-              const SizedBox(width: AppSpacing.sm),
-              AgeRangePill(label: battle.ageRangeLabel),
-            ],
+          Text(
+            battle.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppText.subTitle,
           ),
           const SizedBox(height: AppSpacing.xs),
-          // 목록 카드(_BattleCardBody)와 동일 — 방 유형 invert pill badge + 정원.
+          // 목록 카드(_BattleCardBody)와 동일 — 방 유형 invert pill + 연령 pill.
           Row(
             children: [
               AgeRangePill(
@@ -335,10 +334,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
                       ],
               ),
               const SizedBox(width: AppSpacing.sm),
-              Text(
-                '${_roster.length} / ${battle.maxPlayers} 명',
-                style: AppText.caption,
-              ),
+              AgeRangePill(label: battle.ageRangeLabel),
             ],
           ),
           if (showRemaining && battle.roomKind == BattleRoomKind.match) ...[
@@ -879,9 +875,15 @@ class _SlotRow extends StatelessWidget {
           ),
         );
       }
-      return Opacity(
-        opacity: 0.35,
-        child: Image.asset(_genderIconAsset(gender), fit: BoxFit.cover),
+      return Center(
+        child: SvgPicture.asset(
+          _genderIconAsset(gender),
+          height: 24,
+          colorFilter: const ColorFilter.mode(
+            AppColors.textHint,
+            BlendMode.srcIn,
+          ),
+        ),
       );
     }
     return thumbUrl == null

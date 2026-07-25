@@ -352,6 +352,15 @@ class BattleService {
     return {for (final r in rows) r['team_id'] as String};
   }
 
+  /// 내가 베스트 쌍인 매칭의 team_id 집합 — RLS(pair_read)가 내 쌍 행만
+  /// 돌려주므로 무필터 조회가 곧 '내가 베스트 매칭인 방' 목록이다.
+  /// 완료 방 카드의 나가리(베스트 탈락) 판정용.
+  Future<Set<String>> fetchMyMatchTeamIds() async {
+    if (myUid == null) return const {};
+    final rows = await _client.from('team_matches').select('team_id');
+    return {for (final r in rows) r['team_id'] as String};
+  }
+
   /// 채팅 탭 리스트 — 열린 매칭 전부의 상대·썸네일·마지막 메시지 요약.
   /// unread 판정은 provider 몫 (여기선 hasUnread=false 로 채운다).
   /// 마지막 메시지 최신순, 메시지 없는 방은 뒤로.
@@ -431,8 +440,7 @@ class BattleService {
     final matches = [for (final r in rows) BattleMatch.fromRow(r)]
         .where(
           (m) =>
-              m.consentOf(uid) != false &&
-              m.consentOf(m.otherOf(uid)) != false,
+              m.consentOf(uid) != false && m.consentOf(m.otherOf(uid)) != false,
         )
         .toList();
     if (matches.isEmpty) return const [];
@@ -440,19 +448,19 @@ class BattleService {
     final teamIds = [for (final m in matches) m.teamId];
     final otherIds = [for (final m in matches) m.otherOf(uid)];
     final results = await Future.wait<dynamic>([
-      _client.from('teams').select('id, title, closed_at').inFilter('id', teamIds),
+      _client
+          .from('teams')
+          .select('id, title, closed_at')
+          .inFilter('id', teamIds),
       _client
           .from('team_roster')
           .select('team_id, user_id, nickname, gender')
           .inFilter('team_id', teamIds),
       fetchMyFaceThumbnailUrls(otherIds),
     ]);
-    final teams = {
-      for (final r in results[0] as List) r['id'] as String: r,
-    };
+    final teams = {for (final r in results[0] as List) r['id'] as String: r};
     final roster = {
-      for (final r in results[1] as List)
-        '${r['team_id']}:${r['user_id']}': r,
+      for (final r in results[1] as List) '${r['team_id']}:${r['user_id']}': r,
     };
     final thumbs = results[2] as Map<String, MyFaceThumb>;
 

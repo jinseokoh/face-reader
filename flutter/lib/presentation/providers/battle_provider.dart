@@ -19,6 +19,11 @@ final openChatTeamsProvider = FutureProvider<Set<String>>(
   (ref) => BattleService.instance.fetchOpenChatTeamIds(),
 );
 
+/// 내가 베스트 매칭 쌍인 team_id 집합 — 완료 방 카드의 나가리(red) 판정.
+final myMatchTeamsProvider = FutureProvider<Set<String>>(
+  (ref) => BattleService.instance.fetchMyMatchTeamIds(),
+);
+
 /// 미결 베스트 매칭 제안 — 채팅 탭 appbar 뱃지 + 매칭 제안 시트.
 /// 갱신은 ref.invalidate (응답 직후·당겨서 새로고침).
 final matchProposalsProvider = FutureProvider<List<MatchProposal>>(
@@ -51,7 +56,11 @@ final openChatsProvider = FutureProvider<List<OpenChat>>((ref) async {
         photoUrl: c.photoUrl,
         photoSource: c.photoSource,
         lastMessage: c.lastMessage,
-        hasUnread: _isUnread(c.lastMessage, myUid, prefs.get(chatLastSeenKey(c.teamId))),
+        hasUnread: _isUnread(
+          c.lastMessage,
+          myUid,
+          prefs.get(chatLastSeenKey(c.teamId)),
+        ),
       ),
   ];
 });

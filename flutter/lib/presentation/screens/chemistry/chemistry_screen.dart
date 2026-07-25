@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
@@ -32,13 +33,12 @@ class ChemistryScreen extends ConsumerStatefulWidget {
   ConsumerState<ChemistryScreen> createState() => _ChemistryScreenState();
 }
 
-/// 공개 그룹·내 그룹 공용 카드 본문 — 제목+연령 pill / 유형·정원 / 유효 시한.
+/// 공개 그룹·내 그룹 공용 카드 본문 — 제목 / 유형·연령 pill / 참가자 슬롯.
 /// 두 목록의 item 은 이 위젯 하나로 같은 결을 강제한다.
 class _BattleCardBody extends StatelessWidget {
   final String title;
   final String ageLabel;
   final BattleRoomKind roomKind;
-  final int? playerCount;
   final int maxPlayers;
   final bool isPrivate;
 
@@ -51,7 +51,6 @@ class _BattleCardBody extends StatelessWidget {
     required this.title,
     required this.ageLabel,
     required this.roomKind,
-    required this.playerCount,
     required this.maxPlayers,
     required this.isPrivate,
     required this.teamId,
@@ -61,9 +60,6 @@ class _BattleCardBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final kind = roomKind == BattleRoomKind.match ? '이성 케미' : '전체 케미';
-    final count = playerCount == null
-        ? '$maxPlayers 명'
-        : '$playerCount / $maxPlayers 명';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -79,8 +75,6 @@ class _BattleCardBody extends StatelessWidget {
         // 방 유형은 invert pill badge(연령 pill 과 동일 위젯) + 정원 텍스트.
         Row(
           children: [
-            AgeRangePill(label: ageLabel),
-            const SizedBox(width: AppSpacing.sm),
             AgeRangePill(
               label: kind,
               invert: true,
@@ -93,18 +87,26 @@ class _BattleCardBody extends StatelessWidget {
                     ],
             ),
             const SizedBox(width: AppSpacing.sm),
-            Text(count, style: AppText.caption),
+            AgeRangePill(label: ageLabel),
           ],
         ),
-        // 아바타 줄은 위 정원 텍스트와 붙으면 답답해서 sm(8px)으로 벌린다.
+        // 아바타 줄은 위 pill 줄과 붙으면 답답해서 sm(8px)으로 벌린다.
         const SizedBox(height: AppSpacing.sm),
         Row(
           // tailwind items-center 상당 — 아바타·아이콘 수직 중앙 정렬.
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // 좌하단 — 상태 무관 참가자 미니 아바타 (궁합 확인 탭 pair
-            // 아바타의 1/2 스케일). 종료 표시는 카드의 corner ribbon 담당.
-            Expanded(child: _RosterAvatars(teamId: teamId)),
+            // 좌하단 — 참가자 미니 아바타 + 빈자리 슬롯이 정원 표기를 겸한다
+            // (궁합 확인 탭 pair 아바타의 1/2 스케일). 종료 표시는 corner ribbon.
+            Expanded(
+              child: _RosterAvatars(
+                teamId: teamId,
+                maxPlayers: maxPlayers,
+                roomKind: roomKind,
+                // 종료 방 — 빈자리를 그리면 참가 가능으로 오독되므로 생략.
+                showEmptySlots: !dimTitle,
+              ),
+            ),
             // 우측 하단 상태 아이콘 — 비밀방 여부.
             FaIcon(
               isPrivate ? FontAwesomeIcons.lock : FontAwesomeIcons.lockOpen,
@@ -120,9 +122,19 @@ class _BattleCardBody extends StatelessWidget {
 
 /// 카드 좌하단 참가자 아바타 — 궁합 확인 탭 pair 아바타(42 thumb +
 /// 2 ring, step 32)의 정확히 1/2 스케일(21 + 1, step 16) overlap 배치.
+/// 채워진 아바타 뒤에 빈자리 슬롯을 이어 붙여 정원 표기를 겸한다 —
+/// 이성 케미는 남/여 잔여석을 각 성별 아이콘으로, 전체 케미는 user 아이콘.
 class _RosterAvatars extends ConsumerWidget {
   final String teamId;
-  const _RosterAvatars({required this.teamId});
+  final int maxPlayers;
+  final BattleRoomKind roomKind;
+  final bool showEmptySlots;
+  const _RosterAvatars({
+    required this.teamId,
+    required this.maxPlayers,
+    required this.roomKind,
+    required this.showEmptySlots,
+  });
 
   static const _kThumb = 21.0;
   static const _kBox = 23.0; // thumb + 흰 ring 1px×2
@@ -133,18 +145,73 @@ class _RosterAvatars extends ConsumerWidget {
     final avatars =
         ref.watch(battleRosterAvatarsProvider(teamId)).value ?? const [];
     if (avatars.isEmpty) return const SizedBox(height: _kBox);
+    // 빈자리 슬롯 svg 목록 — 이성 케미는 남녀 반반 정원이라 성별별 잔여석,
+    // 전체 케미는 성별 무관 잔여석.
+    final emptySvgs = <String>[];
+    if (showEmptySlots) {
+      if (roomKind == BattleRoomKind.match) {
+        final half = maxPlayers ~/ 2;
+        final males = avatars.where((a) => a.gender == 'male').length;
+        final females = avatars.length - males;
+        emptySvgs.addAll([
+          for (var i = males; i < half; i++) 'assets/svgs/male.svg',
+          for (var i = females; i < half; i++) 'assets/svgs/female.svg',
+        ]);
+      } else {
+        emptySvgs.addAll([
+          for (var i = avatars.length; i < maxPlayers; i++)
+            'assets/svgs/user.svg',
+        ]);
+      }
+    }
+    final total = avatars.length + emptySvgs.length;
     // 정원 최대 12명까지 자르지 않고 전부 — 좁으면 FittedBox 가 줄인다.
     return FittedBox(
       fit: BoxFit.scaleDown,
       alignment: Alignment.centerLeft,
       child: SizedBox(
-        width: _kBox + _kStep * (avatars.length - 1),
+        width: _kBox + _kStep * (total - 1),
         height: _kBox,
         child: Stack(
           children: [
             for (var i = 0; i < avatars.length; i++)
               Positioned(left: _kStep * i, child: _ring(avatars[i])),
+            for (var i = 0; i < emptySvgs.length; i++)
+              Positioned(
+                left: _kStep * (avatars.length + i),
+                child: _emptySlot(emptySvgs[i]),
+              ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// 빈자리 슬롯 — 채워진 아바타와 같은 ring 구조에 흰 원 + hint 색
+  /// svg 실루엣. border 는 기본색이라 채워진 자리와 확연히 구분된다.
+  Widget _emptySlot(String asset) {
+    return Container(
+      padding: const EdgeInsets.all(1),
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white,
+      ),
+      child: Container(
+        width: _kThumb,
+        height: _kThumb,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white,
+          border: Border.all(color: AppColors.border),
+        ),
+        child: SvgPicture.asset(
+          asset,
+          height: 11,
+          colorFilter: const ColorFilter.mode(
+            AppColors.textHint,
+            BlendMode.srcIn,
+          ),
         ),
       ),
     );
@@ -446,10 +513,15 @@ class _MineCard extends ConsumerWidget {
 
   /// 채팅방 열림 — 초록 tint 배경 + 초록 1px border (내 관상 금색과 같은 문법).
   final bool hasOpenChat;
+
+  /// 나가리 — 결과 발표됐지만 내가 베스트 쌍이 아닌 방. 초록 강조와 같은
+  /// 문법의 red 계통 (danger border + danger tint 배경).
+  final bool isBusted;
   const _MineCard({
     required this.battle,
     required this.onOpen,
     this.hasOpenChat = false,
+    this.isBusted = false,
   });
 
   @override
@@ -465,10 +537,16 @@ class _MineCard extends ConsumerWidget {
         decoration: BoxDecoration(
           color: hasOpenChat
               ? kBandGreen.withValues(alpha: 0.08)
+              : isBusted
+              ? AppColors.danger.withValues(alpha: 0.08)
               : AppColors.surface,
           borderRadius: BorderRadius.circular(AppRadius.lg),
           border: Border.all(
-            color: hasOpenChat ? kBandGreen : AppColors.border,
+            color: hasOpenChat
+                ? kBandGreen
+                : isBusted
+                ? AppColors.danger
+                : AppColors.border,
           ),
         ),
         child: Stack(
@@ -479,7 +557,6 @@ class _MineCard extends ConsumerWidget {
                 title: battle.title,
                 ageLabel: battle.ageRangeLabel,
                 roomKind: battle.roomKind,
-                playerCount: battle.playerCount,
                 maxPlayers: battle.maxPlayers,
                 isPrivate: !battle.isPublic,
                 teamId: battle.id,
@@ -490,11 +567,7 @@ class _MineCard extends ConsumerWidget {
               // 밴드 중심이 우변·하변에서 같은 거리(20px)에 있어야 잘린
               // 구간 정중앙에 글자가 온다: 중심 x = 130/2 - 45 = 20,
               // 중심 y = 10 + 20/2 = 20.
-              const Positioned(
-                right: -45,
-                bottom: 10,
-                child: _ExpiredRibbon(),
-              ),
+              const Positioned(right: -45, bottom: 10, child: _ExpiredRibbon()),
           ],
         ),
       ),
@@ -519,10 +592,7 @@ class _ExpiredRibbon extends StatelessWidget {
         color: AppColors.danger,
         child: Text(
           '종료',
-          style: AppText.caption.copyWith(
-            color: Colors.white,
-            height: 1.0,
-          ),
+          style: AppText.caption.copyWith(color: Colors.white, height: 1.0),
         ),
       ),
     );
@@ -555,10 +625,14 @@ class _MineTabState extends ConsumerState<_MineTab> {
     // 채팅방 열린 그룹 — 카드 초록 강조 (관상탭 내 관상 금색과 같은 문법).
     final openChats =
         ref.watch(openChatTeamsProvider).value ?? const <String>{};
+    // 내가 베스트 쌍인 방 — 로딩 중(null)엔 나가리 판정을 유보해
+    // 완료 카드가 red 로 번쩍이지 않게 한다.
+    final matchTeams = ref.watch(myMatchTeamsProvider).value;
     return RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(myBattlesProvider);
         ref.invalidate(openChatTeamsProvider);
+        ref.invalidate(myMatchTeamsProvider);
       },
       color: AppColors.textPrimary,
       child: battles.when(
@@ -610,6 +684,10 @@ class _MineTabState extends ConsumerState<_MineTab> {
                     battle: filtered[i - 1],
                     onOpen: widget.onOpen,
                     hasOpenChat: openChats.contains(filtered[i - 1].id),
+                    isBusted:
+                        matchTeams != null &&
+                        filtered[i - 1].status == BattleStatus.completed &&
+                        !matchTeams.contains(filtered[i - 1].id),
                   ),
           );
         },
@@ -655,7 +733,6 @@ class _PublicCardState extends State<_PublicCard> {
           title: battle.title,
           ageLabel: battle.ageRangeLabel,
           roomKind: battle.roomKind,
-          playerCount: battle.playerCount,
           maxPlayers: battle.maxPlayers,
           isPrivate: battle.isPrivate,
           teamId: battle.id,
@@ -761,10 +838,7 @@ class _PinDialogState extends State<_PinDialog> {
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         style: AppText.body.copyWith(color: AppColors.textPrimary),
         onChanged: (_) => setState(() => _error = null),
-        decoration: InputDecoration(
-          hintText: '비밀번호 4자리',
-          errorText: _error,
-        ),
+        decoration: InputDecoration(hintText: '비밀번호 4자리', errorText: _error),
       ),
       actions: [
         TextButton(
