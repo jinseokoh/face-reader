@@ -86,7 +86,7 @@ class _BattleCardBody extends StatelessWidget {
         // 방 유형은 invert pill badge(연령 pill 과 동일 위젯) + 정원 텍스트.
         Row(
           children: [
-            AgeRangePill(label: kind, invert: true),
+            AgeRangePill(label: kind, invert: true, dim: dimTitle),
             const SizedBox(width: AppSpacing.sm),
             Text(count, style: AppText.caption),
           ],

@@ -223,6 +223,29 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
 
   // ── 이탈·삭제 (참가자) ──────────────────────────────────────────────────
 
+  /// 인원 미달 종료 방의 멤버 뷰 — 내용(헤더·참가자)은 그대로 보여주되
+  /// 죽은 방에 사람을 부르는 QR·초대는 뺀다. 방장 삭제는 AppBar 메뉴.
+  Widget _expiredBody(Battle battle) {
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      color: AppColors.textPrimary,
+      child: ListView(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        children: [
+          _headerCard(battle),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            '인원이 모이지 않아 종료된 그룹입니다',
+            style: AppText.caption.copyWith(color: AppColors.textHint),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          _slotList(battle),
+        ],
+      ),
+    );
+  }
+
   /// 이성방 남/여 섹션 — 헤더("남 N / M") + 행 목록.
   Widget _genderSection({
     required Battle battle,
@@ -500,6 +523,8 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
     );
   }
 
+  // ── 참가자 body ────────────────────────────────────────────────────────
+
   Future<void> _leave() async {
     try {
       await _service.leaveBattle(widget.battleId);
@@ -516,31 +541,6 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
         );
       }
     }
-  }
-
-  // ── 참가자 body ────────────────────────────────────────────────────────
-
-  /// 인원 미달 종료 방의 멤버 뷰 — 내용(헤더·참가자)은 그대로 보여주되
-  /// 죽은 방에 사람을 부르는 QR·초대는 뺀다. 방장 삭제는 AppBar 메뉴.
-  Widget _expiredBody(Battle battle) {
-    return RefreshIndicator(
-      onRefresh: _refresh,
-      color: AppColors.textPrimary,
-      child: ListView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        children: [
-          _headerCard(battle),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            '인원이 모이지 않아 종료된 그룹입니다',
-            style: AppText.caption.copyWith(color: AppColors.textHint),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          _slotList(battle),
-        ],
-      ),
-    );
   }
 
   Widget _memberBody(Battle battle) {
@@ -593,7 +593,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
           QrImageView(data: url, size: 160),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            '옆에 있다면 이 코드를 스캔해 참가할 수 있습니다.',
+            'QR 코드를 스캔하면 참가 페이지로 이동할 수 있습니다.',
             style: AppText.caption,
             textAlign: TextAlign.center,
           ),
