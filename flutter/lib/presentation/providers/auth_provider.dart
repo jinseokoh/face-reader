@@ -66,6 +66,23 @@ class AuthNotifier extends Notifier<AuthUser?> {
     return AuthService().resendEmailOtp(email);
   }
 
+  Future<({bool ok, String? message})> requestPasswordReset(
+    String email,
+  ) async {
+    return AuthService().requestPasswordReset(email);
+  }
+
+  Future<({bool ok, String? message})> verifyRecoveryOtp(
+    String email,
+    String token,
+  ) async {
+    return AuthService().verifyRecoveryOtp(email, token);
+  }
+
+  Future<({bool ok, String? message})> updatePassword(String password) async {
+    return AuthService().updatePassword(password);
+  }
+
   Future<void> logout() async {
     // 세션이 살아 있을 때 이 기기의 푸시 token 을 지운다 — 로그아웃한
     // 기기로 매칭 알림이 가지 않게 (signOut 후엔 RLS 를 못 통과한다).

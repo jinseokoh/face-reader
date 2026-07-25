@@ -243,6 +243,7 @@ class AuthService {
         'email_not_confirmed' => '이메일 인증이 안 됐습니다. 인증 후 다시 시도',
         'otp_expired' => '코드가 만료됐습니다. 재전송 후 다시 시도',
         'invalid_otp' => '잘못된 인증 코드입니다',
+        'same_password' => '이전과 다른 비밀번호를 사용하세요',
         'signup_disabled' => '현재 가입이 제한돼 있습니다',
         _ => e.message,
       };
@@ -334,6 +335,58 @@ class AuthService {
     } catch (e, st) {
       final msg = _humanizeAuthError(e);
       debugPrint('[Auth.resendOtp] FAIL: $e ($msg)\n$st');
+      return (ok: false, message: msg);
+    }
+  }
+
+  /// 비밀번호 재설정 1/3 — 등록된 이메일로 6자리 recovery OTP 발송.
+  /// user-enumeration 방어로 미가입 이메일에도 성공 응답이 온다 (메일만 안 감).
+  Future<({bool ok, String? message})> requestPasswordReset(
+      String email) async {
+    debugPrint('[Auth.pwReset] start email=$email');
+    try {
+      await _client.auth.resetPasswordForEmail(email);
+      debugPrint('[Auth.pwReset] OK');
+      return (ok: true, message: null);
+    } catch (e, st) {
+      final msg = _humanizeAuthError(e);
+      debugPrint('[Auth.pwReset] FAIL: $e ($msg)\n$st');
+      return (ok: false, message: msg);
+    }
+  }
+
+  /// 비밀번호 재설정 2/3 — recovery OTP 검증. 성공 시 세션이 생기고
+  /// onAuthStateChange 가 발화한다 (이 세션으로 3/3 의 updateUser 가 가능).
+  Future<({bool ok, String? message})> verifyRecoveryOtp(
+      String email, String token) async {
+    debugPrint('[Auth.pwReset.verify] start email=$email '
+        'tokenLen=${token.length}');
+    try {
+      final res = await _client.auth.verifyOTP(
+        type: OtpType.recovery,
+        email: email,
+        token: token,
+      );
+      debugPrint('[Auth.pwReset.verify] OK userId=${res.user?.id} '
+          'session=${res.session != null}');
+      return (ok: true, message: null);
+    } catch (e, st) {
+      final msg = _humanizeAuthError(e);
+      debugPrint('[Auth.pwReset.verify] FAIL: $e ($msg)\n$st');
+      return (ok: false, message: msg);
+    }
+  }
+
+  /// 비밀번호 재설정 3/3 — recovery 세션 상태에서 새 비밀번호 저장.
+  Future<({bool ok, String? message})> updatePassword(String password) async {
+    debugPrint('[Auth.pwReset.update] start pwLen=${password.length}');
+    try {
+      await _client.auth.updateUser(UserAttributes(password: password));
+      debugPrint('[Auth.pwReset.update] OK');
+      return (ok: true, message: null);
+    } catch (e, st) {
+      final msg = _humanizeAuthError(e);
+      debugPrint('[Auth.pwReset.update] FAIL: $e ($msg)\n$st');
       return (ok: false, message: msg);
     }
   }

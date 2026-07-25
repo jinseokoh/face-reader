@@ -4,6 +4,7 @@ import 'package:facely/core/theme.dart';
 import 'package:facely/data/services/auth_service.dart' show SignUpOutcome;
 import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:facely/presentation/widgets/otp_verification_sheet.dart';
+import 'package:facely/presentation/widgets/password_reset_sheet.dart';
 import 'package:facely/presentation/widgets/primary_button.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -297,7 +298,7 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
                     Text('첫 가입 시 3코인 지급', style: AppText.hint),
                   ],
                 )
-              else
+              else ...[
                 Text.rich(
                   TextSpan(
                     style: AppText.hint,
@@ -322,6 +323,30 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
                   ),
                   textAlign: TextAlign.center,
                 ),
+                const SizedBox(height: AppSpacing.xs),
+                // 같은 톤의 둘째 줄 — 가입 이동과 의미가 달라 줄을 분리한다.
+                Text.rich(
+                  TextSpan(
+                    style: AppText.hint,
+                    children: [
+                      const TextSpan(text: '비밀번호를 잊으셨나요? '),
+                      TextSpan(
+                        text: '비밀번호 찾기',
+                        style: AppText.hint.copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                          decoration: TextDecoration.underline,
+                        ),
+                        recognizer: _isLoading
+                            ? null
+                            : (TapGestureRecognizer()
+                                ..onTap = _openPasswordReset),
+                      ),
+                    ],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ],
           ),
         ),
@@ -342,6 +367,17 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
     // submit 버튼 enabled 상태는 두 필드 내용에 따라 결정 — 매 입력마다 rebuild.
     _emailCtrl.addListener(_onFormChanged);
     _passwordCtrl.addListener(_onFormChanged);
+  }
+
+  /// 비밀번호 찾기 — recovery OTP 3단계 시트. 성공 시 이미 새 세션이
+  /// 살아 있으므로 로그인 성공과 동일하게 pop(true).
+  Future<void> _openPasswordReset() async {
+    final done = await showPasswordResetSheet(
+      context,
+      initialEmail: _emailCtrl.text.trim(),
+    );
+    if (!mounted || !done) return;
+    Navigator.of(context).pop(true);
   }
 
   Future<void> _emailSubmit() async {
