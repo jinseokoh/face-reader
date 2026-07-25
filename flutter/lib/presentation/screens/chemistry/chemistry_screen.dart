@@ -67,25 +67,20 @@ class _BattleCardBody extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Text(
-                title,
-                style: dimTitle
-                    ? AppText.subTitle.copyWith(color: AppColors.textHint)
-                    : AppText.subTitle,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            AgeRangePill(label: ageLabel),
-          ],
+        Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: dimTitle
+              ? AppText.subTitle.copyWith(color: AppColors.textHint)
+              : AppText.subTitle,
         ),
         const SizedBox(height: AppSpacing.xs),
         // 방 유형은 invert pill badge(연령 pill 과 동일 위젯) + 정원 텍스트.
         Row(
           children: [
+            AgeRangePill(label: ageLabel),
+            const SizedBox(width: AppSpacing.sm),
             AgeRangePill(
               label: kind,
               invert: true,
