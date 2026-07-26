@@ -88,8 +88,8 @@ export type Team = {
 /** 발표 시 앱이 올린 결과표 — a/b 는 slot 번호, band = 0~3, 점수는 best 만. */
 export type TeamResultPayload = {
   players: { slot: number; name: string; gender: string }[];
-  pairs: { a: number; b: number; band: number; score?: number }[];
-  best: { a: number; b: number; score: number };
+  // 정렬 = 순위. best = bypass(차단·기채팅) 아닌 첫 쌍 (별도 best 키 없음).
+  pairs: { a: number; b: number; band: number; score?: number; bypass?: boolean }[];
 };
 
 export type TeamMember = {

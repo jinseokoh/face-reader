@@ -235,10 +235,11 @@ export const TeamShow = () => {
           <div>
             <Title level={5}>베스트 매칭</Title>
             {(() => {
-              const best = payload.best;
-              const lo = Math.min(best.a, best.b);
-              const hi = Math.max(best.a, best.b);
-              const band = pairBySlots.get(`${lo}-${hi}`)?.band;
+              // 베스트 쌍 = 정렬(=순위)된 pairs 에서 bypass(차단·기채팅)
+              // 아닌 첫 쌍.
+              const best =
+                payload.pairs.find((p) => !p.bypass) ?? payload.pairs[0];
+              const band = best.band;
               const uidBySlot = new Map(
                 members.map((m) => [m.slot_no, m.user_id]),
               );
@@ -295,9 +296,11 @@ export const TeamShow = () => {
                         {BAND_LABEL[band]} ({BAND_HANJA[band]})
                       </Text>
                     ) : null}
-                    <Text strong style={{ marginLeft: band != null ? 8 : 0 }}>
-                      {best.score}점
-                    </Text>
+                    {best.score != null && (
+                      <Text strong style={{ marginLeft: band != null ? 8 : 0 }}>
+                        {best.score}점
+                      </Text>
+                    )}
                   </div>
                 </div>
               );

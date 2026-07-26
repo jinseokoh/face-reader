@@ -5,6 +5,7 @@ import { CTA } from "../components/CTA";
 import { JoinWizard } from "../components/JoinWizard";
 import { getSupabase } from "../lib/auth";
 import {
+  bestPair,
   computeTeamPayload,
   photoConsentText,
   remainingGenderSlots,
@@ -291,9 +292,9 @@ function TeamShowcase({
       <div className="showcase-best">
         <p className="showcase-best-eyebrow">🏆 베스트 케미</p>
         <p className="showcase-best-pair">
-          {nameOf(payload.best.a)} × {nameOf(payload.best.b)}
+          {nameOf(bestPair(payload).a)} × {nameOf(bestPair(payload).b)}
         </p>
-        <p className="showcase-best-score">{payload.best.score}점</p>
+        <p className="showcase-best-score">{bestPair(payload).score}점</p>
       </div>
       <div style={{ overflowX: "auto", marginTop: 16 }}>
         <table style={tableStyle}>

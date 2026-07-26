@@ -1181,8 +1181,10 @@ begin
   -- 정원 충족 = 유일한 시작 조건. 입력(snapshot)을 서버가 동결 — 시작 후
   -- 재촬영이 결과에 영향을 못 주는 치팅 방어 + 전 클라이언트 동일 입력.
   -- blocked = 로스터 내 차단 쌍(방향 무관)의 slot 쌍 — 엔진이 이 쌍의 발표
-  -- 점수를 상한 60점(형극난조)으로 눌러 베스트·매칭에서 배제한다. key 는
-  -- user_id(uuid) 와 충돌하지 않아 {user_id: body} 소비자에 무해.
+  -- 점수를 상한 60점(형극난조)으로 눌러 bypass(베스트 제외)한다.
+  -- chatted = 이미 다른 방에서 베스트 매칭으로 채팅까지 연 사이의 slot 쌍 —
+  -- 실점수는 유지하되 bypass(또 만날 필요 없음). key 는 user_id(uuid) 와
+  -- 충돌하지 않아 {user_id: body} 소비자에 무해.
   if v_count + 1 = v_team.max_players then
     update teams
        set status = 'revealing',
@@ -1205,6 +1207,17 @@ begin
                 and exists (select 1 from user_blocks ub
                              where (ub.blocker_id = x.user_id and ub.blocked_id = y.user_id)
                                 or (ub.blocker_id = y.user_id and ub.blocked_id = x.user_id))
+           ), '[]'::jsonb))
+             || jsonb_build_object('chatted', coalesce((
+             select jsonb_agg(jsonb_build_array(x.slot_no, y.slot_no))
+               from team_members x
+               join team_members y
+                 on y.team_id = x.team_id and x.slot_no < y.slot_no
+              where x.team_id = p_team_id
+                and exists (select 1 from team_matches m
+                             where m.opened_at is not null
+                               and ((m.user_a = x.user_id and m.user_b = y.user_id)
+                                 or (m.user_a = y.user_id and m.user_b = x.user_id)))
            ), '[]'::jsonb))
      where id = p_team_id;
   end if;
@@ -1259,6 +1272,8 @@ declare
   v_uid    uuid := auth.uid();
   v_user_a uuid;
   v_user_b uuid;
+  v_slot_a int;
+  v_slot_b int;
 begin
   if v_uid is null then raise exception 'AUTH_REQUIRED'; end if;
   if not exists (select 1 from team_members
@@ -1271,16 +1286,28 @@ begin
 
   if found then
     begin
+      -- 베스트 쌍 = 정렬(=순위)된 pairs 에서 bypass(차단·기채팅) 아닌 첫 쌍.
+      -- (payload 에 별도 best 키 없음 — §6.3)
+      select (t.e->>'a')::int, (t.e->>'b')::int into v_slot_a, v_slot_b
+        from jsonb_array_elements(p_payload->'pairs')
+             with ordinality as t(e, ord)
+       where not coalesce((t.e->>'bypass')::boolean, false)
+       order by t.ord
+       limit 1;
       select user_id into v_user_a from team_members
-       where team_id = p_team_id and slot_no = (p_payload->'best'->>'a')::int;
+       where team_id = p_team_id and slot_no = v_slot_a;
       select user_id into v_user_b from team_members
-       where team_id = p_team_id and slot_no = (p_payload->'best'->>'b')::int;
-      -- 최후 방어선 — 시작 후에 생긴 차단(snapshot 동결이 못 본 것)까지
-      -- 여기서 걸러 매칭 카드·채팅이 열리지 않게 한다.
+       where team_id = p_team_id and slot_no = v_slot_b;
+      -- 최후 방어선 — 시작 후에 생긴 차단·기채팅(snapshot 동결이 못 본 것)
+      -- 까지 여기서 걸러 매칭 카드·채팅이 또 열리지 않게 한다.
       if v_user_a is not null and v_user_b is not null and v_user_a <> v_user_b
          and not exists (select 1 from user_blocks ub
                           where (ub.blocker_id = v_user_a and ub.blocked_id = v_user_b)
-                             or (ub.blocker_id = v_user_b and ub.blocked_id = v_user_a)) then
+                             or (ub.blocker_id = v_user_b and ub.blocked_id = v_user_a))
+         and not exists (select 1 from team_matches m
+                          where m.opened_at is not null
+                            and ((m.user_a = v_user_a and m.user_b = v_user_b)
+                              or (m.user_a = v_user_b and m.user_b = v_user_a))) then
         insert into team_matches (team_id, user_a, user_b)
         values (p_team_id, v_user_a, v_user_b)
         on conflict (team_id) do nothing;

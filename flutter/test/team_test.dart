@@ -159,10 +159,10 @@ void main() {
     expect(teamPairCompare(pair(2, 4, 85), pair(2, 4, 85)), 0);
   });
 
-  test('payload 계약 — players/pairs/best 만, pairs 에 band 0~3 + score', () {
+  test('payload 계약 — players/pairs 만, pairs 에 band 0~3 + score', () {
     final result = computeTeam(_players(4));
     final payload = result.toPayload();
-    expect(payload.keys.toSet(), {'players', 'pairs', 'best'});
+    expect(payload.keys.toSet(), {'players', 'pairs'});
 
     final players = payload['players'] as List;
     expect(players.length, 4);
@@ -170,6 +170,7 @@ void main() {
       expect((p as Map).keys.toSet(), {'slot', 'name', 'gender'});
     }
 
+    // best 는 별도 키가 아니라 정렬(=순위)에서 파생 — blocked 아닌 첫 쌍.
     final pairs = payload['pairs'] as List;
     expect(pairs.length, 6);
     for (final p in pairs) {
@@ -177,12 +178,10 @@ void main() {
       expect(p['band'], inInclusiveRange(0, 3));
       expect(p['score'], inInclusiveRange(0, 100));
     }
-
-    final best = payload['best'] as Map;
-    expect(best.keys.toSet(), {'a', 'b', 'score'});
-    expect(best['score'], result.best.total.round());
-    expect(best['a'], result.pairs.first.a);
-    expect(best['b'], result.pairs.first.b);
+    final first = pairs.first as Map;
+    expect(first['a'], result.best.a);
+    expect(first['b'], result.best.b);
+    expect(first['score'], result.best.total.round());
   });
 
   test('matchOnly — pairs 수 = 남수 × 여수', () {
@@ -230,6 +229,33 @@ void main() {
       expect(p.total, original.total);
       expect(p.label, original.label);
     }
+  });
+
+  test('기채팅 쌍 — 실점수·등급 유지, 베스트만 제외, payload bypass 마킹', () {
+    final players = _players(6);
+    final open = computeTeam(players);
+    final key = teamPairKey(open.best.a, open.best.b);
+    final result = computeTeam(players, chattedKeys: {key});
+
+    final chattedPair = result.pairs.firstWhere(
+      (p) => teamPairKey(p.a, p.b) == key,
+    );
+    final original = open.pairs.firstWhere(
+      (p) => teamPairKey(p.a, p.b) == key,
+    );
+    expect(chattedPair.chatted, isTrue);
+    expect(chattedPair.blocked, isFalse);
+    expect(chattedPair.bypass, isTrue);
+    expect(chattedPair.total, original.total);
+    expect(chattedPair.label, original.label);
+    expect(teamPairKey(result.best.a, result.best.b), isNot(key));
+
+    final payloadPairs = result.toPayload()['pairs'] as List;
+    final marked = (payloadPairs.cast<Map>()).firstWhere(
+      (p) => teamPairKey(p['a'] as int, p['b'] as int) == key,
+    );
+    expect(marked['bypass'], isTrue);
+    expect(marked['score'], original.total.round());
   });
 
   test('전 쌍 차단 극단 — best 는 pairs.first 로 후퇴', () {

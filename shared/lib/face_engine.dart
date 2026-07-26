@@ -73,10 +73,12 @@ void main() {
   // Chemistry Team — chemistry_snapshot 기반 배틀 집계 (rev2 §3 payload 계약).
   // 입력: {"roomKind":"match"|"all","players":[{"slot":1,"name":"지은",
   //   "gender":"female","body":{…metrics body…}}, …],
-  //   "blocked":[[1,4],…]} — roomKind 누락 시 'all', blocked 누락 시 없음.
-  // 출력: {"players":[…],"pairs":[…],"best":{…}} — pairs 정렬 = 순위.
-  // roomKind=='match' 면 이성 쌍만 pairs 에 담긴다(matchOnly).
-  // blocked 쌍(snapshot 동결 차단 관계)은 상한 60점 + 베스트 제외.
+  //   "blocked":[[1,4],…],"chatted":[[2,5],…]} — roomKind 누락 시 'all',
+  //   blocked/chatted 누락 시 없음.
+  // 출력: {"players":[…],"pairs":[…]} — pairs 정렬 = 순위, best = bypass
+  // 아닌 첫 쌍. roomKind=='match' 면 이성 쌍만 pairs 에 담긴다(matchOnly).
+  // blocked 쌍(snapshot 동결 차단 관계)은 상한 60점 + bypass,
+  // chatted 쌍(기채팅 베스트)은 실점수 유지 + bypass.
   _setRunTeam = ((String teamJson) {
     final raw = jsonDecode(teamJson) as Map<String, dynamic>;
     final matchOnly = raw['roomKind'] == 'match';
@@ -93,10 +95,15 @@ void main() {
       for (final p in raw['blocked'] as List? ?? const [])
         teamPairKey((p[0] as num).toInt(), (p[1] as num).toInt()),
     };
+    final chattedKeys = {
+      for (final p in raw['chatted'] as List? ?? const [])
+        teamPairKey((p[0] as num).toInt(), (p[1] as num).toInt()),
+    };
     return jsonEncode(computeTeam(
       players,
       matchOnly: matchOnly,
       blockedKeys: blockedKeys,
+      chattedKeys: chattedKeys,
     ).toPayload());
   }).toJS;
 }

@@ -322,3 +322,10 @@ Set<String> blockedKeysFromSnapshot(Map<String, dynamic> snapshot) => {
   for (final p in snapshot['blocked'] as List? ?? const [])
     teamPairKey((p[0] as num).toInt(), (p[1] as num).toInt()),
 };
+
+/// snapshot.chatted([[slotA, slotB], …] — 이미 베스트 매칭으로 채팅을 연
+/// 사이) → computeTeam 의 chattedKeys. 키 부재·빈 배열이면 빈 집합.
+Set<String> chattedKeysFromSnapshot(Map<String, dynamic> snapshot) => {
+  for (final p in snapshot['chatted'] as List? ?? const [])
+    teamPairKey((p[0] as num).toInt(), (p[1] as num).toInt()),
+};

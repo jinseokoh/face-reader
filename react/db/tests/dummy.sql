@@ -146,7 +146,7 @@ begin
     (v_team2, v_dummy[8],  9, 'female', false),  -- 수아
     (v_team2, v_dummy[9], 10, 'female', false);  -- 유진
 
-  -- snapshot 동결 — join_team 시작 트랜잭션과 동일 (blocked 쌍 포함).
+  -- snapshot 동결 — join_team 시작 트랜잭션과 동일 (blocked·chatted 쌍 포함).
   update public.teams t
      set chemistry_snapshot = (
            select jsonb_object_agg(tm.user_id::text, mf.body::jsonb)
@@ -166,6 +166,17 @@ begin
               and exists (select 1 from public.user_blocks ub
                            where (ub.blocker_id = x.user_id and ub.blocked_id = y.user_id)
                               or (ub.blocker_id = y.user_id and ub.blocked_id = x.user_id))
+         ), '[]'::jsonb))
+           || jsonb_build_object('chatted', coalesce((
+           select jsonb_agg(jsonb_build_array(x.slot_no, y.slot_no))
+             from public.team_members x
+             join public.team_members y
+               on y.team_id = x.team_id and x.slot_no < y.slot_no
+            where x.team_id = t.id
+              and exists (select 1 from public.team_matches m
+                           where m.opened_at is not null
+                             and ((m.user_a = x.user_id and m.user_b = y.user_id)
+                               or (m.user_a = y.user_id and m.user_b = x.user_id)))
          ), '[]'::jsonb))
    where t.id in (v_team1, v_team2);
 

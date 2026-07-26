@@ -90,6 +90,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
           players,
           matchOnly: team.roomKind == TeamRoomKind.match,
           blockedKeys: blockedKeysFromSnapshot(snapshot),
+          chattedKeys: chattedKeysFromSnapshot(snapshot),
         );
       }
     }
@@ -168,7 +169,10 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
   List<Map<String, dynamic>> get _pairs => [
     for (final p in _payload!['pairs'] as List) p as Map<String, dynamic>,
   ];
-  Map<String, dynamic> get _best => _payload!['best'] as Map<String, dynamic>;
+  /// 베스트 쌍 — 정렬이 곧 순위인 pairs 에서 bypass(차단·기채팅) 아닌 첫 쌍.
+  /// (payload 에 별도 best 키 없음 — 구 payload 의 best 키는 무시.)
+  Map<String, dynamic> get _best =>
+      _pairs.firstWhere((p) => p['bypass'] != true, orElse: () => _pairs.first);
 
   String _nameOf(int slot) {
     for (final p in _players) {

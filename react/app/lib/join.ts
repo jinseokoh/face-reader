@@ -210,9 +210,15 @@ export type TeamStatus = "recruiting" | "revealing" | "completed" | "expired";
 
 export type TeamPayload = {
   players: { slot: number; name: string; gender: string }[];
-  pairs: { a: number; b: number; band: number }[]; // 정렬 = 순위, band 0~3
-  best: { a: number; b: number; score: number };
+  // 정렬 = 순위, band 0~3. best = bypass(차단·기채팅) 아닌 첫 쌍
+  // (별도 best 키 없음).
+  pairs: { a: number; b: number; band: number; score: number; bypass?: boolean }[];
 };
+
+/** 베스트 쌍 — 정렬(=순위)된 pairs 에서 bypass 아닌 첫 쌍. */
+export function bestPair(payload: TeamPayload) {
+  return payload.pairs.find((p) => !p.bypass) ?? payload.pairs[0];
+}
 
 export type TeamRow = {
   id: string;
@@ -375,7 +381,10 @@ export function computeTeamPayload(
     }));
   if (players.length < 2) return null;
   const blocked = Array.isArray(snapshot.blocked) ? snapshot.blocked : [];
+  const chatted = Array.isArray(snapshot.chatted) ? snapshot.chatted : [];
   return JSON.parse(
-    globalThis.runTeam(JSON.stringify({ roomKind, players, blocked })),
+    globalThis.runTeam(
+      JSON.stringify({ roomKind, players, blocked, chatted }),
+    ),
   ) as TeamPayload;
 }

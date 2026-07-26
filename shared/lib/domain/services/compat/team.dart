@@ -31,7 +31,7 @@ class TeamPlayer {
 /// 차단당한 쪽에는 "궁합이 나쁘다"로만 보여 차단 사실이 새지 않는다.
 const double kTeamBlockCap = 60.0;
 
-/// 무방향 쌍의 정규화 키 — blocked 집합·조회 공용.
+/// 무방향 쌍의 정규화 키 — blocked·chatted 집합·조회 공용.
 String teamPairKey(int a, int b) => a < b ? '$a-$b' : '$b-$a';
 
 class TeamPair {
@@ -41,8 +41,12 @@ class TeamPair {
   final double total;
   final CompatLabel label;
 
-  /// 차단 쌍 여부 — total 이 [kTeamBlockCap] 으로 눌린 상태, 베스트 제외.
+  /// 차단 쌍 여부 — total 이 [kTeamBlockCap] 으로 눌린 상태.
   final bool blocked;
+
+  /// 이미 베스트 매칭으로 채팅까지 한 사이 — 점수·등급은 실제 그대로,
+  /// 베스트 자격만 제외 (또 만날 필요가 없다).
+  final bool chatted;
 
   const TeamPair({
     required this.a,
@@ -50,7 +54,11 @@ class TeamPair {
     required this.total,
     required this.label,
     this.blocked = false,
+    this.chatted = false,
   });
+
+  /// 베스트 자격을 건너뛸 이유 있음 — 차단이든 기채팅이든.
+  bool get bypass => blocked || chatted;
 }
 
 /// raw total 내림차순 → a 오름차순 → b 오름차순. 완전 동점도 단독 수상
@@ -71,14 +79,16 @@ class TeamResult {
 
   const TeamResult({required this.players, required this.pairs});
 
-  /// 차단 쌍은 베스트 자격이 없다 — 상한 60점이라 사실상 정렬만으로도
-  /// 밀리지만, 전 쌍이 60점 이하인 극단까지 명시 제외로 보장한다.
+  /// bypass 쌍(차단·기채팅)은 베스트 자격이 없다 — 차단은 상한 60점이라
+  /// 사실상 정렬만으로도 밀리지만, 전 쌍이 bypass 인 극단까지 명시 제외로
+  /// 보장한다.
   TeamPair get best =>
-      pairs.firstWhere((p) => !p.blocked, orElse: () => pairs.first);
+      pairs.firstWhere((p) => !p.bypass, orElse: () => pairs.first);
 
   /// teams.result_payload 계약 (§6.3): band = CompatLabel.index
   /// (0=천생연분 … 3=형극난조). 쌍마다 score 를 함께 실어 어드민·웹이
-  /// 재계산 없이 앱과 같은 숫자를 보여준다.
+  /// 재계산 없이 앱과 같은 숫자를 보여준다. 정렬이 곧 순위라 별도 best
+  /// 키는 없다 — best = bypass 아닌 첫 쌍 (차단·기채팅 쌍만 bypass: true).
   Map<String, dynamic> toPayload() => {
         'players': [
           for (final p in players)
@@ -91,13 +101,9 @@ class TeamResult {
               'b': p.b,
               'band': p.label.index,
               'score': p.total.round(),
+              if (p.bypass) 'bypass': true,
             },
         ],
-        'best': {
-          'a': best.a,
-          'b': best.b,
-          'score': best.total.round(),
-        },
       };
 }
 
@@ -105,10 +111,13 @@ class TeamResult {
 /// 않음 — rev2 §3). 정렬·tie-break·best 규칙은 두 모드 동일.
 /// blockedKeys 는 chemistry_snapshot.blocked 의 [teamPairKey] 집합 —
 /// 해당 쌍은 total 을 [kTeamBlockCap] 으로 눌러 형극난조를 확정한다.
+/// chattedKeys 는 chemistry_snapshot.chatted (이미 베스트 매칭으로 채팅을
+/// 연 사이) — 점수·등급은 실제 그대로 두고 베스트 자격만 제외한다.
 TeamResult computeTeam(
   List<TeamPlayer> players, {
   bool matchOnly = false,
   Set<String> blockedKeys = const {},
+  Set<String> chattedKeys = const {},
 }) {
   assert(players.length >= 2, 'team 은 2명 이상 필요');
   final sorted = [...players]..sort((x, y) => x.slot.compareTo(y.slot));
@@ -120,8 +129,8 @@ TeamResult computeTeam(
         my: reportToCompatInput(sorted[i].report),
         album: reportToCompatInput(sorted[j].report),
       );
-      final blocked =
-          blockedKeys.contains(teamPairKey(sorted[i].slot, sorted[j].slot));
+      final key = teamPairKey(sorted[i].slot, sorted[j].slot);
+      final blocked = blockedKeys.contains(key);
       final total = blocked && report.total > kTeamBlockCap
           ? kTeamBlockCap
           : report.total;
@@ -131,6 +140,7 @@ TeamResult computeTeam(
         total: total,
         label: blocked ? classifyLabel(total) : report.label,
         blocked: blocked,
+        chatted: chattedKeys.contains(key),
       ));
     }
   }
