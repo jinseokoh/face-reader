@@ -9,7 +9,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show RealtimeChannel;
-import 'package:timeago/timeago.dart' as timeago;
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
 import '../../../core/theme.dart';
@@ -18,13 +17,13 @@ import '../../../domain/models/team.dart';
 import '../../../domain/services/share/share_publisher.dart';
 import '../../providers/team_provider.dart';
 import '../../providers/history_provider.dart';
-import '../../widgets/age_range_pill.dart';
 import '../../widgets/compact_snack_bar.dart';
 import '../../widgets/login_bottom_sheet.dart';
 import '../../widgets/my_face_capture_flow.dart';
 import '../../widgets/primary_button.dart';
 import '../../widgets/source_badge.dart';
 import 'team_reveal_screen.dart';
+import 'team_stat_header.dart';
 
 /// male/female 성별 실루엣 svg asset 경로.
 String _genderIconAsset(String gender) =>
@@ -300,97 +299,25 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
     );
   }
 
-  /// 공개 그룹 카드(_PublicCard)와 동일한 결 — 제목 1줄 / 유형·연령 pill.
+  /// 공개 그룹 카드(_PublicCard)와 동일한 결 — 공용 TeamStatHeader.
   /// [showRemaining] = 미참가 이성방에서 성별 남은 자리 표시 (참가자 뷰는
   /// 슬롯 열 헤더가 같은 정보를 보여주므로 생략).
   Widget _headerCard(Team team, {bool showRemaining = false}) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            team.title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppText.subTitle,
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          // 목록 카드(_TeamCardBody)와 동일 — 방 유형 invert pill + 연령 pill.
-          Row(
-            children: [
-              AgeRangePill(
-                label: team.roomKind == TeamRoomKind.match
-                    ? '이성 케미'
-                    : '전체 케미',
-                invert: true,
-                icons: team.roomKind == TeamRoomKind.match
-                    ? const [
-                        FontAwesomeIcons.child,
-                        FontAwesomeIcons.childDress,
-                      ]
-                    : const [
-                        FontAwesomeIcons.childReaching,
-                        FontAwesomeIcons.childReaching,
-                      ],
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              AgeRangePill(label: team.ageRangeLabel),
-            ],
-          ),
-          if (showRemaining && team.roomKind == TeamRoomKind.match) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Text('남자 ${_remaining('male')}자리 남음', style: AppText.caption),
-            Text('여자 ${_remaining('female')}자리 남음', style: AppText.caption),
-          ],
-          const SizedBox(height: AppSpacing.sm),
-          _headerMeta(team),
-        ],
-      ),
+    return TeamStatHeader(
+      team: team,
+      extra: showRemaining && team.roomKind == TeamRoomKind.match
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('남자 ${_remaining('male')}자리 남음',
+                    style: AppText.caption),
+                Text('여자 ${_remaining('female')}자리 남음',
+                    style: AppText.caption),
+              ],
+            )
+          : null,
     );
   }
-
-  /// 헤더 메타 — 생성(좌) · 모집 마감/열람 기한(우) 한 줄 + 조회수 줄.
-  /// 기한 상수는 cron SSOT (react/workers/cron.ts — 모집 48h 만료,
-  /// closed_at+30일 purge)와 동일. timeago 상대 표기 (ledger 탭과 동일 문법).
-  Widget _headerMeta(Team team) {
-    final hint = AppText.caption.copyWith(color: AppColors.textHint);
-    String? right;
-    if (team.isRecruiting) {
-      final deadline = team.createdAt.add(const Duration(hours: 48));
-      right =
-          '${timeago.format(deadline, locale: 'ko', allowFromNow: true)} '
-          '모집마감';
-    } else if (team.closedAt != null) {
-      final until = team.closedAt!.toLocal().add(const Duration(days: 30));
-      right = '${_fmtDateTime(until)}까지 열람 가능';
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              '${timeago.format(team.createdAt, locale: 'ko')} 생성',
-              style: hint,
-            ),
-            if (right != null) Text(right, style: hint),
-          ],
-        ),
-        Text('조회수 ${team.views}회', style: hint),
-      ],
-    );
-  }
-
-  String _fmtDateTime(DateTime t) =>
-      '${t.month}월 ${t.day}일 '
-      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 
   Widget _inviteRow(Team team) {
     return Row(

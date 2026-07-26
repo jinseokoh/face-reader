@@ -1,3 +1,4 @@
+import { PAGE_SIZE } from "../../constants";
 import { DateField, List, NumberField, useTable } from "@refinedev/antd";
 import { useMany } from "@refinedev/core";
 import { Avatar, Space, Table, Tag, Tooltip, Typography } from "antd";
@@ -23,6 +24,7 @@ const KIND_LABEL: Record<CoinEntry["kind"], string> = {
 export const CoinList = () => {
   const { tableProps, result } = useTable<CoinEntry>({
     syncWithLocation: true,
+    pagination: { pageSize: PAGE_SIZE },
     sorters: { initial: [{ field: "created_at", order: "desc" }] },
     filters: { mode: "server" },
   });

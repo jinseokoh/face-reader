@@ -20,7 +20,10 @@ const { Text, Title } = Typography;
 
 /** result_payload band 코드(0~3) — 앱 BattleBand 와 동일 라벨·색. */
 const BAND_LABEL = ["천생연분", "금슬화합", "상부상조", "형극난조"];
+const BAND_HANJA = ["天生緣分", "琴瑟和合", "相扶相助", "荊棘難調"];
 const BAND_COLOR = ["#2E7D32", "#1565C0", "#EF6C00", "#D32F2F"];
+/** 앱 AppColors.gold — 베스트 카드 테두리·라벨 색. */
+const GOLD = "#C9A876";
 
 function statusTag(t: Team) {
   switch (t.status) {
@@ -211,9 +214,7 @@ export const TeamShow = () => {
                 const mid = metricByUser.get(uid)?.id;
                 return mid ? (
                   <Link to={`/metrics/show/${mid}`}>
-                    <Text code style={{ fontSize: 11 }}>
-                      {mid.slice(0, 8)}…
-                    </Text>
+                    <Text code>{mid}</Text>
                   </Link>
                 ) : (
                   <Text type="secondary">-</Text>
@@ -232,6 +233,75 @@ export const TeamShow = () => {
 
         {payload ? (
           <div>
+            <Title level={5}>베스트 매칭</Title>
+            {(() => {
+              const best = payload.best;
+              const lo = Math.min(best.a, best.b);
+              const hi = Math.max(best.a, best.b);
+              const band = pairBySlots.get(`${lo}-${hi}`)?.band;
+              const uidBySlot = new Map(
+                members.map((m) => [m.slot_no, m.user_id]),
+              );
+              const person = (slot: number) => {
+                const uid = uidBySlot.get(slot);
+                const u = uid ? userById.get(uid) : undefined;
+                const thumb = uid
+                  ? metricThumbUrl(metricByUser.get(uid)?.body)
+                  : undefined;
+                return (
+                  <Space direction="vertical" align="center" size={4}>
+                    <Avatar
+                      src={thumb ?? u?.profile_image_url ?? undefined}
+                      size={48}
+                    >
+                      {u?.nickname?.[0] ?? "?"}
+                    </Avatar>
+                    <Text strong>
+                      {nameBySlot.get(slot) ?? u?.nickname ?? `슬롯 ${slot}`}
+                    </Text>
+                  </Space>
+                );
+              };
+              return (
+                <div
+                  style={{
+                    border: `1px solid ${GOLD}`,
+                    borderRadius: 16,
+                    padding: 20,
+                    marginBottom: 16,
+                    textAlign: "center",
+                  }}
+                >
+                  <div
+                    style={{
+                      color: GOLD,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      marginBottom: 12,
+                    }}
+                  >
+                    베스트 케미
+                  </div>
+                  <Space size="large" align="center">
+                    {person(best.a)}
+                    <Text type="secondary" style={{ fontSize: 28 }}>
+                      ×
+                    </Text>
+                    {person(best.b)}
+                  </Space>
+                  <div style={{ marginTop: 12 }}>
+                    {band != null ? (
+                      <Text strong style={{ color: BAND_COLOR[band] }}>
+                        {BAND_LABEL[band]} ({BAND_HANJA[band]})
+                      </Text>
+                    ) : null}
+                    <Text strong style={{ marginLeft: band != null ? 8 : 0 }}>
+                      {best.score}점
+                    </Text>
+                  </div>
+                </div>
+              );
+            })()}
             <Title level={5}>결과표 (result_payload)</Title>
             <div style={{ overflowX: "auto" }}>
               <table style={{ borderCollapse: "collapse" }}>
@@ -263,19 +333,26 @@ export const TeamShow = () => {
                         const pair = pairBySlots.get(`${a}-${b}`);
                         // 이성방 동성 쌍은 pairs 에 없다 — 빈 칸.
                         if (!pair) return <td key={col.slot} style={bodyCell} />;
+                        // 앱 BandDot(28px + 원 안 흰색 점수)과 동일 표기.
                         return (
                           <td key={col.slot} style={bodyCell}>
                             <Tooltip title={BAND_LABEL[pair.band] ?? pair.band}>
                               <span
                                 style={{
-                                  display: "inline-block",
-                                  width: 14,
-                                  height: 14,
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  width: 28,
+                                  height: 28,
                                   borderRadius: "50%",
                                   background:
                                     BAND_COLOR[pair.band] ?? "#999",
+                                  color: "#fff",
+                                  fontSize: 12,
                                 }}
-                              />
+                              >
+                                {pair.score ?? ""}
+                              </span>
                             </Tooltip>
                           </td>
                         );
@@ -285,11 +362,6 @@ export const TeamShow = () => {
                 </tbody>
               </table>
             </div>
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              베스트 매칭: {nameBySlot.get(payload.best.a) ?? payload.best.a} ·{" "}
-              {nameBySlot.get(payload.best.b) ?? payload.best.b} (
-              {payload.best.score}점)
-            </Text>
           </div>
         ) : team && team.status !== "recruiting" ? (
           <Alert
@@ -316,8 +388,8 @@ const headCell: React.CSSProperties = {
 };
 
 const bodyCell: React.CSSProperties = {
-  width: 36,
-  height: 36,
+  width: 44,
+  height: 44,
   textAlign: "center",
   fontSize: 16,
   border: "1px solid rgba(128,128,128,0.25)",

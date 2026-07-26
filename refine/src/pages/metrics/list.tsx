@@ -1,3 +1,4 @@
+import { PAGE_SIZE } from "../../constants";
 import { DeleteOutlined } from "@ant-design/icons";
 import { DateField, List, ShowButton, useTable } from "@refinedev/antd";
 import { useInvalidate, useMany, useNavigation } from "@refinedev/core";
@@ -42,6 +43,7 @@ const GENDER_LABEL: Record<string, string> = {
 export const MetricList = () => {
   const { tableProps, result } = useTable<MetricEntry>({
     syncWithLocation: true,
+    pagination: { pageSize: PAGE_SIZE },
     sorters: { initial: [{ field: "created_at", order: "desc" }] },
     filters: {
       mode: "server",

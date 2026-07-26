@@ -76,15 +76,22 @@ class TeamResult {
   TeamPair get best =>
       pairs.firstWhere((p) => !p.blocked, orElse: () => pairs.first);
 
-  /// teams.result_payload 계약 (§6.3): 점수는 best.score 하나뿐,
-  /// band = CompatLabel.index (0=천생연분 … 3=형극난조).
+  /// teams.result_payload 계약 (§6.3): band = CompatLabel.index
+  /// (0=천생연분 … 3=형극난조). 쌍마다 score 를 함께 실어 어드민·웹이
+  /// 재계산 없이 앱과 같은 숫자를 보여준다.
   Map<String, dynamic> toPayload() => {
         'players': [
           for (final p in players)
             {'slot': p.slot, 'name': p.name, 'gender': p.gender},
         ],
         'pairs': [
-          for (final p in pairs) {'a': p.a, 'b': p.b, 'band': p.label.index},
+          for (final p in pairs)
+            {
+              'a': p.a,
+              'b': p.b,
+              'band': p.label.index,
+              'score': p.total.round(),
+            },
         ],
         'best': {
           'a': best.a,

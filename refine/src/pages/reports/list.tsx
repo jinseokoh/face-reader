@@ -1,3 +1,4 @@
+import { PAGE_SIZE } from "../../constants";
 import { DateField, List, useTable } from "@refinedev/antd";
 import { useMany, useNavigation } from "@refinedev/core";
 import { Avatar, Space, Table, Tag, Tooltip, Typography } from "antd";
@@ -14,6 +15,7 @@ export const ReportList = () => {
   const { tableProps, result } = useTable<TeamReport>({
     resource: "team_reports",
     syncWithLocation: true,
+    pagination: { pageSize: PAGE_SIZE },
     sorters: { initial: [{ field: "created_at", order: "desc" }] },
   });
 

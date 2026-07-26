@@ -1,4 +1,5 @@
 import { DeleteOutlined } from "@ant-design/icons";
+import { PAGE_SIZE } from "../../constants";
 import {
   DateField,
   List,
@@ -29,6 +30,7 @@ export const UserList = () => {
     resource: "admin_users",
     syncWithLocation: true,
     sorters: { initial: [{ field: "created_at", order: "desc" }] },
+    pagination: { pageSize: PAGE_SIZE },
   });
 
   const invalidate = useInvalidate();

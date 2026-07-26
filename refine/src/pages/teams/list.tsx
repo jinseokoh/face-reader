@@ -1,3 +1,4 @@
+import { PAGE_SIZE } from "../../constants";
 import {
   DateField,
   DeleteButton,
@@ -29,6 +30,7 @@ function statusTag(t: Team) {
 export const TeamList = () => {
   const { tableProps, result } = useTable<Team>({
     syncWithLocation: true,
+    pagination: { pageSize: PAGE_SIZE },
     sorters: { initial: [{ field: "created_at", order: "desc" }] },
   });
 

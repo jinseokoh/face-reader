@@ -1,3 +1,4 @@
+import { PAGE_SIZE } from "../../constants";
 import { DeleteOutlined } from "@ant-design/icons";
 import { DateField, List, ShowButton, useTable } from "@refinedev/antd";
 import { useInvalidate, useMany } from "@refinedev/core";
@@ -36,6 +37,7 @@ function scoreLabel(s: number): string {
 export const CompatibilityList = () => {
   const { tableProps, result } = useTable<Compatibility>({
     syncWithLocation: true,
+    pagination: { pageSize: PAGE_SIZE },
     sorters: { initial: [{ field: "created_at", order: "desc" }] },
   });
 

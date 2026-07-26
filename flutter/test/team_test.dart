@@ -159,7 +159,7 @@ void main() {
     expect(teamPairCompare(pair(2, 4, 85), pair(2, 4, 85)), 0);
   });
 
-  test('payload 계약 — players/pairs/best 만, pairs 에 점수 없음, band 0~3', () {
+  test('payload 계약 — players/pairs/best 만, pairs 에 band 0~3 + score', () {
     final result = computeTeam(_players(4));
     final payload = result.toPayload();
     expect(payload.keys.toSet(), {'players', 'pairs', 'best'});
@@ -173,8 +173,9 @@ void main() {
     final pairs = payload['pairs'] as List;
     expect(pairs.length, 6);
     for (final p in pairs) {
-      expect((p as Map).keys.toSet(), {'a', 'b', 'band'});
+      expect((p as Map).keys.toSet(), {'a', 'b', 'band', 'score'});
       expect(p['band'], inInclusiveRange(0, 3));
+      expect(p['score'], inInclusiveRange(0, 100));
     }
 
     final best = payload['best'] as Map;

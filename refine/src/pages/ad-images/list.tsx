@@ -1,3 +1,4 @@
+import { PAGE_SIZE } from "../../constants";
 import { CreateButton, DateField, List, useTable } from "@refinedev/antd";
 import { App, Image, Space, Switch, Table, Typography } from "antd";
 import { adminClient } from "../../providers/data";
@@ -18,6 +19,7 @@ export const AdImageList = () => {
   const { tableProps, tableQuery } = useTable<AdImage>({
     resource: "ad_images",
     syncWithLocation: true,
+    pagination: { pageSize: PAGE_SIZE },
     sorters: { initial: [{ field: "sort_order", order: "asc" }] },
   });
 

@@ -25,6 +25,7 @@ import '../../widgets/source_badge.dart';
 import '../compatibility/compatibility_unlock_action.dart';
 import 'team_band.dart';
 import 'team_match_card.dart';
+import 'team_stat_header.dart';
 
 /// 매칭 결과 — payload(스코어보드)가 없으면 snapshot 으로 계산해 1회 기록
 /// (first-writer-wins)하고, 있으면 그대로 렌더한다.
@@ -102,6 +103,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
       if (team.status == TeamStatus.expired) {
         setState(() {
           _team = team;
+          _roster = roster;
           _phase = _Phase.expired;
         });
         return;
@@ -260,7 +262,8 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_team?.title ?? '케미 그룹')),
+      // 방 제목은 stat 카드가 보여준다 — 상세 페이지와 동일한 고정 타이틀.
+      appBar: AppBar(title: const Text('케미 그룹 상세정보')),
       body: SafeArea(
         top: false,
         child: switch (_phase) {
@@ -275,17 +278,18 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
               ),
             ),
           ),
-          _Phase.expired => const EmotionEmptyState(
-            asset: 'assets/images/emotion-sad.png',
-            message: '48시간 안에 정원을 채우지 못해 종료된 그룹입니다',
-          ),
-          _Phase.orphan => Center(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.huge),
-              child: Text(
-                '결과가 생성되지 않은 그룹입니다',
-                style: AppText.body,
-                textAlign: TextAlign.center,
+          _Phase.expired => _expiredBody(),
+          _Phase.orphan => _withStatHeader(
+            const Expanded(
+              child: Center(
+                child: Padding(
+                  padding: EdgeInsets.all(AppSpacing.huge),
+                  child: Text(
+                    '결과가 생성되지 않은 그룹입니다',
+                    style: AppText.body,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
               ),
             ),
           ),
@@ -295,11 +299,114 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
     );
   }
 
+  /// 인원 미달 종료 — stat 카드 + 참가했던 roster + 상황 설명 빈 상태.
+  Widget _expiredBody() {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.lg,
+            AppSpacing.lg,
+            0,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TeamStatHeader(team: _team!),
+              if (_roster.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.xl),
+                Text('참가자', style: AppText.sectionTitle),
+                const SizedBox(height: AppSpacing.md),
+                for (final r in _roster)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                    child: Row(
+                      children: [
+                        _rosterAvatar(r),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Text(
+                            r.nickname,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppText.body,
+                          ),
+                        ),
+                        if (r.isOwner)
+                          Text(
+                            '방장',
+                            style: AppText.caption.copyWith(
+                              color: AppColors.textHint,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+              ],
+            ],
+          ),
+        ),
+        const Expanded(
+          child: EmotionEmptyState(
+            asset: 'assets/images/emotion-sad.png',
+            message: '48시간 안에 정원을 채우지 못해 종료된 그룹입니다',
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// roster 기반 아바타 — 썸네일 → 성별 기본 아이콘. payload 가 없는
+  /// 종료 방에서 사용 (border 는 _slotAvatar 와 같은 source 규칙).
+  Widget _rosterAvatar(TeamRosterEntry r, {double size = 28}) {
+    final profile = _profiles[r.userId];
+    final thumbUrl = profile?.thumbUrl;
+    final inner = thumbUrl == null
+        ? _slotIconAvatar(r.gender, size)
+        : Image.network(
+            thumbUrl,
+            width: size,
+            height: size,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => _slotIconAvatar(r.gender, size),
+          );
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: sourceBorderColor(profile?.source)),
+      ),
+      child: ClipOval(child: inner),
+    );
+  }
+
+  /// 빈 상태(orphan)에도 상세와 동일한 방 stat 카드를 최상단 공유.
+  Widget _withStatHeader(Widget body) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.lg,
+            AppSpacing.lg,
+            0,
+          ),
+          child: TeamStatHeader(team: _team!),
+        ),
+        body,
+      ],
+    );
+  }
+
   Widget _board() {
     final matchOther = _bestMatchOther;
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
+        TeamStatHeader(team: _team!),
+        const SizedBox(height: AppSpacing.xl),
         _bestCard(),
         if (matchOther != null) ...[
           const SizedBox(height: AppSpacing.xl),

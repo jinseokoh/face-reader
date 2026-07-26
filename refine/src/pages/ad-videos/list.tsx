@@ -1,3 +1,4 @@
+import { PAGE_SIZE } from "../../constants";
 import { CreateButton, DateField, List, useTable } from "@refinedev/antd";
 import { App, Space, Switch, Table, Typography } from "antd";
 import { adminClient } from "../../providers/data";
@@ -16,6 +17,7 @@ export const AdVideoList = () => {
   const { tableProps, tableQuery } = useTable<AdVideo>({
     resource: "ad_videos",
     syncWithLocation: true,
+    pagination: { pageSize: PAGE_SIZE },
     sorters: { initial: [{ field: "created_at", order: "desc" }] },
   });
 
