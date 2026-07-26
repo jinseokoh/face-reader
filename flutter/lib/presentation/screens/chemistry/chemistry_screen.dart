@@ -402,8 +402,9 @@ class _MineCard extends ConsumerWidget {
   final Team team;
   final void Function(Team) onOpen;
 
-  /// 채팅방 열림 — 초록 tint 배경 + 초록 1px border (내 관상 금색과 같은 문법).
-  final bool hasOpenChat;
+  /// 베스트 케미 선정 — 초록 tint 배경 + 초록 1px border (내 관상 금색과
+  /// 같은 문법). 채팅 개설 여부와 무관하게 발표에서 뽑히면 초록.
+  final bool isBestPick;
 
   /// 나가리 — 결과 발표됐지만 내가 베스트 쌍이 아닌 방. 초록 강조와 같은
   /// 문법의 red 계통 (danger border + danger tint 배경).
@@ -411,13 +412,15 @@ class _MineCard extends ConsumerWidget {
   const _MineCard({
     required this.team,
     required this.onOpen,
-    this.hasOpenChat = false,
+    this.isBestPick = false,
     this.isBusted = false,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final expired = team.status == TeamStatus.expired;
+    // 마감(발표·종료 전부) — 제목을 hint 색으로 낮춰 모집중 방과 구분.
+    final closed = !team.isRecruiting;
     return InkWell(
       onTap: () => onOpen(team),
       borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -426,14 +429,14 @@ class _MineCard extends ConsumerWidget {
         // ribbon 이 카드 radius 밖으로 삐져나가지 않게 clip.
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: hasOpenChat
+          color: isBestPick
               ? kBandGreen.withValues(alpha: 0.08)
               : isBusted
               ? AppColors.danger.withValues(alpha: 0.08)
               : AppColors.surface,
           borderRadius: BorderRadius.circular(AppRadius.lg),
           border: Border.all(
-            color: hasOpenChat
+            color: isBestPick
                 ? kBandGreen
                 : isBusted
                 ? AppColors.danger
@@ -451,7 +454,7 @@ class _MineCard extends ConsumerWidget {
                 maxPlayers: team.maxPlayers,
                 isPrivate: !team.isPublic,
                 teamId: team.id,
-                dimTitle: expired,
+                dimTitle: closed,
                 dimKind: team.status != TeamStatus.recruiting,
               ),
             ),
@@ -490,11 +493,8 @@ class _MineTabState extends ConsumerState<_MineTab> {
   @override
   Widget build(BuildContext context) {
     final teams = ref.watch(myTeamsProvider);
-    // 채팅방 열린 그룹 — 카드 초록 강조 (관상탭 내 관상 금색과 같은 문법).
-    final openChats =
-        ref.watch(openChatTeamsProvider).value ?? const <String>{};
-    // 내가 베스트 쌍인 방 — 로딩 중(null)엔 나가리 판정을 유보해
-    // 완료 카드가 red 로 번쩍이지 않게 한다.
+    // 내가 베스트 쌍인 방 — 초록/red 판정 공용 소스. 로딩 중(null)엔
+    // 판정을 유보해 완료 카드가 red 로 번쩍이지 않게 한다.
     final matchTeams = ref.watch(myMatchTeamsProvider).value;
     return RefreshIndicator(
       onRefresh: () async {
@@ -551,7 +551,10 @@ class _MineTabState extends ConsumerState<_MineTab> {
                 : _MineCard(
                     team: filtered[i - 1],
                     onOpen: widget.onOpen,
-                    hasOpenChat: openChats.contains(filtered[i - 1].id),
+                    isBestPick:
+                        matchTeams != null &&
+                        filtered[i - 1].status == TeamStatus.completed &&
+                        matchTeams.contains(filtered[i - 1].id),
                     isBusted:
                         matchTeams != null &&
                         filtered[i - 1].status == TeamStatus.completed &&
