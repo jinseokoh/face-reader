@@ -14,11 +14,11 @@ import '../../../domain/models/battle.dart';
 import '../../providers/battle_provider.dart';
 import '../../providers/history_provider.dart';
 import '../../widgets/age_range_pill.dart';
-import '../../widgets/source_badge.dart';
 import '../../widgets/compact_snack_bar.dart';
 import '../../widgets/emotion_empty_state.dart';
 import '../../widgets/face_scan_pill.dart';
 import '../../widgets/login_bottom_sheet.dart';
+import '../../widgets/source_badge.dart';
 import '../team/battle_band.dart';
 import '../team/battle_create_page.dart';
 import '../team/battle_detail_screen.dart';
@@ -118,144 +118,6 @@ class _BattleCardBody extends StatelessWidget {
       ],
     );
   }
-}
-
-/// 카드 좌하단 참가자 아바타 — 궁합 확인 탭 pair 아바타(42 thumb +
-/// 2 ring, step 32)의 정확히 1/2 스케일(21 + 1, step 16) overlap 배치.
-/// 채워진 아바타 뒤에 빈자리 슬롯을 이어 붙여 정원 표기를 겸한다 —
-/// 이성 케미는 남/여 잔여석을 각 성별 아이콘으로, 전체 케미는 user 아이콘.
-class _RosterAvatars extends ConsumerWidget {
-  final String teamId;
-  final int maxPlayers;
-  final BattleRoomKind roomKind;
-  final bool showEmptySlots;
-  const _RosterAvatars({
-    required this.teamId,
-    required this.maxPlayers,
-    required this.roomKind,
-    required this.showEmptySlots,
-  });
-
-  static const _kThumb = 21.0;
-  static const _kBox = 23.0; // thumb + 흰 ring 1px×2
-  static const _kStep = 16.0;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final avatars =
-        ref.watch(battleRosterAvatarsProvider(teamId)).value ?? const [];
-    if (avatars.isEmpty) return const SizedBox(height: _kBox);
-    // 빈자리 슬롯 svg 목록 — 이성 케미는 남녀 반반 정원이라 성별별 잔여석,
-    // 전체 케미는 성별 무관 잔여석.
-    final emptySvgs = <String>[];
-    if (showEmptySlots) {
-      if (roomKind == BattleRoomKind.match) {
-        final half = maxPlayers ~/ 2;
-        final males = avatars.where((a) => a.gender == 'male').length;
-        final females = avatars.length - males;
-        emptySvgs.addAll([
-          for (var i = males; i < half; i++) 'assets/svgs/male.svg',
-          for (var i = females; i < half; i++) 'assets/svgs/female.svg',
-        ]);
-      } else {
-        emptySvgs.addAll([
-          for (var i = avatars.length; i < maxPlayers; i++)
-            'assets/svgs/user.svg',
-        ]);
-      }
-    }
-    final total = avatars.length + emptySvgs.length;
-    // 정원 최대 12명까지 자르지 않고 전부 — 좁으면 FittedBox 가 줄인다.
-    return FittedBox(
-      fit: BoxFit.scaleDown,
-      alignment: Alignment.centerLeft,
-      child: SizedBox(
-        width: _kBox + _kStep * (total - 1),
-        height: _kBox,
-        child: Stack(
-          children: [
-            for (var i = 0; i < avatars.length; i++)
-              Positioned(left: _kStep * i, child: _ring(avatars[i])),
-            for (var i = 0; i < emptySvgs.length; i++)
-              Positioned(
-                left: _kStep * (avatars.length + i),
-                child: _emptySlot(emptySvgs[i]),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// 빈자리 슬롯 — 채워진 아바타와 같은 ring 구조에 흰 원 + hint 색
-  /// svg 실루엣. border 는 기본색이라 채워진 자리와 확연히 구분된다.
-  Widget _emptySlot(String asset) {
-    return Container(
-      padding: const EdgeInsets.all(1),
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white,
-      ),
-      child: Container(
-        width: _kThumb,
-        height: _kThumb,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white,
-          border: Border.all(color: AppColors.border),
-        ),
-        child: SvgPicture.asset(
-          asset,
-          height: 11,
-          colorFilter: const ColorFilter.mode(
-            AppColors.textHint,
-            BlendMode.srcIn,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _ring(RosterAvatar a) {
-    final showPhoto = a.url != null;
-    return Container(
-      padding: const EdgeInsets.all(1),
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white,
-      ),
-      child: Container(
-        width: _kThumb,
-        height: _kThumb,
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: AppColors.surface,
-          // 사진일 때만 촬영 경로 border 규칙 — 아이콘 fallback 은 기본 border.
-          border: Border.all(
-            color: showPhoto ? sourceBorderColor(a.source) : AppColors.border,
-          ),
-        ),
-        child: showPhoto
-            ? CachedNetworkImage(
-                imageUrl: a.url!,
-                fit: BoxFit.cover,
-                placeholder: (_, _) => Container(color: AppColors.surface),
-                errorWidget: (_, _, _) => _genderIcon(a.gender),
-              )
-            : _genderIcon(a.gender),
-      ),
-    );
-  }
-
-  Widget _genderIcon(String gender) => Center(
-    child: Image.asset(
-      gender == 'male' ? 'assets/icons/male.png' : 'assets/icons/female.png',
-      width: 11,
-      height: 11,
-    ),
-  );
 }
 
 class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
@@ -387,13 +249,14 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
         title: const Text('케미 그룹', style: AppText.modalTitle),
         content: const SingleChildScrollView(
           child: Text(
-            '6, 8, 10, 12명 정원의 그룹을 만들어 온라인에서 만나는 '
-            '다양한 사람들과 서로 케미가 좋은지 확인하는 기능입니다.\n'
-            '정원이 다 차면 그룹 케미 결과표가 자동으로 발표됩니다.\n\n'
-            '그룹에서 최고의 케미를 보인 베스트 매칭 한 쌍에게는 1:1 채팅 '
+            '6 ~ 12명 정원의 그룹을 만들어 온라인에서 만나는 '
+            '다양한 사람들과의 서로 케미가 좋은지 확인하는 기능입니다. '
+            '케미 그룹은 누구나 만들 수 있고 그룹에 참여 정원이 다 차면 '
+            '즉시 그룹 케미 결과표가 자동으로 발표됩니다.\n\n'
+            '해당 그룹내에서 최고의 케미를 보인 베스트 매칭 한 쌍에게는 1:1 채팅 '
             '기회가 주어집니다. 물론, '
             '두 사람 모두 원하는 경우에만 채팅방이 열리고, 한쪽이라도 '
-            '거부하면 열리지 않습니다.\n\n'
+            '거부하면 열리지 않습니다. 결과 발표이후 보름이 지난 뒤에는 자동으로 삭제됩니다.\n\n'
             '공개 그룹은 언제든 참가할 수 있고, '
             '[그룹 만들기] 기능을 통해 원하는 그룹을 직접 만들 수도 있습니다.\n\n'
             '지인들끼리만 모이고 싶다면 비밀번호를 설정한 비밀 그룹을 '
@@ -442,6 +305,30 @@ class _CreatePill extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 종료 방 corner ribbon — 카드 우하단을 대각선으로 가로지르는 밴드.
+/// 배경색만 있는 흰 밴드(border 없음) + danger 텍스트. 글자는 정원 표기
+/// "1 / 8 명"과 동일한 caption 토큰, height 1.0 으로 밴드 정중앙 정렬.
+class _ExpiredRibbon extends StatelessWidget {
+  const _ExpiredRibbon();
+
+  @override
+  Widget build(BuildContext context) {
+    return Transform.rotate(
+      angle: -math.pi / 4,
+      child: Container(
+        width: 130,
+        height: 20,
+        alignment: Alignment.center,
+        color: AppColors.danger,
+        child: Text(
+          '종료',
+          style: AppText.caption.copyWith(color: Colors.white, height: 1.0),
         ),
       ),
     );
@@ -575,30 +462,6 @@ class _MineCard extends ConsumerWidget {
   }
 }
 
-/// 종료 방 corner ribbon — 카드 우하단을 대각선으로 가로지르는 밴드.
-/// 배경색만 있는 흰 밴드(border 없음) + danger 텍스트. 글자는 정원 표기
-/// "1 / 8 명"과 동일한 caption 토큰, height 1.0 으로 밴드 정중앙 정렬.
-class _ExpiredRibbon extends StatelessWidget {
-  const _ExpiredRibbon();
-
-  @override
-  Widget build(BuildContext context) {
-    return Transform.rotate(
-      angle: -math.pi / 4,
-      child: Container(
-        width: 130,
-        height: 20,
-        alignment: Alignment.center,
-        color: AppColors.danger,
-        child: Text(
-          '종료',
-          style: AppText.caption.copyWith(color: Colors.white, height: 1.0),
-        ),
-      ),
-    );
-  }
-}
-
 enum _MineFilter {
   all('전체'),
   recruiting('모집중'),
@@ -696,6 +559,98 @@ class _MineTabState extends ConsumerState<_MineTab> {
   }
 }
 
+/// 비밀 그룹 문 앞 비밀번호 입력 dialog — 상세 참가 폼의 PIN 입력과 동일 스펙
+/// (숫자 4자리). 확인 시 check_team_password RPC 로 서버 검증하고, 일치할
+/// 때만 입력값을 pop 으로 돌려준다. 불일치·통신 실패는 dialog 안 errorText.
+class _PinDialog extends StatefulWidget {
+  final String battleId;
+  const _PinDialog({required this.battleId});
+
+  @override
+  State<_PinDialog> createState() => _PinDialogState();
+}
+
+class _PinDialogState extends State<_PinDialog> {
+  final _ctrl = TextEditingController();
+  bool _busy = false;
+  String? _error;
+
+  @override
+  Widget build(BuildContext context) {
+    final ready = _ctrl.text.trim().length == 4 && !_busy;
+    return AlertDialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+      ),
+      title: const Text('비밀 그룹', style: AppText.modalTitle),
+      content: TextField(
+        controller: _ctrl,
+        autofocus: true,
+        keyboardType: TextInputType.number,
+        maxLength: 4,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        style: AppText.body.copyWith(color: AppColors.textPrimary),
+        onChanged: (_) => setState(() => _error = null),
+        decoration: InputDecoration(hintText: '비밀번호 4자리', errorText: _error),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _busy ? null : () => Navigator.pop(context),
+          child: Text(
+            '취소',
+            style: AppText.body.copyWith(color: AppColors.textHint),
+          ),
+        ),
+        TextButton(
+          onPressed: ready ? _submit : null,
+          child: Text(
+            '확인',
+            style: AppText.subTitle.copyWith(
+              color: ready ? AppColors.textPrimary : AppColors.textHint,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final pin = _ctrl.text.trim();
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final ok = await BattleService.instance.checkPassword(
+        widget.battleId,
+        pin,
+      );
+      if (!mounted) return;
+      if (ok) {
+        Navigator.pop(context, pin);
+        return;
+      }
+      setState(() {
+        _busy = false;
+        _error = BattleJoinError.badPassword.labelKo;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = BattleJoinError.unknown.labelKo;
+      });
+    }
+  }
+}
+
 class _PublicCard extends StatefulWidget {
   final PublicBattle battle;
   final bool isOwner;
@@ -766,98 +721,6 @@ class _PublicCardState extends State<_PublicCard> {
         builder: (_) =>
             BattleDetailScreen(battleId: battle.id, initialPin: pin),
       ),
-    );
-  }
-}
-
-/// 비밀 그룹 문 앞 비밀번호 입력 dialog — 상세 참가 폼의 PIN 입력과 동일 스펙
-/// (숫자 4자리). 확인 시 check_team_password RPC 로 서버 검증하고, 일치할
-/// 때만 입력값을 pop 으로 돌려준다. 불일치·통신 실패는 dialog 안 errorText.
-class _PinDialog extends StatefulWidget {
-  final String battleId;
-  const _PinDialog({required this.battleId});
-
-  @override
-  State<_PinDialog> createState() => _PinDialogState();
-}
-
-class _PinDialogState extends State<_PinDialog> {
-  final _ctrl = TextEditingController();
-  bool _busy = false;
-  String? _error;
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    final pin = _ctrl.text.trim();
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    try {
-      final ok = await BattleService.instance.checkPassword(
-        widget.battleId,
-        pin,
-      );
-      if (!mounted) return;
-      if (ok) {
-        Navigator.pop(context, pin);
-        return;
-      }
-      setState(() {
-        _busy = false;
-        _error = BattleJoinError.badPassword.labelKo;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _busy = false;
-        _error = BattleJoinError.unknown.labelKo;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final ready = _ctrl.text.trim().length == 4 && !_busy;
-    return AlertDialog(
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-      ),
-      title: const Text('비밀 그룹', style: AppText.modalTitle),
-      content: TextField(
-        controller: _ctrl,
-        autofocus: true,
-        keyboardType: TextInputType.number,
-        maxLength: 4,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        style: AppText.body.copyWith(color: AppColors.textPrimary),
-        onChanged: (_) => setState(() => _error = null),
-        decoration: InputDecoration(hintText: '비밀번호 4자리', errorText: _error),
-      ),
-      actions: [
-        TextButton(
-          onPressed: _busy ? null : () => Navigator.pop(context),
-          child: Text(
-            '취소',
-            style: AppText.body.copyWith(color: AppColors.textHint),
-          ),
-        ),
-        TextButton(
-          onPressed: ready ? _submit : null,
-          child: Text(
-            '확인',
-            style: AppText.subTitle.copyWith(
-              color: ready ? AppColors.textPrimary : AppColors.textHint,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
@@ -936,6 +799,144 @@ class _PublicTabState extends ConsumerState<_PublicTab> {
                   ),
           );
         },
+      ),
+    );
+  }
+}
+
+/// 카드 좌하단 참가자 아바타 — 궁합 확인 탭 pair 아바타(42 thumb +
+/// 2 ring, step 32)의 정확히 1/2 스케일(21 + 1, step 16) overlap 배치.
+/// 채워진 아바타 뒤에 빈자리 슬롯을 이어 붙여 정원 표기를 겸한다 —
+/// 이성 케미는 남/여 잔여석을 각 성별 아이콘으로, 전체 케미는 user 아이콘.
+class _RosterAvatars extends ConsumerWidget {
+  static const _kThumb = 21.0;
+  static const _kBox = 23.0; // thumb + 흰 ring 1px×2
+  static const _kStep = 16.0;
+  final String teamId;
+  final int maxPlayers;
+
+  final BattleRoomKind roomKind;
+  final bool showEmptySlots;
+  const _RosterAvatars({
+    required this.teamId,
+    required this.maxPlayers,
+    required this.roomKind,
+    required this.showEmptySlots,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final avatars =
+        ref.watch(battleRosterAvatarsProvider(teamId)).value ?? const [];
+    if (avatars.isEmpty) return const SizedBox(height: _kBox);
+    // 빈자리 슬롯 svg 목록 — 이성 케미는 남녀 반반 정원이라 성별별 잔여석,
+    // 전체 케미는 성별 무관 잔여석.
+    final emptySvgs = <String>[];
+    if (showEmptySlots) {
+      if (roomKind == BattleRoomKind.match) {
+        final half = maxPlayers ~/ 2;
+        final males = avatars.where((a) => a.gender == 'male').length;
+        final females = avatars.length - males;
+        emptySvgs.addAll([
+          for (var i = males; i < half; i++) 'assets/svgs/male.svg',
+          for (var i = females; i < half; i++) 'assets/svgs/female.svg',
+        ]);
+      } else {
+        emptySvgs.addAll([
+          for (var i = avatars.length; i < maxPlayers; i++)
+            'assets/svgs/user.svg',
+        ]);
+      }
+    }
+    final total = avatars.length + emptySvgs.length;
+    // 정원 최대 12명까지 자르지 않고 전부 — 좁으면 FittedBox 가 줄인다.
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: SizedBox(
+        width: _kBox + _kStep * (total - 1),
+        height: _kBox,
+        child: Stack(
+          children: [
+            for (var i = 0; i < avatars.length; i++)
+              Positioned(left: _kStep * i, child: _ring(avatars[i])),
+            for (var i = 0; i < emptySvgs.length; i++)
+              Positioned(
+                left: _kStep * (avatars.length + i),
+                child: _emptySlot(emptySvgs[i]),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 빈자리 슬롯 — 채워진 아바타와 같은 ring 구조에 흰 원 + hint 색
+  /// svg 실루엣. border 는 기본색이라 채워진 자리와 확연히 구분된다.
+  Widget _emptySlot(String asset) {
+    return Container(
+      padding: const EdgeInsets.all(1),
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white,
+      ),
+      child: Container(
+        width: _kThumb,
+        height: _kThumb,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white,
+          border: Border.all(color: AppColors.border),
+        ),
+        child: SvgPicture.asset(
+          asset,
+          height: 11,
+          colorFilter: const ColorFilter.mode(
+            AppColors.textHint,
+            BlendMode.srcIn,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _genderIcon(String gender) => Center(
+    child: Image.asset(
+      gender == 'male' ? 'assets/icons/male.png' : 'assets/icons/female.png',
+      width: 11,
+      height: 11,
+    ),
+  );
+
+  Widget _ring(RosterAvatar a) {
+    final showPhoto = a.url != null;
+    return Container(
+      padding: const EdgeInsets.all(1),
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white,
+      ),
+      child: Container(
+        width: _kThumb,
+        height: _kThumb,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.surface,
+          // 사진일 때만 촬영 경로 border 규칙 — 아이콘 fallback 은 기본 border.
+          border: Border.all(
+            color: showPhoto ? sourceBorderColor(a.source) : AppColors.border,
+          ),
+        ),
+        child: showPhoto
+            ? CachedNetworkImage(
+                imageUrl: a.url!,
+                fit: BoxFit.cover,
+                placeholder: (_, _) => Container(color: AppColors.surface),
+                errorWidget: (_, _, _) => _genderIcon(a.gender),
+              )
+            : _genderIcon(a.gender),
       ),
     );
   }
