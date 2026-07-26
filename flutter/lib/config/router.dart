@@ -220,7 +220,7 @@ class _ChatRouteWrapperState extends State<_ChatRouteWrapper> {
           final roster = await svc.fetchRoster(widget.teamId);
           var nickname = '상대';
           for (final r in roster) {
-            if (r.userId == other) nickname = r.nickname;
+            if (r.userId == other) nickname = r.alias;
           }
           return TeamChatScreen(
             teamId: widget.teamId,

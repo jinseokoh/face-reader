@@ -804,6 +804,10 @@ create table if not exists public.team_members (
   user_id   uuid        not null references auth.users(id) on delete cascade,
   slot_no   int         not null,
   gender    text        not null check (gender in ('male', 'female')),
+  -- 조인 시점 이름 스냅샷 — compatibilities.a_alias/b_alias 와 동일 패턴.
+  -- body 스냅샷은 PII 정책상 alias 를 담지 않는다 (metrics 컬럼이 canonical).
+  -- 탈퇴·닉네임 변경에도 방 수명 동안 로스터 이름이 보존된다.
+  alias     text,
   is_owner  boolean     not null default false,
   joined_at timestamptz not null default now(),
   unique (team_id, user_id),
@@ -1113,6 +1117,7 @@ declare
   v_team         record;
   v_age          int;
   v_gender       text;
+  v_alias        text;
   v_count        int;
   v_slot         int;
   v_gender_count int;
@@ -1171,9 +1176,13 @@ begin
     end if;
   end if;
 
+  -- 조인 시점 이름 동결 — users.nickname 스냅샷 (이후 개명·탈퇴 무관).
+  select u.nickname into v_alias from users u where u.id = v_uid;
+
   begin
-    insert into team_members (team_id, user_id, slot_no, gender, is_owner)
-    values (p_team_id, v_uid, v_slot + 1, v_gender, v_uid = v_team.owner_id);
+    insert into team_members (team_id, user_id, slot_no, gender, alias, is_owner)
+    values (p_team_id, v_uid, v_slot + 1, v_gender, v_alias,
+            v_uid = v_team.owner_id);
   exception when unique_violation then
     raise exception 'ALREADY_JOINED';
   end;
@@ -1190,7 +1199,9 @@ begin
        set status = 'revealing',
            started_at = now(),
            chemistry_snapshot = (
-             select jsonb_object_agg(tm.user_id::text, mf.body::jsonb)
+             -- body 는 순수 계측 스냅샷 — alias 는 PII 정책상 제거
+             -- (이름은 team_members.alias 가 canonical).
+             select jsonb_object_agg(tm.user_id::text, mf.body::jsonb - 'alias')
                from team_members tm
                join lateral (
                  select body from metrics m
@@ -1403,11 +1414,14 @@ create or replace view public.public_teams with (security_invoker = off) as
 -- 참가자 "닉네임만" 노출한다 (coins·kakao_user_id 등은 select 목록에 없음).
 -- 읽기 범위 = 방과 동일 link-share 모델. 다중 테이블 join 이라 auto-update
 -- 불가지만 §11-4 에서 write revoke 로 이중 봉인.
-create or replace view public.team_roster as
+-- alias = 조인 시점 동결 이름 (team_members.alias). 구버전 행(컬럼 도입 전)만
+-- users.nickname 으로 보충. left join 이라 탈퇴 후에도 로스터 행이 살아 있다.
+drop view if exists public.team_roster;
+create view public.team_roster as
   select tm.team_id, tm.user_id, tm.slot_no, tm.gender, tm.is_owner, tm.joined_at,
-         u.nickname
+         coalesce(tm.alias, u.nickname) as alias
     from public.team_members tm
-    join public.users u on u.id = tm.user_id;
+    left join public.users u on u.id = tm.user_id;
 
 -- 내 차단 목록 — team_roster 와 같은 owner 실행 view 패턴으로 users RLS
 -- (self-read)를 우회해 차단 상대의 "닉네임만" 노출한다. 행 범위는 본인 차단

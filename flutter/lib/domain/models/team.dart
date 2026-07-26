@@ -99,7 +99,7 @@ class TeamRosterEntry {
   final String gender;
   final bool isOwner;
   final DateTime joinedAt;
-  final String nickname;
+  final String alias;
 
   const TeamRosterEntry({
     required this.teamId,
@@ -108,7 +108,7 @@ class TeamRosterEntry {
     required this.gender,
     required this.isOwner,
     required this.joinedAt,
-    required this.nickname,
+    required this.alias,
   });
 
   factory TeamRosterEntry.fromRow(Map<String, dynamic> row) =>
@@ -119,7 +119,7 @@ class TeamRosterEntry {
         gender: row['gender'] as String,
         isOwner: row['is_owner'] as bool,
         joinedAt: DateTime.parse(row['joined_at'] as String),
-        nickname: (row['nickname'] as String?) ?? '참가자',
+        alias: (row['alias'] as String?) ?? '참가자',
       );
 }
 
@@ -306,7 +306,7 @@ List<TeamPlayer> assembleTeamPlayers({
     players.add(
       TeamPlayer(
         slot: entry.slotNo,
-        name: entry.nickname,
+        name: entry.alias,
         gender: entry.gender,
         report: report,
       ),

@@ -149,13 +149,13 @@ const ETHNICITY_LABEL: Record<string, string> = {
 
 /** 참가자 칩 라벨 — "30대 여성 아시아인" 인구통계 풀이. metrics 없으면 닉네임. */
 function rosterChipLabel(r: {
-  nickname: string;
+  alias: string;
   gender: string;
   ageGroup: string | null;
   ethnicity: string | null;
 }): string {
   const age = r.ageGroup ? AGE_GROUP_LABEL[r.ageGroup] : null;
-  if (!age) return r.nickname;
+  if (!age) return r.alias;
   const genderKo = r.gender === "male" ? "남성" : "여성";
   const eth = r.ethnicity ? ETHNICITY_LABEL[r.ethnicity] : null;
   return `${age} ${genderKo}${eth ? ` ${eth}` : ""}`;
@@ -352,7 +352,7 @@ function RevealFallback({
           userId: r.userId,
           slotNo: r.slotNo,
           isOwner: r.isOwner,
-          nickname: r.nickname,
+          alias: r.alias,
           gender: r.gender,
         }));
         const computed = computeTeamPayload(

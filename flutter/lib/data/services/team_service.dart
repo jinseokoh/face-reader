@@ -385,7 +385,7 @@ class TeamService {
     final results = await Future.wait<dynamic>([
       _client
           .from('team_roster')
-          .select('team_id, user_id, nickname')
+          .select('team_id, user_id, alias')
           .inFilter('team_id', teamIds),
       fetchMyFaceThumbnailUrls(otherIds),
       for (final id in teamIds)
@@ -401,7 +401,7 @@ class TeamService {
     // (teamId, userId) → nickname. 상대 계정 삭제로 로스터가 없으면 '상대'.
     final nicknames = <String, String>{
       for (final r in results[0] as List)
-        '${r['team_id']}:${r['user_id']}': (r['nickname'] as String?) ?? '상대',
+        '${r['team_id']}:${r['user_id']}': (r['alias'] as String?) ?? '상대',
     };
     final thumbs = results[1] as Map<String, MyFaceThumb>;
 
@@ -460,7 +460,7 @@ class TeamService {
           .inFilter('id', teamIds),
       _client
           .from('team_roster')
-          .select('team_id, user_id, nickname, gender')
+          .select('team_id, user_id, alias, gender')
           .inFilter('team_id', teamIds),
       fetchMyFaceThumbnailUrls(otherIds),
     ]);
@@ -487,7 +487,7 @@ class TeamService {
         teamTitle: (team['title'] as String?) ?? '케미 그룹',
         decideBy: decideBy,
         otherUserId: otherIds[i],
-        otherNickname: (other?['nickname'] as String?) ?? '상대',
+        otherNickname: (other?['alias'] as String?) ?? '상대',
         otherGender: (other?['gender'] as String?) ?? 'male',
         photoUrl: thumbs[otherIds[i]]?.url,
         photoSource: thumbs[otherIds[i]]?.source,

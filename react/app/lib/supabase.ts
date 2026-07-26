@@ -108,7 +108,8 @@ export type TeamSSR = {
     userId: string;
     slotNo: number;
     isOwner: boolean;
-    nickname: string;
+    /** 조인 시점 동결 이름 (team_members.alias). */
+    alias: string;
     gender: string;
     /** my-face 썸네일 R2 키. 없으면 null. */
     thumbKey: string | null;
@@ -148,7 +149,7 @@ export async function fetchTeamSSR(
 
   const rosterRes = await fetch(
     `${env.SUPABASE_URL}/rest/v1/team_roster?team_id=eq.${q}` +
-      `&select=user_id,slot_no,is_owner,nickname,gender&order=slot_no.asc`,
+      `&select=user_id,slot_no,is_owner,alias,gender&order=slot_no.asc`,
     { headers },
   );
   const rosterRows = rosterRes.ok
@@ -212,7 +213,7 @@ export async function fetchTeamSSR(
       userId: r.user_id as string,
       slotNo: r.slot_no as number,
       isOwner: r.is_owner as boolean,
-      nickname: (r.nickname as string) ?? "참가자",
+      alias: (r.alias as string) ?? "참가자",
       gender: r.gender as string,
       thumbKey: thumbs.get(r.user_id as string)?.key ?? null,
       thumbSource: thumbs.get(r.user_id as string)?.source ?? null,

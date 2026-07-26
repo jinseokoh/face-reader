@@ -169,10 +169,10 @@ void main() {
       'gender': 'female',
       'is_owner': false,
       'joined_at': '2026-07-16T09:10:00Z',
-      'nickname': '철수',
+      'alias': '철수',
     });
     expect(entry.slotNo, 3);
-    expect(entry.nickname, '철수');
+    expect(entry.alias, '철수');
     expect(entry.gender, 'female');
 
     final pub = PublicTeam.fromRow({
@@ -272,11 +272,11 @@ void main() {
     final roster = [
       TeamRosterEntry.fromRow({
         'team_id': 'b1', 'user_id': 'u2', 'slot_no': 2, 'gender': 'female',
-        'is_owner': false, 'joined_at': '2026-07-16T09:10:00Z', 'nickname': '영희',
+        'is_owner': false, 'joined_at': '2026-07-16T09:10:00Z', 'alias': '영희',
       }),
       TeamRosterEntry.fromRow({
         'team_id': 'b1', 'user_id': 'u1', 'slot_no': 1, 'gender': 'male',
-        'is_owner': true, 'joined_at': '2026-07-16T09:00:00Z', 'nickname': '지은',
+        'is_owner': true, 'joined_at': '2026-07-16T09:00:00Z', 'alias': '지은',
       }),
     ];
     final players = assembleTeamPlayers(

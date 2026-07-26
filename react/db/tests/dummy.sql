@@ -42,6 +42,7 @@ declare
     'dummy/female/4.jpg', 'dummy/female/5.jpg'];
   v_me      uuid;
   v_me_body jsonb;
+  v_me_name text;
   v_me_age  int;
   v_base    jsonb;
   i         int;
@@ -55,6 +56,7 @@ begin
   if v_me is null then
     raise exception '로그인 계정의 my-face 가 없습니다 — 앱에서 내 관상 등록 후 실행';
   end if;
+  select u.nickname into v_me_name from public.users u where u.id = v_me;
   v_me_age := greatest(coalesce(
     nullif(regexp_replace(v_me_body->>'ageGroup', '\D', '', 'g'), '')::int, 20), 20);
 
@@ -114,16 +116,16 @@ begin
           8, v_me_age, v_me_age + 10, 'revealing',
           now() - interval '5 minutes', now() - interval '1 hour');
 
-  insert into public.team_members (team_id, user_id, slot_no, gender, is_owner)
+  insert into public.team_members (team_id, user_id, slot_no, gender, alias, is_owner)
   values
-    (v_team1, v_me,        1, 'male',   true),
-    (v_team1, v_dummy[1],  2, 'male',   false),  -- 준호
-    (v_team1, v_dummy[2],  3, 'male',   false),  -- 민석
-    (v_team1, v_dummy[6],  4, 'male',   false),  -- 도윤
-    (v_team1, v_dummy[3],  5, 'female', false),  -- 서연
-    (v_team1, v_dummy[4],  6, 'female', false),  -- 지은
-    (v_team1, v_dummy[5],  7, 'female', false),  -- 하늘
-    (v_team1, v_dummy[8],  8, 'female', false);  -- 수아
+    (v_team1, v_me,        1, 'male',   v_me_name,  true),
+    (v_team1, v_dummy[1],  2, 'male',   v_names[1], false),  -- 준호
+    (v_team1, v_dummy[2],  3, 'male',   v_names[2], false),  -- 민석
+    (v_team1, v_dummy[6],  4, 'male',   v_names[6], false),  -- 도윤
+    (v_team1, v_dummy[3],  5, 'female', v_names[3], false),  -- 서연
+    (v_team1, v_dummy[4],  6, 'female', v_names[4], false),  -- 지은
+    (v_team1, v_dummy[5],  7, 'female', v_names[5], false),  -- 하늘
+    (v_team1, v_dummy[8],  8, 'female', v_names[8], false);  -- 수아
 
   -- 방 ② all 10인 — 방장 = 준호, 나 = 참가자(slot 2).
   insert into public.teams (id, owner_id, title, room_kind, thumb_open,
@@ -133,23 +135,24 @@ begin
           10, v_me_age, v_me_age + 10, 'revealing',
           now() - interval '3 minutes', now() - interval '2 hours');
 
-  insert into public.team_members (team_id, user_id, slot_no, gender, is_owner)
+  insert into public.team_members (team_id, user_id, slot_no, gender, alias, is_owner)
   values
-    (v_team2, v_dummy[1],  1, 'male',   true),   -- 준호(방장)
-    (v_team2, v_me,        2, 'male',   false),
-    (v_team2, v_dummy[2],  3, 'male',   false),  -- 민석
-    (v_team2, v_dummy[6],  4, 'male',   false),  -- 도윤
-    (v_team2, v_dummy[7],  5, 'male',   false),  -- 지훈
-    (v_team2, v_dummy[3],  6, 'female', false),  -- 서연
-    (v_team2, v_dummy[4],  7, 'female', false),  -- 지은
-    (v_team2, v_dummy[5],  8, 'female', false),  -- 하늘
-    (v_team2, v_dummy[8],  9, 'female', false),  -- 수아
-    (v_team2, v_dummy[9], 10, 'female', false);  -- 유진
+    (v_team2, v_dummy[1],  1, 'male',   v_names[1], true),   -- 준호(방장)
+    (v_team2, v_me,        2, 'male',   v_me_name,  false),
+    (v_team2, v_dummy[2],  3, 'male',   v_names[2], false),  -- 민석
+    (v_team2, v_dummy[6],  4, 'male',   v_names[6], false),  -- 도윤
+    (v_team2, v_dummy[7],  5, 'male',   v_names[7], false),  -- 지훈
+    (v_team2, v_dummy[3],  6, 'female', v_names[3], false),  -- 서연
+    (v_team2, v_dummy[4],  7, 'female', v_names[4], false),  -- 지은
+    (v_team2, v_dummy[5],  8, 'female', v_names[5], false),  -- 하늘
+    (v_team2, v_dummy[8],  9, 'female', v_names[8], false),  -- 수아
+    (v_team2, v_dummy[9], 10, 'female', v_names[9], false);  -- 유진
 
-  -- snapshot 동결 — join_team 시작 트랜잭션과 동일 (blocked·chatted 쌍 포함).
+  -- snapshot 동결 — join_team 시작 트랜잭션과 동일 (blocked·chatted 쌍 포함,
+  -- body 는 alias 제거한 순수 계측 스냅샷).
   update public.teams t
      set chemistry_snapshot = (
-           select jsonb_object_agg(tm.user_id::text, mf.body::jsonb)
+           select jsonb_object_agg(tm.user_id::text, mf.body::jsonb - 'alias')
              from public.team_members tm
              join lateral (
                select body from public.metrics m

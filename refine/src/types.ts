@@ -98,6 +98,8 @@ export type TeamMember = {
   user_id: string;
   slot_no: number;
   gender: "male" | "female";
+  /** 조인 시점 동결 이름 스냅샷 — 탈퇴·개명에도 방 수명 동안 보존. */
+  alias: string | null;
   is_owner: boolean;
   joined_at: string;
 };

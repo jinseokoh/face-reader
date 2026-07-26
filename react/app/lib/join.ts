@@ -238,7 +238,8 @@ export type RosterEntry = {
   userId: string;
   slotNo: number;
   isOwner: boolean;
-  nickname: string;
+  /** 조인 시점 동결 이름 (team_members.alias). */
+  alias: string;
   gender: string;
 };
 
@@ -298,14 +299,14 @@ export async function fetchTeamRoster(
 ): Promise<RosterEntry[]> {
   const { data } = await sb
     .from("team_roster")
-    .select("user_id, slot_no, is_owner, nickname, gender")
+    .select("user_id, slot_no, is_owner, alias, gender")
     .eq("team_id", teamId)
     .order("slot_no", { ascending: true });
   return (data ?? []).map((r) => ({
     userId: r.user_id as string,
     slotNo: r.slot_no as number,
     isOwner: r.is_owner as boolean,
-    nickname: (r.nickname as string) ?? "참가자",
+    alias: (r.alias as string) ?? "참가자",
     gender: r.gender as string,
   }));
 }
@@ -375,7 +376,7 @@ export function computeTeamPayload(
     .filter((r) => snapshot[r.userId])
     .map((r) => ({
       slot: r.slotNo,
-      name: r.nickname,
+      name: r.alias,
       gender: r.gender,
       body: snapshot[r.userId],
     }));

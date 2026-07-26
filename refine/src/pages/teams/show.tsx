@@ -189,7 +189,9 @@ export const TeamShow = () => {
                       {u?.nickname?.[0] ?? "?"}
                     </Avatar>
                     <UserLink id={uid}>
-                      <Text strong>{u?.nickname ?? `${uid.slice(0, 8)}…`}</Text>
+                      <Text strong>
+                        {m.alias ?? u?.nickname ?? `${uid.slice(0, 8)}…`}
+                      </Text>
                     </UserLink>
                     {m.is_owner && <Tag color="gold">방장</Tag>}
                   </Space>
@@ -258,7 +260,10 @@ export const TeamShow = () => {
                       {u?.nickname?.[0] ?? "?"}
                     </Avatar>
                     <Text strong>
-                      {nameBySlot.get(slot) ?? u?.nickname ?? `슬롯 ${slot}`}
+                      {nameBySlot.get(slot) ??
+                        members.find((m) => m.slot_no === slot)?.alias ??
+                        u?.nickname ??
+                        `슬롯 ${slot}`}
                     </Text>
                   </Space>
                 );

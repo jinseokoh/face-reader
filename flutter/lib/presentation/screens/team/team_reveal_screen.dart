@@ -331,7 +331,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
                         const SizedBox(width: AppSpacing.sm),
                         Expanded(
                           child: Text(
-                            r.nickname,
+                            r.alias,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: AppText.body,
