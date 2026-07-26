@@ -5,6 +5,7 @@ import { useInvalidate, useMany, useNavigation } from "@refinedev/core";
 import {
   Avatar,
   Button,
+  Input,
   Modal,
   Popconfirm,
   Space,
@@ -14,13 +15,63 @@ import {
   Typography,
   message,
 } from "antd";
+import { useState } from "react";
 import { deleteR2Object } from "../../lib/r2";
 import { adminClient } from "../../providers/data";
-import { UserLink } from "../../components/user-link";
 import type { AppUser, MetricEntry } from "../../types";
 import { metricThumbUrl, parseDemographics } from "../../types";
 
 const { Text } = Typography;
+
+/** 클릭 → input 전환 인라인 편집 셀 — 엔터로 저장, blur/Esc 는 취소. */
+function EditableCell({
+  value,
+  label,
+  strong,
+  width = 120,
+  onSave,
+}: {
+  value: string | null;
+  /** 보기 모드 표시 라벨 — 생략 시 value 그대로 (예: 성별 남/여). */
+  label?: string | null;
+  strong?: boolean;
+  width?: number;
+  onSave: (v: string) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  if (!editing) {
+    return (
+      <Text
+        strong={strong}
+        type={value ? undefined : "secondary"}
+        style={{ cursor: "pointer" }}
+        onClick={() => {
+          setDraft(value ?? "");
+          setEditing(true);
+        }}
+      >
+        {label ?? value ?? "-"}
+      </Text>
+    );
+  }
+  return (
+    <Input
+      size="small"
+      autoFocus
+      value={draft}
+      style={{ width }}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => setEditing(false)}
+      onPressEnter={() => {
+        const v = draft.trim();
+        setEditing(false);
+        if (!v || v === (value ?? "")) return;
+        void onSave(v);
+      }}
+    />
+  );
+}
 
 const SOURCE_COLOR: Record<string, string> = {
   camera: "blue",
@@ -123,6 +174,78 @@ export const MetricList = () => {
     }
   };
 
+  /** 업로더 이름(users.nickname) 인라인 수정. */
+  const saveNickname = async (uid: string, v: string) => {
+    const { error } = await adminClient
+      .from("users")
+      .update({ nickname: v })
+      .eq("id", uid);
+    if (error) {
+      message.error(`이름 변경 실패: ${error.message}`);
+      return;
+    }
+    message.success("이름 변경됨");
+    invalidate({ resource: "users", invalidates: ["list", "many"] });
+  };
+
+  /** 연령대(body.ageGroup) 인라인 수정 — 엔진 계약("20s"…"90s") 검증. */
+  const saveAgeGroup = async (record: MetricEntry, v: string) => {
+    if (!/^[1-9]0s$/.test(v)) {
+      message.error('연령대는 "20s" 형식이어야 합니다 (10s~90s)');
+      return;
+    }
+    try {
+      const body = JSON.parse(record.body ?? "{}") as Record<string, unknown>;
+      body.ageGroup = v;
+      const { error } = await adminClient
+        .from("metrics")
+        .update({ body: JSON.stringify(body) })
+        .eq("id", record.id);
+      if (error) throw error;
+      message.success("연령대 변경됨");
+      invalidate({ resource: "metrics", invalidates: ["list"] });
+    } catch (e) {
+      message.error(`변경 실패: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
+  /** 성별(body.gender) 인라인 수정 — male/female (남/여 입력도 허용). */
+  const saveGender = async (record: MetricEntry, raw: string) => {
+    const v =
+      raw === "남" ? "male" : raw === "여" ? "female" : raw.toLowerCase();
+    if (v !== "male" && v !== "female") {
+      message.error('성별은 "male"/"female" (또는 남/여) 만 가능합니다');
+      return;
+    }
+    try {
+      const body = JSON.parse(record.body ?? "{}") as Record<string, unknown>;
+      body.gender = v;
+      const { error } = await adminClient
+        .from("metrics")
+        .update({ body: JSON.stringify(body) })
+        .eq("id", record.id);
+      if (error) throw error;
+      message.success("성별 변경됨");
+      invalidate({ resource: "metrics", invalidates: ["list"] });
+    } catch (e) {
+      message.error(`변경 실패: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
+  /** alias(metrics.alias) 인라인 수정. */
+  const saveAlias = async (record: MetricEntry, v: string) => {
+    const { error } = await adminClient
+      .from("metrics")
+      .update({ alias: v })
+      .eq("id", record.id);
+    if (error) {
+      message.error(`alias 변경 실패: ${error.message}`);
+      return;
+    }
+    message.success("alias 변경됨");
+    invalidate({ resource: "metrics", invalidates: ["list"] });
+  };
+
   const handleCleanup = () => {
     Modal.confirm({
       title: "90일+ 미활동 metrics 삭제",
@@ -213,7 +336,11 @@ export const MetricList = () => {
                 <Avatar src={u.profile_image_url ?? undefined} size={24}>
                   {u.nickname?.[0] ?? "?"}
                 </Avatar>
-                <UserLink id={uid}><Text strong>{u.nickname ?? "(없음)"}</Text></UserLink>
+                <EditableCell
+                  value={u.nickname ?? null}
+                  strong
+                  onSave={(v) => saveNickname(uid, v)}
+                />
               </Space>
             );
           }}
@@ -230,17 +357,27 @@ export const MetricList = () => {
           title="성별"
           dataIndex="body"
           render={(_: unknown, record: MetricEntry) => {
-            const v = parseDemographics(record.body).gender;
-            return v ? GENDER_LABEL[v] ?? v : <Text type="secondary">-</Text>;
+            const v = parseDemographics(record.body).gender ?? null;
+            return (
+              <EditableCell
+                value={v}
+                label={v ? GENDER_LABEL[v] ?? v : null}
+                width={72}
+                onSave={(nv) => saveGender(record, nv)}
+              />
+            );
           }}
         />
         <Table.Column<MetricEntry>
           title="연령대"
           dataIndex="body"
-          render={(_: unknown, record: MetricEntry) => {
-            const v = parseDemographics(record.body).ageGroup;
-            return v ?? <Text type="secondary">-</Text>;
-          }}
+          render={(_: unknown, record: MetricEntry) => (
+            <EditableCell
+              value={parseDemographics(record.body).ageGroup ?? null}
+              width={72}
+              onSave={(v) => saveAgeGroup(record, v)}
+            />
+          )}
         />
         <Table.Column<MetricEntry>
           title="ethnicity"
@@ -268,9 +405,12 @@ export const MetricList = () => {
         <Table.Column<MetricEntry>
           title="alias"
           dataIndex="alias"
-          render={(v: string | null) =>
-            v ? <Text>{v}</Text> : <Text type="secondary">-</Text>
-          }
+          render={(v: string | null, record: MetricEntry) => (
+            <EditableCell
+              value={v}
+              onSave={(nv) => saveAlias(record, nv)}
+            />
+          )}
         />
         <Table.Column<MetricEntry>
           title="업로드"
