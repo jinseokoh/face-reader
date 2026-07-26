@@ -4,6 +4,7 @@ import type { Route } from "./+types/g.$id";
 import { CTA } from "../components/CTA";
 import { JoinWizard } from "../components/JoinWizard";
 import { getSupabase } from "../lib/auth";
+import { openInExternalBrowser } from "../lib/inapp";
 import {
   bestPair,
   computeTeamPayload,
@@ -24,11 +25,14 @@ import { fetchTeamSSR } from "../lib/supabase";
  *
  * 밴드는 색 대신 이모지(🟢🔵🟠🔴)로만 표기해 웹 4색 팔레트를 지킨다.
  */
-export async function loader({ context, params }: Route.LoaderArgs) {
+export async function loader({ context, params, request }: Route.LoaderArgs) {
   const env = context.cloudflare.env;
   const data = await fetchTeamSSR(env, params.id!);
   if (!data) throw new Response("Not Found", { status: 404 });
+  // 카톡 웹뷰는 SSR 에서 UA 로 판별 — 클라이언트 감지의 hydration 깜빡임 방지.
+  const inKakao = /KAKAOTALK/i.test(request.headers.get("user-agent") ?? "");
   return {
+    inKakao,
     team: data.team,
     roster: data.roster,
     appOpenUrl: `${env.WEBAPP_BASE}/g/${params.id}/open`,
@@ -76,6 +80,15 @@ export default function Group() {
   const { team } = data;
   const [wizardActive, setWizardActive] = useState(false);
 
+  // 카톡 웹뷰 × 모집중 — 초대장 본편을 렌더하지 않고 전용 인터스티셜만.
+  // 웹뷰에서 본편을 보여주면 기본 브라우저 탈출 후 "같은 페이지 반복" 으로
+  // 오독된다. 결과·종료 상태는 카메라가 필요 없어 웹뷰 열람 그대로 허용.
+  if (team.status === "recruiting" && data.inKakao) {
+    return (
+      <KakaoEscapeInterstitial title={team.title} appOpenUrl={data.appOpenUrl} />
+    );
+  }
+
   let body: React.ReactNode;
   if (team.status === "recruiting") {
     body = (
@@ -115,6 +128,36 @@ export default function Group() {
         appStoreUrl={data.appStoreUrl}
         playStoreUrl={data.playStoreUrl}
       />
+    </main>
+  );
+}
+
+/** 카톡 웹뷰 전용 탈출 인터스티셜 — 초대장과 완전히 다른 bridge 문법.
+ *  탈출 후 기본 브라우저에서 뜨는 풀 초대장이 "새 화면" 으로 인지된다. */
+function KakaoEscapeInterstitial({
+  title,
+  appOpenUrl,
+}: {
+  title: string;
+  appOpenUrl: string;
+}) {
+  return (
+    <main className="bridge">
+      <p className="bridge-text">{title}</p>
+      <p className="bridge-sub">
+        카카오톡 안에서는 카메라가 막혀 있어 참여를 진행할 수 없어요.
+        기본 브라우저로 열면 바로 참여할 수 있어요.
+      </p>
+      <button
+        type="button"
+        className="bridge-link bridge-link--primary"
+        onClick={() => openInExternalBrowser(window.location.href)}
+      >
+        기본 브라우저로 열기
+      </button>
+      <a className="bridge-link" href={appOpenUrl}>
+        앱으로 열기
+      </a>
     </main>
   );
 }

@@ -784,8 +784,8 @@ textarea.form-input {
 }
 .join {
   text-align: center;
-  /* 좌우 0 — full-width 버튼이 하단 공용 CTA 와 같은 폭으로 정렬되게 */
-  padding: 16px 0;
+  /* 좌우 16px gutter — 하단 공용 CTA(.cta)도 같은 16px 로 정렬 유지 */
+  padding: 16px;
   margin-top: 8px;
 }
 .join-q {
@@ -1055,6 +1055,8 @@ textarea.form-input {
 .cta {
   text-align: center;
   margin-top: 24px;
+  /* .join 과 동일한 좌우 16px gutter — 버튼 폭 정렬 유지 */
+  padding: 0 16px;
 }
 
 .cta-primary {
