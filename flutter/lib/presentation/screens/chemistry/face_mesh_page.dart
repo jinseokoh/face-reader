@@ -736,7 +736,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
 
   /// modal 의 dismiss button label — phase 에 맞춰 작명.
   String _phaseConfirmLabel(String title) {
-    if (title.contains('정면')) return '확인';
+    if (title.contains('정면')) return '촬영';
     return '측면 시작';
   }
 

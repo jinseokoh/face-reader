@@ -717,30 +717,9 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
   }
 
   void _showInfoDialog(BuildContext context) {
-    showGeneralDialog(
+    showDialog<void>(
       context: context,
-      barrierDismissible: true,
-      barrierLabel: 'info',
-      barrierColor: Colors.black54,
-      transitionDuration: const Duration(milliseconds: 400),
-      transitionBuilder: (ctx, anim, secondAnim, child) {
-        return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0, 0.3),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
-          child: FadeTransition(opacity: anim, child: child),
-        );
-      },
-      pageBuilder: (ctx, anim, secondAnim) {
-        final maxH = MediaQuery.of(ctx).size.height * 0.8;
-        return Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: maxH),
-            child: PhysiognomyInfoDialog(maxHeight: maxH),
-          ),
-        );
-      },
+      builder: (ctx) => const PhysiognomyInfoDialog(),
     );
   }
 

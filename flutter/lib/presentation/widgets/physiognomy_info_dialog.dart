@@ -1,49 +1,9 @@
 import 'package:facely/core/theme.dart';
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-class PhysiognomyInfoDialog extends StatefulWidget {
-  final double maxHeight;
-  const PhysiognomyInfoDialog({super.key, required this.maxHeight});
-
-  @override
-  State<PhysiognomyInfoDialog> createState() => _PhysiognomyInfoDialogState();
-}
-
-class _PhysiognomyInfoDialogState extends State<PhysiognomyInfoDialog>
-    with SingleTickerProviderStateMixin {
-  static const _paragraphs = [
-    '본 앱은 MediaPipe Face Mesh(468개 랜드마크)로 얼굴의 기하학적 비율을 정밀하게 측정하고, '
-        'DeepFace 모델로 인종·성별·연령대를 자동 추론합니다. '
-        '측정된 정면·측면 안면 비율은 추론된 인종·성별에 해당하는 레퍼런스(인구 평균·표준편차)와 '
-        '비교되어 Z-score(평균 대비 편차)로 산출됩니다.',
-    '이때 레퍼런스의 정확성이 결과 품질을 좌우합니다. 평균·표준편차가 실제 분포와 어긋나면 '
-        '모든 얼굴의 점수가 한쪽으로 쏠려 변별력이 사라지기 때문입니다. '
-        '그래서 동아시아 기준선은 All-Age-Faces(AAF) 공개 데이터셋의 실제 인물 정면 사진 약 13,322장을 '
-        '앱과 동일한 측정 파이프라인으로 분석하여, 26가지 안면 비율 각각의 실측 평균·표준편차로 재보정했습니다. '
-        '추정값이 아닌 실제 인구 분포에 기반하므로 서로 다른 얼굴이 저마다의 특성대로 또렷이 구분됩니다. '
-        '(그 외 인종·측면 비율은 Farkas 인체계측학 연구 등 학술 문헌 기준을 사용합니다.)',
-    '관상학은 동양에서 수천 년간 이어져 온 전통적 인상 해석 체계입니다. '
-        '본 앱은 이러한 문화적 유산에 현대 컴퓨터 비전 기술과 통계학적 방법론을 접목하여, '
-        '얼굴 비율이 인구 평균 대비 어떤 특성을 보이는지를 객관적 수치로 제시합니다. '
-        '10가지 속성 점수와 원형(archetype) 분류는 전통 관상학의 해석 틀을 참고하되, '
-        '성별·연령·인종에 따른 가중치 보정을 적용하여 보다 세밀한 분석을 제공합니다.',
-    '다만, 관상학적 해석은 과학적으로 검증된 인과관계가 아니라 '
-        '문화적·경험적 관찰에 기반한 것임을 분명히 합니다. '
-        '얼굴 비율의 통계적 분석은 객관적이나, 이를 성격이나 운명과 연결짓는 해석은 '
-        '전통 문화의 관점에서 제공되는 것이며, 개인을 판단하는 절대적 기준이 될 수 없습니다.',
-    '아울러, 본 앱은 촬영하거나 선택한 사진을 외부 서버로 전송하거나 저장하지 않습니다. '
-        '모든 얼굴 분석은 기기 내에서 수행되며, 저장되는 것은 오직 얼굴 비율의 수치 측정 결과뿐입니다. '
-        '원본 사진은 분석 직후 메모리에서 해제되며, 앨범 사진의 경우 소형 썸네일만 기기 내부에 보관합니다. '
-        '여러분의 사진이 어디론가 전송되는 일은 절대 없으니 안심하고 이용해 주십시오.',
-    '본 앱의 결과는 과학적 측정과 전통 문화적 해석이 만나는 흥미로운 교차점으로서 '
-        '즐겁게 참고하시되, 어디까지나 재미와 교양의 영역으로 받아들여 주시기 바랍니다. '
-        '모든 사람의 얼굴에는 저마다의 아름다움과 고유한 이야기가 담겨 있습니다. '
-        '보다 존중하는 시각으로 얼굴을 바라보는 계기가 되길 바랍니다.',
-  ];
-
-  late final AnimationController _controller;
-  final List<Animation<double>> _fadeAnims = [];
-  final List<Animation<Offset>> _slideAnims = [];
+class PhysiognomyInfoDialog extends StatelessWidget {
+  const PhysiognomyInfoDialog({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -51,31 +11,81 @@ class _PhysiognomyInfoDialogState extends State<PhysiognomyInfoDialog>
       backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: const Text('관상 분석에 대하여', style: AppText.modalTitle),
-      content: SizedBox(
-        height: widget.maxHeight - 140,
-        child: AnimatedBuilder(
-          animation: _controller,
-          builder: (context, _) => SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: List.generate(_paragraphs.length, (i) {
-                return FadeTransition(
-                  opacity: _fadeAnims[i],
-                  child: SlideTransition(
-                    position: _slideAnims[i],
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                          bottom: i < _paragraphs.length - 1 ? 20 : 0),
-                      child: Text(
-                        _paragraphs[i],
-                        style: AppText.body.copyWith(height: 1.8),
+      content: const SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '구글의 오픈소스 기술을 통해 얼굴의 468개 랜드마크를 추출 후 '
+              '기하학적 비율을 실측하여, 합성곱 신경망을 통해 분류하고 AAF 공개 데이터셋 '
+              '13,322장 얼굴 사진 데이터로 보정된 통계 엔진을 통해 '
+              '전통 관상학의 해석을 과학적으로 풀어드립니다.',
+              style: AppText.body,
+            ),
+            SizedBox(height: 18),
+            Text('카메라', style: AppText.sectionTitle),
+            SizedBox(height: 10),
+            _QuoteBlock(
+              child: Text(
+                '관상 추가 버튼을 눌러 카메라로 촬영해 관상을 봤을 때 누적되는 탭입니다.',
+                style: AppText.body,
+              ),
+            ),
+            SizedBox(height: 18),
+            Text('앨범', style: AppText.sectionTitle),
+            SizedBox(height: 10),
+            _QuoteBlock(
+              child: Text.rich(
+                TextSpan(
+                  style: AppText.body,
+                  children: [
+                    TextSpan(text: '앨범 사진으로 관상을 봤을때 누적되는 탭입니다. 관상 추가 버튼을 누르면 나오는 카메라 화면의 촬영 버튼 아래에 `'),
+                    WidgetSpan(
+                      alignment: PlaceholderAlignment.middle,
+                      child: FaIcon(
+                        FontAwesomeIcons.image,
+                        size: 13,
+                        color: AppColors.textPrimary,
                       ),
                     ),
-                  ),
-                );
-              }),
+                    TextSpan(text: ' 앨범에서 선택` 버튼이 있는데, 이 버튼을 누르면 앨범 사진을 선택할 수 있습니다.'),
+                  ],
+                ),
+              ),
             ),
-          ),
+            SizedBox(height: 18),
+            Text('북마크', style: AppText.sectionTitle),
+            SizedBox(height: 10),
+            _QuoteBlock(
+              child: Text(
+                '다른 사람이 facely.kr 주소로 공유한 관상을 열람하다가 '
+                '북마크했을 때 누적되는 탭입니다.',
+                style: AppText.body,
+              ),
+            ),
+            SizedBox(height: 18),
+            Divider(height: 1, thickness: 1, color: AppColors.border),
+            SizedBox(height: 18),
+            Text('사진 처리', style: AppText.sectionTitle),
+            SizedBox(height: 10),
+            Text(
+              '얼굴 비율 측정은 전부 기기 안에서 수행됩니다. '
+              '인종·성별·연령대 추론을 위한 별도의 파이프 라인에서도 자료는 보관되지 않습니다. '
+              '다만, 궁합·케미 그룹에서 어느 결과가 누구의 것인지 구분하기 위한 최소한의 정보로 '
+              '극히 낮은 해상도 (200x200픽셀) 의 얼굴 썸네일 단 한장 뿐이며. 회원 탈퇴 시 삭제됩니다.',
+              style: AppText.body,
+            ),
+            SizedBox(height: 18),
+            Text('해석의 한계', style: AppText.sectionTitle),
+            SizedBox(height: 10),
+            Text(
+              '관상학적 해석은 과학적으로 검증된 인과관계가 아니라 '
+              '문화적·경험적 관찰에 기반합니다. '
+              '재미와 교양의 영역으로 즐겁게 참고해 주시기 바랍니다.',
+              style: AppText.body,
+            ),
+          ],
         ),
       ),
       actions: [
@@ -86,35 +96,24 @@ class _PhysiognomyInfoDialogState extends State<PhysiognomyInfoDialog>
       ],
     );
   }
+}
+
+/// 카메라/앨범/북마크 탭 설명 전용 blockquote — 좌측 bar + 들여쓰기로
+/// 기능 설명임을 본문과 구분.
+class _QuoteBlock extends StatelessWidget {
+  final Widget child;
+  const _QuoteBlock({required this.child});
 
   @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: Duration(milliseconds: 600 * _paragraphs.length),
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.only(left: AppSpacing.md),
+      decoration: const BoxDecoration(
+        border: Border(
+          left: BorderSide(color: AppColors.border, width: 3),
+        ),
+      ),
+      child: child,
     );
-
-    for (int i = 0; i < _paragraphs.length; i++) {
-      final start = i / _paragraphs.length;
-      final end = (i + 0.6) / _paragraphs.length;
-      final curve = CurvedAnimation(
-        parent: _controller,
-        curve: Interval(start, end.clamp(0, 1), curve: Curves.easeOutCubic),
-      );
-      _fadeAnims.add(Tween<double>(begin: 0, end: 1).animate(curve));
-      _slideAnims.add(
-        Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero)
-            .animate(curve),
-      );
-    }
-
-    _controller.forward();
   }
 }
