@@ -544,6 +544,23 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
                 ],
               ),
             ),
+            // 우상단 상세 진입 힌트 — 매칭 카드 우상단 고지와 동일 폰트(hint).
+            const Positioned(
+              right: AppSpacing.md,
+              top: AppSpacing.sm,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('상세 궁합 풀이 보기', style: AppText.hint),
+                  SizedBox(width: AppSpacing.xs),
+                  FaIcon(
+                    FontAwesomeIcons.chevronRight,
+                    size: 10,
+                    color: AppColors.textHint,
+                  ),
+                ],
+              ),
+            ),
             // 좌상단 gold 코너 태그 — 카드 테두리에 물린 배지.
             Positioned(
               left: 0,

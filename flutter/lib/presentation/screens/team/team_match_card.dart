@@ -13,7 +13,7 @@ import 'team_chat_screen.dart';
 /// fetchMatch + watchMatch 로 상태 파생, 상태 4종:
 /// (i) 응답 전 — [채팅방 열기]/[이번에는 넘어가기]
 /// (ii) 나 수락·상대 대기 — 대기 카피
-/// (iii) 성사(openedAt) — [채팅 시작하기] → TeamChatScreen
+/// (iii) 성사(openedAt) — [채팅방 이동] → TeamChatScreen
 /// (iv) 종결(한쪽 거절) — 주어 없는 종결 카피 (danger 색 미사용 — 실패 아님)
 class TeamMatchCard extends StatefulWidget {
   final String teamId;
@@ -40,57 +40,6 @@ class _TeamMatchCardState extends State<TeamMatchCard> {
   RealtimeChannel? _channel;
   bool _loading = true;
   bool _responding = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-    _channel = _service.watchMatch(widget.teamId, _reloadMatch);
-  }
-
-  @override
-  void dispose() {
-    final ch = _channel;
-    if (ch != null) _service.unwatch(ch);
-    super.dispose();
-  }
-
-  Future<void> _load() async {
-    final results = await Future.wait([
-      _service.fetchMatch(widget.teamId),
-      _service.fetchMyFaceThumbnailUrls([widget.otherUserId]),
-    ]);
-    if (!mounted) return;
-    setState(() {
-      _match = results[0] as TeamMatch?;
-      _photoUrl =
-          (results[1] as Map<String, MyFaceThumb>)[widget.otherUserId]?.url;
-      _loading = false;
-    });
-  }
-
-  Future<void> _reloadMatch() async {
-    final match = await _service.fetchMatch(widget.teamId);
-    if (!mounted) return;
-    setState(() => _match = match);
-  }
-
-  Future<void> _respond(bool accept) async {
-    setState(() => _responding = true);
-    try {
-      await _service.respondMatch(widget.teamId, accept);
-      await _reloadMatch();
-    } catch (e) {
-      if (mounted) {
-        showTopSnackBar(
-          Overlay.of(context),
-          CompactSnackBar.error(message: mapTeamError(e).labelKo),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _responding = false);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -134,16 +83,25 @@ class _TeamMatchCardState extends State<TeamMatchCard> {
           ),
           const SizedBox(height: AppSpacing.lg),
           _photo(),
-          const SizedBox(height: AppSpacing.sm),
-          Text(widget.otherNickname, style: AppText.sectionTitle),
-          const SizedBox(height: AppSpacing.xs),
-          // hint → caption 한 단계 업 — 사진 공개 범위 고지는 읽혀야 한다.
-          Text('이 사진은 매칭된 두 사람에게만 보입니다', style: AppText.caption),
           const SizedBox(height: AppSpacing.xl),
           footer,
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    final ch = _channel;
+    if (ch != null) _service.unwatch(ch);
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+    _channel = _service.watchMatch(widget.teamId, _reloadMatch);
   }
 
   Widget _card({required Widget child}) => Container(
@@ -165,6 +123,15 @@ class _TeamMatchCardState extends State<TeamMatchCard> {
             AppSpacing.xl,
           ),
           child: child,
+        ),
+        // 우상단 공개 범위 고지 — 회색 최소 폰트(hint).
+        Positioned(
+          right: AppSpacing.md,
+          top: AppSpacing.sm,
+          child: Text(
+            '이 카드는 매칭된 두 사람에게만 표시됩니다.',
+            style: AppText.hint,
+          ),
         ),
         // 좌상단 gold 코너 태그 — 베스트 케미 카드와 동일 레시피.
         Positioned(
@@ -194,6 +161,76 @@ class _TeamMatchCardState extends State<TeamMatchCard> {
     ),
   );
 
+  /// 종결 — 누가 거절했는지 화면이 지목하지 않는 주어 없는 카피로 통일.
+  Widget _closedFooter() {
+    return Column(
+      children: [
+        Text(
+          '이번에는 채팅방이 열리지 않았습니다',
+          style: AppText.caption,
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        // 30일 purge 정책과 일치하는 사실 카피 ('계속' 은 허위였음).
+        Text(
+          '결과표는 30일간 유효합니다',
+          style: AppText.caption,
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
+  Widget _genderFallback() => Center(
+    child: Image.asset(
+      widget.otherGender == 'male'
+          ? 'assets/icons/male.png'
+          : 'assets/icons/female.png',
+      width: 88,
+      height: 88,
+    ),
+  );
+
+  Future<void> _load() async {
+    final results = await Future.wait([
+      _service.fetchMatch(widget.teamId),
+      _service.fetchMyFaceThumbnailUrls([widget.otherUserId]),
+    ]);
+    if (!mounted) return;
+    setState(() {
+      _match = results[0] as TeamMatch?;
+      _photoUrl =
+          (results[1] as Map<String, MyFaceThumb>)[widget.otherUserId]?.url;
+      _loading = false;
+    });
+  }
+
+  Widget _openFooter() {
+    return Column(
+      children: [
+        // 상태 고지 계열은 전부 caption 하나 — 사진 공개 고지와 동일 토큰.
+        Text(
+          '채팅방이 열렸습니다',
+          style: AppText.caption,
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        PrimaryButton(
+          label: '채팅방 이동',
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => TeamChatScreen(
+                teamId: widget.teamId,
+                otherUserId: widget.otherUserId,
+                otherNickname: widget.otherNickname,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   /// 상대 200×200 얼굴 사진 — 실패 시 성별 아이콘.
   /// border 는 foregroundDecoration — decoration 에 두면 child(이미지)가
   /// 곡선 구간에서 테두리 안쪽 절반을 덮어 코너가 끊겨 보인다.
@@ -222,47 +259,66 @@ class _TeamMatchCardState extends State<TeamMatchCard> {
     );
   }
 
-  Widget _genderFallback() => Center(
-    child: Image.asset(
-      widget.otherGender == 'male'
-          ? 'assets/icons/male.png'
-          : 'assets/icons/female.png',
-      width: 88,
-      height: 88,
-    ),
-  );
-
   Widget _questionFooter() {
     return Column(
       children: [
         Text(
           '${widget.otherNickname}님과 채팅방을 열까요?',
-          style: AppText.sectionTitle,
+          // sectionTitle(16) → subTitle(14) 한 단계 다운.
+          style: AppText.subTitle,
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: AppSpacing.sm),
         Text(
-          '두 사람 모두 열기를 선택하면 채팅방이 열립니다. 응답은 결과 발표 후 '
-          '48시간 동안 가능하고, 선택은 되돌릴 수 없습니다.',
+          '두 사람 모두 48시간 이내에 채팅방 열기를 선택하면 채팅방이 열립니다.',
           style: AppText.caption,
-          textAlign: TextAlign.center,
+          textAlign: TextAlign.left,
         ),
         const SizedBox(height: AppSpacing.lg),
-        PrimaryButton(
-          label: '채팅방 열기',
-          busy: _responding,
-          onPressed: () => _respond(true),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        TextButton(
-          onPressed: _responding ? null : () => _respond(false),
-          child: Text(
-            '이번에는 넘어가기',
-            style: AppText.body.copyWith(color: AppColors.textHint),
-          ),
+        // 거부(좌) · 열기(우) — 한 줄 2버튼, 두 번째 강조는 outlined 원칙.
+        Row(
+          children: [
+            Expanded(
+              child: SecondaryButton(
+                label: '이번엔 거부',
+                onPressed: _responding ? null : () => _respond(false),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: PrimaryButton(
+                label: '채팅방 열기',
+                busy: _responding,
+                onPressed: () => _respond(true),
+              ),
+            ),
+          ],
         ),
       ],
     );
+  }
+
+  Future<void> _reloadMatch() async {
+    final match = await _service.fetchMatch(widget.teamId);
+    if (!mounted) return;
+    setState(() => _match = match);
+  }
+
+  Future<void> _respond(bool accept) async {
+    setState(() => _responding = true);
+    try {
+      await _service.respondMatch(widget.teamId, accept);
+      await _reloadMatch();
+    } catch (e) {
+      if (mounted) {
+        showTopSnackBar(
+          Overlay.of(context),
+          CompactSnackBar.error(message: mapTeamError(e).labelKo),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _responding = false);
+    }
   }
 
   Widget _waitingFooter() {
@@ -276,52 +332,6 @@ class _TeamMatchCardState extends State<TeamMatchCard> {
         const SizedBox(height: AppSpacing.xs),
         Text(
           '채팅방이 열리면 이 화면과 매칭 결과에서 들어갈 수 있습니다',
-          style: AppText.caption,
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
-
-  Widget _openFooter() {
-    return Column(
-      children: [
-        // 상태 고지 계열은 전부 caption 하나 — 사진 공개 고지와 동일 토큰.
-        Text(
-          '채팅방이 열렸습니다',
-          style: AppText.caption,
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        PrimaryButton(
-          label: '채팅 시작하기',
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => TeamChatScreen(
-                teamId: widget.teamId,
-                otherUserId: widget.otherUserId,
-                otherNickname: widget.otherNickname,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// 종결 — 누가 거절했는지 화면이 지목하지 않는 주어 없는 카피로 통일.
-  Widget _closedFooter() {
-    return Column(
-      children: [
-        Text(
-          '이번에는 채팅방이 열리지 않았습니다',
-          style: AppText.caption,
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        // 30일 purge 정책과 일치하는 사실 카피 ('계속' 은 허위였음).
-        Text(
-          '결과표는 30일간 유효합니다',
           style: AppText.caption,
           textAlign: TextAlign.center,
         ),
