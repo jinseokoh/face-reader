@@ -19,6 +19,7 @@ import '../../../domain/models/team.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/team_provider.dart';
 import '../../widgets/compact_snack_bar.dart';
+import '../../widgets/emotion_empty_state.dart';
 import '../../widgets/primary_button.dart';
 import '../../widgets/source_badge.dart';
 import '../compatibility/compatibility_unlock_action.dart';
@@ -40,7 +41,7 @@ class TeamRevealScreen extends ConsumerStatefulWidget {
   ConsumerState<TeamRevealScreen> createState() => _TeamRevealScreenState();
 }
 
-enum _Phase { loading, countdown, board, orphan }
+enum _Phase { loading, countdown, board, orphan, expired }
 
 class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
   final _service = TeamService.instance;
@@ -96,6 +97,15 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
         : {for (final p in computed.pairs) '${p.a}-${p.b}': p.total.round()};
     Map<String, dynamic>? payload = team.resultPayload;
     if (payload == null) {
+      // 인원 미달 종료 — 결과가 애초에 만들어질 수 없는 방. 고아 안전망과
+      // 구분해 상황 설명 빈 상태로 안내한다.
+      if (team.status == TeamStatus.expired) {
+        setState(() {
+          _team = team;
+          _phase = _Phase.expired;
+        });
+        return;
+      }
       if (computed == null) {
         // revealing 고아(스냅샷 부재는 구조상 없지만 completed+payload null 안전망).
         setState(() {
@@ -264,6 +274,10 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
                 style: AppText.display,
               ),
             ),
+          ),
+          _Phase.expired => const EmotionEmptyState(
+            asset: 'assets/images/emotion-sad.png',
+            message: '48시간 안에 정원을 채우지 못해 종료된 그룹입니다',
           ),
           _Phase.orphan => Center(
             child: Padding(
