@@ -1,6 +1,6 @@
 import { PAGE_SIZE } from "../../constants";
 import { DeleteOutlined } from "@ant-design/icons";
-import { DateField, List, ShowButton, useTable } from "@refinedev/antd";
+import { List, ShowButton, useTable } from "@refinedev/antd";
 import { useInvalidate, useMany, useNavigation } from "@refinedev/core";
 import {
   Avatar,
@@ -15,8 +15,9 @@ import {
   Typography,
   message,
 } from "antd";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { deleteR2Object } from "../../lib/r2";
+import { runEngine, type EngineOutput } from "../../lib/share-engine";
 import { adminClient } from "../../providers/data";
 import type { AppUser, MetricEntry } from "../../types";
 import { metricThumbUrl, parseDemographics } from "../../types";
@@ -246,6 +247,34 @@ export const MetricList = () => {
     invalidate({ resource: "metrics", invalidates: ["list"] });
   };
 
+  /** 행별 엔진 파생(유형·기질·특수) — body 재계산, 실패 행은 null.
+   *  dart2js rehydrate 디버그 로그는 계산 동안만 침묵. */
+  const engineByRow = useMemo(() => {
+    const map = new Map<string, EngineOutput | null>();
+    const orig = console.log;
+    console.log = (...a: unknown[]) => {
+      if (typeof a[0] === "string" && a[0].startsWith("[Report.rehydrate]"))
+        return;
+      orig(...a);
+    };
+    try {
+      for (const m of result?.data ?? []) {
+        if (!m.body) {
+          map.set(m.id, null);
+          continue;
+        }
+        try {
+          map.set(m.id, runEngine(m.body));
+        } catch {
+          map.set(m.id, null);
+        }
+      }
+    } finally {
+      console.log = orig;
+    }
+    return map;
+  }, [result?.data]);
+
   const handleCleanup = () => {
     Modal.confirm({
       title: "90일+ 미활동 metrics 삭제",
@@ -380,6 +409,30 @@ export const MetricList = () => {
           )}
         />
         <Table.Column<MetricEntry>
+          title="유형"
+          dataIndex="id"
+          render={(_: unknown, record: MetricEntry) => {
+            const v = engineByRow.get(record.id)?.primaryLabel;
+            return v ? <Text>{v}</Text> : <Text type="secondary">-</Text>;
+          }}
+        />
+        <Table.Column<MetricEntry>
+          title="기질"
+          dataIndex="id"
+          render={(_: unknown, record: MetricEntry) => {
+            const v = engineByRow.get(record.id)?.secondaryLabel;
+            return v ? <Text>{v} 기질</Text> : <Text type="secondary">-</Text>;
+          }}
+        />
+        <Table.Column<MetricEntry>
+          title="특수"
+          dataIndex="id"
+          render={(_: unknown, record: MetricEntry) => {
+            const v = engineByRow.get(record.id)?.specialArchetype;
+            return v ? <Tag color="gold">{v}</Tag> : <Text type="secondary">-</Text>;
+          }}
+        />
+        <Table.Column<MetricEntry>
           title="ethnicity"
           dataIndex="body"
           render={(_: unknown, record: MetricEntry) => {
@@ -410,33 +463,6 @@ export const MetricList = () => {
               value={v}
               onSave={(nv) => saveAlias(record, nv)}
             />
-          )}
-        />
-        <Table.Column<MetricEntry>
-          title="업로드"
-          dataIndex="created_at"
-          sorter
-          defaultSortOrder="descend"
-          render={(v: string) => (
-            <DateField value={v} format="YYYY-MM-DD HH:mm" />
-          )}
-        />
-        <Table.Column<MetricEntry>
-          title="최종"
-          dataIndex="updated_at"
-          sorter
-          render={(v: string) => (
-            <DateField value={v} format="YYYY-MM-DD HH:mm" />
-          )}
-        />
-        <Table.Column<MetricEntry>
-          title="조회"
-          dataIndex="views"
-          sorter
-          render={(v: number) => (
-            <Text strong={v > 0} type={v > 0 ? undefined : "secondary"}>
-              {v}
-            </Text>
           )}
         />
         <Table.Column<MetricEntry>

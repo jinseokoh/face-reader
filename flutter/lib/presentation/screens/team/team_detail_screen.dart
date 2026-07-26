@@ -15,8 +15,8 @@ import '../../../core/theme.dart';
 import '../../../data/services/team_service.dart';
 import '../../../domain/models/team.dart';
 import '../../../domain/services/share/share_publisher.dart';
-import '../../providers/team_provider.dart';
 import '../../providers/history_provider.dart';
+import '../../providers/team_provider.dart';
 import '../../widgets/compact_snack_bar.dart';
 import '../../widgets/login_bottom_sheet.dart';
 import '../../widgets/my_face_capture_flow.dart';
@@ -48,6 +48,187 @@ class TeamDetailScreen extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<TeamDetailScreen> createState() => _TeamDetailScreenState();
+}
+
+/// 슬롯 행 — 아바타 좌측 + meta 우측 (이름 / 인구통계 / 관상 유형).
+/// 빈 슬롯은 아바타 + "대기 중" 만 세로 중앙 정렬.
+class _SlotRow extends StatelessWidget {
+  final TeamRosterEntry? entry;
+  final String? thumbUrl;
+
+  /// my-face 사진의 촬영 경로 — border 색 규칙 (카메라 gold / 앨범 lightGray).
+  final AnalysisSource? thumbSource;
+
+  /// "50대 남성 아시아인" — my-face 리포트의 인구통계 한 줄.
+  final String? demographic;
+
+  /// "신의형 · 호감형 기질" — 슬롯의 관심 유도 포인트.
+  final String? archetype;
+  final bool isMe;
+
+  /// 목록 내 슬롯 번호(1부터) — 이성방은 남/여 열 각각 1부터 센다.
+  final int slotIndex;
+
+  /// 이성방 빈 슬롯의 섹션 성별 — alpha 0.35 성별 아이콘 표시용. 전체방은
+  /// null (성별 미정 FaIcon `user` 유지).
+  final String? slotGender;
+  const _SlotRow({
+    required this.entry,
+    required this.thumbUrl,
+    required this.thumbSource,
+    required this.demographic,
+    required this.archetype,
+    required this.isMe,
+    required this.slotIndex,
+    this.slotGender,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final filled = entry != null;
+    final hasMeta = demographic != null || archetype != null;
+    return Row(
+      children: [
+        SizedBox(
+          width: 42,
+          height: 42,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  // border 색은 전 탭 공통 source 규칙 (카메라 gold /
+                  // 앨범 lightGray). ring 은 source 만 말한다 — 방장 gold
+                  // ring 표기는 이 규칙과 충돌해 폐기 (2026-07-24).
+                  border: Border.all(
+                    color: filled
+                        ? sourceBorderColor(thumbSource)
+                        : AppColors.border,
+                  ),
+                ),
+                child: ClipOval(child: _avatar()),
+              ),
+              // 슬롯 번호 badge — 아바타 왼쪽 상단, 내 슬롯만 숫자 대신 '나'.
+              Positioned(
+                top: -AppSpacing.xs,
+                left: -AppSpacing.xs,
+                child: _slotBadge(),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: !filled
+              ? Text(
+                  '대기 중',
+                  style: AppText.body.copyWith(color: AppColors.textHint),
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 이름(alias) 줄은 노출하지 않는다 — 슬롯의 정보는
+                    // 인구통계 + 관상 유형 두 줄이 전부 (2026-07-25).
+                    // meta 가 아예 없으면 별명 대신 부재 표시만.
+                    if (!hasMeta)
+                      Text(
+                        '(정보없음)',
+                        style: AppText.body.copyWith(
+                          color: AppColors.textHint,
+                        ),
+                      ),
+                    // meta 는 좁은 열(이성방 반폭)에서 잘리는 대신 폰트가
+                    // 줄어들도록 scaleDown — 넉넉하면 caption 원 크기 유지.
+                    if (demographic != null)
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(demographic!, style: AppText.caption),
+                      ),
+                    if (archetype != null)
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          archetype!,
+                          style: AppText.caption.copyWith(
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _avatar() {
+    if (entry == null) {
+      final gender = slotGender;
+      if (gender == null) {
+        return const Center(
+          child: FaIcon(
+            FontAwesomeIcons.user,
+            size: 16,
+            color: AppColors.border,
+          ),
+        );
+      }
+      return Center(
+        child: SvgPicture.asset(
+          _genderIconAsset(gender),
+          height: 24,
+          colorFilter: const ColorFilter.mode(
+            AppColors.textHint,
+            BlendMode.srcIn,
+          ),
+        ),
+      );
+    }
+    return thumbUrl == null
+        ? const Center(
+            child: FaIcon(
+              FontAwesomeIcons.solidUser,
+              size: 16,
+              color: AppColors.textHint,
+            ),
+          )
+        : Image.network(
+            thumbUrl!,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => const Center(
+              child: FaIcon(
+                FontAwesomeIcons.solidUser,
+                size: 16,
+                color: AppColors.textHint,
+              ),
+            ),
+          );
+  }
+
+  /// 슬롯 번호·'나' badge — AgeRangePill 의 outlined pill 레시피, 아바타 위에
+  /// 얹히므로 흰 배경으로 원 테두리를 가리고 textPrimary 로 강조.
+  Widget _slotBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xs,
+        vertical: 2,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: AppColors.textPrimary),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+      ),
+      child: Text(
+        isMe ? '나' : '$slotIndex',
+        style: AppText.hint.copyWith(color: AppColors.textPrimary),
+      ),
+    );
+  }
 }
 
 class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
@@ -531,10 +712,11 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
           _headerCard(team),
           const SizedBox(height: AppSpacing.xl),
           _slotList(team),
-          const SizedBox(height: AppSpacing.xxl),
-          // 발표 조건 안내 — gold 배경 pill (gold 면엔 흰 글자 문법).
+          const SizedBox(height: AppSpacing.xl),
+          // 발표 조건 안내 — gold 배경 full-width pill (gold 면엔 흰 글자 문법).
           Center(
             child: Container(
+              width: double.infinity,
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.lg,
                 vertical: AppSpacing.sm,
@@ -551,6 +733,7 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
               ),
             ),
           ),
+          const SizedBox(height: AppSpacing.xs),
           _qrCard(),
           _inviteRow(team),
         ],
@@ -722,187 +905,6 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
       archetype: profile?.archetype,
       isMe: entry?.userId == _service.myUid,
       slotGender: slotGender,
-    );
-  }
-}
-
-/// 슬롯 행 — 아바타 좌측 + meta 우측 (이름 / 인구통계 / 관상 유형).
-/// 빈 슬롯은 아바타 + "대기 중" 만 세로 중앙 정렬.
-class _SlotRow extends StatelessWidget {
-  final TeamRosterEntry? entry;
-  final String? thumbUrl;
-
-  /// my-face 사진의 촬영 경로 — border 색 규칙 (카메라 gold / 앨범 lightGray).
-  final AnalysisSource? thumbSource;
-
-  /// "50대 남성 아시아인" — my-face 리포트의 인구통계 한 줄.
-  final String? demographic;
-
-  /// "신의형 · 호감형 기질" — 슬롯의 관심 유도 포인트.
-  final String? archetype;
-  final bool isMe;
-
-  /// 목록 내 슬롯 번호(1부터) — 이성방은 남/여 열 각각 1부터 센다.
-  final int slotIndex;
-
-  /// 이성방 빈 슬롯의 섹션 성별 — alpha 0.35 성별 아이콘 표시용. 전체방은
-  /// null (성별 미정 FaIcon `user` 유지).
-  final String? slotGender;
-  const _SlotRow({
-    required this.entry,
-    required this.thumbUrl,
-    required this.thumbSource,
-    required this.demographic,
-    required this.archetype,
-    required this.isMe,
-    required this.slotIndex,
-    this.slotGender,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final filled = entry != null;
-    final hasMeta = demographic != null || archetype != null;
-    return Row(
-      children: [
-        SizedBox(
-          width: 42,
-          height: 42,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  // border 색은 전 탭 공통 source 규칙 (카메라 gold /
-                  // 앨범 lightGray). ring 은 source 만 말한다 — 방장 gold
-                  // ring 표기는 이 규칙과 충돌해 폐기 (2026-07-24).
-                  border: Border.all(
-                    color: filled
-                        ? sourceBorderColor(thumbSource)
-                        : AppColors.border,
-                  ),
-                ),
-                child: ClipOval(child: _avatar()),
-              ),
-              // 슬롯 번호 badge — 아바타 왼쪽 상단, 내 슬롯만 숫자 대신 '나'.
-              Positioned(
-                top: -AppSpacing.xs,
-                left: -AppSpacing.xs,
-                child: _slotBadge(),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: AppSpacing.md),
-        Expanded(
-          child: !filled
-              ? Text(
-                  '대기 중',
-                  style: AppText.body.copyWith(color: AppColors.textHint),
-                )
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 이름(alias) 줄은 노출하지 않는다 — 슬롯의 정보는
-                    // 인구통계 + 관상 유형 두 줄이 전부 (2026-07-25).
-                    // meta 가 아예 없으면 별명 대신 부재 표시만.
-                    if (!hasMeta)
-                      Text(
-                        '(정보없음)',
-                        style: AppText.body.copyWith(
-                          color: AppColors.textHint,
-                        ),
-                      ),
-                    // meta 는 좁은 열(이성방 반폭)에서 잘리는 대신 폰트가
-                    // 줄어들도록 scaleDown — 넉넉하면 caption 원 크기 유지.
-                    if (demographic != null)
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(demographic!, style: AppText.caption),
-                      ),
-                    if (archetype != null)
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          archetype!,
-                          style: AppText.caption.copyWith(
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-        ),
-      ],
-    );
-  }
-
-  Widget _avatar() {
-    if (entry == null) {
-      final gender = slotGender;
-      if (gender == null) {
-        return const Center(
-          child: FaIcon(
-            FontAwesomeIcons.user,
-            size: 16,
-            color: AppColors.border,
-          ),
-        );
-      }
-      return Center(
-        child: SvgPicture.asset(
-          _genderIconAsset(gender),
-          height: 24,
-          colorFilter: const ColorFilter.mode(
-            AppColors.textHint,
-            BlendMode.srcIn,
-          ),
-        ),
-      );
-    }
-    return thumbUrl == null
-        ? const Center(
-            child: FaIcon(
-              FontAwesomeIcons.solidUser,
-              size: 16,
-              color: AppColors.textHint,
-            ),
-          )
-        : Image.network(
-            thumbUrl!,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => const Center(
-              child: FaIcon(
-                FontAwesomeIcons.solidUser,
-                size: 16,
-                color: AppColors.textHint,
-              ),
-            ),
-          );
-  }
-
-  /// 슬롯 번호·'나' badge — AgeRangePill 의 outlined pill 레시피, 아바타 위에
-  /// 얹히므로 흰 배경으로 원 테두리를 가리고 textPrimary 로 강조.
-  Widget _slotBadge() {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.xs,
-        vertical: 2,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: AppColors.textPrimary),
-        borderRadius: BorderRadius.circular(AppRadius.sm),
-      ),
-      child: Text(
-        isMe ? '나' : '$slotIndex',
-        style: AppText.hint.copyWith(color: AppColors.textPrimary),
-      ),
     );
   }
 }
