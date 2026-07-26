@@ -109,10 +109,10 @@ begin
   end loop;
 
   -- 방 ① match 8인 — 나 = 방장(slot 1). 남: 나·준호·민석·도윤 / 여: 서연·지은·하늘·수아.
-  insert into public.teams (id, owner_id, title, room_kind, thumb_open,
+  insert into public.teams (id, owner_id, title, room_kind,
                             max_players, age_min, age_max, status,
                             started_at, created_at)
-  values (v_team1, v_me, '서울지역 케미 그룹', 'match', true,
+  values (v_team1, v_me, '서울지역 케미 그룹', 'match',
           8, v_me_age, v_me_age + 10, 'revealing',
           now() - interval '5 minutes', now() - interval '1 hour');
 
@@ -128,10 +128,10 @@ begin
     (v_team1, v_dummy[8],  8, 'female', v_names[8], false);  -- 수아
 
   -- 방 ② all 10인 — 방장 = 준호, 나 = 참가자(slot 2).
-  insert into public.teams (id, owner_id, title, room_kind, thumb_open,
+  insert into public.teams (id, owner_id, title, room_kind,
                             max_players, age_min, age_max, status,
                             started_at, created_at)
-  values (v_team2, v_dummy[1], '직장인 케미 그룹', 'all', true,
+  values (v_team2, v_dummy[1], '직장인 케미 그룹', 'all',
           10, v_me_age, v_me_age + 10, 'revealing',
           now() - interval '3 minutes', now() - interval '2 hours');
 

@@ -322,7 +322,7 @@ export const MetricList = () => {
         </>
       )}
     >
-      <Table {...tableProps} rowKey="id" size="middle" scroll={{ x: 1100 }}>
+      <Table {...tableProps} rowKey="id" size="middle" scroll={{ x: 1500 }}>
         <Table.Column<MetricEntry>
           title="썸네일"
           dataIndex="body"
@@ -346,6 +346,20 @@ export const MetricList = () => {
               </Avatar>
             );
           }}
+        />
+        <Table.Column<MetricEntry>
+          title="ID"
+          dataIndex="id"
+          width={340}
+          render={(v: string) => (
+            <Text
+              code
+              copyable={{ text: v }}
+              style={{ whiteSpace: "nowrap" }}
+            >
+              {v}
+            </Text>
+          )}
         />
         <Table.Column<MetricEntry>
           title="업로더"
@@ -385,6 +399,7 @@ export const MetricList = () => {
         <Table.Column<MetricEntry>
           title="성별"
           dataIndex="body"
+          width={64}
           render={(_: unknown, record: MetricEntry) => {
             const v = parseDemographics(record.body).gender ?? null;
             return (
@@ -400,6 +415,7 @@ export const MetricList = () => {
         <Table.Column<MetricEntry>
           title="연령대"
           dataIndex="body"
+          width={72}
           render={(_: unknown, record: MetricEntry) => (
             <EditableCell
               value={parseDemographics(record.body).ageGroup ?? null}
@@ -463,15 +479,6 @@ export const MetricList = () => {
               value={v}
               onSave={(nv) => saveAlias(record, nv)}
             />
-          )}
-        />
-        <Table.Column<MetricEntry>
-          title="ID"
-          dataIndex="id"
-          render={(v: string) => (
-            <Text code copyable={{ text: v }} style={{ fontSize: 11 }}>
-              {v.slice(0, 8)}…
-            </Text>
           )}
         />
         <Table.Column<MetricEntry>

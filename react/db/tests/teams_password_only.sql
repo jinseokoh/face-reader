@@ -19,7 +19,7 @@ create index if not exists idx_teams_recruiting
   on public.teams (created_at desc) where status = 'recruiting';
 
 create or replace view public.public_teams with (security_invoker = on) as
-  select t.id, t.title, t.room_kind, t.thumb_open, t.is_private, t.max_players,
+  select t.id, t.title, t.room_kind, t.is_private, t.max_players,
          t.age_min, t.age_max, t.created_at,
          (select count(*)::int from public.team_members tm where tm.team_id = t.id)
            as player_count
@@ -106,18 +106,18 @@ $$;
 
 -- 컬럼 grant 재조정 — password 봉인 유지, is_private 노출.
 revoke select on public.teams from anon, authenticated;
-grant select (id, owner_id, title, is_private, room_kind, thumb_open, max_players,
+grant select (id, owner_id, title, is_private, room_kind, max_players,
               age_min, age_max, status, started_at, closed_at,
               chemistry_snapshot, result_payload, created_at, updated_at)
   on public.teams to anon, authenticated;
 revoke insert on public.teams from anon, authenticated;
-grant insert (id, owner_id, title, password, room_kind, thumb_open,
+grant insert (id, owner_id, title, password, room_kind,
               max_players, age_min, age_max)
   on public.teams to authenticated;
 
 do $$ begin
   alter publication supabase_realtime add table public.teams
-    (id, owner_id, title, is_private, room_kind, thumb_open, max_players,
+    (id, owner_id, title, is_private, room_kind, max_players,
      age_min, age_max, status, started_at, closed_at, created_at, updated_at);
 exception when duplicate_object then null; end $$;
 

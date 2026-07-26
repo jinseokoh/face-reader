@@ -76,7 +76,6 @@ export type Team = {
   age_min: number | null;
   age_max: number | null;
   room_kind: "all" | "match";
-  thumb_open: boolean;
   status: "recruiting" | "revealing" | "completed" | "expired";
   started_at: string | null;
   closed_at: string | null;

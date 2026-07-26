@@ -762,7 +762,7 @@ textarea.form-input {
   color: var(--caption);
   margin: 0;
 }
-/* thumb_open 방의 참가자 아바타 — border 는 촬영 경로 규칙:
+/* 참가자 아바타 — border 는 촬영 경로 규칙:
    카메라 gold(앱 AppColors.gold 와 동일 hex) / 그 외 흑색 */
 .invite-avatar {
   width: 24px;
