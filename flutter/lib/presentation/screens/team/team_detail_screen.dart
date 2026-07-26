@@ -531,12 +531,25 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
           _headerCard(team),
           const SizedBox(height: AppSpacing.xl),
           _slotList(team),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            '${team.maxPlayers - _roster.length}명이 더 모이면 '
-            '케미 결과표가 자동으로 발표됩니다',
-            style: AppText.caption,
-            textAlign: TextAlign.center,
+          const SizedBox(height: AppSpacing.xxl),
+          // 발표 조건 안내 — gold 배경 pill (gold 면엔 흰 글자 문법).
+          Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.sm,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.gold,
+                borderRadius: BorderRadius.circular(AppRadius.xl),
+              ),
+              child: Text(
+                '${team.maxPlayers - _roster.length}명이 더 모이면 '
+                '케미 결과표가 자동으로 발표됩니다',
+                style: AppText.caption.copyWith(color: Colors.white),
+                textAlign: TextAlign.center,
+              ),
+            ),
           ),
           _qrCard(),
           _inviteRow(team),
