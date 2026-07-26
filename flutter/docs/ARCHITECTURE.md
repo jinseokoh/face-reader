@@ -229,7 +229,8 @@ RPC (SECURITY DEFINER): `increment_metrics_views` · `grant/spend/admin_grant_co
 (match 방 성별 정원 = `GENDER_FULL`) · `leave_team` · `submit_team_result`(베스트
 쌍 `team_matches` upsert 포함) · `respond_match` · touch 트리거. View:
 `public_teams`(모집 중 공개방 목록, 컬럼 화이트리스트) · `team_roster`(team_members
-+ users.nickname·gender, owner 권한 실행으로 닉네임만 노출).
+의 alias(조인 시점 이름 동결, 구행은 users.nickname 보충)·gender, owner 권한
+실행으로 이름만 노출).
 
 RLS 요점: `metrics` public read + anon insert(PII·landmarks 차단) + owner/anon-claim
 update. `teams` select 는 column grant 로 password 제외 공개(link-share), insert/삭제는
