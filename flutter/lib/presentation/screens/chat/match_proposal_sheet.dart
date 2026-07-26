@@ -177,6 +177,10 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
       decoration: BoxDecoration(
         color: AppColors.background,
         borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+      // border 는 foreground — child 이미지가 코너 테두리를 덮지 않게.
+      foregroundDecoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(color: sourceBorderColor(p.photoSource)),
       ),
       child: p.photoUrl == null

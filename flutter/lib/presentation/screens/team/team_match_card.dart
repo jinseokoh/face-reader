@@ -126,14 +126,6 @@ class _TeamMatchCardState extends State<TeamMatchCard> {
     return _card(
       child: Column(
         children: [
-          Text(
-            '베스트 매칭',
-            style: AppText.caption.copyWith(
-              color: AppColors.gold,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
           // display(28) → appBarTitle(20) 한 단계 다운 — SongMyung 계열 유지.
           Text(
             '${widget.otherNickname}님과 매칭되었습니다',
@@ -155,17 +147,56 @@ class _TeamMatchCardState extends State<TeamMatchCard> {
   }
 
   Widget _card({required Widget child}) => Container(
-    padding: const EdgeInsets.all(AppSpacing.xl),
+    // 코너 태그가 카드 radius 밖으로 삐져나가지 않게 clip.
+    clipBehavior: Clip.antiAlias,
     decoration: BoxDecoration(
       color: AppColors.background,
       borderRadius: BorderRadius.circular(AppRadius.xl),
       // 베스트 매칭 강조 — 방장 링과 같은 gold 토큰.
       border: Border.all(color: AppColors.gold),
     ),
-    child: child,
+    child: Stack(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.xl,
+            AppSpacing.huge,
+            AppSpacing.xl,
+            AppSpacing.xl,
+          ),
+          child: child,
+        ),
+        // 좌상단 gold 코너 태그 — 베스트 케미 카드와 동일 레시피.
+        Positioned(
+          left: 0,
+          top: 0,
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.xs,
+            ),
+            decoration: const BoxDecoration(
+              color: AppColors.gold,
+              borderRadius: BorderRadius.only(
+                bottomRight: Radius.circular(AppRadius.lg),
+              ),
+            ),
+            child: Text(
+              '베스트 매칭',
+              style: AppText.caption.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
   );
 
   /// 상대 200×200 얼굴 사진 — 실패 시 성별 아이콘.
+  /// border 는 foregroundDecoration — decoration 에 두면 child(이미지)가
+  /// 곡선 구간에서 테두리 안쪽 절반을 덮어 코너가 끊겨 보인다.
   Widget _photo() {
     return Container(
       width: 200,
@@ -173,6 +204,9 @@ class _TeamMatchCardState extends State<TeamMatchCard> {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+      ),
+      foregroundDecoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppRadius.xl),
         border: Border.all(color: AppColors.border),
       ),

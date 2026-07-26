@@ -520,7 +520,10 @@ class _MessageRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadius.xl),
-        // border 색은 source 규칙 (카메라 gold / 앨범 lightGray).
+      ),
+      // border 는 foreground — child 이미지가 코너 테두리를 덮지 않게.
+      foregroundDecoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.xl),
         border: Border.all(color: sourceBorderColor(photoSource)),
       ),
       child: photoUrl == null

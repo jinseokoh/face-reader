@@ -929,10 +929,14 @@ class _RosterAvatars extends ConsumerWidget {
         width: _kThumb,
         height: _kThumb,
         clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           shape: BoxShape.circle,
           color: AppColors.surface,
-          // 사진일 때만 촬영 경로 border 규칙 — 아이콘 fallback 은 기본 border.
+        ),
+        // border 는 foreground — 이미지가 테두리 안쪽을 덮지 않게.
+        // 사진일 때만 촬영 경로 border 규칙 — 아이콘 fallback 은 기본 border.
+        foregroundDecoration: BoxDecoration(
+          shape: BoxShape.circle,
           border: Border.all(
             color: showPhoto ? sourceBorderColor(a.source) : AppColors.border,
           ),

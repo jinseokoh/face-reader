@@ -10,6 +10,7 @@ import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/services/compat/team.dart' as engine;
 import 'package:face_engine/domain/services/compat/compat_label.dart';
+import 'package:face_engine/domain/services/compat/compat_pair_key.dart';
 
 import '../../../config/router.dart';
 import '../../../core/storage/thumbnail_paths.dart';
@@ -17,6 +18,7 @@ import '../../../core/theme.dart';
 import '../../../data/services/team_service.dart';
 import '../../../domain/models/team.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/compatibility_provider.dart';
 import '../../providers/team_provider.dart';
 import '../../widgets/compact_snack_bar.dart';
 import '../../widgets/emotion_empty_state.dart';
@@ -169,6 +171,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
   List<Map<String, dynamic>> get _pairs => [
     for (final p in _payload!['pairs'] as List) p as Map<String, dynamic>,
   ];
+
   /// 베스트 쌍 — 정렬이 곧 순위인 pairs 에서 bypass(차단·기채팅) 아닌 첫 쌍.
   /// (payload 에 별도 best 키 없음 — 구 payload 의 best 키는 무시.)
   Map<String, dynamic> get _best =>
@@ -227,10 +230,11 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
             errorBuilder: (_, _, _) => _slotIconAvatar(gender, size),
           );
     // border 색은 전 탭 공통 source 규칙 (카메라 gold / 앨범 lightGray).
+    // border 는 foreground — 이미지가 테두리 안쪽을 덮지 않게.
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(
+      foregroundDecoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(
           color: sourceBorderColor(uid == null ? null : _profiles[uid]?.source),
@@ -449,7 +453,8 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
         : '${p!.ageGender} ${p.faceShape ?? ''}'.trim();
     return Column(
       children: [
-        _slotAvatar(slot, size: 48),
+        // 쌍 상세 시트 _pairAvatar 와 동일 스케일 — 카드의 주인공은 얼굴.
+        _slotAvatar(slot, size: 64),
         const SizedBox(height: AppSpacing.sm),
         Text(
           _nameOf(slot),
@@ -481,57 +486,90 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
     final a = (_best['a'] as num).toInt();
     final b = (_best['b'] as num).toInt();
     final score = (_best['score'] as num).toInt();
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-        // 베스트 강조 — 매칭 카드·방장 링과 같은 gold 토큰.
-        border: Border.all(color: AppColors.gold),
-      ),
-      child: Column(
-        children: [
-          // '베스트 매칭' 라벨과 동일 스타일 — caption·gold·w700.
-          Text(
-            '베스트 케미',
-            style: AppText.caption.copyWith(
-              color: AppColors.gold,
-              fontWeight: FontWeight.w700,
+    // 탭 = 결과표 셀과 동일한 쌍 상세 시트 (기존 궁합 unlock 흐름).
+    return InkWell(
+      onTap: () => _openPair(a, b),
+      borderRadius: BorderRadius.circular(AppRadius.xl),
+      child: Container(
+        // 코너 태그가 카드 radius 밖으로 삐져나가지 않게 clip.
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+          // 베스트 강조 — 매칭 카드·방장 링과 같은 gold 토큰.
+          border: Border.all(color: AppColors.gold),
+        ),
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.xl,
+                AppSpacing.huge,
+                AppSpacing.xl,
+                AppSpacing.xl,
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: _bestPerson(a)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.sm,
+                          vertical: AppSpacing.xl,
+                        ),
+                        // 쌍 상세 시트의 × 와 동일 스타일 (body×2, textHint) — 통일.
+                        child: Text(
+                          '×',
+                          style: AppText.body.copyWith(
+                            color: AppColors.textHint,
+                            fontSize: AppText.body.fontSize! * 2,
+                          ),
+                        ),
+                      ),
+                      Expanded(child: _bestPerson(b)),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  // 등급 성어·한자 병기 — 카드의 클라이맥스. 매칭 카드 헤드라인과
+                  // 동일한 SongMyung 토큰(appBarTitle)로 격을 맞춘다.
+                  Text(
+                    _bandOf(a, b) == null
+                        ? '$score점'
+                        : '${CompatLabel.values[_bandOf(a, b)!].korean} '
+                              '(${CompatLabel.values[_bandOf(a, b)!].hanja})',
+                    style: AppText.appBarTitle,
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: _bestPerson(a)),
-              Padding(
+            // 좌상단 gold 코너 태그 — 카드 테두리에 물린 배지.
+            Positioned(
+              left: 0,
+              top: 0,
+              child: Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                  vertical: AppSpacing.lg,
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.xs,
                 ),
-                // 쌍 상세 시트의 × 와 동일 스타일 (body×2, textHint) — 통일.
+                decoration: const BoxDecoration(
+                  color: AppColors.gold,
+                  borderRadius: BorderRadius.only(
+                    bottomRight: Radius.circular(AppRadius.lg),
+                  ),
+                ),
                 child: Text(
-                  '×',
-                  style: AppText.body.copyWith(
-                    color: AppColors.textHint,
-                    fontSize: AppText.body.fontSize! * 2,
+                  '베스트 케미',
+                  style: AppText.caption.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
-              Expanded(child: _bestPerson(b)),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          // 등급 성어·한자 병기 — 궁합 카드의 '한글 (漢字)' 표기와 동일.
-          // 점수는 매트릭스·순위 dot 이 이미 노출하므로 여기선 성어만.
-          Text(
-            _bandOf(a, b) == null
-                ? '$score점'
-                : '${CompatLabel.values[_bandOf(a, b)!].korean} '
-                      '(${CompatLabel.values[_bandOf(a, b)!].hanja})',
-            style: AppText.modalTitle,
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -768,6 +806,20 @@ Future<void> openTeamPairDetail(
   String? myName,
   String? albumName,
 }) async {
+  // 기존 결제 이력 선검사 — unlock 흐름과 동일한 무방향 쌍 키. 이미 본
+  // 사이에게 결제 유도 UI 를 보여주지 않는다 (재결제는 어차피 안 된다).
+  final pairIds = tryPairIds(my, album);
+  final pairKey = pairIds == null ? null : '${pairIds[0]}~${pairIds[1]}';
+  var alreadyUnlocked = false;
+  if (pairKey != null) {
+    try {
+      final keys = await ref.read(compatibilityKeysProvider.future);
+      alreadyUnlocked = keys.contains(pairKey);
+    } catch (_) {
+      // 조회 실패 — 기본(결제 안내) UI 로 진행, 실제 차감은 unlock 이 재확인.
+    }
+  }
+  if (!context.mounted) return;
   final unlock = await showModalBottomSheet<bool>(
     context: context,
     backgroundColor: Colors.white,
@@ -838,7 +890,7 @@ Future<void> openTeamPairDetail(
                 ],
               ),
               const SizedBox(height: AppSpacing.xl),
-              // 잠금 안내 박스.
+              // 안내 박스 — 기결제 쌍은 잠금 대신 이력 안내 (재결제 없음).
               Container(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: BoxDecoration(
@@ -847,15 +899,19 @@ Future<void> openTeamPairDetail(
                 ),
                 child: Row(
                   children: [
-                    const FaIcon(
-                      FontAwesomeIcons.lock,
+                    FaIcon(
+                      alreadyUnlocked
+                          ? FontAwesomeIcons.lockOpen
+                          : FontAwesomeIcons.lock,
                       size: 13,
                       color: AppColors.textHint,
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: Text(
-                        '상세 풀이는 1코인 지불 후 확인가능합니다.',
+                        alreadyUnlocked
+                            ? '두 사람의 궁합을 본 적이 있습니다.'
+                            : '상세 풀이는 1코인 지불 후 확인가능합니다.',
                         style: AppText.caption.copyWith(
                           color: AppColors.textSecondary,
                         ),
@@ -866,15 +922,17 @@ Future<void> openTeamPairDetail(
               ),
               const SizedBox(height: AppSpacing.lg),
               PrimaryButton(
-                label: '1코인으로 풀이 보기',
+                label: alreadyUnlocked ? '궁합 풀이 보기' : '1코인으로 풀이 보기',
                 onPressed: () => Navigator.pop(ctx, true),
               ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                '보유 코인 $coins개',
-                style: AppText.caption.copyWith(color: AppColors.textHint),
-                textAlign: TextAlign.center,
-              ),
+              if (!alreadyUnlocked) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  '보유 코인 $coins개',
+                  style: AppText.caption.copyWith(color: AppColors.textHint),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ],
           ),
         ),

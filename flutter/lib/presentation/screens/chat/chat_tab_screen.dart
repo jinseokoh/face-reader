@@ -134,12 +134,17 @@ class _Avatar extends StatelessWidget {
       child: FaIcon(FontAwesomeIcons.user, size: 18, color: AppColors.textHint),
     );
     final url = photoUrl;
+    // border 는 foregroundDecoration — decoration 에 두면 child(이미지)가
+    // 곡선 구간에서 테두리 안쪽 절반을 덮어 코너가 끊겨 보인다.
     return Container(
       width: 48,
       height: 48,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+      ),
+      foregroundDecoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppRadius.xl),
         border: Border.all(color: sourceBorderColor(photoSource)),
       ),
