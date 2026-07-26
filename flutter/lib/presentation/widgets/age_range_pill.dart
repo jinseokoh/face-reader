@@ -6,8 +6,9 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 /// (border 만, radius sm). 상세 페이지 헤더·공개 매칭 카드 우측 상단 공용.
 ///
 /// [invert] true 면 반전 변형(accent gray 배경 + 흰 글자) — 방 유형 badge 용.
-/// [dim] true 면 invert 배경을 textHint 로 낮춘다 — 종료된 방 카드에서
-/// 제목(hint 색)과 같은 흐린 톤 유지용.
+/// [dim] true 면 invert 를 무시하고 기본 outlined 모양(흰 배경 + border +
+/// hint 글자)으로 낮춘다 — 종료된 방 카드에서 연령 pill 과 동일 외형.
+/// 진한 반전 pill 은 항상 "참여 가능" 신호로만 쓰는 UX 규칙.
 class AgeRangePill extends StatelessWidget {
   final String label;
   final bool invert;
@@ -26,8 +27,8 @@ class AgeRangePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final invertColor = dim ? AppColors.textHint : AppColors.accent;
-    final fgColor = invert ? Colors.white : AppColors.textHint;
+    final filled = invert && !dim;
+    final fgColor = filled ? Colors.white : AppColors.textHint;
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.sm,
@@ -35,9 +36,9 @@ class AgeRangePill extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         // 기본은 흰 배경 고정 — 카드 배경(surface/background)과 무관하게 동일 외형.
-        color: invert ? invertColor : Colors.white,
+        color: filled ? AppColors.accent : Colors.white,
         border: Border.all(
-          color: invert ? invertColor : AppColors.border,
+          color: filled ? AppColors.accent : AppColors.border,
         ),
         borderRadius: BorderRadius.circular(AppRadius.sm),
       ),

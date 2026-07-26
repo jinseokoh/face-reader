@@ -47,6 +47,10 @@ class _BattleCardBody extends StatelessWidget {
 
   /// 인원 미달 종료 방 — 제목을 hint 색으로 낮춰 살아 있는 방과 구분.
   final bool dimTitle;
+
+  /// 종료(비모집) 방 — 유형 pill 을 흐린 gray 로 낮춘다. 진한 pill 은
+  /// 항상 "참여 가능" 신호로만 쓰는 UX 규칙.
+  final bool dimKind;
   const _BattleCardBody({
     required this.title,
     required this.ageLabel,
@@ -55,6 +59,7 @@ class _BattleCardBody extends StatelessWidget {
     required this.isPrivate,
     required this.teamId,
     this.dimTitle = false,
+    this.dimKind = false,
   });
 
   @override
@@ -78,7 +83,7 @@ class _BattleCardBody extends StatelessWidget {
             AgeRangePill(
               label: kind,
               invert: true,
-              dim: dimTitle,
+              dim: dimKind,
               icons: roomKind == BattleRoomKind.match
                   ? const [FontAwesomeIcons.child, FontAwesomeIcons.childDress]
                   : const [
@@ -448,6 +453,7 @@ class _MineCard extends ConsumerWidget {
                 isPrivate: !battle.isPublic,
                 teamId: battle.id,
                 dimTitle: expired,
+                dimKind: battle.status != BattleStatus.recruiting,
               ),
             ),
             if (expired)
@@ -465,7 +471,7 @@ class _MineCard extends ConsumerWidget {
 enum _MineFilter {
   all('전체'),
   recruiting('모집중'),
-  closed('모집완료');
+  closed('종료');
 
   final String label;
   const _MineFilter(this.label);
