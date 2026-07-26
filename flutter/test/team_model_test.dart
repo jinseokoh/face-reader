@@ -1,5 +1,5 @@
-// Battle 모델 파싱·에러 매핑·플레이어 조립 검증 — Plan 1 서버 계약과의 접점.
-// 실행: flutter test test/battle_model_test.dart
+// Team 모델 파싱·에러 매핑·플레이어 조립 검증 — Plan 1 서버 계약과의 접점.
+// 실행: flutter test test/team_model_test.dart
 
 import 'dart:convert';
 import 'dart:math';
@@ -16,7 +16,7 @@ import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/services/archetype.dart';
 import 'package:face_engine/domain/services/physiognomy_scoring.dart';
-import 'package:facely/domain/models/battle.dart';
+import 'package:facely/domain/models/team.dart';
 import 'package:facely/domain/services/mc_fixtures.dart';
 
 double _normal(Random rng) {
@@ -92,8 +92,8 @@ FaceReadingReport _fakeReport(Random rng) {
 }
 
 void main() {
-  test('Battle.fromRow — teams row 파싱 (snake_case, nullable 전부)', () {
-    final battle = Battle.fromRow({
+  test('Team.fromRow — teams row 파싱 (snake_case, nullable 전부)', () {
+    final team = Team.fromRow({
       'id': 'b1',
       'owner_id': 'u1',
       'title': '영화보러가자!',
@@ -109,17 +109,17 @@ void main() {
       'result_payload': null,
       'created_at': '2026-07-16T09:00:00Z',
     });
-    expect(battle.id, 'b1');
-    expect(battle.isPublic, isTrue);
-    expect(battle.status, BattleStatus.recruiting);
-    expect(battle.isRecruiting, isTrue);
-    expect(battle.hasResult, isFalse);
-    expect(battle.ageRangeLabel, '20대~30대');
-    expect(battle.roomKind, BattleRoomKind.all);
+    expect(team.id, 'b1');
+    expect(team.isPublic, isTrue);
+    expect(team.status, TeamStatus.recruiting);
+    expect(team.isRecruiting, isTrue);
+    expect(team.hasResult, isFalse);
+    expect(team.ageRangeLabel, '20대~30대');
+    expect(team.roomKind, TeamRoomKind.all);
   });
 
-  test('Battle.fromRow — room_kind=match 파싱', () {
-    final battle = Battle.fromRow({
+  test('Team.fromRow — room_kind=match 파싱', () {
+    final team = Team.fromRow({
       'id': 'b2',
       'owner_id': 'u1',
       'title': '이성 케미방',
@@ -135,11 +135,11 @@ void main() {
       'result_payload': null,
       'created_at': '2026-07-16T09:00:00Z',
     });
-    expect(battle.roomKind, BattleRoomKind.match);
+    expect(team.roomKind, TeamRoomKind.match);
   });
 
   test('ageRangeLabel — 전연령·단일 decade·범위', () {
-    Battle b(int? lo, int? hi) => Battle.fromRow({
+    Team b(int? lo, int? hi) => Team.fromRow({
           'id': 'x',
           'owner_id': null,
           'title': 't',
@@ -161,8 +161,8 @@ void main() {
     expect(b(40, 50).ageRangeLabel, '40대~50대');
   });
 
-  test('BattleRosterEntry / PublicBattle fromRow', () {
-    final entry = BattleRosterEntry.fromRow({
+  test('TeamRosterEntry / PublicTeam fromRow', () {
+    final entry = TeamRosterEntry.fromRow({
       'team_id': 'b1',
       'user_id': 'u2',
       'slot_no': 3,
@@ -175,7 +175,7 @@ void main() {
     expect(entry.nickname, '철수');
     expect(entry.gender, 'female');
 
-    final pub = PublicBattle.fromRow({
+    final pub = PublicTeam.fromRow({
       'id': 'b1',
       'title': '점심 케미 매칭',
       'max_players': 6,
@@ -187,32 +187,32 @@ void main() {
     });
     expect(pub.playerCount, 2);
     expect(pub.ageRangeLabel, '전연령');
-    expect(pub.roomKind, BattleRoomKind.match);
+    expect(pub.roomKind, TeamRoomKind.match);
   });
 
-  test('mapBattleError — 서버 에러 계약 문자열 매핑', () {
+  test('mapTeamError — 서버 에러 계약 문자열 매핑', () {
     expect(
-      mapBattleError(const PostgrestException(message: 'BAD_PASSWORD')),
-      BattleJoinError.badPassword,
+      mapTeamError(const PostgrestException(message: 'BAD_PASSWORD')),
+      TeamJoinError.badPassword,
     );
     expect(
-      mapBattleError(const PostgrestException(message: 'AGE_NOT_ALLOWED')),
-      BattleJoinError.ageNotAllowed,
+      mapTeamError(const PostgrestException(message: 'AGE_NOT_ALLOWED')),
+      TeamJoinError.ageNotAllowed,
     );
     expect(
-      mapBattleError(const PostgrestException(message: 'FULL')),
-      BattleJoinError.full,
+      mapTeamError(const PostgrestException(message: 'FULL')),
+      TeamJoinError.full,
     );
     expect(
-      mapBattleError(const PostgrestException(message: 'GENDER_FULL')),
-      BattleJoinError.genderFull,
+      mapTeamError(const PostgrestException(message: 'GENDER_FULL')),
+      TeamJoinError.genderFull,
     );
     expect(
-      mapBattleError(Exception('boom')),
-      BattleJoinError.unknown,
+      mapTeamError(Exception('boom')),
+      TeamJoinError.unknown,
     );
     // 모든 값이 한국어 라벨을 가진다 (빈 문자열 금지).
-    for (final e in BattleJoinError.values) {
+    for (final e in TeamJoinError.values) {
       expect(e.labelKo, isNotEmpty);
     }
   });
@@ -222,8 +222,8 @@ void main() {
     expect(genderFullLabel('female'), '여자 자리가 다 찼습니다');
   });
 
-  test('BattleMatch.fromRow — consent·isOpen·consentOf·otherOf', () {
-    final pending = BattleMatch.fromRow({
+  test('TeamMatch.fromRow — consent·isOpen·consentOf·otherOf', () {
+    final pending = TeamMatch.fromRow({
       'team_id': 'b1',
       'user_a': 'u1',
       'user_b': 'u2',
@@ -237,7 +237,7 @@ void main() {
     expect(pending.otherOf('u1'), 'u2');
     expect(pending.otherOf('u2'), 'u1');
 
-    final open = BattleMatch.fromRow({
+    final open = TeamMatch.fromRow({
       'team_id': 'b1',
       'user_a': 'u1',
       'user_b': 'u2',
@@ -250,8 +250,8 @@ void main() {
     expect(open.consentOf('u2'), isTrue);
   });
 
-  test('BattleMessage.fromRow', () {
-    final message = BattleMessage.fromRow({
+  test('TeamMessage.fromRow', () {
+    final message = TeamMessage.fromRow({
       'id': 'm1',
       'team_id': 'b1',
       'sender_id': 'u1',
@@ -263,23 +263,23 @@ void main() {
     expect(message.body, '안녕하세요');
   });
 
-  test('assembleBattlePlayers — roster+snapshot → slot 오름차순 BattlePlayer', () {
+  test('assembleTeamPlayers — roster+snapshot → slot 오름차순 TeamPlayer', () {
     final rng = Random(42);
     final bodyA = jsonDecode(_fakeReport(rng).toBodyJson()) as Map<String, dynamic>;
     final bodyB = jsonDecode(_fakeReport(rng).toBodyJson()) as Map<String, dynamic>;
     // roster gender 는 report.gender(항상 female, _fakeReport 고정값)와
     // 일부러 어긋나게 둔다 — gender 소스가 roster 임을 증명.
     final roster = [
-      BattleRosterEntry.fromRow({
+      TeamRosterEntry.fromRow({
         'team_id': 'b1', 'user_id': 'u2', 'slot_no': 2, 'gender': 'female',
         'is_owner': false, 'joined_at': '2026-07-16T09:10:00Z', 'nickname': '영희',
       }),
-      BattleRosterEntry.fromRow({
+      TeamRosterEntry.fromRow({
         'team_id': 'b1', 'user_id': 'u1', 'slot_no': 1, 'gender': 'male',
         'is_owner': true, 'joined_at': '2026-07-16T09:00:00Z', 'nickname': '지은',
       }),
     ];
-    final players = assembleBattlePlayers(
+    final players = assembleTeamPlayers(
       roster: roster,
       snapshot: {'u1': bodyA, 'u2': bodyB},
     );
@@ -291,7 +291,7 @@ void main() {
     expect(players.last.slot, 2);
     expect(players.last.gender, 'female');
     // snapshot 에 없는 참가자는 제외 (계정 삭제 등 극단 케이스 방어).
-    final partial = assembleBattlePlayers(
+    final partial = assembleTeamPlayers(
       roster: roster,
       snapshot: {'u1': bodyA},
     );

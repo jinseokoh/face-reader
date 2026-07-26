@@ -744,7 +744,7 @@ textarea.form-input {
   color: var(--caption);
   border-style: dashed;
 }
-/* match 방 초대장 — 앱 battle_detail 과 동일한 남(좌)/여(우) 축 분리 */
+/* match 방 초대장 — 앱 team_detail 과 동일한 남(좌)/여(우) 축 분리 */
 .invite-cols {
   display: grid;
   grid-template-columns: 1fr 1fr;

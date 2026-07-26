@@ -13,7 +13,7 @@ const _kBandOrange = Color(0xFFEF6C00);
 const _kBandRed = Color(0xFFD32F2F);
 
 /// result_payload 의 band 코드(0~3 = CompatLabel.index) 표기.
-extension BattleBand on int {
+extension TeamBand on int {
   Color get bandColor => switch (this) {
     0 => _kBandGreen,
     1 => _kBandBlue,

@@ -5,14 +5,14 @@ import 'package:go_router/go_router.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/app.dart';
 import 'package:facely/core/theme.dart';
-import 'package:facely/data/services/battle_service.dart';
+import 'package:facely/data/services/team_service.dart';
 import 'package:facely/domain/services/share/share_receive_service.dart';
 import 'package:facely/presentation/screens/compatibility/compatibility_detail_screen.dart';
 import 'package:facely/presentation/screens/chemistry/info_confirm_screen.dart';
 import 'package:facely/presentation/screens/chemistry/report_page.dart';
 import 'package:facely/presentation/screens/ledger/ledger_page.dart';
-import 'package:facely/presentation/screens/team/battle_chat_screen.dart';
-import 'package:facely/presentation/screens/team/battle_detail_screen.dart';
+import 'package:facely/presentation/screens/team/team_chat_screen.dart';
+import 'package:facely/presentation/screens/team/team_detail_screen.dart';
 import 'package:facely/domain/models/capture_result.dart';
 import 'package:facely/domain/models/face_metadata.dart';
 
@@ -77,12 +77,12 @@ final router = GoRouter(
         ),
       ],
     ),
-    // 케미 그룹 초대 — `/g/{battleId}` → 상세 페이지. BattleDetailScreen 이
+    // 케미 그룹 초대 — `/g/{teamId}` → 상세 페이지. TeamDetailScreen 이
     // 서버 fetch + 합류 처리를 책임 (web `/g/:id` 와 path 동일).
     GoRoute(
       path: '/g/:id',
       builder: (ctx, state) =>
-          BattleDetailScreen(battleId: state.pathParameters['id']!),
+          TeamDetailScreen(teamId: state.pathParameters['id']!),
     ),
     // 채팅 푸시 딥링크 — 매칭 쌍·닉네임 resolve 후 채팅방 직행.
     // 매칭이 없거나 미개설이면 방 상세로 후퇴.
@@ -197,7 +197,7 @@ extension CompatPushExtension on BuildContext {
 }
 
 /// 채팅 푸시 deep-link wrapper — 매칭 쌍(상대 uid)·로스터 닉네임을 resolve
-/// 해 BattleChatScreen 을 연다. 실패·미개설이면 방 상세로 후퇴.
+/// 해 TeamChatScreen 을 연다. 실패·미개설이면 방 상세로 후퇴.
 class _ChatRouteWrapper extends StatefulWidget {
   final String teamId;
   const _ChatRouteWrapper({required this.teamId});
@@ -210,7 +210,7 @@ class _ChatRouteWrapperState extends State<_ChatRouteWrapper> {
   late final Future<Widget> _future = _resolve();
 
   Future<Widget> _resolve() async {
-    final svc = BattleService.instance;
+    final svc = TeamService.instance;
     final uid = svc.myUid;
     if (uid != null) {
       try {
@@ -222,7 +222,7 @@ class _ChatRouteWrapperState extends State<_ChatRouteWrapper> {
           for (final r in roster) {
             if (r.userId == other) nickname = r.nickname;
           }
-          return BattleChatScreen(
+          return TeamChatScreen(
             teamId: widget.teamId,
             otherUserId: other,
             otherNickname: nickname,
@@ -230,7 +230,7 @@ class _ChatRouteWrapperState extends State<_ChatRouteWrapper> {
         }
       } catch (_) {}
     }
-    return BattleDetailScreen(battleId: widget.teamId);
+    return TeamDetailScreen(teamId: widget.teamId);
   }
 
   @override

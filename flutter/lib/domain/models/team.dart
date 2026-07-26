@@ -1,22 +1,22 @@
 import 'dart:convert';
 
 import 'package:face_engine/domain/models/face_reading_report.dart';
-import 'package:face_engine/domain/services/compat/battle.dart';
+import 'package:face_engine/domain/services/compat/team.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 
-/// Chemistry Battle 클라이언트 모델 — Plan 1 서버 계약(teams·team_roster·
+/// Chemistry Team 클라이언트 모델 — Plan 1 서버 계약(teams·team_roster·
 /// public_teams·RPC 에러 문자열)의 Dart 표현. 서버가 SSOT, 여기는 파싱만.
 
-enum BattleStatus { recruiting, revealing, completed, expired }
+enum TeamStatus { recruiting, revealing, completed, expired }
 
-BattleStatus battleStatusFrom(String raw) =>
-    BattleStatus.values.firstWhere((s) => s.name == raw);
+TeamStatus teamStatusFrom(String raw) =>
+    TeamStatus.values.firstWhere((s) => s.name == raw);
 
 /// 방 유형 — 'all'(전체 케미) / 'match'(남녀 반반 이성 케미).
-enum BattleRoomKind { all, match }
+enum TeamRoomKind { all, match }
 
-BattleRoomKind battleRoomKindFrom(String raw) =>
-    BattleRoomKind.values.byName(raw);
+TeamRoomKind teamRoomKindFrom(String raw) =>
+    TeamRoomKind.values.byName(raw);
 
 String _ageRangeLabel(int? ageMin, int? ageMax) {
   if (ageMin == null || ageMax == null) return '전연령';
@@ -24,7 +24,7 @@ String _ageRangeLabel(int? ageMin, int? ageMax) {
   return '$ageMin대~$ageMax대';
 }
 
-class Battle {
+class Team {
   final String id;
   final String? ownerId;
   final String title;
@@ -32,8 +32,8 @@ class Battle {
   final int maxPlayers;
   final int? ageMin;
   final int? ageMax;
-  final BattleRoomKind roomKind;
-  final BattleStatus status;
+  final TeamRoomKind roomKind;
+  final TeamStatus status;
   final DateTime? startedAt;
   final DateTime? closedAt;
   final Map<String, dynamic>? chemistrySnapshot;
@@ -41,10 +41,10 @@ class Battle {
   final int views;
   final DateTime createdAt;
 
-  /// 현재 참가 인원 — 목록 조회(fetchMyBattles)가 채운다. 단건 조회는 null.
+  /// 현재 참가 인원 — 목록 조회(fetchMyTeams)가 채운다. 단건 조회는 null.
   final int? playerCount;
 
-  const Battle({
+  const Team({
     required this.id,
     required this.ownerId,
     required this.title,
@@ -63,8 +63,8 @@ class Battle {
     this.playerCount,
   });
 
-  factory Battle.fromRow(Map<String, dynamic> row, {int? playerCount}) =>
-      Battle(
+  factory Team.fromRow(Map<String, dynamic> row, {int? playerCount}) =>
+      Team(
         id: row['id'] as String,
         ownerId: row['owner_id'] as String?,
         title: row['title'] as String,
@@ -72,8 +72,8 @@ class Battle {
         maxPlayers: (row['max_players'] as num).toInt(),
         ageMin: (row['age_min'] as num?)?.toInt(),
         ageMax: (row['age_max'] as num?)?.toInt(),
-        roomKind: battleRoomKindFrom(row['room_kind'] as String),
-        status: battleStatusFrom(row['status'] as String),
+        roomKind: teamRoomKindFrom(row['room_kind'] as String),
+        status: teamStatusFrom(row['status'] as String),
         startedAt: row['started_at'] == null
             ? null
             : DateTime.parse(row['started_at'] as String),
@@ -87,12 +87,12 @@ class Battle {
         playerCount: playerCount,
       );
 
-  bool get isRecruiting => status == BattleStatus.recruiting;
+  bool get isRecruiting => status == TeamStatus.recruiting;
   bool get hasResult => resultPayload != null;
   String get ageRangeLabel => _ageRangeLabel(ageMin, ageMax);
 }
 
-class BattleRosterEntry {
+class TeamRosterEntry {
   final String teamId;
   final String userId;
   final int slotNo;
@@ -101,7 +101,7 @@ class BattleRosterEntry {
   final DateTime joinedAt;
   final String nickname;
 
-  const BattleRosterEntry({
+  const TeamRosterEntry({
     required this.teamId,
     required this.userId,
     required this.slotNo,
@@ -111,8 +111,8 @@ class BattleRosterEntry {
     required this.nickname,
   });
 
-  factory BattleRosterEntry.fromRow(Map<String, dynamic> row) =>
-      BattleRosterEntry(
+  factory TeamRosterEntry.fromRow(Map<String, dynamic> row) =>
+      TeamRosterEntry(
         teamId: row['team_id'] as String,
         userId: row['user_id'] as String,
         slotNo: (row['slot_no'] as num).toInt(),
@@ -123,18 +123,18 @@ class BattleRosterEntry {
       );
 }
 
-class PublicBattle {
+class PublicTeam {
   final String id;
   final String title;
   final int maxPlayers;
   final int? ageMin;
   final int? ageMax;
-  final BattleRoomKind roomKind;
+  final TeamRoomKind roomKind;
   final bool isPrivate;
   final DateTime createdAt;
   final int playerCount;
 
-  const PublicBattle({
+  const PublicTeam({
     required this.id,
     required this.title,
     required this.maxPlayers,
@@ -146,13 +146,13 @@ class PublicBattle {
     required this.playerCount,
   });
 
-  factory PublicBattle.fromRow(Map<String, dynamic> row) => PublicBattle(
+  factory PublicTeam.fromRow(Map<String, dynamic> row) => PublicTeam(
     id: row['id'] as String,
     title: row['title'] as String,
     maxPlayers: (row['max_players'] as num).toInt(),
     ageMin: (row['age_min'] as num?)?.toInt(),
     ageMax: (row['age_max'] as num?)?.toInt(),
-    roomKind: battleRoomKindFrom(row['room_kind'] as String),
+    roomKind: teamRoomKindFrom(row['room_kind'] as String),
     isPrivate: row['is_private'] as bool? ?? false,
     createdAt: DateTime.parse(row['created_at'] as String),
     playerCount: (row['player_count'] as num).toInt(),
@@ -162,14 +162,14 @@ class PublicBattle {
 }
 
 /// 서버 RPC 에러 계약 (Plan 1) — raise exception 메시지 문자열이 코드다.
-enum BattleJoinError {
+enum TeamJoinError {
   authRequired('AUTH_REQUIRED', '로그인이 필요합니다'),
   notFound('NOT_FOUND', '존재하지 않는 방입니다'),
   notRecruiting('NOT_RECRUITING', '모집이 끝난 방입니다'),
   badPassword('BAD_PASSWORD', '비밀번호가 일치하지 않습니다'),
   noMyFace('NO_MY_FACE', '내 관상 등록이 필요합니다'),
   ageNotAllowed('AGE_NOT_ALLOWED', '이 방의 연령대에 해당하지 않습니다'),
-  // GENDER_FULL 이 'FULL' 을 부분 문자열로 포함하므로 mapBattleError 의 순차
+  // GENDER_FULL 이 'FULL' 을 부분 문자열로 포함하므로 mapTeamError 의 순차
   // contains 매칭에서 full 보다 먼저 검사되도록 앞에 둔다.
   genderFull('GENDER_FULL', '이 방의 남녀 자리 중 한쪽이 다 찼습니다'),
   full('FULL', '정원이 가득 찼습니다'),
@@ -185,15 +185,15 @@ enum BattleJoinError {
 
   final String code;
   final String labelKo;
-  const BattleJoinError(this.code, this.labelKo);
+  const TeamJoinError(this.code, this.labelKo);
 }
 
-BattleJoinError mapBattleError(Object e) {
+TeamJoinError mapTeamError(Object e) {
   final msg = e is PostgrestException ? e.message : e.toString();
-  for (final v in BattleJoinError.values) {
-    if (v != BattleJoinError.unknown && msg.contains(v.code)) return v;
+  for (final v in TeamJoinError.values) {
+    if (v != TeamJoinError.unknown && msg.contains(v.code)) return v;
   }
-  return BattleJoinError.unknown;
+  return TeamJoinError.unknown;
 }
 
 /// GENDER_FULL 중립 카피를 본인 성별로 분기 — 'male'→남자 자리, 그 외(female)→여자 자리.
@@ -202,7 +202,7 @@ String genderFullLabel(String myGender) =>
 
 /// 매칭 성사 — submit_team_result 가 best 쌍을 확정해 생성, respond_match
 /// 로 쌍 각자가 채팅 개설에 동의. consent: null=무응답, true=수락, false=거절.
-class BattleMatch {
+class TeamMatch {
   final String teamId;
   final String userA;
   final String userB;
@@ -210,7 +210,7 @@ class BattleMatch {
   final bool? bConsent;
   final DateTime? openedAt;
 
-  const BattleMatch({
+  const TeamMatch({
     required this.teamId,
     required this.userA,
     required this.userB,
@@ -219,7 +219,7 @@ class BattleMatch {
     required this.openedAt,
   });
 
-  factory BattleMatch.fromRow(Map<String, dynamic> row) => BattleMatch(
+  factory TeamMatch.fromRow(Map<String, dynamic> row) => TeamMatch(
     teamId: row['team_id'] as String,
     userA: row['user_a'] as String,
     userB: row['user_b'] as String,
@@ -252,7 +252,7 @@ class OpenChat {
   /// 상대 my-face 사진의 촬영 경로 — 아바타 border 색 규칙
   /// (카메라 gold / 앨범 lightGray) 에 사용. metrics body 파싱 실패 시 null.
   final AnalysisSource? photoSource;
-  final BattleMessage? lastMessage;
+  final TeamMessage? lastMessage;
   final bool hasUnread;
 
   const OpenChat({
@@ -266,14 +266,14 @@ class OpenChat {
   });
 }
 
-class BattleMessage {
+class TeamMessage {
   final String id;
   final String teamId;
   final String senderId;
   final String body;
   final DateTime createdAt;
 
-  const BattleMessage({
+  const TeamMessage({
     required this.id,
     required this.teamId,
     required this.senderId,
@@ -281,7 +281,7 @@ class BattleMessage {
     required this.createdAt,
   });
 
-  factory BattleMessage.fromRow(Map<String, dynamic> row) => BattleMessage(
+  factory TeamMessage.fromRow(Map<String, dynamic> row) => TeamMessage(
     id: row['id'] as String,
     teamId: row['team_id'] as String,
     senderId: row['sender_id'] as String,
@@ -294,17 +294,17 @@ class BattleMessage {
 /// snapshot 에 없는 참가자(계정 삭제 극단 케이스)는 제외. slot 오름차순.
 /// gender 는 roster(join_team 조인 시점 서버 강제값)에서 읽는다 — report
 /// 재파싱이 아닌 서버와 동일 소스.
-List<BattlePlayer> assembleBattlePlayers({
-  required List<BattleRosterEntry> roster,
+List<TeamPlayer> assembleTeamPlayers({
+  required List<TeamRosterEntry> roster,
   required Map<String, dynamic> snapshot,
 }) {
-  final players = <BattlePlayer>[];
+  final players = <TeamPlayer>[];
   for (final entry in roster) {
     final body = snapshot[entry.userId];
     if (body == null) continue;
     final report = FaceReadingReport.fromJsonString(jsonEncode(body));
     players.add(
-      BattlePlayer(
+      TeamPlayer(
         slot: entry.slotNo,
         name: entry.nickname,
         gender: entry.gender,
@@ -317,8 +317,8 @@ List<BattlePlayer> assembleBattlePlayers({
 }
 
 /// snapshot.blocked([[slotA, slotB], …] — 시작 트랜잭션이 동결한 로스터 내
-/// 차단 쌍) → computeBattle 의 blockedKeys. 키 부재·빈 배열이면 빈 집합.
+/// 차단 쌍) → computeTeam 의 blockedKeys. 키 부재·빈 배열이면 빈 집합.
 Set<String> blockedKeysFromSnapshot(Map<String, dynamic> snapshot) => {
   for (final p in snapshot['blocked'] as List? ?? const [])
-    battlePairKey((p[0] as num).toInt(), (p[1] as num).toInt()),
+    teamPairKey((p[0] as num).toInt(), (p[1] as num).toInt()),
 };

@@ -47,7 +47,7 @@ class PushService {
 
   /// 지금 보고 있는 채팅방 — 그 방의 메시지 알림은 배너를 생략한다
   /// (Realtime 이 말풍선을 즉시 그리므로 배너는 이중 소음).
-  /// BattleChatScreen 이 진입/이탈 시 설정·해제.
+  /// TeamChatScreen 이 진입/이탈 시 설정·해제.
   String? activeChatTeamId;
 
   Future<void> initialize() async {

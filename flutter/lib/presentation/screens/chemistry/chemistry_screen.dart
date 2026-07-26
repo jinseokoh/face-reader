@@ -9,9 +9,9 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
 import '../../../core/theme.dart';
-import '../../../data/services/battle_service.dart';
-import '../../../domain/models/battle.dart';
-import '../../providers/battle_provider.dart';
+import '../../../data/services/team_service.dart';
+import '../../../domain/models/team.dart';
+import '../../providers/team_provider.dart';
 import '../../providers/history_provider.dart';
 import '../../widgets/age_range_pill.dart';
 import '../../widgets/compact_snack_bar.dart';
@@ -19,12 +19,12 @@ import '../../widgets/emotion_empty_state.dart';
 import '../../widgets/face_scan_pill.dart';
 import '../../widgets/login_bottom_sheet.dart';
 import '../../widgets/source_badge.dart';
-import '../team/battle_band.dart';
-import '../team/battle_create_page.dart';
-import '../team/battle_detail_screen.dart';
+import '../team/team_band.dart';
+import '../team/team_create_page.dart';
+import '../team/team_detail_screen.dart';
 import '../team/team_reveal_screen.dart';
 
-/// 케미 탭 = Chemistry Battle 방 목록 브라우저.
+/// 케미 탭 = Chemistry Team 방 목록 브라우저.
 /// 내부 2탭: 공개 그룹(목록에서 발견·참가) / 내 그룹(진행·완료).
 class ChemistryScreen extends ConsumerStatefulWidget {
   const ChemistryScreen({super.key});
@@ -35,10 +35,10 @@ class ChemistryScreen extends ConsumerStatefulWidget {
 
 /// 공개 그룹·내 그룹 공용 카드 본문 — 제목 / 유형·연령 pill / 참가자 슬롯.
 /// 두 목록의 item 은 이 위젯 하나로 같은 결을 강제한다.
-class _BattleCardBody extends StatelessWidget {
+class _TeamCardBody extends StatelessWidget {
   final String title;
   final String ageLabel;
-  final BattleRoomKind roomKind;
+  final TeamRoomKind roomKind;
   final int maxPlayers;
   final bool isPrivate;
 
@@ -51,7 +51,7 @@ class _BattleCardBody extends StatelessWidget {
   /// 종료(비모집) 방 — 유형 pill 을 흐린 gray 로 낮춘다. 진한 pill 은
   /// 항상 "참여 가능" 신호로만 쓰는 UX 규칙.
   final bool dimKind;
-  const _BattleCardBody({
+  const _TeamCardBody({
     required this.title,
     required this.ageLabel,
     required this.roomKind,
@@ -64,7 +64,7 @@ class _BattleCardBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final kind = roomKind == BattleRoomKind.match ? '이성 케미' : '전체 케미';
+    final kind = roomKind == TeamRoomKind.match ? '이성 케미' : '전체 케미';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -84,7 +84,7 @@ class _BattleCardBody extends StatelessWidget {
               label: kind,
               invert: true,
               dim: dimKind,
-              icons: roomKind == BattleRoomKind.match
+              icons: roomKind == TeamRoomKind.match
                   ? const [FontAwesomeIcons.child, FontAwesomeIcons.childDress]
                   : const [
                       FontAwesomeIcons.childReaching,
@@ -175,7 +175,7 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
 
   Future<void> _create() async {
     // 로그인 게이트 — 비로그인 owner_id null 이면 RLS 거부. login_bottom_sheet 패턴.
-    if (!BattleService.instance.isLoggedIn) {
+    if (!TeamService.instance.isLoggedIn) {
       final ok = await showLoginBottomSheet(context, ref);
       if (!ok || !mounted) return;
     }
@@ -190,21 +190,21 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
       if (mounted) _showAgeGateDialog(context);
       return;
     }
-    final battle = await showBattleCreatePage(context);
-    if (battle == null || !mounted) return;
-    ref.invalidate(myBattlesProvider);
-    ref.invalidate(publicBattlesProvider);
+    final team = await showTeamCreatePage(context);
+    if (team == null || !mounted) return;
+    ref.invalidate(myTeamsProvider);
+    ref.invalidate(publicTeamsProvider);
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => BattleDetailScreen(battleId: battle.id),
+        builder: (_) => TeamDetailScreen(teamId: team.id),
       ),
     );
   }
 
   /// 내 그룹 = 전부 참가 중 — 비밀 그룹이어도 비밀번호 재확인 없이 진입
   /// (비밀번호는 입장 자격 검사, 멤버 재인증 아님). 생략 사유는 스낵바로.
-  void _openMine(Battle battle) {
-    if (!battle.isPublic) {
+  void _openMine(Team team) {
+    if (!team.isPublic) {
       showTopSnackBar(
         Overlay.of(context),
         CompactSnackBar.info(message: '이미 참가한 그룹이라 비밀번호 없이 들어갑니다'),
@@ -212,9 +212,9 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
     }
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => battle.isRecruiting
-            ? BattleDetailScreen(battleId: battle.id)
-            : TeamRevealScreen(battleId: battle.id),
+        builder: (_) => team.isRecruiting
+            ? TeamDetailScreen(teamId: team.id)
+            : TeamRevealScreen(teamId: team.id),
       ),
     );
   }
@@ -255,18 +255,17 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
         content: const SingleChildScrollView(
           child: Text(
             '6 ~ 12명 정원의 그룹을 만들어 온라인에서 만나는 '
-            '다양한 사람들과의 서로 케미가 좋은지 확인하는 기능입니다. '
+            '다양한 사람들과의 서로 관상학적 케미가 좋은지 확인하는 기능입니다.\n\n'
             '케미 그룹은 누구나 만들 수 있고 그룹에 참여 정원이 다 차면 '
-            '즉시 그룹 케미 결과표가 자동으로 발표됩니다.\n\n'
+            '그 즉시 그룹내 참여자들간 관상으로 따져본 케미 결과표가 자동으로 발표됩니다.\n\n'
             '해당 그룹내에서 최고의 케미를 보인 베스트 매칭 한 쌍에게는 1:1 채팅 '
             '기회가 주어집니다. 물론, '
-            '두 사람 모두 원하는 경우에만 채팅방이 열리고, 한쪽이라도 '
-            '거부하면 열리지 않습니다. 결과 발표이후 보름이 지난 뒤에는 자동으로 삭제됩니다.\n\n'
+            '두 사람 모두 채팅을 원하는 경우에만 채팅방이 열리고, 한쪽이라도 '
+            '거부하면 열리지 않습니다. 결과 발표이후 한 달이 지난 뒤에는 자동으로 삭제됩니다.\n\n'
             '공개 그룹은 언제든 참가할 수 있고, '
-            '[그룹 만들기] 기능을 통해 원하는 그룹을 직접 만들 수도 있습니다.\n\n'
-            '지인들끼리만 모이고 싶다면 비밀번호를 설정한 비밀 그룹을 '
-            '만드세요.\n\n'
-            '공유하기로 카카오톡 등 원하는 채널을 통해 그룹에 초대할 수 '
+            '그룹 만들기 기능을 통해 원하는 그룹을 직접 만들 수도 있습니다. '
+            '지인들끼리만 모이고 싶다면 그룹을 만들때 비밀번호를 설정하세요.\n\n'
+            '공유하기 기능을 이용하면 카카오톡 등 원하는 채널을 통해 내가 만든 그룹에 초대할 수 '
             '있습니다.',
             style: AppText.body,
           ),
@@ -400,8 +399,8 @@ class _ListSelector<T> extends StatelessWidget {
 }
 
 class _MineCard extends ConsumerWidget {
-  final Battle battle;
-  final void Function(Battle) onOpen;
+  final Team team;
+  final void Function(Team) onOpen;
 
   /// 채팅방 열림 — 초록 tint 배경 + 초록 1px border (내 관상 금색과 같은 문법).
   final bool hasOpenChat;
@@ -410,7 +409,7 @@ class _MineCard extends ConsumerWidget {
   /// 문법의 red 계통 (danger border + danger tint 배경).
   final bool isBusted;
   const _MineCard({
-    required this.battle,
+    required this.team,
     required this.onOpen,
     this.hasOpenChat = false,
     this.isBusted = false,
@@ -418,9 +417,9 @@ class _MineCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final expired = battle.status == BattleStatus.expired;
+    final expired = team.status == TeamStatus.expired;
     return InkWell(
-      onTap: () => onOpen(battle),
+      onTap: () => onOpen(team),
       borderRadius: BorderRadius.circular(AppRadius.lg),
       child: Container(
         margin: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -445,15 +444,15 @@ class _MineCard extends ConsumerWidget {
           children: [
             Padding(
               padding: const EdgeInsets.all(AppSpacing.lg),
-              child: _BattleCardBody(
-                title: battle.title,
-                ageLabel: battle.ageRangeLabel,
-                roomKind: battle.roomKind,
-                maxPlayers: battle.maxPlayers,
-                isPrivate: !battle.isPublic,
-                teamId: battle.id,
+              child: _TeamCardBody(
+                title: team.title,
+                ageLabel: team.ageRangeLabel,
+                roomKind: team.roomKind,
+                maxPlayers: team.maxPlayers,
+                isPrivate: !team.isPublic,
+                teamId: team.id,
                 dimTitle: expired,
-                dimKind: battle.status != BattleStatus.recruiting,
+                dimKind: team.status != TeamStatus.recruiting,
               ),
             ),
             if (expired)
@@ -478,7 +477,7 @@ enum _MineFilter {
 }
 
 class _MineTab extends ConsumerStatefulWidget {
-  final void Function(Battle) onOpen;
+  final void Function(Team) onOpen;
   const _MineTab({required this.onOpen});
 
   @override
@@ -490,7 +489,7 @@ class _MineTabState extends ConsumerState<_MineTab> {
 
   @override
   Widget build(BuildContext context) {
-    final battles = ref.watch(myBattlesProvider);
+    final teams = ref.watch(myTeamsProvider);
     // 채팅방 열린 그룹 — 카드 초록 강조 (관상탭 내 관상 금색과 같은 문법).
     final openChats =
         ref.watch(openChatTeamsProvider).value ?? const <String>{};
@@ -499,12 +498,12 @@ class _MineTabState extends ConsumerState<_MineTab> {
     final matchTeams = ref.watch(myMatchTeamsProvider).value;
     return RefreshIndicator(
       onRefresh: () async {
-        ref.invalidate(myBattlesProvider);
+        ref.invalidate(myTeamsProvider);
         ref.invalidate(openChatTeamsProvider);
         ref.invalidate(myMatchTeamsProvider);
       },
       color: AppColors.textPrimary,
-      child: battles.when(
+      child: teams.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => ListView(
           children: [
@@ -534,8 +533,8 @@ class _MineTabState extends ConsumerState<_MineTab> {
             for (final b in list)
               if (switch (_filter) {
                 _MineFilter.all => true,
-                _MineFilter.recruiting => b.status == BattleStatus.recruiting,
-                _MineFilter.closed => b.status != BattleStatus.recruiting,
+                _MineFilter.recruiting => b.status == TeamStatus.recruiting,
+                _MineFilter.closed => b.status != TeamStatus.recruiting,
               })
                 b,
           ];
@@ -550,12 +549,12 @@ class _MineTabState extends ConsumerState<_MineTab> {
                     onChanged: (f) => setState(() => _filter = f),
                   )
                 : _MineCard(
-                    battle: filtered[i - 1],
+                    team: filtered[i - 1],
                     onOpen: widget.onOpen,
                     hasOpenChat: openChats.contains(filtered[i - 1].id),
                     isBusted:
                         matchTeams != null &&
-                        filtered[i - 1].status == BattleStatus.completed &&
+                        filtered[i - 1].status == TeamStatus.completed &&
                         !matchTeams.contains(filtered[i - 1].id),
                   ),
           );
@@ -569,8 +568,8 @@ class _MineTabState extends ConsumerState<_MineTab> {
 /// (숫자 4자리). 확인 시 check_team_password RPC 로 서버 검증하고, 일치할
 /// 때만 입력값을 pop 으로 돌려준다. 불일치·통신 실패는 dialog 안 errorText.
 class _PinDialog extends StatefulWidget {
-  final String battleId;
-  const _PinDialog({required this.battleId});
+  final String teamId;
+  const _PinDialog({required this.teamId});
 
   @override
   State<_PinDialog> createState() => _PinDialogState();
@@ -634,8 +633,8 @@ class _PinDialogState extends State<_PinDialog> {
       _error = null;
     });
     try {
-      final ok = await BattleService.instance.checkPassword(
-        widget.battleId,
+      final ok = await TeamService.instance.checkPassword(
+        widget.teamId,
         pin,
       );
       if (!mounted) return;
@@ -645,27 +644,27 @@ class _PinDialogState extends State<_PinDialog> {
       }
       setState(() {
         _busy = false;
-        _error = BattleJoinError.badPassword.labelKo;
+        _error = TeamJoinError.badPassword.labelKo;
       });
     } catch (_) {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = BattleJoinError.unknown.labelKo;
+        _error = TeamJoinError.unknown.labelKo;
       });
     }
   }
 }
 
 class _PublicCard extends StatefulWidget {
-  final PublicBattle battle;
+  final PublicTeam team;
   final bool isOwner;
 
   /// 내가 이미 참가 중인 그룹 — 비밀번호는 입장 자격 검사이지 멤버 재인증이
   /// 아니므로 (오픈채팅 비밀방과 동일 모델) dialog 없이 바로 진입한다.
   final bool isJoined;
   const _PublicCard({
-    required this.battle,
+    required this.team,
     this.isOwner = false,
     this.isJoined = false,
   });
@@ -675,7 +674,7 @@ class _PublicCard extends StatefulWidget {
 }
 
 class _PublicCardState extends State<_PublicCard> {
-  PublicBattle get battle => widget.battle;
+  PublicTeam get team => widget.team;
 
   @override
   Widget build(BuildContext context) {
@@ -690,13 +689,13 @@ class _PublicCardState extends State<_PublicCard> {
           borderRadius: BorderRadius.circular(AppRadius.lg),
           border: Border.all(color: AppColors.border),
         ),
-        child: _BattleCardBody(
-          title: battle.title,
-          ageLabel: battle.ageRangeLabel,
-          roomKind: battle.roomKind,
-          maxPlayers: battle.maxPlayers,
-          isPrivate: battle.isPrivate,
-          teamId: battle.id,
+        child: _TeamCardBody(
+          title: team.title,
+          ageLabel: team.ageRangeLabel,
+          roomKind: team.roomKind,
+          maxPlayers: team.maxPlayers,
+          isPrivate: team.isPrivate,
+          teamId: team.id,
         ),
       ),
     );
@@ -708,15 +707,15 @@ class _PublicCardState extends State<_PublicCard> {
   /// (조인 시 join_team 이 같은 비교를 다시 한다).
   Future<void> _open() async {
     String? pin;
-    if (battle.isPrivate && !widget.isJoined) {
+    if (team.isPrivate && !widget.isJoined) {
       pin = await showDialog<String>(
         context: context,
-        builder: (_) => _PinDialog(battleId: battle.id),
+        builder: (_) => _PinDialog(teamId: team.id),
       );
       if (pin == null || !mounted) return;
     }
     // 참가 중인 비밀 그룹 — dialog 생략 사유를 스낵바로 알린다.
-    if (battle.isPrivate && widget.isJoined) {
+    if (team.isPrivate && widget.isJoined) {
       showTopSnackBar(
         Overlay.of(context),
         CompactSnackBar.info(message: '이미 참가한 그룹이라 비밀번호 없이 들어갑니다'),
@@ -725,7 +724,7 @@ class _PublicCardState extends State<_PublicCard> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) =>
-            BattleDetailScreen(battleId: battle.id, initialPin: pin),
+            TeamDetailScreen(teamId: team.id, initialPin: pin),
       ),
     );
   }
@@ -743,20 +742,20 @@ class _PublicTabState extends ConsumerState<_PublicTab> {
 
   @override
   Widget build(BuildContext context) {
-    final battles = ref.watch(publicBattlesProvider);
+    final teams = ref.watch(publicTeamsProvider);
     // 공개 목록엔 방장 정보가 없다 (public_teams 화이트리스트) — 내 그룹
     // 목록과 대조해 내가 방장인 방·이미 참가한 방을 식별한다.
-    final myUid = BattleService.instance.myUid;
-    final myBattles = ref.watch(myBattlesProvider).value ?? const <Battle>[];
+    final myUid = TeamService.instance.myUid;
+    final myTeams = ref.watch(myTeamsProvider).value ?? const <Team>[];
     final mineIds = {
-      for (final b in myBattles)
+      for (final b in myTeams)
         if (b.ownerId != null && b.ownerId == myUid) b.id,
     };
-    final joinedIds = {for (final b in myBattles) b.id};
+    final joinedIds = {for (final b in myTeams) b.id};
     return RefreshIndicator(
-      onRefresh: () async => ref.invalidate(publicBattlesProvider),
+      onRefresh: () async => ref.invalidate(publicTeamsProvider),
       color: AppColors.textPrimary,
-      child: battles.when(
+      child: teams.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => ListView(
           children: [
@@ -799,7 +798,7 @@ class _PublicTabState extends ConsumerState<_PublicTab> {
                     onChanged: (o) => setState(() => _order = o),
                   )
                 : _PublicCard(
-                    battle: sorted[i - 1],
+                    team: sorted[i - 1],
                     isOwner: mineIds.contains(sorted[i - 1].id),
                     isJoined: joinedIds.contains(sorted[i - 1].id),
                   ),
@@ -821,7 +820,7 @@ class _RosterAvatars extends ConsumerWidget {
   final String teamId;
   final int maxPlayers;
 
-  final BattleRoomKind roomKind;
+  final TeamRoomKind roomKind;
   final bool showEmptySlots;
   const _RosterAvatars({
     required this.teamId,
@@ -833,13 +832,13 @@ class _RosterAvatars extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final avatars =
-        ref.watch(battleRosterAvatarsProvider(teamId)).value ?? const [];
+        ref.watch(teamRosterAvatarsProvider(teamId)).value ?? const [];
     if (avatars.isEmpty) return const SizedBox(height: _kBox);
     // 빈자리 슬롯 svg 목록 — 이성 케미는 남녀 반반 정원이라 성별별 잔여석,
     // 전체 케미는 성별 무관 잔여석.
     final emptySvgs = <String>[];
     if (showEmptySlots) {
-      if (roomKind == BattleRoomKind.match) {
+      if (roomKind == TeamRoomKind.match) {
         final half = maxPlayers ~/ 2;
         final males = avatars.where((a) => a.gender == 'male').length;
         final females = avatars.length - males;

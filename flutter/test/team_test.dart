@@ -1,8 +1,8 @@
-// Chemistry Battle 집계 엔진 검증 — 스펙 §5/§6.3:
+// Chemistry Team 집계 엔진 검증 — 스펙 §5/§6.3:
 // 쌍 수 · a<b 정규화 · 정렬=순위(raw total desc) · tie-break 결정론 ·
 // best = pairs[0] · payload 계약 (점수는 best.score 만, band 0~3).
 //
-// 실행: flutter test test/battle_test.dart
+// 실행: flutter test test/team_test.dart
 
 import 'dart:math';
 
@@ -16,7 +16,7 @@ import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/services/archetype.dart';
-import 'package:face_engine/domain/services/compat/battle.dart';
+import 'package:face_engine/domain/services/compat/team.dart';
 import 'package:face_engine/domain/services/compat/compat_label.dart';
 import 'package:face_engine/domain/services/physiognomy_scoring.dart';
 import 'package:facely/domain/services/mc_fixtures.dart';
@@ -105,11 +105,11 @@ FaceReadingReport _fakeReport(
   );
 }
 
-List<BattlePlayer> _players(int n, {int seed = 42}) {
+List<TeamPlayer> _players(int n, {int seed = 42}) {
   final rng = Random(seed);
   return [
     for (int i = 0; i < n; i++)
-      BattlePlayer(
+      TeamPlayer(
         slot: i + 1,
         name: '플레이어$i',
         gender: i.isEven ? 'male' : 'female',
@@ -124,7 +124,7 @@ List<BattlePlayer> _players(int n, {int seed = 42}) {
 
 void main() {
   test('쌍 수 = N(N-1)/2, 모든 쌍은 a < b 정규화', () {
-    final result = computeBattle(_players(4));
+    final result = computeTeam(_players(4));
     expect(result.pairs.length, 6);
     for (final p in result.pairs) {
       expect(p.a < p.b, isTrue);
@@ -132,7 +132,7 @@ void main() {
   });
 
   test('정렬 = 순위 — pairs 는 raw total 내림차순, best = pairs[0]', () {
-    final result = computeBattle(_players(6));
+    final result = computeTeam(_players(6));
     for (int i = 1; i < result.pairs.length; i++) {
       expect(result.pairs[i - 1].total >= result.pairs[i].total, isTrue);
     }
@@ -141,26 +141,26 @@ void main() {
 
   test('결정론 — 같은 입력은 항상 같은 payload', () {
     final players = _players(6);
-    final a = computeBattle(players).toPayload();
-    final b = computeBattle(players).toPayload();
+    final a = computeTeam(players).toPayload();
+    final b = computeTeam(players).toPayload();
     expect(a, equals(b));
   });
 
   test('tie-break 비교자 — total 동점이면 (a, b) 사전순, 공동 수상 없음', () {
-    BattlePair pair(int a, int b, double total) =>
-        BattlePair(a: a, b: b, total: total, label: CompatLabel.mahapgaseong);
+    TeamPair pair(int a, int b, double total) =>
+        TeamPair(a: a, b: b, total: total, label: CompatLabel.mahapgaseong);
     // total 다르면 내림차순.
-    expect(battlePairCompare(pair(1, 2, 90), pair(3, 4, 80)) < 0, isTrue);
-    expect(battlePairCompare(pair(1, 2, 80), pair(3, 4, 90)) > 0, isTrue);
+    expect(teamPairCompare(pair(1, 2, 90), pair(3, 4, 80)) < 0, isTrue);
+    expect(teamPairCompare(pair(1, 2, 80), pair(3, 4, 90)) > 0, isTrue);
     // 완전 동점 → a 오름차순 → b 오름차순.
-    expect(battlePairCompare(pair(1, 3, 85), pair(2, 4, 85)) < 0, isTrue);
-    expect(battlePairCompare(pair(2, 3, 85), pair(2, 4, 85)) < 0, isTrue);
+    expect(teamPairCompare(pair(1, 3, 85), pair(2, 4, 85)) < 0, isTrue);
+    expect(teamPairCompare(pair(2, 3, 85), pair(2, 4, 85)) < 0, isTrue);
     // 동일 쌍은 0.
-    expect(battlePairCompare(pair(2, 4, 85), pair(2, 4, 85)), 0);
+    expect(teamPairCompare(pair(2, 4, 85), pair(2, 4, 85)), 0);
   });
 
   test('payload 계약 — players/pairs/best 만, pairs 에 점수 없음, band 0~3', () {
-    final result = computeBattle(_players(4));
+    final result = computeTeam(_players(4));
     final payload = result.toPayload();
     expect(payload.keys.toSet(), {'players', 'pairs', 'best'});
 
@@ -188,21 +188,21 @@ void main() {
     final players = _players(6); // 짝수 slot(1,3,5) male, 홀수(2,4,6) female.
     final maleCount = players.where((p) => p.gender == 'male').length;
     final femaleCount = players.where((p) => p.gender == 'female').length;
-    final result = computeBattle(players, matchOnly: true);
+    final result = computeTeam(players, matchOnly: true);
     expect(result.pairs.length, maleCount * femaleCount);
   });
 
   test('matchOnly — 모든 쌍이 이성, 동성 쌍은 존재하지 않음', () {
     final players = _players(8);
     final genderBySlot = {for (final p in players) p.slot: p.gender};
-    final result = computeBattle(players, matchOnly: true);
+    final result = computeTeam(players, matchOnly: true);
     for (final pair in result.pairs) {
       expect(genderBySlot[pair.a], isNot(equals(genderBySlot[pair.b])));
     }
   });
 
   test('payload — players[].gender 키 존재', () {
-    final result = computeBattle(_players(4));
+    final result = computeTeam(_players(4));
     final payload = result.toPayload();
     final players = payload['players'] as List;
     for (final p in players) {
@@ -212,17 +212,17 @@ void main() {
 
   test('차단 쌍 — 상한 60점·형극난조 확정·베스트 제외, 다른 쌍은 불변', () {
     final players = _players(6);
-    final open = computeBattle(players);
-    final key = battlePairKey(open.best.a, open.best.b);
-    final result = computeBattle(players, blockedKeys: {key});
+    final open = computeTeam(players);
+    final key = teamPairKey(open.best.a, open.best.b);
+    final result = computeTeam(players, blockedKeys: {key});
 
     final blockedPair = result.pairs.firstWhere(
-      (p) => battlePairKey(p.a, p.b) == key,
+      (p) => teamPairKey(p.a, p.b) == key,
     );
     expect(blockedPair.blocked, isTrue);
-    expect(blockedPair.total, lessThanOrEqualTo(kBattleBlockCap));
+    expect(blockedPair.total, lessThanOrEqualTo(kTeamBlockCap));
     expect(blockedPair.label, CompatLabel.hyeonggeuknanjo);
-    expect(battlePairKey(result.best.a, result.best.b), isNot(key));
+    expect(teamPairKey(result.best.a, result.best.b), isNot(key));
 
     for (final p in result.pairs.where((p) => !p.blocked)) {
       final original = open.pairs.firstWhere((o) => o.a == p.a && o.b == p.b);
@@ -233,7 +233,7 @@ void main() {
 
   test('전 쌍 차단 극단 — best 는 pairs.first 로 후퇴', () {
     const pairs = [
-      BattlePair(
+      TeamPair(
         a: 1,
         b: 2,
         total: 60,
@@ -241,13 +241,13 @@ void main() {
         blocked: true,
       ),
     ];
-    const result = BattleResult(players: [], pairs: pairs);
+    const result = TeamResult(players: [], pairs: pairs);
     expect(identical(result.best, pairs.first), isTrue);
   });
 
   test('all 모드(matchOnly 기본값 false) — pairs 수 N(N-1)/2 유지, 동성 쌍 포함', () {
     final players = _players(6);
-    final result = computeBattle(players);
+    final result = computeTeam(players);
     expect(result.pairs.length, 6 * 5 ~/ 2);
     final genderBySlot = {for (final p in players) p.slot: p.gender};
     expect(

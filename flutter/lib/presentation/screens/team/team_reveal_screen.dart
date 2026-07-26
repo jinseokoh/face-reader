@@ -8,31 +8,31 @@ import 'package:top_snackbar_flutter/top_snack_bar.dart';
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
-import 'package:face_engine/domain/services/compat/battle.dart' as engine;
+import 'package:face_engine/domain/services/compat/team.dart' as engine;
 import 'package:face_engine/domain/services/compat/compat_label.dart';
 
 import '../../../config/router.dart';
 import '../../../core/storage/thumbnail_paths.dart';
 import '../../../core/theme.dart';
-import '../../../data/services/battle_service.dart';
-import '../../../domain/models/battle.dart';
+import '../../../data/services/team_service.dart';
+import '../../../domain/models/team.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/battle_provider.dart';
+import '../../providers/team_provider.dart';
 import '../../widgets/compact_snack_bar.dart';
 import '../../widgets/primary_button.dart';
 import '../../widgets/source_badge.dart';
 import '../compatibility/compatibility_unlock_action.dart';
-import 'battle_band.dart';
-import 'battle_match_card.dart';
+import 'team_band.dart';
+import 'team_match_card.dart';
 
 /// 매칭 결과 — payload(스코어보드)가 없으면 snapshot 으로 계산해 1회 기록
 /// (first-writer-wins)하고, 있으면 그대로 렌더한다.
 class TeamRevealScreen extends ConsumerStatefulWidget {
-  final String battleId;
+  final String teamId;
   final bool ceremony;
   const TeamRevealScreen({
     super.key,
-    required this.battleId,
+    required this.teamId,
     this.ceremony = false,
   });
 
@@ -43,13 +43,13 @@ class TeamRevealScreen extends ConsumerStatefulWidget {
 enum _Phase { loading, countdown, board, orphan }
 
 class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
-  final _service = BattleService.instance;
+  final _service = TeamService.instance;
   _Phase _phase = _Phase.loading;
   int _count = 3;
-  Battle? _battle;
+  Team? _team;
   Map<String, dynamic>? _payload;
-  List<BattleRosterEntry> _roster = const [];
-  Map<String, BattleSlotProfile> _profiles = const {};
+  List<TeamRosterEntry> _roster = const [];
+  Map<String, TeamSlotProfile> _profiles = const {};
 
   /// 쌍 점수 ('lo-hi' 키) — payload 는 점수를 싣지 않으므로 snapshot 으로
   /// 로컬 재계산 (결정론이라 payload 밴드와 항상 일치).
@@ -64,13 +64,13 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
   }
 
   Future<void> _load() async {
-    final battle = await _service.fetchBattle(widget.battleId);
+    final team = await _service.fetchTeam(widget.teamId);
     if (!mounted) return;
-    if (battle == null) {
+    if (team == null) {
       Navigator.of(context).maybePop();
       return;
     }
-    final roster = await _service.fetchRoster(widget.battleId);
+    final roster = await _service.fetchRoster(widget.teamId);
     if (!mounted) return;
     // 참가자 아바타 — 상세 페이지와 같은 소스 (현재 my-face live resolve).
     final profiles = await _service.fetchSlotProfiles([
@@ -79,14 +79,14 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
     if (!mounted) return;
     _profiles = profiles;
     // snapshot 재계산 — payload 유무와 무관하게 dot 점수 소스로 항상 수행.
-    engine.BattleResult? computed;
-    final snapshot = battle.chemistrySnapshot;
+    engine.TeamResult? computed;
+    final snapshot = team.chemistrySnapshot;
     if (snapshot != null) {
-      final players = assembleBattlePlayers(roster: roster, snapshot: snapshot);
+      final players = assembleTeamPlayers(roster: roster, snapshot: snapshot);
       if (players.length >= 2) {
-        computed = engine.computeBattle(
+        computed = engine.computeTeam(
           players,
-          matchOnly: battle.roomKind == BattleRoomKind.match,
+          matchOnly: team.roomKind == TeamRoomKind.match,
           blockedKeys: blockedKeysFromSnapshot(snapshot),
         );
       }
@@ -94,12 +94,12 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
     _scores = computed == null
         ? const {}
         : {for (final p in computed.pairs) '${p.a}-${p.b}': p.total.round()};
-    Map<String, dynamic>? payload = battle.resultPayload;
+    Map<String, dynamic>? payload = team.resultPayload;
     if (payload == null) {
       if (computed == null) {
         // revealing 고아(스냅샷 부재는 구조상 없지만 completed+payload null 안전망).
         setState(() {
-          _battle = battle;
+          _team = team;
           _phase = _Phase.orphan;
         });
         return;
@@ -107,10 +107,10 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
       payload = computed.toPayload();
       // 결정론 — 선착 기록만 유효, 실패(후착·비참가자)는 무해.
       try {
-        await _service.submitResult(widget.battleId, payload);
+        await _service.submitResult(widget.teamId, payload);
       } catch (_) {}
       if (!mounted) return;
-      ref.invalidate(myBattlesProvider);
+      ref.invalidate(myTeamsProvider);
     }
     if (!mounted) return;
     final myUid = _service.myUid;
@@ -119,7 +119,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
       if (r.userId == myUid) mySlot = r.slotNo;
     }
     setState(() {
-      _battle = battle;
+      _team = team;
       _payload = payload;
       _roster = roster;
       _mySlot = mySlot;
@@ -250,7 +250,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_battle?.title ?? '케미 그룹')),
+      appBar: AppBar(title: Text(_team?.title ?? '케미 그룹')),
       body: SafeArea(
         top: false,
         child: switch (_phase) {
@@ -289,8 +289,8 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
         _bestCard(),
         if (matchOther != null) ...[
           const SizedBox(height: AppSpacing.xl),
-          BattleMatchCard(
-            teamId: widget.battleId,
+          TeamMatchCard(
+            teamId: widget.teamId,
             otherUserId: matchOther.userId,
             otherNickname: _nameOf(matchOther.slot),
             otherGender: _genderOf(matchOther.slot) ?? 'male',
@@ -417,7 +417,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
   Widget _matrix() {
     final rows = <int>[];
     final cols = <int>[];
-    if (_battle?.roomKind == BattleRoomKind.match) {
+    if (_team?.roomKind == TeamRoomKind.match) {
       final males = <int>[];
       final females = <int>[];
       for (final p in _players) {
@@ -617,7 +617,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
     // payload 닉네임을 명시 전달. 밴드·점수도 결과표와 같은 소스(payload
     // band + snapshot 재계산 점수)를 전달 — 시트 자체 재계산은 차단 쌍의
     // 상한 60점을 몰라 결과표와 어긋난다.
-    await openBattlePairDetail(
+    await openTeamPairDetail(
       context,
       ref,
       my: my,
@@ -633,7 +633,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
 /// 쌍 상세 unlock 시트 — runCompatibilityUnlock/pushCompat 호출과 동일 계약.
 /// 무료 = 밴드 닷 + 라벨만(케미 그룹 payload 는 best 외 점수를 싣지 않는다,
 /// A2 정책) → [1🪙 상세 보기] → runCompatibilityUnlock → 성공 시 pushCompat.
-Future<void> openBattlePairDetail(
+Future<void> openTeamPairDetail(
   BuildContext context,
   WidgetRef ref, {
   required FaceReadingReport my,

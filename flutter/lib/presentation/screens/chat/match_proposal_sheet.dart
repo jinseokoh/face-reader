@@ -3,16 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
 import '../../../core/theme.dart';
-import '../../../data/services/battle_service.dart';
-import '../../../domain/models/battle.dart';
-import '../../providers/battle_provider.dart';
+import '../../../data/services/team_service.dart';
+import '../../../domain/models/team.dart';
+import '../../providers/team_provider.dart';
 import '../../widgets/compact_snack_bar.dart';
 import '../../widgets/primary_button.dart';
 import '../../widgets/source_badge.dart';
 
 /// 매칭 제안 시트 — 채팅 탭 appbar 뱃지에서 진입. 미결 베스트 매칭마다
 /// 카드 하나: 상대 사진 + 그룹명 + 응답 기한, [채팅방 열기]/[이번에는
-/// 넘어가기] (reveal 의 BattleMatchCard 와 동일 라벨·동일 respond_match RPC).
+/// 넘어가기] (reveal 의 TeamMatchCard 와 동일 라벨·동일 respond_match RPC).
 Future<void> showMatchProposalSheet(BuildContext context) {
   return showModalBottomSheet<void>(
     context: context,
@@ -72,7 +72,7 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
   Future<void> _respond(bool accept) async {
     setState(() => _responding = true);
     try {
-      await BattleService.instance.respondMatch(p.match.teamId, accept);
+      await TeamService.instance.respondMatch(p.match.teamId, accept);
       // 성사 시 채팅 목록에 entry 가 생기고, 어느 쪽이든 제안 목록이 바뀐다.
       ref.invalidate(matchProposalsProvider);
       ref.invalidate(openChatsProvider);
@@ -81,7 +81,7 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
       if (mounted) {
         showTopSnackBar(
           Overlay.of(context),
-          CompactSnackBar.error(message: mapBattleError(e).labelKo),
+          CompactSnackBar.error(message: mapTeamError(e).labelKo),
         );
         ref.invalidate(matchProposalsProvider);
       }
@@ -92,14 +92,14 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
 
   @override
   Widget build(BuildContext context) {
-    final uid = BattleService.instance.myUid;
+    final uid = TeamService.instance.myUid;
     final myConsent = uid == null ? null : p.match.consentOf(uid);
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadius.xl),
-        // 베스트 매칭 강조 — BattleMatchCard 와 같은 gold border 문법.
+        // 베스트 매칭 강조 — TeamMatchCard 와 같은 gold border 문법.
         border: Border.all(color: AppColors.gold),
       ),
       child: Column(

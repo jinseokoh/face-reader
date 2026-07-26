@@ -205,16 +205,16 @@ export async function saveCapture(
   return id;
 }
 
-// ── Chemistry Battle 계약 (Plan 1 서버) ─────────────────────────────
-export type BattleStatus = "recruiting" | "revealing" | "completed" | "expired";
+// ── Chemistry Team 계약 (Plan 1 서버) ─────────────────────────────
+export type TeamStatus = "recruiting" | "revealing" | "completed" | "expired";
 
-export type BattlePayload = {
+export type TeamPayload = {
   players: { slot: number; name: string; gender: string }[];
   pairs: { a: number; b: number; band: number }[]; // 정렬 = 순위, band 0~3
   best: { a: number; b: number; score: number };
 };
 
-export type BattleRow = {
+export type TeamRow = {
   id: string;
   ownerId: string | null;
   title: string;
@@ -223,9 +223,9 @@ export type BattleRow = {
   ageMin: number | null;
   ageMax: number | null;
   roomKind: "all" | "match";
-  status: BattleStatus;
+  status: TeamStatus;
   chemistrySnapshot: Record<string, unknown> | null;
-  resultPayload: BattlePayload | null;
+  resultPayload: TeamPayload | null;
 };
 
 export type RosterEntry = {
@@ -236,10 +236,10 @@ export type RosterEntry = {
   gender: string;
 };
 
-const BATTLE_COLS =
+const TEAM_COLS =
   "id, owner_id, title, is_private, max_players, age_min, age_max, room_kind, status, chemistry_snapshot, result_payload";
 
-function rowToBattle(r: Record<string, unknown>): BattleRow {
+function rowToTeam(r: Record<string, unknown>): TeamRow {
   return {
     id: r.id as string,
     ownerId: (r.owner_id as string) ?? null,
@@ -249,10 +249,10 @@ function rowToBattle(r: Record<string, unknown>): BattleRow {
     ageMin: (r.age_min as number) ?? null,
     ageMax: (r.age_max as number) ?? null,
     roomKind: r.room_kind as "all" | "match",
-    status: r.status as BattleStatus,
+    status: r.status as TeamStatus,
     chemistrySnapshot:
       (r.chemistry_snapshot as Record<string, unknown>) ?? null,
-    resultPayload: (r.result_payload as BattlePayload) ?? null,
+    resultPayload: (r.result_payload as TeamPayload) ?? null,
   };
 }
 
@@ -274,26 +274,26 @@ export function remainingGenderSlots(
   return Math.max(0, Math.min(per, per - count));
 }
 
-export async function fetchBattle(
+export async function fetchTeam(
   sb: SupabaseClient,
-  battleId: string,
-): Promise<BattleRow | null> {
+  teamId: string,
+): Promise<TeamRow | null> {
   const { data } = await sb
     .from("teams")
-    .select(BATTLE_COLS)
-    .eq("id", battleId)
+    .select(TEAM_COLS)
+    .eq("id", teamId)
     .maybeSingle();
-  return data ? rowToBattle(data) : null;
+  return data ? rowToTeam(data) : null;
 }
 
-export async function fetchBattleRoster(
+export async function fetchTeamRoster(
   sb: SupabaseClient,
-  battleId: string,
+  teamId: string,
 ): Promise<RosterEntry[]> {
   const { data } = await sb
     .from("team_roster")
     .select("user_id, slot_no, is_owner, nickname, gender")
-    .eq("team_id", battleId)
+    .eq("team_id", teamId)
     .order("slot_no", { ascending: true });
   return (data ?? []).map((r) => ({
     userId: r.user_id as string,
@@ -305,13 +305,13 @@ export async function fetchBattleRoster(
 }
 
 /** join_team RPC — 성공 'ok', 실패는 서버 에러 코드 문자열 그대로. */
-export async function joinBattle(
+export async function joinTeam(
   sb: SupabaseClient,
-  battleId: string,
+  teamId: string,
   password?: string,
 ): Promise<string> {
   const { error } = await sb.rpc("join_team", {
-    p_team_id: battleId,
+    p_team_id: teamId,
     ...(password ? { p_password: password } : {}),
   });
   if (!error) return "ok";
@@ -322,49 +322,49 @@ export async function joinBattle(
   return known.find((k) => error.message.includes(k)) ?? "FAILED";
 }
 
-export async function submitBattleResult(
+export async function submitTeamResult(
   sb: SupabaseClient,
-  battleId: string,
-  payload: BattlePayload,
+  teamId: string,
+  payload: TeamPayload,
 ): Promise<void> {
   // first-writer-wins — 실패(후착·비참가자) 무해.
   await sb.rpc("submit_team_result", {
-    p_team_id: battleId,
+    p_team_id: teamId,
     p_payload: payload,
   });
 }
 
 /** 로비 라이브 — teams UPDATE + team_members 변화 신호. 수신 시 refetch. */
-export function watchBattle(
+export function watchTeam(
   sb: SupabaseClient,
-  battleId: string,
+  teamId: string,
   onChange: () => void,
 ) {
   return sb
-    .channel(`battle:${battleId}`)
+    .channel(`team:${teamId}`)
     .on(
       "postgres_changes",
       { event: "UPDATE", schema: "public", table: "teams",
-        filter: `id=eq.${battleId}` },
+        filter: `id=eq.${teamId}` },
       onChange,
     )
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "team_members",
-        filter: `team_id=eq.${battleId}` },
+        filter: `team_id=eq.${teamId}` },
       onChange,
     )
     .subscribe();
 }
 
-/** snapshot({user_id: body, blocked?: [[slot,slot]]}) + roster → runBattle.
+/** snapshot({user_id: body, blocked?: [[slot,slot]]}) + roster → runTeam.
  *  blocked = 시작 시 동결된 차단 쌍 — 엔진이 상한 60점(형극난조)으로 눌러
  *  베스트에서 제외한다. 입력 부족 시 null. */
-export function computeBattlePayload(
+export function computeTeamPayload(
   roster: RosterEntry[],
   snapshot: Record<string, unknown>,
   roomKind: "all" | "match",
-): BattlePayload | null {
+): TeamPayload | null {
   const players = roster
     .filter((r) => snapshot[r.userId])
     .map((r) => ({
@@ -376,6 +376,6 @@ export function computeBattlePayload(
   if (players.length < 2) return null;
   const blocked = Array.isArray(snapshot.blocked) ? snapshot.blocked : [];
   return JSON.parse(
-    globalThis.runBattle(JSON.stringify({ roomKind, players, blocked })),
-  ) as BattlePayload;
+    globalThis.runTeam(JSON.stringify({ roomKind, players, blocked })),
+  ) as TeamPayload;
 }

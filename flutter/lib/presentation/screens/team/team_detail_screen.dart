@@ -13,10 +13,10 @@ import 'package:timeago/timeago.dart' as timeago;
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
 import '../../../core/theme.dart';
-import '../../../data/services/battle_service.dart';
-import '../../../domain/models/battle.dart';
+import '../../../data/services/team_service.dart';
+import '../../../domain/models/team.dart';
 import '../../../domain/services/share/share_publisher.dart';
-import '../../providers/battle_provider.dart';
+import '../../providers/team_provider.dart';
 import '../../providers/history_provider.dart';
 import '../../widgets/age_range_pill.dart';
 import '../../widgets/compact_snack_bar.dart';
@@ -36,27 +36,27 @@ String _genderIconAsset(String gender) =>
 /// in-place 로 참가자 뷰가 된다 (멤버 판정 리다이렉트 없음).
 /// Realtime(teams UPDATE + team_members INSERT/DELETE) 구독 + 10초 폴링
 /// 안전망. 정원 충족(status=revealing)을 감지하면 참가자만 리빌로 넘어간다.
-class BattleDetailScreen extends ConsumerStatefulWidget {
-  final String battleId;
+class TeamDetailScreen extends ConsumerStatefulWidget {
+  final String teamId;
 
   /// 목록에서 문 앞 dialog 로 받은 비밀 그룹 비밀번호 — 참가 폼에 미리 채운다.
   final String? initialPin;
-  const BattleDetailScreen({
+  const TeamDetailScreen({
     super.key,
-    required this.battleId,
+    required this.teamId,
     this.initialPin,
   });
 
   @override
-  ConsumerState<BattleDetailScreen> createState() => _BattleDetailScreenState();
+  ConsumerState<TeamDetailScreen> createState() => _TeamDetailScreenState();
 }
 
-class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
-  final _service = BattleService.instance;
+class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
+  final _service = TeamService.instance;
   final _pinCtrl = TextEditingController();
-  Battle? _battle;
-  List<BattleRosterEntry> _roster = const [];
-  Map<String, BattleSlotProfile> _profiles = const {};
+  Team? _team;
+  List<TeamRosterEntry> _roster = const [];
+  Map<String, TeamSlotProfile> _profiles = const {};
   RealtimeChannel? _channel;
   Timer? _poll;
   bool _loading = true;
@@ -70,7 +70,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
     return myUid != null && _roster.any((r) => r.userId == myUid);
   }
 
-  bool get _isOwner => _battle != null && _battle!.ownerId == _service.myUid;
+  bool get _isOwner => _team != null && _team!.ownerId == _service.myUid;
 
   /// iOS 공유 시트(popover) anchor — async gap 전에 미리 계산.
   Rect? get _shareOrigin {
@@ -84,7 +84,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final battle = _battle;
+    final team = _team;
     final member = _isMember;
     return Scaffold(
       appBar: AppBar(
@@ -93,10 +93,10 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
         title: const Text('케미 그룹 상세정보'),
         actions: [
           // 모집 중 멤버(나가기/삭제) + 인원 미달 종료 방의 방장(삭제).
-          if (battle != null &&
+          if (team != null &&
               member &&
-              (battle.isRecruiting ||
-                  (_isOwner && battle.status == BattleStatus.expired)))
+              (team.isRecruiting ||
+                  (_isOwner && team.status == TeamStatus.expired)))
             PopupMenuButton<String>(
               icon: const FaIcon(FontAwesomeIcons.ellipsisVertical, size: 18),
               onSelected: (v) => v == 'leave' ? _leave() : _delete(),
@@ -113,15 +113,15 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
         top: false,
         child: _loading
             ? const Center(child: CircularProgressIndicator())
-            : _notFound || battle == null
+            : _notFound || team == null
             ? Center(child: Text('존재하지 않는 그룹입니다', style: AppText.body))
-            : battle.status == BattleStatus.expired && member
-            ? _expiredBody(battle)
-            : !battle.isRecruiting
-            ? _closedBody(battle)
+            : team.status == TeamStatus.expired && member
+            ? _expiredBody(team)
+            : !team.isRecruiting
+            ? _closedBody(team)
             : member
-            ? _memberBody(battle)
-            : _joinBody(battle),
+            ? _memberBody(team)
+            : _joinBody(team),
       ),
     );
   }
@@ -141,17 +141,17 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
     _pinCtrl.text = widget.initialPin ?? '';
     // 조회수 — 진입 1회, 실패는 무시 (표시는 다음 fetch 몫).
     unawaited(
-      _service.incrementTeamViews(widget.battleId).catchError((_) {}),
+      _service.incrementTeamViews(widget.teamId).catchError((_) {}),
     );
     _refresh();
-    _channel = _service.watchBattle(widget.battleId, _refresh);
+    _channel = _service.watchTeam(widget.teamId, _refresh);
     _poll = Timer.periodic(const Duration(seconds: 10), (_) => _refresh());
   }
 
   // ── 참가 (미참가자) ─────────────────────────────────────────────────────
 
   /// 시작·종료된 방의 미참가자 뷰 — 참가자는 _refresh 가 리빌로 보낸다.
-  Widget _closedBody(Battle battle) {
+  Widget _closedBody(Team team) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.huge),
@@ -159,19 +159,19 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              battle.status == BattleStatus.expired
+              team.status == TeamStatus.expired
                   ? '인원이 모이지 않아 종료된 그룹입니다'
                   : '이미 시작된 그룹입니다',
               style: AppText.body,
               textAlign: TextAlign.center,
             ),
-            if (battle.hasResult) ...[
+            if (team.hasResult) ...[
               const SizedBox(height: AppSpacing.xl),
               PrimaryButton(
                 label: '결과 보기',
                 onPressed: () => Navigator.of(context).pushReplacement(
                   MaterialPageRoute(
-                    builder: (_) => TeamRevealScreen(battleId: widget.battleId),
+                    builder: (_) => TeamRevealScreen(teamId: widget.teamId),
                   ),
                 ),
               ),
@@ -212,17 +212,17 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
     );
     if (ok != true) return;
     try {
-      await _service.deleteBattle(widget.battleId);
+      await _service.deleteTeam(widget.teamId);
       if (mounted) {
-        ref.invalidate(myBattlesProvider);
-        ref.invalidate(publicBattlesProvider);
+        ref.invalidate(myTeamsProvider);
+        ref.invalidate(publicTeamsProvider);
         Navigator.of(context).pop();
       }
     } catch (e) {
       if (mounted) {
         showTopSnackBar(
           Overlay.of(context),
-          CompactSnackBar.error(message: mapBattleError(e).labelKo),
+          CompactSnackBar.error(message: mapTeamError(e).labelKo),
         );
       }
     }
@@ -232,14 +232,14 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
 
   /// 인원 미달 종료 방의 멤버 뷰 — 내용(헤더·참가자)은 그대로 보여주되
   /// 죽은 방에 사람을 부르는 QR·초대는 뺀다. 방장 삭제는 AppBar 메뉴.
-  Widget _expiredBody(Battle battle) {
+  Widget _expiredBody(Team team) {
     return RefreshIndicator(
       onRefresh: _refresh,
       color: AppColors.textPrimary,
       child: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
-          _headerCard(battle),
+          _headerCard(team),
           const SizedBox(height: AppSpacing.md),
           Text(
             '인원이 모이지 않아 종료된 그룹입니다',
@@ -247,7 +247,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: AppSpacing.xl),
-          _slotList(battle),
+          _slotList(team),
         ],
       ),
     );
@@ -255,10 +255,10 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
 
   /// 이성방 남/여 섹션 — 헤더("남 N / M") + 행 목록.
   Widget _genderSection({
-    required Battle battle,
+    required Team team,
     required String gender,
     required String label,
-    required List<BattleRosterEntry> entries,
+    required List<TeamRosterEntry> entries,
     required int slotCount,
   }) {
     return Column(
@@ -272,7 +272,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
         for (var i = 0; i < slotCount; i++) ...[
           if (i > 0) const SizedBox(height: AppSpacing.lg),
           _slotRow(
-            battle,
+            team,
             i < entries.length ? entries[i] : null,
             index: i + 1,
             slotGender: gender,
@@ -282,12 +282,12 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
     );
   }
 
-  void _goReveal(Battle battle, {bool animated = true}) {
+  void _goReveal(Team team, {bool animated = true}) {
     if (_navigatedToReveal) return;
     _navigatedToReveal = true;
     Widget dest(BuildContext _) => TeamRevealScreen(
-      battleId: widget.battleId,
-      ceremony: !battle.hasResult,
+      teamId: widget.teamId,
+      ceremony: !team.hasResult,
     );
     Navigator.of(context).pushReplacement(
       animated
@@ -303,7 +303,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
   /// 공개 그룹 카드(_PublicCard)와 동일한 결 — 제목 1줄 / 유형·연령 pill.
   /// [showRemaining] = 미참가 이성방에서 성별 남은 자리 표시 (참가자 뷰는
   /// 슬롯 열 헤더가 같은 정보를 보여주므로 생략).
-  Widget _headerCard(Battle battle, {bool showRemaining = false}) {
+  Widget _headerCard(Team team, {bool showRemaining = false}) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
@@ -315,21 +315,21 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            battle.title,
+            team.title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: AppText.subTitle,
           ),
           const SizedBox(height: AppSpacing.xs),
-          // 목록 카드(_BattleCardBody)와 동일 — 방 유형 invert pill + 연령 pill.
+          // 목록 카드(_TeamCardBody)와 동일 — 방 유형 invert pill + 연령 pill.
           Row(
             children: [
               AgeRangePill(
-                label: battle.roomKind == BattleRoomKind.match
+                label: team.roomKind == TeamRoomKind.match
                     ? '이성 케미'
                     : '전체 케미',
                 invert: true,
-                icons: battle.roomKind == BattleRoomKind.match
+                icons: team.roomKind == TeamRoomKind.match
                     ? const [
                         FontAwesomeIcons.child,
                         FontAwesomeIcons.childDress,
@@ -340,16 +340,16 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
                       ],
               ),
               const SizedBox(width: AppSpacing.sm),
-              AgeRangePill(label: battle.ageRangeLabel),
+              AgeRangePill(label: team.ageRangeLabel),
             ],
           ),
-          if (showRemaining && battle.roomKind == BattleRoomKind.match) ...[
+          if (showRemaining && team.roomKind == TeamRoomKind.match) ...[
             const SizedBox(height: AppSpacing.sm),
             Text('남자 ${_remaining('male')}자리 남음', style: AppText.caption),
             Text('여자 ${_remaining('female')}자리 남음', style: AppText.caption),
           ],
           const SizedBox(height: AppSpacing.sm),
-          _headerMeta(battle),
+          _headerMeta(team),
         ],
       ),
     );
@@ -358,16 +358,16 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
   /// 헤더 메타 — 생성(좌) · 모집 마감/열람 기한(우) 한 줄 + 조회수 줄.
   /// 기한 상수는 cron SSOT (react/workers/cron.ts — 모집 48h 만료,
   /// closed_at+30일 purge)와 동일. timeago 상대 표기 (ledger 탭과 동일 문법).
-  Widget _headerMeta(Battle battle) {
+  Widget _headerMeta(Team team) {
     final hint = AppText.caption.copyWith(color: AppColors.textHint);
     String? right;
-    if (battle.isRecruiting) {
-      final deadline = battle.createdAt.add(const Duration(hours: 48));
+    if (team.isRecruiting) {
+      final deadline = team.createdAt.add(const Duration(hours: 48));
       right =
           '${timeago.format(deadline, locale: 'ko', allowFromNow: true)} '
           '모집마감';
-    } else if (battle.closedAt != null) {
-      final until = battle.closedAt!.toLocal().add(const Duration(days: 30));
+    } else if (team.closedAt != null) {
+      final until = team.closedAt!.toLocal().add(const Duration(days: 30));
       right = '${_fmtDateTime(until)}까지 열람 가능';
     }
     return Column(
@@ -377,13 +377,13 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              '${timeago.format(battle.createdAt, locale: 'ko')} 생성',
+              '${timeago.format(team.createdAt, locale: 'ko')} 생성',
               style: hint,
             ),
             if (right != null) Text(right, style: hint),
           ],
         ),
-        Text('조회수 ${battle.views}회', style: hint),
+        Text('조회수 ${team.views}회', style: hint),
       ],
     );
   }
@@ -392,7 +392,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
       '${t.month}월 ${t.day}일 '
       '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 
-  Widget _inviteRow(Battle battle) {
+  Widget _inviteRow(Team team) {
     return Row(
       children: [
         Expanded(
@@ -400,8 +400,8 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
             icon: FontAwesomeIcons.kakaoTalk,
             label: '카톡 초대',
             onTap: () => SharePublisher.instance.publishTeamInvite(
-              teamTitle: battle.title,
-              roomId: widget.battleId,
+              teamTitle: team.title,
+              roomId: widget.teamId,
               sharePositionOrigin: _shareOrigin,
             ),
           ),
@@ -412,8 +412,8 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
             icon: FontAwesomeIcons.arrowUpFromBracket,
             label: '링크 공유',
             onTap: () => SharePublisher.instance.shareTeamInviteLink(
-              teamTitle: battle.title,
-              roomId: widget.battleId,
+              teamTitle: team.title,
+              roomId: widget.teamId,
               sharePositionOrigin: _shareOrigin,
             ),
           ),
@@ -426,7 +426,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
             onTap: () async {
               await Clipboard.setData(
                 ClipboardData(
-                  text: SharePublisher.instance.teamInviteUrl(widget.battleId),
+                  text: SharePublisher.instance.teamInviteUrl(widget.teamId),
                 ),
               );
               // Android 13+ 는 시스템 클립보드 토스트가 뜨므로 앱 스낵바는
@@ -476,7 +476,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
   }
 
   Future<void> _join() async {
-    final battle = _battle!;
+    final team = _team!;
     // ① 로그인 게이트 — login_bottom_sheet 패턴.
     if (!_service.isLoggedIn) {
       final ok = await showLoginBottomSheet(context, ref);
@@ -506,23 +506,23 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
       return;
     }
     try {
-      await _service.joinBattle(
-        widget.battleId,
-        password: battle.isPublic ? null : _pinCtrl.text.trim(),
+      await _service.joinTeam(
+        widget.teamId,
+        password: team.isPublic ? null : _pinCtrl.text.trim(),
       );
-      ref.invalidate(myBattlesProvider);
-      ref.invalidate(publicBattlesProvider);
+      ref.invalidate(myTeamsProvider);
+      ref.invalidate(publicTeamsProvider);
       // _busy 는 유지 — 다음 refresh 가 참가자 뷰로 바꾸며 버튼 자체가
       // 사라진다 (화면 전환 없음, 정원 충족 시엔 리빌로).
       if (mounted) await _refresh();
     } catch (e) {
-      final err = mapBattleError(e);
-      if (err == BattleJoinError.alreadyJoined) {
+      final err = mapTeamError(e);
+      if (err == TeamJoinError.alreadyJoined) {
         if (mounted) await _refresh();
         return;
       }
       if (mounted) {
-        final label = err == BattleJoinError.genderFull
+        final label = err == TeamJoinError.genderFull
             ? genderFullLabel(myFace.gender.name)
             : err.labelKo;
         showTopSnackBar(
@@ -536,20 +536,20 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
 
   // ── 미참가자 body ──────────────────────────────────────────────────────
 
-  Widget _joinBody(Battle battle) {
-    final canJoin = battle.isPublic || _pinCtrl.text.trim().length == 4;
+  Widget _joinBody(Team team) {
+    final canJoin = team.isPublic || _pinCtrl.text.trim().length == 4;
     return RefreshIndicator(
       onRefresh: _refresh,
       color: AppColors.textPrimary,
       child: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
-          _headerCard(battle, showRemaining: true),
+          _headerCard(team, showRemaining: true),
           // 참가 전에도 누가 있는지 보고 판단할 수 있게 로스터를 먼저
           // 보여준다 — 웹 초대장(/g/:id)과 동일한 정보량.
           const SizedBox(height: AppSpacing.xl),
-          _slotList(battle),
-          if (!battle.isPublic) ...[
+          _slotList(team),
+          if (!team.isPublic) ...[
             const SizedBox(height: AppSpacing.xl),
             TextField(
               controller: _pinCtrl,
@@ -562,7 +562,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
             ),
           ],
           const SizedBox(height: AppSpacing.xl),
-          _photoConsentNotice(battle),
+          _photoConsentNotice(team),
           const SizedBox(height: AppSpacing.xxl),
           PrimaryButton(
             label: '동의하고 참가',
@@ -578,49 +578,49 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
 
   Future<void> _leave() async {
     try {
-      await _service.leaveBattle(widget.battleId);
+      await _service.leaveTeam(widget.teamId);
       if (mounted) {
-        ref.invalidate(myBattlesProvider);
-        ref.invalidate(publicBattlesProvider);
+        ref.invalidate(myTeamsProvider);
+        ref.invalidate(publicTeamsProvider);
         Navigator.of(context).pop();
       }
     } catch (e) {
       if (mounted) {
         showTopSnackBar(
           Overlay.of(context),
-          CompactSnackBar.error(message: mapBattleError(e).labelKo),
+          CompactSnackBar.error(message: mapTeamError(e).labelKo),
         );
       }
     }
   }
 
-  Widget _memberBody(Battle battle) {
+  Widget _memberBody(Team team) {
     return RefreshIndicator(
       onRefresh: _refresh,
       color: AppColors.textPrimary,
       child: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
-          _headerCard(battle),
+          _headerCard(team),
           const SizedBox(height: AppSpacing.xl),
-          _slotList(battle),
+          _slotList(team),
           const SizedBox(height: AppSpacing.md),
           Text(
-            '${battle.maxPlayers - _roster.length}명이 더 모이면 '
+            '${team.maxPlayers - _roster.length}명이 더 모이면 '
             '케미 결과표가 자동으로 발표됩니다',
             style: AppText.caption,
             textAlign: TextAlign.center,
           ),
           _qrCard(),
-          _inviteRow(battle),
+          _inviteRow(team),
         ],
       ),
     );
   }
 
   /// 사진 공개 계약 문구 — 정보성 고지, 체크박스 없음. 조인 = 동의(UX §E.1).
-  Widget _photoConsentNotice(Battle battle) {
-    final text = battle.roomKind == BattleRoomKind.match
+  Widget _photoConsentNotice(Team team) {
+    final text = team.roomKind == TeamRoomKind.match
         ? '참가하면 참가자 전원에게 서로의 사진이 공개되고, 베스트 매칭이 서로 동의하면 1:1 채팅이 열립니다'
         : '참가하면 참가자 전원에게 서로의 사진이 공개됩니다';
     return Container(
@@ -635,7 +635,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
   }
 
   Widget _qrCard() {
-    final url = SharePublisher.instance.teamInviteUrl(widget.battleId);
+    final url = SharePublisher.instance.teamInviteUrl(widget.teamId);
     return Column(
       children: [
         QrImageView(data: url, size: 160),
@@ -652,24 +652,24 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
   Future<void> _refresh() async {
     final seq = ++_refreshSeq;
     try {
-      final battle = await _service.fetchBattle(widget.battleId);
+      final team = await _service.fetchTeam(widget.teamId);
       if (!mounted || seq != _refreshSeq) return;
-      if (battle == null) {
+      if (team == null) {
         setState(() {
-          _battle = null;
+          _team = null;
           _notFound = true;
           _loading = false;
         });
         return;
       }
-      final roster = await _service.fetchRoster(widget.battleId);
+      final roster = await _service.fetchRoster(widget.teamId);
       if (!mounted || seq != _refreshSeq) return;
       final myUid = _service.myUid;
       final joined = myUid != null && roster.any((r) => r.userId == myUid);
       // 시작된 방의 참가자는 리빌로 — 최초 로드면 전환 연출 없이 즉시 교체
       // (상세가 떴다가 밀려나는 이중 전환 방지), 대기 중 시작이면 연출 전환.
-      if (battle.status != BattleStatus.recruiting && joined) {
-        _goReveal(battle, animated: !_loading);
+      if (team.status != TeamStatus.recruiting && joined) {
+        _goReveal(team, animated: !_loading);
         return;
       }
       // 관상 유형(archetype)은 얼굴 공개 여부와 무관하게 슬롯에 노출한다.
@@ -680,7 +680,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
       ]);
       if (!mounted || seq != _refreshSeq) return;
       setState(() {
-        _battle = battle;
+        _team = team;
         _roster = roster;
         _profiles = profiles;
         _notFound = false;
@@ -691,16 +691,16 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
 
   /// 이성방 — 성별 남은 자리 수 (roster gender 카운트 기준, 0 미만 표시 방지).
   int _remaining(String gender) {
-    final per = _battle!.maxPlayers ~/ 2;
+    final per = _team!.maxPlayers ~/ 2;
     final count = _roster.where((r) => r.gender == gender).length;
     return (per - count).clamp(0, per);
   }
 
   /// 슬롯 = full-width 리스트 행 (아바타 좌 + meta 우) — 방 유형 불문 동일
   /// 위젯. 이성방은 남/여 섹션으로 나눠 같은 행을 쌓는다.
-  Widget _slotList(Battle battle) {
-    if (battle.roomKind == BattleRoomKind.match) {
-      final perGender = battle.maxPlayers ~/ 2;
+  Widget _slotList(Team team) {
+    if (team.roomKind == TeamRoomKind.match) {
+      final perGender = team.maxPlayers ~/ 2;
       final males = _roster.where((r) => r.gender == 'male').toList();
       final females = _roster.where((r) => r.gender == 'female').toList();
       // 남자 왼쪽 열, 여자 오른쪽 열 — 좁은 폭의 meta 는 FittedBox 가 줄인다.
@@ -709,7 +709,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
         children: [
           Expanded(
             child: _genderSection(
-              battle: battle,
+              team: team,
               gender: 'male',
               label: '남',
               entries: males,
@@ -719,7 +719,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
           const SizedBox(width: AppSpacing.lg),
           Expanded(
             child: _genderSection(
-              battle: battle,
+              team: team,
               gender: 'female',
               label: '여',
               entries: females,
@@ -730,14 +730,14 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
       );
     }
     // 전체 방 — match 방과 같은 좌우 2열 배치 + '참여 n / N' 레이블.
-    final half = battle.maxPlayers ~/ 2;
+    final half = team.maxPlayers ~/ 2;
     Widget column(int start, int count) => Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         for (var i = start; i < start + count; i++) ...[
           if (i > start) const SizedBox(height: AppSpacing.lg),
           _slotRow(
-            battle,
+            team,
             i < _roster.length ? _roster[i] : null,
             index: i + 1,
           ),
@@ -748,7 +748,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '참여 ${_roster.length} / ${battle.maxPlayers}',
+          '참여 ${_roster.length} / ${team.maxPlayers}',
           style: AppText.sectionTitle,
         ),
         const SizedBox(height: AppSpacing.md),
@@ -757,7 +757,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
           children: [
             Expanded(child: column(0, half)),
             const SizedBox(width: AppSpacing.lg),
-            Expanded(child: column(half, battle.maxPlayers - half)),
+            Expanded(child: column(half, team.maxPlayers - half)),
           ],
         ),
       ],
@@ -765,8 +765,8 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
   }
 
   Widget _slotRow(
-    Battle battle,
-    BattleRosterEntry? entry, {
+    Team team,
+    TeamRosterEntry? entry, {
     required int index,
     String? slotGender,
   }) {
@@ -789,7 +789,7 @@ class _BattleDetailScreenState extends ConsumerState<BattleDetailScreen> {
 /// 슬롯 행 — 아바타 좌측 + meta 우측 (이름 / 인구통계 / 관상 유형).
 /// 빈 슬롯은 아바타 + "대기 중" 만 세로 중앙 정렬.
 class _SlotRow extends StatelessWidget {
-  final BattleRosterEntry? entry;
+  final TeamRosterEntry? entry;
   final String? thumbUrl;
 
   /// my-face 사진의 촬영 경로 — border 색 규칙 (카메라 gold / 앨범 lightGray).

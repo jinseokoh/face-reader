@@ -5,30 +5,30 @@ import { CTA } from "../components/CTA";
 import { JoinWizard } from "../components/JoinWizard";
 import { getSupabase } from "../lib/auth";
 import {
-  computeBattlePayload,
+  computeTeamPayload,
   photoConsentText,
   remainingGenderSlots,
-  submitBattleResult,
-  type BattlePayload,
+  submitTeamResult,
+  type TeamPayload,
 } from "../lib/join";
-import { fetchBattleSSR } from "../lib/supabase";
+import { fetchTeamSSR } from "../lib/supabase";
 
 /**
  * `GET /g/:id` — 케미 매칭 (Plan 3). 한 라우트, status 4분기:
  *   - recruiting = 초대장(공약·연령대·n/N 노출) + JoinWizard
  *   - revealing/completed + payload = 결과 쇼케이스 (🏆 Best 카드 + 밴드 매트릭스)
  *   - revealing/completed + payload 없음 + snapshot 있음 = 클라이언트 즉석 계산
- *     (runBattle) 후 (로그인 참가자면) 정본 backfill
+ *     (runTeam) 후 (로그인 참가자면) 정본 backfill
  *   - expired 또는 completed + payload/snapshot 둘 다 없음 = 종료 안내
  *
  * 밴드는 색 대신 이모지(🟢🔵🟠🔴)로만 표기해 웹 4색 팔레트를 지킨다.
  */
 export async function loader({ context, params }: Route.LoaderArgs) {
   const env = context.cloudflare.env;
-  const data = await fetchBattleSSR(env, params.id!);
+  const data = await fetchTeamSSR(env, params.id!);
   if (!data) throw new Response("Not Found", { status: 404 });
   return {
-    battle: data.battle,
+    team: data.team,
     roster: data.roster,
     appOpenUrl: `${env.WEBAPP_BASE}/g/${params.id}/open`,
     appStoreUrl: env.APP_STORE_URL,
@@ -45,15 +45,15 @@ export async function loader({ context, params }: Route.LoaderArgs) {
 
 export const meta: Route.MetaFunction = ({ data }) => {
   if (!data) return [];
-  const { battle, roster, canonicalUrl, ogImage } = data;
+  const { team, roster, canonicalUrl, ogImage } = data;
   const title =
-    battle.status === "recruiting"
-      ? `${battle.title} — 케미 그룹 참가`
-      : `${battle.title} — 케미 그룹 결과`;
+    team.status === "recruiting"
+      ? `${team.title} — 케미 그룹 참가`
+      : `${team.title} — 케미 그룹 결과`;
   const description =
-    battle.status === "recruiting"
-      ? `${roster.length} / ${battle.maxPlayers} 명 모집 중`
-      : battle.status === "expired"
+    team.status === "recruiting"
+      ? `${roster.length} / ${team.maxPlayers} 명 모집 중`
+      : team.status === "expired"
         ? "인원이 모이지 않아 종료된 그룹입니다"
         : "케미 그룹 결과가 공개되었습니다";
   return [
@@ -72,19 +72,19 @@ export const meta: Route.MetaFunction = ({ data }) => {
 
 export default function Group() {
   const data = useLoaderData<typeof loader>();
-  const { battle } = data;
+  const { team } = data;
   const [wizardActive, setWizardActive] = useState(false);
 
   let body: React.ReactNode;
-  if (battle.status === "recruiting") {
+  if (team.status === "recruiting") {
     body = (
       <>
-        {!wizardActive && <BattleInvite data={data} />}
+        {!wizardActive && <TeamInvite data={data} />}
         {/* 미설치자 웹 참여 위저드 (미리보기 겸용) — 카카오 로그인 →
             (비밀방) PIN → (공약) 동의 → 정면 캡처 → join_team 까지
             브라우저에서 완결. */}
         <JoinWizard
-          battle={battle}
+          team={team}
           roster={data.roster}
           supabaseUrl={data.supabaseUrl}
           supabaseAnonKey={data.supabaseAnonKey}
@@ -93,18 +93,18 @@ export default function Group() {
         />
       </>
     );
-  } else if (battle.resultPayload) {
+  } else if (team.resultPayload) {
     body = (
-      <BattleShowcase
-        title={battle.title}
-        payload={battle.resultPayload as BattlePayload}
-        roomKind={battle.roomKind}
+      <TeamShowcase
+        title={team.title}
+        payload={team.resultPayload as TeamPayload}
+        roomKind={team.roomKind}
       />
     );
-  } else if (battle.status !== "expired" && battle.chemistrySnapshot) {
+  } else if (team.status !== "expired" && team.chemistrySnapshot) {
     body = <RevealFallback data={data} />;
   } else {
-    body = <BattleClosedNotice expired={battle.status === "expired"} />;
+    body = <TeamClosedNotice expired={team.status === "expired"} />;
   }
   return (
     <main className="join">
@@ -160,14 +160,14 @@ function rosterChipLabel(r: {
   return `${age} ${genderKo}${eth ? ` ${eth}` : ""}`;
 }
 
-function BattleInvite({
+function TeamInvite({
   data,
 }: {
   data: ReturnType<typeof useLoaderData<typeof loader>>;
 }) {
-  const { battle, roster, cdnBase } = data;
-  const waitCount = Math.max(battle.maxPlayers - roster.length, 0);
-  const isMatch = battle.roomKind === "match";
+  const { team, roster, cdnBase } = data;
+  const waitCount = Math.max(team.maxPlayers - roster.length, 0);
+  const isMatch = team.roomKind === "match";
   const chip = (r: (typeof roster)[number]) => (
     <span key={r.userId} className="invite-chip">
       {r.thumbKey && (
@@ -198,11 +198,11 @@ function BattleInvite({
   return (
     <section style={{ textAlign: "center", padding: "24px 16px" }}>
       <h1 style={{ fontSize: 24, color: "#1a1a1a", margin: 0 }}>
-        {battle.title}
+        {team.title}
       </h1>
       <p style={{ color: "#666", fontSize: 14, marginTop: 8 }}>
-        {roster.length} / {battle.maxPlayers}명 ·{" "}
-        {ageLabel(battle.ageMin, battle.ageMax)}
+        {roster.length} / {team.maxPlayers}명 ·{" "}
+        {ageLabel(team.ageMin, team.ageMax)}
       </p>
       {isMatch && (
         <p style={{ color: "#666", fontSize: 14, marginTop: 4 }}>
@@ -210,16 +210,16 @@ function BattleInvite({
         </p>
       )}
       <div className="join-consent">
-        <p className="join-consent-text">{photoConsentText(battle.roomKind)}</p>
+        <p className="join-consent-text">{photoConsentText(team.roomKind)}</p>
       </div>
       {isMatch ? (
-        // 앱 battle_detail 과 동일한 축 분리 — 왼쪽 남자, 오른쪽 여자.
+        // 앱 team_detail 과 동일한 축 분리 — 왼쪽 남자, 오른쪽 여자.
         <div className="invite-cols">
           <div className="invite-col">
             <p className="invite-col-head">남자</p>
             {roster.filter((r) => r.gender === "male").map(chip)}
             {waitChips(
-              remainingGenderSlots(roster, battle.maxPlayers, "male"),
+              remainingGenderSlots(roster, team.maxPlayers, "male"),
               "wait-m",
               "/male.png",
             )}
@@ -228,7 +228,7 @@ function BattleInvite({
             <p className="invite-col-head">여자</p>
             {roster.filter((r) => r.gender === "female").map(chip)}
             {waitChips(
-              remainingGenderSlots(roster, battle.maxPlayers, "female"),
+              remainingGenderSlots(roster, team.maxPlayers, "female"),
               "wait-f",
               "/female.png",
             )}
@@ -244,7 +244,7 @@ function BattleInvite({
   );
 }
 
-function BattleClosedNotice({ expired }: { expired: boolean }) {
+function TeamClosedNotice({ expired }: { expired: boolean }) {
   return (
     <section style={{ textAlign: "center", padding: "24px 16px" }}>
       <p style={{ color: "#666", fontSize: 14, margin: 0 }}>
@@ -259,13 +259,13 @@ function BattleClosedNotice({ expired }: { expired: boolean }) {
 const BAND_EMOJI_BY_CODE = ["🟢", "🔵", "🟠", "🔴"] as const;
 const BAND_LABEL_BY_CODE = ["천생연분", "금슬화합", "상부상조", "형극난조"] as const;
 
-function BattleShowcase({
+function TeamShowcase({
   title,
   payload,
   roomKind,
 }: {
   title: string;
-  payload: BattlePayload;
+  payload: TeamPayload;
   roomKind: "all" | "match";
 }) {
   const nameOf = (slot: number) =>
@@ -340,7 +340,7 @@ function RevealFallback({
 }: {
   data: ReturnType<typeof useLoaderData<typeof loader>>;
 }) {
-  const [payload, setPayload] = useState<BattlePayload | null>(null);
+  const [payload, setPayload] = useState<TeamPayload | null>(null);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
     let cancelled = false;
@@ -354,10 +354,10 @@ function RevealFallback({
           nickname: r.nickname,
           gender: r.gender,
         }));
-        const computed = computeBattlePayload(
+        const computed = computeTeamPayload(
           roster,
-          data.battle.chemistrySnapshot as Record<string, unknown>,
-          data.battle.roomKind,
+          data.team.chemistrySnapshot as Record<string, unknown>,
+          data.team.roomKind,
         );
         if (!computed) {
           if (!cancelled) setFailed(true);
@@ -367,7 +367,7 @@ function RevealFallback({
         const sb = getSupabase(data.supabaseUrl, data.supabaseAnonKey);
         const { data: session } = await sb.auth.getSession();
         if (session.session) {
-          await submitBattleResult(sb, data.battle.id, computed).catch(
+          await submitTeamResult(sb, data.team.id, computed).catch(
             () => {},
           );
         }
@@ -380,13 +380,13 @@ function RevealFallback({
       cancelled = true;
     };
   }, []);
-  if (failed) return <BattleClosedNotice expired={false} />;
+  if (failed) return <TeamClosedNotice expired={false} />;
   if (!payload) return <p className="join-sub">결과를 계산하는 중…</p>;
   return (
-    <BattleShowcase
-      title={data.battle.title}
+    <TeamShowcase
+      title={data.team.title}
       payload={payload}
-      roomKind={data.battle.roomKind}
+      roomKind={data.team.roomKind}
     />
   );
 }

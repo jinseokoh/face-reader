@@ -30,7 +30,7 @@ python/ (DeepFace FastAPI)          Supabase (metrics·coins·compatibilities·t
 채팅 접근 경로: ① 채팅 탭(아이콘에 안읽음 dot 뱃지) ② 전역 새 메시지 밴드 —
 안읽은 채팅이 있으면 어느 탭에서든 바텀 탭바 위에 노출, 탭하면 채팅방(1개) 또는
 채팅 탭(여러 개) ③ 푸시 딥링크 `/chat/:id`. 안읽음 판정은 Hive `prefs` 의
-`chat_last_seen:{teamId}` (로컬 전용, `BattleChatScreen` 이 메시지 로드마다 갱신).
+`chat_last_seen:{teamId}` (로컬 전용, `TeamChatScreen` 이 메시지 로드마다 갱신).
 
 공통 규칙: 내부 탭은 내 관상 등록 후 상시 노출(0개 포함), 최초 노출 시 개수 많은 탭
 기본 선택(1회). 내 관상 미등록이면 관상·궁합·케미 AppBar 에 [내 관상 등록]
@@ -64,17 +64,17 @@ box (`onboarding_never_again`) flag 를 남겨 노출을 끈다. 건너뛰기·�
   14-node expandable · 8 인생 질문 본문 · 공유(카카오/OS 시트). 공유받은 카드는 북마크로 보관.
 
 **케미 매칭 화면** (`screens/chemistry/chemistry_screen.dart` 탭 + `screens/team/`):
-`ChemistryScreen`(2탭 — 공개 매칭/내 매칭) · `showBattleCreatePage`(방 유형(all/match)→
-제목(카테고리→제목 2단 프리셋, `battle_title_catalog.dart`)→인원(6/8/10/12 chip)→
+`ChemistryScreen`(2탭 — 공개 매칭/내 매칭) · `showTeamCreatePage`(방 유형(all/match)→
+제목(카테고리→제목 2단 프리셋, `team_title_catalog.dart`)→인원(6/8/10/12 chip)→
 연령대(방장 나이대 포함 인접 2-decade RangeSlider, 하한 20세 — 10대는 진입 차단)→
-공개 설정(공개/비밀 PIN + 썸네일 공개) 스텝 플로우) · `BattleDetailScreen`(참가
+공개 설정(공개/비밀 PIN + 썸네일 공개) 스텝 플로우) · `TeamDetailScreen`(참가
 여부 무관 단일 상세 페이지 — 미참가면 PIN·사진 공개 계약·`join_team` 참가 폼,
 참가면 슬롯 리스트(아바타 좌 + 이름/인구통계/관상 유형 meta 우, match 방은 남좌·여우
 2열, 썸네일 비공개면 성별 기본 아이콘) + QR + 초대 3버튼. Realtime 공통, 조인 성공은
 화면 전환 없이 in-place 전환) ·
 `TeamRevealScreen`(3-2-1 카운트다운 → 🏆 베스트 카드 → 밴드 매트릭스(all = N×N,
-match = 남×여 직사각), 보는 사람 행 최상단 고정) · `battle_match_card`(베스트 쌍
-본인에게만 — 사진 상호 공개 + 채팅 개설 상호 동의) · `BattleChatScreen`(성사된 쌍의
+match = 남×여 직사각), 보는 사람 행 최상단 고정) · `team_match_card`(베스트 쌍
+본인에게만 — 사진 상호 공개 + 채팅 개설 상호 동의) · `TeamChatScreen`(성사된 쌍의
 인앱 1:1 채팅, Realtime). 정원 충족이 유일한 시작 조건 — 방장 수동 시작 없음.
 
 기타: `LedgerPage`(코인 원장) · `AdRewardScreen`(rewarded video) · `purchase_sheet`(코인 구매).
@@ -91,7 +91,7 @@ face/
 ```
 
 **shared/lib** — 순수 Dart (platform-free 불변식, `dart compile js` 통과 필수):
-`face_engine.dart`(JS export: runEngine/runCompat/runMetrics/runBattle) · `data/constants/`
+`face_engine.dart`(JS export: runEngine/runCompat/runMetrics/runTeam) · `data/constants/`
 (face_reference_data = 26+8 mean/sd SSOT, archetype_catchphrase, compat_hashtags,
 ethnicity_factors) · `data/enums/` · `domain/models/`(face_reading_report,
 physiognomy_tree) · `domain/services/`(metric_score, physiognomy_scoring,
@@ -109,11 +109,11 @@ age_adjustment, yin_yang, compat/).
 ├── core/                           # theme(토큰 SSOT) · hive_setup · thumbnail_paths(로컬+CDN URL)
 ├── data/services/                  # face_shape_classifier(TFLite) · face_metadata_client(R2+DeepFace)
 │                                   # · image_resizer · r2_uploader · supabase_service · auth_service
-│                                   # · battle_service · wallet/coin/free_coin · admob · compatibility
+│                                   # · team_service · wallet/coin/free_coin · admob · compatibility
 │                                   # · deep_link_service · analytics
 ├── domain/services/                # face_metrics(+lateral) · life_question_narrative
 │                                   # · report_assembler · share/
-├── presentation/providers/         # history(claim+rehydrate) · auth · tab · battle · wallet
+├── presentation/providers/         # history(claim+rehydrate) · auth · tab · team · wallet
 │                                   # · free_coin · compatibility · recent_unlock_focus
 ├── presentation/screens/           # physiognomy/ · compatibility/ · chemistry/(캡처 포함)
 │                                   # · team/ · ads/ · ledger/ · settings/
@@ -129,17 +129,17 @@ age_adjustment, yin_yang, compat/).
 |---|---|---|
 | `NotifierProvider` | 상태 + mutation | `selectedTabProvider` · `authProvider` · `historyProvider` |
 | `Provider` (computed) | 파생 값 | `selectedReportProvider` |
-| `FutureProvider` | 비동기 read | `walletProvider` · `freeCoinProvider` · `compatibilityKeysProvider` · `compatibilityPartnerBodiesProvider` · `publicBattlesProvider` · `myBattlesProvider` |
+| `FutureProvider` | 비동기 read | `walletProvider` · `freeCoinProvider` · `compatibilityKeysProvider` · `compatibilityPartnerBodiesProvider` · `publicTeamsProvider` · `myTeamsProvider` |
 
 - `historyProvider` — Hive 히스토리 SoT. 로그인 전이 시 **claim**(anon rows user_id 귀속 +
   내 관상 alias←nickname backfill + 서버의 과거 my-face 행 강등 — 방금 귀속된
   최신 관상만 is_my_face 유지) → **rehydrate**(본인 metrics 서버→로컬 복원). 내 관상
   싱글톤·별칭 '나' 정규화.
-- `publicBattlesProvider`/`myBattlesProvider` — 서버 우선(로컬 캐시 없음). `BattleService`
+- `publicTeamsProvider`/`myTeamsProvider` — 서버 우선(로컬 캐시 없음). `TeamService`
   가 매 호출 `teams`/`public_teams`/`team_roster` 를 직접 fetch, 갱신은
   `ref.invalidate`. 로그인만 하면 웹에서 조인한 매칭도 `team_members` 조회로 그대로
   뜬다 — 별도 rehydrate 불필요. 상세 페이지는 이와 별개로 Supabase Realtime
-  (`BattleService.watchBattle`)을 구독해 슬롯·상태 변화를 즉시 반영한다.
+  (`TeamService.watchTeam`)을 구독해 슬롯·상태 변화를 즉시 반영한다.
 - Hive persist: raw JSON 보존, state 에 parsed report. 관상 리스트 pull-to-refresh 는
   `syncFromServer`(서버 metrics 가 진실 — 알려진 uuid 교체·서버 전용 row 복원·서버에서
   삭제된 소유 row 제거. 받은 카드·supabaseId 없는 로컬 전용 카드는 제외, 비로그인이면
@@ -172,7 +172,7 @@ metrics 소멸·방 purge 와 무관하게 복원. 지갑·궁합 목록은 a/b 
 이름 선등록이 아니라 `join_team` RPC 셀프 조인이고, 정원 충족 시 같은 트랜잭션이
 참가자 전원의 현재 my-face body 를 `teams.chemistry_snapshot` 에 동결하며 상태를
 `revealing` 으로 전이한다(시작 후 재촬영이 결과에 영향을 못 주는 치팅 방어). 각
-클라이언트는 그 snapshot 으로 `computeBattle`(shared/`compat/battle.dart` — match 방은
+클라이언트는 그 snapshot 으로 `computeTeam`(shared/`compat/team.dart` — match 방은
 `matchOnly` 로 이성 쌍만 계산) 을 로컬 계산해 3-2-1 카운트다운 → 🏆 베스트 카드를
 그리고, 최초 도달 클라이언트가 `submit_team_result` 로 `result_payload` 를 1회
 기록한다(first-writer-wins — 입력이 snapshot 으로 동결돼 있어 후착은 무해). 같은

@@ -5,8 +5,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme.dart';
-import '../../../domain/models/battle.dart';
-import '../../providers/battle_provider.dart';
+import '../../../domain/models/team.dart';
+import '../../providers/team_provider.dart';
 import '../../providers/history_provider.dart';
 import '../../providers/tab_provider.dart';
 import '../../widgets/emotion_empty_state.dart';

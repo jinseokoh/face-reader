@@ -3,25 +3,25 @@ import 'package:supabase_flutter/supabase_flutter.dart' show RealtimeChannel;
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
 import '../../../core/theme.dart';
-import '../../../data/services/battle_service.dart';
-import '../../../domain/models/battle.dart';
+import '../../../data/services/team_service.dart';
+import '../../../domain/models/team.dart';
 import '../../widgets/compact_snack_bar.dart';
 import '../../widgets/primary_button.dart';
-import 'battle_chat_screen.dart';
+import 'team_chat_screen.dart';
 
 /// 베스트 쌍 전용 매칭 성사 카드 — UX 문서 §E.2/§E.3.
 /// fetchMatch + watchMatch 로 상태 파생, 상태 4종:
 /// (i) 응답 전 — [채팅방 열기]/[이번에는 넘어가기]
 /// (ii) 나 수락·상대 대기 — 대기 카피
-/// (iii) 성사(openedAt) — [채팅 시작하기] → BattleChatScreen
+/// (iii) 성사(openedAt) — [채팅 시작하기] → TeamChatScreen
 /// (iv) 종결(한쪽 거절) — 주어 없는 종결 카피 (danger 색 미사용 — 실패 아님)
-class BattleMatchCard extends StatefulWidget {
+class TeamMatchCard extends StatefulWidget {
   final String teamId;
   final String otherUserId;
   final String otherNickname;
   final String otherGender;
 
-  const BattleMatchCard({
+  const TeamMatchCard({
     super.key,
     required this.teamId,
     required this.otherUserId,
@@ -30,12 +30,12 @@ class BattleMatchCard extends StatefulWidget {
   });
 
   @override
-  State<BattleMatchCard> createState() => _BattleMatchCardState();
+  State<TeamMatchCard> createState() => _TeamMatchCardState();
 }
 
-class _BattleMatchCardState extends State<BattleMatchCard> {
-  final _service = BattleService.instance;
-  BattleMatch? _match;
+class _TeamMatchCardState extends State<TeamMatchCard> {
+  final _service = TeamService.instance;
+  TeamMatch? _match;
   String? _photoUrl;
   RealtimeChannel? _channel;
   bool _loading = true;
@@ -62,7 +62,7 @@ class _BattleMatchCardState extends State<BattleMatchCard> {
     ]);
     if (!mounted) return;
     setState(() {
-      _match = results[0] as BattleMatch?;
+      _match = results[0] as TeamMatch?;
       _photoUrl =
           (results[1] as Map<String, MyFaceThumb>)[widget.otherUserId]?.url;
       _loading = false;
@@ -84,7 +84,7 @@ class _BattleMatchCardState extends State<BattleMatchCard> {
       if (mounted) {
         showTopSnackBar(
           Overlay.of(context),
-          CompactSnackBar.error(message: mapBattleError(e).labelKo),
+          CompactSnackBar.error(message: mapTeamError(e).labelKo),
         );
       }
     } finally {
@@ -263,7 +263,7 @@ class _BattleMatchCardState extends State<BattleMatchCard> {
           label: '채팅 시작하기',
           onPressed: () => Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => BattleChatScreen(
+              builder: (_) => TeamChatScreen(
                 teamId: widget.teamId,
                 otherUserId: widget.otherUserId,
                 otherNickname: widget.otherNickname,

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
 import '../../../core/theme.dart';
-import '../../../data/services/battle_service.dart';
+import '../../../data/services/team_service.dart';
 import '../../widgets/compact_snack_bar.dart';
 
 /// 설정 > 차단 목록 — 차단 상대 닉네임 + [해제]. 해제하면 다시 같은
@@ -16,7 +16,7 @@ class BlockedUsersScreen extends StatefulWidget {
 }
 
 class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
-  final _service = BattleService.instance;
+  final _service = TeamService.instance;
   List<BlockedUser> _blocked = const [];
   bool _loading = true;
 

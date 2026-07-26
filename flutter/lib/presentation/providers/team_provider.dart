@@ -2,51 +2,51 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 
 import '../../core/hive/hive_setup.dart';
-import '../../data/services/battle_service.dart';
-import '../../domain/models/battle.dart';
+import '../../data/services/team_service.dart';
+import '../../domain/models/team.dart';
 
 /// 서버 우선 — 로컬 캐시 없음. 새로고침은 ref.invalidate 로.
-final publicBattlesProvider = FutureProvider<List<PublicBattle>>(
-  (ref) => BattleService.instance.fetchPublicBattles(),
+final publicTeamsProvider = FutureProvider<List<PublicTeam>>(
+  (ref) => TeamService.instance.fetchPublicTeams(),
 );
 
-final myBattlesProvider = FutureProvider<List<Battle>>(
-  (ref) => BattleService.instance.fetchMyBattles(),
+final myTeamsProvider = FutureProvider<List<Team>>(
+  (ref) => TeamService.instance.fetchMyTeams(),
 );
 
 /// 채팅방이 열린 내 매칭 team_id 집합 — 내 매칭 카드의 초록 강조.
 final openChatTeamsProvider = FutureProvider<Set<String>>(
-  (ref) => BattleService.instance.fetchOpenChatTeamIds(),
+  (ref) => TeamService.instance.fetchOpenChatTeamIds(),
 );
 
 /// 내가 베스트 매칭 쌍인 team_id 집합 — 완료 방 카드의 나가리(red) 판정.
 final myMatchTeamsProvider = FutureProvider<Set<String>>(
-  (ref) => BattleService.instance.fetchMyMatchTeamIds(),
+  (ref) => TeamService.instance.fetchMyMatchTeamIds(),
 );
 
 /// 미결 베스트 매칭 제안 — 채팅 탭 appbar 뱃지 + 매칭 제안 시트.
 /// 갱신은 ref.invalidate (응답 직후·당겨서 새로고침).
 final matchProposalsProvider = FutureProvider<List<MatchProposal>>(
-  (ref) => BattleService.instance.fetchPendingMatchProposals(),
+  (ref) => TeamService.instance.fetchPendingMatchProposals(),
 );
 
 /// 케미 리스트 카드의 참가자 미니 아바타 — teamId 별 캐시(family).
-final battleRosterAvatarsProvider =
+final teamRosterAvatarsProvider =
     FutureProvider.family<List<RosterAvatar>, String>(
-      (ref, teamId) => BattleService.instance.fetchTeamRosterAvatars(teamId),
+      (ref, teamId) => TeamService.instance.fetchTeamRosterAvatars(teamId),
     );
 
 /// 마지막으로 채팅방을 본 시각의 Hive prefs 키 — 안읽음 판정 기준.
-/// BattleChatScreen 이 메시지 로드마다 갱신, openChatsProvider 가 읽는다.
+/// TeamChatScreen 이 메시지 로드마다 갱신, openChatsProvider 가 읽는다.
 String chatLastSeenKey(String teamId) => 'chat_last_seen:$teamId';
 
 /// 채팅 탭·셸 뱃지·새 메시지 밴드 공용 — 열린 채팅 요약 + 안읽음 판정.
 /// 안읽음 = 상대가 보낸 마지막 메시지가 로컬 last-seen 이후.
 /// 갱신은 ref.invalidate (채팅방에서 복귀·당겨서 새로고침·채팅 탭 선택).
 final openChatsProvider = FutureProvider<List<OpenChat>>((ref) async {
-  final chats = await BattleService.instance.fetchOpenChats();
+  final chats = await TeamService.instance.fetchOpenChats();
   final prefs = Hive.box<String>(HiveBoxes.prefs);
-  final myUid = BattleService.instance.myUid;
+  final myUid = TeamService.instance.myUid;
   return [
     for (final c in chats)
       OpenChat(
@@ -65,7 +65,7 @@ final openChatsProvider = FutureProvider<List<OpenChat>>((ref) async {
   ];
 });
 
-bool _isUnread(BattleMessage? last, String? myUid, String? lastSeenIso) {
+bool _isUnread(TeamMessage? last, String? myUid, String? lastSeenIso) {
   if (last == null || last.senderId == myUid) return false;
   if (lastSeenIso == null) return true;
   final lastSeen = DateTime.tryParse(lastSeenIso);

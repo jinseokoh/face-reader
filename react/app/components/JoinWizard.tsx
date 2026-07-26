@@ -9,22 +9,22 @@ import {
 import { detectInApp, openInExternalBrowser, type InApp } from '../lib/inapp'
 import {
   estimateDemographics,
-  fetchBattle,
-  fetchBattleRoster,
+  fetchTeam,
+  fetchTeamRoster,
   fetchMyFace,
-  joinBattle,
+  joinTeam,
   remainingGenderSlots,
   saveCapture,
-  watchBattle,
+  watchTeam,
   type RosterEntry,
   type WebCaptureBody,
 } from '../lib/join'
-import type { BattleSSR } from '../lib/supabase'
+import type { TeamSSR } from '../lib/supabase'
 
 /**
  * /g/:id 참여 위저드 — 앱 미설치자가 브라우저에서 케미 매칭 참가를 끝까지 완료한다.
  * entry(PIN·공약 동의) → (kakao) → (reuse) → camera → confirm → saving → done(라이브 로비)
- * 스펙: docs/superpowers/specs/2026-07-16-chemistry-battle-design.md §8
+ * 스펙: docs/superpowers/specs/2026-07-16-chemistry-team-design.md §8
  *
  * 전부 client-only — getUserMedia·tasks-vision·face_engine.js 는 dynamic import.
  * `<video>` 는 위저드 생애 내내 마운트(카메라 단계 외 비표시) — ref race 제거.
@@ -87,14 +87,14 @@ const JOIN_ERROR_MESSAGES: Record<string, string> = {
 }
 
 export function JoinWizard({
-  battle,
+  team,
   roster,
   supabaseUrl,
   supabaseAnonKey,
   cdnBase,
   onActive,
 }: {
-  battle: BattleSSR['battle']
+  team: TeamSSR['team']
   roster: RosterEntry[]
   supabaseUrl: string
   supabaseAnonKey: string
@@ -123,9 +123,9 @@ export function JoinWizard({
   // 비밀방 PIN — sessionStorage 로 OAuth 왕복(카카오 리다이렉트가 state 를
   // 날린다) 후에도 값을 잃지 않는다. SSR hydration 중엔 sessionStorage 를
   // 읽지 않고(DEMO_KEY 와 동일 패턴) 마운트 useEffect 에서 복원한다.
-  const pinStorageKey = `facely:battle-pin:${battle.id}`
+  const pinStorageKey = `facely:team-pin:${team.id}`
   const [pin, setPin] = useState<string>('')
-  // done 스테이지 라이브 로비 — watchBattle 구독 + 폴링으로 항상 최신.
+  // done 스테이지 라이브 로비 — watchTeam 구독 + 폴링으로 항상 최신.
   const [liveRoster, setLiveRoster] = useState<RosterEntry[]>(roster)
 
   /** 썸네일 키 → CDN URL (없으면 null). */
@@ -272,7 +272,7 @@ export function JoinWizard({
   useEffect(() => () => stopCamera(), [])
 
   useEffect(() => {
-    // done(참여됨)도 entry 처럼 초대장(BattleInvite)을 유지 — 로그인 전후
+    // done(참여됨)도 entry 처럼 초대장(TeamInvite)을 유지 — 로그인 전후
     // 화면 구성이 갈라지지 않게 한다.
     onActive?.(stage !== 'entry' && stage !== 'done')
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -285,8 +285,8 @@ export function JoinWizard({
     const client = sb()
     const refetch = async () => {
       const [b, r] = await Promise.all([
-        fetchBattle(client, battle.id),
-        fetchBattleRoster(client, battle.id),
+        fetchTeam(client, team.id),
+        fetchTeamRoster(client, team.id),
       ])
       if (!b) return
       if (b.status !== 'recruiting') {
@@ -296,7 +296,7 @@ export function JoinWizard({
       setLiveRoster(r)
     }
     void refetch()
-    const channel = watchBattle(client, battle.id, () => void refetch())
+    const channel = watchTeam(client, team.id, () => void refetch())
     const poll = window.setInterval(() => void refetch(), LOBBY_POLL_MS)
     return () => {
       client.removeChannel(channel)
@@ -629,7 +629,7 @@ export function JoinWizard({
       fail('등록에 실패했어요. 잠시 후 다시 시도해 주세요.')
       return
     }
-    const code = await joinBattle(client, battle.id, pin || undefined)
+    const code = await joinTeam(client, team.id, pin || undefined)
     if (code === 'ok' || code === 'ALREADY_JOINED') {
       try {
         sessionStorage.removeItem(pinStorageKey)
@@ -728,7 +728,7 @@ export function JoinWizard({
   }
 
   // ── 렌더 ──────────────────────────────────────────────────────────────
-  const waitCount = Math.max(battle.maxPlayers - liveRoster.length, 0)
+  const waitCount = Math.max(team.maxPlayers - liveRoster.length, 0)
   // ref race 방지 — video 는 항상 마운트, 카메라 단계에서만 표시.
   // 캔버스가 video 위에 겹쳐 landmark mesh 오버레이를 그린다 (앱과 동일).
   const video = (
@@ -778,7 +778,7 @@ export function JoinWizard({
 
       {stage === 'entry' && (
         <>
-          {battle.isPrivate && (
+          {team.isPrivate && (
             <div className="join-form">
               <label className="join-field">
                 <span className="join-field-label">참여 비밀번호</span>
@@ -793,17 +793,17 @@ export function JoinWizard({
               </label>
             </div>
           )}
-          {battle.roomKind === 'match' && (
+          {team.roomKind === 'match' && (
             <p className="join-sub">
-              남자 {remainingGenderSlots(roster, battle.maxPlayers, 'male')}자리 남음
+              남자 {remainingGenderSlots(roster, team.maxPlayers, 'male')}자리 남음
               {' · '}
-              여자 {remainingGenderSlots(roster, battle.maxPlayers, 'female')}자리 남음
+              여자 {remainingGenderSlots(roster, team.maxPlayers, 'female')}자리 남음
             </p>
           )}
           <button
             className="join-btn join-btn--kakao"
             onClick={onJoinStart}
-            disabled={battle.isPrivate && !/^\d{4}$/.test(pin)}
+            disabled={team.isPrivate && !/^\d{4}$/.test(pin)}
           >
             <KakaoTalkIcon />
             카카오로 참여하기
@@ -926,7 +926,7 @@ export function JoinWizard({
 
       {stage === 'done' && (
         <>
-          {/* 로스터는 위 초대장(BattleInvite)이 그대로 보여준다 — 여기는
+          {/* 로스터는 위 초대장(TeamInvite)이 그대로 보여준다 — 여기는
               참여 완료 상태 문구만. Realtime/폴링이 status 변화를 감지하면
               새로고침으로 쇼케이스 분기로 넘어간다. */}
           {waitCount > 0 && (

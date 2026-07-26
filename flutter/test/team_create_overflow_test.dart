@@ -1,7 +1,7 @@
 // 방 생성 시트 ② 방 제목 — 기타(자유 입력) 포커스로 키보드가 올라온 상황에서
 // 시트 내부가 overflow 하지 않아야 한다.
 //
-// 실행: flutter test test/battle_create_overflow_test.dart
+// 실행: flutter test test/team_create_overflow_test.dart
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
-import 'package:facely/presentation/screens/team/battle_create_page.dart';
+import 'package:facely/presentation/screens/team/team_create_page.dart';
 
 /// Hive·AuthService 를 건드리는 실제 build() 를 빈 목록으로 대체.
 class _FakeHistory extends HistoryNotifier {
@@ -56,7 +56,7 @@ Future<void> _openCustomTitleWithKeyboard(
           body: Builder(
             builder: (ctx) => Center(
               child: ElevatedButton(
-                onPressed: () => showBattleCreatePage(ctx),
+                onPressed: () => showTeamCreatePage(ctx),
                 child: const Text('open'),
               ),
             ),

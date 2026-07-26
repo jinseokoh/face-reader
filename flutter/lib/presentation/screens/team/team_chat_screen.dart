@@ -7,10 +7,10 @@ import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
 import '../../../core/hive/hive_setup.dart';
 import '../../../core/theme.dart';
-import '../../../data/services/battle_service.dart';
+import '../../../data/services/team_service.dart';
 import '../../../data/services/push_service.dart';
-import '../../../domain/models/battle.dart';
-import '../../providers/battle_provider.dart';
+import '../../../domain/models/team.dart';
+import '../../providers/team_provider.dart';
 import '../../widgets/compact_snack_bar.dart';
 import '../../widgets/source_badge.dart';
 
@@ -22,12 +22,12 @@ const _kInputRadius = 22.0;
 /// 입력바, watchMatch(team_messages INSERT) 로 신규 메시지 refetch.
 /// 레이아웃은 카카오톡 채팅방 parity (아바타·이름·꼬리 말풍선·분 단위 시간),
 /// 배색은 앱 팔레트 (내 말풍선 goldSoft · 상대 surface).
-class BattleChatScreen extends StatefulWidget {
+class TeamChatScreen extends StatefulWidget {
   final String teamId;
   final String otherUserId;
   final String otherNickname;
 
-  const BattleChatScreen({
+  const TeamChatScreen({
     super.key,
     required this.teamId,
     required this.otherUserId,
@@ -35,13 +35,13 @@ class BattleChatScreen extends StatefulWidget {
   });
 
   @override
-  State<BattleChatScreen> createState() => _BattleChatScreenState();
+  State<TeamChatScreen> createState() => _TeamChatScreenState();
 }
 
-class _BattleChatScreenState extends State<BattleChatScreen> {
-  final _service = BattleService.instance;
+class _TeamChatScreenState extends State<TeamChatScreen> {
+  final _service = TeamService.instance;
   final _controller = TextEditingController();
-  List<BattleMessage> _messages = const [];
+  List<TeamMessage> _messages = const [];
   RealtimeChannel? _channel;
   String? _otherPhotoUrl;
   AnalysisSource? _otherPhotoSource;
@@ -98,7 +98,7 @@ class _BattleChatScreenState extends State<BattleChatScreen> {
 
   /// [message] 를 주면 개별 메시지 신고 — 사유에 메시지 본문을 함께 접수해
   /// 운영이 맥락을 본다 (말풍선 길게 누르기 진입).
-  Future<void> _report({BattleMessage? message}) async {
+  Future<void> _report({TeamMessage? message}) async {
     final reason = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -154,7 +154,7 @@ class _BattleChatScreenState extends State<BattleChatScreen> {
       if (mounted) {
         showTopSnackBar(
           Overlay.of(context),
-          CompactSnackBar.error(message: mapBattleError(e).labelKo),
+          CompactSnackBar.error(message: mapTeamError(e).labelKo),
         );
       }
     }
@@ -207,7 +207,7 @@ class _BattleChatScreenState extends State<BattleChatScreen> {
       if (mounted) {
         showTopSnackBar(
           Overlay.of(context),
-          CompactSnackBar.error(message: mapBattleError(e).labelKo),
+          CompactSnackBar.error(message: mapTeamError(e).labelKo),
         );
       }
     }
@@ -225,7 +225,7 @@ class _BattleChatScreenState extends State<BattleChatScreen> {
       if (mounted) {
         showTopSnackBar(
           Overlay.of(context),
-          CompactSnackBar.error(message: mapBattleError(e).labelKo),
+          CompactSnackBar.error(message: mapTeamError(e).labelKo),
         );
       }
     } finally {
@@ -369,7 +369,7 @@ class _BattleChatScreenState extends State<BattleChatScreen> {
 /// - [firstOfRun] 말풍선에만 바깥 위 모서리 꼬리(nib).
 /// [onLongPress] — 상대 메시지 신고 진입 (내 메시지는 null).
 class _MessageRow extends StatelessWidget {
-  final BattleMessage message;
+  final TeamMessage message;
   final bool isMine;
   final bool firstOfRun;
   final bool showTime;

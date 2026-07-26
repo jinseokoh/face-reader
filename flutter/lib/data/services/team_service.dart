@@ -9,14 +9,14 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/storage/thumbnail_paths.dart';
-import '../../domain/models/battle.dart';
+import '../../domain/models/team.dart';
 import '../../domain/services/share/share_receive_service.dart';
 import 'supabase_service.dart';
 
 /// 슬롯 프로필 — my-face 썸네일 URL + meta 부품. 화면이 조합한다:
 /// 상세 슬롯 = "$ageGender $ethnicity", 베스트 카드 = "$ageGender $faceShape",
 /// archetype 은 공용 ("신의형 · 호감형 기질").
-typedef BattleSlotProfile = ({
+typedef TeamSlotProfile = ({
   String? thumbUrl,
   AnalysisSource? source,
   String? ageGender,
@@ -40,7 +40,7 @@ typedef BlockedUser = ({String userId, String nickname});
 
 /// 미결 베스트 매칭 제안 — 채팅 탭 뱃지·매칭 제안 시트 렌더 재료.
 typedef MatchProposal = ({
-  BattleMatch match,
+  TeamMatch match,
   String teamTitle,
   DateTime? decideBy, // 결과 발표(closed_at) + 48h. closed_at 미상이면 null.
   String otherUserId,
@@ -56,12 +56,12 @@ const matchResponseWindow = Duration(hours: 48);
 /// 케미 리스트 카드의 참가자 미니 아바타 재료 — slot 순.
 typedef RosterAvatar = ({String? url, AnalysisSource? source, String gender});
 
-/// Chemistry Battle 서버 접점 — 방은 서버 우선(로컬 캐시 없음).
+/// Chemistry Team 서버 접점 — 방은 서버 우선(로컬 캐시 없음).
 /// 쓰기는 RPC(security definer)와 owner 직접 insert/delete 뿐,
 /// 읽기는 teams(컬럼 grant)·team_roster·public_teams view.
-class BattleService {
-  BattleService._();
-  static final BattleService instance = BattleService._();
+class TeamService {
+  TeamService._();
+  static final TeamService instance = TeamService._();
 
   SupabaseClient get _client => Supabase.instance.client;
   final ShareReceiveService _receive = ShareReceiveService();
@@ -76,14 +76,14 @@ class BattleService {
   String? get myUid => _client.auth.currentUser?.id;
   bool get isLoggedIn => myUid != null;
 
-  Future<Battle> createBattle({
+  Future<Team> createTeam({
     required String title,
     required bool isPublic,
     String? password,
     required int maxPlayers,
     int? ageMin,
     int? ageMax,
-    required BattleRoomKind roomKind,
+    required TeamRoomKind roomKind,
   }) async {
     final row = await _client
         .from('teams')
@@ -99,7 +99,7 @@ class BattleService {
         })
         .select(_teamCols)
         .single();
-    return Battle.fromRow(row);
+    return Team.fromRow(row);
   }
 
   /// 조인 전 서버 my-face 보장. 비로그인 등록 → 로그인 직후 조인 경로에서
@@ -120,71 +120,71 @@ class BattleService {
       await SupabaseService().saveMetrics(myFace);
       return true;
     } catch (e) {
-      debugPrint('[Battle.ensureMyFace] saveMetrics fail: $e');
+      debugPrint('[Team.ensureMyFace] saveMetrics fail: $e');
       return false;
     }
   }
 
-  Future<void> joinBattle(String battleId, {String? password}) => _client.rpc(
+  Future<void> joinTeam(String teamId, {String? password}) => _client.rpc(
     'join_team',
-    params: {'p_team_id': battleId, 'p_password': ?password},
+    params: {'p_team_id': teamId, 'p_password': ?password},
   );
 
   /// 비밀방 문 앞 PIN 검증 — 목록 탭 → 상세 진입 전 dialog 용. password 는
   /// 봉인 유지(boolean 만 반환), 최종 검증은 join_team 이 다시 한다.
-  Future<bool> checkPassword(String battleId, String password) async =>
+  Future<bool> checkPassword(String teamId, String password) async =>
       await _client.rpc(
             'check_team_password',
-            params: {'p_team_id': battleId, 'p_password': password},
+            params: {'p_team_id': teamId, 'p_password': password},
           )
           as bool;
 
-  Future<void> leaveBattle(String battleId) =>
-      _client.rpc('leave_team', params: {'p_team_id': battleId});
+  Future<void> leaveTeam(String teamId) =>
+      _client.rpc('leave_team', params: {'p_team_id': teamId});
 
-  Future<void> submitResult(String battleId, Map<String, dynamic> payload) =>
+  Future<void> submitResult(String teamId, Map<String, dynamic> payload) =>
       _client.rpc(
         'submit_team_result',
-        params: {'p_team_id': battleId, 'p_payload': payload},
+        params: {'p_team_id': teamId, 'p_payload': payload},
       );
 
-  Future<void> deleteBattle(String battleId) =>
-      _client.from('teams').delete().eq('id', battleId);
+  Future<void> deleteTeam(String teamId) =>
+      _client.from('teams').delete().eq('id', teamId);
 
   /// 조회수++ — 상세 페이지 진입 1회 (increment_metrics_views 와 동일 문법).
-  Future<void> incrementTeamViews(String battleId) => _client.rpc(
+  Future<void> incrementTeamViews(String teamId) => _client.rpc(
     'increment_team_views',
-    params: {'p_team_id': battleId},
+    params: {'p_team_id': teamId},
   );
 
-  Future<Battle?> fetchBattle(String battleId) async {
+  Future<Team?> fetchTeam(String teamId) async {
     final row = await _client
         .from('teams')
         .select(_teamCols)
-        .eq('id', battleId)
+        .eq('id', teamId)
         .maybeSingle();
-    return row == null ? null : Battle.fromRow(row);
+    return row == null ? null : Team.fromRow(row);
   }
 
-  Future<List<BattleRosterEntry>> fetchRoster(String battleId) async {
+  Future<List<TeamRosterEntry>> fetchRoster(String teamId) async {
     final rows = await _client
         .from('team_roster')
         .select()
-        .eq('team_id', battleId)
+        .eq('team_id', teamId)
         .order('slot_no', ascending: true);
-    return [for (final r in rows) BattleRosterEntry.fromRow(r)];
+    return [for (final r in rows) TeamRosterEntry.fromRow(r)];
   }
 
-  Future<List<PublicBattle>> fetchPublicBattles() async {
+  Future<List<PublicTeam>> fetchPublicTeams() async {
     final rows = await _client
         .from('public_teams')
         .select()
         .order('created_at', ascending: false)
         .limit(50);
-    return [for (final r in rows) PublicBattle.fromRow(r)];
+    return [for (final r in rows) PublicTeam.fromRow(r)];
   }
 
-  Future<List<Battle>> fetchMyBattles() async {
+  Future<List<Team>> fetchMyTeams() async {
     final uid = myUid;
     if (uid == null) return const [];
     final memberRows = await _client
@@ -210,7 +210,7 @@ class BattleService {
     }
     return [
       for (final r in rows)
-        Battle.fromRow(r, playerCount: counts[r['id'] as String] ?? 0),
+        Team.fromRow(r, playerCount: counts[r['id'] as String] ?? 0),
     ];
   }
 
@@ -248,7 +248,7 @@ class BattleService {
   /// 상세 페이지 슬롯 표기용 — 각 유저 my-face 의 썸네일 URL + meta 두 줄.
   /// metrics body 한 번의 조회로 전부 뽑는다. meta 는 body 를 엔진으로
   /// 재계산한 리포트에서 (인구통계·archetype), 실패한 유저는 해당 값만 null.
-  Future<Map<String, BattleSlotProfile>> fetchSlotProfiles(
+  Future<Map<String, TeamSlotProfile>> fetchSlotProfiles(
     List<String> userIds,
   ) async {
     if (userIds.isEmpty) return const {};
@@ -257,7 +257,7 @@ class BattleService {
         .select('user_id, body')
         .inFilter('user_id', userIds)
         .eq('is_my_face', true);
-    final result = <String, BattleSlotProfile>{};
+    final result = <String, TeamSlotProfile>{};
     for (final r in rows) {
       final uid = r['user_id'] as String?;
       if (uid == null) continue;
@@ -315,9 +315,9 @@ class BattleService {
   }
 
   /// 상세 페이지 라이브 — teams UPDATE(status 전이) + team_members INSERT/DELETE.
-  /// 콜백은 신호일 뿐: 수신 시 호출부가 fetchBattle/fetchRoster 로 refetch.
-  RealtimeChannel watchBattle(String battleId, void Function() onChange) {
-    final channel = _client.channel('battle:$battleId')
+  /// 콜백은 신호일 뿐: 수신 시 호출부가 fetchTeam/fetchRoster 로 refetch.
+  RealtimeChannel watchTeam(String teamId, void Function() onChange) {
+    final channel = _client.channel('team:$teamId')
       ..onPostgresChanges(
         event: PostgresChangeEvent.update,
         schema: 'public',
@@ -325,7 +325,7 @@ class BattleService {
         filter: PostgresChangeFilter(
           type: PostgresChangeFilterType.eq,
           column: 'id',
-          value: battleId,
+          value: teamId,
         ),
         callback: (_) => onChange(),
       )
@@ -336,7 +336,7 @@ class BattleService {
         filter: PostgresChangeFilter(
           type: PostgresChangeFilterType.eq,
           column: 'team_id',
-          value: battleId,
+          value: teamId,
         ),
         callback: (_) => onChange(),
       );
@@ -377,7 +377,7 @@ class BattleService {
         .from('team_matches')
         .select()
         .not('opened_at', 'is', null);
-    final matches = [for (final r in matchRows) BattleMatch.fromRow(r)];
+    final matches = [for (final r in matchRows) TeamMatch.fromRow(r)];
     if (matches.isEmpty) return const [];
 
     final teamIds = [for (final m in matches) m.teamId];
@@ -417,7 +417,7 @@ class BattleService {
           otherNickname: nicknames['${m.teamId}:$other'] ?? '상대',
           photoUrl: thumbs[other]?.url,
           photoSource: thumbs[other]?.source,
-          lastMessage: lastRow == null ? null : BattleMessage.fromRow(lastRow),
+          lastMessage: lastRow == null ? null : TeamMessage.fromRow(lastRow),
           hasUnread: false,
         ),
       );
@@ -443,7 +443,7 @@ class BattleService {
         .from('team_matches')
         .select()
         .isFilter('opened_at', null);
-    final matches = [for (final r in rows) BattleMatch.fromRow(r)]
+    final matches = [for (final r in rows) TeamMatch.fromRow(r)]
         .where(
           (m) =>
               m.consentOf(uid) != false && m.consentOf(m.otherOf(uid)) != false,
@@ -525,13 +525,13 @@ class BattleService {
   }
 
   /// 매칭 성사 상태 — RLS 상 쌍 본인에게만 row 가 보인다(남에겐 null).
-  Future<BattleMatch?> fetchMatch(String teamId) async {
+  Future<TeamMatch?> fetchMatch(String teamId) async {
     final row = await _client
         .from('team_matches')
         .select()
         .eq('team_id', teamId)
         .maybeSingle();
-    return row == null ? null : BattleMatch.fromRow(row);
+    return row == null ? null : TeamMatch.fromRow(row);
   }
 
   Future<void> respondMatch(String teamId, bool accept) => _client.rpc(
@@ -539,14 +539,14 @@ class BattleService {
     params: {'p_team_id': teamId, 'p_accept': accept},
   );
 
-  Future<List<BattleMessage>> fetchMessages(String teamId) async {
+  Future<List<TeamMessage>> fetchMessages(String teamId) async {
     final rows = await _client
         .from('team_messages')
         .select()
         .eq('team_id', teamId)
         .order('created_at', ascending: true)
         .limit(200);
-    return [for (final r in rows) BattleMessage.fromRow(r)];
+    return [for (final r in rows) TeamMessage.fromRow(r)];
   }
 
   /// sender_id 는 RLS 가 auth.uid() 일치를 강제 — 명시적으로 실어 보낸다.
@@ -597,7 +597,7 @@ class BattleService {
   /// 매칭·채팅 라이브 — team_matches UPDATE(상대 응답) + team_messages
   /// INSERT(새 메시지). 콜백은 신호일 뿐: 수신 시 호출부가 refetch.
   RealtimeChannel watchMatch(String teamId, void Function() onChange) {
-    final channel = _client.channel('battle_match:$teamId')
+    final channel = _client.channel('team_match:$teamId')
       ..onPostgresChanges(
         event: PostgresChangeEvent.update,
         schema: 'public',

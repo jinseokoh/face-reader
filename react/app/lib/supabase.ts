@@ -91,8 +91,8 @@ export async function incrementMetricsViews(env: Env, id: string): Promise<void>
 
 // ── 케미 매칭 — /g/:id 쇼케이스/초대장 ──────────────────────────────
 
-export type BattleSSR = {
-  battle: {
+export type TeamSSR = {
+  team: {
     id: string;
     title: string;
     isPrivate: boolean;
@@ -122,10 +122,10 @@ export type BattleSSR = {
 };
 
 /** teams + team_roster 를 anon 으로 read (link-share, RLS public read). */
-export async function fetchBattleSSR(
+export async function fetchTeamSSR(
   env: Env,
   id: string,
-): Promise<BattleSSR | null> {
+): Promise<TeamSSR | null> {
   if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) return null;
   const headers = {
     apikey: env.SUPABASE_ANON_KEY,
@@ -139,7 +139,7 @@ export async function fetchBattleSSR(
     { headers },
   );
   if (!teamRes.ok) {
-    console.error("[fetchBattleSSR] teams status", teamRes.status, await teamRes.text());
+    console.error("[fetchTeamSSR] teams status", teamRes.status, await teamRes.text());
     return null;
   }
   const teams = (await teamRes.json()) as Record<string, unknown>[];
@@ -196,7 +196,7 @@ export async function fetchBattleSSR(
   }
 
   return {
-    battle: {
+    team: {
       id: t.id as string,
       title: t.title as string,
       isPrivate: (t.is_private as boolean) ?? false,

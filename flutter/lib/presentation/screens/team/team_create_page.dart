@@ -1,8 +1,8 @@
 import 'package:facely/core/theme.dart';
-import 'package:facely/data/services/battle_service.dart';
-import 'package:facely/domain/models/battle.dart';
+import 'package:facely/data/services/team_service.dart';
+import 'package:facely/domain/models/team.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
-import 'package:facely/presentation/screens/team/battle_title_catalog.dart';
+import 'package:facely/presentation/screens/team/team_title_catalog.dart';
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/presentation/widgets/primary_button.dart';
 import 'package:flutter/material.dart';
@@ -13,10 +13,10 @@ import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
 /// 방 생성 스텝 (rev2 — UX §A/§C): ①방 유형 → ②방 제목(카테고리→프리셋,
 /// 기타 = 자유 입력) → ③인원(6/8/10/12) → ④연령대(방장 인접 구간 multi-select chip)
-/// → ⑤공개 설정(공개/비밀). [그룹 만들기] = createBattle
-/// + joinBattle(셀프 조인) 후 Battle 반환, 조인 실패 시 방 롤백.
-Future<Battle?> showBattleCreatePage(BuildContext context) {
-  return showModalBottomSheet<Battle>(
+/// → ⑤공개 설정(공개/비밀). [그룹 만들기] = createTeam
+/// + joinTeam(셀프 조인) 후 Team 반환, 조인 실패 시 방 롤백.
+Future<Team?> showTeamCreatePage(BuildContext context) {
+  return showModalBottomSheet<Team>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
@@ -24,22 +24,22 @@ Future<Battle?> showBattleCreatePage(BuildContext context) {
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
-    builder: (_) => const _BattleCreatePage(),
+    builder: (_) => const _TeamCreatePage(),
   );
 }
 
-// battle.dart 의 Battle.ageRangeLabel 표기 규칙과 동일 포맷(로컬 복제).
+// team.dart 의 Team.ageRangeLabel 표기 규칙과 동일 포맷(로컬 복제).
 String _ageSliderLabel(int start, int end) =>
     start == end ? '$start대' : '$start대~$end대';
 
-class _BattleCreatePage extends ConsumerStatefulWidget {
-  const _BattleCreatePage();
+class _TeamCreatePage extends ConsumerStatefulWidget {
+  const _TeamCreatePage();
 
   @override
-  ConsumerState<_BattleCreatePage> createState() => _BattleCreatePageState();
+  ConsumerState<_TeamCreatePage> createState() => _TeamCreatePageState();
 }
 
-class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
+class _TeamCreatePageState extends ConsumerState<_TeamCreatePage>
     with SingleTickerProviderStateMixin {
   _Step _step = _Step.roomKind;
   final _pinCtrl = TextEditingController();
@@ -51,8 +51,8 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
     duration: const Duration(milliseconds: 450),
   );
 
-  BattleRoomKind? _roomKind;
-  BattleTitleCategory? _categorySel;
+  TeamRoomKind? _roomKind;
+  TeamTitleCategory? _categorySel;
   String? _selectedTitle;
   int _maxPlayers = 8;
   int? _ageMin;
@@ -61,7 +61,7 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
   bool _busy = false;
   int? _ownerAgeDecade; // 방장(나) 연령대 — ④ 슬라이더 bounds 산출용.
 
-  BattleTitleCategory get _activeCategory {
+  TeamTitleCategory get _activeCategory {
     final visible = _visibleCategories;
     final sel = _categorySel;
     if (sel != null && visible.contains(sel)) return sel;
@@ -78,7 +78,7 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
 
   // ② 방 제목 — 방 유형에 허용되지 않는 카테고리/제목은 숨긴다(disabled 나열 아님).
   // 자유 입력(기타)은 방 유형과 무관하게 항상 보인다.
-  List<BattleTitleCategory> get _visibleCategories => kBattleTitleCatalog
+  List<TeamTitleCategory> get _visibleCategories => kTeamTitleCatalog
       .where(
         (c) =>
             c.isCustom ||
@@ -92,7 +92,7 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
     return FractionallySizedBox(
       // 키보드가 올라오면 시트를 허용 최대 높이로 — 0.92 고정인 채 안쪽
       // padding 만 키우면 내용 공간이 키보드만큼 줄어 ② 자유 입력(기타)에서
-      // 세로 overflow 가 난다 (test/battle_create_overflow_test.dart).
+      // 세로 overflow 가 난다 (test/team_create_overflow_test.dart).
       heightFactor: keyboard > 0 ? 1.0 : 0.92,
       child: Padding(
         padding: EdgeInsets.only(
@@ -363,7 +363,7 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
               ),
           ],
         ),
-        if (_roomKind == BattleRoomKind.match) ...[
+        if (_roomKind == TeamRoomKind.match) ...[
           const SizedBox(height: AppSpacing.lg),
           Text('남자 $half명, 여자 $half명', style: AppText.body),
         ],
@@ -373,8 +373,8 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
 
   Future<void> _create() async {
     setState(() => _busy = true);
-    final service = BattleService.instance;
-    Battle? battle;
+    final service = TeamService.instance;
+    Team? team;
     final myFace = ref
         .read(historyProvider)
         .where((r) => r.isMyFace)
@@ -390,7 +390,7 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
       return;
     }
     try {
-      battle = await service.createBattle(
+      team = await service.createTeam(
         title: _selectedTitle!,
         isPublic: _isPublic,
         password: _isPublic ? null : _pinCtrl.text.trim(),
@@ -399,24 +399,24 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
         ageMax: _ageMax,
         roomKind: _roomKind!,
       );
-      await service.joinBattle(
-        battle.id,
+      await service.joinTeam(
+        team.id,
         password: _isPublic ? null : _pinCtrl.text.trim(),
       );
-      if (mounted) Navigator.of(context).pop(battle);
+      if (mounted) Navigator.of(context).pop(team);
     } catch (e) {
-      debugPrint('createBattle failed: $e');
-      // createBattle 은 성공했는데 셀프 조인이 실패하면(예: 연령 게이트) 방장
+      debugPrint('createTeam failed: $e');
+      // createTeam 은 성공했는데 셀프 조인이 실패하면(예: 연령 게이트) 방장
       // 없는 고아 방이 남는다 — 에러를 보여주기 전에 방부터 지운다.
-      if (battle != null) {
+      if (team != null) {
         try {
-          await service.deleteBattle(battle.id);
+          await service.deleteTeam(team.id);
         } catch (_) {}
       }
       if (mounted) {
         showTopSnackBar(
           Overlay.of(context),
-          CompactSnackBar.error(message: mapBattleError(e).labelKo),
+          CompactSnackBar.error(message: mapTeamError(e).labelKo),
         );
         setState(() => _busy = false);
       }
@@ -438,7 +438,7 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
   Widget _roomKindIcons() {
     final kind = _roomKind;
     if (kind == null) return const SizedBox.shrink();
-    final match = kind == BattleRoomKind.match;
+    final match = kind == TeamRoomKind.match;
     final icons = match
         ? const [FontAwesomeIcons.child, FontAwesomeIcons.childDress]
         : const [
@@ -472,22 +472,22 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
         Text('어떤 그룹을 만들까요?', style: AppText.display),
         const SizedBox(height: AppSpacing.xxl),
         _choiceTile(
-          selected: _roomKind == BattleRoomKind.match,
+          selected: _roomKind == TeamRoomKind.match,
           title: '이성 케미 매칭그룹',
           caption: '남녀 비율이 똑같고 케미 결과는 남녀 쌍만 계산합니다',
           onTap: () => setState(() {
-            _roomKind = BattleRoomKind.match;
+            _roomKind = TeamRoomKind.match;
             _categorySel = null;
             _selectedTitle = null;
           }),
         ),
         const SizedBox(height: AppSpacing.md),
         _choiceTile(
-          selected: _roomKind == BattleRoomKind.all,
+          selected: _roomKind == TeamRoomKind.all,
           title: '전체 케미 매칭그룹',
           caption: '남녀 구분 없이 모든 전체 쌍의 케미를 계산합니다',
           onTap: () => setState(() {
-            _roomKind = BattleRoomKind.all;
+            _roomKind = TeamRoomKind.all;
             _categorySel = null;
             _selectedTitle = null;
           }),
@@ -508,7 +508,7 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
     final category = _activeCategory;
     final categories = _visibleCategories;
     final titles = category.isCustom
-        ? const <BattleTitlePreset>[]
+        ? const <TeamTitlePreset>[]
         : category.titles
               .where((t) => t.allowedKinds.contains(_roomKind))
               .toList();
@@ -545,7 +545,7 @@ class _BattleCreatePageState extends ConsumerState<_BattleCreatePage>
     ];
     // 기타(자유 입력)는 스크롤할 프리셋 리스트가 없으므로 헤더까지 통째로
     // 스크롤 — 키보드가 세로 공간을 좁혀도 overflow 하지 않는다
-    // (test/battle_create_overflow_test.dart).
+    // (test/team_create_overflow_test.dart).
     if (category.isCustom) {
       return SingleChildScrollView(
         child: Column(
