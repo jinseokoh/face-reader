@@ -186,7 +186,7 @@ export const TeamShow = () => {
                       src={thumb ?? u?.profile_image_url ?? undefined}
                       size={32}
                     >
-                      {u?.nickname?.[0] ?? "?"}
+                      {(m.alias ?? u?.nickname)?.[0] ?? "?"}
                     </Avatar>
                     <UserLink id={uid}>
                       <Text strong>
