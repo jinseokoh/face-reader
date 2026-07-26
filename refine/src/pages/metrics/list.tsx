@@ -1,6 +1,6 @@
 import { DeleteOutlined } from "@ant-design/icons";
 import { DateField, List, ShowButton, useTable } from "@refinedev/antd";
-import { useInvalidate, useMany } from "@refinedev/core";
+import { useInvalidate, useMany, useNavigation } from "@refinedev/core";
 import {
   Avatar,
   Button,
@@ -49,6 +49,7 @@ export const MetricList = () => {
   });
 
   const invalidate = useInvalidate();
+  const { show } = useNavigation();
 
   const userIds = (result?.data ?? [])
     .map((m) => m.user_id)
@@ -179,7 +180,9 @@ export const MetricList = () => {
                 src={url ?? undefined}
                 size={40}
                 shape="circle"
+                onClick={() => show("metrics", record.id)}
                 style={{
+                  cursor: "pointer",
                   border: `2px solid ${
                     (source && AVATAR_BORDER[source]) ?? AVATAR_BORDER_DEFAULT
                   }`,
