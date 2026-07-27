@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,6 +29,7 @@ class ChatTabScreen extends ConsumerWidget {
     // 안내 empty state, 본 화면은 등록 후에만.
     final hasMyFace = ref.watch(historyProvider).any((r) => r.isMyFace);
     final chats = ref.watch(openChatsProvider);
+    final proposalCount = ref.watch(matchProposalsProvider).value?.length ?? 0;
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -40,43 +43,59 @@ class ChatTabScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: !hasMyFace
-          ? const EmotionEmptyState(
-              asset: 'assets/images/emotion-yawn.png',
-              message: '채팅에 참여하려면 내관상을 등록하세요',
-            )
-          : RefreshIndicator(
-              onRefresh: () {
-                ref.invalidate(matchProposalsProvider);
-                return ref.refresh(openChatsProvider.future);
-              },
-              color: AppColors.textPrimary,
-              child: chats.when(
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (_, _) => _fillScroll(
-                  const EmotionEmptyState(
-                    asset: 'assets/images/emotion-sad.png',
-                    message: '채팅 목록을 불러오지 못했습니다.\n아래로 당겨 새로고침하세요.',
+      body: Stack(
+        children: [
+          !hasMyFace
+              ? const EmotionEmptyState(
+                  asset: 'assets/images/emotion-yawn.png',
+                  message: '채팅에 참여하려면 내관상을 등록하세요',
+                )
+              : RefreshIndicator(
+                  onRefresh: () {
+                    ref.invalidate(matchProposalsProvider);
+                    return ref.refresh(openChatsProvider.future);
+                  },
+                  color: AppColors.textPrimary,
+                  child: chats.when(
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (_, _) => _fillScroll(
+                      const EmotionEmptyState(
+                        asset: 'assets/images/emotion-sad.png',
+                        message: '채팅 목록을 불러오지 못했습니다.\n아래로 당겨 새로고침하세요.',
+                      ),
+                    ),
+                    data: (list) => list.isEmpty
+                        ? _fillScroll(
+                            _EmptyChats(
+                              onGoChemistry: () => ref
+                                  .read(selectedTabProvider.notifier)
+                                  .selectTab(2),
+                            ),
+                          )
+                        : ListView.builder(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: AppSpacing.sm,
+                            ),
+                            itemCount: list.length,
+                            itemBuilder: (ctx, i) => _ChatTile(chat: list[i]),
+                          ),
                   ),
                 ),
-                data: (list) => list.isEmpty
-                    ? _fillScroll(
-                        _EmptyChats(
-                          onGoChemistry: () => ref
-                              .read(selectedTabProvider.notifier)
-                              .selectTab(2),
-                        ),
-                      )
-                    : ListView.builder(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.symmetric(
-                          vertical: AppSpacing.sm,
-                        ),
-                        itemCount: list.length,
-                        itemBuilder: (ctx, i) => _ChatTile(chat: list[i]),
-                      ),
+          // 미결 베스트 매칭 callout — award 아이콘 바로 아래를 가리키는
+          // 빨간 말풍선. 제안이 남아있는 동안 계속 떠서 반드시 눈에 띈다.
+          // 탭 = 제안 시트 (뱃지와 동일 진입).
+          if (hasMyFace && proposalCount > 0)
+            Positioned(
+              top: AppSpacing.xs,
+              right: AppSpacing.sm,
+              child: _BestPickCallout(
+                onTap: () => showMatchProposalSheet(context),
               ),
             ),
+        ],
+      ),
     );
   }
 
@@ -290,26 +309,78 @@ class _MatchProposalBadge extends ConsumerWidget {
     if (count == 0) return const SizedBox.shrink();
     return IconButton(
       onPressed: () => showMatchProposalSheet(context),
-      icon: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          const FaIcon(
-            FontAwesomeIcons.solidHeart,
-            size: 18,
-            color: AppColors.gold,
+      icon: _icon(count),
+    );
+  }
+
+  Widget _icon(int count) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        const FaIcon(
+          FontAwesomeIcons.award,
+          size: 20,
+          color: AppColors.textPrimary,
+        ),
+        Positioned(
+          right: -8,
+          top: -6,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+            decoration: const BoxDecoration(
+              color: AppColors.danger,
+              shape: BoxShape.circle,
+            ),
+            child: Text(
+              '$count',
+              style: AppText.hint.copyWith(color: Colors.white),
+            ),
           ),
-          Positioned(
-            right: -6,
-            top: -6,
+        ),
+      ],
+    );
+  }
+}
+
+/// 미결 베스트 매칭 주목 callout — danger 말풍선 + award 아이콘을 향한 말꼬리.
+/// 제안이 해소(응답·시한 만료)될 때까지 유지된다.
+class _BestPickCallout extends StatelessWidget {
+  final VoidCallback onTap;
+  const _BestPickCallout({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 말꼬리 — appbar 의 award 아이콘(우측에서 두 번째 액션) 아래 정렬.
+          Padding(
+            padding: const EdgeInsets.only(right: 64),
+            child: Transform.rotate(
+              angle: math.pi / 4,
+              child: Container(width: 10, height: 10, color: AppColors.danger),
+            ),
+          ),
+          Transform.translate(
+            offset: const Offset(0, -5),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-              decoration: const BoxDecoration(
-                color: AppColors.textPrimary,
-                shape: BoxShape.circle,
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.danger,
+                borderRadius: BorderRadius.circular(AppRadius.md),
               ),
               child: Text(
-                '$count',
-                style: AppText.hint.copyWith(color: Colors.white),
+                '베스트 케미로 선정되었습니다',
+                style: AppText.caption.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
