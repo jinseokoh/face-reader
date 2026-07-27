@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show RealtimeChannel;
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
@@ -182,12 +183,15 @@ class _TeamMatchCardState extends State<TeamMatchCard> {
   }
 
   Widget _genderFallback() => Center(
-    child: Image.asset(
+    child: SvgPicture.asset(
       widget.otherGender == 'male'
-          ? 'assets/icons/male.png'
-          : 'assets/icons/female.png',
-      width: 88,
+          ? 'assets/svgs/male.svg'
+          : 'assets/svgs/female.svg',
       height: 88,
+      colorFilter: const ColorFilter.mode(
+        AppColors.textHint,
+        BlendMode.srcIn,
+      ),
     ),
   );
 

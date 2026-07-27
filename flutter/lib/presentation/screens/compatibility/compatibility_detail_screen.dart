@@ -27,6 +27,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
 // ─────────────────────────────────────────────────────────────
@@ -253,13 +254,17 @@ class _CompatShareSide extends StatelessWidget {
           thumbnailKey: report.thumbnailKey,
           // border 색은 전 탭 공통 source 규칙 (카메라 gold / 앨범 lightGray).
           borderColor: sourceBorderColor(report.source),
-          fallback: Image.asset(
-            report.gender == Gender.male
-                ? 'assets/icons/male.png'
-                : 'assets/icons/female.png',
-            width: DetailAvatar.size,
-            height: DetailAvatar.size,
-            fit: BoxFit.cover,
+          fallback: Center(
+            child: SvgPicture.asset(
+              report.gender == Gender.male
+                  ? 'assets/svgs/male.svg'
+                  : 'assets/svgs/female.svg',
+              height: DetailAvatar.size * 0.5,
+              colorFilter: const ColorFilter.mode(
+                AppColors.textHint,
+                BlendMode.srcIn,
+              ),
+            ),
           ),
         ),
         const SizedBox(height: 8),
@@ -786,12 +791,12 @@ class _CompatThumb extends StatelessWidget {
     // 관상 share card (_ShareCardComposite) thumb 와 동일 크기·radius 로
     // 통일 — 카카오 link preview hero 의 통일감 보장.
     const size = 180.0;
-    // 로컬 thumbnailPath → CDN thumbnailKey → gender fallback(male/female png).
+    // 로컬 thumbnailPath → CDN thumbnailKey → gender fallback(male/female svg).
     final file = ThumbnailPaths.resolveFileSync(path);
     final cdn = ThumbnailPaths.cdnUrl(thumbnailKey);
     final genderAsset = switch (gender) {
-      Gender.male => 'assets/icons/male.png',
-      Gender.female => 'assets/icons/female.png',
+      Gender.male => 'assets/svgs/male.svg',
+      Gender.female => 'assets/svgs/female.svg',
     };
     final placeholder = Container(
       width: size,
@@ -801,11 +806,15 @@ class _CompatThumb extends StatelessWidget {
         color: const Color(0xFFF5F5F5),
         borderRadius: BorderRadius.circular(14),
       ),
-      child: Image.asset(
-        genderAsset,
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
+      child: Center(
+        child: SvgPicture.asset(
+          genderAsset,
+          height: size * 0.5,
+          colorFilter: const ColorFilter.mode(
+            AppColors.textHint,
+            BlendMode.srcIn,
+          ),
+        ),
       ),
     );
     if (file != null && file.existsSync()) {

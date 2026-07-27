@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
 import '../../../core/theme.dart';
@@ -149,12 +150,15 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
   }
 
   Widget _genderFallback() => Center(
-    child: Image.asset(
+    child: SvgPicture.asset(
       p.otherGender == 'male'
-          ? 'assets/icons/male.png'
-          : 'assets/icons/female.png',
-      width: 44,
+          ? 'assets/svgs/male.svg'
+          : 'assets/svgs/female.svg',
       height: 44,
+      colorFilter: const ColorFilter.mode(
+        AppColors.textHint,
+        BlendMode.srcIn,
+      ),
     ),
   );
 

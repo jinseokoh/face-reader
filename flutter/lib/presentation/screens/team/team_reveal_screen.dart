@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
@@ -246,12 +247,14 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
 
   Widget _slotIconAvatar(String? gender, double size) {
     if (gender == null) return _pairIconAvatar(size);
-    return ClipOval(
-      child: Image.asset(
-        gender == 'male' ? 'assets/icons/male.png' : 'assets/icons/female.png',
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
+    return Center(
+      child: SvgPicture.asset(
+        gender == 'male' ? 'assets/svgs/male.svg' : 'assets/svgs/female.svg',
+        height: size * 0.5,
+        colorFilter: const ColorFilter.mode(
+          AppColors.textHint,
+          BlendMode.srcIn,
+        ),
       ),
     );
   }

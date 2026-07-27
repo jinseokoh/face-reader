@@ -30,6 +30,7 @@ import 'package:facely/presentation/widgets/sort_selector.dart';
 import 'package:facely/presentation/widgets/source_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 /// 궁합 탭 — 내 얼굴이 아닌 다른 인물 리스트. 기본 lock, 1 코인 해제.
@@ -1329,12 +1330,12 @@ class _Thumb extends StatelessWidget {
     );
   }
 
-  /// thumbnail 없을 때 gender 기본 아바타. male/female 은 png 에셋,
+  /// thumbnail 없을 때 gender 기본 아바타. male/female 은 svg 실루엣,
   /// gender 미상이면 generic user 아이콘.
   Widget _genderFallback(double radius) {
     final asset = switch (gender) {
-      Gender.male => 'assets/icons/male.png',
-      Gender.female => 'assets/icons/female.png',
+      Gender.male => 'assets/svgs/male.svg',
+      Gender.female => 'assets/svgs/female.svg',
       _ => null,
     };
     if (asset == null) {
@@ -1351,7 +1352,14 @@ class _Thumb extends StatelessWidget {
     return CircleAvatar(
       radius: radius,
       backgroundColor: AppTheme.border,
-      backgroundImage: AssetImage(asset),
+      child: SvgPicture.asset(
+        asset,
+        height: radius * 0.85,
+        colorFilter: const ColorFilter.mode(
+          AppTheme.textHint,
+          BlendMode.srcIn,
+        ),
+      ),
     );
   }
 

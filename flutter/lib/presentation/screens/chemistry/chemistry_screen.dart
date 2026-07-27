@@ -904,10 +904,13 @@ class _RosterAvatars extends ConsumerWidget {
   }
 
   Widget _genderIcon(String gender) => Center(
-    child: Image.asset(
-      gender == 'male' ? 'assets/icons/male.png' : 'assets/icons/female.png',
-      width: 11,
+    child: SvgPicture.asset(
+      gender == 'male' ? 'assets/svgs/male.svg' : 'assets/svgs/female.svg',
       height: 11,
+      colorFilter: const ColorFilter.mode(
+        AppColors.textHint,
+        BlendMode.srcIn,
+      ),
     ),
   );
 
