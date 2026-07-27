@@ -36,15 +36,12 @@ android {
         jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
-    // Play 16KB page-size 경고 대응 — tflite_flutter 가 끌고 오는
-    // tensorflow-lite-gpu(2.11, 구 NDK 빌드)의 libtensorflowlite_gpu_jni.so 는
-    // 앱 어디서도 로드되지 않는다 (face shape 분류기 = CPU Interpreter,
-    // MediaPipe = XNNPack). 패키징에서 제외해 경고·용량 모두 제거.
-    packaging {
-        jniLibs {
-            excludes += "**/libtensorflowlite_gpu_jni.so"
-            excludes += "**/libtensorflowlite_gpu_gl.so"
-        }
+    // GPU delegate 미사용 — face shape 분류기 = CPU Interpreter, MediaPipe =
+    // XNNPack. tflite_flutter 0.12 가 무조건 끌고 오는 litert-gpu 아티팩트를
+    // dependency 단계에서 제외해 GPU 클래스·native lib 을 통째로 걷어낸다
+    // (.so 파일명 패턴 제외보다 lib 이름 변경에 안전 + Java 클래스까지 제거).
+    configurations.all {
+        exclude(group = "com.google.ai.edge.litert", module = "litert-gpu")
     }
 
     defaultConfig {
