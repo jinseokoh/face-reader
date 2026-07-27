@@ -213,7 +213,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
 
   /// 슬롯 아바타 — 썸네일 → 성별 기본 아이콘 → 사람 아이콘.
   /// 참가자 전원 사진 공개가 계약이다 (조인 동의 문구와 동일).
-  Widget _slotAvatar(int slot, {double size = 28}) {
+  Widget _slotAvatar(int slot, {double size = AppAvatar.sm}) {
     String? uid;
     for (final r in _roster) {
       if (r.slotNo == slot) uid = r.userId;
@@ -367,7 +367,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
 
   /// roster 기반 아바타 — 썸네일 → 성별 기본 아이콘. payload 가 없는
   /// 종료 방에서 사용 (border 는 _slotAvatar 와 같은 source 규칙).
-  Widget _rosterAvatar(TeamRosterEntry r, {double size = 28}) {
+  Widget _rosterAvatar(TeamRosterEntry r, {double size = AppAvatar.sm}) {
     final profile = _profiles[r.userId];
     final thumbUrl = profile?.thumbUrl;
     final inner = thumbUrl == null
@@ -454,7 +454,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
     return Column(
       children: [
         // 쌍 상세 시트 _pairAvatar 와 동일 스케일 — 카드의 주인공은 얼굴.
-        _slotAvatar(slot, size: 64),
+        _slotAvatar(slot, size: AppAvatar.xl),
         const SizedBox(height: AppSpacing.sm),
         Text(
           _nameOf(slot),
@@ -631,7 +631,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
       width: 64,
       child: Column(
         children: [
-          _slotAvatar(slot, size: 24),
+          _slotAvatar(slot, size: AppAvatar.xs),
           const SizedBox(height: AppSpacing.xs),
           Text(
             _nameOf(slot),
@@ -718,7 +718,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
             child: Row(
               children: [
                 // 아바타 · 이름 — (우측) 밴드 점 · 등급.
-                _slotAvatar(other, size: 32),
+                _slotAvatar(other, size: AppAvatar.sm),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(child: Text(_nameOf(other), style: AppText.subTitle)),
                 BandDot(band, size: 28, score: _scoreOf(_mySlot!, other)),
@@ -977,7 +977,7 @@ Widget _pairPersonColumn(FaceReadingReport r, {String? name}) {
   return Column(
     mainAxisSize: MainAxisSize.min,
     children: [
-      _pairAvatar(r, size: 64),
+      _pairAvatar(r, size: AppAvatar.xl),
       const SizedBox(height: AppSpacing.sm),
       Text(
         name ?? r.alias ?? '${r.ageGroup.labelKo} ${r.gender.labelKo}',
@@ -999,7 +999,7 @@ Widget _pairPersonColumn(FaceReadingReport r, {String? name}) {
 
 /// 원형 thumbnail 아바타 — 1순위 로컬 파일 → 2순위 CDN(thumbnailKey) →
 /// 사람 아이콘.
-Widget _pairAvatar(FaceReadingReport r, {double size = 28}) {
+Widget _pairAvatar(FaceReadingReport r, {double size = AppAvatar.sm}) {
   final file = ThumbnailPaths.resolveFileSync(r.thumbnailPath);
   final cdn = ThumbnailPaths.cdnUrl(r.thumbnailKey);
   Widget inner = _pairIconAvatar(size);

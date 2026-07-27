@@ -303,7 +303,7 @@ class _PhysiognomyItem extends ConsumerWidget {
     // 공유받은 카드·로그인 rehydrate 복원 카드는 thumbnailPath=null 이지만
     // thumbnailKey 가 있어 CDN 으로 실제 얼굴을 띄운다 (궁합 아바타와 동일).
     // border 는 source 규칙 (sourceBorderColor — 카메라 gold / 앨범 lightGray).
-    const size = 42.0;
+    const size = AppAvatar.md;
     Widget inner = _sourceIconAvatar(report, size);
     final file = ThumbnailPaths.resolveFileSync(report.thumbnailPath);
     final cdn = ThumbnailPaths.cdnUrl(report.thumbnailKey);

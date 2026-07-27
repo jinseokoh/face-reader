@@ -90,14 +90,14 @@ class _SlotRow extends StatelessWidget {
     return Row(
       children: [
         SizedBox(
-          width: 42,
-          height: 42,
+          width: AppAvatar.md,
+          height: AppAvatar.md,
           child: Stack(
             clipBehavior: Clip.none,
             children: [
               Container(
-                width: 42,
-                height: 42,
+                width: AppAvatar.md,
+                height: AppAvatar.md,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   // border 색은 전 탭 공통 source 규칙 (카메라 gold /

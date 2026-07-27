@@ -817,8 +817,9 @@ class _PublicTabState extends ConsumerState<_PublicTab> {
 /// 채워진 아바타 뒤에 빈자리 슬롯을 이어 붙여 정원 표기를 겸한다 —
 /// 이성 케미는 남/여 잔여석을 각 성별 아이콘으로, 전체 케미는 user 아이콘.
 class _RosterAvatars extends ConsumerWidget {
+  // 42(md) 리스트 표준의 정확한 1/2 스케일 — 흰 ring 없이 thumb 만.
   static const _kThumb = 21.0;
-  static const _kBox = 23.0; // thumb + 흰 ring 1px×2
+  static const _kBox = _kThumb;
   static const _kStep = 16.0;
   final String teamId;
   final int maxPlayers;
@@ -867,7 +868,7 @@ class _RosterAvatars extends ConsumerWidget {
         child: Stack(
           children: [
             for (var i = 0; i < avatars.length; i++)
-              Positioned(left: _kStep * i, child: _ring(avatars[i])),
+              Positioned(left: _kStep * i, child: _thumb(avatars[i])),
             for (var i = 0; i < emptySvgs.length; i++)
               Positioned(
                 left: _kStep * (avatars.length + i),
@@ -879,31 +880,24 @@ class _RosterAvatars extends ConsumerWidget {
     );
   }
 
-  /// 빈자리 슬롯 — 채워진 아바타와 같은 ring 구조에 흰 원 + hint 색
-  /// svg 실루엣. border 는 기본색이라 채워진 자리와 확연히 구분된다.
+  /// 빈자리 슬롯 — 흰 원 + hint 색 svg 실루엣. border 는 기본색이라
+  /// 채워진 자리와 확연히 구분된다.
   Widget _emptySlot(String asset) {
     return Container(
-      padding: const EdgeInsets.all(1),
-      decoration: const BoxDecoration(
+      width: _kThumb,
+      height: _kThumb,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: Colors.white,
+        border: Border.all(color: AppColors.border),
       ),
-      child: Container(
-        width: _kThumb,
-        height: _kThumb,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white,
-          border: Border.all(color: AppColors.border),
-        ),
-        child: SvgPicture.asset(
-          asset,
-          height: 11,
-          colorFilter: const ColorFilter.mode(
-            AppColors.textHint,
-            BlendMode.srcIn,
-          ),
+      child: SvgPicture.asset(
+        asset,
+        height: 11,
+        colorFilter: const ColorFilter.mode(
+          AppColors.textHint,
+          BlendMode.srcIn,
         ),
       ),
     );
@@ -917,39 +911,32 @@ class _RosterAvatars extends ConsumerWidget {
     ),
   );
 
-  Widget _ring(RosterAvatar a) {
+  Widget _thumb(RosterAvatar a) {
     final showPhoto = a.url != null;
     return Container(
-      padding: const EdgeInsets.all(1),
+      width: _kThumb,
+      height: _kThumb,
+      clipBehavior: Clip.antiAlias,
       decoration: const BoxDecoration(
         shape: BoxShape.circle,
-        color: Colors.white,
+        color: AppColors.surface,
       ),
-      child: Container(
-        width: _kThumb,
-        height: _kThumb,
-        clipBehavior: Clip.antiAlias,
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          color: AppColors.surface,
+      // border 는 foreground — 이미지가 테두리 안쪽을 덮지 않게.
+      // 사진일 때만 촬영 경로 border 규칙 — 아이콘 fallback 은 기본 border.
+      foregroundDecoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: showPhoto ? sourceBorderColor(a.source) : AppColors.border,
         ),
-        // border 는 foreground — 이미지가 테두리 안쪽을 덮지 않게.
-        // 사진일 때만 촬영 경로 border 규칙 — 아이콘 fallback 은 기본 border.
-        foregroundDecoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: showPhoto ? sourceBorderColor(a.source) : AppColors.border,
-          ),
-        ),
-        child: showPhoto
-            ? CachedNetworkImage(
-                imageUrl: a.url!,
-                fit: BoxFit.cover,
-                placeholder: (_, _) => Container(color: AppColors.surface),
-                errorWidget: (_, _, _) => _genderIcon(a.gender),
-              )
-            : _genderIcon(a.gender),
       ),
+      child: showPhoto
+          ? CachedNetworkImage(
+              imageUrl: a.url!,
+              fit: BoxFit.cover,
+              placeholder: (_, _) => Container(color: AppColors.surface),
+              errorWidget: (_, _, _) => _genderIcon(a.gender),
+            )
+          : _genderIcon(a.gender),
     );
   }
 }

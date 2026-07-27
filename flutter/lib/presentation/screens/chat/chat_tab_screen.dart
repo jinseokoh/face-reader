@@ -15,7 +15,7 @@ import '../../widgets/source_badge.dart';
 import 'match_proposal_sheet.dart';
 
 /// 채팅 탭 — 열린 매칭 채팅방 목록 (카카오톡 채팅 목록 parity 레이아웃).
-/// 행: squircle 아바타 / 닉네임 + 마지막 메시지 / 시간 + 안읽음 dot.
+/// 행: 42 원형 아바타 / 닉네임 + 마지막 메시지 / 시간 + 안읽음 dot.
 /// 탭하면 기존 `/chat/:id` 라우트 재사용 (매칭·닉네임 resolve 포함),
 /// 복귀 시 openChatsProvider invalidate 로 읽음 상태 반영.
 class ChatTabScreen extends ConsumerWidget {
@@ -121,7 +121,7 @@ class ChatTabScreen extends ConsumerWidget {
   }
 }
 
-/// 채팅방 화면 아바타와 동일 레시피 (surface + border squircle).
+/// 채팅방 화면 아바타와 동일 레시피 (surface + border 원형).
 /// border 색은 source 규칙 (sourceBorderColor — 카메라 gold / 앨범 lightGray).
 class _Avatar extends StatelessWidget {
   final String? photoUrl;
@@ -136,16 +136,17 @@ class _Avatar extends StatelessWidget {
     final url = photoUrl;
     // border 는 foregroundDecoration — decoration 에 두면 child(이미지)가
     // 곡선 구간에서 테두리 안쪽 절반을 덮어 코너가 끊겨 보인다.
+    // 리스트 아바타 표준 — 42 원형 (관상·궁합·케미 슬롯과 동일 문법).
     return Container(
-      width: 48,
-      height: 48,
+      width: AppAvatar.md,
+      height: AppAvatar.md,
       clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.xl),
+        shape: BoxShape.circle,
       ),
       foregroundDecoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppRadius.xl),
+        shape: BoxShape.circle,
         border: Border.all(color: sourceBorderColor(photoSource)),
       ),
       child: url == null
@@ -159,7 +160,7 @@ class _Avatar extends StatelessWidget {
   }
 }
 
-/// 채팅방 한 줄 — 아바타 48, 닉네임(subTitle) + 마지막 메시지(caption) 1줄,
+/// 채팅방 한 줄 — 아바타 42 원형, 닉네임(subTitle) + 마지막 메시지(caption) 1줄,
 /// 우측 시간(hint) + 안읽음 gold dot.
 class _ChatTile extends ConsumerWidget {
   final OpenChat chat;

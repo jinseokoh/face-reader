@@ -122,7 +122,7 @@ class _HeaderAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // §3.7 — 다크 hero 의 84px 절반.
-    const size = 42.0;
+    const size = AppAvatar.md;
     // 미설정 — 사진 찍는 점술가를 원형 chrome 없이 2배(84) 크기로.
     if (myFace == null) {
       return Image.asset(

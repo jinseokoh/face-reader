@@ -48,7 +48,7 @@ class SettingsScreen extends ConsumerWidget {
                   Row(
                     children: [
                       CircleAvatar(
-                        radius: 22,
+                        radius: AppAvatar.md / 2,
                         backgroundColor: Colors.white,
                         backgroundImage: user.profileImageUrl != null
                             ? NetworkImage(user.profileImageUrl!)

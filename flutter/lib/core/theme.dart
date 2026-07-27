@@ -72,6 +72,18 @@ class AppSpacing {
   AppSpacing._();
 }
 
+/// 원형 인물 아바타 지름 스케일 — 리스트 표준은 md(42).
+/// xs 매트릭스 헤더·미니 roster / sm 순위·보조 행 / md 리스트·슬롯 /
+/// lg 상세 인물 / xl 베스트·쌍 시트.
+class AppAvatar {
+  static const double xs = 24;
+  static const double sm = 32;
+  static const double md = 42;
+  static const double lg = 56;
+  static const double xl = 64;
+  AppAvatar._();
+}
+
 /// 6-단 텍스트 토큰 + AppBar 타이틀.
 /// **display 만 SongMyung. 나머지는 system default.**
 /// 신규 화면은 inline `TextStyle(fontSize: …)` 대신 `AppText.X` 또는

@@ -388,7 +388,7 @@ class _MessageRow extends StatelessWidget {
     this.onLongPress,
   });
 
-  static const double _avatarSize = 40;
+  static const double _avatarSize = AppAvatar.md;
 
   /// '오후 3:13' — 카카오톡과 같은 한국어 12시간제.
   static String _timeLabel(DateTime t) {
@@ -517,13 +517,14 @@ class _MessageRow extends StatelessWidget {
       width: _avatarSize,
       height: _avatarSize,
       clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.xl),
+        shape: BoxShape.circle,
       ),
-      // border 는 foreground — child 이미지가 코너 테두리를 덮지 않게.
+      // border 는 foreground — child 이미지가 테두리를 덮지 않게. 원형은
+      // 채팅 리스트 아바타(42 원형)와 동일 문법.
       foregroundDecoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppRadius.xl),
+        shape: BoxShape.circle,
         border: Border.all(color: sourceBorderColor(photoSource)),
       ),
       child: photoUrl == null

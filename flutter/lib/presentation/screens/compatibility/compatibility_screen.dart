@@ -724,7 +724,7 @@ class _PairThumbs extends StatelessWidget {
       child: _Thumb(
         path: r.thumbnailPath,
         thumbnailKey: r.thumbnailKey,
-        size: 42,
+        size: AppAvatar.md,
         gender: r.gender,
         source: r.source,
       ),
@@ -794,7 +794,7 @@ class _CompatLockedCard extends ConsumerWidget {
               _Thumb(
                 path: album.thumbnailPath,
                 thumbnailKey: album.thumbnailKey,
-                size: 42,
+                size: AppAvatar.md,
                 gender: album.gender,
                 source: album.source,
               ),

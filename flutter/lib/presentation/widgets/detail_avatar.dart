@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:facely/core/storage/thumbnail_paths.dart';
+import 'package:facely/core/theme.dart';
 
 /// 상세 페이지 공용 아바타 — **56px 원형 + 1.5px ring**. 관상 상세의 원형이
 /// 기준 구조: 이미지는 [ClipOval] 로 ring **안쪽**에 클리핑해 border 가 사진
@@ -27,7 +28,7 @@ class DetailAvatar extends StatelessWidget {
     this.borderColor,
   });
 
-  static const double size = 56;
+  static const double size = AppAvatar.lg;
 
   @override
   Widget build(BuildContext context) {

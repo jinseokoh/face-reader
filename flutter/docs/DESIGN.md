@@ -63,6 +63,9 @@ Brand-warm: gold(#C9A876), goldDim(#A89678), goldSoft(#F4E4C1)
 ```
 AppSpacing: xs 4 · sm 8 · md 12 · lg 16 · xl 20 · xxl 24 · huge 32
 AppRadius:  sm 6 (chip) · md 10 (pill) · lg 14 (list card) · xl 16 (modal·hero)
+AppAvatar:  xs 24 (매트릭스 헤더) · sm 32 (순위·보조 행) ·
+            md 42 (리스트·슬롯 표준) · lg 56 (상세 인물) · xl 64 (베스트·쌍 시트)
+            예외: 케미 리스트 미니 roster 21 = md 의 1/2 스케일 (ring 없음)
 ```
 
 모든 EdgeInsets/SizedBox/BorderRadius 는 이 스케일 안에서만. 리스트 좌우 padding 은
