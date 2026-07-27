@@ -69,27 +69,6 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
 
   MatchProposal get p => widget.proposal;
 
-  Future<void> _respond(bool accept) async {
-    setState(() => _responding = true);
-    try {
-      await TeamService.instance.respondMatch(p.match.teamId, accept);
-      // 성사 시 채팅 목록에 entry 가 생기고, 어느 쪽이든 제안 목록이 바뀐다.
-      ref.invalidate(matchProposalsProvider);
-      ref.invalidate(openChatsProvider);
-      ref.invalidate(openChatTeamsProvider);
-    } catch (e) {
-      if (mounted) {
-        showTopSnackBar(
-          Overlay.of(context),
-          CompactSnackBar.error(message: mapTeamError(e).labelKo),
-        );
-        ref.invalidate(matchProposalsProvider);
-      }
-    } finally {
-      if (mounted) setState(() => _responding = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final uid = TeamService.instance.myUid;
@@ -142,8 +121,8 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
           const SizedBox(height: AppSpacing.lg),
           if (myConsent == null) ...[
             Text(
-              '이 사람과 채팅방을 열까요? 두 사람 모두 열기를 선택하면 '
-              '채팅방이 열립니다. 응답 기한이 지나면 자동으로 넘어갑니다.',
+              '이 분과 대화할 수 있는 채팅방을 열까요? 두 사람 모두 동의하는 경우만 '
+              '채팅방이 열립니다. 48시간 이내에 동의해 주세요.',
               style: AppText.caption,
             ),
             const SizedBox(height: AppSpacing.md),
@@ -152,6 +131,7 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
               busy: _responding,
               onPressed: () => _respond(true),
             ),
+            const SizedBox(height: AppSpacing.lg),
             Center(
               child: TextButton(
                 onPressed: _responding ? null : () => _respond(false),
@@ -167,6 +147,16 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
       ),
     );
   }
+
+  Widget _genderFallback() => Center(
+    child: Image.asset(
+      p.otherGender == 'male'
+          ? 'assets/icons/male.png'
+          : 'assets/icons/female.png',
+      width: 44,
+      height: 44,
+    ),
+  );
 
   /// 상대 얼굴 — border 색은 전 탭 공통 촬영 경로 규칙 (카메라 gold / 그 외).
   Widget _photo() {
@@ -195,15 +185,26 @@ class _ProposalCardState extends ConsumerState<_ProposalCard> {
     );
   }
 
-  Widget _genderFallback() => Center(
-    child: Image.asset(
-      p.otherGender == 'male'
-          ? 'assets/icons/male.png'
-          : 'assets/icons/female.png',
-      width: 44,
-      height: 44,
-    ),
-  );
+  Future<void> _respond(bool accept) async {
+    setState(() => _responding = true);
+    try {
+      await TeamService.instance.respondMatch(p.match.teamId, accept);
+      // 성사 시 채팅 목록에 entry 가 생기고, 어느 쪽이든 제안 목록이 바뀐다.
+      ref.invalidate(matchProposalsProvider);
+      ref.invalidate(openChatsProvider);
+      ref.invalidate(openChatTeamsProvider);
+    } catch (e) {
+      if (mounted) {
+        showTopSnackBar(
+          Overlay.of(context),
+          CompactSnackBar.error(message: mapTeamError(e).labelKo),
+        );
+        ref.invalidate(matchProposalsProvider);
+      }
+    } finally {
+      if (mounted) setState(() => _responding = false);
+    }
+  }
 
   static String _deadlineLabel(DateTime decideBy) {
     final left = decideBy.difference(DateTime.now().toUtc());
