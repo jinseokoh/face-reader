@@ -425,7 +425,8 @@ class _MineCard extends ConsumerWidget {
       onTap: () => onOpen(team),
       borderRadius: BorderRadius.circular(AppRadius.lg),
       child: Container(
-        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+        // 리스트 아이템 간격 — 관상·궁합 리스트와 동일한 md(12) 리듬.
+        margin: const EdgeInsets.only(bottom: AppSpacing.md),
         // ribbon 이 카드 radius 밖으로 삐져나가지 않게 clip.
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
@@ -685,7 +686,8 @@ class _PublicCardState extends State<_PublicCard> {
       onTap: _open,
       borderRadius: BorderRadius.circular(AppRadius.lg),
       child: Container(
-        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+        // 리스트 아이템 간격 — 관상·궁합 리스트와 동일한 md(12) 리듬.
+        margin: const EdgeInsets.only(bottom: AppSpacing.md),
         padding: const EdgeInsets.all(AppSpacing.lg),
         decoration: BoxDecoration(
           color: AppColors.surface,
