@@ -252,7 +252,7 @@ class SettingsScreen extends ConsumerWidget {
     PurchaseSheet.show(context);
   }
 
-  /// 프로필 이름 변경 — 관상 탭 '이름 변경' 다이얼로그와 동일 레시피.
+  /// 프로필 이름 변경 — 관상 탭 '별칭 변경' 다이얼로그와 동일 레시피.
   void _showNicknameDialog(
     BuildContext context,
     WidgetRef ref,

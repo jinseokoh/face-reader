@@ -229,7 +229,7 @@ class _PhysiognomyItem extends ConsumerWidget {
                   ),
                 const PopupMenuItem<String>(
                   value: 'rename',
-                  child: Text('제목 변경', style: AppText.body),
+                  child: Text('별칭 변경', style: AppText.body),
                 ),
                 PopupMenuItem<String>(
                   value: 'delete',
@@ -403,12 +403,12 @@ class _PhysiognomyItem extends ConsumerWidget {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.xl),
         ),
-        title: const Text('이름 변경', style: AppText.modalTitle),
+        title: const Text('별칭 변경', style: AppText.modalTitle),
         content: TextField(
           controller: controller,
           maxLength: 64,
           autofocus: true,
-          decoration: const InputDecoration(hintText: '이름을 입력하세요'),
+          decoration: const InputDecoration(hintText: '별칭을 입력하세요'),
         ),
         actions: [
           TextButton(
