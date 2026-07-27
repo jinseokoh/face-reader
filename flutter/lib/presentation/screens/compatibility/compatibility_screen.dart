@@ -24,6 +24,7 @@ import 'package:facely/presentation/screens/compatibility/compatibility_unlock_a
 import 'package:facely/presentation/widgets/coin_chip.dart';
 import 'package:facely/presentation/widgets/emotion_empty_state.dart';
 import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
+import 'package:facely/presentation/widgets/primary_button.dart';
 import 'package:facely/presentation/widgets/face_scan_pill.dart';
 import 'package:facely/presentation/widgets/sort_selector.dart';
 import 'package:facely/presentation/widgets/source_badge.dart';
@@ -853,25 +854,7 @@ class _CompatLockedCard extends ConsumerWidget {
             const SizedBox(height: 12),
             // 받은(북마크) 카드 포함 모든 미확인 카드는 단일 "궁합보기" 버튼으로
             // 통일. 상대 관상 열람은 관상 탭 > 북마크에서.
-            SizedBox(
-              width: double.infinity,
-              height: 44,
-              child: ElevatedButton(
-                onPressed: onUnlockPressed,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.accent,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  elevation: 0,
-                ),
-                child: Text(
-                  cta,
-                  style: AppText.subTitle.copyWith(color: Colors.white),
-                ),
-              ),
-            ),
+            PrimaryButton(label: cta, onPressed: onUnlockPressed),
           ],
         ],
       ),
