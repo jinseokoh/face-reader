@@ -311,7 +311,12 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         // selector 위 lg(16)/아래 md(12) — 관상 탭 정렬 헤더와 동일 리듬.
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.lg,
+          AppSpacing.lg,
+          AppSpacing.md,
+        ),
         children: [
           SortSelector<_LockedSort>(
             value: _lockedSort,
@@ -319,10 +324,10 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
             labelOf: (v) => v.label,
             onChanged: (v) => setState(() => _lockedSort = v),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           ...sorted.map(
             (other) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.only(bottom: AppSpacing.md),
               child: _CompatLockedCard(
                 album: other,
                 onUnlockPressed: () =>
@@ -474,7 +479,12 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         // selector 위 lg(16)/아래 md(12) — 관상 탭 정렬 헤더와 동일 리듬.
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.lg,
+          AppSpacing.lg,
+          AppSpacing.md,
+        ),
         children: [
           SortSelector<_UnlockedSort>(
             value: _unlockedSort,
@@ -485,10 +495,10 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
               ref.read(recentUnlockFocusProvider.notifier).clear();
             }),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           ...pinned.map(
             (e) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.only(bottom: AppSpacing.md),
               child: _CompatListCard(
                 a: e.first.report,
                 b: e.second.report,
@@ -639,7 +649,7 @@ class _CompatListCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                   Container(height: 1, color: AppTheme.border),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   Text(
                     '${r.myElement.displayKorean} × ${r.albumElement.displayKorean}  ·  ${_relationKindKo(r.elementRelation.kind)}',
                     style: AppText.hint.copyWith(
@@ -845,14 +855,14 @@ class _CompatLockedCard extends ConsumerWidget {
           if (!inactive) ...[
             const SizedBox(height: 14),
             Container(height: 1, color: AppTheme.border),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Text(
               isLoggedIn
                   ? '상세 풀이는 1코인 지불 후 확인가능합니다.'
                   : '최초 로그인하면 가입 보너스 3 코인을 지급해 드립니다.',
               style: AppText.hint.copyWith(color: AppColors.textSecondary),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             // 받은(북마크) 카드 포함 모든 미확인 카드는 단일 "궁합보기" 버튼으로
             // 통일. 상대 관상 열람은 관상 탭 > 북마크에서.
             PrimaryButton(label: cta, onPressed: onUnlockPressed),
@@ -923,13 +933,18 @@ class _InactiveCompatPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.lg,
+        AppSpacing.md,
+      ),
       children: [
         const _RegisterMyFaceBanner(),
         const SizedBox(height: AppSpacing.sm),
         ...others.map(
           (o) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.only(bottom: AppSpacing.md),
             child: _CompatLockedCard(album: o, inactive: true),
           ),
         ),
