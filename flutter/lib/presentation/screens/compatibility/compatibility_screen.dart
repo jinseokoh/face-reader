@@ -22,11 +22,13 @@ import 'package:facely/presentation/providers/recent_unlock_focus_provider.dart'
 import 'package:facely/presentation/providers/tab_provider.dart';
 import 'package:facely/presentation/screens/compatibility/compatibility_unlock_action.dart';
 import 'package:facely/presentation/widgets/coin_chip.dart';
+import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/presentation/widgets/emotion_empty_state.dart';
 import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
 import 'package:facely/presentation/widgets/primary_button.dart';
 import 'package:facely/presentation/widgets/face_scan_pill.dart';
 import 'package:facely/presentation/widgets/sort_selector.dart';
+import 'package:top_snackbar_flutter/top_snack_bar.dart';
 import 'package:facely/presentation/widgets/source_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -261,7 +263,14 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
     FaceReadingReport my,
     FaceReadingReport album,
   ) async {
-    await runCompatibilityUnlock(context, ref, my: my, album: album);
+    final ok = await runCompatibilityUnlock(context, ref, my: my, album: album);
+    // 결제 후 카드가 미확인 → 확인 리스트로 옮겨가기만 해서 어리둥절하다 —
+    // 어디로 갔는지 snackbar 로 안내.
+    if (!ok || !context.mounted) return;
+    showTopSnackBar(
+      Overlay.of(context),
+      CompactSnackBar.success(message: '확인 탭으로 이동 후, 궁합풀이를 읽어보세요.'),
+    );
   }
 
   /// 미확인 탭 — 시간 정렬 + 잠금 카드 리스트.
@@ -786,7 +795,7 @@ class _CompatLockedCard extends ConsumerWidget {
 
     // 잔액(N코인 보유)은 AppBar 의 _CoinChip 이 single source of truth.
     // 카드마다 반복하지 않음 — 시각 노이즈 제거.
-    final cta = isLoggedIn ? '1코인으로 풀이 보기' : '카카오 로그인하고 3 코인 받기';
+    final cta = isLoggedIn ? '1코인으로 궁합 보기' : '카카오 로그인하고 3 코인 받기';
 
     final card = Container(
       padding: const EdgeInsets.all(16),
