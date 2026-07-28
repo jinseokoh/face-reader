@@ -9,8 +9,8 @@ import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/providers/tab_provider.dart';
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/presentation/widgets/emotion_empty_state.dart';
-import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
 import 'package:facely/presentation/widgets/face_scan_pill.dart';
+import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
 import 'package:facely/presentation/widgets/physiognomy_info_dialog.dart';
 import 'package:facely/presentation/widgets/source_badge.dart';
 import 'package:flutter/material.dart';
@@ -329,26 +329,6 @@ class _PhysiognomyItem extends ConsumerWidget {
     );
   }
 
-  Widget _sourceIconAvatar(FaceReadingReport report, double size) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: const BoxDecoration(
-        color: AppColors.border,
-        shape: BoxShape.circle,
-      ),
-      child: FaIcon(
-        switch (report.source) {
-          AnalysisSource.camera => FontAwesomeIcons.faceSmile,
-          AnalysisSource.album => FontAwesomeIcons.images,
-          AnalysisSource.received => FontAwesomeIcons.shareNodes,
-        },
-        color: AppColors.textSecondary,
-        size: 18,
-      ),
-    );
-  }
-
   void _confirmDelete(BuildContext context, WidgetRef ref) {
     final demographic =
         '${report.ageGroup.labelKo} '
@@ -431,6 +411,26 @@ class _PhysiognomyItem extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _sourceIconAvatar(FaceReadingReport report, double size) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(
+        color: AppColors.border,
+        shape: BoxShape.circle,
+      ),
+      child: FaIcon(
+        switch (report.source) {
+          AnalysisSource.camera => FontAwesomeIcons.faceSmile,
+          AnalysisSource.album => FontAwesomeIcons.images,
+          AnalysisSource.received => FontAwesomeIcons.shareNodes,
+        },
+        color: AppColors.textSecondary,
+        size: 18,
       ),
     );
   }
@@ -753,8 +753,7 @@ class _ProfileHintCard extends StatelessWidget {
     return const EmotionEmptyState(
       asset: 'assets/images/emotion-sad.png',
       message:
-          '점3개 (더보기 메뉴) 버튼을 누르면 이미 등록한\n'
-          '사진을 내 관상으로 변경할 수 도 있습니다. ',
+          '내 관상 등록이 필요합니다.',
     );
   }
 }
