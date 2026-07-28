@@ -11,9 +11,7 @@ import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/models/physiognomy_tree.dart';
-import 'package:face_engine/domain/services/compat/compat_pair_key.dart';
 import 'package:face_engine/domain/services/yin_yang.dart';
-import 'package:facely/config/router.dart';
 import 'package:go_router/go_router.dart';
 import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
@@ -22,12 +20,7 @@ import 'package:facely/data/constants/node_text_blocks.dart';
 import 'package:facely/domain/services/report_assembler.dart';
 import 'package:facely/domain/services/share/share_publisher.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
-import 'package:facely/presentation/providers/compatibility_provider.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
-import 'package:facely/presentation/widgets/primary_button.dart';
-import 'package:facely/presentation/providers/recent_unlock_focus_provider.dart';
-import 'package:facely/presentation/providers/tab_provider.dart';
-import 'package:facely/presentation/screens/compatibility/compatibility_unlock_action.dart';
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/presentation/widgets/detail_avatar.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
@@ -124,7 +117,15 @@ final Map<String, MetricInfo> _metricInfoById = {
 class ReportPage extends ConsumerStatefulWidget {
   final FaceReadingReport report;
 
-  const ReportPage({super.key, required this.report});
+  /// 공유 링크 독립 열람(딥링크 fetch) 진입만 true — '공유받은 카드' 뷰.
+  /// 앱 내 리스트(카메라/앨범/북마크)에서 push 하면 false → '관상 분석' 뷰.
+  final bool receivedView;
+
+  const ReportPage({
+    super.key,
+    required this.report,
+    this.receivedView = false,
+  });
 
   @override
   ConsumerState<ReportPage> createState() => _ReportPageState();
@@ -842,122 +843,6 @@ class _ReceivedBookmarkAction extends ConsumerWidget {
   }
 }
 
-/// 받은 카드 ReportPage 의 궁합 CTA.
-/// 내 관상(isMyFace) 이 설정돼 있으면 "나와의 궁합 보기" 또는 (이미 unlock 된
-/// 경우) "궁합 풀이 보기" 버튼을 노출한다. 탭 시 이 받은 카드를 history 에
-/// 저장(주체적 추가)하고 궁합 흐름으로 진입한다.
-class _CompatCta extends ConsumerWidget {
-  final FaceReadingReport report;
-  const _CompatCta({required this.report});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final history = ref.watch(historyProvider);
-    final myFace = history
-        .where((r) => r.isMyFace)
-        .cast<FaceReadingReport?>()
-        .firstOrNull;
-    if (myFace == null) {
-      // 내 관상이 없으면 결제 여건이 안 된다 — 즉시 결제 대신 '저장'만. 받은
-      // 카드를 궁합 미확인 목록에 넣고 궁합 탭으로 이동(거기서 내 관상 등록을
-      // 유도). 결제·해제 복잡도는 궁합 탭 한 곳에만 둔다.
-      return SecondaryButton(
-        label: '궁합을 볼 수 있도록 저장하기',
-        onPressed: () => _onSaveForCompat(context, ref),
-      );
-    }
-    // 받은 카드가 내 관상(같은 metrics UUID)이면 나 자신과의 궁합은 무의미 —
-    // 버튼 대신 "내 관상입니다." 라벨로 대체.
-    final isMyOwn =
-        report.supabaseId != null && report.supabaseId == myFace.supabaseId;
-    if (isMyOwn) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-        alignment: Alignment.center,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const FaIcon(
-              FontAwesomeIcons.circleCheck,
-              size: 14,
-              color: AppColors.gold,
-            ),
-            const SizedBox(width: AppSpacing.xs),
-            Text(
-              '내 관상입니다.',
-              style: AppText.subTitle.copyWith(color: AppColors.textHint),
-            ),
-          ],
-        ),
-      );
-    }
-    final compatibilityKeysAsync = ref.watch(compatibilityKeysProvider);
-    final unlocked = compatibilityKeysAsync.asData?.value ?? const <String>{};
-    // partner_id = 상대 supabaseId (내 사진 교체와 무관).
-    final key = tryPairKey(myFace, report);
-    final isUnlocked = key != null && unlocked.contains(key);
-    final label = isUnlocked ? '궁합 풀이 보기' : '1코인으로 풀이 보기';
-
-    return SecondaryButton(
-      label: label,
-      onPressed: () => _onTap(context, ref, myFace, isUnlocked),
-    );
-  }
-
-  /// 내 관상 미설정 시 — 받은 카드를 궁합 미확인 목록에 저장하고 궁합 탭으로
-  /// 이동. 결제는 하지 않는다(여건 안 됨). 궁합 탭에서 내 관상 등록을 유도.
-  void _onSaveForCompat(BuildContext context, WidgetRef ref) {
-    final history = ref.read(historyProvider);
-    final alreadySaved =
-        report.supabaseId != null &&
-        history.any((r) => r.supabaseId == report.supabaseId);
-    if (!alreadySaved) {
-      ref.read(historyProvider.notifier).add(report);
-    }
-    ref.read(selectedTabProvider.notifier).selectTab(1); // 궁합 탭
-    context.go('/main');
-  }
-
-  Future<void> _onTap(
-    BuildContext context,
-    WidgetRef ref,
-    FaceReadingReport myFace,
-    bool isUnlocked,
-  ) async {
-    // 주체적 추가 — 받은 카드가 history 에 없으면 저장(궁합 리스트 노출에 필요).
-    final history = ref.read(historyProvider);
-    final alreadySaved =
-        report.supabaseId != null &&
-        history.any((r) => r.supabaseId == report.supabaseId);
-    if (!alreadySaved) {
-      ref.read(historyProvider.notifier).add(report);
-    }
-
-    if (!isUnlocked) {
-      // 미결제 — 버튼이 비용을 고지했으므로 확인 다이얼로그 없이 1코인 결제.
-      final ok = await runCompatibilityUnlock(
-        context,
-        ref,
-        my: myFace,
-        album: report,
-        confirm: false,
-      );
-      if (!ok || !context.mounted) return;
-      // 결제건을 '확인' 리스트 맨 위로 핀 + 궁합 탭으로 이동(상세는 열지 않음).
-      ref.read(recentUnlockFocusProvider.notifier).focus(report.supabaseId);
-      ref.read(selectedTabProvider.notifier).selectTab(1); // 궁합 탭
-      context.go('/main');
-      return;
-    }
-
-    // 이미 결제됨 — 궁합 탭으로 전환 후 상세를 바로 연다(닫으면 궁합 탭 복귀).
-    ref.read(recentUnlockFocusProvider.notifier).focus(report.supabaseId);
-    ref.read(selectedTabProvider.notifier).selectTab(1); // 궁합 탭
-    context.goCompat(my: myFace, album: report);
-  }
-}
-
 class _ReportPageState extends ConsumerState<ReportPage> {
   /// 관상 파이프라인이 근거로 삼는 학술·전통 자료 10선. UI 의 참고 자료
   /// 섹션과 PDF/클립보드 export 가 공유한다.
@@ -997,7 +882,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isReceived = report.source == AnalysisSource.received;
+    final isReceived = widget.receivedView;
     // received 카드는 받는 사람 입장에서 1회용 view — bookmark icon 으로 내 Hive
     // 에 영구 저장 가능. 이미 저장된 entry 면 filled bookmark + tap 시 안내
     // snackbar. own 카드는 기존 share 액션 그대로.
@@ -1055,10 +940,6 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             ),
             children: [
               _buildHeader(),
-              if (isReceived) ...[
-                const SizedBox(height: AppSpacing.lg),
-                _CompatCta(report: report),
-              ],
               const SizedBox(height: 16),
               _buildArchetypeCard(),
               const SizedBox(height: 20),

@@ -275,7 +275,9 @@ class _ReportRouteWrapperState extends State<_ReportRouteWrapper> {
         }
         final report = snap.data;
         if (report == null) return const _ShareErrorScreen();
-        return ReportPage(report: report);
+        // 딥링크 fetch(=preloaded 없음)만 '공유받은 카드' 독립 뷰. 앱 내
+        // 리스트(카메라/앨범/북마크) push 는 extra 로 오므로 '관상 분석' 뷰.
+        return ReportPage(report: report, receivedView: widget.preloaded == null);
       },
     );
   }
