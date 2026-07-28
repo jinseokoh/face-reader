@@ -97,7 +97,12 @@ class CoinService {
   Future<List<CoinProduct>> getProducts() async {
     if (!_initialized) return [];
     try {
-      final products = await Purchases.getProducts(_productIds);
+      // productCategory 기본값은 subscription — 코인은 일회성 제품이라
+      // 명시하지 않으면 Android 에서 빈 리스트가 온다.
+      final products = await Purchases.getProducts(
+        _productIds,
+        productCategory: ProductCategory.nonSubscription,
+      );
       _lastFetchError = null;
       debugPrint('[CoinService] getProducts → ${products.length} item(s) '
           'for ids=$_productIds');
