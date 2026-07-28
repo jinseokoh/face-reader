@@ -40,11 +40,7 @@ class TeamDetailScreen extends ConsumerStatefulWidget {
 
   /// 목록에서 문 앞 dialog 로 받은 비밀 그룹 비밀번호 — 참가 폼에 미리 채운다.
   final String? initialPin;
-  const TeamDetailScreen({
-    super.key,
-    required this.teamId,
-    this.initialPin,
-  });
+  const TeamDetailScreen({super.key, required this.teamId, this.initialPin});
 
   @override
   ConsumerState<TeamDetailScreen> createState() => _TeamDetailScreenState();
@@ -136,9 +132,7 @@ class _SlotRow extends StatelessWidget {
                     if (!hasMeta)
                       Text(
                         '(정보없음)',
-                        style: AppText.body.copyWith(
-                          color: AppColors.textHint,
-                        ),
+                        style: AppText.body.copyWith(color: AppColors.textHint),
                       ),
                     // meta 는 좁은 열(이성방 반폭)에서 잘리는 대신 폰트가
                     // 줄어들도록 scaleDown — 넉넉하면 caption 원 크기 유지.
@@ -320,9 +314,7 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
     super.initState();
     _pinCtrl.text = widget.initialPin ?? '';
     // 조회수 — 진입 1회, 실패는 무시 (표시는 다음 fetch 몫).
-    unawaited(
-      _service.incrementTeamViews(widget.teamId).catchError((_) {}),
-    );
+    unawaited(_service.incrementTeamViews(widget.teamId).catchError((_) {}));
     _refresh();
     _channel = _service.watchTeam(widget.teamId, _refresh);
     _poll = Timer.periodic(const Duration(seconds: 10), (_) => _refresh());
@@ -465,10 +457,8 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
   void _goReveal(Team team, {bool animated = true}) {
     if (_navigatedToReveal) return;
     _navigatedToReveal = true;
-    Widget dest(BuildContext _) => TeamRevealScreen(
-      teamId: widget.teamId,
-      ceremony: !team.hasResult,
-    );
+    Widget dest(BuildContext _) =>
+        TeamRevealScreen(teamId: widget.teamId, ceremony: !team.hasResult);
     Navigator.of(context).pushReplacement(
       animated
           ? MaterialPageRoute(builder: dest)
@@ -490,10 +480,8 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('남자 ${_remaining('male')}자리 남음',
-                    style: AppText.caption),
-                Text('여자 ${_remaining('female')}자리 남음',
-                    style: AppText.caption),
+                Text('남자 ${_remaining('male')}자리 남음', style: AppText.caption),
+                Text('여자 ${_remaining('female')}자리 남음', style: AppText.caption),
               ],
             )
           : null,
@@ -743,9 +731,8 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
 
   /// 사진 공개 계약 문구 — 정보성 고지, 체크박스 없음. 조인 = 동의(UX §E.1).
   Widget _photoConsentNotice(Team team) {
-    final text = team.roomKind == TeamRoomKind.match
-        ? '참가하면 참가자 전원에게 서로의 사진이 공개되고, 베스트 매칭이 서로 동의하면 1:1 채팅이 열립니다'
-        : '참가하면 참가자 전원에게 서로의 사진이 공개됩니다';
+    final text =
+      '참가자의 작은 썸네일 사진은 공개되며, 베스트 매칭으로 선정된 두 사람은 서로 동의시 1:1 채팅할 수 있습니다.';
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
@@ -859,11 +846,7 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
       children: [
         for (var i = start; i < start + count; i++) ...[
           if (i > start) const SizedBox(height: AppSpacing.lg),
-          _slotRow(
-            team,
-            i < _roster.length ? _roster[i] : null,
-            index: i + 1,
-          ),
+          _slotRow(team, i < _roster.length ? _roster[i] : null, index: i + 1),
         ],
       ],
     );
