@@ -69,14 +69,24 @@ begin
   for i in 1..9 loop
     insert into auth.users (instance_id, id, aud, role, email, encrypted_password,
                             raw_app_meta_data, raw_user_meta_data,
-                            created_at, updated_at)
+                            email_confirmed_at, created_at, updated_at)
     values ('00000000-0000-0000-0000-000000000000', v_dummy[i],
             'authenticated', 'authenticated',
             'battle-dummy-' || i || '@test.local', '',
-            '{"provider":"email"}', jsonb_build_object('nickname', v_names[i]),
-            now(), now())
+            '{"provider":"email","providers":["email"]}',
+            jsonb_build_object('nickname', v_names[i]),
+            now(), now(), now())
     on conflict (id) do update
       set raw_user_meta_data = excluded.raw_user_meta_data;
+    -- email identity 행 — 대시보드 Providers 표기의 근거 (users 행만으로는 공란).
+    insert into auth.identities (id, user_id, provider, provider_id, identity_data,
+                                 last_sign_in_at, created_at, updated_at)
+    values (gen_random_uuid(), v_dummy[i], 'email', v_dummy[i]::text,
+            jsonb_build_object('sub', v_dummy[i]::text,
+                               'email', 'battle-dummy-' || i || '@test.local',
+                               'email_verified', true),
+            now(), now(), now())
+    on conflict (provider_id, provider) do nothing;
     update public.users set nickname = v_names[i] where id = v_dummy[i];
 
     if i <= 5 then
