@@ -187,6 +187,7 @@ live resolve 한다(`fetchSlotProfiles`/`fetchLiveReport`) — 밴드 계산 입
 filter 매칭 한계로 폴링이 커버.
 
 **무료 코인**: rewarded video 3편 = 1🪙 (`ad_rewards`, KST 자정 reset).
+첫 슬롯은 custom 영상(`ad_videos`) 우선, AdMob 폴백 — 상세는 §5 광고 체계.
 
 **멀티디바이스**: 로그인 rehydrate(metrics 전체 + 모집 중 케미 방) + anon claim.
 썸네일 표시는 전 화면 공통 3단 — 로컬 파일 → CDN(thumbnailKey) → fallback.
@@ -221,7 +222,9 @@ DDL SSOT: `react/db/migrations/0001_baseline.sql` (단일 baseline 직접 수정
 | `team_members` | id · team_id(cascade) · user_id(cascade) · slot_no · gender · is_owner · joined_at | unique (team_id,user_id)·(team_id,slot_no). 쓰기는 RPC 전용(직접 insert/update/delete 정책 없음) |
 | `team_matches` | team_id PK(cascade) · user_a/user_b · a_consent/b_consent · opened_at | 베스트 쌍 채팅 개설 상호 동의 — 매칭당 1행, opened_at = 둘 다 수락 시각 |
 | `team_messages` | id · team_id(→team_matches cascade) · sender_id · body(≤500) · created_at | 성사된 쌍 전용 인앱 1:1 채팅. 수명 = teams 30일 purge cascade |
-| `ad_rewards` | (user_id, day) PK · views · claimed | KST reset |
+| `ad_rewards` | (user_id, day) PK · views · claimed | KST reset — 광고 종류 무관 공통 시청 장부 |
+| `ad_videos` | id · title · storage_path(`banners/*.mp4`) · duration_sec · active | custom 보상 영상 풀. 쓰기는 refine(service-role)만 |
+| `ad_images` | id · title · storage_path · link_url · active · sort_order | 외부 광고주 배너 풀 (§5 광고 체계 — 현재 노출 UI 없음) |
 | `bonus_recipients` | — | 가입 보너스 dedup |
 
 RPC (SECURITY DEFINER): `increment_metrics_views` · `grant/spend/admin_grant_coins` ·
@@ -244,7 +247,19 @@ owner, 상태 전이는 RPC 전용. `team_members` public read, 쓰기는 전부
 
 - `POST /analyze {image_url}` (R2 temp presigned) → `{age, gender, ethnicity}` —
   `face_metadata_client.dart` 가 매 분석마다 사용 (이전 값 기억 안 함).
-- AdMob rewarded: App ID = AndroidManifest/Info.plist, unit ID = `.env`.
+- 광고 체계 (2026-07-28 기준):
+  - **보상 광고 = custom 우선 + AdMob 폴백** (`purchase_sheet._watchAd`).
+    일일 3편 중 **첫 슬롯(progress==0)에만** `ad_videos` 활성 영상 무작위
+    1건을 자체 플레이어(`AdRewardScreen`, R2 CDN mp4)로 노출. 영상이
+    없거나 조회 실패·둘째 슬롯부터는 AdMob rewarded. 시청 완료는 양쪽
+    동일하게 `ad_reward_record_view` RPC 로 카운트 (3편 = 1🪙).
+  - AdMob unit 선택(`admob_service.dart`): debug 빌드 = Google 공식 test
+    unit 고정(정책 보호), release = `.env` 실 unit. `.env` 는 빌드 시점에
+    asset 으로 굳는다 — 값 갱신 후엔 재빌드 필수. App ID 는
+    AndroidManifest/Info.plist.
+  - `ad_images` 홈 배너: `AdImageService`·`adImagesProvider`(데이터 계층)만
+    존재하고 **소비 UI 가 없다** (홈 개편 때 배너 rotation 제거). 재도입
+    시 노출 화면 결정부터.
 - 인증: Kakao OAuth(`facely://auth-callback` 딥링크) + email/OTP. 탈퇴 = `/api/account/delete`.
 - 카카오 공유: FeedTemplate(설치) / OS 공유 시트 fallback. 상세 계약은 [KAKAO.md](../../KAKAO.md).
 
