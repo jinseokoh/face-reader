@@ -11,10 +11,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
+/// "비밀번호 찾기" 선택 결과 — 로그인 시트가 자신을 먼저 닫은 뒤, 바깥
+/// wrapper 가 이 요청을 받아 reset 시트를 이어서 연다 (시트 중첩 금지 UX).
+class _PasswordResetRequest {
+  final String email;
+  const _PasswordResetRequest(this.email);
+}
+
 /// Shows a login bottom sheet. Returns true if login succeeded (Kakao browser
 /// launched or email sign-in/up succeeded).
 Future<bool> showLoginBottomSheet(BuildContext context, WidgetRef ref) async {
-  final result = await showModalBottomSheet<bool>(
+  final result = await showModalBottomSheet<Object>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.white,
@@ -30,7 +37,13 @@ Future<bool> showLoginBottomSheet(BuildContext context, WidgetRef ref) async {
       child: const _LoginSheet(),
     ),
   );
-  return result ?? false;
+  // 비밀번호 찾기 — 로그인 시트가 완전히 닫힌 뒤 reset 시트를 연다.
+  // OTP 검증 성공 = 새 세션이라 reset 성공을 로그인 성공으로 돌려준다.
+  if (result is _PasswordResetRequest) {
+    if (!context.mounted) return false;
+    return showPasswordResetSheet(context, initialEmail: result.email);
+  }
+  return result == true;
 }
 
 class _LoginSheet extends ConsumerStatefulWidget {
@@ -369,15 +382,12 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
     _passwordCtrl.addListener(_onFormChanged);
   }
 
-  /// 비밀번호 찾기 — recovery OTP 3단계 시트. 성공 시 이미 새 세션이
-  /// 살아 있으므로 로그인 성공과 동일하게 pop(true).
-  Future<void> _openPasswordReset() async {
-    final done = await showPasswordResetSheet(
+  /// 비밀번호 찾기 — 이 시트를 먼저 닫고, reset 시트 열기는 바깥
+  /// wrapper(showLoginBottomSheet)가 이어받는다 (시트 중첩 금지 UX).
+  void _openPasswordReset() {
+    Navigator.of(
       context,
-      initialEmail: _emailCtrl.text.trim(),
-    );
-    if (!mounted || !done) return;
-    Navigator.of(context).pop(true);
+    ).pop(_PasswordResetRequest(_emailCtrl.text.trim()));
   }
 
   Future<void> _emailSubmit() async {

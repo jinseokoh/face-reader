@@ -10,7 +10,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 /// 비밀번호 찾기 — 등록된 이메일로 6자리 recovery OTP 를 보내 본인 확인 후
 /// 새 비밀번호를 저장하는 3단계 modal sheet (otp_verification_sheet 와 동일
-/// 레시피: 60초 재전송 cooldown, 6자리 자동 제출, 명시적 취소만 허용).
+/// 레시피: 60초 재전송 cooldown, 6자리 자동 제출). 취소 버튼 없음 — 로그인
+/// 시트가 먼저 닫힌 뒤 열리므로, 바깥 탭/아래로 드래그가 곧 취소다.
 ///
 /// OTP 검증 성공 시 Supabase 가 세션을 만들어 로그인 상태가 된다 — 새
 /// 비밀번호 저장까지 마치면 true 를 pop 하고, 부모(login sheet)는 그대로
@@ -25,8 +26,6 @@ Future<bool> showPasswordResetSheet(
   final result = await showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
-    isDismissible: false, // 실수로 닫히지 않도록 — 명시적 "취소" 만.
-    enableDrag: false,
     backgroundColor: Colors.white,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -38,8 +37,6 @@ Future<bool> showPasswordResetSheet(
   );
   return result ?? false;
 }
-
-enum _Step { email, otp, newPassword }
 
 class _PasswordResetSheet extends ConsumerStatefulWidget {
   final String? initialEmail;
@@ -64,121 +61,28 @@ class _PasswordResetSheetState extends ConsumerState<_PasswordResetSheet> {
   int _resendCooldownSec = 0;
 
   @override
-  void initState() {
-    super.initState();
-    _emailCtrl.text = widget.initialEmail ?? '';
-  }
-
-  @override
-  void dispose() {
-    _emailCtrl.dispose();
-    _otpCtrl.dispose();
-    _passwordCtrl.dispose();
-    _resendTimer?.cancel();
-    super.dispose();
-  }
-
-  void _startResendCooldown() {
-    _resendTimer?.cancel();
-    setState(() => _resendCooldownSec = 60);
-    _resendTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) return t.cancel();
-      if (_resendCooldownSec <= 1) {
-        t.cancel();
-        setState(() => _resendCooldownSec = 0);
-      } else {
-        setState(() => _resendCooldownSec -= 1);
-      }
-    });
-  }
-
-  Future<void> _sendCode() async {
-    final email = _emailCtrl.text.trim();
-    if (email.isEmpty || !email.contains('@')) {
-      setState(() => _error = '가입한 이메일 주소를 입력하세요');
-      return;
-    }
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-    final res = await ref
-        .read(authProvider.notifier)
-        .requestPasswordReset(email);
-    if (!mounted) return;
-    if (res.ok) {
-      _startResendCooldown();
-      setState(() {
-        _step = _Step.otp;
-        _isLoading = false;
-      });
-    } else {
-      setState(() {
-        _isLoading = false;
-        _error = res.message ?? '전송에 실패했습니다';
-      });
-    }
-  }
-
-  Future<void> _verify() async {
-    final token = _otpCtrl.text.trim();
-    if (token.length != _kOtpLength) {
-      setState(() => _error = '$_kOtpLength자리 코드를 입력하세요');
-      return;
-    }
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-    final res = await ref
-        .read(authProvider.notifier)
-        .verifyRecoveryOtp(_emailCtrl.text.trim(), token);
-    if (!mounted) return;
-    if (res.ok) {
-      setState(() {
-        _step = _Step.newPassword;
-        _isLoading = false;
-      });
-    } else {
-      setState(() {
-        _isLoading = false;
-        _error = res.message ?? '인증에 실패했습니다';
-      });
-    }
-  }
-
-  Future<void> _savePassword() async {
-    final password = _passwordCtrl.text;
-    if (password.length < 6) {
-      setState(() => _error = '6자 이상 비밀번호를 입력하세요');
-      return;
-    }
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-    final res = await ref.read(authProvider.notifier).updatePassword(password);
-    if (!mounted) return;
-    if (res.ok) {
-      Navigator.of(context).pop(true);
-    } else {
-      setState(() {
-        _isLoading = false;
-        _error = res.message ?? '변경에 실패했습니다';
-      });
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // drag handle — login sheet 와 동일 레시피. 이 시트의 취소는
+              // 바깥 탭/아래로 드래그뿐이라 시각 cue 가 곧 탈출구 안내다.
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: AppTheme.border,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
               const Text(
                 '비밀번호 찾기',
                 textAlign: TextAlign.center,
@@ -190,23 +94,26 @@ class _PasswordResetSheetState extends ConsumerState<_PasswordResetSheet> {
                 _Step.otp => _otpStep(),
                 _Step.newPassword => _passwordStep(),
               },
-              const SizedBox(height: 4),
-              Center(
-                child: TextButton(
-                  onPressed: _isLoading
-                      ? null
-                      : () => Navigator.of(context).pop(false),
-                  child: Text(
-                    '취소',
-                    style: AppText.caption.copyWith(color: AppColors.textHint),
-                  ),
-                ),
-              ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _emailCtrl.dispose();
+    _otpCtrl.dispose();
+    _passwordCtrl.dispose();
+    _resendTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _emailCtrl.text = widget.initialEmail ?? '';
   }
 
   List<Widget> _emailStep() => [
@@ -234,6 +141,25 @@ class _PasswordResetSheetState extends ConsumerState<_PasswordResetSheet> {
       style: AppText.hint,
     ),
   ];
+
+  /// otp_verification_sheet 의 필드 레시피와 동일 — 48px 비주얼 가중치.
+  InputDecoration _fieldDecoration({
+    required String hint,
+    double? hintLetterSpacing,
+  }) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(
+        color: AppTheme.textHint,
+        letterSpacing: hintLetterSpacing,
+      ),
+      isCollapsed: false,
+      isDense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      errorText: _error,
+    );
+  }
 
   List<Widget> _otpStep() => [
     Text.rich(
@@ -291,7 +217,7 @@ class _PasswordResetSheetState extends ConsumerState<_PasswordResetSheet> {
       ),
     ),
     Text(
-      '메일이 오지 않으면 스팸함을 확인하거나 재전송 버튼을 눌러주세요.',
+      '메일이 안 오면 스팸함 확인이나 재전송 버튼을 눌러주세요.',
       textAlign: TextAlign.center,
       style: AppText.hint,
     ),
@@ -331,22 +257,96 @@ class _PasswordResetSheetState extends ConsumerState<_PasswordResetSheet> {
     PrimaryButton(label: '비밀번호 변경', busy: _isLoading, onPressed: _savePassword),
   ];
 
-  /// otp_verification_sheet 의 필드 레시피와 동일 — 48px 비주얼 가중치.
-  InputDecoration _fieldDecoration({
-    required String hint,
-    double? hintLetterSpacing,
-  }) {
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: TextStyle(
-        color: AppTheme.textHint,
-        letterSpacing: hintLetterSpacing,
-      ),
-      isCollapsed: false,
-      isDense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      errorText: _error,
-    );
+  Future<void> _savePassword() async {
+    final password = _passwordCtrl.text;
+    if (password.length < 6) {
+      setState(() => _error = '6자 이상 비밀번호를 입력하세요');
+      return;
+    }
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    final res = await ref.read(authProvider.notifier).updatePassword(password);
+    if (!mounted) return;
+    if (res.ok) {
+      Navigator.of(context).pop(true);
+    } else {
+      setState(() {
+        _isLoading = false;
+        _error = res.message ?? '변경에 실패했습니다';
+      });
+    }
+  }
+
+  Future<void> _sendCode() async {
+    final email = _emailCtrl.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      setState(() => _error = '가입한 이메일 주소를 입력하세요');
+      return;
+    }
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    final res = await ref
+        .read(authProvider.notifier)
+        .requestPasswordReset(email);
+    if (!mounted) return;
+    if (res.ok) {
+      _startResendCooldown();
+      setState(() {
+        _step = _Step.otp;
+        _isLoading = false;
+      });
+    } else {
+      setState(() {
+        _isLoading = false;
+        _error = res.message ?? '전송에 실패했습니다';
+      });
+    }
+  }
+
+  void _startResendCooldown() {
+    _resendTimer?.cancel();
+    setState(() => _resendCooldownSec = 60);
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) return t.cancel();
+      if (_resendCooldownSec <= 1) {
+        t.cancel();
+        setState(() => _resendCooldownSec = 0);
+      } else {
+        setState(() => _resendCooldownSec -= 1);
+      }
+    });
+  }
+
+  Future<void> _verify() async {
+    final token = _otpCtrl.text.trim();
+    if (token.length != _kOtpLength) {
+      setState(() => _error = '$_kOtpLength자리 코드를 입력하세요');
+      return;
+    }
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    final res = await ref
+        .read(authProvider.notifier)
+        .verifyRecoveryOtp(_emailCtrl.text.trim(), token);
+    if (!mounted) return;
+    if (res.ok) {
+      setState(() {
+        _step = _Step.newPassword;
+        _isLoading = false;
+      });
+    } else {
+      setState(() {
+        _isLoading = false;
+        _error = res.message ?? '인증에 실패했습니다';
+      });
+    }
   }
 }
+
+enum _Step { email, otp, newPassword }

@@ -204,7 +204,7 @@ class _OtpSheetState extends ConsumerState<_OtpSheet> {
               ),
               const SizedBox(height: 4),
               Text(
-                '메일이 오지 않으면 스팸함을 확인하거나 재전송 버튼을 눌러주세요.\n'
+                '메일이 안 오면 스팸함 확인이나 재전송 버튼을 눌러주세요.\n'
                 '이미 가입된 이메일이면 코드가 발송되지 않을 수 있습니다.',
                 textAlign: TextAlign.center,
                 style: AppText.hint,
