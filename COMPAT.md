@@ -19,7 +19,7 @@
 | 조회 키   | `uuid~uuid`                    | 두 metrics UUID 를 소문자·사전순 정렬 후 `~` 로 연결 (`compat_pair_key.dart`)   |
 | 앱 모델   | `FaceReadingReport.supabaseId` | metrics UUID 를 Dart 쪽에서 부르는 이름                                         |
 
-정렬해서 붙이므로 쌍에 방향이 없다 → 같은 두 사람은 1:1 이든 케미 배틀의 제3자 쌍이든
+정렬해서 붙이므로 쌍에 방향이 없다 → 같은 두 사람은 1:1 이든 케미 그룹의 제3자 쌍이든
 **한 번만 결제**(1코인, 구매자에게 영구). 재촬영은 my-face row 덮어쓰기라 UUID 가 안 변해
 unlock 도 유지된다.
 
@@ -204,7 +204,7 @@ spicy 전용 축 산문 24개(성별 2 × 축 4 × 부호 3)를 따로 가져, o
 
 ---
 
-## 8. 케미 배틀 발표 gate (`battle.dart` + `team_reveal_screen.dart`)
+## 8. 케미 그룹 발표 gate (`team.dart` + `team_reveal_screen.dart`)
 
 모든 쌍 N(N−1)/2 회 엔진 호출 후 정렬. 정렬 순서가 곧 케미 순위.
 

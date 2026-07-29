@@ -1,7 +1,7 @@
-# 카카오 초대 — 케미 매칭 원격 참여
+# 카카오 초대 — 케미 그룹 원격 참여
 
-방장이 매칭 방을 만들면 방은 즉시 서버에 존재한다. 방장이 `facely.kr/g/{방ID}` 링크를
-카톡으로 보내면, 받은 사람이 링크를 눌러 앱 상세 페이지(`BattleDetailScreen`)에서 로그인
+방장이 그룹을 만들면 방은 즉시 서버에 존재한다. 방장이 `facely.kr/g/{방ID}` 링크를
+카톡으로 보내면, 받은 사람이 링크를 눌러 앱 상세 페이지(`TeamDetailScreen`)에서 로그인
 + 내 관상 확인(+ 비밀방이면 PIN) + 사진 공개 계약 확인을 마치는 순간 셀프 조인된다.
 
 ## 설계 결정
@@ -13,11 +13,11 @@
 
 ## 동작 흐름
 
-- **방장**: 매칭 생성(방 유형·제목 프리셋·인원·연령대·공개/비밀·썸네일 공개) → 상세 페이지 진입 → QR 코드·
+- **방장**: 그룹 생성(방 유형·제목 프리셋·인원·연령대·공개/비밀·썸네일 공개) → 상세 페이지 진입 → QR 코드·
   [카톡 초대]·[링크 공유]·[복사]가 상시 공존. 카톡 초대는 FeedTemplate 카드
   ([참여하기] 버튼, hero = `cdn.facely.kr/assets/og.png`). 카톡 미설치면 OS 공유
   시트 fallback (문구+링크 텍스트).
-- **합류자 (앱 설치)**: 링크 탭 → 유니버설/앱 링크로 앱 직행 → `BattleDetailScreen`
+- **합류자 (앱 설치)**: 링크 탭 → 유니버설/앱 링크로 앱 직행 → `TeamDetailScreen`
   이 방 정보(n/N명·연령대, match 방은 남은 성별 자리) 미리보기 표시 → 로그인 →
   내 관상 확인(없으면 촬영) → (비밀방) PIN 입력 → 사진 공개 계약 확인 →
   `join_team` RPC 로 셀프 조인 → 화면 전환 없이 같은 상세 페이지가 참가자 뷰로
@@ -31,9 +31,9 @@
   위저드**(카카오 로그인(supabase-js, 앱과 같은 auth.users) → (비밀방) PIN →
   사진 공개 계약 → 정면 캡처 → metrics+R2 썸네일 저장 → `join_team` RPC 로 셀프
   조인) / 결과 공개 = `result_payload` 있으면 쇼케이스, 없으면 클라이언트가
-  `runBattle` 로 즉석 계산 / 종료 = 안내. 웹 참여자가 나중에 앱 설치 후 같은
+  `runTeam` 으로 즉석 계산 / 종료 = 안내. 웹 참여자가 나중에 앱 설치 후 같은
   카카오 계정으로 로그인하면 rehydrate 가 캡처를 자동 복원하고, 조인한 방은
-  `team_members` 로 이미 서버에 귀속돼 있어 별도 복원 없이 "내 매칭" 목록에
+  `team_members` 로 이미 서버에 귀속돼 있어 별도 복원 없이 "내 그룹" 목록에
   그대로 뜬다. 설치 직후 자동 입장(deferred deep link)은 의도적 제외 — 설치 후
   카톡에서 링크 재탭.
 
@@ -57,10 +57,10 @@
 
 | 역할 | 파일 |
 |---|---|
-| 서버 접점 (create/join/leave/submit/fetch/watch) | `flutter/lib/data/services/battle_service.dart` |
-| 방 목록·상태 | `flutter/lib/presentation/providers/battle_provider.dart` |
+| 서버 접점 (create/join/leave/submit/fetch/watch) | `flutter/lib/data/services/team_service.dart` |
+| 방 목록·상태 | `flutter/lib/presentation/providers/team_provider.dart` |
 | 카톡 메시지·링크 | `flutter/lib/domain/services/share/share_publisher.dart` |
-| 상세(참가+대기 통합) / 결과 화면 | `battle_detail_screen.dart` / `team_reveal_screen.dart` |
-| 매칭 성사 / 인앱 채팅 | `battle_match_card.dart` / `battle_chat_screen.dart` |
+| 상세(참가+대기 통합) / 결과 화면 | `team_detail_screen.dart` / `team_reveal_screen.dart` |
+| 매칭 성사 / 인앱 채팅 | `team_match_card.dart` / `team_chat_screen.dart` |
 | DB 스키마 + RPC 상태 머신 | `react/db/migrations/0001_baseline.sql` §11-2~11-6 |
 | 웹 `/g/:id` | `react/app/routes/g.$id.tsx` |

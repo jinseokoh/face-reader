@@ -23,7 +23,7 @@ python/ (DeepFace FastAPI)          Supabase (metrics·coins·compatibilities·t
 |---|---|---|
 | 0 | `PhysiognomyScreen` | 관상 — 내부 3탭 고정(카메라/앨범/북마크, 개수 표기) + 14-node 리포트 진입 |
 | 1 | `CompatibilityScreen` | 궁합 — 내부 2탭(미확인/확인), 1🪙 unlock |
-| 2 | `ChemistryScreen` | 케미 — 내부 2탭(내가 만든/초대받은 그룹) |
+| 2 | `ChemistryScreen` | 케미 그룹 — 내부 2탭(공개 그룹/내 그룹) |
 | 3 | `ChatTabScreen` | 채팅 — 열린 매칭 채팅 목록(`openChatsProvider`), 안읽음 gold dot |
 | 4 | `SettingsScreen` | 설정 · 프로필 이름 수정 · 약관 · 로그인/탈퇴 |
 
@@ -63,8 +63,8 @@ box (`onboarding_never_again`) flag 를 남겨 노출을 끈다. 건너뛰기·�
 - `ReportPage` — 10 attribute bar(탭→top-5 contributor) · 음양 bar · 삼정 radar ·
   14-node expandable · 8 인생 질문 본문 · 공유(카카오/OS 시트). 공유받은 카드는 북마크로 보관.
 
-**케미 매칭 화면** (`screens/chemistry/chemistry_screen.dart` 탭 + `screens/team/`):
-`ChemistryScreen`(2탭 — 공개 매칭/내 매칭) · `showTeamCreatePage`(방 유형(all/match)→
+**케미 그룹 화면** (`screens/chemistry/chemistry_screen.dart` 탭 + `screens/team/`):
+`ChemistryScreen`(2탭 — 공개 그룹/내 그룹) · `showTeamCreatePage`(방 유형(all/match)→
 제목(카테고리→제목 2단 프리셋, `team_title_catalog.dart`)→인원(6/8/10/12 chip)→
 연령대(방장 나이대 포함 인접 2-decade RangeSlider, 하한 20세 — 10대는 진입 차단)→
 공개 설정(공개/비밀 PIN + 썸네일 공개) 스텝 플로우) · `TeamDetailScreen`(참가
@@ -168,7 +168,7 @@ insert + 원장 기록). 키 = (구매자, a_id<b_id 정규화 쌍 supabaseId) �
 metrics 소멸·방 purge 와 무관하게 복원. 지갑·궁합 목록은 a/b 중 내 my-face id 가
 낀 행만 필터해 기존 "내 쌍" 뷰를 유지한다.
 
-**케미 매칭**: 방은 생성 즉시 서버에 존재한다(서버 우선, 로컬 캐시 없음). 참가는
+**케미 그룹**: 방은 생성 즉시 서버에 존재한다(서버 우선, 로컬 캐시 없음). 참가는
 이름 선등록이 아니라 `join_team` RPC 셀프 조인이고, 정원 충족 시 같은 트랜잭션이
 참가자 전원의 현재 my-face body 를 `teams.chemistry_snapshot` 에 동결하며 상태를
 `revealing` 으로 전이한다(시작 후 재촬영이 결과에 영향을 못 주는 치팅 방어). 각
@@ -218,7 +218,7 @@ DDL SSOT: `react/db/migrations/0001_baseline.sql` (단일 baseline 직접 수정
 | `metrics` | id · user_id(cascade) · body · alias · is_my_face · views · updated_at | updated_at = 90일 정리 기준 |
 | `coins` | user_id · kind · amount · balance_after · store_transaction_id(unique) | 원장 |
 | `compatibilities` | (user_id, a_id, b_id) PK (a<b 정규화 쌍) · a/b_body · a/b_alias · total_score | self-contained 스냅샷 (의도된 보존) |
-| `teams` | id · owner_id · title · room_kind(all/match) · visibility · password · thumb_open · max_players(6/8/10/12) · age_min/age_max(20+, 인접 2-decade) · status · started_at · closed_at · chemistry_snapshot · result_payload | 케미 매칭 방. status `recruiting→revealing→completed/expired`, closed_at+30일 = 수명 |
+| `teams` | id · owner_id · title · room_kind(all/match) · visibility · password · thumb_open · max_players(6/8/10/12) · age_min/age_max(20+, 인접 2-decade) · status · started_at · closed_at · chemistry_snapshot · result_payload | 케미 그룹 방. status `recruiting→revealing→completed/expired`, closed_at+30일 = 수명 |
 | `team_members` | id · team_id(cascade) · user_id(cascade) · slot_no · gender · is_owner · joined_at | unique (team_id,user_id)·(team_id,slot_no). 쓰기는 RPC 전용(직접 insert/update/delete 정책 없음) |
 | `team_matches` | team_id PK(cascade) · user_a/user_b · a_consent/b_consent · opened_at | 베스트 쌍 채팅 개설 상호 동의 — 매칭당 1행, opened_at = 둘 다 수락 시각 |
 | `team_messages` | id · team_id(→team_matches cascade) · sender_id · body(≤500) · created_at | 성사된 쌍 전용 인앱 1:1 채팅. 수명 = teams 30일 purge cascade |

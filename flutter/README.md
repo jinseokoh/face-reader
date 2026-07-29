@@ -4,13 +4,13 @@
 
 MediaPipe Face Mesh 468 landmarks → 26 frontal + 8 lateral metric → 14-node tree
 → 10 attribute → archetype → 8 인생 질문 본문. 궁합 엔진은 별도.
-제품 3층: 1인 관상 · 2인 궁합 · 다인 케미.
+제품 3층: 1인 관상 · 2인 궁합 · 다인 케미 그룹.
 
 오리엔테이션·작업 규칙·SSOT 문서 안내: [`CLAUDE.md`](CLAUDE.md).
 
 ```bash
 flutter pub get
-flutter analyze     # 기준선 7건 (경미)
+flutter analyze     # 기준선 8건 (경미)
 flutter test        # 전부 green
 flutter run         # 실기기 (camera/MediaPipe 는 simulator 불가)
 ```

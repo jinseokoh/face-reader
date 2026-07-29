@@ -18,8 +18,8 @@ workerd 단계에서 RTI subtype check 를 깨뜨린다. `-O1` 만 안전.
 
 - Flutter: `face_engine: { path: ../shared }` path dependency.
 - React: `react/app/lib/traits.ts` 가 `./shared/face_engine.js` 로드.
-- JS export 3개: `runEngine(metricsJson)`(solo 카드) · `runCompat(jsonA, jsonB)`(궁합) ·
-  `runMetrics(...)`(웹 티저). 출력은 share 표면이 렌더할 minimal subset 만 —
-  그 외 데이터 외부 노출 금지.
+- JS export 4개: `runEngine(metricsJson)`(solo 카드) · `runCompat(jsonA, jsonB)`(궁합) ·
+  `runMetrics(...)`(웹 티저) · `runTeam(teamJson)`(케미 그룹 결과표). 출력은 share
+  표면이 렌더할 minimal subset 만 — 그 외 데이터 외부 노출 금지.
 
 불변식: 이 패키지는 platform-free 순수 Dart (`dart compile js` 통과 필수).

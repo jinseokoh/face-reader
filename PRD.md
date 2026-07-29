@@ -2,7 +2,7 @@
 
 **문서 버전**: 1.0 (2026-07-09)
 **작성 근거**: docs 3종(ARCHITECTURE·HOW-IT-WORKS·DESIGN) + PIVOT.md 확정 스펙(git 이력) + KAKAO.md + 실코드·커밋 대조
-**상태 스냅샷**: 케미 매칭 rev2(방 유형·매칭 성사·인앱 채팅) 코드 완료 · `flutter test` 161 green · Supabase rev2 재적용·실기기 E2E·웹 스모크·운영 장치·스토어 재제출 미완
+**상태 스냅샷**: 케미 그룹 rev2(방 유형·매칭 성사·인앱 채팅) 서버·웹·앱 전면 배포 완료 · `flutter test` 168 green · 코인 IAP(coin_3/coin_14) 스토어 등록 · Android Play 심사 제출(2026-07-29) · iOS 재제출 대기
 **남은 작업 실행 목록**: 본 문서 §6.2 (flutter/README.md 는 빌드 안내로 축소됨)
 
 ---
@@ -20,9 +20,9 @@
 | ------------- | ------ | ---------------------------------------------------------------------------------------------------------------------- |
 | **관상**      | 1인    | 콘텐츠 층 — 26+8 metric → 14-node → 10 attribute → archetype → 8 인생 질문 본문                                        |
 | **궁합**      | 2인    | 五行·十二宮·五官·三停·陰陽 5-frame 별도 엔진, 4단 라벨                                                                 |
-| **케미 매칭** | 6~12인 | **1차 기능** — 게임 로비. 방을 만들면 참가자가 셀프 조인하고, 정원(하드 리밋)이 차면 케미 결과가 자동 공개된다. 방 유형 2종: `all`(전체 케미 N×N) / `match`(남녀 반반 이성 케미, 남×여 직사각 매트릭스). 초대가 기능이 아니라 전제인 콘텐츠 |
+| **케미 그룹** | 6~12인 | **1차 기능** — 게임 로비. 방을 만들면 참가자가 셀프 조인하고, 정원(하드 리밋)이 차면 케미 결과가 자동 공개된다. 방 유형 2종: `all`(전체 케미 N×N) / `match`(남녀 반반 이성 케미, 남×여 직사각 매트릭스). 초대가 기능이 아니라 전제인 콘텐츠 |
 
-용어 규칙: 한국어 공식 명칭 = **`케미 매칭`**(2026-07-19 "케미 배틀"에서 개칭, `케미` 단독 표기는 2026-07-16 폐기), 코드 식별자 = 영문 `team_*`. 결과표 카피는 "생성" 언어만 ("발표/마감" 표기 폐기 2026-07-12).
+용어 규칙: 한국어 공식 명칭 = **`케미 그룹`**(2026-07-19 "케미 매칭"에서 재개칭, `케미` 단독 표기는 2026-07-16 폐기). 방/모임 단위는 `그룹`(공개 그룹·내 그룹), 성사된 쌍은 `매칭`. 코드 식별자 = 영문 `team_*`. 결과표 카피는 "생성" 언어만 ("발표/마감" 표기 폐기 2026-07-12).
 멤버는 이름 선등록이 아니라 로그인 계정으로 셀프 조인한다 — 방장이 카메라로 멤버를 등록하는 `직접촬영` 액션은 정원 충족 자동 시작 모델로 대체되어 폐기(2026-07-16).
 
 ### 1.3 왜 케미가 1차 기능인가 (기각 이력 요약)
@@ -83,7 +83,7 @@
 
 | 수신자 상태             | 요구사항                                                                                                             | 구현 상태                                                        |
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| 앱 사용자               | 로그인 → 내 관상 있으면 바로 `join_team`, 없으면 촬영 후 조인                                                       | ✅ 구현 (`BattleDetailScreen`)                                     |
+| 앱 사용자               | 로그인 → 내 관상 있으면 바로 `join_team`, 없으면 촬영 후 조인                                                       | ✅ 구현 (`TeamDetailScreen`)                                     |
 | 앱 미사용자              | React 웹(`/g/{id}`)에서 **셀프 조인 완결** — 카카오 로그인 → (비밀방) PIN → 사진 공개 계약 → 정면 캡처 → `join_team`  | ✅ 구현 (`JoinWizard`)                                             |
 | 앱 미사용자 → 설치 전환 | **웹 캡처의 관상 데이터를 앱에서 재사용** — 설치 후 다시 찍지 않는다. React 앱도 **카카오 로그인** 지원              | ✅ 구현 (앱 로그인 rehydrate + react 카카오 로그인·capture 귀속) |
 
@@ -91,7 +91,7 @@
 
 ## 4. 기능 요구사항
 
-### 4.1 케미 매칭 (1차 기능)
+### 4.1 케미 그룹 (1차 기능)
 
 #### 매칭 생성
 
@@ -137,7 +137,7 @@
   매트릭스(`all` 방 = N×N, `match` 방 = 남×여 직사각 — 이성 쌍만 계산·저장·표시. 셀 =
   4단 밴드 색 점(앱은 BandDot 단일 위젯 — 초록 천생연분 / 파랑 금슬화합 / 주황 상부상조 / 빨강 형극난조, 점 가운데 점수 상시 노출(snapshot 로컬 재계산 — payload 는 여전히 best.score 만), 웹만 이모지·점수 없음),
   **보는 사람 행 최상단 고정**) → 쌍 탭 = 1🪙 unlock(`unlock_compat` RPC).
-- 계산은 클라이언트가 한다(`runBattle`, 결정론이라 전원이 같은 결과) — 최초 도달
+- 계산은 클라이언트가 한다(`runTeam`, 결정론이라 전원이 같은 결과) — 최초 도달
   클라이언트가 `submit_team_result` 로 결과를 1회 기록(first-writer-wins), 이후
   열람은 그 payload 를 그대로 렌더.
 
@@ -146,7 +146,7 @@
 - 베스트 쌍 두 사람에게만 결과 직후 매칭 성사 카드 — 서로의 200×200 사진 공개(성사
   단계는 `thumb_open` 무관 항상 공개, 조인 시 사진 공개 계약이 근거) + "채팅방을
   열까요?" 상호 동의(`respond_match` RPC, 수락/거절 1회 — 재응답 불가).
-- 둘 다 수락 → 인앱 1:1 채팅(`team_messages`, Realtime) — 내 매칭 탭에 [채팅] 진입점.
+- 둘 다 수락 → 인앱 1:1 채팅(`team_messages`, Realtime) — 내 그룹 탭에 [채팅] 진입점.
   한쪽 거절 → 즉시 종결("이번에는 채팅방이 열리지 않았습니다"). 무응답 → 30일 purge 와
   함께 자연 소멸. 채팅 수명 = teams 30일 purge cascade.
 - 베스트 쌍이 아닌 참가자에겐 이 단계 자체가 없다.
@@ -165,7 +165,7 @@
 - **메시지 신고**: 상대 말풍선 길게 누르기 → 사유 선택 → 신고된 메시지
   본문을 사유에 동봉해 `team_reports` 접수 (스토어 UGC 정책의 콘텐츠 단위
   신고 경로. 사용자 단위 신고·차단은 채팅 ⋮ 메뉴에 기존대로).
-- 채팅방이 열린 방은 내 매칭 목록 카드가 초록 tint + 초록 border 로 강조된다
+- 채팅방이 열린 방은 내 그룹 목록 카드가 초록 tint + 초록 border 로 강조된다
   (관상 탭 내 관상 카드의 금색 강조와 같은 문법, 천생연분 초록 승계).
 
 #### 차단 (SNS 안전장치 — 비용은 전부 차단자 부담)
@@ -198,10 +198,10 @@
 - **결과 공개(payload 있음) = 쇼케이스**: 🏆 베스트 케미 카드 + 밴드 매트릭스(`match`
   방은 남×여 직사각 — `players[].gender` 사용). 사진 없음, 점수는 베스트만. 매칭
   성사·채팅은 앱 전용 — 웹은 "앱에서 확인" 안내.
-- **결과 공개(payload 없음, snapshot 있음)**: 브라우저가 `runBattle` 로 즉석 계산해
+- **결과 공개(payload 없음, snapshot 있음)**: 브라우저가 `runTeam` 으로 즉석 계산해
   렌더하고, 로그인 참가자면 `submit_team_result` 로 정본을 backfill.
 - **종료**(`expired`, 또는 `completed` 인데 payload·snapshot 둘 다 없음): 종료 안내.
-- 공개 매칭 목록은 이번 범위 밖(앱 전용) — 웹은 링크 조인 + 쇼케이스만.
+- 공개 그룹 목록은 이번 범위 밖(앱 전용) — 웹은 링크 조인 + 쇼케이스만.
 
 #### 웹 캡처 데이터 재사용
 
@@ -209,7 +209,7 @@
 
 - **React 앱 카카오 로그인**: Supabase Auth OAuth (supabase-js PKCE) — 앱과 **같은 프로젝트·같은 계정 체계**. 선행 조건: Supabase Auth Redirect URLs 에 `https://facely.kr/g/*` 등록.
 - **capture 귀속 저장**: `runMetrics` 결과(정면 26 metric) + 수동 선택 demographics 를 `metrics` 테이블에 `user_id` 귀속 + `is_my_face=true` 로 upsert, 캡처 프레임은 200px 썸네일로 R2 저장.
-- **앱에서 자동 복원**: 설치 후 같은 카카오 계정 로그인 → 로그인 rehydrate 가 그 capture 를 내 관상으로 복원. 참가한 매칭은 `team_members` 가 서버에 이미 갖고 있어 로그인 즉시 "내 매칭" 목록에 그대로 뜬다 — 별도 복원 로직이 필요 없다.
+- **앱에서 자동 복원**: 설치 후 같은 카카오 계정 로그인 → 로그인 rehydrate 가 그 capture 를 내 관상으로 복원. 참가한 매칭은 `team_members` 가 서버에 이미 갖고 있어 로그인 즉시 "내 그룹" 목록에 그대로 뜬다 — 별도 복원 로직이 필요 없다.
 - **측면 metrics 는 fallback**: 웹 캡처는 정면 1장 — 측면 8 metric 없이 저장하고 엔진은 그대로 수용(측면은 옵션 입력). 매칭 조인·궁합 계산은 정면 capture 만으로 성립. 측면 보완 촬영은 앱에서 선택(리포트 정밀도 향상 유도).
 - **DeepFace 추정을 웹에도** (보류): 성별/나이 자동 prefill 은 미구현 — 현재는 수동 선택. 필요 시 R2 `temp/` presign + `/analyze` 재사용으로 승격 가능.
 
@@ -235,7 +235,7 @@
 | 코인      | 원장 테이블(coins) + RPC 단일 트랜잭션. store_transaction_id unique 로 중복 결제 차단 |
 | 무료 코인 | AdMob rewarded video 3편 = 1🪙, KST 자정 reset                                         |
 | 유료      | 앱스토어 IAP 로 코인 구매 (웹 결제 없음)                                              |
-| 과금 지점 | 궁합 전체 본문 1🪙 · 케미 매칭 쌍 상세 1🪙 (`unlock_compat` RPC 그대로)             |
+| 과금 지점 | 궁합 전체 본문 1🪙 · 케미 그룹 쌍 상세 1🪙 (`unlock_compat` RPC 그대로)             |
 | 무료 유지 | 매칭 방 생성 · 셀프 조인 · 밴드 매트릭스 · 🏆 베스트 케미 1쌍 · 관상 리포트           |
 
 ---
@@ -250,7 +250,7 @@
 - 웹 공개 뷰는 이름 + 밴드만 기본, 썸네일은 방장 옵트인.
 - 링크 read = UUID 아는 사람(링크 공유 모델) — 유출 시 그룹명·멤버 이름 노출됨을 인지한 설계.
 
-**데이터 수명주기 (worker cron `react/workers/cron.ts`)** — 로그인 rehydrate(관상·궁합 복원)과 한 쌍. 케미 매칭은 서버 우선이라 로그인만 하면 `team_members` 조회로 즉시 뜬다 — 별도 복원 로직이 없다.
+**데이터 수명주기 (worker cron `react/workers/cron.ts`)** — 로그인 rehydrate(관상·궁합 복원)과 한 쌍. 케미 그룹은 서버 우선이라 로그인만 하면 `team_members` 조회로 즉시 뜬다 — 별도 복원 로직이 없다.
 
 - **탈퇴** (`/api/account/delete`): 본인 metrics 전부 hard delete + R2 썸네일 삭제 + 모집 중(open, `closed_at is null`) teams 삭제. metrics FK 는 `on delete cascade` — endpoint 우회 경로(관리 콘솔 등)에서도 고아 row 가 남지 않는 안전망.
 - **90일 미활동 anon metrics**: `user_id IS NULL` + `updated_at < 90일` row 를 매일 cron(`cleanupStaleMetrics`)이 R2 썸네일과 함께 삭제. 공유 링크 조회가 `updated_at` 을 touch 하므로 아직 보는 카드는 생존. 로그인 유저 소유 row 는 cron 대상 아님 (내 관상 백업 보호 — 삭제는 탈퇴만).
@@ -260,7 +260,7 @@
 
 ### 5.2 품질 게이트
 
-- `flutter analyze` 기준선 7건(경미) 외 신규 0 · `flutter test` 전부 green (현재 161개).
+- `flutter analyze` 기준선 8건(경미) 외 신규 0 · `flutter test` 전부 green (현재 168개).
 - 엔진 룰·reference·quantile 변경은 `shared/` 한 곳에서만 + Monte Carlo 재보정(20,000 샘플, seed=42) 동반.
 - UI 통일성 절대 1순위 — 디자인 토큰 SSOT(`flutter/docs/DESIGN.md`), 같은 역할 = 같은 토큰, 신규 색상 도입 금지, FontAwesome only.
 - Hive·Supabase 스키마는 drop-recreate 자유(출시 전). DDL 은 `0001_baseline.sql` 단일 파일 직접 수정.
@@ -273,9 +273,9 @@ shared/ (face_engine, 순수 Dart SSOT) ── path dep ──▶ flutter/ (앱 
 python/ (DeepFace FastAPI — 성별·연령·인종 추정)     Supabase (metrics·coins·unlocks·teams·team_members·team_matches·team_messages)
 ```
 
-- 궁합 엔진은 Flutter 에만 — react 는 `runBattle`(웹 즉석 계산·backfill)로 같은 shared 엔진을 호출한다. 렌더는 `result_payload` 가 있으면 그대로, 없으면 계산 결과.
-- JS export 는 `runEngine` / `runCompat` / `runMetrics` / `runBattle` 4개.
-- **실시간 = Supabase Realtime** — 케미 매칭 상세 페이지는 `teams`(UPDATE) + `team_members`(INSERT/DELETE) `postgres_changes` 구독 + 10초(앱)/15초(웹) 백업 폴링을 상시 병행한다(이탈 반영은 DELETE 필터 매칭 한계로 폴링이 커버, 백그라운드 push 알림은 범위 외). 매칭 성사(`team_matches` UPDATE)·인앱 채팅(`team_messages` INSERT)도 같은 Realtime — 쌍 외 수신은 RLS 가 차단.
+- 궁합·케미 계산은 웹도 같은 shared 엔진 — react 는 `runCompat`/`runTeam` 으로 호출한다. 렌더는 `result_payload` 가 있으면 그대로, 없으면 즉석 계산 후 backfill.
+- JS export 는 `runEngine` / `runCompat` / `runMetrics` / `runTeam` 4개.
+- **실시간 = Supabase Realtime** — 케미 그룹 상세 페이지는 `teams`(UPDATE) + `team_members`(INSERT/DELETE) `postgres_changes` 구독 + 10초(앱)/15초(웹) 백업 폴링을 상시 병행한다(이탈 반영은 DELETE 필터 매칭 한계로 폴링이 커버, 백그라운드 push 알림은 범위 외). 매칭 성사(`team_matches` UPDATE)·인앱 채팅(`team_messages` INSERT)도 같은 Realtime — 쌍 외 수신은 RLS 가 차단.
 
 ---
 
@@ -286,21 +286,20 @@ python/ (DeepFace FastAPI — 성별·연령·인종 추정)     Supabase (metri
 | Phase | 내용                                                                                  | 상태                         |
 | ----- | ------------------------------------------------------------------------------------- | ---------------------------- |
 | P1    | 홈 개편(그룹 카드 중심) + 내 관상 셀프 등록 + in-app 스플래시                         | ✅ 기기 검증까지 통과         |
-| —     | 케미 매칭 — 게임 로비 전환(teams/team_members RPC 상태 머신·Realtime 상세 페이지·QR 셀프 조인·`result_payload`·cron 4종) + rev2(방 유형 all/match·성별 정원·썸네일 공개·매칭 성사·인앱 채팅·공약 폐기) | 🔶 코드 완료, Supabase rev2 재적용·웹 배포 남음 |
+| —     | 케미 그룹 — 게임 로비 전환(teams/team_members RPC 상태 머신·Realtime 상세 페이지·QR 셀프 조인·`result_payload`·cron 4종) + rev2(방 유형 all/match·성별 정원·썸네일 공개·매칭 성사·인앱 채팅·공약 폐기) | ✅ 적용·배포 완료 |
 | —     | 카톡 FeedTemplate 초대 · 측면 캡처 yaw 밴드 확대                                      | ✅ 커밋 완료                  |
 
 ### 6.2 미완 (우선순위 순)
 
-1. **🔴 출시 차단**: **Supabase rev2 baseline 재적용(drop-recreate) + smoke ALL PASS** · 케미 매칭 실기기 E2E(2기기·현장 QR 조인·match 방 6인 시나리오) · 웹 스모크 검증 · cron 4종(48h expired·24h revealing 안전망·30일 teams purge·90일 anon metrics 정리) 실동작 확인 · **Supabase Redirect URLs 에 `https://facely.kr/g/*` 등록(대시보드 1회)**
-2. **🟠 운영 편의**: 공개 매칭 목록 웹 미노출(앱 전용, 의도적 범위 밖)
+1. **🔴 출시**: Android — Play Console 심사 제출 완료(2026-07-29, 코인 IAP coin_3/coin_14 등록·가입 연령 만 18세 정합 포함), 심사 결과 대기 · iOS — 4.3(b) 재제출 준비
+2. **🟠 운영 편의**: 공개 그룹 목록 웹 미노출(앱 전용, 의도적 범위 밖)
 3. **🟡 운영 + 스토어(P4)**: **이메일 비밀번호 재설정(찾기)** — 앱에 기능 부재. 현재 락아웃 시 운영자가 대시보드에서 수동 리셋뿐(2026-07-12 실제 발생). recovery 메일 발송 + `facely.kr` 재설정 페이지 필요 · 30일 수명주기의 클라이언트 만료 표시(서버 cron 은 구현됨) · 신고·차단·방 제목 필터 · 시즌 템플릿 · 스토어 패키지(Android 선출시 → iOS 4.3(b) 재제출)
-4. **⚪ 코드 위생**: analyze 기준선 7건 정리
+4. **⚪ 코드 위생**: analyze 기준선 8건 정리
 
 ### 6.3 의도적 범위 제외 (non-goals)
 
 - deferred deep link(설치 직후 자동 입장) — 외부 SDK 필요, "카톡 재탭" 패턴으로 대체. 수요 관측 후 재검토.
 - 13명+ 대형 팀 랭킹 뷰 — 수요 관측 후.
-- 궁합 엔진의 웹 이식 — 앱 계산·서버 보관·웹 렌더 분업 유지.
 - 익명 그룹 소유 — 원격 그룹 방장은 로그인 필수.
 
 ---

@@ -115,7 +115,7 @@ HOW-IT-WORKS §12 프라이버시 전면 개정 필요.
 
 - [ ] **secret-as-token bypass 제거** — GA 전 마지노선. HOW-IT-WORKS §6.1.1.
 - [ ] **딥링크 `.well-known` 실값** — AASA `appIDs` / assetlinks SHA-256. HOW-IT-WORKS §4.2.
-- [ ] **privacy P0** — 분석 동의 화면 · privacy policy 페이지 · 권한 사유 문구 · 14세 미만 확인.
+- [ ] **privacy P0** — 분석 동의 화면 · privacy policy 페이지 · 권한 사유 문구 · 만 18세 미만 확인.
   HOW-IT-WORKS §12.3.
 - [ ] **(backlog)** inactive 카드 정리 cron 미구현 — 현재 수동. HOW-IT-WORKS §12.2.
 

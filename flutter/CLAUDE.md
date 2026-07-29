@@ -1,6 +1,6 @@
 # Face Reader — Claude Code 오리엔테이션
 
-**최종 업데이트**: 2026-07-17
+**최종 업데이트**: 2026-07-29
 
 관상 분석 Flutter 앱. MediaPipe Face Mesh 468 landmarks → 26 frontal + 8 lateral metric → 14-node tree → 10 attribute → archetype → 8 인생 질문 본문. 궁합은 별도 엔진(五行·十二宮·五官·三停·陰陽 기반).
 
@@ -55,7 +55,7 @@
 | 문서 | 역할 |
 |---|---|
 | [`docs/HOW-IT-WORKS.md`](docs/HOW-IT-WORKS.md) | 엔진 기술 구현 — `face_engine` 패키지 위치 · 26+8 metric · 14 node · 10 attribute · 5-stage pipeline · normalize · Hive capture-only · 궁합 5 frame · narrative · face shape classifier |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | 화면·패키지 구조 — shared/face_engine 분리 · 4-tab IndexedStack · Riverpod 패턴 · 데이터 흐름 · 코인/궁합 경제 · 외부 인프라 (R2/Supabase/DeepFace/AdMob/카카오) · 빌드 |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | 화면·패키지 구조 — shared/face_engine 분리 · 5-tab IndexedStack · Riverpod 패턴 · 데이터 흐름 · 코인/궁합 경제 · 외부 인프라 (R2/Supabase/DeepFace/AdMob/카카오) · 빌드 |
 | [`docs/DESIGN.md`](docs/DESIGN.md) | 디자인 토큰 SSOT — AppColors · AppText · AppSpacing · AppRadius · 컴포넌트 레시피 |
 
 추가 reference:
@@ -70,7 +70,7 @@
 cd /Users/chuck/Code/face/flutter
 flutter pub get
 flutter analyze          # 0 issues 기대
-flutter test             # 161 test 전부 green
+flutter test             # 168 test 전부 green
 flutter run              # 실기 (camera/MediaPipe simulator 불가)
 ```
 
