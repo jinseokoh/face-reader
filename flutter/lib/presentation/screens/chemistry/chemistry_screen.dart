@@ -104,24 +104,22 @@ class _TeamCardBody extends StatelessWidget {
         ),
         // 아바타 줄은 위 pill 줄과 붙으면 답답해서 sm(8px)으로 벌린다.
         const SizedBox(height: AppSpacing.sm),
+        // 참가자 미니 아바타 + 빈자리 슬롯이 정원 표기를 겸한다
+        // (궁합 확인 탭 pair 아바타의 1/2 스케일). 종료 표시는 corner ribbon.
+        _RosterAvatars(
+          teamId: teamId,
+          maxPlayers: maxPlayers,
+          roomKind: roomKind,
+          // 종료 방 — 빈자리를 그리면 참가 가능으로 오독되므로 생략.
+          showEmptySlots: !dimTitle,
+        ),
+        const SizedBox(height: AppSpacing.sm),
         Row(
-          // tailwind items-center 상당 — 아바타·아이콘 수직 중앙 정렬.
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // 좌하단 — 참가자 미니 아바타 + 빈자리 슬롯이 정원 표기를 겸한다
-            // (궁합 확인 탭 pair 아바타의 1/2 스케일). 종료 표시는 corner ribbon.
-            Expanded(
-              child: _RosterAvatars(
-                teamId: teamId,
-                maxPlayers: maxPlayers,
-                roomKind: roomKind,
-                // 종료 방 — 빈자리를 그리면 참가 가능으로 오독되므로 생략.
-                showEmptySlots: !dimTitle,
-              ),
-            ),
-            // 우측 하단 상태 아이콘 — 비밀번호 있는 방에만 잠긴 자물쇠.
-            // 공개방은 아이콘 없음 — 존재/부재가 곧 구분이라 색 강조도
-            // 불필요 (2026-07-30 열린 자물쇠 상시 노출 폐기).
+            Text(timeago.format(createdAt, locale: 'ko'), style: AppText.hint),
+            const Spacer(),
+            // 잠금 상태 아이콘 — timestamp 줄 맨 우측 (궁합 미확인 카드와
+            // 동일 문법). 비밀번호 있는 방에만 — 존재/부재가 곧 구분.
             if (isPrivate)
               const FaIcon(
                 FontAwesomeIcons.lock,
@@ -130,8 +128,6 @@ class _TeamCardBody extends StatelessWidget {
               ),
           ],
         ),
-        const SizedBox(height: AppSpacing.sm),
-        Text(timeago.format(createdAt, locale: 'ko'), style: AppText.hint),
       ],
     );
   }

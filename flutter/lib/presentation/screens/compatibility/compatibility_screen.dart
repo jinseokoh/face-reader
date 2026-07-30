@@ -879,11 +879,10 @@ class _CompatLockedCard extends ConsumerWidget {
                     ),
                     const SizedBox(height: AppSpacing.xs),
                     Row(
-                      mainAxisSize: MainAxisSize.min,
                       children: [
                         SourceBadge(source: album.source),
                         const SizedBox(width: AppSpacing.xs),
-                        Flexible(
+                        Expanded(
                           child: Text(
                             subtitle,
                             maxLines: 1,
@@ -893,22 +892,17 @@ class _CompatLockedCard extends ConsumerWidget {
                             ),
                           ),
                         ),
+                        // 잠금 상태 아이콘 — (앨범) 별칭 줄 맨 우측,
+                        // 케미 카드 자물쇠와 동일한 14.
+                        const FaIcon(
+                          FontAwesomeIcons.lock,
+                          color: AppTheme.textHint,
+                          size: 14,
+                        ),
                       ],
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    // 상대 분석 시각 — 관상·케미 카드 timestamp 와 동일
-                    // 포맷·토큰. 최신순/오래된순 정렬의 근거 데이터.
-                    Text(
-                      timeago.format(album.timestamp, locale: 'ko'),
-                      style: AppText.hint,
                     ),
                   ],
                 ),
-              ),
-              const FaIcon(
-                FontAwesomeIcons.lock,
-                color: AppTheme.textHint,
-                size: 18,
               ),
             ],
           ),
@@ -917,11 +911,27 @@ class _CompatLockedCard extends ConsumerWidget {
             const SizedBox(height: 14),
             Container(height: 1, color: AppTheme.border),
             const SizedBox(height: AppSpacing.md),
-            Text(
-              isLoggedIn
-                  ? '상세 풀이는 1코인 지불 후 확인가능합니다.'
-                  : '최초 로그인하면 가입 보너스 3 코인을 지급해 드립니다.',
-              style: AppText.hint.copyWith(color: AppColors.textSecondary),
+            // 좌측 상대 분석 시각(관상·케미 카드 timestamp 와 동일 포맷·토큰)
+            // ↔ 우측 결제 안내 — 한 줄 flex 로 통합 (2026-07-30).
+            Row(
+              children: [
+                Text(
+                  timeago.format(album.timestamp, locale: 'ko'),
+                  style: AppText.hint,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    isLoggedIn
+                        ? '상세 풀이는 1코인 지불이 필요합니다.'
+                        : '최초 로그인하면 가입 보너스 3 코인을 지급해 드립니다.',
+                    textAlign: TextAlign.end,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppText.hint,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: AppSpacing.md),
             // 받은(북마크) 카드 포함 모든 미확인 카드는 단일 "궁합보기" 버튼으로

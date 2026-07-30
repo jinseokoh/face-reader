@@ -1,6 +1,5 @@
 import 'package:facely/core/theme.dart';
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 import '../../../domain/models/team.dart';
@@ -10,7 +9,6 @@ import '../../widgets/age_range_pill.dart';
 // 동일 hex (DESIGN.md §2.4 file-local 격리, 신규 색 아님).
 const _kDarkBrown = Color(0xFF5C4033);
 const _kWarmBrown = Color(0xFF7B5B3A);
-const _kSand = Color(0xFFBFA67A);
 
 /// 케미 그룹 방 stat 카드 — 좌상단 yyyy.mm.dd(생성일) + 마감 설명 한 줄,
 /// 그 아래 관상·궁합 상세 hero 와 동일한 다크 그라데이션 박스(제목 / 유형·
@@ -70,37 +68,10 @@ class TeamStatHeader extends StatelessWidget {
                 style: AppText.subTitle.copyWith(color: Colors.white),
               ),
               const SizedBox(height: AppSpacing.xs),
-              // 목록 카드(_TeamCardBody)와 동일 pill 문법 + 우측 끝 조회수.
-              // 진한 반전 pill 은 "참여 가능" 신호 — 비모집 상태는 outlined 강등.
-              Row(
-                children: [
-                  AgeRangePill(
-                    label: team.roomKind == TeamRoomKind.match
-                        ? '이성 케미'
-                        : '전체 케미',
-                    invert: true,
-                    dim: !team.isRecruiting,
-                    icons: team.roomKind == TeamRoomKind.match
-                        ? const [
-                            FontAwesomeIcons.child,
-                            FontAwesomeIcons.childDress,
-                          ]
-                        : const [
-                            FontAwesomeIcons.childReaching,
-                            FontAwesomeIcons.childReaching,
-                          ],
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  AgeRangePill(label: team.ageRangeLabel),
-                  const Spacer(),
-                  const FaIcon(FontAwesomeIcons.eye, size: 12, color: _kSand),
-                  const SizedBox(width: AppSpacing.xs),
-                  Text(
-                    '${team.views}회',
-                    style: AppText.caption.copyWith(color: _kSand),
-                  ),
-                ],
-              ),
+              // 연령 pill 만. 방 유형(이성/전체 케미) pill 과 조회수는
+              // 상세에선 제거 — 진입 전 목록 카드가 이미 전달한 정보라
+              // hero 에선 불필요 (2026-07-30).
+              Row(children: [AgeRangePill(label: team.ageRangeLabel)]),
               if (extra != null) ...[
                 const SizedBox(height: AppSpacing.sm),
                 extra!,
