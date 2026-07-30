@@ -23,7 +23,8 @@ import type { TeamSSR } from '../lib/supabase'
 
 /**
  * /g/:id 참여 위저드 — 앱 미설치자가 브라우저에서 케미 매칭 참가를 끝까지 완료한다.
- * entry(PIN·공약 동의) → (kakao) → (reuse) → camera → confirm → saving → done(라이브 로비)
+ * entry(공약 동의 — 비밀방 PIN 없음, capability 모델: 링크 소지 = 초대받음)
+ * → (kakao) → (reuse) → camera → confirm → saving → done(라이브 로비)
  * 스펙: docs/superpowers/specs/2026-07-16-chemistry-team-design.md §8
  *
  * 전부 client-only — getUserMedia·tasks-vision·face_engine.js 는 dynamic import.
@@ -78,7 +79,7 @@ const AGES: { v: string; ko: string }[] = [
   { v: '70s', ko: '70대+' },
 ]
 
-// join_team 실패 코드 → 사용자 문구 (BAD_PASSWORD/NO_MY_FACE 는 별도 분기).
+// join_team 실패 코드 → 사용자 문구 (NO_MY_FACE 는 별도 분기).
 const JOIN_ERROR_MESSAGES: Record<string, string> = {
   AGE_NOT_ALLOWED: '이 방의 연령대에 해당하지 않습니다',
   GENDER_FULL: '이 방의 남녀 자리 중 한쪽이 다 찼습니다',
@@ -120,11 +121,6 @@ export function JoinWizard({
     thumbnailKey: string | null
     alias: string | null
   } | null>(null)
-  // 비밀방 PIN — sessionStorage 로 OAuth 왕복(카카오 리다이렉트가 state 를
-  // 날린다) 후에도 값을 잃지 않는다. SSR hydration 중엔 sessionStorage 를
-  // 읽지 않고(DEMO_KEY 와 동일 패턴) 마운트 useEffect 에서 복원한다.
-  const pinStorageKey = `facely:team-pin:${team.id}`
-  const [pin, setPin] = useState<string>('')
   // done 스테이지 라이브 로비 — watchTeam 구독 + 폴링으로 항상 최신.
   const [liveRoster, setLiveRoster] = useState<RosterEntry[]>(roster)
 
@@ -210,12 +206,6 @@ export function JoinWizard({
       }
     } catch {
       /* 손상된 저장값은 무시 */
-    }
-    try {
-      const savedPin = sessionStorage.getItem(pinStorageKey)
-      if (savedPin) setPin(savedPin)
-    } catch {
-      /* storage 불가 환경은 무시 */
     }
     if (!supabaseUrl || !supabaseAnonKey) return
     // ⚠️ 순서 중요 — ?code= 는 createClient(detectSessionInUrl)가 세션으로
@@ -629,19 +619,9 @@ export function JoinWizard({
       fail('등록에 실패했어요. 잠시 후 다시 시도해 주세요.')
       return
     }
-    const code = await joinTeam(client, team.id, pin || undefined)
+    const code = await joinTeam(client, team.id)
     if (code === 'ok' || code === 'ALREADY_JOINED') {
-      try {
-        sessionStorage.removeItem(pinStorageKey)
-      } catch {
-        /* storage 불가 환경은 무시 */
-      }
       finishJoin()
-      return
-    }
-    if (code === 'BAD_PASSWORD') {
-      setNotice('비밀번호가 일치하지 않습니다')
-      setStage('entry')
       return
     }
     if (code === 'NO_MY_FACE') {
@@ -682,15 +662,6 @@ export function JoinWizard({
         '카카오 로그인을 열지 못했어요. 새로고침 후 다시 시도해 주세요.',
       )
     })
-  }
-
-  function onPinChange(v: string) {
-    setPin(v)
-    try {
-      sessionStorage.setItem(pinStorageKey, v)
-    } catch {
-      /* storage 불가 환경은 무시 — 서버가 최종 검증한다 */
-    }
   }
 
   /** 기존 내 관상 재사용 — 촬영 없이 바로 합류(정원마감으로 이미 참여
@@ -778,21 +749,6 @@ export function JoinWizard({
 
       {stage === 'entry' && (
         <>
-          {team.isPrivate && (
-            <div className="join-form">
-              <label className="join-field">
-                <span className="join-field-label">참여 비밀번호</span>
-                <input
-                  className="join-select join-name-input"
-                  inputMode="numeric"
-                  maxLength={4}
-                  value={pin}
-                  placeholder="4자리 숫자"
-                  onChange={(e) => onPinChange(e.target.value)}
-                />
-              </label>
-            </div>
-          )}
           {team.roomKind === 'match' && (
             <p className="join-sub">
               남자 {remainingGenderSlots(roster, team.maxPlayers, 'male')}자리 남음
@@ -803,7 +759,6 @@ export function JoinWizard({
           <button
             className="join-btn join-btn--kakao"
             onClick={onJoinStart}
-            disabled={team.isPrivate && !/^\d{4}$/.test(pin)}
           >
             <KakaoTalkIcon />
             카카오로 참여하기

@@ -311,19 +311,17 @@ export async function fetchTeamRoster(
   }));
 }
 
-/** join_team RPC — 성공 'ok', 실패는 서버 에러 코드 문자열 그대로. */
+/** join_team RPC — 성공 'ok', 실패는 서버 에러 코드 문자열 그대로.
+ *  비밀번호 없음 — capability 모델(2026-07-30): 초대 링크 소지 = 초대받음,
+ *  서버도 검사하지 않는다. */
 export async function joinTeam(
   sb: SupabaseClient,
   teamId: string,
-  password?: string,
 ): Promise<string> {
-  const { error } = await sb.rpc("join_team", {
-    p_team_id: teamId,
-    ...(password ? { p_password: password } : {}),
-  });
+  const { error } = await sb.rpc("join_team", { p_team_id: teamId });
   if (!error) return "ok";
   const known = [
-    "AUTH_REQUIRED", "NOT_FOUND", "NOT_RECRUITING", "BAD_PASSWORD",
+    "AUTH_REQUIRED", "NOT_FOUND", "NOT_RECRUITING",
     "NO_MY_FACE", "AGE_NOT_ALLOWED", "GENDER_FULL", "FULL", "ALREADY_JOINED",
   ];
   return known.find((k) => error.message.includes(k)) ?? "FAILED";
