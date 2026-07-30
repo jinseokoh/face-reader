@@ -130,6 +130,11 @@ class _TeamCardBody extends StatelessWidget {
 }
 
 class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
+  // 탭별 필터·정렬 — TabBarView child 는 스와이프로 dispose 되므로 여기
+  // (IndexedStack 이 살려두는 화면 State)에 둬야 유지된다. 관상·궁합 동일.
+  _SortOrder _publicOrder = _SortOrder.newest;
+  _MineFilter _mineFilter = _MineFilter.all;
+
   @override
   Widget build(BuildContext context) {
     final hasMyFace = ref.watch(historyProvider).any((r) => r.isMyFace);
@@ -173,8 +178,15 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
               )
             : TabBarView(
                 children: [
-                  const _PublicTab(),
-                  _MineTab(onOpen: _openMine),
+                  _PublicTab(
+                    order: _publicOrder,
+                    onOrderChanged: (o) => setState(() => _publicOrder = o),
+                  ),
+                  _MineTab(
+                    onOpen: _openMine,
+                    filter: _mineFilter,
+                    onFilterChanged: (f) => setState(() => _mineFilter = f),
+                  ),
                 ],
               ),
       ),
@@ -433,19 +445,21 @@ enum _MineFilter {
   const _MineFilter(this.label);
 }
 
-class _MineTab extends ConsumerStatefulWidget {
+/// 필터 상태는 부모(_ChemistryScreenState) 소유 — TabBarView 는 화면 밖으로
+/// 밀려난 child 를 dispose 하므로, 여기 State 에 두면 스와이프마다 리셋된다
+/// (관상·궁합이 정렬을 화면 State 에 두는 것과 동일 패턴).
+class _MineTab extends ConsumerWidget {
   final void Function(Team) onOpen;
-  const _MineTab({required this.onOpen});
+  final _MineFilter filter;
+  final ValueChanged<_MineFilter> onFilterChanged;
+  const _MineTab({
+    required this.onOpen,
+    required this.filter,
+    required this.onFilterChanged,
+  });
 
   @override
-  ConsumerState<_MineTab> createState() => _MineTabState();
-}
-
-class _MineTabState extends ConsumerState<_MineTab> {
-  _MineFilter _filter = _MineFilter.all;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final teams = ref.watch(myTeamsProvider);
     // 내가 베스트 쌍인 방 — 초록/red 판정 공용 소스. 로딩 중(null)엔
     // 판정을 유보해 완료 카드가 red 로 번쩍이지 않게 한다.
@@ -485,7 +499,7 @@ class _MineTabState extends ConsumerState<_MineTab> {
           }
           final filtered = [
             for (final b in list)
-              if (switch (_filter) {
+              if (switch (filter) {
                 _MineFilter.all => true,
                 _MineFilter.recruiting => b.status == TeamStatus.recruiting,
                 _MineFilter.expired => b.status == TeamStatus.expired,
@@ -509,34 +523,46 @@ class _MineTabState extends ConsumerState<_MineTab> {
                 ),
                 child: SortSelector<_MineFilter>(
                   tooltip: '필터',
-                  value: _filter,
+                  value: filter,
                   values: _MineFilter.values,
                   labelOf: (f) => f.label,
-                  onChanged: (f) => setState(() => _filter = f),
+                  onChanged: onFilterChanged,
                 ),
               ),
               Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.lg,
-                    0,
-                    AppSpacing.lg,
-                    AppSpacing.lg,
-                  ),
-                  itemCount: filtered.length,
-                  itemBuilder: (ctx, i) => _MineCard(
-                    team: filtered[i],
-                    onOpen: widget.onOpen,
-                    isBestPick:
-                        matchTeams != null &&
-                        filtered[i].status == TeamStatus.completed &&
-                        matchTeams.contains(filtered[i].id),
-                    isBusted:
-                        matchTeams != null &&
-                        filtered[i].status == TeamStatus.completed &&
-                        !matchTeams.contains(filtered[i].id),
-                  ),
-                ),
+                // 필터 결과 0개 — 흰 화면만 남기지 않고 조건부 빈 상태를
+                // 보여준다 (그룹 자체가 없는 게 아니라 "이 조건으로" 없음).
+                child: filtered.isEmpty
+                    ? ListView(
+                        children: [
+                          const SizedBox(height: 120),
+                          EmotionEmptyState(
+                            asset: 'assets/images/emotion-shrug.png',
+                            message: "'${filter.label}' 조건에 맞는 그룹이 없습니다",
+                          ),
+                        ],
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.lg,
+                          0,
+                          AppSpacing.lg,
+                          AppSpacing.lg,
+                        ),
+                        itemCount: filtered.length,
+                        itemBuilder: (ctx, i) => _MineCard(
+                          team: filtered[i],
+                          onOpen: onOpen,
+                          isBestPick:
+                              matchTeams != null &&
+                              filtered[i].status == TeamStatus.completed &&
+                              matchTeams.contains(filtered[i].id),
+                          isBusted:
+                              matchTeams != null &&
+                              filtered[i].status == TeamStatus.completed &&
+                              !matchTeams.contains(filtered[i].id),
+                        ),
+                      ),
               ),
             ],
           );
@@ -713,18 +739,15 @@ class _PublicCardState extends State<_PublicCard> {
   }
 }
 
-class _PublicTab extends ConsumerStatefulWidget {
-  const _PublicTab();
+/// 정렬 상태는 부모(_ChemistryScreenState) 소유 — _MineTab 필터와 같은 이유
+/// (TabBarView 의 child dispose 로부터 상태 보호).
+class _PublicTab extends ConsumerWidget {
+  final _SortOrder order;
+  final ValueChanged<_SortOrder> onOrderChanged;
+  const _PublicTab({required this.order, required this.onOrderChanged});
 
   @override
-  ConsumerState<_PublicTab> createState() => _PublicTabState();
-}
-
-class _PublicTabState extends ConsumerState<_PublicTab> {
-  _SortOrder _order = _SortOrder.newest;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final teams = ref.watch(publicTeamsProvider);
     // 공개 목록엔 방장 정보가 없다 (public_teams 화이트리스트) — 내 그룹
     // 목록과 대조해 내가 방장인 방·이미 참가한 방을 식별한다.
@@ -766,7 +789,7 @@ class _PublicTabState extends ConsumerState<_PublicTab> {
           }
           final sorted = [...list]
             ..sort(
-              (a, b) => _order == _SortOrder.newest
+              (a, b) => order == _SortOrder.newest
                   ? b.createdAt.compareTo(a.createdAt)
                   : a.createdAt.compareTo(b.createdAt),
             );
@@ -783,10 +806,10 @@ class _PublicTabState extends ConsumerState<_PublicTab> {
                   AppSpacing.md,
                 ),
                 child: SortSelector<_SortOrder>(
-                  value: _order,
+                  value: order,
                   values: _SortOrder.values,
                   labelOf: (o) => o.label,
-                  onChanged: (o) => setState(() => _order = o),
+                  onChanged: onOrderChanged,
                 ),
               ),
               Expanded(
