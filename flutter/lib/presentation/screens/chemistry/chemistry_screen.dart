@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:timeago/timeago.dart' as timeago;
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
 import '../../../core/theme.dart';
@@ -43,6 +44,10 @@ class _TeamCardBody extends StatelessWidget {
   final int maxPlayers;
   final bool isPrivate;
 
+  /// 좌하단 생성 시각 — 관상 카드 timestamp 와 동일 포맷·토큰
+  /// (timeago + AppText.hint). 최신순/오래된순 정렬의 근거 데이터.
+  final DateTime createdAt;
+
   /// 좌하단 참가자 미니 아바타 — 상태 무관 모든 카드 공통.
   final String teamId;
 
@@ -59,6 +64,7 @@ class _TeamCardBody extends StatelessWidget {
     required this.maxPlayers,
     required this.isPrivate,
     required this.teamId,
+    required this.createdAt,
     this.dimTitle = false,
     this.dimKind = false,
   });
@@ -124,6 +130,8 @@ class _TeamCardBody extends StatelessWidget {
               ),
           ],
         ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(timeago.format(createdAt, locale: 'ko'), style: AppText.hint),
       ],
     );
   }
@@ -417,6 +425,7 @@ class _MineCard extends ConsumerWidget {
                 maxPlayers: team.maxPlayers,
                 isPrivate: !team.isPublic,
                 teamId: team.id,
+                createdAt: team.createdAt,
                 dimTitle: closed,
                 dimKind: team.status != TeamStatus.recruiting,
               ),
@@ -544,7 +553,7 @@ class _MineTab extends ConsumerWidget {
                             hasScrollBody: false,
                             child: Center(
                               child: Text(
-                                "'${filter.label}' 조건에 맞는 그룹이 없습니다",
+                                '조건에 맞는 그룹이 없습니다.',
                                 // 빈 상태 공통 톤 — EmotionEmptyState 와 동일한
                                 // caption + textHint.
                                 style: AppText.caption.copyWith(
@@ -719,6 +728,7 @@ class _PublicCardState extends State<_PublicCard> {
           maxPlayers: team.maxPlayers,
           isPrivate: team.isPrivate,
           teamId: team.id,
+          createdAt: team.createdAt,
         ),
       ),
     );

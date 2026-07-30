@@ -264,7 +264,7 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
       appBar: AppBar(
         // 방 제목은 헤더 카드가 보여준다 — AppBar 는 고정 타이틀 (로딩 중
         // 타이틀이 방제목으로 바뀌는 깜빡임 제거).
-        title: const Text('케미 그룹 상세정보'),
+        title: const Text('케미 그룹'),
         actions: [
           // 모집 중 멤버(나가기/삭제) + 인원 미달 종료 방의 방장(삭제).
           if (team != null &&
@@ -480,8 +480,15 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('남자 ${_remaining('male')}자리 남음', style: AppText.caption),
-                Text('여자 ${_remaining('female')}자리 남음', style: AppText.caption),
+                // 다크 hero 박스 위 — 흰 글자로 (TeamStatHeader extra 규약).
+                Text(
+                  '남자 ${_remaining('male')}자리 남음',
+                  style: AppText.caption.copyWith(color: Colors.white),
+                ),
+                Text(
+                  '여자 ${_remaining('female')}자리 남음',
+                  style: AppText.caption.copyWith(color: Colors.white),
+                ),
               ],
             )
           : null,

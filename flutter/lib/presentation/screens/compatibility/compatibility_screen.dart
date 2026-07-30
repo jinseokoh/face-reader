@@ -22,6 +22,7 @@ import 'package:facely/presentation/providers/recent_unlock_focus_provider.dart'
 import 'package:facely/presentation/providers/tab_provider.dart';
 import 'package:facely/presentation/screens/compatibility/compatibility_unlock_action.dart';
 import 'package:facely/presentation/widgets/coin_chip.dart';
+import 'package:timeago/timeago.dart' as timeago;
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/presentation/widgets/emotion_empty_state.dart';
 import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
@@ -542,6 +543,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
                       b: e.second.report,
                       aName: e.first.name,
                       bName: e.second.name,
+                      createdAt: e.pair.createdAt,
                       onTap: () {
                         ref.read(recentUnlockFocusProvider.notifier).clear();
                         AnalyticsService.instance.logClickCompat();
@@ -573,6 +575,10 @@ class _CompatListCard extends StatelessWidget {
   final FaceReadingReport b;
   final String aName;
   final String bName;
+
+  /// 좌하단 결제(확인) 시각 — 관상·케미 카드 timestamp 와 동일 포맷·토큰
+  /// (timeago + AppText.hint). 최신순/오래된순 정렬의 근거 데이터.
+  final DateTime createdAt;
   final VoidCallback onTap;
   final VoidCallback onDelete;
   const _CompatListCard({
@@ -580,6 +586,7 @@ class _CompatListCard extends StatelessWidget {
     required this.b,
     required this.aName,
     required this.bName,
+    required this.createdAt,
     required this.onTap,
     required this.onDelete,
   });
@@ -701,6 +708,11 @@ class _CompatListCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   _MiniBars(report: r),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    timeago.format(createdAt, locale: 'ko'),
+                    style: AppText.hint,
+                  ),
                 ],
               ),
             ),
@@ -882,6 +894,13 @@ class _CompatLockedCard extends ConsumerWidget {
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    // 상대 분석 시각 — 관상·케미 카드 timestamp 와 동일
+                    // 포맷·토큰. 최신순/오래된순 정렬의 근거 데이터.
+                    Text(
+                      timeago.format(album.timestamp, locale: 'ko'),
+                      style: AppText.hint,
                     ),
                   ],
                 ),

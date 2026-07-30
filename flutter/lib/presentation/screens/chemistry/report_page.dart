@@ -1200,9 +1200,9 @@ class _ReportPageState extends ConsumerState<ReportPage> {
   // ─── Header ───
   Widget _buildHeader() {
     final time = report.timestamp;
+    // 날짜만 — 분석 이력 구분엔 일 단위면 충분, 시:분은 노이즈 (2026-07-30).
     final timeStr =
-        '${time.year}.${time.month.toString().padLeft(2, '0')}.${time.day.toString().padLeft(2, '0')} '
-        '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+        '${time.year}.${time.month.toString().padLeft(2, '0')}.${time.day.toString().padLeft(2, '0')}';
 
     return Row(
       children: [

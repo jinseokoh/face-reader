@@ -94,7 +94,7 @@ class _CompatibilityDetailScreenState
               ? Navigator.of(context).pop()
               : context.go('/main'),
         ),
-        title: Text(widget.album.alias ?? '궁합 분석'),
+        title: const Text('궁합 풀이'),
         actions: [
           IconButton(
             icon: _isSharing
@@ -124,6 +124,16 @@ class _CompatibilityDetailScreenState
               16 + MediaQuery.of(context).viewPadding.bottom,
             ),
             children: [
+              // 최상단 좌측 날짜 — 관상 상세 헤더와 동일 포맷(yyyy.mm.dd)·
+              // 토큰(caption + textHint). 기준 시각은 상대 분석 시각
+              // (미확인 리스트 카드와 동일 기준).
+              Text(
+                '${widget.album.timestamp.year}.'
+                '${widget.album.timestamp.month.toString().padLeft(2, '0')}.'
+                '${widget.album.timestamp.day.toString().padLeft(2, '0')}',
+                style: AppText.caption.copyWith(color: AppColors.textHint),
+              ),
+              const SizedBox(height: AppSpacing.sm),
               _TotalHeader(
                 my: widget.my,
                 album: widget.album,

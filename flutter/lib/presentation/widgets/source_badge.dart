@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 Color sourceBorderColor(AnalysisSource? source) =>
     source == AnalysisSource.camera ? AppColors.gold : AppColors.border;
 
-/// 카메라/앨범 source 표기용 outlined pill — 색 없이 border 만.
+/// 카메라/앨범 source 표기용 outlined pill — 흰 배경 + border.
 /// 관상 list / 궁합 list 양쪽에서 동일 위젯 사용 (DESIGN.md §0.0.1 통일성).
 class SourceBadge extends StatelessWidget {
   final AnalysisSource source;
@@ -22,6 +22,7 @@ class SourceBadge extends StatelessWidget {
         vertical: 2,
       ),
       decoration: BoxDecoration(
+        color: Colors.white,
         border: Border.all(color: AppColors.border),
         borderRadius: BorderRadius.circular(AppRadius.sm),
       ),
