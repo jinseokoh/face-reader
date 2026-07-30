@@ -361,7 +361,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
         const Expanded(
           child: EmotionEmptyState(
             asset: 'assets/images/emotion-sad.png',
-            message: '48시간 안에 정원을 채우지 못해 종료된 그룹입니다',
+            message: '48시간 안에 정원을 채우지 못해 인원 미달로 마감된 그룹입니다',
           ),
         ),
       ],

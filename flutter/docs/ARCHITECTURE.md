@@ -23,7 +23,7 @@ python/ (DeepFace FastAPI)          Supabase (metrics·coins·compatibilities·t
 |---|---|---|
 | 0 | `PhysiognomyScreen` | 관상 — 내부 3탭 고정(카메라/앨범/북마크, 개수 표기) + 14-node 리포트 진입 |
 | 1 | `CompatibilityScreen` | 궁합 — 내부 2탭(미확인/확인), 1🪙 unlock |
-| 2 | `ChemistryScreen` | 케미 그룹 — 내부 2탭(공개 그룹/내 그룹) |
+| 2 | `ChemistryScreen` | 케미 그룹 — 내부 2탭(모집중/내 그룹) |
 | 3 | `ChatTabScreen` | 채팅 — 열린 매칭 채팅 목록(`openChatsProvider`), 안읽음 gold dot |
 | 4 | `SettingsScreen` | 설정 · 프로필 이름 수정 · 약관 · 로그인/탈퇴 |
 
@@ -64,7 +64,7 @@ box (`onboarding_never_again`) flag 를 남겨 노출을 끈다. 건너뛰기·�
   14-node expandable · 8 인생 질문 본문 · 공유(카카오/OS 시트). 공유받은 카드는 북마크로 보관.
 
 **케미 그룹 화면** (`screens/chemistry/chemistry_screen.dart` 탭 + `screens/team/`):
-`ChemistryScreen`(2탭 — 공개 그룹/내 그룹) · `showTeamCreatePage`(방 유형(all/match)→
+`ChemistryScreen`(2탭 — 모집중/내 그룹) · `showTeamCreatePage`(방 유형(all/match)→
 제목(카테고리→제목 2단 프리셋, `team_title_catalog.dart`)→인원(6/8/10/12 chip)→
 연령대(방장 나이대 포함 인접 2-decade RangeSlider, 하한 20세 — 10대는 진입 차단)→
 공개 설정(공개/비밀 PIN + 썸네일 공개) 스텝 플로우) · `TeamDetailScreen`(참가

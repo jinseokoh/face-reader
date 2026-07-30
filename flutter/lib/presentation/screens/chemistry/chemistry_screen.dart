@@ -26,7 +26,7 @@ import '../team/team_detail_screen.dart';
 import '../team/team_reveal_screen.dart';
 
 /// 케미 탭 = Chemistry Team 방 목록 브라우저.
-/// 내부 2탭: 공개 그룹(목록에서 발견·참가) / 내 그룹(진행·완료).
+/// 내부 2탭: 모집중(공개 그룹 발견·참가) / 내 그룹(진행·완료).
 class ChemistryScreen extends ConsumerStatefulWidget {
   const ChemistryScreen({super.key});
 
@@ -113,12 +113,15 @@ class _TeamCardBody extends StatelessWidget {
                 showEmptySlots: !dimTitle,
               ),
             ),
-            // 우측 하단 상태 아이콘 — 비밀방 여부.
-            FaIcon(
-              isPrivate ? FontAwesomeIcons.lock : FontAwesomeIcons.lockOpen,
-              size: 14,
-              color: AppColors.textHint,
-            ),
+            // 우측 하단 상태 아이콘 — 비밀번호 있는 방에만 잠긴 자물쇠.
+            // 공개방은 아이콘 없음 — 존재/부재가 곧 구분이라 색 강조도
+            // 불필요 (2026-07-30 열린 자물쇠 상시 노출 폐기).
+            if (isPrivate)
+              const FaIcon(
+                FontAwesomeIcons.lock,
+                size: 14,
+                color: AppColors.textHint,
+              ),
           ],
         ),
       ],
@@ -153,7 +156,11 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
                   unselectedLabelColor: AppColors.textHint,
                   indicatorColor: AppColors.textPrimary,
                   tabs: [
-                    Tab(text: '공개 그룹'),
+                    // '모집중' — 지금 참가 가능한 공개 그룹만 나오는 탭.
+                    // 장소가 아니라 상태어라 한국 앱 문법에 맞다 (2026-07-30
+                    // '공개 그룹'에서 재명명 — 내 그룹과 축이 겹쳐 보이던
+                    // 문제 해소. 개념어 '공개 그룹'은 본문 카피에 유지).
+                    Tab(text: '모집중'),
                     Tab(text: '내 그룹'),
                   ],
                 )
@@ -316,7 +323,8 @@ class _CreatePill extends StatelessWidget {
   }
 }
 
-/// 종료 방 corner ribbon — 카드 우하단을 대각선으로 가로지르는 밴드.
+/// 미달(정원 못 채운 expired) 방 corner ribbon — 카드 우하단을 대각선으로
+/// 가로지르는 밴드. 내 그룹 필터의 '미달' 라벨과 같은 용어.
 /// 배경색만 있는 흰 밴드(border 없음) + danger 텍스트. 글자는 정원 표기
 /// "1 / 8 명"과 동일한 caption 토큰, height 1.0 으로 밴드 정중앙 정렬.
 class _ExpiredRibbon extends StatelessWidget {
@@ -332,7 +340,7 @@ class _ExpiredRibbon extends StatelessWidget {
         alignment: Alignment.center,
         color: AppColors.danger,
         child: Text(
-          '종료',
+          '미달',
           style: AppText.caption.copyWith(color: Colors.white, height: 1.0),
         ),
       ),
@@ -416,6 +424,9 @@ class _MineCard extends ConsumerWidget {
 enum _MineFilter {
   all('전체'),
   recruiting('모집중'),
+  // 미달 = 정원 못 채우고 48시간 타이머 소진(expired) / 종료 = 정원 다 차서
+  // 발표까지 간 방(revealing·completed). 결말이 정반대라 분리 (2026-07-30).
+  expired('미달'),
   closed('종료');
 
   final String label;
@@ -477,7 +488,10 @@ class _MineTabState extends ConsumerState<_MineTab> {
               if (switch (_filter) {
                 _MineFilter.all => true,
                 _MineFilter.recruiting => b.status == TeamStatus.recruiting,
-                _MineFilter.closed => b.status != TeamStatus.recruiting,
+                _MineFilter.expired => b.status == TeamStatus.expired,
+                _MineFilter.closed =>
+                  b.status == TeamStatus.completed ||
+                      b.status == TeamStatus.revealing,
               })
                 b,
           ];

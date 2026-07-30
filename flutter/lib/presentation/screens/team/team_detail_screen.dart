@@ -332,7 +332,7 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
           children: [
             Text(
               team.status == TeamStatus.expired
-                  ? '인원이 모이지 않아 종료된 그룹입니다'
+                  ? '인원 미달로 마감된 그룹입니다'
                   : '이미 시작된 그룹입니다',
               style: AppText.body,
               textAlign: TextAlign.center,
@@ -414,7 +414,7 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
           _headerCard(team),
           const SizedBox(height: AppSpacing.md),
           Text(
-            '인원이 모이지 않아 종료된 그룹입니다',
+            '인원 미달로 마감된 그룹입니다',
             style: AppText.caption.copyWith(color: AppColors.textHint),
             textAlign: TextAlign.center,
           ),
