@@ -426,6 +426,8 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
             otherUserId: matchOther.userId,
             otherNickname: _nameOf(matchOther.slot),
             otherGender: _genderOf(matchOther.slot) ?? 'male',
+            // 응답 시한(발표 + 48h) 판정 기준 — 만료면 버튼 숨김.
+            closedAt: _team!.closedAt,
           ),
         ],
         const SizedBox(height: AppSpacing.xl),

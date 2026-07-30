@@ -11,16 +11,21 @@ import '../../widgets/primary_button.dart';
 import 'team_chat_screen.dart';
 
 /// 베스트 쌍 전용 매칭 성사 카드 — UX 문서 §E.2/§E.3.
-/// fetchMatch + watchMatch 로 상태 파생, 상태 4종:
-/// (i) 응답 전 — [채팅방 열기]/[이번에는 넘어가기]
+/// fetchMatch + watchMatch 로 상태 파생, 상태 5종:
+/// (i) 응답 전 — [채팅방 열기]/[이번엔 거부]
 /// (ii) 나 수락·상대 대기 — 대기 카피
 /// (iii) 성사(openedAt) — [채팅방 이동] → TeamChatScreen
 /// (iv) 종결(한쪽 거절) — 주어 없는 종결 카피 (danger 색 미사용 — 실패 아님)
+/// (v) 만료 — 발표(closedAt) 후 48시간 무응답 = 자동 거부 취급. 버튼 없이
+///     종결 카피만 (서버 respond_match 의 MATCH_EXPIRED 와 같은 기준).
 class TeamMatchCard extends StatefulWidget {
   final String teamId;
   final String otherUserId;
   final String otherNickname;
   final String otherGender;
+
+  /// 결과 발표 시각(teams.closed_at) — 응답 시한(+48h) 판정의 기준.
+  final DateTime? closedAt;
 
   const TeamMatchCard({
     super.key,
@@ -28,6 +33,7 @@ class TeamMatchCard extends StatefulWidget {
     required this.otherUserId,
     required this.otherNickname,
     required this.otherGender,
+    this.closedAt,
   });
 
   @override
@@ -62,11 +68,20 @@ class _TeamMatchCardState extends State<TeamMatchCard> {
         ? null
         : match.consentOf(match.otherOf(myUid));
 
+    // 응답 시한 경과 — 발표 후 48시간 (fetchPendingMatchProposals 와 동일
+    // 계산). 이미 열린 채팅방은 만료와 무관하게 유지.
+    final deadline = widget.closedAt?.add(matchResponseWindow);
+    final expired =
+        deadline != null && DateTime.now().toUtc().isAfter(deadline);
+
     final Widget footer;
     if (match.isOpen) {
       footer = _openFooter();
     } else if (theirConsent == false || myConsent == false) {
-      footer = _closedFooter();
+      footer = _closedFooter('이번에는 채팅방이 열리지 않았습니다');
+    } else if (expired) {
+      // 무응답 만료 = 자동 거부 취급 — 버튼 없이 종결 카피만.
+      footer = _closedFooter('응답 기한(48시간)이 지나 채팅방이 열리지 않았습니다');
     } else if (myConsent == true) {
       footer = _waitingFooter();
     } else {
@@ -163,18 +178,12 @@ class _TeamMatchCardState extends State<TeamMatchCard> {
   );
 
   /// 종결 — 누가 거절했는지 화면이 지목하지 않는 주어 없는 카피로 통일.
-  Widget _closedFooter() {
+  /// 거절·만료가 첫 줄 문구만 다르고 같은 형식을 공유한다.
+  Widget _closedFooter(String message) {
     return Column(
       children: [
         Text(
-          '이번에는 채팅방이 열리지 않았습니다',
-          style: AppText.caption,
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        // 30일 purge 정책과 일치하는 사실 카피 ('계속' 은 허위였음).
-        Text(
-          '결과표는 30일간 유효합니다',
+          message,
           style: AppText.caption,
           textAlign: TextAlign.center,
         ),
