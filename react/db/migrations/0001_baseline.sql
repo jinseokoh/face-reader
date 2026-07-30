@@ -1134,10 +1134,10 @@ begin
     raise exception 'NOT_FOUND';
   end if;
   if v_team.status <> 'recruiting' then raise exception 'NOT_RECRUITING'; end if;
-  if v_team.password is not null
-     and (p_password is null or p_password <> v_team.password) then
-    raise exception 'BAD_PASSWORD';
-  end if;
+  -- 비밀번호는 조인에서 검사하지 않는다 (2026-07-30 capability 모델).
+  -- teamId 가 추측 불가능한 UUID 라 초대 링크 소지 = 초대받음이고, 앱 내
+  -- 공개 목록의 문턱은 check_team_password 문 앞 dialog 가 담당한다.
+  -- p_password 는 클라이언트 하위 시그니처 유지용 — 값은 무시.
 
   -- my-face 필수 + 연령대·성별 게이트 (body.ageGroup "20s" → 20, body.gender).
   -- gender 는 my-face body 필수 필드라 결측도 NO_MY_FACE 로 준용한다.
@@ -1236,9 +1236,10 @@ end;
 $$;
 
 -- 비밀방 문 앞 PIN 검증 — 목록 탭 → 상세 진입 전 dialog 용. password 봉인은
--- 유지(boolean 만 반환)하고, 조인 시 join_team 이 같은 비교를 다시 한다.
+-- 유지(boolean 만 반환). 비밀번호의 유일한 관문 — join_team 은 검사하지
+-- 않는다 (초대 링크 소지 = 초대받음, capability 모델 2026-07-30).
 -- 비밀번호 없는 방·없는 방 id 는 각각 true/false. anon 도 목록을 탭할 수
--- 있어 anon 까지 grant — 4자리 PIN oracle 노출은 join_team 과 동일 수위.
+-- 있어 anon 까지 grant.
 create or replace function public.check_team_password(p_team_id uuid, p_password text)
 returns boolean
 language sql stable security definer set search_path = public

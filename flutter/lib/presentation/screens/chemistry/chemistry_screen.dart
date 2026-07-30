@@ -639,13 +639,12 @@ class _PublicCardState extends State<_PublicCard> {
   }
 
   /// 참가 여부 분기는 상세 페이지가 화면 안에서 처리 — 탭은 진입만.
-  /// 미참가 비밀 그룹은 문 앞 dialog 가 check_team_password RPC 로 검증한
-  /// 비밀번호를 받아야만 상세로 진입하고, 그 값을 참가 폼에 채워 넘긴다
-  /// (조인 시 join_team 이 같은 비교를 다시 한다).
+  /// 미참가 비밀 그룹은 문 앞 dialog(check_team_password)를 통과해야 상세로
+  /// 진입한다. 비밀번호의 유일한 관문 — 초대 링크 진입과 join_team 은
+  /// 검사하지 않는다 (capability 모델 2026-07-30).
   Future<void> _open() async {
-    String? pin;
     if (team.isPrivate && !widget.isJoined) {
-      pin = await showDialog<String>(
+      final pin = await showDialog<String>(
         context: context,
         builder: (_) => TeamPinDialog(teamId: team.id),
       );
@@ -660,8 +659,7 @@ class _PublicCardState extends State<_PublicCard> {
     }
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) =>
-            TeamDetailScreen(teamId: team.id, initialPin: pin),
+        builder: (_) => TeamDetailScreen(teamId: team.id),
       ),
     );
   }

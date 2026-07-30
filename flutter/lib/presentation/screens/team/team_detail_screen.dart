@@ -23,7 +23,6 @@ import '../../widgets/login_bottom_sheet.dart';
 import '../../widgets/my_face_capture_flow.dart';
 import '../../widgets/primary_button.dart';
 import '../../widgets/source_badge.dart';
-import 'team_pin_dialog.dart';
 import 'team_reveal_screen.dart';
 import 'team_stat_header.dart';
 
@@ -40,9 +39,6 @@ String _genderIconAsset(String gender) =>
 class TeamDetailScreen extends ConsumerStatefulWidget {
   final String teamId;
 
-  /// 목록에서 문 앞 dialog 로 검증받은 비밀 그룹 비밀번호 — 참가 시 재사용.
-  final String? initialPin;
-
   /// 초대 링크(/g/:id) 딥링크 진입 — 관상 공유 카드(receivedView)와 동일
   /// 이치: main 위 overlay 성격의 별도 route 라 AppBar leading 이 항상
   /// 닫기(X), pop 불가하면 홈(/main)으로.
@@ -50,7 +46,6 @@ class TeamDetailScreen extends ConsumerStatefulWidget {
   const TeamDetailScreen({
     super.key,
     required this.teamId,
-    this.initialPin,
     this.receivedView = false,
   });
 
@@ -248,11 +243,6 @@ class _SlotRow extends StatelessWidget {
 
 class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
   final _service = TeamService.instance;
-
-  /// 검증된 비밀 그룹 PIN — 목록 문 앞 dialog(initialPin) 또는 참가 시점
-  /// dialog 에서 받는다. 화면에 상시 노출하는 인풋박스는 두지 않는다
-  /// (2026-07-30 참가 폼 PIN 필드 제거).
-  String? _pin;
   Team? _team;
   List<TeamRosterEntry> _roster = const [];
   Map<String, TeamSlotProfile> _profiles = const {};
@@ -351,7 +341,6 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _pin = widget.initialPin;
     // 조회수 — 진입 1회, 실패는 무시 (표시는 다음 fetch 몫).
     unawaited(_service.incrementTeamViews(widget.teamId).catchError((_) {}));
     _refresh();
@@ -639,17 +628,9 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
   }
 
   Future<void> _join() async {
-    final team = _team!;
-    // ⓪ 비밀 그룹 PIN 게이트 — 목록 문 앞에서 검증된 PIN 이 없으면(초대
-    //    링크 경유) 여기서 같은 dialog 로 검증. 취소하면 참가 중단.
-    if (!team.isPublic && _pin == null) {
-      final pin = await showDialog<String>(
-        context: context,
-        builder: (_) => TeamPinDialog(teamId: widget.teamId),
-      );
-      if (pin == null || !mounted) return;
-      _pin = pin;
-    }
+    // 비밀 그룹 PIN 검사 없음 — capability 모델 (2026-07-30). 초대 링크
+    // 소지 = 초대받음이고, 앱 내 공개 목록의 문턱은 문 앞 dialog
+    // (check_team_password)가 담당. join_team 도 비밀번호를 무시한다.
     // ① 로그인 게이트 — login_bottom_sheet 패턴.
     if (!_service.isLoggedIn) {
       final ok = await showLoginBottomSheet(context, ref);
@@ -679,10 +660,7 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
       return;
     }
     try {
-      await _service.joinTeam(
-        widget.teamId,
-        password: team.isPublic ? null : _pin,
-      );
+      await _service.joinTeam(widget.teamId);
       ref.invalidate(myTeamsProvider);
       ref.invalidate(publicTeamsProvider);
       // _busy 는 유지 — 다음 refresh 가 참가자 뷰로 바꾸며 버튼 자체가
@@ -717,9 +695,8 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
           // 참가 전에도 누가 있는지 보고 판단할 수 있게 로스터가 hero 안에
-          // 함께 보인다 — 웹 초대장(/g/:id)과 동일한 정보량.
-          // 비밀 그룹 PIN 은 상시 인풋박스 대신 참가 시점 dialog 로 검증
-          // (_join ⓪ 단계 — 목록 문 앞 dialog 와 같은 TeamPinDialog).
+          // 함께 보인다 — 웹 초대장(/g/:id)과 동일한 정보량. 비밀 그룹
+          // PIN 은 여기서 묻지 않는다 (capability 모델 — _join 주석 참고).
           _headerCard(team),
           const SizedBox(height: AppSpacing.xl),
           _photoConsentNotice(team),
@@ -763,7 +740,11 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
         children: [
           // 발표 조건 안내는 hero 박스 안 반투명 컨테이너로 이동.
           _headerCard(team, showAnnounceNotice: true),
-          // const SizedBox(height: AppSpacing.sm),
+          // 섹션 라벨 — 결과표 페이지 '케미 매트릭스'와 동일 리듬
+          // (위 xl / sectionTitle / 아래 md).
+          const SizedBox(height: AppSpacing.xl),
+          Text('이 그룹으로의 초대', style: AppText.sectionTitle),
+          const SizedBox(height: AppSpacing.md),
           _qrCard(),
           _inviteRow(team),
         ],

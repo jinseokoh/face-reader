@@ -399,10 +399,7 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage>
         ageMax: _ageMax,
         roomKind: _roomKind!,
       );
-      await service.joinTeam(
-        team.id,
-        password: _isPublic ? null : _pinCtrl.text.trim(),
-      );
+      await service.joinTeam(team.id);
       if (mounted) Navigator.of(context).pop(team);
     } catch (e) {
       debugPrint('createTeam failed: $e');

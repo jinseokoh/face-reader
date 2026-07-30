@@ -125,13 +125,13 @@ class TeamService {
     }
   }
 
-  Future<void> joinTeam(String teamId, {String? password}) => _client.rpc(
-    'join_team',
-    params: {'p_team_id': teamId, 'p_password': ?password},
-  );
+  /// 비밀번호 없음 — capability 모델 (2026-07-30). 비밀방 문턱은 목록 문 앞
+  /// dialog(checkPassword)뿐이고, 서버 join_team 도 검사하지 않는다.
+  Future<void> joinTeam(String teamId) =>
+      _client.rpc('join_team', params: {'p_team_id': teamId});
 
   /// 비밀방 문 앞 PIN 검증 — 목록 탭 → 상세 진입 전 dialog 용. password 는
-  /// 봉인 유지(boolean 만 반환), 최종 검증은 join_team 이 다시 한다.
+  /// 봉인 유지(boolean 만 반환). 비밀번호의 유일한 관문.
   Future<bool> checkPassword(String teamId, String password) async =>
       await _client.rpc(
             'check_team_password',

@@ -58,30 +58,26 @@ insert into public.teams (id, owner_id, title, visibility, password, max_players
 values ('11111111-1111-1111-1111-111111111111', auth.uid(), '스모크 매칭',
         'private', '1234', 6, 20, 30);
 
--- ② 방장 조인 (비밀번호 필요).
-select public.join_team('11111111-1111-1111-1111-111111111111', '1234');
+-- ② 방장 조인 — 비밀번호는 조인에서 검사하지 않는다 (capability 모델:
+--    문턱은 check_team_password 문 앞 dialog 만. 값을 넘겨도 무시).
+select public.join_team('11111111-1111-1111-1111-111111111111');
 
--- ③ 가드 검증 — 각각 지정 에러로 거부돼야 한다.
+-- ③ 가드 검증 — 각각 지정 에러로 거부돼야 한다. (비밀방이지만 비밀번호
+--    없이 조인 가능해야 한다 — 아래 블록들이 곧 그 검증을 겸한다.)
 do $$ begin
   perform pg_temp.act_as(2);
   begin
-    perform public.join_team('11111111-1111-1111-1111-111111111111', '0000');
-    raise exception 'SMOKE_FAIL: BAD_PASSWORD 가드 미동작';
-  exception when others then
-    if sqlerrm <> 'BAD_PASSWORD' then raise; end if;
-  end;
-  begin
     -- 주의: 이 begin 블록은 예외로 끝나므로 안의 성공한 조인도 savepoint
     -- 롤백된다 — 블록이 끝나면 u2 는 미참가 상태다 (④ 가 다시 조인).
-    perform public.join_team('11111111-1111-1111-1111-111111111111', '1234');
-    perform public.join_team('11111111-1111-1111-1111-111111111111', '1234');
+    perform public.join_team('11111111-1111-1111-1111-111111111111');
+    perform public.join_team('11111111-1111-1111-1111-111111111111');
     raise exception 'SMOKE_FAIL: ALREADY_JOINED 가드 미동작';
   exception when others then
     if sqlerrm <> 'ALREADY_JOINED' then raise; end if;
   end;
   perform pg_temp.act_as(4); -- 50대 → 연령 게이트.
   begin
-    perform public.join_team('11111111-1111-1111-1111-111111111111', '1234');
+    perform public.join_team('11111111-1111-1111-1111-111111111111');
     raise exception 'SMOKE_FAIL: AGE_NOT_ALLOWED 가드 미동작';
   exception when others then
     if sqlerrm <> 'AGE_NOT_ALLOWED' then raise; end if;
@@ -91,9 +87,9 @@ end $$;
 -- ④ 조인 → 이탈 → 재조인 (u2 — ③ 의 조인은 예외 블록과 함께 롤백된 상태),
 --    방장 이탈 금지.
 select pg_temp.act_as(2);
-select public.join_team('11111111-1111-1111-1111-111111111111', '1234');
+select public.join_team('11111111-1111-1111-1111-111111111111');
 select public.leave_team('11111111-1111-1111-1111-111111111111');
-select public.join_team('11111111-1111-1111-1111-111111111111', '1234');
+select public.join_team('11111111-1111-1111-1111-111111111111');
 do $$ begin
   perform pg_temp.act_as(1);
   begin

@@ -274,7 +274,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       // 방 제목은 stat 카드가 보여준다 — 상세 페이지와 동일한 고정 타이틀.
-      appBar: AppBar(title: const Text('케미 그룹 상세정보')),
+      appBar: AppBar(title: const Text('케미 그룹 결과표')),
       body: SafeArea(
         top: false,
         child: switch (_phase) {
@@ -429,7 +429,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
           ),
         ],
         const SizedBox(height: AppSpacing.xl),
-        Text('그룹 케미 결과표', style: AppText.sectionTitle),
+        Text('케미 매트릭스', style: AppText.sectionTitle),
         const SizedBox(height: AppSpacing.md),
         _matrix(),
         if (_mySlot != null) ...[
@@ -720,8 +720,9 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
             ),
             child: Row(
               children: [
-                // 아바타 · 이름 — (우측) 밴드 점 · 등급.
-                _slotAvatar(other, size: AppAvatar.sm),
+                // 아바타 · 이름 — (우측) 밴드 점 · 등급. 아바타는 md(42) —
+                // 순위 리스트의 주인공은 얼굴 (2026-07-30 sm→md 승급).
+                _slotAvatar(other, size: AppAvatar.md),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(child: Text(_nameOf(other), style: AppText.subTitle)),
                 BandDot(band, size: 28, score: _scoreOf(_mySlot!, other)),
