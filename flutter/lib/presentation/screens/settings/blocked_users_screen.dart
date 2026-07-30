@@ -94,7 +94,13 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : _blocked.isEmpty
-            ? const Center(child: Text('차단한 사용자가 없습니다', style: AppText.hint))
+            // 빈 상태 공통 톤 — caption(13) + textHint (hint 12 에서 한 단계 위).
+            ? Center(
+                child: Text(
+                  '차단한 사용자가 없습니다',
+                  style: AppText.caption.copyWith(color: AppColors.textHint),
+                ),
+              )
             : ListView.separated(
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 itemCount: _blocked.length,

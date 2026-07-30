@@ -1,17 +1,16 @@
 import 'dart:async';
 
+import 'package:face_engine/data/enums/age_group.dart';
+import 'package:face_engine/data/enums/gender.dart';
+import 'package:face_engine/domain/models/face_reading_report.dart';
+import 'package:face_engine/domain/services/compat/compat_label.dart';
+import 'package:face_engine/domain/services/compat/compat_pair_key.dart';
+import 'package:face_engine/domain/services/compat/team.dart' as engine;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
-
-import 'package:face_engine/data/enums/age_group.dart';
-import 'package:face_engine/data/enums/gender.dart';
-import 'package:face_engine/domain/models/face_reading_report.dart';
-import 'package:face_engine/domain/services/compat/team.dart' as engine;
-import 'package:face_engine/domain/services/compat/compat_label.dart';
-import 'package:face_engine/domain/services/compat/compat_pair_key.dart';
 
 import '../../../config/router.dart';
 import '../../../core/storage/thumbnail_paths.dart';
@@ -29,769 +28,6 @@ import '../compatibility/compatibility_unlock_action.dart';
 import 'team_band.dart';
 import 'team_match_card.dart';
 import 'team_stat_header.dart';
-
-/// 매칭 결과 — payload(스코어보드)가 없으면 snapshot 으로 계산해 1회 기록
-/// (first-writer-wins)하고, 있으면 그대로 렌더한다.
-class TeamRevealScreen extends ConsumerStatefulWidget {
-  final String teamId;
-  final bool ceremony;
-  const TeamRevealScreen({
-    super.key,
-    required this.teamId,
-    this.ceremony = false,
-  });
-
-  @override
-  ConsumerState<TeamRevealScreen> createState() => _TeamRevealScreenState();
-}
-
-enum _Phase { loading, countdown, board, orphan, expired }
-
-class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
-  final _service = TeamService.instance;
-  _Phase _phase = _Phase.loading;
-  int _count = 3;
-  Team? _team;
-  Map<String, dynamic>? _payload;
-  List<TeamRosterEntry> _roster = const [];
-  Map<String, TeamSlotProfile> _profiles = const {};
-
-  /// 쌍 점수 ('lo-hi' 키) — payload 는 점수를 싣지 않으므로 snapshot 으로
-  /// 로컬 재계산 (결정론이라 payload 밴드와 항상 일치).
-  Map<String, int> _scores = const {};
-  int? _mySlot;
-  Timer? _countdownTimer;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    final team = await _service.fetchTeam(widget.teamId);
-    if (!mounted) return;
-    if (team == null) {
-      Navigator.of(context).maybePop();
-      return;
-    }
-    final roster = await _service.fetchRoster(widget.teamId);
-    if (!mounted) return;
-    // 참가자 아바타 — 상세 페이지와 같은 소스 (현재 my-face live resolve).
-    final profiles = await _service.fetchSlotProfiles([
-      for (final r in roster) r.userId,
-    ]);
-    if (!mounted) return;
-    _profiles = profiles;
-    // snapshot 재계산 — payload 유무와 무관하게 dot 점수 소스로 항상 수행.
-    engine.TeamResult? computed;
-    final snapshot = team.chemistrySnapshot;
-    if (snapshot != null) {
-      final players = assembleTeamPlayers(roster: roster, snapshot: snapshot);
-      if (players.length >= 2) {
-        computed = engine.computeTeam(
-          players,
-          matchOnly: team.roomKind == TeamRoomKind.match,
-          blockedKeys: blockedKeysFromSnapshot(snapshot),
-          chattedKeys: chattedKeysFromSnapshot(snapshot),
-        );
-      }
-    }
-    _scores = computed == null
-        ? const {}
-        : {for (final p in computed.pairs) '${p.a}-${p.b}': p.total.round()};
-    Map<String, dynamic>? payload = team.resultPayload;
-    if (payload == null) {
-      // 인원 미달 종료 — 결과가 애초에 만들어질 수 없는 방. 고아 안전망과
-      // 구분해 상황 설명 빈 상태로 안내한다.
-      if (team.status == TeamStatus.expired) {
-        setState(() {
-          _team = team;
-          _roster = roster;
-          _phase = _Phase.expired;
-        });
-        return;
-      }
-      if (computed == null) {
-        // revealing 고아(스냅샷 부재는 구조상 없지만 completed+payload null 안전망).
-        setState(() {
-          _team = team;
-          _phase = _Phase.orphan;
-        });
-        return;
-      }
-      payload = computed.toPayload();
-      // 결정론 — 선착 기록만 유효, 실패(후착·비참가자)는 무해.
-      try {
-        await _service.submitResult(widget.teamId, payload);
-      } catch (_) {}
-      if (!mounted) return;
-      ref.invalidate(myTeamsProvider);
-    }
-    if (!mounted) return;
-    final myUid = _service.myUid;
-    int? mySlot;
-    for (final r in roster) {
-      if (r.userId == myUid) mySlot = r.slotNo;
-    }
-    setState(() {
-      _team = team;
-      _payload = payload;
-      _roster = roster;
-      _mySlot = mySlot;
-      _phase = widget.ceremony ? _Phase.countdown : _Phase.board;
-    });
-    if (widget.ceremony) _tickCountdown();
-  }
-
-  void _tickCountdown() {
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) {
-        t.cancel();
-        return;
-      }
-      if (_count <= 1) {
-        t.cancel();
-        setState(() => _phase = _Phase.board);
-      } else {
-        setState(() => _count--);
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _countdownTimer?.cancel();
-    super.dispose();
-  }
-
-  // ── payload 파생 ──────────────────────────────────────────────
-  List<Map<String, dynamic>> get _players => [
-    for (final p in _payload!['players'] as List) p as Map<String, dynamic>,
-  ];
-  List<Map<String, dynamic>> get _pairs => [
-    for (final p in _payload!['pairs'] as List) p as Map<String, dynamic>,
-  ];
-
-  /// 베스트 쌍 — 정렬이 곧 순위인 pairs 에서 bypass(차단·기채팅) 아닌 첫 쌍.
-  /// (payload 에 별도 best 키 없음 — 구 payload 의 best 키는 무시.)
-  Map<String, dynamic> get _best =>
-      _pairs.firstWhere((p) => p['bypass'] != true, orElse: () => _pairs.first);
-
-  String _nameOf(int slot) {
-    for (final p in _players) {
-      if (p['slot'] == slot) return p['name'] as String;
-    }
-    return '참가자';
-  }
-
-  String? _genderOf(int slot) {
-    for (final p in _players) {
-      if (p['slot'] == slot) return p['gender'] as String?;
-    }
-    return null;
-  }
-
-  /// 뷰어가 베스트 쌍 본인이면 상대 (userId, slot) — 아니면 null.
-  ({String userId, int slot})? get _bestMatchOther {
-    final myUid = _service.myUid;
-    if (myUid == null) return null;
-    final a = (_best['a'] as num).toInt();
-    final b = (_best['b'] as num).toInt();
-    String? uidOf(int slot) {
-      for (final r in _roster) {
-        if (r.slotNo == slot) return r.userId;
-      }
-      return null;
-    }
-
-    final uidA = uidOf(a);
-    final uidB = uidOf(b);
-    if (uidA == myUid && uidB != null) return (userId: uidB, slot: b);
-    if (uidB == myUid && uidA != null) return (userId: uidA, slot: a);
-    return null;
-  }
-
-  /// 슬롯 아바타 — 썸네일 → 성별 기본 아이콘 → 사람 아이콘.
-  /// 참가자 전원 사진 공개가 계약이다 (조인 동의 문구와 동일).
-  Widget _slotAvatar(int slot, {double size = AppAvatar.sm}) {
-    String? uid;
-    for (final r in _roster) {
-      if (r.slotNo == slot) uid = r.userId;
-    }
-    final gender = _genderOf(slot);
-    final thumbUrl = uid == null ? null : _profiles[uid]?.thumbUrl;
-    final inner = thumbUrl == null
-        ? _slotIconAvatar(gender, size)
-        : Image.network(
-            thumbUrl,
-            width: size,
-            height: size,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => _slotIconAvatar(gender, size),
-          );
-    // border 색은 전 탭 공통 source 규칙 (카메라 gold / 앨범 lightGray).
-    // border 는 foreground — 이미지가 테두리 안쪽을 덮지 않게.
-    return Container(
-      width: size,
-      height: size,
-      foregroundDecoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: sourceBorderColor(uid == null ? null : _profiles[uid]?.source),
-        ),
-      ),
-      child: ClipOval(child: inner),
-    );
-  }
-
-  Widget _slotIconAvatar(String? gender, double size) {
-    if (gender == null) return _pairIconAvatar(size);
-    return Center(
-      child: SvgPicture.asset(
-        gender == 'male' ? 'assets/svgs/male.svg' : 'assets/svgs/female.svg',
-        height: size * 0.5,
-        colorFilter: const ColorFilter.mode(
-          AppColors.textHint,
-          BlendMode.srcIn,
-        ),
-      ),
-    );
-  }
-
-  int? _bandOf(int a, int b) {
-    final lo = a < b ? a : b;
-    final hi = a < b ? b : a;
-    for (final p in _pairs) {
-      if (p['a'] == lo && p['b'] == hi) return (p['band'] as num).toInt();
-    }
-    return null;
-  }
-
-  int? _scoreOf(int a, int b) => _scores[a < b ? '$a-$b' : '$b-$a'];
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      // 방 제목은 stat 카드가 보여준다 — 상세 페이지와 동일한 고정 타이틀.
-      appBar: AppBar(title: const Text('케미 그룹 결과표')),
-      body: SafeArea(
-        top: false,
-        child: switch (_phase) {
-          _Phase.loading => const Center(child: CircularProgressIndicator()),
-          _Phase.countdown => Center(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              child: Text(
-                '$_count',
-                key: ValueKey(_count),
-                style: AppText.display,
-              ),
-            ),
-          ),
-          _Phase.expired => _expiredBody(),
-          _Phase.orphan => _withStatHeader(
-            const Expanded(
-              child: Center(
-                child: Padding(
-                  padding: EdgeInsets.all(AppSpacing.huge),
-                  child: Text(
-                    '결과가 생성되지 않은 그룹입니다',
-                    style: AppText.body,
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          _Phase.board => _board(),
-        },
-      ),
-    );
-  }
-
-  /// 인원 미달 종료 — stat 카드 + 참가했던 roster + 상황 설명 빈 상태.
-  Widget _expiredBody() {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.lg,
-            AppSpacing.lg,
-            AppSpacing.lg,
-            0,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TeamStatHeader(team: _team!),
-              if (_roster.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.xl),
-                Text('참가자', style: AppText.sectionTitle),
-                const SizedBox(height: AppSpacing.md),
-                for (final r in _roster)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                    child: Row(
-                      children: [
-                        _rosterAvatar(r),
-                        const SizedBox(width: AppSpacing.sm),
-                        Expanded(
-                          child: Text(
-                            r.alias,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppText.body,
-                          ),
-                        ),
-                        if (r.isOwner)
-                          Text(
-                            '방장',
-                            style: AppText.caption.copyWith(
-                              color: AppColors.textHint,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-              ],
-            ],
-          ),
-        ),
-        const Expanded(
-          child: EmotionEmptyState(
-            asset: 'assets/images/emotion-sad.png',
-            message: '48시간 안에 정원을 채우지 못해 인원 미달로 마감된 그룹입니다',
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// roster 기반 아바타 — 썸네일 → 성별 기본 아이콘. payload 가 없는
-  /// 종료 방에서 사용 (border 는 _slotAvatar 와 같은 source 규칙).
-  Widget _rosterAvatar(TeamRosterEntry r, {double size = AppAvatar.sm}) {
-    final profile = _profiles[r.userId];
-    final thumbUrl = profile?.thumbUrl;
-    final inner = thumbUrl == null
-        ? _slotIconAvatar(r.gender, size)
-        : Image.network(
-            thumbUrl,
-            width: size,
-            height: size,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => _slotIconAvatar(r.gender, size),
-          );
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: sourceBorderColor(profile?.source)),
-      ),
-      child: ClipOval(child: inner),
-    );
-  }
-
-  /// 빈 상태(orphan)에도 상세와 동일한 방 stat 카드를 최상단 공유.
-  Widget _withStatHeader(Widget body) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.lg,
-            AppSpacing.lg,
-            AppSpacing.lg,
-            0,
-          ),
-          child: TeamStatHeader(team: _team!),
-        ),
-        body,
-      ],
-    );
-  }
-
-  Widget _board() {
-    final matchOther = _bestMatchOther;
-    return ListView(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      children: [
-        // 베스트 케미는 hero 다크 박스 안 — 상세 페이지가 참가자 그리드를
-        // extra 로 품는 것과 대칭 구조 (관상·궁합 hero 문법).
-        TeamStatHeader(team: _team!, extra: _bestSection()),
-        if (matchOther != null) ...[
-          const SizedBox(height: AppSpacing.xl),
-          TeamMatchCard(
-            teamId: widget.teamId,
-            otherUserId: matchOther.userId,
-            otherNickname: _nameOf(matchOther.slot),
-            otherGender: _genderOf(matchOther.slot) ?? 'male',
-            // 응답 시한(발표 + 48h) 판정 기준 — 만료면 버튼 숨김.
-            closedAt: _team!.closedAt,
-          ),
-        ],
-        const SizedBox(height: AppSpacing.xl),
-        Text('케미 매트릭스', style: AppText.sectionTitle),
-        const SizedBox(height: AppSpacing.md),
-        _matrix(),
-        if (_mySlot != null) ...[
-          const SizedBox(height: AppSpacing.xl),
-          Text('나와의 케미 순위', style: AppText.sectionTitle),
-          const SizedBox(height: AppSpacing.md),
-          ..._myRanking(),
-        ],
-        const SizedBox(height: AppSpacing.xl),
-        _legend(),
-      ],
-    );
-  }
-
-  /// 베스트 인물 1열 — 아바타 + 이름 + "나이 성별 얼굴형" + "유형 · 기질".
-  /// hero 다크 박스 안 — 이름 흰색, 메타는 sand (상세 슬롯 그리드와 동일 문법).
-  Widget _bestPerson(int slot) {
-    String? uid;
-    for (final r in _roster) {
-      if (r.slotNo == slot) uid = r.userId;
-    }
-    final p = uid == null ? null : _profiles[uid];
-    final shapeLine = p?.ageGender == null
-        ? null
-        : '${p!.ageGender} ${p.faceShape ?? ''}'.trim();
-    return Column(
-      children: [
-        // 쌍 상세 시트 _pairAvatar 와 동일 스케일 — 카드의 주인공은 얼굴.
-        _slotAvatar(slot, size: AppAvatar.xl),
-        const SizedBox(height: AppSpacing.sm),
-        Text(
-          _nameOf(slot),
-          style: AppText.subTitle.copyWith(color: Colors.white),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        if (shapeLine != null) ...[
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            shapeLine,
-            style: AppText.caption.copyWith(color: kTeamHeroSand),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-        if (p?.archetype != null)
-          Text(
-            p!.archetype!,
-            style: AppText.caption.copyWith(color: kTeamHeroSand),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-      ],
-    );
-  }
-
-  /// hero 다크 박스 안 베스트 케미 섹션 — 궁합 상세 hero 의 두 인물 문법
-  /// (인물 열 + × glyph + 등급 클라이맥스). 탭 = 결과표 셀과 동일한 쌍 상세
-  /// 시트 (기존 궁합 unlock 흐름). gold 코너 태그·별도 카드는 폐기 — 섹션
-  /// 라벨(sand)이 그 역할.
-  Widget _bestSection() {
-    final a = (_best['a'] as num).toInt();
-    final b = (_best['b'] as num).toInt();
-    final score = (_best['score'] as num).toInt();
-    final band = _bandOf(a, b);
-    return InkWell(
-      onTap: () => _openPair(a, b),
-      borderRadius: BorderRadius.circular(AppRadius.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '베스트 케미',
-            style: AppText.caption.copyWith(
-              color: kTeamHeroSand,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: _bestPerson(a)),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                  vertical: AppSpacing.xl,
-                ),
-                // 궁합 hero 의 × glyph 와 동일 문법 (w300 흰색).
-                child: Text(
-                  '×',
-                  style: AppText.sectionTitle.copyWith(
-                    color: Colors.white,
-                    fontSize: 32,
-                    fontWeight: FontWeight.w300,
-                    height: 1.0,
-                  ),
-                ),
-              ),
-              Expanded(child: _bestPerson(b)),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          // 등급 성어·한자 병기 — 섹션의 클라이맥스. 매칭 카드 헤드라인과
-          // 동일한 SongMyung 토큰(appBarTitle), hero 위라 흰색.
-          Center(
-            child: Text(
-              band == null
-                  ? '$score점'
-                  : '${CompatLabel.values[band].korean} '
-                        '(${CompatLabel.values[band].hanja})',
-              style: AppText.appBarTitle.copyWith(color: Colors.white),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          // 상세 진입 힌트 — 탭 가능함을 알리는 진행 지시자 (sand 톤).
-          Center(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // 인물 열의 메타 라인(인구통계·유형)과 100% 동일 속성 —
-                // caption + sand.
-                Text(
-                  '상세 궁합 풀이 보기',
-                  style: AppText.caption.copyWith(color: kTeamHeroSand),
-                ),
-                const SizedBox(width: AppSpacing.xs),
-                const FaIcon(
-                  FontAwesomeIcons.chevronRight,
-                  size: 10,
-                  color: kTeamHeroSand,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// 뷰어 행 최상단 고정 매트릭스 — 셀 = 밴드 색 점.
-  /// match 방은 남(행)×여(열) 직사각(동성 쌍 부재) — 뷰어가 포함된 성별을
-  /// 행 축으로 삼는다. all 방은 기존 정방 유지.
-  Widget _matrix() {
-    final rows = <int>[];
-    final cols = <int>[];
-    if (_team?.roomKind == TeamRoomKind.match) {
-      final males = <int>[];
-      final females = <int>[];
-      for (final p in _players) {
-        final slot = (p['slot'] as num).toInt();
-        if (p['gender'] == 'male') {
-          males.add(slot);
-        } else {
-          females.add(slot);
-        }
-      }
-      final myGender = _mySlot == null ? null : _genderOf(_mySlot!);
-      if (myGender == 'female') {
-        rows.addAll(females);
-        cols.addAll(males);
-      } else {
-        rows.addAll(males);
-        cols.addAll(females);
-      }
-    } else {
-      final slots = [for (final p in _players) (p['slot'] as num).toInt()];
-      rows.addAll(slots);
-      cols.addAll(slots);
-    }
-    if (_mySlot != null && rows.contains(_mySlot)) {
-      rows
-        ..remove(_mySlot)
-        ..insert(0, _mySlot!);
-    }
-    // 행(남)·열(여) 셀은 같은 역할 — 아바타 + 이름, 토큰 하나로 통일.
-    Widget nameCell(int slot) => SizedBox(
-      width: 64,
-      child: Column(
-        children: [
-          _slotAvatar(slot, size: AppAvatar.xs),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            _nameOf(slot),
-            style: AppText.caption,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const SizedBox(width: 64),
-              for (final c in cols) nameCell(c),
-            ],
-          ),
-          for (final row in rows)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-              child: Row(
-                children: [
-                  nameCell(row),
-                  for (final col in cols)
-                    SizedBox(
-                      width: 64,
-                      child: row == col
-                          ? Text(
-                              '—',
-                              style: AppText.hint,
-                              textAlign: TextAlign.center,
-                            )
-                          : _bandOf(row, col) == null
-                          ? const SizedBox.shrink()
-                          : InkWell(
-                              onTap: () => _openPair(row, col),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: AppSpacing.xs,
-                                ),
-                                child: Center(
-                                  child: BandDot(
-                                    _bandOf(row, col)!,
-                                    size: 28,
-                                    score: _scoreOf(row, col),
-                                  ),
-                                ),
-                              ),
-                            ),
-                    ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  List<Widget> _myRanking() {
-    final rows = <Widget>[];
-    for (final p in _pairs) {
-      final a = (p['a'] as num).toInt();
-      final b = (p['b'] as num).toInt();
-      if (a != _mySlot && b != _mySlot) continue;
-      final other = a == _mySlot ? b : a;
-      final band = (p['band'] as num).toInt();
-      rows.add(
-        InkWell(
-          onTap: () => _openPair(_mySlot!, other),
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          child: Container(
-            margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Row(
-              children: [
-                // 아바타 · 이름 — (우측) 밴드 점 · 등급. 아바타는 md(42) —
-                // 순위 리스트의 주인공은 얼굴 (2026-07-30 sm→md 승급).
-                _slotAvatar(other, size: AppAvatar.md),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(child: Text(_nameOf(other), style: AppText.subTitle)),
-                BandDot(band, size: 28, score: _scoreOf(_mySlot!, other)),
-                const SizedBox(width: AppSpacing.xs),
-                Text(
-                  band.bandLabel,
-                  style: AppText.caption.copyWith(color: band.bandColor),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                // 탭 = 쌍 상세로 이어짐을 알리는 진행 지시자.
-                const FaIcon(
-                  FontAwesomeIcons.chevronRight,
-                  size: 12,
-                  color: AppColors.textHint,
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-    return rows;
-  }
-
-  Widget _legend() {
-    return Wrap(
-      spacing: AppSpacing.md,
-      children: [
-        for (int band = 0; band < 4; band++)
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              BandDot(band, size: 10),
-              const SizedBox(width: AppSpacing.xs),
-              Text(band.bandLabel, style: AppText.hint),
-            ],
-          ),
-      ],
-    );
-  }
-
-  /// 쌍 상세 = 기존 궁합 unlock 흐름 (1🪙). 두 참가자의 현재 my-face 를
-  /// live resolve 해 기존 runCompatibilityUnlock → pushCompat 계약으로 넘긴다.
-  Future<void> _openPair(int slotA, int slotB) async {
-    String? uidOf(int slot) {
-      for (final r in _roster) {
-        if (r.slotNo == slot) return r.userId;
-      }
-      return null;
-    }
-
-    final uidA = uidOf(slotA);
-    final uidB = uidOf(slotB);
-    if (uidA == null || uidB == null) {
-      showTopSnackBar(
-        Overlay.of(context),
-        CompactSnackBar.error(message: '탈퇴한 참가자와의 상세는 볼 수 없습니다'),
-      );
-      return;
-    }
-    final myUid = _service.myUid;
-    // 내 쌍은 내 리포트를 my 로 — 기존 궁합 상세의 시점 규약.
-    final firstUid = uidA == myUid ? uidA : (uidB == myUid ? uidB : uidA);
-    final secondUid = firstUid == uidA ? uidB : uidA;
-    final my = await _service.fetchLiveReport(firstUid);
-    final album = await _service.fetchLiveReport(secondUid);
-    if (!mounted) return;
-    if (my == null || album == null) {
-      showTopSnackBar(
-        Overlay.of(context),
-        CompactSnackBar.error(message: '상세를 불러올 수 없습니다'),
-      );
-      return;
-    }
-    // live 리포트는 alias 가 비어 있으므로 (fetchByUuid 수신 규약) 이름은
-    // payload 닉네임을 명시 전달. 밴드·점수도 결과표와 같은 소스(payload
-    // band + snapshot 재계산 점수)를 전달 — 시트 자체 재계산은 차단 쌍의
-    // 상한 60점을 몰라 결과표와 어긋난다.
-    await openTeamPairDetail(
-      context,
-      ref,
-      my: my,
-      album: album,
-      band: _bandOf(slotA, slotB) ?? 0,
-      score: _scoreOf(slotA, slotB),
-      myName: _nameOf(firstUid == uidA ? slotA : slotB),
-      albumName: _nameOf(firstUid == uidA ? slotB : slotA),
-    );
-  }
-}
 
 /// 쌍 상세 unlock 시트 — runCompatibilityUnlock/pushCompat 호출과 동일 계약.
 /// 무료 = 밴드 닷 + 라벨만(케미 그룹 payload 는 best 외 점수를 싣지 않는다,
@@ -955,31 +191,6 @@ Future<void> openTeamPairDetail(
   context.pushCompat(my: my, album: album);
 }
 
-/// 페어 시트용 세로 인물 — 큰 아바타 + 이름 + 나이·성별.
-Widget _pairPersonColumn(FaceReadingReport r, {String? name}) {
-  return Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      _pairAvatar(r, size: AppAvatar.xl),
-      const SizedBox(height: AppSpacing.sm),
-      Text(
-        name ?? r.alias ?? '${r.ageGroup.labelKo} ${r.gender.labelKo}',
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: AppText.body.copyWith(
-          color: AppColors.textPrimary,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-      const SizedBox(height: 2),
-      Text(
-        '${r.ageGroup.labelKo} ${r.gender.labelKo}',
-        style: AppText.caption.copyWith(color: AppColors.textHint),
-      ),
-    ],
-  );
-}
-
 /// 원형 thumbnail 아바타 — 1순위 로컬 파일 → 2순위 CDN(thumbnailKey) →
 /// 사람 아이콘.
 Widget _pairAvatar(FaceReadingReport r, {double size = AppAvatar.sm}) {
@@ -1025,4 +236,792 @@ Widget _pairIconAvatar(double size) {
       ),
     ),
   );
+}
+
+/// 페어 시트용 세로 인물 — 큰 아바타 + 이름 + 나이·성별.
+Widget _pairPersonColumn(FaceReadingReport r, {String? name}) {
+  return Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      _pairAvatar(r, size: AppAvatar.xl),
+      const SizedBox(height: AppSpacing.sm),
+      Text(
+        name ?? r.alias ?? '${r.ageGroup.labelKo} ${r.gender.labelKo}',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: AppText.body.copyWith(
+          color: AppColors.textPrimary,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      const SizedBox(height: 2),
+      Text(
+        '${r.ageGroup.labelKo} ${r.gender.labelKo}',
+        style: AppText.caption.copyWith(color: AppColors.textHint),
+      ),
+    ],
+  );
+}
+
+/// 매칭 결과 — payload(스코어보드)가 없으면 snapshot 으로 계산해 1회 기록
+/// (first-writer-wins)하고, 있으면 그대로 렌더한다.
+class TeamRevealScreen extends ConsumerStatefulWidget {
+  final String teamId;
+  final bool ceremony;
+  const TeamRevealScreen({
+    super.key,
+    required this.teamId,
+    this.ceremony = false,
+  });
+
+  @override
+  ConsumerState<TeamRevealScreen> createState() => _TeamRevealScreenState();
+}
+
+enum _Phase { loading, countdown, board, orphan, expired }
+
+class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
+  final _service = TeamService.instance;
+  _Phase _phase = _Phase.loading;
+  int _count = 3;
+  Team? _team;
+  Map<String, dynamic>? _payload;
+  List<TeamRosterEntry> _roster = const [];
+  Map<String, TeamSlotProfile> _profiles = const {};
+
+  /// 쌍 점수 ('lo-hi' 키) — payload 는 점수를 싣지 않으므로 snapshot 으로
+  /// 로컬 재계산 (결정론이라 payload 밴드와 항상 일치).
+  Map<String, int> _scores = const {};
+  int? _mySlot;
+  Timer? _countdownTimer;
+
+  /// 베스트 쌍 — 정렬이 곧 순위인 pairs 에서 bypass(차단·기채팅) 아닌 첫 쌍.
+  /// (payload 에 별도 best 키 없음 — 구 payload 의 best 키는 무시.)
+  Map<String, dynamic> get _best =>
+      _pairs.firstWhere((p) => p['bypass'] != true, orElse: () => _pairs.first);
+
+  /// 뷰어가 베스트 쌍 본인이면 상대 (userId, slot) — 아니면 null.
+  ({String userId, int slot})? get _bestMatchOther {
+    final myUid = _service.myUid;
+    if (myUid == null) return null;
+    final a = (_best['a'] as num).toInt();
+    final b = (_best['b'] as num).toInt();
+    String? uidOf(int slot) {
+      for (final r in _roster) {
+        if (r.slotNo == slot) return r.userId;
+      }
+      return null;
+    }
+
+    final uidA = uidOf(a);
+    final uidB = uidOf(b);
+    if (uidA == myUid && uidB != null) return (userId: uidB, slot: b);
+    if (uidB == myUid && uidA != null) return (userId: uidA, slot: a);
+    return null;
+  }
+
+  List<Map<String, dynamic>> get _pairs => [
+    for (final p in _payload!['pairs'] as List) p as Map<String, dynamic>,
+  ];
+
+  // ── payload 파생 ──────────────────────────────────────────────
+  List<Map<String, dynamic>> get _players => [
+    for (final p in _payload!['players'] as List) p as Map<String, dynamic>,
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      // 방 제목은 stat 카드가 보여준다 — 상세 페이지와 동일한 고정 타이틀.
+      appBar: AppBar(title: const Text('케미 그룹 결과표')),
+      body: SafeArea(
+        top: false,
+        child: switch (_phase) {
+          _Phase.loading => const Center(child: CircularProgressIndicator()),
+          _Phase.countdown => Center(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: Text(
+                '$_count',
+                key: ValueKey(_count),
+                style: AppText.display,
+              ),
+            ),
+          ),
+          _Phase.expired => _expiredBody(),
+          _Phase.orphan => _withStatHeader(
+            const Expanded(
+              child: Center(
+                child: Padding(
+                  padding: EdgeInsets.all(AppSpacing.huge),
+                  child: Text(
+                    '결과가 생성되지 않은 그룹입니다',
+                    style: AppText.body,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          _Phase.board => _board(),
+        },
+      ),
+    );
+  }
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  int? _bandOf(int a, int b) {
+    final lo = a < b ? a : b;
+    final hi = a < b ? b : a;
+    for (final p in _pairs) {
+      if (p['a'] == lo && p['b'] == hi) return (p['band'] as num).toInt();
+    }
+    return null;
+  }
+
+  /// 베스트 인물 1열 — 아바타 + 이름 + "나이 성별 얼굴형" + "유형 · 기질".
+  /// hero 다크 박스 안 — 이름 흰색, 메타는 sand (상세 슬롯 그리드와 동일 문법).
+  Widget _bestPerson(int slot) {
+    String? uid;
+    for (final r in _roster) {
+      if (r.slotNo == slot) uid = r.userId;
+    }
+    final p = uid == null ? null : _profiles[uid];
+    final shapeLine = p?.ageGender == null
+        ? null
+        : '${p!.ageGender} ${p.faceShape ?? ''}'.trim();
+    return Column(
+      children: [
+        // 쌍 상세 시트 _pairAvatar 와 동일 스케일 — 카드의 주인공은 얼굴.
+        _slotAvatar(slot, size: AppAvatar.xl),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          _nameOf(slot),
+          style: AppText.subTitle.copyWith(color: Colors.white),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        if (shapeLine != null) ...[
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            shapeLine,
+            style: AppText.caption.copyWith(color: kTeamHeroSand),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+        if (p?.archetype != null)
+          Text(
+            p!.archetype!,
+            style: AppText.caption.copyWith(color: kTeamHeroSand),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+      ],
+    );
+  }
+
+  /// hero 다크 박스 안 베스트 케미 섹션 — 궁합 상세 hero 의 두 인물 문법
+  /// (인물 열 + × glyph + 등급 클라이맥스). 탭 = 결과표 셀과 동일한 쌍 상세
+  /// 시트 (기존 궁합 unlock 흐름). gold 코너 태그·별도 카드는 폐기 — 섹션
+  /// 라벨(sand)이 그 역할.
+  Widget _bestSection() {
+    final a = (_best['a'] as num).toInt();
+    final b = (_best['b'] as num).toInt();
+    final score = (_best['score'] as num).toInt();
+    final band = _bandOf(a, b);
+    return InkWell(
+      onTap: () => _openPair(a, b),
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '베스트 케미',
+            style: AppText.caption.copyWith(
+              color: kTeamHeroSand,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: _bestPerson(a)),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: AppSpacing.xl,
+                ),
+                // 궁합 hero 의 × glyph 와 동일 문법 (w300 흰색).
+                child: Text(
+                  '×',
+                  style: AppText.sectionTitle.copyWith(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.w300,
+                    height: 1.0,
+                  ),
+                ),
+              ),
+              Expanded(child: _bestPerson(b)),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          // 등급 성어·한자 병기 — 섹션의 클라이맥스. 매칭 카드 헤드라인과
+          // 동일한 SongMyung 토큰(appBarTitle), hero 위라 흰색.
+          Center(
+            child: Text(
+              band == null
+                  ? '$score점'
+                  : '${CompatLabel.values[band].korean} '
+                        '(${CompatLabel.values[band].hanja})',
+              style: AppText.appBarTitle.copyWith(color: Colors.white),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          // 상세 진입 힌트 — 탭 가능함을 알리는 진행 지시자 (sand 톤).
+          Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 인물 열의 메타 라인(인구통계·유형)과 100% 동일 속성 —
+                // caption + sand.
+                Text(
+                  '상세 궁합 풀이 보기',
+                  style: AppText.caption.copyWith(color: kTeamHeroSand),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                const FaIcon(
+                  FontAwesomeIcons.chevronRight,
+                  size: 10,
+                  color: kTeamHeroSand,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _board() {
+    final matchOther = _bestMatchOther;
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      children: [
+        // 베스트 케미는 hero 다크 박스 안 — 상세 페이지가 참가자 그리드를
+        // extra 로 품는 것과 대칭 구조 (관상·궁합 hero 문법).
+        TeamStatHeader(team: _team!, extra: _bestSection()),
+        if (matchOther != null) ...[
+          const SizedBox(height: AppSpacing.xl),
+          TeamMatchCard(
+            teamId: widget.teamId,
+            otherUserId: matchOther.userId,
+            otherNickname: _nameOf(matchOther.slot),
+            otherGender: _genderOf(matchOther.slot) ?? 'male',
+            // 응답 시한(발표 + 48h) 판정 기준 — 만료면 버튼 숨김.
+            closedAt: _team!.closedAt,
+          ),
+        ],
+        const SizedBox(height: AppSpacing.xl),
+        Text('케미 매트릭스', style: AppText.sectionTitle),
+        const SizedBox(height: AppSpacing.md),
+        _matrix(),
+        if (_mySlot != null) ...[
+          const SizedBox(height: AppSpacing.xl),
+          Text('나와의 케미 순위', style: AppText.sectionTitle),
+          const SizedBox(height: AppSpacing.md),
+          ..._myRanking(),
+        ],
+        const SizedBox(height: AppSpacing.md),
+        _legend(),
+      ],
+    );
+  }
+
+  /// 인원 미달 종료 — stat 카드 + 참가했던 roster + 상황 설명 빈 상태.
+  Widget _expiredBody() {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.lg,
+            AppSpacing.lg,
+            0,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TeamStatHeader(team: _team!),
+              if (_roster.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.xl),
+                Text('참가자', style: AppText.sectionTitle),
+                const SizedBox(height: AppSpacing.md),
+                for (final r in _roster)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                    child: Row(
+                      children: [
+                        _rosterAvatar(r),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Text(
+                            r.alias,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppText.body,
+                          ),
+                        ),
+                        if (r.isOwner)
+                          Text(
+                            '방장',
+                            style: AppText.caption.copyWith(
+                              color: AppColors.textHint,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+              ],
+            ],
+          ),
+        ),
+        const Expanded(
+          child: EmotionEmptyState(
+            asset: 'assets/images/emotion-sad.png',
+            message: '48시간 안에 정원을 채우지 못해 인원 미달로 마감된 그룹입니다',
+          ),
+        ),
+      ],
+    );
+  }
+
+  String? _genderOf(int slot) {
+    for (final p in _players) {
+      if (p['slot'] == slot) return p['gender'] as String?;
+    }
+    return null;
+  }
+
+  Widget _legend() {
+    return Wrap(
+      spacing: AppSpacing.md,
+      children: [
+        for (int band = 0; band < 4; band++)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              BandDot(band, size: 10),
+              const SizedBox(width: AppSpacing.xs),
+              Text(band.bandLabel, style: AppText.hint),
+            ],
+          ),
+      ],
+    );
+  }
+
+  Future<void> _load() async {
+    final team = await _service.fetchTeam(widget.teamId);
+    if (!mounted) return;
+    if (team == null) {
+      Navigator.of(context).maybePop();
+      return;
+    }
+    final roster = await _service.fetchRoster(widget.teamId);
+    if (!mounted) return;
+    // 참가자 아바타 — 상세 페이지와 같은 소스 (현재 my-face live resolve).
+    final profiles = await _service.fetchSlotProfiles([
+      for (final r in roster) r.userId,
+    ]);
+    if (!mounted) return;
+    _profiles = profiles;
+    // snapshot 재계산 — payload 유무와 무관하게 dot 점수 소스로 항상 수행.
+    engine.TeamResult? computed;
+    final snapshot = team.chemistrySnapshot;
+    if (snapshot != null) {
+      final players = assembleTeamPlayers(roster: roster, snapshot: snapshot);
+      if (players.length >= 2) {
+        computed = engine.computeTeam(
+          players,
+          matchOnly: team.roomKind == TeamRoomKind.match,
+          blockedKeys: blockedKeysFromSnapshot(snapshot),
+          chattedKeys: chattedKeysFromSnapshot(snapshot),
+        );
+      }
+    }
+    _scores = computed == null
+        ? const {}
+        : {for (final p in computed.pairs) '${p.a}-${p.b}': p.total.round()};
+    Map<String, dynamic>? payload = team.resultPayload;
+    if (payload == null) {
+      // 인원 미달 종료 — 결과가 애초에 만들어질 수 없는 방. 고아 안전망과
+      // 구분해 상황 설명 빈 상태로 안내한다.
+      if (team.status == TeamStatus.expired) {
+        setState(() {
+          _team = team;
+          _roster = roster;
+          _phase = _Phase.expired;
+        });
+        return;
+      }
+      if (computed == null) {
+        // revealing 고아(스냅샷 부재는 구조상 없지만 completed+payload null 안전망).
+        setState(() {
+          _team = team;
+          _phase = _Phase.orphan;
+        });
+        return;
+      }
+      payload = computed.toPayload();
+      // 결정론 — 선착 기록만 유효, 실패(후착·비참가자)는 무해.
+      try {
+        await _service.submitResult(widget.teamId, payload);
+      } catch (_) {}
+      if (!mounted) return;
+      ref.invalidate(myTeamsProvider);
+    }
+    if (!mounted) return;
+    final myUid = _service.myUid;
+    int? mySlot;
+    for (final r in roster) {
+      if (r.userId == myUid) mySlot = r.slotNo;
+    }
+    setState(() {
+      _team = team;
+      _payload = payload;
+      _roster = roster;
+      _mySlot = mySlot;
+      _phase = widget.ceremony ? _Phase.countdown : _Phase.board;
+    });
+    if (widget.ceremony) _tickCountdown();
+  }
+
+  /// 뷰어 행 최상단 고정 매트릭스 — 셀 = 밴드 색 점.
+  /// match 방은 남(행)×여(열) 직사각(동성 쌍 부재) — 뷰어가 포함된 성별을
+  /// 행 축으로 삼는다. all 방은 기존 정방 유지.
+  Widget _matrix() {
+    final rows = <int>[];
+    final cols = <int>[];
+    if (_team?.roomKind == TeamRoomKind.match) {
+      final males = <int>[];
+      final females = <int>[];
+      for (final p in _players) {
+        final slot = (p['slot'] as num).toInt();
+        if (p['gender'] == 'male') {
+          males.add(slot);
+        } else {
+          females.add(slot);
+        }
+      }
+      final myGender = _mySlot == null ? null : _genderOf(_mySlot!);
+      if (myGender == 'female') {
+        rows.addAll(females);
+        cols.addAll(males);
+      } else {
+        rows.addAll(males);
+        cols.addAll(females);
+      }
+    } else {
+      final slots = [for (final p in _players) (p['slot'] as num).toInt()];
+      rows.addAll(slots);
+      cols.addAll(slots);
+    }
+    if (_mySlot != null && rows.contains(_mySlot)) {
+      rows
+        ..remove(_mySlot)
+        ..insert(0, _mySlot!);
+    }
+    // 행(남)·열(여) 셀은 같은 역할 — 아바타 + 이름, 토큰 하나로 통일.
+    Widget nameCell(int slot) => SizedBox(
+      width: 64,
+      child: Column(
+        children: [
+          _slotAvatar(slot, size: AppAvatar.xs),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            _nameOf(slot),
+            style: AppText.caption,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const SizedBox(width: 64),
+              for (final c in cols) nameCell(c),
+            ],
+          ),
+          for (final row in rows)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+              child: Row(
+                children: [
+                  nameCell(row),
+                  for (final col in cols)
+                    SizedBox(
+                      width: 64,
+                      child: row == col
+                          ? Text(
+                              '—',
+                              style: AppText.hint,
+                              textAlign: TextAlign.center,
+                            )
+                          : _bandOf(row, col) == null
+                          ? const SizedBox.shrink()
+                          : InkWell(
+                              onTap: () => _openPair(row, col),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: AppSpacing.xs,
+                                ),
+                                child: Center(
+                                  child: BandDot(
+                                    _bandOf(row, col)!,
+                                    size: 28,
+                                    score: _scoreOf(row, col),
+                                  ),
+                                ),
+                              ),
+                            ),
+                    ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _myRanking() {
+    final rows = <Widget>[];
+    for (final p in _pairs) {
+      final a = (p['a'] as num).toInt();
+      final b = (p['b'] as num).toInt();
+      if (a != _mySlot && b != _mySlot) continue;
+      final other = a == _mySlot ? b : a;
+      final band = (p['band'] as num).toInt();
+      rows.add(
+        InkWell(
+          onTap: () => _openPair(_mySlot!, other),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              children: [
+                // 아바타 · 이름 — (우측) 밴드 점 · 등급. 아바타는 md(42) —
+                // 순위 리스트의 주인공은 얼굴 (2026-07-30 sm→md 승급).
+                _slotAvatar(other, size: AppAvatar.md),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(child: Text(_nameOf(other), style: AppText.subTitle)),
+                BandDot(band, size: 28, score: _scoreOf(_mySlot!, other)),
+                const SizedBox(width: AppSpacing.xs),
+                Text(
+                  band.bandLabel,
+                  style: AppText.caption.copyWith(color: band.bandColor),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                // 탭 = 쌍 상세로 이어짐을 알리는 진행 지시자.
+                const FaIcon(
+                  FontAwesomeIcons.chevronRight,
+                  size: 12,
+                  color: AppColors.textHint,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+    return rows;
+  }
+
+  String _nameOf(int slot) {
+    for (final p in _players) {
+      if (p['slot'] == slot) return p['name'] as String;
+    }
+    return '참가자';
+  }
+
+  /// 쌍 상세 = 기존 궁합 unlock 흐름 (1🪙). 두 참가자의 현재 my-face 를
+  /// live resolve 해 기존 runCompatibilityUnlock → pushCompat 계약으로 넘긴다.
+  Future<void> _openPair(int slotA, int slotB) async {
+    String? uidOf(int slot) {
+      for (final r in _roster) {
+        if (r.slotNo == slot) return r.userId;
+      }
+      return null;
+    }
+
+    final uidA = uidOf(slotA);
+    final uidB = uidOf(slotB);
+    if (uidA == null || uidB == null) {
+      showTopSnackBar(
+        Overlay.of(context),
+        CompactSnackBar.error(message: '탈퇴한 참가자와의 상세는 볼 수 없습니다'),
+      );
+      return;
+    }
+    final myUid = _service.myUid;
+    // 내 쌍은 내 리포트를 my 로 — 기존 궁합 상세의 시점 규약.
+    final firstUid = uidA == myUid ? uidA : (uidB == myUid ? uidB : uidA);
+    final secondUid = firstUid == uidA ? uidB : uidA;
+    final my = await _service.fetchLiveReport(firstUid);
+    final album = await _service.fetchLiveReport(secondUid);
+    if (!mounted) return;
+    if (my == null || album == null) {
+      showTopSnackBar(
+        Overlay.of(context),
+        CompactSnackBar.error(message: '상세를 불러올 수 없습니다'),
+      );
+      return;
+    }
+    // live 리포트는 alias 가 비어 있으므로 (fetchByUuid 수신 규약) 이름은
+    // payload 닉네임을 명시 전달. 밴드·점수도 결과표와 같은 소스(payload
+    // band + snapshot 재계산 점수)를 전달 — 시트 자체 재계산은 차단 쌍의
+    // 상한 60점을 몰라 결과표와 어긋난다.
+    await openTeamPairDetail(
+      context,
+      ref,
+      my: my,
+      album: album,
+      band: _bandOf(slotA, slotB) ?? 0,
+      score: _scoreOf(slotA, slotB),
+      myName: _nameOf(firstUid == uidA ? slotA : slotB),
+      albumName: _nameOf(firstUid == uidA ? slotB : slotA),
+    );
+  }
+
+  /// roster 기반 아바타 — 썸네일 → 성별 기본 아이콘. payload 가 없는
+  /// 종료 방에서 사용 (border 는 _slotAvatar 와 같은 source 규칙).
+  Widget _rosterAvatar(TeamRosterEntry r, {double size = AppAvatar.sm}) {
+    final profile = _profiles[r.userId];
+    final thumbUrl = profile?.thumbUrl;
+    final inner = thumbUrl == null
+        ? _slotIconAvatar(r.gender, size)
+        : Image.network(
+            thumbUrl,
+            width: size,
+            height: size,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => _slotIconAvatar(r.gender, size),
+          );
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: sourceBorderColor(profile?.source)),
+      ),
+      child: ClipOval(child: inner),
+    );
+  }
+
+  int? _scoreOf(int a, int b) => _scores[a < b ? '$a-$b' : '$b-$a'];
+
+  /// 슬롯 아바타 — 썸네일 → 성별 기본 아이콘 → 사람 아이콘.
+  /// 참가자 전원 사진 공개가 계약이다 (조인 동의 문구와 동일).
+  Widget _slotAvatar(int slot, {double size = AppAvatar.sm}) {
+    String? uid;
+    for (final r in _roster) {
+      if (r.slotNo == slot) uid = r.userId;
+    }
+    final gender = _genderOf(slot);
+    final thumbUrl = uid == null ? null : _profiles[uid]?.thumbUrl;
+    final inner = thumbUrl == null
+        ? _slotIconAvatar(gender, size)
+        : Image.network(
+            thumbUrl,
+            width: size,
+            height: size,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => _slotIconAvatar(gender, size),
+          );
+    // border 색은 전 탭 공통 source 규칙 (카메라 gold / 앨범 lightGray).
+    // border 는 foreground — 이미지가 테두리 안쪽을 덮지 않게.
+    return Container(
+      width: size,
+      height: size,
+      foregroundDecoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: sourceBorderColor(uid == null ? null : _profiles[uid]?.source),
+        ),
+      ),
+      child: ClipOval(child: inner),
+    );
+  }
+
+  Widget _slotIconAvatar(String? gender, double size) {
+    if (gender == null) return _pairIconAvatar(size);
+    return Center(
+      child: SvgPicture.asset(
+        gender == 'male' ? 'assets/svgs/male.svg' : 'assets/svgs/female.svg',
+        height: size * 0.5,
+        colorFilter: const ColorFilter.mode(
+          AppColors.textHint,
+          BlendMode.srcIn,
+        ),
+      ),
+    );
+  }
+
+  void _tickCountdown() {
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      if (_count <= 1) {
+        t.cancel();
+        setState(() => _phase = _Phase.board);
+      } else {
+        setState(() => _count--);
+      }
+    });
+  }
+
+  /// 빈 상태(orphan)에도 상세와 동일한 방 stat 카드를 최상단 공유.
+  Widget _withStatHeader(Widget body) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.lg,
+            AppSpacing.lg,
+            0,
+          ),
+          child: TeamStatHeader(team: _team!),
+        ),
+        body,
+      ],
+    );
+  }
 }

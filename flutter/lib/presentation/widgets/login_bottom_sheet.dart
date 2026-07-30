@@ -200,6 +200,44 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
                 ],
               ),
               const SizedBox(height: 16),
+              // 인라인 에러 — '또는 이메일로' 구분선 바로 아래(필드 위).
+              // 버튼 아래 두면 키보드가 올라왔을 때 화면 밖으로 밀려
+              // 안 보인다 (2026-07-30 위치 이동). danger tint box + icon.
+              if (_errorMessage != null) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.danger.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: AppColors.danger.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const FaIcon(
+                        FontAwesomeIcons.circleExclamation,
+                        size: 14,
+                        color: AppColors.danger,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _errorMessage!,
+                          style: AppText.caption.copyWith(
+                            color: AppColors.danger,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               // ── 이메일 form ──────────────────────────────────────────
               // AutofillGroup 으로 두 필드 묶음 — iOS Keychain 조회를
               // batch 처리해 첫 tap 시 응답성 개선. 묶이지 않으면 각
@@ -256,43 +294,6 @@ class _LoginSheetState extends ConsumerState<_LoginSheet> {
                 busy: _isLoading,
                 onPressed: _canSubmit ? _emailSubmit : null,
               ),
-              // 인라인 에러 — modal sheet 위 영역에 표시되므로 snackbar 처럼
-              // 가려질 일 없음. AppColors.danger 살짝 tint 한 box + icon.
-              if (_errorMessage != null) ...[
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.danger.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: AppColors.danger.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const FaIcon(
-                        FontAwesomeIcons.circleExclamation,
-                        size: 14,
-                        color: AppColors.danger,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _errorMessage!,
-                          style: AppText.caption.copyWith(
-                            color: AppColors.danger,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
               const SizedBox(height: 16),
               // ── 하단 hint (mode 별) — 같은 톤(textHint·12px)으로 통일.
               // 가입 모드의 reward 가치는 gift 아이콘으로만 시각 차별.

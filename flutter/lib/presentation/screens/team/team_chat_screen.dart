@@ -263,8 +263,14 @@ class _TeamChatScreenState extends State<TeamChatScreen> {
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : _messages.isEmpty
-                  ? const Center(
-                      child: Text('첫 메시지를 보내보세요', style: AppText.hint),
+                  ? Center(
+                      // 빈 상태 공통 톤 — caption(13) + textHint.
+                      child: Text(
+                        '첫 메시지를 보내보세요',
+                        style: AppText.caption.copyWith(
+                          color: AppColors.textHint,
+                        ),
+                      ),
                     )
                   : ListView.builder(
                       reverse: true,

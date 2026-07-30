@@ -138,7 +138,9 @@ class _TeamMatchCardState extends State<TeamMatchCard> {
             AppSpacing.xl,
             AppSpacing.xl,
           ),
-          child: child,
+          // Stack 의 loose 제약에서 Column 이 내용 폭으로 줄어 왼쪽에 붙는
+          // 문제 — full-width 강제로 타이틀·사진·상태 카피 전부 수평 중앙.
+          child: SizedBox(width: double.infinity, child: child),
         ),
         // 우상단 공개 범위 고지 — 회색 최소 폰트(hint).
         Positioned(
@@ -339,12 +341,6 @@ class _TeamMatchCardState extends State<TeamMatchCard> {
       children: [
         Text(
           '${widget.otherNickname}님의 선택을 기다리고 있습니다',
-          style: AppText.caption,
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        Text(
-          '채팅방이 열리면 이 화면과 매칭 결과에서 들어갈 수 있습니다',
           style: AppText.caption,
           textAlign: TextAlign.center,
         ),
