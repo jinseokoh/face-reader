@@ -332,7 +332,7 @@ class _TeamChatScreenState extends ConsumerState<TeamChatScreen> {
             Expanded(
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
-                  : _messages.isEmpty
+                  : _messages.isEmpty && !_otherLeft
                   ? Center(
                       // 빈 상태 공통 톤 — caption(13) + textHint.
                       child: Text(
@@ -348,9 +348,39 @@ class _TeamChatScreenState extends ConsumerState<TeamChatScreen> {
                         horizontal: AppSpacing.md,
                         vertical: AppSpacing.sm,
                       ),
-                      itemCount: _messages.length,
+                      // 상대가 나갔으면 스트림 맨 아래(최신 자리)에 카톡식
+                      // 시스템 라인 1개 추가.
+                      itemCount: _messages.length + (_otherLeft ? 1 : 0),
                       itemBuilder: (ctx, i) {
-                        final c = _messages.length - 1 - i;
+                        if (_otherLeft && i == 0) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: AppSpacing.sm,
+                            ),
+                            child: Center(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.md,
+                                  vertical: AppSpacing.xs,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surface,
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadius.md,
+                                  ),
+                                ),
+                                child: Text(
+                                  '${widget.otherNickname}님이 채팅방을 나갔습니다',
+                                  style: AppText.caption.copyWith(
+                                    color: AppColors.textHint,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+                        final adj = _otherLeft ? i - 1 : i;
+                        final c = _messages.length - 1 - adj;
                         final msg = _messages[c];
                         final prev = c > 0 ? _messages[c - 1] : null;
                         final next = c < _messages.length - 1
@@ -380,32 +410,10 @@ class _TeamChatScreenState extends ConsumerState<TeamChatScreen> {
                       },
                     ),
             ),
-            // 상대가 채팅방을 나간 경우 — 시스템 안내 라인 + 입력 차단
-            // (나간 상대는 다시 못 들어오므로 보내봐야 닿지 않는다).
-            if (_otherLeft) ...[
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md,
-                      vertical: AppSpacing.xs,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                    ),
-                    child: Text(
-                      '${widget.otherNickname}님이 채팅방을 나갔습니다',
-                      style: AppText.caption.copyWith(
-                        color: AppColors.textHint,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ] else
-              _inputBar(),
+            // 입력바는 상대가 나가도 유지 — 카톡 1:1 parity. 나갔다는 사실은
+            // 메시지 스트림 안 시스템 라인이 전달한다 (전송은 계속 가능하나
+            // 상대는 읽지 못한다).
+            _inputBar(),
           ],
         ),
       ),

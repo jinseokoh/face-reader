@@ -25,7 +25,7 @@ python/ (DeepFace FastAPI)          Supabase (metrics·coins·compatibilities·t
 | 1 | `CompatibilityScreen` | 궁합 — 내부 2탭(미확인/확인), 1🪙 unlock |
 | 2 | `ChemistryScreen` | 케미 그룹 — 내부 2탭(모집중/내 그룹) |
 | 3 | `ChatTabScreen` | 채팅 — 열린 매칭 채팅 목록(`openChatsProvider`), 안읽음 gold dot |
-| 4 | `SettingsScreen` | 설정 · 프로필 이름 수정 · 약관 · 로그인/탈퇴 |
+| 4 | `SettingsScreen` | 설정 · 프로필 이름 수정 · 약관 · 차단 목록 · 앱 정보 팝업 · 로그인/탈퇴 — 진입 시 배너 광고 팝업(§5) |
 
 채팅 접근 경로: ① 채팅 탭(아이콘에 안읽음 dot 뱃지) ② 전역 새 메시지 밴드 —
 안읽은 채팅이 있으면 어느 탭에서든 바텀 탭바 위에 노출, 탭하면 채팅방(1개) 또는
@@ -64,20 +64,37 @@ box (`onboarding_never_again`) flag 를 남겨 노출을 끈다. 건너뛰기·�
   14-node expandable · 8 인생 질문 본문 · 공유(카카오/OS 시트). 공유받은 카드는 북마크로 보관.
 
 **케미 그룹 화면** (`screens/chemistry/chemistry_screen.dart` 탭 + `screens/team/`):
-`ChemistryScreen`(2탭 — 모집중/내 그룹) · `showTeamCreatePage`(방 유형(all/match)→
+`ChemistryScreen`(2탭 — 모집중/내 그룹. 필터·정렬 상태는 화면 State 소유 — TabBarView
+child dispose 에도 유지. 내 그룹 필터 = 전체/모집중/미달/종료) ·
+`showTeamCreatePage`(방 유형(all/match)→
 제목(카테고리→제목 2단 프리셋, `team_title_catalog.dart`)→인원(6/8/10/12 chip)→
 연령대(방장 나이대 포함 인접 2-decade RangeSlider, 하한 20세 — 10대는 진입 차단)→
-공개 설정(공개/비밀 PIN + 썸네일 공개) 스텝 플로우) · `TeamDetailScreen`(참가
-여부 무관 단일 상세 페이지 — 미참가면 PIN·사진 공개 계약·`join_team` 참가 폼,
-참가면 슬롯 리스트(아바타 좌 + 이름/인구통계/관상 유형 meta 우, match 방은 남좌·여우
-2열, 썸네일 비공개면 성별 기본 아이콘) + QR + 초대 3버튼. Realtime 공통, 조인 성공은
-화면 전환 없이 in-place 전환) ·
-`TeamRevealScreen`(3-2-1 카운트다운 → 🏆 베스트 카드 → 밴드 매트릭스(all = N×N,
-match = 남×여 직사각), 보는 사람 행 최상단 고정) · `team_match_card`(베스트 쌍
-본인에게만 — 사진 상호 공개 + 채팅 개설 상호 동의) · `TeamChatScreen`(성사된 쌍의
-인앱 1:1 채팅, Realtime). 정원 충족이 유일한 시작 조건 — 방장 수동 시작 없음.
+공개 설정(공개/비밀 PIN + 썸네일 공개) 스텝 플로우) ·
+`TeamStatHeader`(상세·결과표 공용 hero — 좌상단 날짜↔마감, '케미도 과학이다' 라벨 +
+송명체 제목 + 그린 연령·정원 chip 의 다크 그라데이션 박스. `extra` 슬롯에 상세는
+참가자 그리드·발표 조건 컨테이너를, 결과표는 베스트 케미 섹션을 주입) ·
+`TeamDetailScreen`(참가 여부 무관 단일 상세 — 참가자 그리드가 hero 안에 있고(match
+방은 남좌·여우 2열, 썸네일 비공개면 성별 실루엣), 미참가면 사진 공개 계약 +
+[동의하고 참가]. **PIN 인풋 없음 — capability 모델**: 비밀방 문턱은 목록 문 앞
+`TeamPinDialog`(check_team_password) 하나뿐이고 초대 링크(/g/:id, `receivedView` —
+AppBar 닫기 X) 진입·join_team 은 검사하지 않는다. 참가자에겐 QR('이 그룹으로의
+초대') + 초대 3버튼. Realtime 공통, 조인 성공은 화면 전환 없이 in-place 전환) ·
+`TeamRevealScreen`(3-2-1 카운트다운 → hero 안 베스트 케미(인물 2열 + × + 등급
+성어) → 케미 매트릭스(all = N×N, match = 남×여 직사각, 보는 사람 행 최상단 고정) →
+나와의 케미 순위) · `team_match_card`(베스트 쌍 본인에게만 — 상태 5종: 응답 전/
+대기/성사/거절/**만료**(발표+48h 무응답 = 자동 거부, 버튼 숨김)) ·
+`TeamChatScreen`(성사된 쌍의 인앱 1:1 채팅, Realtime. ⋮ = 신고/차단/**채팅방
+나가기**(leave_chat — 내 목록에서만 숨김·재진입 불가). 상대가 나가면 스트림에
+카톡식 시스템 라인, 입력바는 유지). 정원 충족이 유일한 시작 조건 — 방장 수동 시작 없음.
 
-기타: `LedgerPage`(코인 원장) · `AdRewardScreen`(rewarded video) · `purchase_sheet`(코인 구매).
+기타: `LedgerPage`(코인 원장 — compat-unlock 행은 쌍 스냅샷으로 상대 사진, 제3자
+쌍은 미니 페어 아바타) · `AdRewardScreen`(rewarded video) · `purchase_sheet`(코인
+구매) · `UpdateGateScreen`(강제 업그레이드 게이트 — §5 app_config) ·
+`AdBannerDialog`(설정 탭 배너 팝업) · `AppInfoDialog`(설정 > 앱 정보 — emotion
+12종 3초 로테이션 + 버전).
+
+리스트 공통 문법: 각 탭 필터/정렬 selector 는 스크롤 밖 sticky 바(`SortSelector` —
+좌측 리스트 설명 한 줄 + 우측 popup), 아이템엔 timeago 타임스탬프(정렬 근거 데이터).
 
 ## 2. monorepo 구조
 
@@ -110,7 +127,8 @@ age_adjustment, yin_yang, compat/).
 ├── data/services/                  # face_shape_classifier(TFLite) · face_metadata_client(R2+DeepFace)
 │                                   # · image_resizer · r2_uploader · supabase_service · auth_service
 │                                   # · team_service · wallet/coin/free_coin · admob · compatibility
-│                                   # · deep_link_service · analytics
+│                                   # · deep_link_service · analytics · app_config(강제 업그레이드)
+│                                   # · ad_image(설정 탭 배너 팝업)
 ├── domain/services/                # face_metrics(+lateral) · life_question_narrative
 │                                   # · report_assembler · share/
 ├── presentation/providers/         # history(claim+rehydrate) · auth · tab · team · wallet
@@ -177,9 +195,11 @@ metrics 소멸·방 purge 와 무관하게 복원. 지갑·궁합 목록은 a/b 
 그리고, 최초 도달 클라이언트가 `submit_team_result` 로 `result_payload` 를 1회
 기록한다(first-writer-wins — 입력이 snapshot 으로 동결돼 있어 후착은 무해). 같은
 트랜잭션이 베스트 쌍의 slot→user 를 resolve 해 `team_matches` 에 upsert — 베스트
-쌍 각자가 `respond_match` 로 수락/거절(1회, 재응답 불가)하고 둘 다 수락하면
-`opened_at` 이 찍히며 `team_messages` 인앱 1:1 채팅이 열린다. 이후 열람은
-`result_payload` 를 그대로 렌더.
+쌍 각자가 `respond_match` 로 수락/거절(1회, 재응답 불가. 시한 = 발표 후 48h,
+경과 = 자동 거부 취급으로 클라이언트도 버튼을 숨긴다)하고 둘 다 수락하면
+`opened_at` 이 찍히며 `team_messages` 인앱 1:1 채팅이 열린다. 채팅은 `leave_chat`
+으로 나갈 수 있고(본인 left 플래그 — 내 목록·재진입만 닫히고 상대는 대화 유지,
+상대 화면엔 카톡식 나감 시스템 라인) 이후 열람은 `result_payload` 를 그대로 렌더.
 상세 페이지 슬롯의 아바타·meta·쌍 상세 unlock 은 별도로 참가자의 **현재 my-face** 를
 live resolve 한다(`fetchSlotProfiles`/`fetchLiveReport`) — 밴드 계산 입력(snapshot)과
 아바타 표시(live)는 서로 다른 신선도를 쓴다. 상세 라이브 반영은 Realtime(`teams`/
@@ -218,19 +238,23 @@ DDL SSOT: `react/db/migrations/0001_baseline.sql` (단일 baseline 직접 수정
 | `metrics` | id · user_id(cascade) · body · alias · is_my_face · views · updated_at | updated_at = 90일 정리 기준 |
 | `coins` | user_id · kind · amount · balance_after · store_transaction_id(unique) | 원장 |
 | `compatibilities` | (user_id, a_id, b_id) PK (a<b 정규화 쌍) · a/b_body · a/b_alias · total_score | self-contained 스냅샷 (의도된 보존) |
-| `teams` | id · owner_id · title · room_kind(all/match) · visibility · password · thumb_open · max_players(6/8/10/12) · age_min/age_max(20+, 인접 2-decade) · status · started_at · closed_at · chemistry_snapshot · result_payload | 케미 그룹 방. status `recruiting→revealing→completed/expired`, closed_at+30일 = 수명 |
+| `teams` | id · owner_id · title · room_kind(all/match) · password · is_private(파생 — 봉인된 password 의 유일한 노출 창구, 제거 금지) · thumb_open · max_players(6/8/10/12) · age_min/age_max(20+, 인접 2-decade) · status · started_at · closed_at · chemistry_snapshot · result_payload | 케미 그룹 방. status `recruiting→revealing→completed/expired`, closed_at+30일 = 수명 |
 | `team_members` | id · team_id(cascade) · user_id(cascade) · slot_no · gender · is_owner · joined_at | unique (team_id,user_id)·(team_id,slot_no). 쓰기는 RPC 전용(직접 insert/update/delete 정책 없음) |
-| `team_matches` | team_id PK(cascade) · user_a/user_b · a_consent/b_consent · opened_at | 베스트 쌍 채팅 개설 상호 동의 — 매칭당 1행, opened_at = 둘 다 수락 시각 |
+| `team_matches` | team_id PK(cascade) · user_a/user_b · a_consent/b_consent · opened_at · a_left/b_left | 베스트 쌍 채팅 개설 상호 동의 — 매칭당 1행, opened_at = 둘 다 수락 시각. 응답 시한 = closed_at+48h(경과 = 자동 거부 취급). left = 채팅방 나가기(본인 목록 숨김·재진입 불가) |
 | `team_messages` | id · team_id(→team_matches cascade) · sender_id · body(≤500) · created_at | 성사된 쌍 전용 인앱 1:1 채팅. 수명 = teams 30일 purge cascade |
 | `ad_rewards` | (user_id, day) PK · views · claimed | KST reset — 광고 종류 무관 공통 시청 장부 |
 | `ad_videos` | id · title · storage_path(`banners/*.mp4`) · duration_sec · active | custom 보상 영상 풀. 쓰기는 refine(service-role)만 |
-| `ad_images` | id · title · storage_path · link_url · active · sort_order | 외부 광고주 배너 풀 (§5 광고 체계 — 현재 노출 UI 없음) |
+| `ad_images` | id · title · storage_path · link_url · active · sort_order | 외부 광고주 배너 풀 — 설정 탭 진입 팝업으로 노출 (§5 광고 체계) |
+| `app_config` | id(=1 단일 행) · android_min_build · ios_min_build · notice | 강제 업그레이드 정책. anon 읽기 전용, 편집은 refine '시스템' 메뉴(service-role)만. 앱은 시작 시 1회 조회 — buildNumber < min_build 면 UpdateGateScreen, 조회 실패는 fail-open |
 | `bonus_recipients` | — | 가입 보너스 dedup |
 
 RPC (SECURITY DEFINER): `increment_metrics_views` · `grant/spend/admin_grant_coins` ·
 `unlock_compat` · `ad_reward_status/record_view` · `handle_new_user` · `join_team`
-(match 방 성별 정원 = `GENDER_FULL`) · `leave_team` · `submit_team_result`(베스트
-쌍 `team_matches` upsert 포함) · `respond_match` · touch 트리거. View:
+(match 방 성별 정원 = `GENDER_FULL`. **비밀번호 미검사** — capability 모델: 초대
+링크 소지 = 초대받음, 문턱은 `check_team_password` 문 앞 dialog 만) · `leave_team` ·
+`submit_team_result`(베스트 쌍 `team_matches` upsert 포함) · `respond_match`(응답
+시한 closed_at+48h — 경과 시 MATCH_EXPIRED) · `leave_chat`(본인 left 플래그, 되돌리기
+없음) · touch 트리거. View:
 `public_teams`(모집 중 공개방 목록, 컬럼 화이트리스트) · `team_roster`(team_members
 의 alias(조인 시점 이름 동결, 구행은 users.nickname 보충)·gender, owner 권한
 실행으로 이름만 노출).
@@ -247,7 +271,7 @@ owner, 상태 전이는 RPC 전용. `team_members` public read, 쓰기는 전부
 
 - `POST /analyze {image_url}` (R2 temp presigned) → `{age, gender, ethnicity}` —
   `face_metadata_client.dart` 가 매 분석마다 사용 (이전 값 기억 안 함).
-- 광고 체계 (2026-07-28 기준):
+- 광고 체계 (2026-07-30 기준):
   - **보상 광고 = custom 우선 + AdMob 폴백** (`purchase_sheet._watchAd`).
     일일 3편 중 **첫 슬롯(progress==0)에만** `ad_videos` 활성 영상 무작위
     1건을 자체 플레이어(`AdRewardScreen`, R2 CDN mp4)로 노출. 영상이

@@ -111,8 +111,13 @@ gold border (gold = "나" 시각 언어).
 
 ### 3.4 hero 카드 (다크) vs §3.7 sliver header (옅은 톤)
 
-- 다크 hero = promo·일회성 강조 (리포트 archetype hero 등). file-local gradient +
-  `AppRadius.xl` + gold eyebrow + white title.
+- 다크 hero = promo·일회성 강조. 3대 상세 페이지(관상 archetype·궁합 등급·케미
+  그룹 `TeamStatHeader`)가 같은 레시피 공유: darkBrown(#5C4033)→warmBrown(#7B5B3A)
+  gradient(file-local 상수) + sand(#BFA67A) 브랜드 라벨('~도 과학이다', hint w700
+  letterSpacing 1) + 흰 SongMyung 타이틀 + 반투명(white α0.10~0.18) 내부 컨테이너·
+  구분선. 케미 hero 는 그린 chip(연령·정원, sage #E0EBDA + #2C5A36 + border
+  #6B9F70 radius 20 — 강점 chip 과 동일 hex)과 extra 섹션(참가자 그리드/베스트
+  케미)까지 품는다.
 - 옅은 sliver header = persistent identity (화면 chrome). white bg · radius 0 ·
   bottom 0.5px border · avatar 42px ring(§3.5 source 규칙) · title `subTitle` w700.
 - 같은 정체성 정보를 두 톤으로 동시에 쓰지 않는다.
@@ -129,12 +134,16 @@ gold border (gold = "나" 시각 언어).
   다른 의미(방장 등)를 border 색에 싣지 않는다. refine 관상 리스트도 동일 hex
   (#C9A876 / #E0E0E0) 사용.
 - **이미지 3단 fallback (전 화면 공통)**: 로컬 파일 → CDN(`thumbnailKey`) → fallback
-  (user 아이콘/성별 png). 새 아바타 렌더러는 반드시 3단을 지킨다.
+  (user 아이콘/성별 실루엣 svg — `assets/svgs/male·female.svg` + textHint tint,
+  슬롯 크기의 ~1/2). 새 아바타 렌더러는 반드시 3단을 지킨다.
 
-### 3.6 정렬 selector
+### 3.6 정렬 selector (sticky 필터 바)
 
-공용 `SortSelector<T>` ("라벨 ▾" PopupMenu, 우측 정렬) — 궁합·케미 리스트 상단.
-상하 리듬 전 탭 통일: 위 lg(16) / 아래 md(12).
+공용 `SortSelector<T>` — 좌측 `description`(리스트 설명 한 줄, caption+textHint) +
+우측 "라벨 ▾" PopupMenu. 관상 3탭·궁합 2탭·케미 2탭 전부에서 **스크롤 밖 sticky
+바**로 배치(`Column[바, Expanded(리스트)]` — 스크롤해도 항상 보임), 아이템 있을
+때만 노출. 상하 리듬 전 탭 통일: 위 lg(16) / 아래 md(12). 리스트 아이템엔 timeago
+타임스탬프(`AppText.hint`) — 정렬 결과의 근거 데이터를 눈에 보이게.
 
 ### 3.7 Empty state
 
