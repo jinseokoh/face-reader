@@ -754,8 +754,16 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
 
   /// 사진 공개 계약 문구 — 정보성 고지, 체크박스 없음. 조인 = 동의(UX §E.1).
   Widget _photoConsentNotice(Team team) {
-    final text =
-      '참가자의 작은 썸네일 사진은 공개되며, 베스트 매칭으로 선정된 두 사람은 서로 동의시 1:1 채팅할 수 있습니다.';
+    // 첫 절 = 사진 공개 고지 — [동의하고 참가]의 '동의' 대상 (처리방침·약관의
+    // "참가 행위는 이에 대한 동의로 간주"가 가리키는 문구라 빼면 안 된다).
+    final text = team.roomKind == TeamRoomKind.match
+        ? '참가자들을 서로 알아볼 수 있도록 작은 썸네일 사진이 공개되며, '
+              '이 그룹에 참여하는 남자 ${team.maxPlayers ~/ 2}명, '
+              '여자 ${team.maxPlayers ~/ 2}명 중, 베스트 매칭으로 선정된 '
+              '두 사람은 서로 동의시 1:1 채팅할 수 있습니다.'
+        : '참가자들을 서로 알아볼 수 있도록 작은 썸네일 사진이 공개되며, '
+              '이 그룹에 참여하는 ${team.maxPlayers}명 중, 베스트 매칭으로 선정된 '
+              '두 사람은 서로 동의시 1:1 채팅할 수 있습니다.';
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
