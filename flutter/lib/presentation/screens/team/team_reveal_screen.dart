@@ -551,7 +551,8 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
     );
   }
 
-  /// 인원 미달 종료 — stat 카드 + 참가했던 roster + 상황 설명 빈 상태.
+  /// 인원 미달 종료 — 참가했던 roster 를 hero 다크 박스 안에(extra 슬롯 —
+  /// 반투명 구분선은 상세 그리드·베스트 케미와 동일 문법) + 상황 설명 빈 상태.
   Widget _expiredBody() {
     return Column(
       children: [
@@ -562,47 +563,58 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
             AppSpacing.lg,
             0,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TeamStatHeader(team: _team!),
-              if (_roster.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.xl),
-                Text('참가자', style: AppText.sectionTitle),
-                const SizedBox(height: AppSpacing.md),
-                for (final r in _roster)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                    child: Row(
-                      children: [
-                        _rosterAvatar(r),
-                        const SizedBox(width: AppSpacing.sm),
-                        Expanded(
-                          child: Text(
-                            r.alias,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppText.body,
+          child: TeamStatHeader(
+            team: _team!,
+            extra: _roster.isEmpty
+                ? null
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // hero 열 헤더 공통 레시피 — sand w700.
+                      Text(
+                        '참가자',
+                        style: AppText.caption.copyWith(
+                          color: kTeamHeroSand,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      for (final r in _roster)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                          child: Row(
+                            children: [
+                              _rosterAvatar(r),
+                              const SizedBox(width: AppSpacing.sm),
+                              Expanded(
+                                child: Text(
+                                  r.alias,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppText.body.copyWith(
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                              if (r.isOwner)
+                                Text(
+                                  '방장',
+                                  style: AppText.caption.copyWith(
+                                    color: kTeamHeroSand,
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
-                        if (r.isOwner)
-                          Text(
-                            '방장',
-                            style: AppText.caption.copyWith(
-                              color: AppColors.textHint,
-                            ),
-                          ),
-                      ],
-                    ),
+                    ],
                   ),
-              ],
-            ],
           ),
         ),
         const Expanded(
           child: EmotionEmptyState(
             asset: 'assets/images/emotion-sad.png',
-            message: '48시간 안에 정원을 채우지 못해 인원 미달로 마감된 그룹입니다',
+            message: '48시간 동안 정원 미달로 마감된 그룹입니다',
           ),
         ),
       ],
