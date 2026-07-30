@@ -416,9 +416,9 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
-        TeamStatHeader(team: _team!),
-        const SizedBox(height: AppSpacing.xl),
-        _bestCard(),
+        // 베스트 케미는 hero 다크 박스 안 — 상세 페이지가 참가자 그리드를
+        // extra 로 품는 것과 대칭 구조 (관상·궁합 hero 문법).
+        TeamStatHeader(team: _team!, extra: _bestSection()),
         if (matchOther != null) ...[
           const SizedBox(height: AppSpacing.xl),
           TeamMatchCard(
@@ -445,6 +445,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
   }
 
   /// 베스트 인물 1열 — 아바타 + 이름 + "나이 성별 얼굴형" + "유형 · 기질".
+  /// hero 다크 박스 안 — 이름 흰색, 메타는 sand (상세 슬롯 그리드와 동일 문법).
   Widget _bestPerson(int slot) {
     String? uid;
     for (final r in _roster) {
@@ -461,7 +462,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
         const SizedBox(height: AppSpacing.sm),
         Text(
           _nameOf(slot),
-          style: AppText.subTitle,
+          style: AppText.subTitle.copyWith(color: Colors.white),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
@@ -469,7 +470,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
           const SizedBox(height: AppSpacing.xs),
           Text(
             shapeLine,
-            style: AppText.caption,
+            style: AppText.caption.copyWith(color: kTeamHeroSand),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -477,7 +478,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
         if (p?.archetype != null)
           Text(
             p!.archetype!,
-            style: AppText.caption,
+            style: AppText.caption.copyWith(color: kTeamHeroSand),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -485,111 +486,87 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
     );
   }
 
-  Widget _bestCard() {
+  /// hero 다크 박스 안 베스트 케미 섹션 — 궁합 상세 hero 의 두 인물 문법
+  /// (인물 열 + × glyph + 등급 클라이맥스). 탭 = 결과표 셀과 동일한 쌍 상세
+  /// 시트 (기존 궁합 unlock 흐름). gold 코너 태그·별도 카드는 폐기 — 섹션
+  /// 라벨(sand)이 그 역할.
+  Widget _bestSection() {
     final a = (_best['a'] as num).toInt();
     final b = (_best['b'] as num).toInt();
     final score = (_best['score'] as num).toInt();
-    // 탭 = 결과표 셀과 동일한 쌍 상세 시트 (기존 궁합 unlock 흐름).
+    final band = _bandOf(a, b);
     return InkWell(
       onTap: () => _openPair(a, b),
-      borderRadius: BorderRadius.circular(AppRadius.xl),
-      child: Container(
-        // 코너 태그가 카드 radius 밖으로 삐져나가지 않게 clip.
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: AppColors.background,
-          borderRadius: BorderRadius.circular(AppRadius.xl),
-          // 베스트 강조 — 매칭 카드·방장 링과 같은 gold 토큰.
-          border: Border.all(color: AppColors.gold),
-        ),
-        child: Stack(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.xl,
-                AppSpacing.huge,
-                AppSpacing.xl,
-                AppSpacing.xl,
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: _bestPerson(a)),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.sm,
-                          vertical: AppSpacing.xl,
-                        ),
-                        // 쌍 상세 시트의 × 와 동일 스타일 (body×2, textHint) — 통일.
-                        child: Text(
-                          '×',
-                          style: AppText.body.copyWith(
-                            color: AppColors.textHint,
-                            fontSize: AppText.body.fontSize! * 2,
-                          ),
-                        ),
-                      ),
-                      Expanded(child: _bestPerson(b)),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  // 등급 성어·한자 병기 — 카드의 클라이맥스. 매칭 카드 헤드라인과
-                  // 동일한 SongMyung 토큰(appBarTitle)로 격을 맞춘다.
-                  Text(
-                    _bandOf(a, b) == null
-                        ? '$score점'
-                        : '${CompatLabel.values[_bandOf(a, b)!].korean} '
-                              '(${CompatLabel.values[_bandOf(a, b)!].hanja})',
-                    style: AppText.appBarTitle,
-                  ),
-                ],
-              ),
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '베스트 케미',
+            style: AppText.caption.copyWith(
+              color: kTeamHeroSand,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1,
             ),
-            // 우상단 상세 진입 힌트 — 매칭 카드 우상단 고지와 동일 폰트(hint).
-            const Positioned(
-              right: AppSpacing.md,
-              top: AppSpacing.sm,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('상세 궁합 풀이 보기', style: AppText.hint),
-                  SizedBox(width: AppSpacing.xs),
-                  FaIcon(
-                    FontAwesomeIcons.chevronRight,
-                    size: 10,
-                    color: AppColors.textHint,
-                  ),
-                ],
-              ),
-            ),
-            // 좌상단 gold 코너 태그 — 카드 테두리에 물린 배지.
-            Positioned(
-              left: 0,
-              top: 0,
-              child: Container(
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: _bestPerson(a)),
+              Padding(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md,
-                  vertical: AppSpacing.xs,
+                  horizontal: AppSpacing.sm,
+                  vertical: AppSpacing.xl,
                 ),
-                decoration: const BoxDecoration(
-                  color: AppColors.gold,
-                  borderRadius: BorderRadius.only(
-                    bottomRight: Radius.circular(AppRadius.lg),
-                  ),
-                ),
+                // 궁합 hero 의 × glyph 와 동일 문법 (w300 흰색).
                 child: Text(
-                  '베스트 케미',
-                  style: AppText.caption.copyWith(
+                  '×',
+                  style: AppText.sectionTitle.copyWith(
                     color: Colors.white,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 32,
+                    fontWeight: FontWeight.w300,
+                    height: 1.0,
                   ),
                 ),
               ),
+              Expanded(child: _bestPerson(b)),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          // 등급 성어·한자 병기 — 섹션의 클라이맥스. 매칭 카드 헤드라인과
+          // 동일한 SongMyung 토큰(appBarTitle), hero 위라 흰색.
+          Center(
+            child: Text(
+              band == null
+                  ? '$score점'
+                  : '${CompatLabel.values[band].korean} '
+                        '(${CompatLabel.values[band].hanja})',
+              style: AppText.appBarTitle.copyWith(color: Colors.white),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          // 상세 진입 힌트 — 탭 가능함을 알리는 진행 지시자 (sand 톤).
+          Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 인물 열의 메타 라인(인구통계·유형)과 100% 동일 속성 —
+                // caption + sand.
+                Text(
+                  '상세 궁합 풀이 보기',
+                  style: AppText.caption.copyWith(color: kTeamHeroSand),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                const FaIcon(
+                  FontAwesomeIcons.chevronRight,
+                  size: 10,
+                  color: kTeamHeroSand,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -29,6 +29,23 @@ const kTeamHeroSand = _kSand;
 /// 마감은 살아있는 정보라 날짜 옆 괄호 설명문으로 병기하고, 박스 안
 /// 생성·마감 중복 표기는 두지 않는다 (2026-07-30).
 class TeamStatHeader extends StatelessWidget {
+  static Widget _greenChip(String label) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+    decoration: BoxDecoration(
+      color: _kGreenBg,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: _kGreenBorder),
+    ),
+    child: Text(
+      label,
+      style: AppText.caption.copyWith(
+        color: _kGreenFg,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.2,
+      ),
+    ),
+  );
+
   final Team team;
 
   /// hero 박스 하단 섹션 (상세 페이지의 참가자 슬롯 그리드) — pill 줄
@@ -104,30 +121,14 @@ class TeamStatHeader extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),
-              // 연령 pill 만 — 관상·궁합 hero 의 그린 chip 과 동일 디자인
-              // (sage 배경 + 초록 border + radius 20). 방 유형 pill 과
+              // 연령 + 정원 그린 chip — 관상·궁합 hero 의 그린 chip 과 동일
+              // 디자인 (sage 배경 + 초록 border + radius 20). 방 유형 pill 과
               // 조회수는 목록 카드가 이미 전달한 정보라 제거 (2026-07-30).
               Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 7,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _kGreenBg,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: _kGreenBorder),
-                    ),
-                    child: Text(
-                      team.ageRangeLabel,
-                      style: AppText.caption.copyWith(
-                        color: _kGreenFg,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                  ),
+                  _greenChip(team.ageRangeLabel),
+                  const SizedBox(width: AppSpacing.sm),
+                  _greenChip('${team.maxPlayers}명 그룹'),
                 ],
               ),
               if (extra != null) ...[
