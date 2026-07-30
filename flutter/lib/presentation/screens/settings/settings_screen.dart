@@ -3,6 +3,7 @@ import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:facely/presentation/widgets/account_deletion_dialog.dart';
 import 'package:facely/presentation/widgets/legal_doc_sheet.dart';
 import 'package:facely/presentation/widgets/login_entry_button.dart';
+import 'package:facely/presentation/screens/settings/app_info_dialog.dart';
 import 'package:facely/presentation/screens/settings/blocked_users_screen.dart';
 import 'package:facely/presentation/widgets/purchase_sheet.dart';
 import 'package:flutter/material.dart';
@@ -179,20 +180,25 @@ class SettingsScreen extends ConsumerWidget {
                 child: Material(
                   color: AppTheme.surface,
                   borderRadius: BorderRadius.circular(14),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                    child: Row(
-                      children: [
-                        FaIcon(FontAwesomeIcons.circleInfo, color: AppTheme.textSecondary, size: 20),
-                        const SizedBox(width: 16),
-                        Text('앱 정보',
-                            style: AppText.body
-                                .copyWith(color: AppColors.textPrimary)),
-                        const Spacer(),
-                        Text(version,
-                            style: AppText.caption
-                                .copyWith(color: AppColors.textHint)),
-                      ],
+                  child: InkWell(
+                    // 앱 정보 팝업 — emotion 애니메이션 + 버전 + 제작자.
+                    onTap: () => AppInfoDialog.show(context),
+                    borderRadius: BorderRadius.circular(14),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      child: Row(
+                        children: [
+                          FaIcon(FontAwesomeIcons.circleInfo, color: AppTheme.textSecondary, size: 20),
+                          const SizedBox(width: 16),
+                          Text('앱 정보',
+                              style: AppText.body
+                                  .copyWith(color: AppColors.textPrimary)),
+                          const Spacer(),
+                          Text(version,
+                              style: AppText.caption
+                                  .copyWith(color: AppColors.textHint)),
+                        ],
+                      ),
                     ),
                   ),
                 ),
