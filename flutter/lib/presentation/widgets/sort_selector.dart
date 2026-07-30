@@ -10,12 +10,16 @@ class SortSelector<T> extends StatelessWidget {
   final List<T> values;
   final String Function(T) labelOf;
   final ValueChanged<T> onChanged;
+
+  /// 케미 내 그룹처럼 정렬이 아니라 상태 필터로 쓰일 땐 '필터'.
+  final String tooltip;
   const SortSelector({
     super.key,
     required this.value,
     required this.values,
     required this.labelOf,
     required this.onChanged,
+    this.tooltip = '정렬',
   });
 
   @override
@@ -24,7 +28,7 @@ class SortSelector<T> extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         PopupMenuButton<T>(
-          tooltip: '정렬',
+          tooltip: tooltip,
           initialValue: value,
           padding: EdgeInsets.zero,
           color: Colors.white,

@@ -18,6 +18,7 @@ import '../../widgets/compact_snack_bar.dart';
 import '../../widgets/emotion_empty_state.dart';
 import '../../widgets/face_scan_pill.dart';
 import '../../widgets/login_bottom_sheet.dart';
+import '../../widgets/sort_selector.dart';
 import '../../widgets/source_badge.dart';
 import '../team/team_band.dart';
 import '../team/team_create_page.dart';
@@ -339,65 +340,6 @@ class _ExpiredRibbon extends StatelessWidget {
   }
 }
 
-/// 리스트 상단 우측 selector — 관상·궁합 탭의 정렬 selector 와 동일 레시피
-/// (caption 라벨 + chevronDown popup).
-class _ListSelector<T> extends StatelessWidget {
-  final T value;
-  final List<T> values;
-  final String Function(T) labelOf;
-  final ValueChanged<T> onChanged;
-  const _ListSelector({
-    required this.value,
-    required this.values,
-    required this.labelOf,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        PopupMenuButton<T>(
-          tooltip: '필터',
-          initialValue: value,
-          padding: EdgeInsets.zero,
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.md),
-          ),
-          onSelected: onChanged,
-          itemBuilder: (ctx) => [
-            for (final v in values)
-              PopupMenuItem<T>(
-                value: v,
-                child: Text(labelOf(v), style: AppText.body),
-              ),
-          ],
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  labelOf(value),
-                  style: AppText.caption.copyWith(color: AppColors.textHint),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                const FaIcon(
-                  FontAwesomeIcons.chevronDown,
-                  size: 12,
-                  color: AppColors.textHint,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _MineCard extends ConsumerWidget {
   final Team team;
   final void Function(Team) onOpen;
@@ -539,28 +481,50 @@ class _MineTabState extends ConsumerState<_MineTab> {
               })
                 b,
           ];
-          return ListView.builder(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            itemCount: filtered.length + 1,
-            itemBuilder: (ctx, i) => i == 0
-                ? _ListSelector<_MineFilter>(
-                    value: _filter,
-                    values: _MineFilter.values,
-                    labelOf: (f) => f.label,
-                    onChanged: (f) => setState(() => _filter = f),
-                  )
-                : _MineCard(
-                    team: filtered[i - 1],
+          // 필터 selector 는 스크롤 밖 고정(sticky) 바 — 스크롤 중에도 항상
+          // 보인다 (관상·궁합 탭과 동일 패턴). 빈 탭엔 노출하지 않는다.
+          return Column(
+            children: [
+              Padding(
+                // selector 위 lg(16)/아래 md(12) — 관상 탭 정렬 헤더와 동일 리듬.
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.lg,
+                  AppSpacing.lg,
+                  AppSpacing.md,
+                ),
+                child: SortSelector<_MineFilter>(
+                  tooltip: '필터',
+                  value: _filter,
+                  values: _MineFilter.values,
+                  labelOf: (f) => f.label,
+                  onChanged: (f) => setState(() => _filter = f),
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    0,
+                    AppSpacing.lg,
+                    AppSpacing.lg,
+                  ),
+                  itemCount: filtered.length,
+                  itemBuilder: (ctx, i) => _MineCard(
+                    team: filtered[i],
                     onOpen: widget.onOpen,
                     isBestPick:
                         matchTeams != null &&
-                        filtered[i - 1].status == TeamStatus.completed &&
-                        matchTeams.contains(filtered[i - 1].id),
+                        filtered[i].status == TeamStatus.completed &&
+                        matchTeams.contains(filtered[i].id),
                     isBusted:
                         matchTeams != null &&
-                        filtered[i - 1].status == TeamStatus.completed &&
-                        !matchTeams.contains(filtered[i - 1].id),
+                        filtered[i].status == TeamStatus.completed &&
+                        !matchTeams.contains(filtered[i].id),
                   ),
+                ),
+              ),
+            ],
           );
         },
       ),
@@ -792,21 +756,42 @@ class _PublicTabState extends ConsumerState<_PublicTab> {
                   ? b.createdAt.compareTo(a.createdAt)
                   : a.createdAt.compareTo(b.createdAt),
             );
-          return ListView.builder(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            itemCount: sorted.length + 1,
-            itemBuilder: (ctx, i) => i == 0
-                ? _ListSelector<_SortOrder>(
-                    value: _order,
-                    values: _SortOrder.values,
-                    labelOf: (o) => o.label,
-                    onChanged: (o) => setState(() => _order = o),
-                  )
-                : _PublicCard(
-                    team: sorted[i - 1],
-                    isOwner: mineIds.contains(sorted[i - 1].id),
-                    isJoined: joinedIds.contains(sorted[i - 1].id),
+          // 정렬 selector 는 스크롤 밖 고정(sticky) 바 — 스크롤 중에도 항상
+          // 보인다 (관상·궁합 탭과 동일 패턴). 빈 탭엔 노출하지 않는다.
+          return Column(
+            children: [
+              Padding(
+                // selector 위 lg(16)/아래 md(12) — 관상 탭 정렬 헤더와 동일 리듬.
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.lg,
+                  AppSpacing.lg,
+                  AppSpacing.md,
+                ),
+                child: SortSelector<_SortOrder>(
+                  value: _order,
+                  values: _SortOrder.values,
+                  labelOf: (o) => o.label,
+                  onChanged: (o) => setState(() => _order = o),
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    0,
+                    AppSpacing.lg,
+                    AppSpacing.lg,
                   ),
+                  itemCount: sorted.length,
+                  itemBuilder: (ctx, i) => _PublicCard(
+                    team: sorted[i],
+                    isOwner: mineIds.contains(sorted[i].id),
+                    isJoined: joinedIds.contains(sorted[i].id),
+                  ),
+                ),
+              ),
+            ],
           );
         },
       ),

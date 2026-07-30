@@ -314,38 +314,53 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
         },
       );
 
-    return RefreshIndicator(
-      onRefresh: _refresh,
-      color: AppColors.textPrimary,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        // selector 위 lg(16)/아래 md(12) — 관상 탭 정렬 헤더와 동일 리듬.
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.lg,
-          AppSpacing.lg,
-          AppSpacing.lg,
-          AppSpacing.md,
-        ),
-        children: [
-          SortSelector<_LockedSort>(
+    // 정렬 selector 는 스크롤 밖 고정(sticky) 바 — 스크롤 중에도 항상
+    // 보인다 (관상·케미 탭과 동일 패턴). 빈 탭엔 노출하지 않는다.
+    return Column(
+      children: [
+        Padding(
+          // selector 위 lg(16)/아래 md(12) — 관상 탭 정렬 헤더와 동일 리듬.
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.lg,
+            AppSpacing.lg,
+            AppSpacing.md,
+          ),
+          child: SortSelector<_LockedSort>(
             value: _lockedSort,
             values: _LockedSort.values,
             labelOf: (v) => v.label,
             onChanged: (v) => setState(() => _lockedSort = v),
           ),
-          const SizedBox(height: AppSpacing.md),
-          ...sorted.map(
-            (other) => Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.md),
-              child: _CompatLockedCard(
-                album: other,
-                onUnlockPressed: () =>
-                    _handleUnlockPressed(context, ref, myFace, other),
+        ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _refresh,
+            color: AppColors.textPrimary,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                0,
+                AppSpacing.lg,
+                AppSpacing.md,
               ),
+              children: [
+                ...sorted.map(
+                  (other) => Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                    child: _CompatLockedCard(
+                      album: other,
+                      onUnlockPressed: () =>
+                          _handleUnlockPressed(context, ref, myFace, other),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -482,20 +497,19 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
           ]
         : sorted;
 
-    return RefreshIndicator(
-      onRefresh: _refresh,
-      color: AppColors.textPrimary,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        // selector 위 lg(16)/아래 md(12) — 관상 탭 정렬 헤더와 동일 리듬.
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.lg,
-          AppSpacing.lg,
-          AppSpacing.lg,
-          AppSpacing.md,
-        ),
-        children: [
-          SortSelector<_UnlockedSort>(
+    // 정렬 selector 는 스크롤 밖 고정(sticky) 바 — 스크롤 중에도 항상
+    // 보인다 (관상·케미 탭과 동일 패턴). 빈 탭엔 노출하지 않는다.
+    return Column(
+      children: [
+        Padding(
+          // selector 위 lg(16)/아래 md(12) — 관상 탭 정렬 헤더와 동일 리듬.
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.lg,
+            AppSpacing.lg,
+            AppSpacing.md,
+          ),
+          child: SortSelector<_UnlockedSort>(
             value: _unlockedSort,
             values: _UnlockedSort.values,
             labelOf: (v) => v.label,
@@ -504,29 +518,46 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
               ref.read(recentUnlockFocusProvider.notifier).clear();
             }),
           ),
-          const SizedBox(height: AppSpacing.md),
-          ...pinned.map(
-            (e) => Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.md),
-              child: _CompatListCard(
-                a: e.first.report,
-                b: e.second.report,
-                aName: e.first.name,
-                bName: e.second.name,
-                onTap: () {
-                  ref.read(recentUnlockFocusProvider.notifier).clear();
-                  AnalyticsService.instance.logClickCompat();
-                  context.pushCompat(
-                    my: e.first.report,
-                    album: e.second.report,
-                  );
-                },
-                onDelete: () => _confirmDeleteUnlock(context, ref, e.pair),
+        ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _refresh,
+            color: AppColors.textPrimary,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                0,
+                AppSpacing.lg,
+                AppSpacing.md,
               ),
+              children: [
+                ...pinned.map(
+                  (e) => Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                    child: _CompatListCard(
+                      a: e.first.report,
+                      b: e.second.report,
+                      aName: e.first.name,
+                      bName: e.second.name,
+                      onTap: () {
+                        ref.read(recentUnlockFocusProvider.notifier).clear();
+                        AnalyticsService.instance.logClickCompat();
+                        context.pushCompat(
+                          my: e.first.report,
+                          album: e.second.report,
+                        );
+                      },
+                      onDelete: () =>
+                          _confirmDeleteUnlock(context, ref, e.pair),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

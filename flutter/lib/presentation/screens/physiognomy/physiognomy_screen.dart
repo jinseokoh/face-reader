@@ -12,6 +12,7 @@ import 'package:facely/presentation/widgets/emotion_empty_state.dart';
 import 'package:facely/presentation/widgets/face_scan_pill.dart';
 import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
 import 'package:facely/presentation/widgets/physiognomy_info_dialog.dart';
+import 'package:facely/presentation/widgets/sort_selector.dart';
 import 'package:facely/presentation/widgets/source_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -626,7 +627,7 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
 
     // 궁합·케미 탭과 동일 — 탭마다 RefreshIndicator 직결 (빈 탭도
     // AlwaysScrollableScrollPhysics 로 당김 가능).
-    return RefreshIndicator(
+    final scroll = RefreshIndicator(
       onRefresh: _handleRefresh,
       color: AppColors.textPrimary,
       child: CustomScrollView(
@@ -642,25 +643,14 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
               ),
             )
           else ...[
-            for (var gi = 0; gi < groups.length; gi++) ...[
+            for (var gi = 0; gi < groups.length; gi++)
               SliverPadding(
                 padding: EdgeInsets.fromLTRB(
                   AppSpacing.lg,
-                  gi == 0 ? AppSpacing.lg : AppSpacing.xl,
+                  gi == 0 ? 0 : AppSpacing.xl,
                   AppSpacing.lg,
-                  AppSpacing.md,
+                  0,
                 ),
-                sliver: SliverToBoxAdapter(
-                  child: _RecentListHeader(
-                    order: _sortOrder,
-                    onChanged: (v) => setState(() => _sortOrder = v),
-                    // sort popup 은 첫 section 에만 — 한 tab 당 1개.
-                    showSortToggle: gi == 0,
-                  ),
-                ),
-              ),
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
                 sliver: SliverList.builder(
                   itemCount: groups[gi].$2.length,
                   itemBuilder: (ctx, i) {
@@ -673,7 +663,6 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
                   },
                 ),
               ),
-            ],
             if (!hasMyFace)
               const SliverPadding(
                 padding: EdgeInsets.fromLTRB(
@@ -692,6 +681,30 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
           ],
         ],
       ),
+    );
+    if (allEmpty) return scroll;
+
+    // 정렬 selector 는 스크롤 밖 고정(sticky) 바 — 아이템이 많아 스크롤이
+    // 생겨도 항상 보인다 (궁합·케미 탭과 동일 패턴). 빈 탭엔 노출하지 않는다.
+    return Column(
+      children: [
+        Padding(
+          // selector 위 lg(16)/아래 md(12) — 기존 리스트 헤더와 동일 리듬.
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.lg,
+            AppSpacing.lg,
+            AppSpacing.md,
+          ),
+          child: SortSelector<_SortOrder>(
+            value: _sortOrder,
+            values: _SortOrder.values,
+            labelOf: (o) => o.label,
+            onChanged: (v) => setState(() => _sortOrder = v),
+          ),
+        ),
+        Expanded(child: scroll),
+      ],
     );
   }
 
@@ -754,64 +767,6 @@ class _ProfileHintCard extends StatelessWidget {
       asset: 'assets/images/emotion-sad.png',
       message:
           '내 관상 등록이 필요합니다.',
-    );
-  }
-}
-
-/// 탭 리스트 상단 정렬 셀렉터 — 섹션 라벨·개수는 탭 라벨이 담당하므로
-/// (같은 정보 중복 금지, 궁합 탭과 동일 패턴) 우측 정렬 selector 만.
-class _RecentListHeader extends StatelessWidget {
-  final _SortOrder order;
-  final ValueChanged<_SortOrder> onChanged;
-  final bool showSortToggle;
-
-  const _RecentListHeader({
-    required this.order,
-    required this.onChanged,
-    this.showSortToggle = true,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        if (showSortToggle)
-          PopupMenuButton<_SortOrder>(
-            tooltip: '정렬',
-            initialValue: order,
-            padding: EdgeInsets.zero,
-            color: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.md),
-            ),
-            onSelected: onChanged,
-            itemBuilder: (ctx) => _SortOrder.values
-                .map(
-                  (o) => PopupMenuItem<_SortOrder>(
-                    value: o,
-                    child: Text(o.label, style: AppText.body),
-                  ),
-                )
-                .toList(),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  order.label,
-                  style: AppText.caption.copyWith(color: AppColors.textHint),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                const FaIcon(
-                  FontAwesomeIcons.chevronDown,
-                  size: 12,
-                  color: AppColors.textHint,
-                ),
-              ],
-            ),
-          ),
-      ],
     );
   }
 }
