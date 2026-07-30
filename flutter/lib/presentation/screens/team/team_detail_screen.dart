@@ -96,13 +96,17 @@ class _SlotRow extends StatelessWidget {
                 height: AppAvatar.md,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
+                  // hero 다크 박스 안 — 빈 슬롯은 반투명 흰 원으로 실루엣만.
+                  color: filled
+                      ? null
+                      : Colors.white.withValues(alpha: 0.10),
                   // border 색은 전 탭 공통 source 규칙 (카메라 gold /
                   // 앨범 lightGray). ring 은 source 만 말한다 — 방장 gold
                   // ring 표기는 이 규칙과 충돌해 폐기 (2026-07-24).
                   border: Border.all(
                     color: filled
                         ? sourceBorderColor(thumbSource)
-                        : AppColors.border,
+                        : Colors.white.withValues(alpha: 0.25),
                   ),
                 ),
                 child: ClipOval(child: _avatar()),
@@ -121,7 +125,9 @@ class _SlotRow extends StatelessWidget {
           child: !filled
               ? Text(
                   '대기 중',
-                  style: AppText.body.copyWith(color: AppColors.textHint),
+                  style: AppText.body.copyWith(
+                    color: Colors.white.withValues(alpha: 0.55),
+                  ),
                 )
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -132,7 +138,9 @@ class _SlotRow extends StatelessWidget {
                     if (!hasMeta)
                       Text(
                         '(정보없음)',
-                        style: AppText.body.copyWith(color: AppColors.textHint),
+                        style: AppText.body.copyWith(
+                          color: Colors.white.withValues(alpha: 0.55),
+                        ),
                       ),
                     // meta 는 좁은 열(이성방 반폭)에서 잘리는 대신 폰트가
                     // 줄어들도록 scaleDown — 넉넉하면 caption 원 크기 유지.
@@ -140,7 +148,10 @@ class _SlotRow extends StatelessWidget {
                       FittedBox(
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerLeft,
-                        child: Text(demographic!, style: AppText.caption),
+                        child: Text(
+                          demographic!,
+                          style: AppText.caption.copyWith(color: Colors.white),
+                        ),
                       ),
                     if (archetype != null)
                       FittedBox(
@@ -148,8 +159,9 @@ class _SlotRow extends StatelessWidget {
                         alignment: Alignment.centerLeft,
                         child: Text(
                           archetype!,
+                          // 관심 유도 포인트 — hero sand 액센트.
                           style: AppText.caption.copyWith(
-                            color: AppColors.textPrimary,
+                            color: kTeamHeroSand,
                           ),
                         ),
                       ),
@@ -161,44 +173,39 @@ class _SlotRow extends StatelessWidget {
   }
 
   Widget _avatar() {
+    // hero 다크 박스 안 — 실루엣·아이콘은 반투명 흰색으로.
+    final silhouette = Colors.white.withValues(alpha: 0.45);
     if (entry == null) {
       final gender = slotGender;
       if (gender == null) {
-        return const Center(
-          child: FaIcon(
-            FontAwesomeIcons.user,
-            size: 16,
-            color: AppColors.border,
-          ),
+        return Center(
+          child: FaIcon(FontAwesomeIcons.user, size: 16, color: silhouette),
         );
       }
       return Center(
         child: SvgPicture.asset(
           _genderIconAsset(gender),
           height: 24,
-          colorFilter: const ColorFilter.mode(
-            AppColors.textHint,
-            BlendMode.srcIn,
-          ),
+          colorFilter: ColorFilter.mode(silhouette, BlendMode.srcIn),
         ),
       );
     }
     return thumbUrl == null
-        ? const Center(
+        ? Center(
             child: FaIcon(
               FontAwesomeIcons.solidUser,
               size: 16,
-              color: AppColors.textHint,
+              color: silhouette,
             ),
           )
         : Image.network(
             thumbUrl!,
             fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => const Center(
+            errorBuilder: (_, _, _) => Center(
               child: FaIcon(
                 FontAwesomeIcons.solidUser,
                 size: 16,
-                color: AppColors.textHint,
+                color: silhouette,
               ),
             ),
           );
@@ -418,8 +425,6 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
             style: AppText.caption.copyWith(color: AppColors.textHint),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: AppSpacing.xl),
-          _slotList(team),
         ],
       ),
     );
@@ -436,9 +441,14 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // hero 다크 박스 안 열 헤더 — '케미도 과학이다' 와 같은 sand 액센트.
         Text(
           '$label ${entries.length} / $slotCount',
-          style: AppText.sectionTitle,
+          style: AppText.caption.copyWith(
+            color: kTeamHeroSand,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1,
+          ),
         ),
         const SizedBox(height: AppSpacing.md),
         for (var i = 0; i < slotCount; i++) ...[
@@ -470,29 +480,11 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
     );
   }
 
-  /// 공개 그룹 카드(_PublicCard)와 동일한 결 — 공용 TeamStatHeader.
-  /// [showRemaining] = 미참가 이성방에서 성별 남은 자리 표시 (참가자 뷰는
-  /// 슬롯 열 헤더가 같은 정보를 보여주므로 생략).
-  Widget _headerCard(Team team, {bool showRemaining = false}) {
-    return TeamStatHeader(
-      team: team,
-      extra: showRemaining && team.roomKind == TeamRoomKind.match
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 다크 hero 박스 위 — 흰 글자로 (TeamStatHeader extra 규약).
-                Text(
-                  '남자 ${_remaining('male')}자리 남음',
-                  style: AppText.caption.copyWith(color: Colors.white),
-                ),
-                Text(
-                  '여자 ${_remaining('female')}자리 남음',
-                  style: AppText.caption.copyWith(color: Colors.white),
-                ),
-              ],
-            )
-          : null,
-    );
+  /// 공용 TeamStatHeader + 참가자 슬롯 그리드를 hero 박스 안에 주입 —
+  /// 궁합 상세 hero 가 두 인물을 박스 안에 품는 것과 같은 문법. 남은 자리는
+  /// 그리드 열 헤더(남 n / N)가 전달하므로 별도 표기 없음.
+  Widget _headerCard(Team team) {
+    return TeamStatHeader(team: team, extra: _slotList(team));
   }
 
   Widget _inviteRow(Team team) {
@@ -647,11 +639,9 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
       child: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
-          _headerCard(team, showRemaining: true),
-          // 참가 전에도 누가 있는지 보고 판단할 수 있게 로스터를 먼저
-          // 보여준다 — 웹 초대장(/g/:id)과 동일한 정보량.
-          const SizedBox(height: AppSpacing.xl),
-          _slotList(team),
+          // 참가 전에도 누가 있는지 보고 판단할 수 있게 로스터가 hero 안에
+          // 함께 보인다 — 웹 초대장(/g/:id)과 동일한 정보량.
+          _headerCard(team),
           if (!team.isPublic) ...[
             const SizedBox(height: AppSpacing.xl),
             TextField(
@@ -705,8 +695,6 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
           _headerCard(team),
-          const SizedBox(height: AppSpacing.xl),
-          _slotList(team),
           const SizedBox(height: AppSpacing.xl),
           // 발표 조건 안내 — gold 배경 full-width pill (gold 면엔 흰 글자 문법).
           Center(
@@ -806,13 +794,6 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
     } catch (_) {}
   }
 
-  /// 이성방 — 성별 남은 자리 수 (roster gender 카운트 기준, 0 미만 표시 방지).
-  int _remaining(String gender) {
-    final per = _team!.maxPlayers ~/ 2;
-    final count = _roster.where((r) => r.gender == gender).length;
-    return (per - count).clamp(0, per);
-  }
-
   /// 슬롯 = full-width 리스트 행 (아바타 좌 + meta 우) — 방 유형 불문 동일
   /// 위젯. 이성방은 남/여 섹션으로 나눠 같은 행을 쌓는다.
   Widget _slotList(Team team) {
@@ -860,9 +841,14 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // hero 다크 박스 안 열 헤더 — 이성방 남/여 헤더와 동일 레시피.
         Text(
           '참여 ${_roster.length} / ${team.maxPlayers}',
-          style: AppText.sectionTitle,
+          style: AppText.caption.copyWith(
+            color: kTeamHeroSand,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1,
+          ),
         ),
         const SizedBox(height: AppSpacing.md),
         Row(

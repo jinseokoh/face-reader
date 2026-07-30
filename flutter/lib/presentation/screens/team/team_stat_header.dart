@@ -9,6 +9,11 @@ import '../../widgets/age_range_pill.dart';
 // 동일 hex (DESIGN.md §2.4 file-local 격리, 신규 색 아님).
 const _kDarkBrown = Color(0xFF5C4033);
 const _kWarmBrown = Color(0xFF7B5B3A);
+const _kSand = Color(0xFFBFA67A);
+
+/// hero 박스 안에 함께 그려지는 위젯(참가자 그리드 등)이 쓰는 sand 액센트 —
+/// 상세 화면과 공유 (team_band.kBandGreen 과 같은 export 문법).
+const kTeamHeroSand = _kSand;
 
 /// 케미 그룹 방 stat 카드 — 좌상단 yyyy.mm.dd(생성일) + 마감 설명 한 줄,
 /// 그 아래 관상·궁합 상세 hero 와 동일한 다크 그라데이션 박스(제목 / 유형·
@@ -22,8 +27,9 @@ const _kWarmBrown = Color(0xFF7B5B3A);
 class TeamStatHeader extends StatelessWidget {
   final Team team;
 
-  /// 상태별 추가 줄 (미참가 이성방의 남은 자리 등) — pill 줄 아래.
-  /// 다크 박스 위에 놓이므로 밝은 글자색을 쓸 것.
+  /// hero 박스 하단 섹션 (상세 페이지의 참가자 슬롯 그리드) — pill 줄
+  /// 아래 반투명 구분선으로 나뉘어 들어간다. 다크 박스 위에 놓이므로
+  /// 밝은 글자색을 쓸 것.
   final Widget? extra;
   const TeamStatHeader({super.key, required this.team, this.extra});
 
@@ -40,12 +46,21 @@ class TeamStatHeader extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 좌상단 날짜 — 관상·궁합 상세와 동일 포맷(yyyy.mm.dd)·토큰
-        // (caption + textHint).
-        Text(
-          '$dateStr '
-          '(${timeago.format(deadline, locale: 'ko', allowFromNow: true)} 마감)',
-          style: AppText.caption.copyWith(color: AppColors.textHint),
+        // 좌측 날짜(관상·궁합 상세와 동일 포맷 yyyy.mm.dd) ↔ 우측 마감 —
+        // 같은 caption + textHint 토큰. '지금부터' 접두어는 '후'에 이미
+        // 함축돼 있어 제거 (timeago ko fromNow 기본 접두어).
+        Row(
+          children: [
+            Text(
+              dateStr,
+              style: AppText.caption.copyWith(color: AppColors.textHint),
+            ),
+            const Spacer(),
+            Text(
+              '${timeago.format(deadline, locale: 'ko', allowFromNow: true).replaceFirst('지금부터 ', '')} 마감',
+              style: AppText.caption.copyWith(color: AppColors.textHint),
+            ),
+          ],
         ),
         const SizedBox(height: AppSpacing.sm),
         Container(
@@ -61,11 +76,23 @@ class TeamStatHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // 궁합 상세 hero 의 '궁합도 과학이다' 와 동일 레시피
+              // (hint + sand + w700 + letterSpacing 1).
+              Text(
+                '케미도 과학이다',
+                style: AppText.hint.copyWith(
+                  color: _kSand,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              // 제목은 브랜드 세리프 — AppBar 타이틀과 동일 토큰(SongMyung 20).
               Text(
                 team.title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppText.subTitle.copyWith(color: Colors.white),
+                style: AppText.appBarTitle.copyWith(color: Colors.white),
               ),
               const SizedBox(height: AppSpacing.xs),
               // 연령 pill 만. 방 유형(이성/전체 케미) pill 과 조회수는
@@ -73,7 +100,14 @@ class TeamStatHeader extends StatelessWidget {
               // hero 에선 불필요 (2026-07-30).
               Row(children: [AgeRangePill(label: team.ageRangeLabel)]),
               if (extra != null) ...[
-                const SizedBox(height: AppSpacing.sm),
+                const SizedBox(height: AppSpacing.lg),
+                // 반투명 구분선 — 박스 내부를 "제목·pill ─ 참가자" 2단으로
+                // 구조화 (궁합 hero 의 인물 섹션과 같은 위계).
+                Container(
+                  height: 1,
+                  color: Colors.white.withValues(alpha: 0.18),
+                ),
+                const SizedBox(height: AppSpacing.lg),
                 extra!,
               ],
             ],
