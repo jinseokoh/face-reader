@@ -1038,12 +1038,12 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                         ),
                       ),
                       const SizedBox(height: 10),
+                      // 브랜드 세리프(SongMyung 28) — 궁합 hero 등급 표기와
+                      // 동일한 display 토큰 문법.
                       Text(
                         arch.primaryLabel,
-                        style: AppText.modalTitle.copyWith(
+                        style: AppText.display.copyWith(
                           color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.w700,
                           height: 1.0,
                         ),
                       ),

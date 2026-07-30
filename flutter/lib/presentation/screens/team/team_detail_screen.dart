@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show RealtimeChannel;
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
@@ -22,6 +23,7 @@ import '../../widgets/login_bottom_sheet.dart';
 import '../../widgets/my_face_capture_flow.dart';
 import '../../widgets/primary_button.dart';
 import '../../widgets/source_badge.dart';
+import 'team_pin_dialog.dart';
 import 'team_reveal_screen.dart';
 import 'team_stat_header.dart';
 
@@ -38,9 +40,19 @@ String _genderIconAsset(String gender) =>
 class TeamDetailScreen extends ConsumerStatefulWidget {
   final String teamId;
 
-  /// 목록에서 문 앞 dialog 로 받은 비밀 그룹 비밀번호 — 참가 폼에 미리 채운다.
+  /// 목록에서 문 앞 dialog 로 검증받은 비밀 그룹 비밀번호 — 참가 시 재사용.
   final String? initialPin;
-  const TeamDetailScreen({super.key, required this.teamId, this.initialPin});
+
+  /// 초대 링크(/g/:id) 딥링크 진입 — 관상 공유 카드(receivedView)와 동일
+  /// 이치: main 위 overlay 성격의 별도 route 라 AppBar leading 이 항상
+  /// 닫기(X), pop 불가하면 홈(/main)으로.
+  final bool receivedView;
+  const TeamDetailScreen({
+    super.key,
+    required this.teamId,
+    this.initialPin,
+    this.receivedView = false,
+  });
 
   @override
   ConsumerState<TeamDetailScreen> createState() => _TeamDetailScreenState();
@@ -120,7 +132,9 @@ class _SlotRow extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(width: AppSpacing.md),
+        // 아바타-메타 간격 — md(12)는 과해서 축소. 6px 는 스케일 밖이라
+        // 토큰 하한 xs(4)·sm(8) 중 sm 채택.
+        const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: !filled
               ? Text(
@@ -234,7 +248,11 @@ class _SlotRow extends StatelessWidget {
 
 class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
   final _service = TeamService.instance;
-  final _pinCtrl = TextEditingController();
+
+  /// 검증된 비밀 그룹 PIN — 목록 문 앞 dialog(initialPin) 또는 참가 시점
+  /// dialog 에서 받는다. 화면에 상시 노출하는 인풋박스는 두지 않는다
+  /// (2026-07-30 참가 폼 PIN 필드 제거).
+  String? _pin;
   Team? _team;
   List<TeamRosterEntry> _roster = const [];
   Map<String, TeamSlotProfile> _profiles = const {};
@@ -269,6 +287,21 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
     final member = _isMember;
     return Scaffold(
       appBar: AppBar(
+        // 초대 링크 진입은 닫기(X), 앱 내 push 는 뒤로(←) — 관상 공유 카드
+        // (ReportPage receivedView)와 동일 레시피. pop 불가하면 홈으로.
+        leading: IconButton(
+          icon: Icon(
+            (widget.receivedView || !Navigator.of(context).canPop())
+                ? Icons.close
+                : Icons.arrow_back,
+          ),
+          tooltip: (widget.receivedView || !Navigator.of(context).canPop())
+              ? '닫기'
+              : '뒤로',
+          onPressed: () => Navigator.of(context).canPop()
+              ? Navigator.of(context).pop()
+              : context.go('/main'),
+        ),
         // 방 제목은 헤더 카드가 보여준다 — AppBar 는 고정 타이틀 (로딩 중
         // 타이틀이 방제목으로 바뀌는 깜빡임 제거).
         title: const Text('케미 그룹'),
@@ -310,7 +343,6 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
   @override
   void dispose() {
     _poll?.cancel();
-    _pinCtrl.dispose();
     final ch = _channel;
     if (ch != null) _service.unwatch(ch);
     super.dispose();
@@ -319,7 +351,7 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _pinCtrl.text = widget.initialPin ?? '';
+    _pin = widget.initialPin;
     // 조회수 — 진입 1회, 실패는 무시 (표시는 다음 fetch 몫).
     unawaited(_service.incrementTeamViews(widget.teamId).catchError((_) {}));
     _refresh();
@@ -483,8 +515,44 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
   /// 공용 TeamStatHeader + 참가자 슬롯 그리드를 hero 박스 안에 주입 —
   /// 궁합 상세 hero 가 두 인물을 박스 안에 품는 것과 같은 문법. 남은 자리는
   /// 그리드 열 헤더(남 n / N)가 전달하므로 별도 표기 없음.
-  Widget _headerCard(Team team) {
-    return TeamStatHeader(team: team, extra: _slotList(team));
+  /// [showAnnounceNotice] = 발표 조건 안내를 그리드 아래 반투명 컨테이너로
+  /// (궁합 hero 하단 오행 관계 컨테이너와 동일 레시피).
+  Widget _headerCard(Team team, {bool showAnnounceNotice = false}) {
+    return TeamStatHeader(
+      team: team,
+      extra: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _slotList(team),
+          if (showAnnounceNotice) ...[
+            const SizedBox(height: AppSpacing.lg),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.18),
+                ),
+              ),
+              child: Text(
+                '${team.maxPlayers - _roster.length}명이 더 모이면 '
+                '케미 결과표가 발표됩니다.',
+                textAlign: TextAlign.center,
+                style: AppText.caption.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   Widget _inviteRow(Team team) {
@@ -572,6 +640,16 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
 
   Future<void> _join() async {
     final team = _team!;
+    // ⓪ 비밀 그룹 PIN 게이트 — 목록 문 앞에서 검증된 PIN 이 없으면(초대
+    //    링크 경유) 여기서 같은 dialog 로 검증. 취소하면 참가 중단.
+    if (!team.isPublic && _pin == null) {
+      final pin = await showDialog<String>(
+        context: context,
+        builder: (_) => TeamPinDialog(teamId: widget.teamId),
+      );
+      if (pin == null || !mounted) return;
+      _pin = pin;
+    }
     // ① 로그인 게이트 — login_bottom_sheet 패턴.
     if (!_service.isLoggedIn) {
       final ok = await showLoginBottomSheet(context, ref);
@@ -603,7 +681,7 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
     try {
       await _service.joinTeam(
         widget.teamId,
-        password: team.isPublic ? null : _pinCtrl.text.trim(),
+        password: team.isPublic ? null : _pin,
       );
       ref.invalidate(myTeamsProvider);
       ref.invalidate(publicTeamsProvider);
@@ -632,7 +710,6 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
   // ── 미참가자 body ──────────────────────────────────────────────────────
 
   Widget _joinBody(Team team) {
-    final canJoin = team.isPublic || _pinCtrl.text.trim().length == 4;
     return RefreshIndicator(
       onRefresh: _refresh,
       color: AppColors.textPrimary,
@@ -641,26 +718,16 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
         children: [
           // 참가 전에도 누가 있는지 보고 판단할 수 있게 로스터가 hero 안에
           // 함께 보인다 — 웹 초대장(/g/:id)과 동일한 정보량.
+          // 비밀 그룹 PIN 은 상시 인풋박스 대신 참가 시점 dialog 로 검증
+          // (_join ⓪ 단계 — 목록 문 앞 dialog 와 같은 TeamPinDialog).
           _headerCard(team),
-          if (!team.isPublic) ...[
-            const SizedBox(height: AppSpacing.xl),
-            TextField(
-              controller: _pinCtrl,
-              keyboardType: TextInputType.number,
-              maxLength: 4,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              style: AppText.body.copyWith(color: AppColors.textPrimary),
-              onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(hintText: '비밀번호 4자리'),
-            ),
-          ],
           const SizedBox(height: AppSpacing.xl),
           _photoConsentNotice(team),
           const SizedBox(height: AppSpacing.xxl),
           PrimaryButton(
             label: '동의하고 참가',
             busy: _busy,
-            onPressed: canJoin && !_busy ? _join : null,
+            onPressed: _busy ? null : _join,
           ),
         ],
       ),
@@ -694,29 +761,9 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
       child: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
-          _headerCard(team),
-          const SizedBox(height: AppSpacing.xl),
-          // 발표 조건 안내 — gold 배경 full-width pill (gold 면엔 흰 글자 문법).
-          Center(
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.lg,
-                vertical: AppSpacing.sm,
-              ),
-              decoration: BoxDecoration(
-                color: AppColors.gold,
-                borderRadius: BorderRadius.circular(AppRadius.xl),
-              ),
-              child: Text(
-                '${team.maxPlayers - _roster.length}명이 더 모이면 '
-                '케미 결과표가 자동으로 발표됩니다',
-                style: AppText.caption.copyWith(color: Colors.white),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
+          // 발표 조건 안내는 hero 박스 안 반투명 컨테이너로 이동.
+          _headerCard(team, showAnnounceNotice: true),
+          // const SizedBox(height: AppSpacing.sm),
           _qrCard(),
           _inviteRow(team),
         ],

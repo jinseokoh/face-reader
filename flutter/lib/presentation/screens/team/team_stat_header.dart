@@ -3,13 +3,17 @@ import 'package:flutter/material.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 import '../../../domain/models/team.dart';
-import '../../widgets/age_range_pill.dart';
 
 // 화면-국지 팔레트 — 관상·궁합 상세 hero 박스(_Palette/_CompatPalette)와
 // 동일 hex (DESIGN.md §2.4 file-local 격리, 신규 색 아님).
 const _kDarkBrown = Color(0xFF5C4033);
 const _kWarmBrown = Color(0xFF7B5B3A);
 const _kSand = Color(0xFFBFA67A);
+
+// 관상·궁합 상세의 강점(그린) chip 과 동일 hex — 연령대 tag 공용 레시피.
+const _kGreenBg = Color(0xFFE0EBDA);
+const _kGreenFg = Color(0xFF2C5A36);
+const _kGreenBorder = Color(0xFF6B9F70);
 
 /// hero 박스 안에 함께 그려지는 위젯(참가자 그리드 등)이 쓰는 sand 액센트 —
 /// 상세 화면과 공유 (team_band.kBandGreen 과 같은 export 문법).
@@ -87,18 +91,45 @@ class TeamStatHeader extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),
-              // 제목은 브랜드 세리프 — AppBar 타이틀과 동일 토큰(SongMyung 20).
+              // 제목은 브랜드 세리프(appBarTitle 토큰 기반) — 16 으로 낮추고
+              // 최대 2줄. 긴 그룹 제목이 한 줄 말줄임으로 잘리지 않게.
               Text(
                 team.title,
-                maxLines: 1,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: AppText.appBarTitle.copyWith(color: Colors.white),
+                style: AppText.appBarTitle.copyWith(
+                  color: Colors.white,
+                  fontSize: 16,
+                  height: 1.4,
+                ),
               ),
-              const SizedBox(height: AppSpacing.xs),
-              // 연령 pill 만. 방 유형(이성/전체 케미) pill 과 조회수는
-              // 상세에선 제거 — 진입 전 목록 카드가 이미 전달한 정보라
-              // hero 에선 불필요 (2026-07-30).
-              Row(children: [AgeRangePill(label: team.ageRangeLabel)]),
+              const SizedBox(height: AppSpacing.sm),
+              // 연령 pill 만 — 관상·궁합 hero 의 그린 chip 과 동일 디자인
+              // (sage 배경 + 초록 border + radius 20). 방 유형 pill 과
+              // 조회수는 목록 카드가 이미 전달한 정보라 제거 (2026-07-30).
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _kGreenBg,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: _kGreenBorder),
+                    ),
+                    child: Text(
+                      team.ageRangeLabel,
+                      style: AppText.caption.copyWith(
+                        color: _kGreenFg,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
               if (extra != null) ...[
                 const SizedBox(height: AppSpacing.lg),
                 // 반투명 구분선 — 박스 내부를 "제목·pill ─ 참가자" 2단으로

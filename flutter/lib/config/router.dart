@@ -79,10 +79,14 @@ final router = GoRouter(
     ),
     // 케미 그룹 초대 — `/g/{teamId}` → 상세 페이지. TeamDetailScreen 이
     // 서버 fetch + 합류 처리를 책임 (web `/g/:id` 와 path 동일).
+    // receivedView — 관상 공유 카드와 동일 이치: 링크 진입은 main 위
+    // overlay 성격의 별도 route 라 AppBar 가 닫기(X)로 뜬다.
     GoRoute(
       path: '/g/:id',
-      builder: (ctx, state) =>
-          TeamDetailScreen(teamId: state.pathParameters['id']!),
+      builder: (ctx, state) => TeamDetailScreen(
+        teamId: state.pathParameters['id']!,
+        receivedView: true,
+      ),
     ),
     // 채팅 푸시 딥링크 — 매칭 쌍·닉네임 resolve 후 채팅방 직행.
     // 매칭이 없거나 미개설이면 방 상세로 후퇴.
