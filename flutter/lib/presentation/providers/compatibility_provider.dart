@@ -26,19 +26,8 @@ final compatibilityPartnerBodiesProvider =
       );
     });
 
-/// `상대 id → 결제 시점 상대 스냅샷` 맵 — 내 쌍만. ledger(코인 사용내역)가
-/// 로컬 히스토리 의존 없이 항상 상대 사진·인적정보를 띄우는 source.
-/// auth 변화에 재구독.
-final compatibilityPartnerSnapshotsProvider =
-    FutureProvider.autoDispose<Map<String, FaceReadingReport>>((ref) async {
-      ref.watch(authProvider);
-      return CompatibilityService().partnerSnapshotsByPartnerId(
-        myFaceId: _myFaceId(ref),
-      );
-    });
-
-/// 구매한 쌍 전체 (내 쌍 + 매칭 제3자 쌍) — 궁합 확인 리스트의 source of
-/// truth. auth 변화에 재구독.
+/// 구매한 쌍 전체 (내 쌍 + 매칭 제3자 쌍) — 궁합 확인 리스트와 ledger(코인
+/// 사용내역)의 source of truth. auth 변화에 재구독.
 final compatibilityPairsProvider = FutureProvider.autoDispose<List<CompatibilityPair>>((
   ref,
 ) async {

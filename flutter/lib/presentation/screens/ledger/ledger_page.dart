@@ -5,6 +5,7 @@ import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
+import 'package:facely/data/services/compatibility_service.dart';
 import 'package:facely/domain/models/coin_transaction.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:facely/presentation/providers/compatibility_provider.dart';
@@ -173,28 +174,60 @@ class _TransactionTile extends ConsumerWidget {
     final amountColor =
         isCredit ? const Color(0xFF2E7D32) : const Color(0xFFC62828);
 
-    // 결제 시점 partner 스냅샷(compatibilities.partner_body) 에서 해석 — 로컬 히스토리
-    // 의존 없이 기기·재설치 무관하게 사진·인적정보가 항상 뜬다.
-    final snapshots =
-        ref.watch(compatibilityPartnerSnapshotsProvider).asData?.value ?? const {};
-    final album = _resolveAlbum(snapshots);
-    // 이름 우선순위: 로컬 history 의 현재 이름(개명 반영) → 결제 시점
-    // partner_alias 스냅샷 (재설치·새 기기 fallback).
-    String? alias = album?.alias;
+    // 결제 시점 쌍 스냅샷(compatibilities — 내가 구매한 쌍 전체)에서 해석 —
+    // 로컬 히스토리 의존 없이 기기·재설치 무관하게 사진·인적정보가 항상
+    // 뜬다. reference_id 는 'aId~bId' 쌍 키 (옛 거래는 상대 단일 id).
+    final pairs =
+        ref.watch(compatibilityPairsProvider).asData?.value ??
+        const <CompatibilityPair>[];
+    final pair = _resolvePair(pairs);
+
+    // 내 관상 id — 쌍에 내가 끼면 상대 1명(single), 아니면 제3자 쌍이라
+    // 두 사람 다(duo) 보여준다 (한 명만 고르면 자의적).
+    String? myFaceId;
     for (final r in ref.watch(historyProvider)) {
-      if (r.supabaseId != null && r.supabaseId == tx.referenceId) {
-        if (r.alias != null && r.alias!.isNotEmpty) alias = r.alias;
+      if (r.isMyFace) {
+        myFaceId = r.supabaseId?.toLowerCase();
         break;
       }
     }
-    final demographic = album == null
-        ? null
-        : '${album.gender.labelKo} · ${album.ageGroup.labelKo} · ${album.faceShape.korean}';
-    final subtitle = album == null
-        ? null
-        : (alias != null && alias.isNotEmpty
-            ? '$alias · $demographic'
-            : demographic);
+    FaceReadingReport? single;
+    (FaceReadingReport, FaceReadingReport)? duo;
+    if (pair != null) {
+      if (myFaceId != null && pair.aId == myFaceId) {
+        single = pair.b;
+      } else if (myFaceId != null && pair.bId == myFaceId) {
+        single = pair.a;
+      } else {
+        duo = (pair.a, pair.b);
+      }
+    }
+
+    String nameOf(FaceReadingReport r) =>
+        (r.alias != null && r.alias!.isNotEmpty)
+        ? r.alias!
+        : '${r.ageGroup.labelKo} ${r.gender.labelKo}';
+
+    String? subtitle;
+    if (single != null) {
+      // 이름 우선순위: 로컬 history 의 현재 이름(개명 반영) → 결제 시점
+      // alias 스냅샷 (재설치·새 기기 fallback).
+      var alias = single.alias;
+      for (final r in ref.watch(historyProvider)) {
+        if (r.supabaseId != null &&
+            r.supabaseId!.toLowerCase() == single.supabaseId?.toLowerCase()) {
+          if (r.alias != null && r.alias!.isNotEmpty) alias = r.alias;
+          break;
+        }
+      }
+      final demographic =
+          '${single.gender.labelKo} · ${single.ageGroup.labelKo} · ${single.faceShape.korean}';
+      subtitle = (alias != null && alias.isNotEmpty)
+          ? '$alias · $demographic'
+          : demographic;
+    } else if (duo != null) {
+      subtitle = '${nameOf(duo.$1)} × ${nameOf(duo.$2)}';
+    }
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -207,7 +240,7 @@ class _TransactionTile extends ConsumerWidget {
         ),
         child: Row(
           children: [
-            _TxLeading(tx: tx, album: album),
+            _TxLeading(tx: tx, single: single, duo: duo),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -246,25 +279,50 @@ class _TransactionTile extends ConsumerWidget {
     );
   }
 
-  FaceReadingReport? _resolveAlbum(Map<String, FaceReadingReport> snapshots) {
+  /// 거래의 reference_id 로 구매한 쌍을 찾는다 — 현 포맷은 'aId~bId' 쌍 키,
+  /// 옛 거래는 상대 단일 id 라 contains 로 후퇴.
+  CompatibilityPair? _resolvePair(List<CompatibilityPair> pairs) {
     if (tx.description != 'compat-unlock') return null;
-    // reference_id 는 곧 partner_id — 스냅샷 맵 직접 조회.
-    final ref = tx.referenceId;
-    if (ref == null) return null;
-    return snapshots[ref];
+    final refId = tx.referenceId?.toLowerCase();
+    if (refId == null) return null;
+    for (final p in pairs) {
+      if (p.key == refId || (!refId.contains('~') && p.contains(refId))) {
+        return p;
+      }
+    }
+    return null;
   }
 }
 
 class _TxLeading extends StatelessWidget {
   final CoinTransaction tx;
-  final FaceReadingReport? album;
-  const _TxLeading({required this.tx, required this.album});
+
+  /// 내 쌍 — 상대 1명.
+  final FaceReadingReport? single;
+
+  /// 제3자 쌍(케미 매칭 구매) — 두 사람 다 상대라 미니 페어로.
+  final (FaceReadingReport, FaceReadingReport)? duo;
+  const _TxLeading({required this.tx, required this.single, required this.duo});
 
   @override
   Widget build(BuildContext context) {
+    final d = duo;
+    if (d != null) {
+      // 궁합 확인 리스트 pair 아바타(흰 링 겹침)의 미니 스케일.
+      return SizedBox(
+        width: 42,
+        height: 36,
+        child: Stack(
+          children: [
+            Positioned(left: 0, top: 5, child: _circle(d.$1)),
+            Positioned(left: 16, top: 5, child: _circle(d.$2)),
+          ],
+        ),
+      );
+    }
     // 결제 시점 partner 스냅샷의 R2 CDN 키로 항상 사진 노출(캐시). 키가 없거나
     // 로드 실패 시에만 거래 아이콘.
-    final cdn = ThumbnailPaths.cdnUrl(album?.thumbnailKey);
+    final cdn = ThumbnailPaths.cdnUrl(single?.thumbnailKey);
     if (cdn != null) {
       return _frame(CachedNetworkImage(
         imageUrl: cdn,
@@ -277,6 +335,39 @@ class _TxLeading extends StatelessWidget {
       ));
     }
     return _txIconAvatar(tx);
+  }
+
+  Widget _circle(FaceReadingReport r) {
+    final cdn = ThumbnailPaths.cdnUrl(r.thumbnailKey);
+    return Container(
+      width: 26,
+      height: 26,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: AppTheme.surface,
+        border: Border.all(color: Colors.white, width: 1.5),
+      ),
+      child: cdn == null
+          ? const Center(
+              child: FaIcon(
+                FontAwesomeIcons.solidUser,
+                size: 11,
+                color: AppColors.textHint,
+              ),
+            )
+          : CachedNetworkImage(
+              imageUrl: cdn,
+              fit: BoxFit.cover,
+              errorWidget: (_, _, _) => const Center(
+                child: FaIcon(
+                  FontAwesomeIcons.solidUser,
+                  size: 11,
+                  color: AppColors.textHint,
+                ),
+              ),
+            ),
+    );
   }
 
   Widget _frame(Widget child) =>

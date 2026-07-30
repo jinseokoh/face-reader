@@ -76,7 +76,10 @@ class _TeamMatchCardState extends State<TeamMatchCard> {
 
     final Widget footer;
     if (match.isOpen) {
-      footer = _openFooter();
+      // 내가 나간 채팅 — [채팅방 이동] 대신 종결 카피 (재진입 불가).
+      footer = (myUid != null && match.leftOf(myUid))
+          ? _closedFooter('채팅방에서 나갔습니다')
+          : _openFooter();
     } else if (theirConsent == false || myConsent == false) {
       footer = _closedFooter('이번에는 채팅방이 열리지 않았습니다');
     } else if (expired) {

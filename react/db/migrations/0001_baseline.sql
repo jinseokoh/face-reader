@@ -844,6 +844,10 @@ create table if not exists public.team_matches (
   a_consent  boolean,
   b_consent  boolean,
   opened_at  timestamptz,           -- 둘 다 true 가 된 시각 = 채팅 개설
+  -- 채팅방 나가기 — 본인 목록에서만 숨김·재진입 불가 (카톡 1:1 문법:
+  -- 상대는 계속 대화 가능). 쓰기는 leave_chat RPC 만.
+  a_left     boolean not null default false,
+  b_left     boolean not null default false,
   check (user_a <> user_b)
 );
 
@@ -1379,16 +1383,42 @@ begin
 end;
 $$;
 
+-- 채팅방 나가기 — 개설된 채팅에서 본인 left 플래그만 세운다 (되돌리기 없음).
+-- 나간 쪽 목록에서만 숨기고 상대의 대화·전송은 그대로 유지.
+create or replace function public.leave_chat(p_team_id uuid)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_uid   uuid := auth.uid();
+  v_match record;
+begin
+  if v_uid is null then raise exception 'AUTH_REQUIRED'; end if;
+  select * into v_match from team_matches where team_id = p_team_id for update;
+  if not found or v_match.opened_at is null
+     or (v_uid <> v_match.user_a and v_uid <> v_match.user_b) then
+    raise exception 'NOT_MATCHED';
+  end if;
+  if v_uid = v_match.user_a then
+    update team_matches set a_left = true where team_id = p_team_id;
+  else
+    update team_matches set b_left = true where team_id = p_team_id;
+  end if;
+end;
+$$;
+
 revoke execute on function public.check_team_password(uuid, text) from public;
 grant  execute on function public.check_team_password(uuid, text) to anon, authenticated;
 revoke execute on function public.join_team(uuid, text)          from public, anon;
 revoke execute on function public.leave_team(uuid)               from public, anon;
 revoke execute on function public.submit_team_result(uuid, jsonb) from public, anon;
 revoke execute on function public.respond_match(uuid, boolean)     from public, anon;
+revoke execute on function public.leave_chat(uuid)               from public, anon;
 grant  execute on function public.join_team(uuid, text)          to authenticated;
 grant  execute on function public.leave_team(uuid)               to authenticated;
 grant  execute on function public.submit_team_result(uuid, jsonb) to authenticated;
 grant  execute on function public.respond_match(uuid, boolean)     to authenticated;
+grant  execute on function public.leave_chat(uuid)               to authenticated;
 
 -- 공개 매칭 목록 — 모집 중 공개방만, 컬럼 화이트리스트 (password 접근 없음).
 -- 모집 중 전 방 노출 — 비밀방도 목록에 보이고(is_private 로 자물쇠 표시),

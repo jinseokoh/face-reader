@@ -1,5 +1,6 @@
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show RealtimeChannel;
@@ -22,7 +23,7 @@ const _kInputRadius = 22.0;
 /// 입력바, watchMatch(team_messages INSERT) 로 신규 메시지 refetch.
 /// 레이아웃은 카카오톡 채팅방 parity (아바타·이름·꼬리 말풍선·분 단위 시간),
 /// 배색은 앱 팔레트 (내 말풍선 goldSoft · 상대 surface).
-class TeamChatScreen extends StatefulWidget {
+class TeamChatScreen extends ConsumerStatefulWidget {
   final String teamId;
   final String otherUserId;
   final String otherNickname;
@@ -35,10 +36,10 @@ class TeamChatScreen extends StatefulWidget {
   });
 
   @override
-  State<TeamChatScreen> createState() => _TeamChatScreenState();
+  ConsumerState<TeamChatScreen> createState() => _TeamChatScreenState();
 }
 
-class _TeamChatScreenState extends State<TeamChatScreen> {
+class _TeamChatScreenState extends ConsumerState<TeamChatScreen> {
   final _service = TeamService.instance;
   final _controller = TextEditingController();
   List<TeamMessage> _messages = const [];
@@ -213,6 +214,62 @@ class _TeamChatScreenState extends State<TeamChatScreen> {
     }
   }
 
+  /// 채팅방 나가기 — 내 목록에서 사라지고 재진입 불가(되돌리기 없음),
+  /// 상대는 계속 대화를 볼 수 있다. 확인 다이얼로그는 사라지는 것부터 명시.
+  Future<void> _leaveChat() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+        ),
+        title: const Text('채팅방 나가기', style: AppText.modalTitle),
+        content: const Text(
+          '나가면 이 채팅방이 내 채팅 목록에서 사라지고 다시 들어올 수 없습니다. 상대방은 계속 대화를 볼 수 있습니다.',
+          style: AppText.body,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(
+              '취소',
+              style: AppText.body.copyWith(color: AppColors.textHint),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(
+              '나가기',
+              style: AppText.body.copyWith(color: AppColors.danger),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      await _service.leaveChat(widget.teamId);
+      if (mounted) {
+        // 채팅 탭 리스트·개설 배지에서 이 방을 즉시 제거.
+        ref.invalidate(openChatsProvider);
+        ref.invalidate(openChatTeamsProvider);
+        showTopSnackBar(
+          Overlay.of(context),
+          CompactSnackBar.success(message: '채팅방에서 나갔습니다'),
+        );
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        showTopSnackBar(
+          Overlay.of(context),
+          CompactSnackBar.error(message: mapTeamError(e).labelKo),
+        );
+      }
+    }
+  }
+
   Future<void> _send() async {
     final text = _controller.text.trim();
     if (text.isEmpty || _sending) return;
@@ -248,10 +305,15 @@ class _TeamChatScreenState extends State<TeamChatScreen> {
         actions: [
           PopupMenuButton<String>(
             icon: const FaIcon(FontAwesomeIcons.ellipsisVertical, size: 18),
-            onSelected: (v) => v == 'report' ? _report() : _block(),
+            onSelected: (v) => switch (v) {
+              'report' => _report(),
+              'block' => _block(),
+              _ => _leaveChat(),
+            },
             itemBuilder: (_) => const [
               PopupMenuItem(value: 'report', child: Text('신고하기')),
               PopupMenuItem(value: 'block', child: Text('차단하기')),
+              PopupMenuItem(value: 'leave', child: Text('채팅방 나가기')),
             ],
           ),
         ],

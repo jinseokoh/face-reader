@@ -219,7 +219,8 @@ class _ChatRouteWrapperState extends State<_ChatRouteWrapper> {
     if (uid != null) {
       try {
         final match = await svc.fetchMatch(widget.teamId);
-        if (match != null && match.isOpen) {
+        // 내가 나간 채팅은 재진입 불가 — 방 상세로 후퇴.
+        if (match != null && match.isOpen && !match.leftOf(uid)) {
           final other = match.otherOf(uid);
           final roster = await svc.fetchRoster(widget.teamId);
           var nickname = '상대';

@@ -236,6 +236,10 @@ class TeamMatch {
   final bool? bConsent;
   final DateTime? openedAt;
 
+  /// 채팅방 나가기 — 본인 목록에서만 숨김 (leave_chat RPC).
+  final bool aLeft;
+  final bool bLeft;
+
   const TeamMatch({
     required this.teamId,
     required this.userA,
@@ -243,6 +247,8 @@ class TeamMatch {
     required this.aConsent,
     required this.bConsent,
     required this.openedAt,
+    this.aLeft = false,
+    this.bLeft = false,
   });
 
   factory TeamMatch.fromRow(Map<String, dynamic> row) => TeamMatch(
@@ -254,6 +260,8 @@ class TeamMatch {
     openedAt: row['opened_at'] == null
         ? null
         : DateTime.parse(row['opened_at'] as String),
+    aLeft: (row['a_left'] as bool?) ?? false,
+    bLeft: (row['b_left'] as bool?) ?? false,
   );
 
   bool get isOpen => openedAt != null;
@@ -262,6 +270,13 @@ class TeamMatch {
     if (uid == userA) return aConsent;
     if (uid == userB) return bConsent;
     return null;
+  }
+
+  /// [uid] 가 채팅방을 나갔는지 — 쌍 밖 uid 는 false.
+  bool leftOf(String uid) {
+    if (uid == userA) return aLeft;
+    if (uid == userB) return bLeft;
+    return false;
   }
 
   String otherOf(String uid) => uid == userA ? userB : userA;

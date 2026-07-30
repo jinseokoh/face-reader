@@ -350,12 +350,17 @@ class TeamService {
   /// 채팅방이 열린 내 매칭의 team_id 집합 — 내 매칭 카드 강조용.
   /// RLS(pair_read)가 내 쌍 행만 돌려주므로 필터는 opened 여부 하나면 된다.
   Future<Set<String>> fetchOpenChatTeamIds() async {
-    if (myUid == null) return const {};
+    final uid = myUid;
+    if (uid == null) return const {};
     final rows = await _client
         .from('team_matches')
-        .select('team_id')
+        .select()
         .not('opened_at', 'is', null);
-    return {for (final r in rows) r['team_id'] as String};
+    // 내가 나간 채팅은 목록·배지 어디에도 세지 않는다 (leave_chat).
+    return {
+      for (final r in rows)
+        if (!TeamMatch.fromRow(r).leftOf(uid)) r['team_id'] as String,
+    };
   }
 
   /// 내가 베스트 쌍인 매칭의 team_id 집합 — RLS(pair_read)가 내 쌍 행만
@@ -377,7 +382,11 @@ class TeamService {
         .from('team_matches')
         .select()
         .not('opened_at', 'is', null);
-    final matches = [for (final r in matchRows) TeamMatch.fromRow(r)];
+    // 내가 나간 채팅 제외 — 상대 목록엔 그대로 남는다 (카톡 1:1 문법).
+    final matches = [
+      for (final r in matchRows)
+        if (!TeamMatch.fromRow(r).leftOf(uid)) TeamMatch.fromRow(r),
+    ];
     if (matches.isEmpty) return const [];
 
     final teamIds = [for (final m in matches) m.teamId];
@@ -538,6 +547,11 @@ class TeamService {
     'respond_match',
     params: {'p_team_id': teamId, 'p_accept': accept},
   );
+
+  /// 채팅방 나가기 — 본인 left 플래그만 세운다 (되돌리기 없음). 나간 쪽
+  /// 목록에서만 숨고 상대의 대화·전송은 유지.
+  Future<void> leaveChat(String teamId) =>
+      _client.rpc('leave_chat', params: {'p_team_id': teamId});
 
   Future<List<TeamMessage>> fetchMessages(String teamId) async {
     final rows = await _client
