@@ -531,15 +531,28 @@ class _MineTab extends ConsumerWidget {
                 ),
               ),
               Expanded(
-                // 필터 결과 0개 — 흰 화면만 남기지 않고 조건부 빈 상태를
-                // 보여준다 (그룹 자체가 없는 게 아니라 "이 조건으로" 없음).
+                // 필터 결과 0개 — 조건부 빈 상태 (그룹 자체가 없는 게 아니라
+                // "이 조건으로" 없음). 탭 빈 상태(1차 위계)의 emotion image
+                // 와 달리 필터는 하위 위계라 장식 없는 caption 텍스트만 —
+                // 에러 상태와 같은 조용한 레시피.
                 child: filtered.isEmpty
-                    ? ListView(
-                        children: [
-                          const SizedBox(height: 120),
-                          EmotionEmptyState(
-                            asset: 'assets/images/emotion-shrug.png',
-                            message: "'${filter.label}' 조건에 맞는 그룹이 없습니다",
+                    ? CustomScrollView(
+                        // 리스트 영역 정중앙 배치 + 당겨서 새로고침 유지.
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        slivers: [
+                          SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: Center(
+                              child: Text(
+                                "'${filter.label}' 조건에 맞는 그룹이 없습니다",
+                                // 빈 상태 공통 톤 — EmotionEmptyState 와 동일한
+                                // caption + textHint.
+                                style: AppText.caption.copyWith(
+                                  color: AppColors.textHint,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
                           ),
                         ],
                       )
