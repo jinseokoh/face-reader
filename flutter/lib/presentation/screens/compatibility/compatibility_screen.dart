@@ -331,6 +331,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
             values: _LockedSort.values,
             labelOf: (v) => v.label,
             onChanged: (v) => setState(() => _lockedSort = v),
+            description: '아직 풀이를 확인하지 않은 궁합입니다.',
           ),
         ),
         Expanded(
@@ -517,6 +518,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
               _unlockedSort = v;
               ref.read(recentUnlockFocusProvider.notifier).clear();
             }),
+            description: '풀이를 확인한 궁합입니다.',
           ),
         ),
         Expanded(

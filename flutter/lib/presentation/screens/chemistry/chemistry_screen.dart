@@ -527,6 +527,7 @@ class _MineTab extends ConsumerWidget {
                   values: _MineFilter.values,
                   labelOf: (f) => f.label,
                   onChanged: onFilterChanged,
+                  description: '내가 만들었거나 참가한 그룹입니다.',
                 ),
               ),
               Expanded(
@@ -810,6 +811,7 @@ class _PublicTab extends ConsumerWidget {
                   values: _SortOrder.values,
                   labelOf: (o) => o.label,
                   onChanged: onOrderChanged,
+                  description: '지금 참가할 수 있는 케미 그룹입니다.',
                 ),
               ),
               Expanded(

@@ -558,12 +558,14 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
                   history,
                   const [AnalysisSource.camera],
                   hasMyFace,
+                  description: '카메라로 찍은 사진으로 본 관상입니다.',
                   emptyAsset: 'assets/images/emotion-anger.png',
                 ),
                 _buildList(
                   history,
                   const [AnalysisSource.album],
                   hasMyFace,
+                  description: '앨범 사진으로 본 관상입니다.',
                   emptyAsset: 'assets/images/emotion-frown.png',
                 ),
                 // 공유받음 — 상시 노출 (0개 포함). 빈 상태가 "공유받기"
@@ -572,16 +574,22 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
                   history,
                   const [AnalysisSource.received],
                   hasMyFace,
+                  description: '공유받아 북마크한 관상입니다.',
                   emptyAsset: 'assets/images/emotion-smile.png',
                   emptyMessage: '공유받은 관상 카드를 북마크하면 여기에 보관됩니다.',
                 ),
               ],
             )
-          : _buildList(history, const [
-              AnalysisSource.camera,
-              AnalysisSource.album,
-              AnalysisSource.received,
-            ], hasMyFace),
+          : _buildList(
+              history,
+              const [
+                AnalysisSource.camera,
+                AnalysisSource.album,
+                AnalysisSource.received,
+              ],
+              hasMyFace,
+              description: '지금까지 분석한 관상 전체입니다.',
+            ),
     );
   }
 
@@ -604,6 +612,7 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
     List<FaceReadingReport> history,
     List<AnalysisSource> sources,
     bool hasMyFace, {
+    required String description,
     String emptyAsset = 'assets/images/emotion-frown.png',
     String emptyMessage = '아직 관상을 등록하지 않았다니!',
   }) {
@@ -701,6 +710,7 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
             values: _SortOrder.values,
             labelOf: (o) => o.label,
             onChanged: (v) => setState(() => _sortOrder = v),
+            description: description,
           ),
         ),
         Expanded(child: scroll),
