@@ -185,7 +185,9 @@ class SupabaseService {
   }
 
   /// Upsert metrics payload for an existing record. pull-to-refresh 후 slim
-  /// capture JSON 을 서버에 동기화하는 용도.
+  /// capture JSON 을 서버에 동기화하는 용도. is_my_face 는 싣지 않는다 —
+  /// 로컬 플래그가 없는 기기가 서버의 내 관상 지정을 false 로 덮어쓰는 사고
+  /// 방지. 플래그 쓰기는 saveMetrics(등록)와 claim 의 승격/강등 안전망 한정.
   Future<void> upsertMetricsBody(FaceReadingReport report) async {
     final id = report.supabaseId;
     if (id == null) return;
@@ -193,7 +195,6 @@ class SupabaseService {
       'id': id,
       'user_id': _client.auth.currentUser?.id,
       'body': report.toBodyJson(),
-      'is_my_face': report.isMyFace,
     });
     debugPrint('[Supabase] upserted metrics id=$id');
   }
@@ -230,22 +231,30 @@ class SupabaseService {
           .isFilter('alias', null);
       debugPrint('[Supabase] backfilled my-face alias ← $nickname');
     }
-    // 방금 귀속된 내 관상이 유일한 my-face 가 되도록, 서버에 남아 있던 과거
-    // my-face 행(이전 기기·세션 등록분)을 일반 카드로 강등 — is_my_face=true
-    // 는 사용자당 최대 1행 (saveMetrics 안전망과 동일 규칙). 삭제가 아닌
-    // 강등이라 팀 슬롯 FK(team_members.metrics_id)·공유 링크는 살아 있다.
-    // 실패해도 claim 자체는 유효 — 앱 재시작 claim 에서 재시도된다.
+    // 방금 귀속된 내 관상이 유일한 my-face 가 되도록 승격 + 강등을 쌍으로
+    // 실행한다 (is_my_face=true 는 사용자당 최대 1행 — saveMetrics 안전망과
+    // 동일 규칙). 승격이 없으면 서버 플래그가 false 인 행을 로컬이 내 관상으로
+    // 기억하는 기기가 강등만 실행해 계정의 true 행이 0이 되고, 이후 새 기기
+    // 로그인이 내 관상 없는 상태로 복원되는 사고가 난다 (2026-07-30 실사고).
+    // 강등은 삭제가 아님 — 팀 슬롯 FK(team_members.metrics_id)·공유 링크는
+    // 살아 있다. 실패해도 claim 자체는 유효 — 앱 재시작 claim 에서 재시도된다.
     if (myFaceId != null) {
       try {
+        await _client
+            .from('metrics')
+            .update({'is_my_face': true})
+            .eq('id', myFaceId)
+            .eq('user_id', uid);
         await _client
             .from('metrics')
             .update({'is_my_face': false})
             .eq('user_id', uid)
             .eq('is_my_face', true)
             .neq('id', myFaceId);
-        debugPrint('[Supabase] demoted stale my-face rows (keep=$myFaceId)');
+        debugPrint('[Supabase] promoted my-face + demoted stale rows '
+            '(keep=$myFaceId)');
       } catch (e) {
-        debugPrint('[Supabase] stale my-face demote error (계속 진행): $e');
+        debugPrint('[Supabase] my-face promote/demote error (계속 진행): $e');
       }
     }
   }
