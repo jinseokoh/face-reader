@@ -197,6 +197,10 @@ class SettingsScreen extends ConsumerWidget {
                           Text(version,
                               style: AppText.caption
                                   .copyWith(color: AppColors.textHint)),
+                          const SizedBox(width: 16),
+                          // 다른 메뉴 행과 동일한 chevron — 탭 가능함을 알린다.
+                          FaIcon(FontAwesomeIcons.chevronRight,
+                              color: AppTheme.textHint, size: 14),
                         ],
                       ),
                     ),

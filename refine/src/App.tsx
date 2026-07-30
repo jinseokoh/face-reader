@@ -19,6 +19,7 @@ import {
     PictureOutlined,
     PlaySquareOutlined,
     ScanOutlined,
+    SettingOutlined,
     TeamOutlined,
     UnlockOutlined,
 } from '@ant-design/icons'
@@ -38,6 +39,7 @@ import { CoinList } from './pages/coins'
 import { DashboardPage } from './pages/dashboard'
 import { MetricList, MetricShow } from './pages/metrics'
 import { ReportList, ReportShow } from './pages/reports'
+import { SystemPage } from './pages/system'
 import { TeamList, TeamShow } from './pages/teams'
 import { CompatibilityList, CompatibilityShow } from './pages/compatibilities'
 import { UserList, UserShow } from './pages/users'
@@ -111,6 +113,11 @@ function App() {
                     create: '/ad-images/create',
                     meta: { label: '배너 광고', icon: <PictureOutlined /> },
                   },
+                  {
+                    name: 'app_config',
+                    list: '/system',
+                    meta: { label: '시스템', icon: <SettingOutlined /> },
+                  },
                 ]}
                 options={{
                   syncWithLocation: true,
@@ -165,6 +172,7 @@ function App() {
                       <Route index element={<AdImageList />} />
                       <Route path="create" element={<AdImageCreate />} />
                     </Route>
+                    <Route path="/system" element={<SystemPage />} />
                     <Route path="*" element={<ErrorComponent />} />
                   </Route>
                   <Route

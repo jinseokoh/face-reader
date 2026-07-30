@@ -100,6 +100,11 @@ class PublicTeam {
   final int? ageMin;
   final int? ageMax;
   final TeamRoomKind roomKind;
+
+  /// 서버 teams.is_private 파생 컬럼(password is not null) — password 는
+  /// column grant 로 봉인돼 클라이언트가 읽을 수 없으므로, 비밀번호 존재
+  /// 여부를 알 유일한 창구다. 자물쇠 아이콘·문 앞 PIN dialog 발동이 소비.
+  /// 죽은 코드로 오인해 지우지 말 것.
   final bool isPrivate;
   final DateTime createdAt;
   final int playerCount;

@@ -83,6 +83,11 @@ class _AppInfoDialogState extends State<AppInfoDialog> {
             ),
           ),
           const SizedBox(height: AppSpacing.xl),
+          Text(
+            '관상은 과학이다',
+            style: AppText.modalTitle.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: AppSpacing.sm),
           FutureBuilder<PackageInfo>(
             future: PackageInfo.fromPlatform(),
             builder: (context, snapshot) {
@@ -97,7 +102,7 @@ class _AppInfoDialogState extends State<AppInfoDialog> {
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            '공대삼촌',
+            '공대삼촌이 ❤️ 을 듬뿍 담아 만들었습니다.',
             style: AppText.caption.copyWith(color: AppColors.textHint),
           ),
         ],

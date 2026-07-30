@@ -8,6 +8,7 @@ import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 
 import 'package:facely/core/hive/hive_setup.dart';
 import 'package:facely/core/theme.dart';
+import 'package:facely/data/services/app_config_service.dart';
 import 'package:facely/data/services/auth_service.dart';
 import 'package:facely/data/services/deep_link_service.dart';
 import 'package:facely/domain/models/team.dart';
@@ -19,6 +20,8 @@ import 'package:facely/presentation/screens/compatibility/compatibility_screen.d
 import 'package:facely/presentation/screens/chemistry/chemistry_screen.dart';
 import 'package:facely/presentation/screens/physiognomy/physiognomy_screen.dart';
 import 'package:facely/presentation/screens/settings/settings_screen.dart';
+import 'package:facely/presentation/screens/update_gate_screen.dart';
+import 'package:facely/presentation/widgets/ad_banner_dialog.dart';
 import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
 import 'package:facely/presentation/widgets/onboarding_intro.dart';
 
@@ -41,6 +44,17 @@ class _MainAppState extends ConsumerState<MainApp> {
   @override
   void initState() {
     super.initState();
+    // 강제 업그레이드 게이트 — min_build 미달이면 닫을 수 없는 화면으로
+    // 전부 덮는다 (딥링크 cold-start 도 MainApp 이 먼저 mount 되므로 관통).
+    AppConfigService.instance.checkForceUpdate().then((r) {
+      if (!mounted || !r.required) return;
+      Navigator.of(context, rootNavigator: true).push(
+        MaterialPageRoute(
+          fullscreenDialog: true,
+          builder: (_) => UpdateGateScreen(notice: r.notice),
+        ),
+      );
+    });
     _bonusSkippedSub =
         AuthService().signupBonusSkippedNotice.listen((_) {
       if (!mounted) return;
@@ -170,6 +184,9 @@ class _MainAppState extends ConsumerState<MainApp> {
   /// 채팅 탭의 IndexedStack index — 뱃지·밴드·탭 전환이 공유.
   static const _chatTabIndex = 3;
 
+  /// 설정 탭 index — 진입 시 배너 광고 팝업 트리거.
+  static const _settingsTabIndex = 4;
+
   @override
   Widget build(BuildContext context) {
     final selectedIndex = ref.watch(selectedTabProvider);
@@ -259,6 +276,9 @@ class _MainAppState extends ConsumerState<MainApp> {
   void _onTabSelected(int i) {
     // 채팅 탭 진입마다 목록·안읽음 상태 재조회 (Realtime 미구독 보완).
     if (i == _chatTabIndex) ref.invalidate(openChatsProvider);
+    // 설정 탭 진입 시 배너 광고 팝업 — 배너별 세션 1회·영구 제외 규칙은
+    // AdBannerDialog 가 판정.
+    if (i == _settingsTabIndex) AdBannerDialog.maybeShow(context);
     ref.read(selectedTabProvider.notifier).selectTab(i);
   }
 

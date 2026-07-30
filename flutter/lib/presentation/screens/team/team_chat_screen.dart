@@ -43,6 +43,7 @@ class _TeamChatScreenState extends ConsumerState<TeamChatScreen> {
   final _service = TeamService.instance;
   final _controller = TextEditingController();
   List<TeamMessage> _messages = const [];
+  TeamMatch? _match;
   RealtimeChannel? _channel;
   String? _otherPhotoUrl;
   AnalysisSource? _otherPhotoSource;
@@ -79,8 +80,14 @@ class _TeamChatScreenState extends ConsumerState<TeamChatScreen> {
   }
 
   Future<void> _load() async {
-    final messages = await _service.fetchMessages(widget.teamId);
+    // match 도 함께 — 상대의 채팅방 나가기(left 플래그)를 실시간 반영
+    // (watchMatch 가 team_matches UPDATE 를 구독하므로 나가는 즉시 온다).
+    final results = await Future.wait<dynamic>([
+      _service.fetchMessages(widget.teamId),
+      _service.fetchMatch(widget.teamId),
+    ]);
     if (!mounted) return;
+    final messages = results[0] as List<TeamMessage>;
     // 이 방을 보고 있는 동안 도착분까지 읽음 처리 — 안읽음 뱃지·밴드 기준.
     if (messages.isNotEmpty) {
       Hive.box<String>(HiveBoxes.prefs).put(
@@ -90,6 +97,7 @@ class _TeamChatScreenState extends ConsumerState<TeamChatScreen> {
     }
     setState(() {
       _messages = messages;
+      _match = results[1] as TeamMatch?;
       _loading = false;
     });
   }
@@ -372,12 +380,41 @@ class _TeamChatScreenState extends ConsumerState<TeamChatScreen> {
                       },
                     ),
             ),
-            _inputBar(),
+            // 상대가 채팅방을 나간 경우 — 시스템 안내 라인 + 입력 차단
+            // (나간 상대는 다시 못 들어오므로 보내봐야 닿지 않는다).
+            if (_otherLeft) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.xs,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    child: Text(
+                      '${widget.otherNickname}님이 채팅방을 나갔습니다',
+                      style: AppText.caption.copyWith(
+                        color: AppColors.textHint,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ] else
+              _inputBar(),
           ],
         ),
       ),
     );
   }
+
+  /// 상대의 채팅방 나가기 여부 — watchMatch(team_matches UPDATE)가 실시간
+  /// 으로 _load 를 깨워 갱신된다.
+  bool get _otherLeft => _match?.leftOf(widget.otherUserId) ?? false;
 
   /// pill 형태 입력바 — 카카오톡 하단 입력창 parity, 배색은 surface 토큰.
   Widget _inputBar() {

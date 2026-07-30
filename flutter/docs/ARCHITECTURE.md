@@ -257,9 +257,10 @@ owner, 상태 전이는 RPC 전용. `team_members` public read, 쓰기는 전부
     unit 고정(정책 보호), release = `.env` 실 unit. `.env` 는 빌드 시점에
     asset 으로 굳는다 — 값 갱신 후엔 재빌드 필수. App ID 는
     AndroidManifest/Info.plist.
-  - `ad_images` 홈 배너: `AdImageService`·`adImagesProvider`(데이터 계층)만
-    존재하고 **소비 UI 가 없다** (홈 개편 때 배너 rotation 제거). 재도입
-    시 노출 화면 결정부터.
+  - `ad_images` 배너: 설정 탭 진입 시 팝업(`AdBannerDialog.maybeShow`,
+    2026-07-30) — full-width 배너 이미지(탭·확인 = link_url) + 다시 보지
+    않기(배너별 Hive 영구 제외)·닫기. 같은 실행에선 배너별 1회, 활성 배너
+    중 sort_order 첫 번째 하나만. 조회 실패는 조용히 생략.
 - 인증: Kakao OAuth(`facely://auth-callback` 딥링크) + email/OTP. 탈퇴 = `/api/account/delete`.
 - 카카오 공유: FeedTemplate(설치) / OS 공유 시트 fallback. 상세 계약은 [KAKAO.md](../../KAKAO.md).
 

@@ -2017,10 +2017,6 @@ double _mi(double s) {
   return rest < 0 ? 0.0 : rest;
 }
 
-_WeightFn _midOf(Attribute a) => (f) => _mi(f.scoreOf(a));
-
-_WeightFn _notLowOf(Attribute a) => (f) => 1.0 - _lo(f.scoreOf(a));
-
 /// Weighted sampling. 각 fragment 의 weight(∈[0,1]) 를 누적 분포로 보고
 /// seed 로 결정 지점을 찍는다. 모든 weight=0 이면 빈 문자열 (pool 미스).
 /// deterministic: 같은 seed+pool 이면 항상 같은 fragment.
@@ -2095,16 +2091,8 @@ double _softMidZ(double z) {
   return (1.0 - a) / 0.8;
 }
 
-bool _yangLean(_Features f) =>
-    f.yinYang.tone == YinYangTone.strongYang ||
-    f.yinYang.tone == YinYangTone.leaningYang;
-
 // 음양 쏠림 predicate
 bool _yangStrong(_Features f) => f.yinYang.tone == YinYangTone.strongYang;
-
-bool _yinLean(_Features f) =>
-    f.yinYang.tone == YinYangTone.strongYin ||
-    f.yinYang.tone == YinYangTone.leaningYin;
 
 bool _yinStrong(_Features f) => f.yinYang.tone == YinYangTone.strongYin;
 

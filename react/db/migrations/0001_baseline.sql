@@ -712,10 +712,13 @@ create index if not exists ad_images_active_sort_idx
 -- result_payload = 클라이언트가 snapshot 으로 계산해 1회 기록하는 스코어보드
 -- (players/pairs/best — 점수는 best.score 만).
 -- password 는 column grant 로 클라이언트 SELECT 차단 (§11-4) — 비교는
--- join_team 내부에서만. 상태 전이는 RPC 전용 (직접 UPDATE 는 title 만).
--- 공개/비밀 개념은 password 단일 소스 — 모든 모집 방이 목록에 노출되고,
--- password 있는 방만 조인 시 PIN 을 요구한다. is_private 는 클라이언트
--- 표시용 파생 컬럼(password 봉인 유지, 어긋날 수 없음).
+-- check_team_password 문 앞 dialog 만 (capability 모델 — join_team 은 검사
+-- 안 함). 상태 전이는 RPC 전용 (직접 UPDATE 는 title 만).
+-- 공개/비밀 개념은 password 단일 소스, is_private 는 그 파생 컬럼.
+-- ⚠️ is_private 는 죽은 코드로 오인해 지우지 말 것 — password 가 봉인이라
+-- 클라이언트가 "비밀번호 존재 여부"를 알 유일한 창구다. 소비처: 목록
+-- 자물쇠 아이콘, 문 앞 PIN dialog 발동 조건, public_teams 뷰,
+-- Realtime payload 화이트리스트. generated always 라 어긋날 수 없고 유지비 0.
 create table if not exists public.teams (
   id                 uuid        primary key default gen_random_uuid(),
   owner_id           uuid        references auth.users(id) on delete set null,
@@ -1562,6 +1565,29 @@ revoke insert, update, delete on public.my_blocks      from anon, authenticated;
 --   raise notice 'views after rpc = %', v;  -- 1
 --   delete from public.metrics where id = sid;
 -- end$$;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- app_config — 앱 전역 설정 단일 행 (강제 업그레이드 정책, 2026-07-30)
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 앱 시작 시 1회 조회. 내 buildNumber < 플랫폼별 min_build 면 닫을 수 없는
+-- 업데이트 게이트를 띄운다 (조회 실패는 fail-open — 네트워크로 앱을 잠그지
+-- 않는다). 쓰기 정책 없음 — 발동/해제는 SQL Editor 로만:
+--   update app_config set android_min_build = 15 where id = 1;
+create table if not exists public.app_config (
+  id                 int  primary key default 1 check (id = 1),
+  android_min_build  int  not null default 1,
+  ios_min_build      int  not null default 1,
+  notice             text                        -- 게이트에 띄울 공지 (선택)
+);
+
+insert into public.app_config (id) values (1) on conflict do nothing;
+
+alter table public.app_config enable row level security;
+
+drop policy if exists "app_config_read" on public.app_config;
+create policy "app_config_read" on public.app_config for select using (true);
+
+grant select on public.app_config to anon, authenticated;
 
 -- ============================================================================
 -- DEV ONLY — reset (⚠️ 파괴적 · 전체 초기화)
