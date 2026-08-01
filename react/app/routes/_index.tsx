@@ -1,6 +1,22 @@
-import type { Route } from './+types/_index'
+import type { Variants } from 'motion/react'
+import { useRef, useState } from 'react'
+import { TextAnimate } from '../components/TextAnimate'
 import { fetchDailyFaces } from '../lib/supabase'
 import { renderDailyFace, type DailyFaceCard } from '../lib/traits'
+import type { Route } from './+types/_index'
+
+/** Science Integration hover 설명부 — magicui text-animate "With Delay"
+ *  예제 레시피: 시작 1초 지연 후 문자별 blurInUp (blur 10px→0 · y 20→0),
+ *  0.03s stagger. */
+const DELAY_BLUR_VARIANTS: Variants = {
+  hidden: { opacity: 0, y: 20, filter: 'blur(10px)' },
+  show: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    filter: 'blur(0px)',
+    transition: { delay: 1 + i * 0.03, duration: 0.3 },
+  }),
+}
 
 /**
  * 오늘의 관상 그리드 필터 — 출시 전 테스트 스위치 (baseline §14 daily_faces).
@@ -9,7 +25,12 @@ import { renderDailyFace, type DailyFaceCard } from '../lib/traits'
  *   optedOnly  — 설정 > 오늘의 관상 공개 를 켠 사용자만
  *   myFaceOnly — 내 관상(my-face) 행만
  */
-const DAILY_FACES = { todayOnly: false, optedOnly: false, myFaceOnly: false, limit: 60 }
+const DAILY_FACES = {
+  todayOnly: false,
+  optedOnly: false,
+  myFaceOnly: false,
+  limit: 60,
+}
 
 export async function loader({ context }: Route.LoaderArgs) {
   const env = context.cloudflare.env
@@ -49,6 +70,17 @@ export function meta(_: Route.MetaArgs) {
 
 export default function Index({ loaderData }: Route.ComponentProps) {
   const { cards } = loaderData
+  // hover 시 설명부 mount → 문자 wave 재생 후 6초 뒤 자동 제거. 재생과 종료
+  // 타이머를 enter 단일 이벤트가 관리한다 — leave 기반 종료는 링크 가장자리
+  // 에서 enter/leave 가 연사될 때 이전 타이머가 살아남아 재생 중 unmount 되는
+  // 레이스가 있었음. key 로 쓰는 카운터라 재진입 때마다 처음부터 재생.
+  const [siShown, setSiShown] = useState(0)
+  const siHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const showSi = () => {
+    if (siHideTimer.current) clearTimeout(siHideTimer.current)
+    setSiShown((k) => k + 1)
+    siHideTimer.current = setTimeout(() => setSiShown(0), 6000)
+  }
   return (
     <main className="landing">
       <img
@@ -80,6 +112,9 @@ export default function Index({ loaderData }: Route.ComponentProps) {
       {cards.length > 0 && (
         <section className="daily-faces">
           <h2 className="daily-faces-title">오늘의 관상</h2>
+          <p className="daily-faces-caption">
+            노출을 허용한 사용자만 노출됩니다. (보너스 지급)
+          </p>
           <ul className="daily-faces-grid">
             {cards.map((c, i) => (
               // tabIndex — hover 없는 환경(터치·키보드)에서 focus 로 툴팁 노출.
@@ -112,6 +147,34 @@ export default function Index({ loaderData }: Route.ComponentProps) {
         <span aria-hidden="true">·</span>
         <a href="/contact">요청폼</a>
       </footer>
+
+      <div className="landing-legal">
+        <p>
+          상호명 에스아이 (S.I.) | 사업장소재지 서울특별시 강남구 선릉로 222 |
+          대표자 오진석 a.k.a. 공대삼촌 | 사업자 등록번호 889-15-02079 |
+          통신판매업신고 제 2024-서울강남-02200호 | 이메일 uncle@facely.kr
+        </p>
+        <p>
+          ⓒ 2026{' '}
+          <a
+            href="https://scienceintegration.com"
+            target="_blank"
+            rel="noreferrer"
+            className="landing-si"
+            onMouseEnter={showSi}
+          >
+            Science Integration
+          </a>
+        </p>
+        {/* 높이 예약 — hover 시 레이아웃이 밀리지 않게 빈 줄을 상시 유지 */}
+        <p className="landing-legal-desc">
+          {siShown > 0 && (
+            <TextAnimate key={siShown} variants={DELAY_BLUR_VARIANTS}>
+              {'Connecting people with science'}
+            </TextAnimate>
+          )}
+        </p>
+      </div>
     </main>
   )
 }

@@ -128,8 +128,15 @@ code {
 .daily-faces-title {
   font-size: 24px;
   font-weight: 700;
-  margin: 0 0 16px;
+  margin: 0 0 4px;
   color: var(--ink);
+  text-align: center;
+}
+/* landing-qr-caption 과 동일 스케일 (13px caption) — opt-in 안내 */
+.daily-faces-caption {
+  font-size: 13px;
+  color: var(--caption);
+  margin: 0 0 16px;
   text-align: center;
 }
 .daily-faces-grid {
@@ -137,8 +144,15 @@ code {
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  /* 고정 칼럼 수 — 셀을 작게 유지해 썸네일이 "저해상도 200×200" 안내와
+     체감 크기가 일치하게 (심리적 노출 저항 완화). 모바일 3열 / 넓은 화면 5열. */
+  grid-template-columns: repeat(3, 1fr);
   gap: 16px 12px;
+}
+@media (min-width: 640px) {
+  .daily-faces-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
 }
 .daily-face-card {
   position: relative;
@@ -204,6 +218,28 @@ code {
 }
 .landing-footer a:hover {
   color: var(--ink);
+}
+/* 법적 필수 표기 — 최하단, 12px (5단 스케일 최소), 왼쪽 정렬 */
+.landing-legal {
+  align-self: stretch;
+  text-align: left;
+  padding-top: 12px;
+  font-size: 12px;
+  color: var(--caption);
+  line-height: 1.7;
+}
+.landing-legal p {
+  margin: 0;
+}
+.landing-si {
+  color: var(--caption);
+  text-decoration: none;
+}
+.landing-si:hover {
+  color: var(--ink);
+}
+.landing-legal-desc {
+  min-height: 21px; /* line-height 1.7 × 12px 예약 — hover 시 레이아웃 고정 */
 }
 
 .error h1 {
