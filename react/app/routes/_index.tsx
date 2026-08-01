@@ -105,9 +105,8 @@ export default function Index({ loaderData }: Route.ComponentProps) {
         <section className="daily-faces">
           <h2 className="daily-faces-title">오늘의 관상</h2>
           <p className="daily-faces-caption">
-            노출을 허용한 사용자만 노출됩니다.{' '}
             <span className="daily-faces-bonus-pill">
-              허용하신 분께는 보너스 3코인 지급합니다
+              관상 노출을 허용한 사용자께는 보너스 3코인 지급합니다.
             </span>
           </p>
           <ul className="daily-faces-grid">

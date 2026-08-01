@@ -43,37 +43,32 @@ body {
   z-index: -10;
   display: flex;
   justify-content: center;
+  gap: 8px;
 }
 .overscroll-reveal span {
   font-size: 12px;
   font-weight: 500;
   color: rgba(0, 0, 0, 0.6);
 }
+/* 이미지는 텍스트와 같은 flex 안 — 좁은 화면에서도 항상 텍스트 옆에 붙는다.
+   이미지는 화면 모서리에 밀착, 텍스트만 24px 안쪽으로. */
 .overscroll-reveal.overscroll-top {
   align-items: flex-start;
+}
+.overscroll-reveal.overscroll-top span {
   padding-top: 24px;
 }
 .overscroll-reveal.overscroll-bottom {
   align-items: flex-end;
+}
+.overscroll-reveal.overscroll-bottom span {
   padding-bottom: 24px;
 }
 .overscroll-img {
-  pointer-events: none;
-  position: fixed;
-  z-index: -10;
-  left: 50%;
   height: 64px;
   width: auto;
   object-fit: contain;
   opacity: 0.8;
-}
-.overscroll-img.overscroll-top {
-  top: 0;
-  margin-left: 120px;
-}
-.overscroll-img.overscroll-bottom {
-  bottom: 0;
-  margin-left: 200px;
 }
 
 main {

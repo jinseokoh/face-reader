@@ -39,18 +39,14 @@ export default function App() {
           __root.tsx 와 동일 구조). 본문 뒤 fixed 레이어라 평소엔 안 보이고,
           rubber-band 오버스크롤 순간에만 위/아래로 드러난다. */}
       <div className="overscroll-reveal overscroll-top">
-        <span>관상은 과학이다냥~</span>
+        <span>냥이 관상도 과학이다냥~</span>
+        <img src="/cat.png" alt="" className="overscroll-img" />
       </div>
-      <img src="/cat.png" alt="" className="overscroll-img overscroll-top" />
 
       <div className="overscroll-reveal overscroll-bottom">
         <span>공대삼촌이 극강T의 힘을 보여주려고 만들었대.</span>
+        <img src="/uncle.png" alt="" className="overscroll-img" />
       </div>
-      <img
-        src="/uncle.png"
-        alt=""
-        className="overscroll-img overscroll-bottom"
-      />
 
       <div className="app-shell">
         <Outlet />
