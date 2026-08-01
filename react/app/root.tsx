@@ -44,7 +44,11 @@ export default function App() {
       </div>
 
       <div className="overscroll-reveal overscroll-bottom">
-        <span>공대삼촌이 극강T의 힘을 보여주려고 만들었대.</span>
+        <span>
+          장난삼아 만든 관상앱에 빡친
+          <br />
+          공대삼촌이 극강T의 힘을 보여주려고 만들었대.
+        </span>
         <img src="/uncle.png" alt="" className="overscroll-img" />
       </div>
 

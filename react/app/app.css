@@ -63,6 +63,7 @@ body {
 }
 .overscroll-reveal.overscroll-bottom span {
   padding-bottom: 24px;
+  text-align: left;
 }
 .overscroll-img {
   height: 64px;
