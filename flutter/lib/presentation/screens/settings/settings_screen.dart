@@ -160,7 +160,7 @@ class SettingsScreen extends ConsumerWidget {
             _menuItem(
               icon: FontAwesomeIcons.calendarDay,
               title: '오늘의 관상 공개',
-              subtitle: user.dailyFaceOptedIn ? '공개 중' : '비공개',
+              trailingText: user.dailyFaceOptedIn ? '공개 중' : '비공개',
               onTap: () => DailyFaceSheet.show(context),
             ),
             _menuItem(
@@ -225,6 +225,8 @@ class SettingsScreen extends ConsumerWidget {
     required FaIconData icon,
     required String title,
     String? subtitle,
+    // chevron 왼쪽 상태 텍스트 — 앱 정보 행의 버전 표기와 동일 패턴.
+    String? trailingText,
     Color? titleColor,
     required VoidCallback onTap,
   }) {
@@ -256,6 +258,12 @@ class SettingsScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
+                if (trailingText != null) ...[
+                  Text(trailingText,
+                      style:
+                          AppText.caption.copyWith(color: AppColors.textHint)),
+                  const SizedBox(width: 16),
+                ],
                 FaIcon(FontAwesomeIcons.chevronRight, color: AppTheme.textHint, size: 14),
               ],
             ),

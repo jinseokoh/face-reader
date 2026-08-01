@@ -1576,7 +1576,7 @@ revoke insert, update, delete on public.my_blocks      from anon, authenticated;
 --
 -- 규칙:
 --   • 공개↔비공개 전환은 언제든 가능 (동의 철회는 즉시 — 잠금 없음).
---   • 보너스 3코인(원칙 1코인, 프로모션 기간 3코인)은 선지급이 아니라
+--   • 보너스 3코인은 선지급이 아니라
 --     "연속 7일 공개 유지 달성" 시 1회 지급 — 켰다 바로 끄는 어뷰즈가
 --     구조적으로 불가능해 잠금·회수 로직이 필요 없다. 상태는 단일 컬럼
 --     users.daily_face_opted_since (null = 비공개, not null = 연속 공개 시작
@@ -1665,8 +1665,7 @@ begin
     update users set coins = coins + 3 where id = v_uid
       returning coins into v_balance;
     insert into coins (user_id, kind, amount, balance_after, description)
-      values (v_uid, 'bonus', 3, v_balance,
-              '오늘의 관상 7일 공개 유지 보너스 (프로모션 3코인)');
+      values (v_uid, 'bonus', 3, v_balance, '오늘의 관상 7일 공개 유지 보너스');
     update bonus_recipients set daily_face_bonus_at = now()
      where (v_email is not null and email         = v_email)
         or (v_kakao is not null and kakao_user_id = v_kakao);
