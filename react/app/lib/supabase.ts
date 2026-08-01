@@ -282,12 +282,19 @@ export interface DailyFacesFilter {
   limit?: number;
 }
 
+export interface DailyFaceRow {
+  body: string;
+  /** 행 소유자의 노출 허용 여부 — false 면 웹이 블러+캔버스로 가린다. */
+  opted: boolean;
+}
+
 /**
- * daily_faces RPC (baseline §14) — 필터 통과한 metrics.body 원문 목록.
+ * daily_faces RPC (baseline §14) — 필터 통과한 metrics.body 원문 + opted 목록.
  * 실패는 빈 배열로 흡수 — 홈은 그리드 없이도 항상 렌더돼야 한다 (RPC 미배포
- * 상태의 배포 순서 문제 포함).
+ * 상태의 배포 순서 문제 포함). opted 컬럼이 없는 구버전 RPC 응답은 전부
+ * false(블러) 로 처리.
  */
-export async function fetchDailyFaces(env: Env, f: DailyFacesFilter): Promise<string[]> {
+export async function fetchDailyFaces(env: Env, f: DailyFacesFilter): Promise<DailyFaceRow[]> {
   if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) return [];
   try {
     const res = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/daily_faces`, {
@@ -308,8 +315,13 @@ export async function fetchDailyFaces(env: Env, f: DailyFacesFilter): Promise<st
       console.warn("[fetchDailyFaces] rpc status", res.status, await res.text());
       return [];
     }
-    const rows = (await res.json()) as Array<{ body: string | null }>;
-    return rows.map((r) => r.body).filter((b): b is string => Boolean(b));
+    const rows = (await res.json()) as Array<{
+      body: string | null;
+      opted?: boolean;
+    }>;
+    return rows
+      .filter((r): r is { body: string; opted?: boolean } => Boolean(r.body))
+      .map((r) => ({ body: r.body, opted: r.opted === true }));
   } catch (e) {
     console.warn("[fetchDailyFaces] rpc threw", e);
     return [];

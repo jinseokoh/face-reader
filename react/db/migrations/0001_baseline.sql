@@ -1693,15 +1693,20 @@ grant execute on function public.claim_daily_face_bonus() to authenticated;
 -- "오늘" 판정은 updated_at (재촬영 upsert 가 touch trigger 로 갱신) KST 기준.
 -- 세 filter 는 launch 전 테스트용 완화 스위치 — Worker 쪽 상수로 켜고 끈다
 -- (react/app/routes/_index.tsx 의 DAILY_FACES). 오픈 시 전부 true.
-create or replace function public.daily_faces(
+-- opted = 행 소유자의 노출 허용 여부 — 테스트 모드(p_opted_only=false)에서
+-- 미허용 행은 웹이 블러 + 캔버스 렌더로 가린다. return type 변경이라
+-- create or replace 로 못 바꿈 → drop 선행 (재실행 안전).
+drop function if exists public.daily_faces(boolean, boolean, boolean, integer);
+create function public.daily_faces(
   p_today_only   boolean default true,
   p_opted_only   boolean default true,
   p_my_face_only boolean default true,
   p_limit        integer default 60
-) returns table (body text, updated_at timestamptz)
+) returns table (body text, updated_at timestamptz, opted boolean)
 language sql stable security definer set search_path = public
 as $$
-  select m.body, m.updated_at
+  select m.body, m.updated_at,
+         (u.daily_face_opted_since is not null) as opted
     from metrics m
     left join users u on u.id = m.user_id
    where (not p_my_face_only or m.is_my_face)

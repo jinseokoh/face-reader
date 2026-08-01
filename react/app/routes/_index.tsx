@@ -1,5 +1,5 @@
 import type { Variants } from 'motion/react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { TextAnimate } from '../components/TextAnimate'
 import { fetchDailyFaces } from '../lib/supabase'
 import { renderDailyFace, type DailyFaceCard } from '../lib/traits'
@@ -33,10 +33,13 @@ const DAILY_FACES = {
 
 export async function loader({ context }: Route.LoaderArgs) {
   const env = context.cloudflare.env
-  const bodies = await fetchDailyFaces(env, DAILY_FACES)
-  const cards = bodies
-    .map((b) => renderDailyFace(b, env.R2_CDN_BASE))
-    .filter((c): c is DailyFaceCard => c !== null)
+  const rows = await fetchDailyFaces(env, DAILY_FACES)
+  const cards = rows
+    .map((r) => {
+      const card = renderDailyFace(r.body, env.R2_CDN_BASE)
+      return card && { ...card, opted: r.opted }
+    })
+    .filter((c): c is DailyFaceCard & { opted: boolean } => c !== null)
   return { cards }
 }
 
@@ -65,6 +68,47 @@ export function meta(_: Route.MetaArgs) {
     { name: 'twitter:description', content: description },
     { name: 'twitter:image', content: ogImage },
   ]
+}
+
+/**
+ * 노출 미허용 사용자 썸네일 — <img> 대신 캔버스에 축소(36×36)→스무딩 없는
+ * 확대로 모자이크 타일만 그린다. 페이지에 원본 <img> 가 없어 길게 눌러/
+ * 우클릭 저장이 안 되고, cross-origin 이미지라 캔버스도 taint 되어
+ * toDataURL 추출이 막힌다 (ctx.filter blur 는 Safari 미지원이라 축소-확대
+ * 방식 사용). 36 은 인상착의는 남고 인물 특정은 어려운 절충값 — 조정은
+ * MOSAIC_RES 하나로.
+ */
+const MOSAIC_RES = 36
+function BlurredThumb({ src, alt }: { src: string; alt: string }) {
+  const ref = useRef<HTMLCanvasElement>(null)
+  useEffect(() => {
+    const canvas = ref.current
+    if (!canvas) return
+    const img = new Image()
+    img.onload = () => {
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
+      const off = document.createElement('canvas')
+      off.width = MOSAIC_RES
+      off.height = MOSAIC_RES
+      const octx = off.getContext('2d')
+      if (!octx) return
+      octx.drawImage(img, 0, 0, MOSAIC_RES, MOSAIC_RES)
+      ctx.imageSmoothingEnabled = false
+      ctx.drawImage(off, 0, 0, canvas.width, canvas.height)
+    }
+    img.src = src
+  }, [src])
+  return (
+    <canvas
+      ref={ref}
+      width={200}
+      height={200}
+      className="daily-face-thumb"
+      role="img"
+      aria-label={alt}
+    />
+  )
 }
 
 export default function Index({ loaderData }: Route.ComponentProps) {
@@ -113,12 +157,19 @@ export default function Index({ loaderData }: Route.ComponentProps) {
             {cards.map((c, i) => (
               // tabIndex — hover 없는 환경(터치·키보드)에서 focus 로 툴팁 노출.
               <li key={i} className="daily-face-card" tabIndex={0}>
-                <img
-                  src={c.thumbUrl}
-                  alt={`${c.demoLabel} ${c.typeLabel}`}
-                  className="daily-face-thumb"
-                  loading="lazy"
-                />
+                {c.opted ? (
+                  <img
+                    src={c.thumbUrl}
+                    alt={`${c.demoLabel} ${c.typeLabel}`}
+                    className="daily-face-thumb"
+                    loading="lazy"
+                  />
+                ) : (
+                  <BlurredThumb
+                    src={c.thumbUrl}
+                    alt={`${c.demoLabel} ${c.typeLabel}`}
+                  />
+                )}
                 <p className="daily-face-demo">{c.demoLabel}</p>
                 <p className="daily-face-type">{c.typeLabel}</p>
                 <div className="daily-face-tooltip" role="tooltip">
