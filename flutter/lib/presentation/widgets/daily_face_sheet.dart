@@ -1,7 +1,9 @@
 import 'package:facely/core/theme.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
+import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
 /// 설정 > 오늘의 관상 공개 — opt-in 전환 bottom sheet.
 ///
@@ -48,8 +50,10 @@ class _DailyFaceSheetState extends ConsumerState<DailyFaceSheet> {
     if (!mounted) return;
     setState(() => _bonusReceived = res.already);
     if (res.granted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('7일 공개 유지 보너스 3코인이 지급되었습니다')),
+      showTopSnackBar(
+        Overlay.of(context),
+        CompactSnackBar.success(
+            message: '7일 공개 유지 보너스 3코인이 지급되었습니다'),
       );
     }
   }
@@ -156,13 +160,17 @@ class _DailyFaceSheetState extends ConsumerState<DailyFaceSheet> {
     if (!mounted) return;
     setState(() => _busy = false);
     if (res.ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(optIn ? '공개가 설정되었습니다' : '비공개로 전환되었습니다')),
+      // opt-in 녹색(success) / opt-out 파란색(info) — 상단 snackbar.
+      showTopSnackBar(
+        Overlay.of(context),
+        optIn
+            ? CompactSnackBar.success(message: '공개로 설정했습니다')
+            : CompactSnackBar.info(message: '비공개로 설정했습니다'),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(res.message ?? '설정 변경에 실패했습니다')),
+      showTopSnackBar(
+        Overlay.of(context),
+        CompactSnackBar.error(message: res.message ?? '설정 변경에 실패했습니다'),
       );
     }
   }
