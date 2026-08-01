@@ -119,6 +119,14 @@ class AuthNotifier extends Notifier<AuthUser?> {
     return ok;
   }
 
+  Future<({bool ok, String? message})> setDailyFaceOptIn(bool optIn) async {
+    return AuthService().setDailyFaceOptIn(optIn);
+  }
+
+  Future<({bool granted, bool already})> claimDailyFaceBonus() async {
+    return AuthService().claimDailyFaceBonus();
+  }
+
   Future<bool> deductCoins(int amount, {String? description}) async {
     return AuthService().deductCoins(amount, description: description);
   }

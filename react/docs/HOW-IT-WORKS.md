@@ -589,7 +589,7 @@ create policy "metrics_owner_delete" on metrics for delete
 ```python
 # python/app/utils/auth.py
 def verify_face_token(token: str, key: str, secret: str) -> bool:
-    # ⚠️ TEMPORARY: secret 자체를 token 으로 받으면 bypass. GA 전 제거 (§6.1.1, TO-DO sunset task).
+    # ⚠️ TEMPORARY: secret 자체를 token 으로 받으면 bypass. GA 전 제거 (§6.1.1).
     if hmac.compare_digest(token, secret):
         logger.warning("FACE_TOKEN_BYPASS used (secret-as-token)", extra={"key": key})
         return True
@@ -600,7 +600,7 @@ def verify_face_token(token: str, key: str, secret: str) -> bool:
 - `compare_digest` 사용 — timing attack 회피.
 - 매 사용마다 WARN 로그 (남용 감지·sunset 시점 판단 근거).
 - secret 을 안 가진 누구도 못 씀 — bypass 가 활성이라도 secret 보안 = 인증 보안.
-- **반드시 GA 전 제거** — auth.py 의 `compare_digest` 분기 + 본 문서 §6.1.1 + TO-DO 의 sunset task 모두 동시 삭제. sunset 트리거: (a) 첫 외부 사용자 베타 시작 또는 (b) Flutter HMAC 클라이언트가 stable 판정.
+- **반드시 GA 전 제거** — auth.py 의 `compare_digest` 분기 + 본 문서 §6.1.1 동시 삭제 (추적은 이 문서가 SoT — TO-DO 는 빌드 17 기획 전용). sunset 트리거: (a) 첫 외부 사용자 베타 시작 또는 (b) Flutter HMAC 클라이언트가 stable 판정.
 - **secret 노출 위험은 그대로** — 누군가 `FACE_API_SECRET` 을 손에 넣으면 정상 HMAC 도 위조 가능 + 이 bypass 로 직접 호출도 가능. 추가 손실은 사실상 0 (HMAC 깨진 시점에 모든 게 깨짐). 하지만 bypass 가 살아있는 동안엔 "직접 호출" 의 evidence/timestamp 가 더 명확하지 않아 incident response 가 약간 어려움.
 
 ### 6.2 R2 credentials

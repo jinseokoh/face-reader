@@ -1,6 +1,7 @@
 import 'package:facely/core/theme.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:facely/presentation/widgets/account_deletion_dialog.dart';
+import 'package:facely/presentation/widgets/daily_face_sheet.dart';
 import 'package:facely/presentation/widgets/legal_doc_sheet.dart';
 import 'package:facely/presentation/widgets/login_entry_button.dart';
 import 'package:facely/presentation/screens/settings/app_info_dialog.dart';
@@ -156,6 +157,12 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => LegalDocSheet.showPrivacy(context, ref),
           ),
           if (isLoggedIn) ...[
+            _menuItem(
+              icon: FontAwesomeIcons.calendarDay,
+              title: '오늘의 관상 공개',
+              subtitle: user.dailyFaceOptedIn ? '공개 중' : '비공개',
+              onTap: () => DailyFaceSheet.show(context),
+            ),
             _menuItem(
               icon: FontAwesomeIcons.userSlash,
               title: '차단 목록',

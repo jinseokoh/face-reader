@@ -272,3 +272,46 @@ const DEMO_RAW_METRICS: Record<string, number> = {
   upperVsLowerLipRatio: 0.55,
   browSpacing: 0.18,
 };
+
+// ── 오늘의 관상 — 홈 그리드 (routes/_index.tsx) ──────────────────────────────
+
+export interface DailyFacesFilter {
+  todayOnly: boolean;
+  optedOnly: boolean;
+  myFaceOnly: boolean;
+  limit?: number;
+}
+
+/**
+ * daily_faces RPC (baseline §14) — 필터 통과한 metrics.body 원문 목록.
+ * 실패는 빈 배열로 흡수 — 홈은 그리드 없이도 항상 렌더돼야 한다 (RPC 미배포
+ * 상태의 배포 순서 문제 포함).
+ */
+export async function fetchDailyFaces(env: Env, f: DailyFacesFilter): Promise<string[]> {
+  if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) return [];
+  try {
+    const res = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/daily_faces`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        apikey: env.SUPABASE_ANON_KEY,
+        authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({
+        p_today_only: f.todayOnly,
+        p_opted_only: f.optedOnly,
+        p_my_face_only: f.myFaceOnly,
+        p_limit: f.limit ?? 60,
+      }),
+    });
+    if (!res.ok) {
+      console.warn("[fetchDailyFaces] rpc status", res.status, await res.text());
+      return [];
+    }
+    const rows = (await res.json()) as Array<{ body: string | null }>;
+    return rows.map((r) => r.body).filter((b): b is string => Boolean(b));
+  } catch (e) {
+    console.warn("[fetchDailyFaces] rpc threw", e);
+    return [];
+  }
+}

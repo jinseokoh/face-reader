@@ -1,4 +1,24 @@
 import type { Route } from './+types/_index'
+import { fetchDailyFaces } from '../lib/supabase'
+import { renderDailyFace, type DailyFaceCard } from '../lib/traits'
+
+/**
+ * 오늘의 관상 그리드 필터 — 출시 전 테스트 스위치 (baseline §14 daily_faces).
+ * 지금은 전부 완화(모든 metrics 노출). 오픈 시 세 값 모두 true 로:
+ *   todayOnly  — KST 오늘 분석(updated_at)만
+ *   optedOnly  — 설정 > 오늘의 관상 공개 를 켠 사용자만
+ *   myFaceOnly — 내 관상(my-face) 행만
+ */
+const DAILY_FACES = { todayOnly: false, optedOnly: false, myFaceOnly: false, limit: 60 }
+
+export async function loader({ context }: Route.LoaderArgs) {
+  const env = context.cloudflare.env
+  const bodies = await fetchDailyFaces(env, DAILY_FACES)
+  const cards = bodies
+    .map((b) => renderDailyFace(b, env.R2_CDN_BASE))
+    .filter((c): c is DailyFaceCard => c !== null)
+  return { cards }
+}
 
 export function meta(_: Route.MetaArgs) {
   const title = '관상은 과학이다'
@@ -27,7 +47,8 @@ export function meta(_: Route.MetaArgs) {
   ]
 }
 
-export default function Index() {
+export default function Index({ loaderData }: Route.ComponentProps) {
+  const { cards } = loaderData
   return (
     <main className="landing">
       <img
@@ -55,6 +76,34 @@ export default function Index() {
         />
         <p className="landing-qr-caption">카메라로 스캔해 앱 받기</p>
       </div>
+
+      {cards.length > 0 && (
+        <section className="daily-faces">
+          <h2 className="daily-faces-title">오늘의 관상</h2>
+          <ul className="daily-faces-grid">
+            {cards.map((c, i) => (
+              // tabIndex — hover 없는 환경(터치·키보드)에서 focus 로 툴팁 노출.
+              <li key={i} className="daily-face-card" tabIndex={0}>
+                <img
+                  src={c.thumbUrl}
+                  alt={`${c.demoLabel} ${c.typeLabel}`}
+                  className="daily-face-thumb"
+                  loading="lazy"
+                />
+                <p className="daily-face-demo">{c.demoLabel}</p>
+                <p className="daily-face-type">{c.typeLabel}</p>
+                <div className="daily-face-tooltip" role="tooltip">
+                  {c.top3.map((t, rank) => (
+                    <p key={t.key}>
+                      {rank + 1}. {t.labelKo} {t.score.toFixed(1)}
+                    </p>
+                  ))}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <footer className="landing-footer">
         <a href="/terms">이용약관</a>

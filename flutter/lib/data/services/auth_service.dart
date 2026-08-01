@@ -27,6 +27,14 @@ class AuthUser {
   /// 페이지에서 "카카오 계정으로 로그인됨" / "이메일로 로그인됨" 분기 표시.
   final String? provider;
 
+  /// 오늘의 관상 공개 opt-in (facely.kr 홈 그리드 노출) — users
+  /// .daily_face_opted_since 미러. null = 비공개, not null = 현재 연속 공개의
+  /// 시작 시각 (연속 7일 유지 보너스 claim_daily_face_bonus RPC 판정 기준).
+  /// 전환은 set_daily_face_opt_in RPC 만.
+  final DateTime? dailyFaceOptedSince;
+
+  bool get dailyFaceOptedIn => dailyFaceOptedSince != null;
+
   const AuthUser({
     required this.id,
     required this.coins,
@@ -35,9 +43,19 @@ class AuthUser {
     this.profileImageUrl,
     this.signupBonusSkipped = false,
     this.provider,
+    this.dailyFaceOptedSince,
   });
 
-  AuthUser copyWith({int? coins, String? nickname}) => AuthUser(
+  /// [dailyFaceOptedSince] 는 null 이 유효값(비공개 전환)이라 "미지정 = 유지"
+  /// 를 sentinel 로 구분한다.
+  static const _unset = Object();
+
+  AuthUser copyWith({
+    int? coins,
+    String? nickname,
+    Object? dailyFaceOptedSince = _unset,
+  }) =>
+      AuthUser(
         id: id,
         kakaoUserId: kakaoUserId,
         nickname: nickname ?? this.nickname,
@@ -45,6 +63,9 @@ class AuthUser {
         coins: coins ?? this.coins,
         signupBonusSkipped: signupBonusSkipped,
         provider: provider,
+        dailyFaceOptedSince: identical(dailyFaceOptedSince, _unset)
+            ? this.dailyFaceOptedSince
+            : dailyFaceOptedSince as DateTime?,
       );
 }
 
@@ -137,6 +158,13 @@ class AuthService {
       _setUser(mapped);
       debugPrint('[Auth] profile loaded: nickname=${mapped.nickname} '
           'coins=${mapped.coins} signupBonusSkipped=${mapped.signupBonusSkipped}');
+      // 연속 7일 공개 유지 보너스 lazy 지급 — 설정에 안 들어와도 앱 시작
+      // 시점에 달성분이 들어오게. 기수령이면 RPC 가 no-op (fire-and-forget).
+      final since = mapped.dailyFaceOptedSince;
+      if (since != null &&
+          DateTime.now().isAfter(since.add(const Duration(days: 7)))) {
+        unawaited(claimDailyFaceBonus());
+      }
     } catch (e, st) {
       debugPrint('[Auth] profile load failed: $e\n$st');
     }
@@ -472,6 +500,54 @@ class AuthService {
     }
   }
 
+  /// 오늘의 관상 공개 전환 — set_daily_face_opt_in RPC (baseline §14).
+  /// 잠금 없음 — 언제든 전환 가능. 보너스는 선지급이 아니라 연속 7일 유지
+  /// 달성 시 [claimDailyFaceBonus] 가 지급한다.
+  Future<({bool ok, String? message})> setDailyFaceOptIn(bool optIn) async {
+    final user = _currentUser;
+    if (user == null) {
+      return (ok: false, message: '로그인이 필요합니다');
+    }
+    try {
+      final res = await _client
+          .rpc('set_daily_face_opt_in', params: {'p_opt_in': optIn});
+      final map = (res as Map).cast<String, dynamic>();
+      _setUser(user.copyWith(
+        dailyFaceOptedSince:
+            DateTime.tryParse(map['opted_since'] as String? ?? ''),
+      ));
+      return (ok: true, message: null);
+    } catch (e) {
+      debugPrint('[Auth] setDailyFaceOptIn error: $e');
+      return (ok: false, message: '설정 변경에 실패했습니다. 잠시 후 다시 시도해 주세요');
+    }
+  }
+
+  /// 연속 7일 공개 유지 보너스 판정·지급 — claim_daily_face_bonus RPC.
+  /// 조건 미달·기수령이어도 에러 없이 상태만 반환한다. granted = 이번
+  /// 호출에서 3코인 지급됨(잔액 반영), already = 수령 완료 상태(UI 는
+  /// 보너스 안내를 숨긴다). 실패는 (false, false) — 다음 호출에서 재시도.
+  Future<({bool granted, bool already})> claimDailyFaceBonus() async {
+    final user = _currentUser;
+    if (user == null) return (granted: false, already: false);
+    try {
+      final res = await _client.rpc('claim_daily_face_bonus');
+      final map = (res as Map).cast<String, dynamic>();
+      _setUser(user.copyWith(
+        coins: map['balance'] as int?,
+        dailyFaceOptedSince:
+            DateTime.tryParse(map['opted_since'] as String? ?? ''),
+      ));
+      return (
+        granted: map['granted'] == true,
+        already: map['already'] == true,
+      );
+    } catch (e) {
+      debugPrint('[Auth] claimDailyFaceBonus error: $e');
+      return (granted: false, already: false);
+    }
+  }
+
   /// Spend coins via RPC. Returns true on success, false if insufficient.
   Future<bool> deductCoins(
     int amount, {
@@ -522,6 +598,8 @@ class AuthService {
       coins: (row['coins'] as int?) ?? 0,
       signupBonusSkipped: (row['signup_bonus_skipped'] as bool?) ?? false,
       provider: providerRaw,
+      dailyFaceOptedSince:
+          DateTime.tryParse(row['daily_face_opted_since'] as String? ?? ''),
     );
   }
 

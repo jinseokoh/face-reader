@@ -34,6 +34,8 @@
 --                 touch_metrics_updated_at (views++ 시 updated_at 자동 갱신)
 --   • rpcs      : grant_coins · admin_grant_coins · spend_coins · unlock_compat
 --                 increment_metrics_views · ad_reward_status · ad_reward_record_view
+--                 set_daily_face_opt_in · claim_daily_face_bonus · daily_faces
+--                 (오늘의 관상, §14)
 --   • rls       : 각 테이블 별 정책
 --   • indexes   : 운영 query 패턴 기반
 --   • grants    : RPC 권한 + 테이블/시퀀스 (§11-1)
@@ -69,8 +71,15 @@ create table if not exists public.users (
   profile_image_url    text,
   coins                integer     not null default 0,
   signup_bonus_skipped boolean     not null default false,
+  -- 오늘의 관상 공개 opt-in (§14). null = 비공개, not null = 현재 연속 공개의
+  -- 시작 시각 (7일 유지 보너스 판정 기준). 상태와 시각을 한 컬럼이 겸해
+  -- 불가능 상태(공개인데 시각 없음 등)가 표현 자체로 안 된다.
+  daily_face_opted_since timestamptz,
   created_at           timestamptz not null default now()
 );
+
+-- 기존 DB 반영 — create table if not exists 는 이미 있는 테이블에 컬럼을 못 더한다.
+alter table public.users add column if not exists daily_face_opted_since timestamptz;
 
 alter table public.users enable row level security;
 
@@ -297,8 +306,14 @@ create table if not exists public.bonus_recipients (
   email         text,
   kakao_user_id text,
   granted_at    timestamptz not null default now(),
+  -- 오늘의 관상 공개 opt-in 보너스 수신 시각 (§14). null = 미수신. 가입 보너스와
+  -- 같은 email/kakao 영구 기록이라 탈퇴·재가입해도 재지급이 막힌다.
+  daily_face_bonus_at timestamptz,
   check (email is not null or kakao_user_id is not null)
 );
+
+-- 기존 DB 반영 — create table if not exists 는 이미 있는 테이블에 컬럼을 못 더한다.
+alter table public.bonus_recipients add column if not exists daily_face_bonus_at timestamptz;
 
 create index if not exists bonus_recipients_email_idx
   on public.bonus_recipients (email) where email is not null;
@@ -1551,6 +1566,154 @@ revoke insert, update, delete on public.my_blocks      from anon, authenticated;
 --   • ad_videos : custom video mp4 (Flutter 가 public URL 로 재생)
 --   • ad_images : 홈 배너 이미지 (Flutter 가 public URL 로 표시)
 -- buckets 메타테이블 직접 INSERT 도 가능하나 대시보드가 안전.
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 14. 오늘의 관상 — facely.kr 홈 공개 그리드 (opt-in)
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 설정 > 오늘의 관상 공개 를 켠 사용자의 내 관상(썸네일·나이대·성별·유형)이
+-- facely.kr 홈 "오늘의 관상" 그리드에 노출된다. UUID·이름은 비공개 (카드
+-- 클릭 없음 — /r/{id} 링크 미노출).
+--
+-- 규칙:
+--   • 공개↔비공개 전환은 언제든 가능 (동의 철회는 즉시 — 잠금 없음).
+--   • 보너스 3코인(원칙 1코인, 프로모션 기간 3코인)은 선지급이 아니라
+--     "연속 7일 공개 유지 달성" 시 1회 지급 — 켰다 바로 끄는 어뷰즈가
+--     구조적으로 불가능해 잠금·회수 로직이 필요 없다. 상태는 단일 컬럼
+--     users.daily_face_opted_since (null = 비공개, not null = 연속 공개 시작
+--     시각) — 비공개 전환 = null 이 곧 유지 시계 리셋이다.
+--   • 지급 판정은 lazy — cron 없이 claim_daily_face_bonus RPC 를 클라이언트
+--     (설정 sheet 진입·앱 시작)가 호출할 때 조건 충족 시 지급.
+--   • dedup 은 가입 보너스와 동일하게 bonus_recipients 의 email/kakao 영구
+--     기록(daily_face_bonus_at) — 탈퇴·재가입해도 재지급 없음.
+
+-- users column grants — §11-1 blanket grant 좁히기 (teams §11-4 와 동일 패턴).
+-- 클라이언트 직접 UPDATE 는 nickname 하나뿐 (auth_service.updateNickname).
+-- coins(잔액)·daily_face_opted_since(7일 유지 보너스 판정 기준) 를 PATCH 로
+-- 직접 조작하는 길을 봉쇄 — 이 컬럼들의 쓰기는 각 RPC (security definer) 전용.
+revoke update on public.users from anon, authenticated;
+grant update (nickname) on public.users to authenticated;
+
+-- RPC: set_daily_face_opt_in — 공개 상태 전환 (잠금·보너스 없음, 단순 토글)
+create or replace function public.set_daily_face_opt_in(p_opt_in boolean)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_uid   uuid := auth.uid();
+  v_since timestamptz;
+begin
+  if v_uid is null then raise exception 'not authenticated'; end if;
+
+  select daily_face_opted_since
+    into v_since
+    from users where id = v_uid
+    for update;
+  if not found then raise exception 'profile missing'; end if;
+
+  -- no-op 전환(이미 같은 상태)은 시각을 건드리지 않는다 — 유지 시계 보존.
+  if p_opt_in = (v_since is not null) then
+    return jsonb_build_object('opted_since', v_since);
+  end if;
+
+  v_since := case when p_opt_in then now() end;
+  update users set daily_face_opted_since = v_since where id = v_uid;
+
+  return jsonb_build_object('opted_since', v_since);
+end; $$;
+
+revoke all on function public.set_daily_face_opt_in(boolean) from public;
+grant execute on function public.set_daily_face_opt_in(boolean) to authenticated;
+
+-- RPC: claim_daily_face_bonus — 연속 7일 공개 유지 보너스 판정 + 지급 (lazy)
+-- 미달·기수령이어도 에러 없이 현재 상태를 반환 — UI 가 진행/수령 표시에
+-- 그대로 사용한다. granted = 이번 호출에서 지급됨, already = 수령 완료 상태.
+create or replace function public.claim_daily_face_bonus()
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_uid     uuid := auth.uid();
+  v_since   timestamptz;
+  v_balance integer;
+  v_email   text;
+  v_kakao   text;
+  v_already boolean;
+  v_granted boolean := false;
+begin
+  if v_uid is null then raise exception 'not authenticated'; end if;
+
+  select daily_face_opted_since, coins
+    into v_since, v_balance
+    from users where id = v_uid
+    for update;
+  if not found then raise exception 'profile missing'; end if;
+
+  select lower(au.email), au.raw_user_meta_data->>'provider_id'
+    into v_email, v_kakao
+    from auth.users au where au.id = v_uid;
+
+  v_already := exists (
+    select 1 from bonus_recipients
+     where ((v_email is not null and email         = v_email)
+         or (v_kakao is not null and kakao_user_id = v_kakao))
+       and daily_face_bonus_at is not null);
+
+  if not v_already
+     and v_since is not null
+     and now() >= v_since + interval '7 days'
+     and (v_email is not null or v_kakao is not null) then
+    update users set coins = coins + 3 where id = v_uid
+      returning coins into v_balance;
+    insert into coins (user_id, kind, amount, balance_after, description)
+      values (v_uid, 'bonus', 3, v_balance,
+              '오늘의 관상 7일 공개 유지 보너스 (프로모션 3코인)');
+    update bonus_recipients set daily_face_bonus_at = now()
+     where (v_email is not null and email         = v_email)
+        or (v_kakao is not null and kakao_user_id = v_kakao);
+    if not found then
+      insert into bonus_recipients (email, kakao_user_id, daily_face_bonus_at)
+        values (v_email, v_kakao, now());
+    end if;
+    v_granted := true;
+    v_already := true;
+  end if;
+
+  return jsonb_build_object(
+    'granted', v_granted, 'already', v_already,
+    'opted_since', v_since, 'balance', v_balance);
+end; $$;
+
+revoke all on function public.claim_daily_face_bonus() from public;
+grant execute on function public.claim_daily_face_bonus() to authenticated;
+
+-- RPC: daily_faces — 홈 그리드 조회 (Worker 가 anon 으로 호출)
+-- metrics 는 이미 metrics_public_read(using true) 로 anon 전면 공개 —
+-- security definer 는 users.daily_face_opted_since join (users RLS 는 self-read)
+-- 용도일 뿐 노출 범위를 넓히지 않는다. id 는 반환하지 않는다 (/r/{id} 비공개).
+-- "오늘" 판정은 updated_at (재촬영 upsert 가 touch trigger 로 갱신) KST 기준.
+-- 세 filter 는 launch 전 테스트용 완화 스위치 — Worker 쪽 상수로 켜고 끈다
+-- (react/app/routes/_index.tsx 의 DAILY_FACES). 오픈 시 전부 true.
+create or replace function public.daily_faces(
+  p_today_only   boolean default true,
+  p_opted_only   boolean default true,
+  p_my_face_only boolean default true,
+  p_limit        integer default 60
+) returns table (body text, updated_at timestamptz)
+language sql stable security definer set search_path = public
+as $$
+  select m.body, m.updated_at
+    from metrics m
+    left join users u on u.id = m.user_id
+   where (not p_my_face_only or m.is_my_face)
+     and (not p_opted_only   or u.daily_face_opted_since is not null)
+     and (not p_today_only   or (m.updated_at at time zone 'Asia/Seoul')::date
+                              = (now()        at time zone 'Asia/Seoul')::date)
+   order by m.updated_at desc
+   limit least(greatest(coalesce(p_limit, 60), 1), 200);
+$$;
+
+grant execute on function public.daily_faces(boolean, boolean, boolean, integer)
+  to anon, authenticated;
 
 -- ============================================================================
 -- 검증 스모크 (선택)

@@ -4,8 +4,10 @@ import type {
   CompatOutput,
   EngineOutput,
   MetricsRow,
+  RawMetrics,
   RenderedShare,
   ShareKind,
+  ShareTopRank,
 } from "./types";
 
 export interface RenderInput {
@@ -123,4 +125,37 @@ export function renderCompat(a: MetricsRow, b: MetricsRow, ctx: RenderInput): Re
 
 export function isShareKind(s: string): s is ShareKind {
   return s === "solo" || s === "compat";
+}
+
+// ── 오늘의 관상 — 홈 그리드 카드 (routes/_index.tsx) ─────────────────────────
+
+export interface DailyFaceCard {
+  thumbUrl: string;
+  /** "30대 남성" */
+  demoLabel: string;
+  /** 1순위 유형 — "학자형" 등 */
+  typeLabel: string;
+  /** hover 툴팁용 3순위 (score 는 0~10, toFixed(1) 표기) */
+  top3: ShareTopRank[];
+}
+
+/// metrics.body 원문 1건 → 그리드 카드 1장. 썸네일 없는 row 는 카드로서
+/// 의미가 없고, body 파싱·엔진 실패 row 는 조용히 건너뛴다 (null 반환 —
+/// 호출부에서 filter).
+export function renderDailyFace(body: string, cdnBase?: string): DailyFaceCard | null {
+  try {
+    const raw = JSON.parse(body) as RawMetrics;
+    const key = (raw as unknown as Record<string, unknown>).thumbnailKey;
+    if (typeof key !== "string" || key.length === 0 || !cdnBase) return null;
+    const eng = runEngineFor({ id: "", raw });
+    return {
+      thumbUrl: `${cdnBase.replace(/\/$/, "")}/${key}`,
+      demoLabel: `${eng.ageGroupKo} ${eng.genderKo}`,
+      typeLabel: eng.primaryLabel,
+      top3: eng.top3,
+    };
+  } catch (e) {
+    console.warn("[renderDailyFace] drop row:", e);
+    return null;
+  }
 }
