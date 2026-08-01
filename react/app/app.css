@@ -210,9 +210,30 @@ code {
     grid-template-columns: repeat(5, 1fr);
   }
 }
-.daily-face-card {
-  position: relative;
+/* 관상 3순위 flip — fragrance FlowerCard 코어 이식 (perspective 600px ·
+   preserve-3d · rotateY 180° · 0.5s). hover 또는 focus(터치·키보드) 시 뒤집힘 */
+.flip-card {
+  perspective: 600px;
+  cursor: pointer;
   outline: none;
+}
+.flip-card-inner {
+  position: relative;
+  width: 100%;
+  transition: transform 0.5s;
+  transform-style: preserve-3d;
+}
+.flip-card-inner.flipped {
+  transform: rotateY(180deg);
+}
+.flip-card-front {
+  backface-visibility: hidden;
+}
+.flip-card-back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  transform: rotateY(180deg);
 }
 .daily-face-thumb {
   display: block;
@@ -233,29 +254,29 @@ code {
   color: var(--ink);
   margin: 0;
 }
-/* 관상 3순위 툴팁 — hover, 또는 터치·키보드 focus 시 노출 */
-.daily-face-tooltip {
-  display: none;
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 6px);
-  transform: translateX(-50%);
-  background: var(--ink);
-  color: #fff;
+/* flip 뒷면 — 썸네일과 같은 라운드의 흰 카드, 관상 3순위 목록 */
+.daily-face-back {
+  height: 100%;
+  background: #fff;
+  border: 1px solid rgba(26, 26, 26, 0.1);
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 10px;
   font-size: 12px;
-  line-height: 1.6;
-  white-space: nowrap;
-  padding: 8px 12px;
-  border-radius: 10px;
-  z-index: 2;
-  pointer-events: none;
+  line-height: 1.4;
+  color: var(--ink);
+  overflow: hidden;
 }
-.daily-face-tooltip p {
+.daily-face-back p {
   margin: 0;
+  white-space: nowrap;
 }
-.daily-face-card:hover .daily-face-tooltip,
-.daily-face-card:focus .daily-face-tooltip {
-  display: block;
+.daily-face-back .score {
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .landing-footer {

@@ -1,5 +1,6 @@
 import type { Variants } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
+import { FlipCard } from '../components/FlipCard'
 import { TextAnimate } from '../components/TextAnimate'
 import { fetchDailyFaces } from '../lib/supabase'
 import { renderDailyFace, type DailyFaceCard } from '../lib/traits'
@@ -155,30 +156,37 @@ export default function Index({ loaderData }: Route.ComponentProps) {
           </p>
           <ul className="daily-faces-grid">
             {cards.map((c, i) => (
-              // tabIndex — hover 없는 환경(터치·키보드)에서 focus 로 툴팁 노출.
-              <li key={i} className="daily-face-card" tabIndex={0}>
-                {c.opted ? (
-                  <img
-                    src={c.thumbUrl}
-                    alt={`${c.demoLabel} ${c.typeLabel}`}
-                    className="daily-face-thumb"
-                    loading="lazy"
-                  />
-                ) : (
-                  <BlurredThumb
-                    src={c.thumbUrl}
-                    alt={`${c.demoLabel} ${c.typeLabel}`}
-                  />
-                )}
+              // 썸네일 hover/focus 시 카드가 뒤집히며 관상 3순위 노출 (FlipCard).
+              <li key={i} className="daily-face-card">
+                <FlipCard
+                  front={
+                    c.opted ? (
+                      <img
+                        src={c.thumbUrl}
+                        alt={`${c.demoLabel} ${c.typeLabel}`}
+                        className="daily-face-thumb"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <BlurredThumb
+                        src={c.thumbUrl}
+                        alt={`${c.demoLabel} ${c.typeLabel}`}
+                      />
+                    )
+                  }
+                  back={
+                    <div className="daily-face-back">
+                      {c.top3.map((t, rank) => (
+                        <p key={t.key}>
+                          {rank + 1}. {t.labelKo}{' '}
+                          <span className="score">{t.score.toFixed(1)}</span>
+                        </p>
+                      ))}
+                    </div>
+                  }
+                />
                 <p className="daily-face-demo">{c.demoLabel}</p>
                 <p className="daily-face-type">{c.typeLabel}</p>
-                <div className="daily-face-tooltip" role="tooltip">
-                  {c.top3.map((t, rank) => (
-                    <p key={t.key}>
-                      {rank + 1}. {t.labelKo} {t.score.toFixed(1)}
-                    </p>
-                  ))}
-                </div>
               </li>
             ))}
           </ul>
