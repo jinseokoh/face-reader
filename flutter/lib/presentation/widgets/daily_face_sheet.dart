@@ -17,6 +17,9 @@ class DailyFaceSheet extends ConsumerStatefulWidget {
     return showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.white,
+      // 기본 시트 최대 높이(화면 절반 근처)가 내용보다 낮아 스크롤이 생기던
+      // 문제 — 내용 높이만큼 시트가 늘어나게 한다.
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -62,9 +65,12 @@ class _DailyFaceSheetState extends ConsumerState<DailyFaceSheet> {
         : null;
 
     return SafeArea(
+      // 스크롤 위젯 없음 — isScrollControlled 시트가 내용 높이만큼 늘어나
+      // 높이 상한이 없고, 스크롤 래퍼가 있으면 드래그마다 stretch 오버스크롤이
+      // 발동해 "스크롤되는 시트"가 된다.
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-            AppSpacing.xxl, AppSpacing.xxl, AppSpacing.xxl, AppSpacing.huge),
+        // 4면 동일 패딩 — 박스 아래 여백 = 좌우 여백.
+        padding: const EdgeInsets.all(AppSpacing.xxl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -77,7 +83,27 @@ class _DailyFaceSheetState extends ConsumerState<DailyFaceSheet> {
               '모자이크로 가려진 상태로 표시됩니다.',
               style: AppText.body,
             ),
-            const SizedBox(height: AppSpacing.xl),
+            const SizedBox(height: AppSpacing.md),
+            // Switch 는 설명문과 박스 사이 별도 행 — 박스 텍스트가 전폭을
+            // 써서 어색한 줄바꿈 없이 나열되게 한다.
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('관상 공개', style: AppText.sectionTitle),
+                Switch(
+                  value: optedIn,
+                  activeTrackColor: AppColors.success,
+                  // off 는 확실한 무채색 — M3 기본 inactive 가 진해서 on/off
+                  // 구분이 약하다. 연한 회색 트랙 + 흰 thumb + 외곽선 제거.
+                  inactiveThumbColor: Colors.white,
+                  inactiveTrackColor: AppTheme.border,
+                  trackOutlineColor:
+                      const WidgetStatePropertyAll(Colors.transparent),
+                  onChanged: _busy ? null : (v) => _toggle(v),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(AppSpacing.lg),
@@ -86,49 +112,34 @@ class _DailyFaceSheetState extends ConsumerState<DailyFaceSheet> {
                 borderRadius: BorderRadius.circular(AppRadius.lg),
                 border: Border.all(color: AppTheme.border),
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          showBonus ? '공개하면 보너스 3코인' : '관상 공개',
-                          style: AppText.subTitle,
-                        ),
-                        if (showBonus) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            '공개를 연속 7일 유지하면 지급됩니다 (최초 1회)\n'
-                            '7일 전에 끄면 유지 일수는 다시 계산됩니다',
-                            style: AppText.caption
-                                .copyWith(color: AppColors.textSecondary),
-                          ),
-                          if (keptDays != null && keptDays < 7) ...[
-                            const SizedBox(height: 2),
-                            Text(
-                              '공개 유지 $keptDays일째 · ${7 - keptDays}일 후 지급',
-                              style: AppText.caption
-                                  .copyWith(color: AppColors.textHint),
-                            ),
-                          ],
-                        ] else ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            '보너스 수령 완료',
-                            style: AppText.caption
-                                .copyWith(color: AppColors.textHint),
-                          ),
-                        ],
-                      ],
+                  // 박스 안은 전부 body(15) 단일 사이즈 — 제목은 굵기로만 구분.
+                  Text(
+                    showBonus ? '공개하면 보너스 3코인' : '보너스 수령 완료',
+                    style: AppText.body.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.md),
-                  Switch(
-                    value: optedIn,
-                    activeTrackColor: AppColors.success,
-                    onChanged: _busy ? null : (v) => _toggle(v),
-                  ),
+                  if (showBonus) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      '공개를 연속 7일 유지하면 지급됩니다\n'
+                      '7일 전에 끄면 유지 일수는 다시 계산됩니다',
+                      style: AppText.body,
+                    ),
+                    const SizedBox(height: 2),
+                    // 항상 채워지는 한 줄 슬롯 — off 안내 ↔ on 진행 표시가
+                    // 같은 자리에서 교체돼 sheet 높이 점프 없음.
+                    Text(
+                      keptDays != null && keptDays < 7
+                          ? '공개 유지 $keptDays일째 · ${7 - keptDays}일 후 지급'
+                          : '최초 1회만 지급',
+                      style: AppText.body.copyWith(color: AppColors.textHint),
+                    ),
+                  ],
                 ],
               ),
             ),

@@ -1692,9 +1692,11 @@ grant execute on function public.claim_daily_face_bonus() to authenticated;
 -- "오늘" 판정은 updated_at (재촬영 upsert 가 touch trigger 로 갱신) KST 기준.
 -- 세 filter 는 launch 전 테스트용 완화 스위치 — Worker 쪽 상수로 켜고 끈다
 -- (react/app/routes/_index.tsx 의 DAILY_FACES). 오픈 시 전부 true.
--- opted = 행 소유자의 노출 허용 여부 — 테스트 모드(p_opted_only=false)에서
--- 미허용 행은 웹이 블러 + 캔버스 렌더로 가린다. return type 변경이라
--- create or replace 로 못 바꿈 → drop 선행 (재실행 안전).
+-- opted = "이 행을 원본으로 노출해도 되는가" — 소유자의 허용 **그리고**
+-- my-face 행일 것. 소유자 단위로만 판정하면 opt-in 한 사용자가 앨범으로
+-- 분석한 타인 얼굴(비 my-face 행)까지 풀리는 사고가 난다 (2026-08-01 실사고
+-- — 본인 동의는 본인 얼굴에만 유효). 미충족 행은 웹이 모자이크 캔버스로
+-- 가린다. return type 변경이라 create or replace 불가 → drop 선행 (재실행 안전).
 drop function if exists public.daily_faces(boolean, boolean, boolean, integer);
 create function public.daily_faces(
   p_today_only   boolean default true,
@@ -1705,7 +1707,7 @@ create function public.daily_faces(
 language sql stable security definer set search_path = public
 as $$
   select m.body, m.updated_at,
-         (u.daily_face_opted_since is not null) as opted
+         (u.daily_face_opted_since is not null and m.is_my_face) as opted
     from metrics m
     left join users u on u.id = m.user_id
    where (not p_my_face_only or m.is_my_face)
