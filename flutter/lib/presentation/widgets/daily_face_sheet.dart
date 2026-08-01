@@ -5,6 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
+/// Switch on 트랙 — CompactSnackBar.success(0xFF4CAF50) 와 동일 녹색.
+/// AppColors.success(2E7D32) 는 너무 진해 snackbar 와 톤이 어긋난다.
+const _kSwitchOn = Color(0xFF4CAF50);
+
 /// 설정 > 오늘의 관상 공개 — opt-in 전환 bottom sheet.
 ///
 /// 내 관상은 opt 여부와 무관하게 facely.kr "오늘의 관상"에 표시된다 —
@@ -96,7 +100,7 @@ class _DailyFaceSheetState extends ConsumerState<DailyFaceSheet> {
                 Text('관상 공개', style: AppText.sectionTitle),
                 Switch(
                   value: optedIn,
-                  activeTrackColor: AppColors.success,
+                  activeTrackColor: _kSwitchOn,
                   // off 는 확실한 무채색 — M3 기본 inactive 가 진해서 on/off
                   // 구분이 약하다. 연한 회색 트랙 + 흰 thumb + 외곽선 제거.
                   inactiveThumbColor: Colors.white,
