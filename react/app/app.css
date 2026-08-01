@@ -43,7 +43,7 @@ body {
   z-index: -10;
   display: flex;
   justify-content: center;
-  gap: 8px;
+  gap: 4px;
 }
 .overscroll-reveal span {
   font-size: 12px;
@@ -62,7 +62,8 @@ body {
   align-items: flex-end;
 }
 .overscroll-reveal.overscroll-bottom span {
-  padding-bottom: 24px;
+  /* 2줄(~36px) 중심을 이미지(64px, 모서리 밀착) 중심 ~32px 에 맞춤 */
+  padding-bottom: 14px;
   text-align: left;
 }
 .overscroll-img {
