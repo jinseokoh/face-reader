@@ -24,8 +24,56 @@ body {
   font-family:
       -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   color: var(--ink);
-  background: var(--bg);
+  /* 배경은 .app-shell 이 진다 — body 에 칠하면 오버스크롤 캔버스까지 덮어
+     시그니처 reveal 레이어가 영영 안 보인다 */
   line-height: 1.5;
+}
+
+/* ─── Overscroll reveal 시그니처 (공대삼촌 공통) ───
+   본문(.app-shell) 뒤 fixed 레이어 — rubber-band 오버스크롤 때만 노출 */
+.app-shell {
+  position: relative;
+  min-height: 100dvh;
+  background: var(--bg);
+}
+.overscroll-reveal {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: -10;
+  display: flex;
+  justify-content: center;
+}
+.overscroll-reveal span {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.6);
+}
+.overscroll-reveal.overscroll-top {
+  align-items: flex-start;
+  padding-top: 24px;
+}
+.overscroll-reveal.overscroll-bottom {
+  align-items: flex-end;
+  padding-bottom: 24px;
+}
+.overscroll-img {
+  pointer-events: none;
+  position: fixed;
+  z-index: -10;
+  left: 50%;
+  height: 64px;
+  width: auto;
+  object-fit: contain;
+  opacity: 0.8;
+}
+.overscroll-img.overscroll-top {
+  top: 0;
+  margin-left: 120px;
+}
+.overscroll-img.overscroll-bottom {
+  bottom: 0;
+  margin-left: 200px;
 }
 
 main {

@@ -33,7 +33,26 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  return <Outlet />;
+  return (
+    <>
+      {/* Overscroll reveal layer — 공대삼촌 react 앱 공통 시그니처 (fruit
+          __root.tsx 와 동일 구조). 본문 뒤 fixed 레이어라 평소엔 안 보이고,
+          rubber-band 오버스크롤 순간에만 위/아래로 드러난다. */}
+      <div className="overscroll-reveal overscroll-top">
+        <span>관상은 과학이다냥~</span>
+      </div>
+      <img src="/cat.png" alt="" className="overscroll-img overscroll-top" />
+
+      <div className="overscroll-reveal overscroll-bottom">
+        <span>미신에 지친 공대삼촌이 극강T의 힘을 보여주기 위해 만들었대.</span>
+      </div>
+      <img src="/uncle.png" alt="" className="overscroll-img overscroll-bottom" />
+
+      <div className="app-shell">
+        <Outlet />
+      </div>
+    </>
+  );
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
