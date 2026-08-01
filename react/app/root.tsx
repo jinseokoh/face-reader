@@ -5,9 +5,9 @@ import {
   Scripts,
   ScrollRestoration,
   isRouteErrorResponse,
-} from "react-router";
-import type { Route } from "./+types/root";
-import "./app.css";
+} from 'react-router'
+import type { Route } from './+types/root'
+import './app.css'
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -29,7 +29,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Scripts />
       </body>
     </html>
-  );
+  )
 }
 
 export default function App() {
@@ -44,29 +44,33 @@ export default function App() {
       <img src="/cat.png" alt="" className="overscroll-img overscroll-top" />
 
       <div className="overscroll-reveal overscroll-bottom">
-        <span>미신에 지친 공대삼촌이 극강T의 힘을 보여주기 위해 만들었대.</span>
+        <span>공대삼촌이 극강T의 힘을 보여주려고 만들었대.</span>
       </div>
-      <img src="/uncle.png" alt="" className="overscroll-img overscroll-bottom" />
+      <img
+        src="/uncle.png"
+        alt=""
+        className="overscroll-img overscroll-bottom"
+      />
 
       <div className="app-shell">
         <Outlet />
       </div>
     </>
-  );
+  )
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  let title = "오류가 발생했습니다";
-  let detail = "잠시 후 다시 시도해 주세요.";
+  let title = '오류가 발생했습니다'
+  let detail = '잠시 후 다시 시도해 주세요.'
   if (isRouteErrorResponse(error)) {
     if (error.status === 404) {
-      title = "공유 카드를 찾을 수 없습니다";
-      detail = "만료되었거나 잘못된 link 입니다.";
+      title = '공유 카드를 찾을 수 없습니다'
+      detail = '만료되었거나 잘못된 link 입니다.'
     } else if (error.status === 410) {
-      title = "만료된 카드입니다";
-      detail = "공유 link 는 90일 동안 유효합니다.";
+      title = '만료된 카드입니다'
+      detail = '공유 link 는 90일 동안 유효합니다.'
     } else {
-      detail = error.statusText || detail;
+      detail = error.statusText || detail
     }
   }
   return (
@@ -74,5 +78,5 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
       <h1>{title}</h1>
       <p>{detail}</p>
     </main>
-  );
+  )
 }
