@@ -11,9 +11,19 @@
 
 ---
 
-## 전제 — 빌드 16 이 깔아놓는 것 (구현 완료 · DB 델타 v2 실행 대기)
+## ⚠️ 출시 전 필수 — 오늘의 관상 필터 3개 켜기
 
-- 설정 opt-in "오늘의 관상 공개" + facely.kr 홈 그리드 (썸네일·나이대·성별·유형·top3 툴팁)
+- [ ] `react/app/routes/_index.tsx` 의 `DAILY_FACES` 세 값을 전부 `true` 로 바꾸고
+  `pnpm build && pnpm run deploy`. 현재는 테스트 모드(전부 false = 전 metrics 노출,
+  미허용 행은 모자이크). 오픈 모드 = **todayOnly**(KST 오늘 분석만) ·
+  **optedOnly**(공개 허용 사용자만) · **myFaceOnly**(내 관상 행만).
+
+---
+
+## 전제 — 빌드 16 이 깔아놓는 것 (구현·DB 적용 완료, opt-in 라이브 검증 끝)
+
+- 설정 opt-in "오늘의 관상 공개" + facely.kr 홈 그리드 (썸네일·나이대·성별·유형·top3 툴팁).
+  미허용 행은 캔버스 모자이크(36×36) — opted 판정은 소유자 허용 AND my-face
 - 연속 7일 공개 유지 보너스 3코인 (`claim_daily_face_bonus`, 잠금 없는 후지급 설계)
 - **cold start 가 이 기획의 유일한 진짜 리스크** — 엔진이 결정적이라 같은 쌍은 점수가
   안 변하므로, 재미의 연료는 순전히 "새로 들어온 얼굴". 그래서 순서가 16(풀 축적) →
