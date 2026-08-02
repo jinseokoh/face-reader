@@ -1,6 +1,6 @@
 import { Show } from "@refinedev/antd";
 import { useShow } from "@refinedev/core";
-import { Alert, Avatar, Descriptions, Space, Tag, Typography } from "antd";
+import { Alert, Avatar, Descriptions, Popover, Space, Tag, Typography } from "antd";
 import { useMemo } from "react";
 import type { MetricEntry } from "../../types";
 import { metricThumbUrl, parseDemographics } from "../../types";
@@ -31,13 +31,30 @@ export const MetricShow = () => {
         <Space direction="vertical" size="large" style={{ width: "100%" }}>
           <Descriptions column={2} bordered size="small">
             <Descriptions.Item label="썸네일" span={2}>
-              <Avatar
-                src={metricThumbUrl(row.body) ?? undefined}
-                size={72}
-                shape="circle"
-              >
-                {row.alias?.[0] ?? "?"}
-              </Avatar>
+              {(() => {
+                const url = metricThumbUrl(row.body);
+                const avatar = (
+                  <Avatar src={url ?? undefined} size={72} shape="circle">
+                    {row.alias?.[0] ?? "?"}
+                  </Avatar>
+                );
+                if (!url) return avatar;
+                return (
+                  <Popover
+                    content={
+                      <img
+                        src={url}
+                        alt={row.alias ?? row.id}
+                        width={240}
+                        height={240}
+                        style={{ display: "block", borderRadius: 8, objectFit: "cover" }}
+                      />
+                    }
+                  >
+                    {avatar}
+                  </Popover>
+                );
+              })()}
             </Descriptions.Item>
             <Descriptions.Item label="ID">
               <Text code copyable={{ text: row.id }} style={{ fontSize: 12 }}>

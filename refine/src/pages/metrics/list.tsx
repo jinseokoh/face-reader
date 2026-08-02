@@ -8,6 +8,7 @@ import {
   Input,
   Modal,
   Popconfirm,
+  Popover,
   Space,
   Switch,
   Table,
@@ -329,7 +330,7 @@ export const MetricList = () => {
           render={(_: unknown, record: MetricEntry) => {
             const url = metricThumbUrl(record.body);
             const source = parseDemographics(record.body).source;
-            return (
+            const avatar = (
               <Avatar
                 src={url ?? undefined}
                 size={40}
@@ -344,6 +345,22 @@ export const MetricList = () => {
               >
                 {record.alias?.[0] ?? "?"}
               </Avatar>
+            );
+            if (!url) return avatar;
+            return (
+              <Popover
+                content={
+                  <img
+                    src={url}
+                    alt={record.alias ?? record.id}
+                    width={240}
+                    height={240}
+                    style={{ display: "block", borderRadius: 8, objectFit: "cover" }}
+                  />
+                }
+              >
+                {avatar}
+              </Popover>
             );
           }}
         />
