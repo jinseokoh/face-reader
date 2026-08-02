@@ -278,7 +278,7 @@ class TeamRevealScreen extends ConsumerStatefulWidget {
   ConsumerState<TeamRevealScreen> createState() => _TeamRevealScreenState();
 }
 
-enum _Phase { loading, countdown, board, orphan, expired }
+enum _Phase { loading, countdown, board, orphan, expired, error }
 
 class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
   final _service = TeamService.instance;
@@ -364,6 +364,29 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
             ),
           ),
           _Phase.board => _board(),
+          _Phase.error => Center(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.xxl),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '결과를 불러오지 못했습니다.\n인터넷 연결을 확인해 주세요.',
+                    textAlign: TextAlign.center,
+                    style: AppText.body,
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  TextButton(
+                    onPressed: () {
+                      setState(() => _phase = _Phase.loading);
+                      _load();
+                    },
+                    child: const Text('다시 시도'),
+                  ),
+                ],
+              ),
+            ),
+          ),
         },
       ),
     );
@@ -645,7 +668,17 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
     );
   }
 
+  /// 네트워크 실패(일시적 5xx 등)는 error phase 로 — 스피너 영구 고착 방지.
   Future<void> _load() async {
+    try {
+      await _fetch();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _phase = _Phase.error);
+    }
+  }
+
+  Future<void> _fetch() async {
     final team = await _service.fetchTeam(widget.teamId);
     if (!mounted) return;
     if (team == null) {
