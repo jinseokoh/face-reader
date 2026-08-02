@@ -41,13 +41,16 @@ export type Demographics = {
   gender?: string;
   ethnicity?: string;
   ageGroup?: string;
+  faceShapeLabel?: string;
+  /** 0~1 (shared attribute_derivation 계약). */
+  faceShapeConfidence?: number;
 };
 
 export function parseDemographics(body: string | null | undefined): Demographics {
   if (!body) return {};
   try {
     const j = JSON.parse(body);
-    return { source: j.source, gender: j.gender, ethnicity: j.ethnicity, ageGroup: j.ageGroup };
+    return { source: j.source, gender: j.gender, ethnicity: j.ethnicity, ageGroup: j.ageGroup, faceShapeLabel: j.faceShapeLabel, faceShapeConfidence: j.faceShapeConfidence };
   } catch {
     return {};
   }

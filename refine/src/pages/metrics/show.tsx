@@ -66,6 +66,15 @@ export const MetricShow = () => {
               {row.is_my_face ? <Tag color="blue">본인</Tag> : "-"}
             </Descriptions.Item>
             <Descriptions.Item label="alias">{row.alias ?? "-"}</Descriptions.Item>
+            <Descriptions.Item label="얼굴형">
+              {(() => {
+                const d = parseDemographics(row.body);
+                if (!d.faceShapeLabel) return "-";
+                return d.faceShapeConfidence != null
+                  ? `${d.faceShapeLabel} (${Math.round(d.faceShapeConfidence * 100)}%)`
+                  : d.faceShapeLabel;
+              })()}
+            </Descriptions.Item>
             <Descriptions.Item label="조회수">{row.views}</Descriptions.Item>
             <Descriptions.Item label="created_at">{row.created_at}</Descriptions.Item>
             <Descriptions.Item label="updated_at">{row.updated_at}</Descriptions.Item>

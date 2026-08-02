@@ -247,7 +247,7 @@ export const MetricList = () => {
     invalidate({ resource: "metrics", invalidates: ["list"] });
   };
 
-  /** 행별 엔진 파생(유형·기질·특수) — body 재계산, 실패 행은 null.
+  /** 행별 엔진 파생(유형·기질) — body 재계산, 실패 행은 null.
    *  dart2js rehydrate 디버그 로그는 계산 동안만 침묵. */
   const engineByRow = useMemo(() => {
     const map = new Map<string, EngineOutput | null>();
@@ -441,11 +441,18 @@ export const MetricList = () => {
           }}
         />
         <Table.Column<MetricEntry>
-          title="특수"
-          dataIndex="id"
+          title="얼굴형"
+          dataIndex="body"
           render={(_: unknown, record: MetricEntry) => {
-            const v = engineByRow.get(record.id)?.specialArchetype;
-            return v ? <Tag color="gold">{v}</Tag> : <Text type="secondary">-</Text>;
+            const d = parseDemographics(record.body);
+            if (!d.faceShapeLabel) return <Text type="secondary">-</Text>;
+            return (
+              <Text>
+                {d.faceShapeConfidence != null
+                  ? `${d.faceShapeLabel} (${Math.round(d.faceShapeConfidence * 100)}%)`
+                  : d.faceShapeLabel}
+              </Text>
+            );
           }}
         />
         <Table.Column<MetricEntry>
