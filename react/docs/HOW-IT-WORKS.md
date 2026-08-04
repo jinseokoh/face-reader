@@ -830,6 +830,26 @@ P0 출시 전 필수:
 
 - **공유 link 발송 = 그 thumbnail URL 의 발송과 사실상 동일** — 사용자가 share_plus 로 카톡에 보내는 행위는 "이 사진 URL 을 카톡방 참여자에게 공개한다" 는 동의로 간주.
 - **검색엔진 indexing 방지** — `/r/*` 라우트에 `<meta name="robots" content="noindex">` SSR 강제 + `cdn.facely.kr` 의 R2 객체에 robots.txt 또는 `X-Robots-Tag` 헤더로 noindex.
+  - 배포된 `cdn.facely.kr/robots.txt` (R2 bucket `facely` 의 root key, 리포에 사본 없음 — 재업로드 시 아래 내용 그대로):
+
+    ```
+    # cdn.facely.kr — PII (256² face thumbnails) 검색엔진 indexing 일괄 차단.
+    # X-Robots-Tag 백업은 Cloudflare Transform Rule 로 추후 추가 (TO-DO).
+    User-agent: *
+    Disallow: /
+    ```
+
+  - 업로드 명령 — **`--remote` flag 필수** (빼면 wrangler local mock 에만 올라가고 운영 R2 미반영):
+
+    ```bash
+    pnpm wrangler r2 object put facely/robots.txt \
+      --file robots.txt \
+      --content-type "text/plain; charset=utf-8" \
+      --remote
+    ```
+
+  - Cloudflare 가 응답 본문 앞에 "Managed Content" 블록을 자동 prepend — AI 봇 일괄 차단 (ClaudeBot / GPTBot / CCBot / Bytespider / Google-Extended 등). 대시보드 → Bots → Manage robots.txt 에서 토글 가능. 현재 의도와 일치하므로 그대로 둠.
+  - X-Robots-Tag 헤더 추가 시: Cloudflare Transform Rule (Rules → Transform Rules → Modify Response Header) 로 `cdn.facely.kr` 호스트 매치에 `X-Robots-Tag: noindex, nofollow`. 대시보드 1-click 이라 commit 불필요, 적용 시점만 여기에 기록.
 - **referer leak 방지** — R2 객체 응답 헤더에 `Referrer-Policy: no-referrer` (가능하면).
 
 ### 12.5 region

@@ -22,7 +22,7 @@ export interface RenderInput {
   appStoreUrl: string;
   playStoreUrl: string;
   /// R2 CDN base — body 안의 `thumbnailKey` 와 결합해서 og:image 조립.
-  /// 없으면 fallback logo.png.
+  /// 없으면 fallback assets/og.png (FACELY 브랜딩 카드).
   cdnBase?: string;
 }
 
@@ -48,13 +48,15 @@ function runCompatFor(a: MetricsRow, b: MetricsRow): CompatOutput {
 
 function ogImageFor(row: MetricsRow, ctx: RenderInput): string {
   // body 안에 thumbnailKey (R2 path) 가 있으면 cdn.facely.kr/{key} 사용.
-  // 없으면 fallback logo.png. PII (얼굴 thumbnail) 노출이므로 meta 에 robots
-  // noindex 동시에 박혀 있음 (share.tsx).
+  // 없으면 fallback — 랜딩·케미 초대와 동일한 FACELY 브랜딩 카드 (assets/og.png).
+  // PII (얼굴 thumbnail) 노출이므로 meta 에 robots noindex 동시에 박혀 있음
+  // (share.tsx).
   const key = (row.raw as unknown as Record<string, unknown>).thumbnailKey;
+  const base = (ctx.cdnBase ?? "https://cdn.facely.kr").replace(/\/$/, "");
   if (typeof key === "string" && key.length > 0 && ctx.cdnBase) {
-    return `${ctx.cdnBase.replace(/\/$/, "")}/${key}`;
+    return `${base}/${key}`;
   }
-  return `${ctx.origin}/logo.png`;
+  return `${base}/assets/og.png`;
 }
 
 /// compat 카드의 두 인물 thumbnail 용 — R2 thumbnailKey 가 있으면 직통,
