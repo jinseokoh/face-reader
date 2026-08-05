@@ -52,7 +52,6 @@ export function meta(_: Route.MetaArgs) {
   return [
     { title },
     { name: 'description', content: description },
-    { name: 'robots', content: 'noindex,nofollow' },
     // Open Graph — KakaoTalk · Slack · iMessage · Facebook 등 link preview.
     { property: 'og:type', content: 'website' },
     { property: 'og:url', content: url },
