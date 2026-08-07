@@ -120,7 +120,7 @@ class _InfoConfirmScreenState
                     children: [
               const SizedBox(height: 16),
               Text(
-                _estimateProblem == null ? '추정 정보가 맞나요?' : '정보를 선택해주세요',
+                _estimateProblem == null ? '추정 정보가 맞나요?' : '정보를 확인해주세요',
                 style: AppText.display,
                 textAlign: TextAlign.center,
               ),
