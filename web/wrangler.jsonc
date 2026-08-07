@@ -1,6 +1,11 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "facely",
+  // 개인 계정(jinseokoh@hotmail.com) 고정. 명시하지 않으면 wrangler 가
+  // 로그인된 토큰이 보는 계정을 암묵적으로 골라, 회사 계정으로 로그인된
+  // 상태에서 deploy 하면 엉뚱한 계정에 `facely` 워커가 새로 생긴다.
+  // 이 값이 박혀 있으면 계정이 다를 때 인증 에러로 그냥 실패한다.
+  "account_id": "ca1ff6eccc34cde965e29dd59de4e1ee",
   "compatibility_date": "2026-04-26",
   "compatibility_flags": ["nodejs_compat"],
   "main": "./workers/app.ts",
