@@ -82,15 +82,22 @@ function ageToGroup(age: number): string {
 }
 
 /**
+ * 추정 결과. `busy` 는 홈서버가 동시 처리 상한을 넘겨 **의도적으로 거절한** 경우로,
+ * 일반 실패(`failed`)와 구분한다 — 확인 화면이 서로 다른 안내를 띄운다.
+ */
+export type DemographicsEstimate =
+  | { status: "ok"; gender: string; ageGroup: string; ethnicity: string }
+  | { status: "busy" }
+  | { status: "failed" };
+
+/**
  * DeepFace 추정 — 앱과 동일 경로: 캡처 프레임을 R2 temp/ 에 presign PUT 후
  * Worker 프록시(/api/analyze)로 python 을 호출한다 (python 이 temp 즉시 삭제).
- * 실패 시 null — 확인 페이지가 수동 선택 fallback 으로 동작.
+ * 성공하지 못하면 확인 페이지가 수동 선택 fallback 으로 동작.
  */
-export async function estimateDemographics(frame: Blob): Promise<{
-  gender: string;
-  ageGroup: string;
-  ethnicity: string;
-} | null> {
+export async function estimateDemographics(
+  frame: Blob,
+): Promise<DemographicsEstimate> {
   try {
     const uuid = crypto.randomUUID();
     const pres = await fetch("/api/r2/presign", {
@@ -98,40 +105,43 @@ export async function estimateDemographics(frame: Blob): Promise<{
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ prefix: "temp", uuid }),
     });
-    if (!pres.ok) return null;
+    if (!pres.ok) return { status: "failed" };
     const { uploadUrl, key, token } = (await pres.json()) as {
       uploadUrl: string;
       key: string;
       token?: string;
     };
-    if (!token) return null;
+    if (!token) return { status: "failed" };
     const put = await fetch(uploadUrl, {
       method: "PUT",
       headers: { "content-type": "image/jpeg" },
       body: frame,
     });
-    if (!put.ok) return null;
+    if (!put.ok) return { status: "failed" };
     const res = await fetch("/api/analyze", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ key, token }),
     });
-    if (!res.ok) return null;
+    // 503 = 홈서버 동시 처리 상한 초과. 고장이 아니라 설계된 거절.
+    if (res.status === 503) return { status: "busy" };
+    if (!res.ok) return { status: "failed" };
     const out = (await res.json()) as {
       age: number;
       gender: string;
       ethnicity: string;
     };
     if (!out.gender || !out.ethnicity || typeof out.age !== "number") {
-      return null;
+      return { status: "failed" };
     }
     return {
+      status: "ok",
       gender: out.gender,
       ageGroup: ageToGroup(out.age),
       ethnicity: out.ethnicity,
     };
   } catch {
-    return null;
+    return { status: "failed" };
   }
 }
 
