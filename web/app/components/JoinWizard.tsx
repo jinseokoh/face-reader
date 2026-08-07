@@ -109,8 +109,11 @@ export function JoinWizard({
   const [nickname, setNickname] = useState('')
   // 촬영 후 정보 확인 — DeepFace 추정으로 prefill, 사용자 수정 허용.
   const [estimating, setEstimating] = useState(false)
-  // 홈서버가 동시 처리 상한으로 거절(503)한 경우 — 일반 실패와 안내를 구분.
-  const [estimateBusy, setEstimateBusy] = useState(false)
+  // 추정 시도 결과. null = 아직 시도 안 함. busy(서버 혼잡)와 failed(그 외 실패)를
+  // 나눠야 확인 화면이 각각 다른 안내를 띄울 수 있다.
+  const [estimateStatus, setEstimateStatus] = useState<
+    'ok' | 'busy' | 'failed' | null
+  >(null)
   // 확인 페이지 이름 필드 — default fallback 은 카카오 nickname.
   const [aliasName, setAliasName] = useState('')
   // 정보 확인 — 3필드 모두 default 보유 (아시아인/남성/20대), 즉시 진행 가능.
@@ -577,13 +580,10 @@ export function JoinWizard({
     setStage('confirm')
     if (frame) {
       setEstimating(true)
-      setEstimateBusy(false)
+      setEstimateStatus(null)
       void estimateDemographics(frame)
         .then((est) => {
-          if (est.status === 'busy') {
-            setEstimateBusy(true)
-            return
-          }
+          setEstimateStatus(est.status)
           if (est.status !== 'ok') return
           if (GENDERS.some((g) => g.v === est.gender)) setGender(est.gender)
           if (AGES.some((a) => a.v === est.ageGroup)) setAge(est.ageGroup)
@@ -810,9 +810,11 @@ export function JoinWizard({
           <p className="join-sub" style={{ textAlign: 'center' }}>
             {estimating
               ? 'AI가 사진에서 정보를 추정하는 중…'
-              : estimateBusy
-                ? '지금 분석 요청이 많아 자동 추정을 건너뛰었어요. 직접 선택해주세요.'
-                : 'AI 추정 결과입니다. 잘못된 항목은 직접 수정해 주세요.'}
+              : estimateStatus === 'busy'
+                ? '너무 요청이 몰려 추정을 할 수 없습니다. 직접 선택해주세요.'
+                : estimateStatus === 'failed'
+                  ? '서버 오류로 인해 추정에 실패했습니다. 직접 선택해주세요.'
+                  : 'AI 추정 결과입니다. 잘못된 항목은 직접 수정해 주세요.'}
           </p>
           <div className="join-form">
             <label className="join-field">
