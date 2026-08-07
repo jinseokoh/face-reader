@@ -76,7 +76,7 @@
 | `facely.kr`      | Workers (R2 presign API + `GET /r/:uuid` SSR + OG + 딥링크 fallback) — write 0회 | Cloudflare Workers (이 repo)                | 메인                     |
 | `www.facely.kr`  | 동일                                                                             | 동일                                        | 별칭                     |
 | `cdn.facely.kr`  | R2 bucket 의 public read 호스팅 (`thumbnails/`)                                  | Cloudflare R2 custom domain                 | static asset CDN         |
-| `meta.facely.kr` | Python FastAPI `/analyze`                                                        | 홈서버 Ubuntu (Docker + cloudflared tunnel) | DeepFace age/gender/race |
+| `meta.facely.kr` | Python FastAPI `/analyze`                                                        | 홈서버 Mac mini / Ubuntu 24.04 — `/data/srv/face/python` (Docker + cloudflared tunnel `macmini`) | DeepFace age/gender/race |
 
 **Cloudflare 자원**:
 
