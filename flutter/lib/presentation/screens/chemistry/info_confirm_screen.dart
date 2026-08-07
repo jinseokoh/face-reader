@@ -59,6 +59,12 @@ class InfoConfirmScreen extends ConsumerStatefulWidget {
       _InfoConfirmScreenState();
 }
 
+/// 서버가 동시 처리 상한으로 거절(503)한 경우 — 고장이 아니라 혼잡.
+const _kEstimateBusyMessage = '너무 요청이 몰려 추정을 할 수 없습니다. 직접 선택해주세요.';
+
+/// 그 외 추정 실패 (서버 오류·네트워크·얼굴 미검출 등).
+const _kEstimateFailedMessage = '서버 오류로 인해 추정에 실패했습니다. 직접 선택해주세요.';
+
 class _InfoConfirmScreenState
     extends ConsumerState<InfoConfirmScreen> {
   late Ethnicity _ethnicity;
@@ -235,22 +241,29 @@ class _InfoConfirmScreenState
           if (g != null) _gender = g;
           _ageGroup = meta.ageGroupEnum;
         });
+        // null = 캡처 화면이 흡수한 일반 실패. 아무 말 없이 빈 picker 만 남기면
+        // 사용자는 왜 비었는지 알 수 없다.
+        if (meta == null) _notifyEstimateFailed(_kEstimateFailedMessage);
       }, onError: (Object err) {
         // 여기 도달하는 건 서버가 동시 처리 상한으로 거절한 503 뿐 — 캡처 화면이
         // 그 외 실패는 null 로 흡수한다. _inferring 을 반드시 풀어야 picker 3개가
         // 추정 중 상태로 굳지 않는다.
         if (!mounted) return;
         setState(() => _inferring = false);
-        if (err is FaceAnalyzeException && err.statusCode == 503) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('지금 분석 요청이 많아 자동 추정을 건너뛰었어요. 직접 선택해주세요.'),
-              duration: Duration(seconds: 4),
-            ),
-          );
-        }
+        _notifyEstimateFailed(
+          err is FaceAnalyzeException && err.statusCode == 503
+              ? _kEstimateBusyMessage
+              : _kEstimateFailedMessage,
+        );
       });
     }
+  }
+
+  void _notifyEstimateFailed(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 4)),
+    );
   }
 
   /// 확인된 demographic 으로 full pipeline 실행.
