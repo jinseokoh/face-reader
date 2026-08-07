@@ -176,6 +176,12 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
       debugPrint('[FaceMesh] DeepFace ok age=${meta.age} '
           'gender=${meta.gender} ethnicity=${meta.ethnicity}');
       return meta;
+    } on FaceAnalyzeException catch (e) {
+      // 503 은 고장이 아니라 서버가 동시 처리 상한으로 거절한 것 — 확인 화면이
+      // 안내를 띄울 수 있게 삼키지 않고 넘긴다. 그 외 실패는 종전대로 non-fatal.
+      if (e.statusCode == 503) rethrow;
+      debugPrint('[FaceMesh] DeepFace failed (non-fatal): $e');
+      return null;
     } catch (e) {
       debugPrint('[FaceMesh] DeepFace failed (non-fatal): $e');
       return null;

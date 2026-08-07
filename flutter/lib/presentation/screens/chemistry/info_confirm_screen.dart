@@ -7,6 +7,7 @@ import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/presentation/widgets/picker_row.dart';
 import 'package:facely/presentation/widgets/primary_button.dart';
+import 'package:facely/data/services/face_metadata_client.dart';
 import 'package:facely/data/services/image_resizer.dart';
 import 'package:facely/data/services/supabase_service.dart';
 import 'package:facely/domain/models/capture_result.dart';
@@ -234,6 +235,20 @@ class _InfoConfirmScreenState
           if (g != null) _gender = g;
           _ageGroup = meta.ageGroupEnum;
         });
+      }, onError: (Object err) {
+        // 여기 도달하는 건 서버가 동시 처리 상한으로 거절한 503 뿐 — 캡처 화면이
+        // 그 외 실패는 null 로 흡수한다. _inferring 을 반드시 풀어야 picker 3개가
+        // 추정 중 상태로 굳지 않는다.
+        if (!mounted) return;
+        setState(() => _inferring = false);
+        if (err is FaceAnalyzeException && err.statusCode == 503) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('지금 분석 요청이 많아 자동 추정을 건너뛰었어요. 직접 선택해주세요.'),
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
       });
     }
   }
