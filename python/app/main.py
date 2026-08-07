@@ -72,6 +72,11 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+# 진행 중인 /analyze 개수. asyncio 단일 스레드라 아래 검사~증가 사이에 await 가
+# 없으면 원자적 — 별도 락 불필요.
+_inflight = 0
+
+
 @app.post(
     "/analyze",
     response_model=AnalyzeResponse,
@@ -80,6 +85,7 @@ async def health() -> dict[str, str]:
         401: {"model": ErrorResponse},
         422: {"model": ErrorResponse},
         502: {"model": ErrorResponse},
+        503: {"model": ErrorResponse},
     },
     tags=["inference"],
 )
@@ -92,7 +98,33 @@ async def analyze(
     `key` is the verified R2 object key from `X-Face-Key` (e.g.
     "temp/abc.jpg"). After successful analysis (or no-face) we fire-and-forget
     the DELETE — failure is logged only, with the 1-day R2 lifecycle as safety net.
+
+    동시 처리 상한(`MAX_CONCURRENT_ANALYSES`)을 넘으면 대기시키지 않고 503 을
+    돌려준다 — 호출자가 재시도 시점을 정할 수 있게 `Retry-After` 동봉.
     """
+    global _inflight
+    settings = get_settings()
+    if _inflight >= settings.max_concurrent_analyses:
+        logger.warning("analyze rejected (busy)", extra={"inflight": _inflight})
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "error": "busy",
+                "detail": (
+                    f"server at capacity ({settings.max_concurrent_analyses} "
+                    "concurrent analyses); retry shortly"
+                ),
+            },
+            headers={"Retry-After": str(settings.busy_retry_after_sec)},
+        )
+    _inflight += 1
+    try:
+        return await _analyze(req, key)
+    finally:
+        _inflight -= 1
+
+
+async def _analyze(req: AnalyzeRequest, key: str) -> AnalyzeResponse:
     url = str(req.image_url)
     logger.info("analyze request", extra={"image_url": url, "key": key})
 
@@ -141,4 +173,5 @@ async def http_exception_to_error_response(
         body = ErrorResponse(**detail).model_dump()
     else:
         body = ErrorResponse(error="http_error", detail=str(detail)).model_dump()
-    return JSONResponse(status_code=exc.status_code, content=body)
+    # headers 를 그대로 넘긴다 — 503 의 Retry-After 가 여기서 유실되면 안 된다.
+    return JSONResponse(status_code=exc.status_code, content=body, headers=exc.headers)

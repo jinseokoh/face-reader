@@ -50,6 +50,7 @@ docker compose up -d --build           # 코드 변경 후 재빌드+재기동
 | 400 | `download_failed` | URL 오류·비이미지 타입·파일 과대 (upload 측 Content-Type 은 image/* 필수) |
 | 422 | `no_face_detected` | 얼굴 미검출 |
 | 502 | `download_failed` | 원격(R2) 비정상 응답/네트워크 실패 |
+| 503 | `busy` | 동시 처리 상한 초과 — 대기 없이 즉시 거절. `Retry-After` 초 동봉 |
 | 500 | `internal_error` | 서버 오류 |
 
 ### `GET /health` → `{"status":"ok"}` (모델 미접촉 liveness)
@@ -62,10 +63,27 @@ docker compose up -d --build           # 코드 변경 후 재빌드+재기동
 | `DOWNLOAD_TIMEOUT_SEC` | `15` | 이미지 다운로드 타임아웃 |
 | `MAX_DOWNLOAD_MB` | `10` | 최대 이미지 크기 |
 | `DETECTOR_BACKEND` | `opencv` | opencv/ssd/mtcnn/retinaface |
+| `MAX_CONCURRENT_ANALYSES` | `4` | 동시 처리 상한. 초과 요청은 503 `busy` |
+| `BUSY_RETRY_AFTER_SEC` | `5` | 503 응답의 `Retry-After` 값 |
 | `LOG_LEVEL` | `INFO` | 로깅 레벨 |
 
+### 처리량 (2026-08-07 실측, macmini i7-3720QM 8코어)
+
+추론 1건이 **8코어 중 약 6.3개**를 점유한다(~630% CPU). 그래서 동시 실행은 총
+처리량을 못 올리고 대기시간만 선형으로 늘린다:
+
+| 동시성 | 처리량 | p50 | p95 |
+|---|---|---|---|
+| 1 | 0.83 req/s | 1.2s | 1.2s |
+| 4 | 0.73 req/s | 5.5s | 5.9s |
+| 16 | 0.71 req/s | 18.8s | 34.5s |
+
+**천장은 ~0.75 req/s (분당 45건)** 이고 CPU 바운드다. 컨테이너를 늘려도 같은
+CPU 를 쪼갤 뿐이라 처리량은 그대로 — 더 필요하면 모델 경량화나 별도 하드웨어.
+`MAX_CONCURRENT_ANALYSES` 는 이 사실 위에서 "느린 성공보다 빠른 실패"를 택한 값.
+
 주의: TF 2.16+ Keras 3 비호환 → `tf-keras==2.16.0` pin + `TF_USE_LEGACY_KERAS=1`
-(requirements.txt·Dockerfile 에 반영됨). 메모리 ~600MB 점유 — 2GB+ 인스턴스 권장.
+(requirements.txt·Dockerfile 에 반영됨). 메모리 ~3GB 점유 (2026-08-07 `docker stats` 실측) — 4GB+ 인스턴스 권장.
 
 ## 파일 구조
 
