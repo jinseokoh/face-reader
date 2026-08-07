@@ -102,7 +102,7 @@ function confirmSubtitle(estimating: boolean, status: EstimateStatus): string {
     // null = 캡처 프레임을 못 만들어 추정 자체를 시도하지 못한 경우
     // (video 미준비 · canvas 컨텍스트 실패 · toBlob 인코딩 실패).
     default:
-      return '전달받은 이미지가 없어 추정을 할 수 없습니다. 직접 선택해주세요.'
+      return '이미지를 전달 받지 못했습니다. 직접 선택해주세요.'
   }
 }
 
