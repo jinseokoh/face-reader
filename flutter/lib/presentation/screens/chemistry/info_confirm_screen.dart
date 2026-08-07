@@ -65,6 +65,9 @@ const _kEstimateBusyMessage = '너무 요청이 몰려 추정을 할 수 없습�
 /// 그 외 추정 실패 (서버 오류·네트워크·얼굴 미검출 등).
 const _kEstimateFailedMessage = '서버 오류로 인해 추정에 실패했습니다. 직접 선택해주세요.';
 
+/// 캡처 프레임이 없어 추정을 시도조차 못 한 경우.
+const _kEstimateNoImageMessage = '이미지를 전달 받지 못했습니다. 직접 선택해주세요.';
+
 class _InfoConfirmScreenState
     extends ConsumerState<InfoConfirmScreen> {
   late Ethnicity _ethnicity;
@@ -73,6 +76,10 @@ class _InfoConfirmScreenState
   bool _isAnalyzing = false;
   // DeepFace background 진행 중 표시. future 가 resolve 되면 false.
   bool _inferring = false;
+  // 추정이 정상적으로 끝나지 않은 이유. null 이면 문제 없음(성공 또는 진행 중).
+  // 화면 문구가 이 값 하나로 갈린다 — 추정 못 한 상태에서 "추정 정보"라고
+  // 말하지 않기 위해.
+  String? _estimateProblem;
   // 상대방 관상(내 관상 아님) 한정 optional 이름 — report.alias 로 들어가
   // metrics.alias 까지 흐른다. 팀 스캔 루프(popWithReport)는 복귀 후
   // "누구인가요?" 다이얼로그가 이름을 받으므로 여기선 숨겨 이중 입력 방지.
@@ -112,14 +119,15 @@ class _InfoConfirmScreenState
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
               const SizedBox(height: 16),
-              const Text(
-                '추정 정보가 맞나요?',
+              Text(
+                _estimateProblem == null ? '추정 정보가 맞나요?' : '정보를 선택해주세요',
                 style: AppText.display,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
-                '인공지능은 실수할 수 있습니다.',
+                _estimateProblem ??
+                    '인공지능은 실수할 수 있습니다. 확인 후 필요하다면 수정해 주세요.',
                 style: AppText.body.copyWith(color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),
@@ -189,12 +197,8 @@ class _InfoConfirmScreenState
                   ),
                 ),
               ],
+              // 하단 안내는 상단 부제로 병합 — 같은 말을 두 번 하지 않는다.
               const SizedBox(height: 24),
-              Text(
-                '잘못된 항목은 직접 수정해 주세요.',
-                style: AppText.body.copyWith(color: AppColors.textSecondary),
-                textAlign: TextAlign.center,
-              ),
                     ],
                   ),
                 ),
@@ -226,44 +230,42 @@ class _InfoConfirmScreenState
     _ageGroup = widget.initialAgeGroup;
 
     final f = widget.metadataFuture;
-    if (f != null) {
-      _inferring = true;
-      f.then((meta) {
-        if (!mounted) return;
-        setState(() {
-          _inferring = false;
-          _inferred = meta;
-          if (meta == null || _userTouched) return;
-          // 사용자가 picker 만지지 않은 경우에만 prefill.
-          final e = meta.ethnicityEnum;
-          final g = meta.genderEnum;
-          if (e != null) _ethnicity = e;
-          if (g != null) _gender = g;
-          _ageGroup = meta.ageGroupEnum;
-        });
-        // null = 캡처 화면이 흡수한 일반 실패. 아무 말 없이 빈 picker 만 남기면
-        // 사용자는 왜 비었는지 알 수 없다.
-        if (meta == null) _notifyEstimateFailed(_kEstimateFailedMessage);
-      }, onError: (Object err) {
-        // 여기 도달하는 건 서버가 동시 처리 상한으로 거절한 503 뿐 — 캡처 화면이
-        // 그 외 실패는 null 로 흡수한다. _inferring 을 반드시 풀어야 picker 3개가
-        // 추정 중 상태로 굳지 않는다.
-        if (!mounted) return;
-        setState(() => _inferring = false);
-        _notifyEstimateFailed(
-          err is FaceAnalyzeException && err.statusCode == 503
-              ? _kEstimateBusyMessage
-              : _kEstimateFailedMessage,
-        );
-      });
+    if (f == null) {
+      // 캡처 프레임이 없어 추정을 아예 시도하지 못한 경우.
+      _estimateProblem = _kEstimateNoImageMessage;
+      return;
     }
-  }
-
-  void _notifyEstimateFailed(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), duration: const Duration(seconds: 4)),
-    );
+    _inferring = true;
+    f.then((meta) {
+      if (!mounted) return;
+      setState(() {
+        _inferring = false;
+        _inferred = meta;
+        // null = 캡처 화면이 흡수한 일반 실패.
+        if (meta == null) {
+          _estimateProblem = _kEstimateFailedMessage;
+          return;
+        }
+        if (_userTouched) return;
+        // 사용자가 picker 만지지 않은 경우에만 prefill.
+        final e = meta.ethnicityEnum;
+        final g = meta.genderEnum;
+        if (e != null) _ethnicity = e;
+        if (g != null) _gender = g;
+        _ageGroup = meta.ageGroupEnum;
+      });
+    }, onError: (Object err) {
+      // 여기 도달하는 건 서버가 동시 처리 상한으로 거절한 503 뿐 — 캡처 화면이
+      // 그 외 실패는 null 로 흡수한다. _inferring 을 반드시 풀어야 picker 3개가
+      // 추정 중 상태로 굳지 않는다.
+      if (!mounted) return;
+      setState(() {
+        _inferring = false;
+        _estimateProblem = err is FaceAnalyzeException && err.statusCode == 503
+            ? _kEstimateBusyMessage
+            : _kEstimateFailedMessage;
+      });
+    });
   }
 
   /// 확인된 demographic 으로 full pipeline 실행.
