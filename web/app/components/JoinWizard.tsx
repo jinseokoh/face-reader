@@ -87,6 +87,25 @@ const JOIN_ERROR_MESSAGES: Record<string, string> = {
   NOT_RECRUITING: '모집이 끝난 방입니다. 새로고침 후 다시 확인해 주세요.',
 }
 
+type EstimateStatus = 'ok' | 'busy' | 'failed' | null
+
+/** 정보 확인 화면 안내 문구. 추정에 성공한 경우에만 "결과"라고 말한다. */
+function confirmSubtitle(estimating: boolean, status: EstimateStatus): string {
+  if (estimating) return 'AI가 사진에서 정보를 추정하는 중…'
+  switch (status) {
+    case 'ok':
+      return 'AI 추정 결과입니다. 잘못된 항목은 직접 수정해 주세요.'
+    case 'busy':
+      return '너무 요청이 몰려 추정을 할 수 없습니다. 직접 선택해주세요.'
+    case 'failed':
+      return '서버 오류로 인해 추정에 실패했습니다. 직접 선택해주세요.'
+    // null = 캡처 프레임을 못 만들어 추정 자체를 시도하지 못한 경우
+    // (video 미준비 · canvas 컨텍스트 실패 · toBlob 인코딩 실패).
+    default:
+      return '전달받은 이미지가 없어 추정을 할 수 없습니다. 직접 선택해주세요.'
+  }
+}
+
 export function JoinWizard({
   team,
   roster,
@@ -111,9 +130,7 @@ export function JoinWizard({
   const [estimating, setEstimating] = useState(false)
   // 추정 시도 결과. null = 아직 시도 안 함. busy(서버 혼잡)와 failed(그 외 실패)를
   // 나눠야 확인 화면이 각각 다른 안내를 띄울 수 있다.
-  const [estimateStatus, setEstimateStatus] = useState<
-    'ok' | 'busy' | 'failed' | null
-  >(null)
+  const [estimateStatus, setEstimateStatus] = useState<EstimateStatus>(null)
   // 확인 페이지 이름 필드 — default fallback 은 카카오 nickname.
   const [aliasName, setAliasName] = useState('')
   // 정보 확인 — 3필드 모두 default 보유 (아시아인/남성/20대), 즉시 진행 가능.
@@ -808,13 +825,7 @@ export function JoinWizard({
         <>
           <p className="join-q">정보 확인</p>
           <p className="join-sub" style={{ textAlign: 'center' }}>
-            {estimating
-              ? 'AI가 사진에서 정보를 추정하는 중…'
-              : estimateStatus === 'busy'
-                ? '너무 요청이 몰려 추정을 할 수 없습니다. 직접 선택해주세요.'
-                : estimateStatus === 'failed'
-                  ? '서버 오류로 인해 추정에 실패했습니다. 직접 선택해주세요.'
-                  : 'AI 추정 결과입니다. 잘못된 항목은 직접 수정해 주세요.'}
+            {confirmSubtitle(estimating, estimateStatus)}
           </p>
           <div className="join-form">
             <label className="join-field">
