@@ -890,6 +890,20 @@ export function JoinWizard({
             >
               확인
             </button>
+            {/* 이미지를 못 받은 경우에만 — 부제가 "다시 시도해주세요" 라고
+                안내하는데 돌아갈 경로가 없으면 안 된다. 이미지가 없으면 관상
+                측정값도 부실할 가능성이 높아 재촬영이 수동 선택보다 낫다. */}
+            {!estimating && estimateStatus === null && (
+              <button
+                className="join-btn join-btn--line join-form-submit"
+                onClick={() => {
+                  setNotice('')
+                  void startCamera()
+                }}
+              >
+                다시 촬영
+              </button>
+            )}
           </div>
           {notice && <p className="join-notice">{notice}</p>}
         </>
