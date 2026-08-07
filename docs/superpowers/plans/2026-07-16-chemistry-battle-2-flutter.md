@@ -2656,4 +2656,4 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 3. 실기기 시나리오 (사람 확인): 방 생성(공약 포함) → 두 번째 계정 QR/링크 조인 → 로비 실시간 반영 → 정원 충족 → 양쪽 카운트다운 → 같은 Best → 매트릭스·순위 → 쌍 1🪙 unlock → 케미 탭 내 배틀 목록 상태 정확.
 4. 웹(`/g/:id`) 은 Plan 3 전까지 구 JoinWizard 그대로 — 이름 스텝이 서버와 안 맞아 웹 조인은 Plan 3 완료까지 일시 불능 (앱 조인·QR 은 정상). 알려진 공백으로 기록.
 
-이후: **Plan 3 (웹)** — JoinWizard 를 join_battle RPC 로 교체, 로비 라이브(supabase-js Realtime), 쇼케이스 payload 렌더(`runBattle` fallback), 문서 일괄 갱신 (ARCHITECTURE·PRD·react HOW-IT-WORKS·CLAUDE 용어).
+이후: **Plan 3 (웹)** — JoinWizard 를 join_battle RPC 로 교체, 로비 라이브(supabase-js Realtime), 쇼케이스 payload 렌더(`runBattle` fallback), 문서 일괄 갱신 (ARCHITECTURE·PRD·web HOW-IT-WORKS·CLAUDE 용어).

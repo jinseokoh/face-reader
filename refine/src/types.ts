@@ -67,7 +67,7 @@ export function metricThumbUrl(body: string | null | undefined): string | null {
   }
 }
 
-// 케미 그룹 — teams row (서버 계약 SSOT: react/db/migrations/0001_baseline.sql).
+// 케미 그룹 — teams row (서버 계약 SSOT: web/db/migrations/0001_baseline.sql).
 export type Team = {
   id: string;
   owner_id: string | null;

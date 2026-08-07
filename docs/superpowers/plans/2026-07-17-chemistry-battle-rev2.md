@@ -11,9 +11,9 @@
 
 ## Global Constraints
 
-- DDL 은 `react/db/migrations/0001_baseline.sql` 단일 파일 직접 수정. version 필드 금지. payload 키 풀네임(gender — 압축 키 금지).
+- DDL 은 `web/db/migrations/0001_baseline.sql` 단일 파일 직접 수정. version 필드 금지. payload 키 풀네임(gender — 압축 키 금지).
 - 디자인 토큰 규칙 전부 유지 (신규 색 금지·FaIcon·chip 단일톤·CTA 흰+테두리). 카피는 UX 문서의 실카피를 **그대로** 사용 (감정 단정·가운데점 금지 검증됨).
-- 게이트: `cd flutter && flutter test && flutter analyze`(기준선 7) · `cd react && pnpm build:shared && pnpm typecheck`(contact.tsx 1건만) `&& pnpm build`.
+- 게이트: `cd flutter && flutter test && flutter analyze`(기준선 7) · `cd web && pnpm build:shared && pnpm typecheck`(contact.tsx 1건만) `&& pnpm build`.
 - 서버 에러 계약 추가: `GENDER_FULL`·`NOT_MATCHED`·`ALREADY_DECIDED`.
 - Supabase 적용은 human gate (drop-recreate — **public 스키마 데이터 전체 초기화 수반**, 실행 안내 시 이 사실을 첫 문장으로).
 - 커밋 트레일러: `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`
@@ -23,8 +23,8 @@
 ### Task 1: SQL 델타 — 스키마·RPC·매칭/채팅 테이블·smoke 확장
 
 **Files:**
-- Modify: `react/db/migrations/0001_baseline.sql`
-- Modify: `react/db/tests/battle_rpc_smoke.sql`
+- Modify: `web/db/migrations/0001_baseline.sql`
+- Modify: `web/db/tests/battle_rpc_smoke.sql`
 
 **Interfaces (Produces):** rev2 §2 전체가 계약. 요점 —
 - teams: `room_kind('all'|'match')`·`thumb_open bool`·`pledge/chat_url 삭제`·`max_players in (6,8,10,12)`·`age_min not null >= 20`·`age_max not null = age_min + 10`·공약 성인 게이트 CHECK 삭제. column grant SELECT/INSERT 목록 갱신 (pledge/chat_url 제거, room_kind/thumb_open 추가).
@@ -39,7 +39,7 @@
 - [x] 검증: `grep -c '\$\$'` 짝수 · node 체크(room_kind 존재·pledge 부재) · 커밋.
 
 ```bash
-git add react/db/migrations/0001_baseline.sql react/db/tests/battle_rpc_smoke.sql
+git add web/db/migrations/0001_baseline.sql web/db/tests/battle_rpc_smoke.sql
 git commit -m "feat(db): rev2 — 방 유형·성별 정원·매칭 동의·인앱 채팅·공약 폐기
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
@@ -62,7 +62,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 **Steps:**
 - [x] 테스트 먼저: 기존 6개를 gender 필수에 맞게 갱신 + 신규 — matchOnly 에서 (a) pairs 수 = 남수×여수 (b) 모든 쌍이 이성 (c) payload players[].gender 존재 (d) all 모드 무변화 회귀.
-- [x] 구현 → `flutter test test/battle_test.dart` green → `cd react && pnpm build:shared` 성공 → 전체 게이트 → 커밋.
+- [x] 구현 → `flutter test test/battle_test.dart` green → `cd web && pnpm build:shared` 성공 → 전체 게이트 → 커밋.
 
 ```bash
 git add shared/lib/domain/services/compat/battle.dart shared/lib/face_engine.dart flutter/test/battle_test.dart
@@ -132,11 +132,11 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 7: 웹 동기화 (rev2 §6)
 
 **Files:**
-- Modify: `react/app/lib/join.ts` (BattleRow: roomKind/thumbOpen/pledge 제거·RosterEntry.gender·joinBattle GENDER_FULL·computeBattlePayload gender/roomKind)
-- Modify: `react/app/lib/supabase.ts` (fetchBattleSSR 컬럼 갱신)
-- Modify: `react/app/routes/g.$id.tsx` (BattleInvite: 유형·남은 성별 자리·공약 배너 삭제 / BattleShowcase: match 방 rect 매트릭스 / 성사·채팅은 "앱에서 확인하세요" 안내 한 줄)
-- Modify: `react/app/components/JoinWizard.tsx` (공약 동의 → 사진 공개 계약 문구·GENDER_FULL 카피·로비 2열은 웹은 리스트에 성별 뱃지로 단순화 허용)
-- Modify: `react/app/lib/shared/face_engine.d.ts` 주석 (입력 roomKind 반영 — 시그니처 동일 string)
+- Modify: `web/app/lib/join.ts` (BattleRow: roomKind/thumbOpen/pledge 제거·RosterEntry.gender·joinBattle GENDER_FULL·computeBattlePayload gender/roomKind)
+- Modify: `web/app/lib/supabase.ts` (fetchBattleSSR 컬럼 갱신)
+- Modify: `web/app/routes/g.$id.tsx` (BattleInvite: 유형·남은 성별 자리·공약 배너 삭제 / BattleShowcase: match 방 rect 매트릭스 / 성사·채팅은 "앱에서 확인하세요" 안내 한 줄)
+- Modify: `web/app/components/JoinWizard.tsx` (공약 동의 → 사진 공개 계약 문구·GENDER_FULL 카피·로비 2열은 웹은 리스트에 성별 뱃지로 단순화 허용)
+- Modify: `web/app/lib/shared/face_engine.d.ts` 주석 (입력 roomKind 반영 — 시그니처 동일 string)
 
 **Steps:** 구현 → `pnpm build:shared && pnpm typecheck && pnpm build` → 커밋 `feat(web): rev2 동기화 — 방 유형·성별 정원·rect 쇼케이스·공약 제거`.
 
@@ -146,7 +146,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 - [x] Human gate 안내문 작성 (drop-recreate = 데이터 전체 초기화 **첫 문장**, 그 다음 절차: 계정 정리 → reset → baseline → smoke ALL PASS → 42501 확인).
 - [x] 실기기 rev2 시나리오 (rev2 §9-3) 체크리스트 전달.
-- [x] 문서 5종 rev2 반영 (PRD·ARCHITECTURE·react HOW-IT-WORKS·KAKAO·CLAUDE 테스트 수 — 공약 서술 제거·매칭/채팅·방 유형).
+- [x] 문서 5종 rev2 반영 (PRD·ARCHITECTURE·web HOW-IT-WORKS·KAKAO·CLAUDE 테스트 수 — 공약 서술 제거·매칭/채팅·방 유형).
 - [x] 웹 배포 (`pnpm build && pnpm run deploy`) — human 승인 후.
 - [x] Ledger 종결.
 

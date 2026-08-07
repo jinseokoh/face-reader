@@ -61,7 +61,7 @@
 
 추가 reference:
 - [`../tools/face_shape_ml/README.md`](../tools/face_shape_ml/README.md) — face shape classifier 재학습 · TFLite 배포 procedure
-- `react/docs/HOW-IT-WORKS.md` — Cloudflare Workers + share link 통합 (별도 디렉토리)
+- `web/docs/HOW-IT-WORKS.md` — Cloudflare Workers + share link 통합 (별도 디렉토리)
 
 ---
 

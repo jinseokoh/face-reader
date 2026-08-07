@@ -62,5 +62,5 @@
 | 카톡 메시지·링크 | `flutter/lib/domain/services/share/share_publisher.dart` |
 | 상세(참가+대기 통합) / 결과 화면 | `team_detail_screen.dart` / `team_reveal_screen.dart` |
 | 매칭 성사 / 인앱 채팅 | `team_match_card.dart` / `team_chat_screen.dart` |
-| DB 스키마 + RPC 상태 머신 | `react/db/migrations/0001_baseline.sql` §11-2~11-6 |
-| 웹 `/g/:id` | `react/app/routes/g.$id.tsx` |
+| DB 스키마 + RPC 상태 머신 | `web/db/migrations/0001_baseline.sql` §11-2~11-6 |
+| 웹 `/g/:id` | `web/app/routes/g.$id.tsx` |

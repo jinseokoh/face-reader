@@ -12,12 +12,12 @@
 
 ## Global Constraints
 
-- DDL 은 `react/db/migrations/0001_baseline.sql` **단일 파일 직접 수정** — 새 마이그레이션 파일 생성 금지.
+- DDL 은 `web/db/migrations/0001_baseline.sql` **단일 파일 직접 수정** — 새 마이그레이션 파일 생성 금지.
 - payload·스키마에 version 필드/bump 금지 (출시 전 호환 후크 금지).
-- 엔진 변경은 `shared/lib/` 에서만. JS 빌드는 `cd react && pnpm build:shared` (**`-O2` 금지**, `-O1` 고정).
-- `react/app/lib/shared/face_engine.js` 는 build artifact — **commit 금지** (.gitignore 됨).
+- 엔진 변경은 `shared/lib/` 에서만. JS 빌드는 `cd web && pnpm build:shared` (**`-O2` 금지**, `-O1` 고정).
+- `web/app/lib/shared/face_engine.js` 는 build artifact — **commit 금지** (.gitignore 됨).
 - Flutter 게이트: `cd flutter && flutter test` 전부 green (기존 151 + 신규), `flutter analyze` 기준선 7건 외 신규 0.
-- react 게이트: `cd react && pnpm typecheck` 통과.
+- web 게이트: `cd web && pnpm typecheck` 통과.
 - 문서(ARCHITECTURE/PRD/HOW-IT-WORKS) 갱신은 Plan 3 완료 후 일괄 — 이 계획에서 건드리지 않는다.
 - 커밋 트레일러: `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`
 
@@ -28,10 +28,10 @@
 | `shared/lib/domain/services/compat/battle.dart` (신규) | 배틀 집계 SSOT — 쌍 계산·정렬(=순위)·tie-break·best·payload 직렬화 |
 | `flutter/test/battle_test.dart` (신규) | computeBattle 결정론·정렬·tie-break·payload 계약 테스트 |
 | `shared/lib/face_engine.dart` (수정) | `runBattle` JS export 추가 |
-| `react/db/migrations/0001_baseline.sql` (수정) | §11-2/11-3 재작성 + RPC 3종 + view + realtime + column grants |
-| `react/db/tests/battle_rpc_smoke.sql` (신규) | Supabase SQL 콘솔용 상태 머신 smoke 시나리오 (begin…rollback) |
-| `react/workers/cron.ts` (수정) | closeStaleTeams → expireStaleTeams + completeOrphanReveals |
-| `react/workers/app.ts` (수정) | scheduled 핸들러 연결 교체 |
+| `web/db/migrations/0001_baseline.sql` (수정) | §11-2/11-3 재작성 + RPC 3종 + view + realtime + column grants |
+| `web/db/tests/battle_rpc_smoke.sql` (신규) | Supabase SQL 콘솔용 상태 머신 smoke 시나리오 (begin…rollback) |
+| `web/workers/cron.ts` (수정) | closeStaleTeams → expireStaleTeams + completeOrphanReveals |
+| `web/workers/app.ts` (수정) | scheduled 핸들러 연결 교체 |
 
 기존 `flutter/lib/domain/services/team_matrix.dart` 는 이 계획에서 **삭제하지 않는다** — 기존 화면이 아직 참조하므로 Plan 2(Flutter 개편)에서 화면과 함께 제거한다.
 
@@ -426,8 +426,8 @@ external set _setRunBattle(JSFunction fn);
 
 - [ ] **Step 2: JS 빌드 검증**
 
-Run: `cd react && pnpm build:shared`
-Expected: exit 0, `react/app/lib/shared/face_engine.js` 재생성 (commit 금지 artifact)
+Run: `cd web && pnpm build:shared`
+Expected: exit 0, `web/app/lib/shared/face_engine.js` 재생성 (commit 금지 artifact)
 
 - [ ] **Step 3: Flutter 게이트 재확인** (shared 수정이 앱 컴파일을 깨지 않는지)
 
@@ -448,7 +448,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 3: baseline.sql — teams/team_members 재구성
 
 **Files:**
-- Modify: `react/db/migrations/0001_baseline.sql` (§11-2 lines ~694-743, §11-3 lines ~745-828, §11-1 뒤 column-grant 블록 추가)
+- Modify: `web/db/migrations/0001_baseline.sql` (§11-2 lines ~694-743, §11-3 lines ~745-828, §11-1 뒤 column-grant 블록 추가)
 
 **Interfaces:**
 - Produces (Task 4·Plan 2·3 이 의존하는 스키마):
@@ -621,13 +621,13 @@ revoke insert, update, delete on public.team_members from anon, authenticated;
 
 - [ ] **Step 5: 구문 검증 (로컬)**
 
-Run: `cd react && node -e "const s=require('fs').readFileSync('db/migrations/0001_baseline.sql','utf8'); console.log('teams cols ok:', /chemistry_snapshot jsonb/.test(s), '| name col gone:', !/team_members[\s\S]{0,900}name\s+text/.test(s))"`
+Run: `cd web && node -e "const s=require('fs').readFileSync('db/migrations/0001_baseline.sql','utf8'); console.log('teams cols ok:', /chemistry_snapshot jsonb/.test(s), '| name col gone:', !/team_members[\s\S]{0,900}name\s+text/.test(s))"`
 Expected: `teams cols ok: true | name col gone: true`
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add react/db/migrations/0001_baseline.sql
+git add web/db/migrations/0001_baseline.sql
 git commit -m "feat(db): Chemistry Battle 스키마 — teams 재구성·team_members 셀프 조인·password 봉인
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
@@ -638,8 +638,8 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 4: RPC 상태 머신 + 공개 목록 view + Realtime + smoke 스크립트
 
 **Files:**
-- Modify: `react/db/migrations/0001_baseline.sql` (§11-3 뒤에 §11-5 RPC 구획 추가 — §11-1 grant 구획 앞)
-- Create: `react/db/tests/battle_rpc_smoke.sql`
+- Modify: `web/db/migrations/0001_baseline.sql` (§11-3 뒤에 §11-5 RPC 구획 추가 — §11-1 grant 구획 앞)
+- Create: `web/db/tests/battle_rpc_smoke.sql`
 
 **Interfaces:**
 - Produces (Plan 2·3 이 호출):
@@ -795,7 +795,7 @@ exception when duplicate_object then null; end $$;
 
 - [ ] **Step 2: smoke 스크립트 작성**
 
-`react/db/tests/battle_rpc_smoke.sql` 생성 (Supabase SQL 콘솔에 통째로 붙여 실행 — `rollback` 으로 잔여물 0):
+`web/db/tests/battle_rpc_smoke.sql` 생성 (Supabase SQL 콘솔에 통째로 붙여 실행 — `rollback` 으로 잔여물 0):
 
 ```sql
 -- Chemistry Battle RPC smoke — Supabase SQL Editor 에서 전체 실행.
@@ -966,7 +966,7 @@ Expected: `permission denied for table teams` (컬럼 SELECT 거부)
 - [ ] **Step 5: Commit**
 
 ```bash
-git add react/db/migrations/0001_baseline.sql react/db/tests/battle_rpc_smoke.sql
+git add web/db/migrations/0001_baseline.sql web/db/tests/battle_rpc_smoke.sql
 git commit -m "feat(db): battle RPC 상태 머신·public_battles view·Realtime publication + smoke
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
@@ -977,8 +977,8 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 5: cron 개편 — 48h expired + 24h revealing 안전망
 
 **Files:**
-- Modify: `react/workers/cron.ts` (closeStaleTeams 교체 + 신규 함수)
-- Modify: `react/workers/app.ts:3-7, 26-35` (import·scheduled 분기)
+- Modify: `web/workers/cron.ts` (closeStaleTeams 교체 + 신규 함수)
+- Modify: `web/workers/app.ts:3-7, 26-35` (import·scheduled 분기)
 
 **Interfaces:**
 - Consumes: Task 3 스키마 (`teams.status`, `closed_at`).
@@ -986,7 +986,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 - [ ] **Step 1: cron.ts 의 closeStaleTeams 를 교체**
 
-`react/workers/cron.ts` 에서 `closeStaleTeams` 함수와 그 doc comment 전체(lines ~26-49)를 다음으로 교체:
+`web/workers/cron.ts` 에서 `closeStaleTeams` 함수와 그 doc comment 전체(lines ~26-49)를 다음으로 교체:
 
 ```typescript
 /**
@@ -1063,7 +1063,7 @@ export async function completeOrphanReveals(env: CronEnv): Promise<number> {
 
 - [ ] **Step 2: app.ts scheduled 연결 교체**
 
-`react/workers/app.ts` import 를:
+`web/workers/app.ts` import 를:
 
 ```typescript
 import {
@@ -1086,13 +1086,13 @@ scheduled 핸들러의 else 분기(`await closeStaleTeams(env);`)를:
 
 - [ ] **Step 3: typecheck + 로컬 cron 실행**
 
-Run: `cd react && pnpm typecheck && pnpm build:shared && pnpm wrangler dev` (별도 셸에서) `curl "http://localhost:8787/__scheduled?cron=0+*+*+*+*"`
+Run: `cd web && pnpm typecheck && pnpm build:shared && pnpm wrangler dev` (별도 셸에서) `curl "http://localhost:8787/__scheduled?cron=0+*+*+*+*"`
 Expected: typecheck exit 0 · curl 200 · wrangler 로그에 에러 없음 (대상 0건이면 로그 무출력이 정상)
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add react/workers/cron.ts react/workers/app.ts
+git add web/workers/cron.ts web/workers/app.ts
 git commit -m "feat(cron): 48h expired + 24h revealing 안전망 — 자동 발표 폐기
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"

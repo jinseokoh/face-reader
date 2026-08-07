@@ -24,7 +24,7 @@
 배포 전이므로 변경 파일(0002)을 만들지 않고 `0001_baseline.sql` 을 최종 상태로 직접 수정한다 (사용자 지시). 프로덕션에는 이미 이전 스키마가 적용돼 있으므로, 반영은 커밋하지 않는 one-off ALTER SQL 로 한다 (`create table if not exists` 는 기존 테이블을 바꾸지 못함).
 
 **Files:**
-- Modify: `react/db/migrations/0001_baseline.sql` — §4 unlocks 테이블(라인 ~250-266), §9 unlock_compat RPC(라인 ~465-518), §10 grants(라인 ~525·530), 파일 헤더는 변경 없음
+- Modify: `web/db/migrations/0001_baseline.sql` — §4 unlocks 테이블(라인 ~250-266), §9 unlock_compat RPC(라인 ~465-518), §10 grants(라인 ~525·530), 파일 헤더는 변경 없음
 - Create(비커밋, scratch): 프로덕션 반영용 one-off ALTER SQL — 세션 scratchpad 에 `unlocks-oneoff.sql`
 
 **Interfaces:**
@@ -180,7 +180,7 @@ Expected: 기존 1행이 `partner_id`(uuid)·`user_alias`(닉네임)·`partner_a
 
 ```bash
 cd /Users/chuck/Code/face
-git add react/db/migrations/0001_baseline.sql
+git add web/db/migrations/0001_baseline.sql
 git commit -m "feat(db): unlocks pair_key→partner_id·alias 스냅샷 + unlock_compat 재정의"
 ```
 

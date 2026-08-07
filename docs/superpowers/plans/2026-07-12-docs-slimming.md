@@ -1,8 +1,8 @@
-# 문서 경량화 (react 제외) Implementation Plan
+# 문서 경량화 (web 제외) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** react 를 제외한 전 문서를 "현재 로직의 핵심"만 남기고 약 3,100줄 → 약 1,000줄로 감축.
+**Goal:** web 을 제외한 전 문서를 "현재 로직의 핵심"만 남기고 약 3,100줄 → 약 1,000줄로 감축.
 
 **Architecture:** 파일 1개 = 태스크 1개. 각 태스크는 [읽기 → 삭제 기준 적용 rewrite → 코드 대조 검증 → 커밋] 사이클. 참조 표(metric·토큰·스키마)는 보존, 서사·이력·계획은 삭제.
 
@@ -12,14 +12,14 @@
 
 - 삭제 3규칙: ① 구현됐는데 "예정/미구현" 표기 ② 바뀌어 안 맞는 내용 ③ 미구현 future 계획·로드맵
 - 참조 표 보존: 26+8 metric 표, 14 node, 10 attribute, 디자인 토큰 표, DB 스키마 요약, API 계약
-- CLAUDE.md 2종·react/* 은 건드리지 않는다
+- CLAUDE.md 2종·web/* 은 건드리지 않는다
 - 한자 단독 표기 금지, "레거시/마이그레이션" 금지어 (flutter/CLAUDE.md 준수)
 - 각 태스크 커밋 message prefix: `docs:`
 
 ## Stale 판별 기준표 (2026-07-12 시점 사실 — 문서 내용이 이와 다르면 규칙 ② 적용)
 
 - 제품 용어: 교감도 → **케미** (탭·문서·카피 전부). "발표/마감" 언어 폐기 → **"결과표 생성"**. 결과표는 **전원 등록 시에만** 생성 (조기 마감 ≥3 버튼 폐기)
-- 구현 완료 (더 이상 "예정" 아님): 48h 자동 마감 cron·30일 teams 정리·90일 anon metrics 정리 (`react/workers/cron.ts`, Cloudflare Cron Triggers) / 로그인 rehydrate (metrics 전체 + **모집 중** 케미 방, closed 방 부활 금지) / nickname↔metrics.alias 파이프라인 (claim backfill·이름변경 전파·saveMetrics fallback) / 탈퇴 시 metrics FK cascade + open teams 삭제 / 대기 명단 원격 삭제 (pushTeam 유령 행 제거)
+- 구현 완료 (더 이상 "예정" 아님): 48h 자동 마감 cron·30일 teams 정리·90일 anon metrics 정리 (`web/workers/cron.ts`, Cloudflare Cron Triggers) / 로그인 rehydrate (metrics 전체 + **모집 중** 케미 방, closed 방 부활 금지) / nickname↔metrics.alias 파이프라인 (claim backfill·이름변경 전파·saveMetrics fallback) / 탈퇴 시 metrics FK cascade + open teams 삭제 / 대기 명단 원격 삭제 (pushTeam 유령 행 제거)
 - 파일·폴더: `home_screen.dart` → `chemistry_screen.dart` (`ChemistryScreen`), `screens/home/` → `screens/chemistry/`
 - UI 규칙: CTA = 흰 배경 + 1px textPrimary border (검정 invert 전면 폐기, 카카오 브랜드 버튼만 예외) / 내부 탭 = 내 관상 등록 시 3화면 모두 상시 노출, 관상 3탭 고정(카메라·앨범·**북마크**), 최초 노출 시 개수 많은 탭 기본 선택 / 공용 위젯: DetailAvatar(56 원형 ring)·SortSelector·EmotionEmptyState(84)·CoinChip·OtherFaceScanPill / 리스트 좌우 padding lg(16) 통일
 - 인프라: R2 키 `thumbnails/{YYYYMM}/{uuid}.jpg` (일 단위 폐기) / og 배너 `cdn.facely.kr/assets/og.png` 800×420

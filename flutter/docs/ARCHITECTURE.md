@@ -8,7 +8,7 @@
 ```
 flutter/ (앱 셸: 화면·카메라·Hive·코인·인증·공유·광고·딥링크)
    └─ path dep ─▶ shared/ (face_engine — 관상·궁합 엔진 단일 SSOT)
-                     └─ dart compile js -O1 ─▶ react/ (facely.kr Workers SSR + cron)
+                     └─ dart compile js -O1 ─▶ web/ (facely.kr Workers SSR + cron)
 python/ (DeepFace FastAPI)          Supabase (metrics·coins·compatibilities·teams·team_members)
 ```
 
@@ -102,7 +102,7 @@ AppBar 닫기 X) 진입·join_team 은 검사하지 않는다. 참가자에겐 Q
 face/
 ├── shared/    # face_engine 패키지 (엔진 SSOT)
 ├── flutter/   # 앱 셸
-├── react/     # facely.kr Workers (share SSR · /g 초대장·쇼케이스·티저 · cron)
+├── web/     # facely.kr Workers (share SSR · /g 초대장·쇼케이스·티저 · cron)
 ├── python/    # DeepFace FastAPI
 └── tools/     # face_shape_ml 학습 · MediaPipe task
 ```
@@ -115,8 +115,8 @@ physiognomy_tree) · `domain/services/`(metric_score, physiognomy_scoring,
 attribute_derivation, attribute_normalize, score_calibration, archetype,
 age_adjustment, yin_yang, compat/).
 
-빌드: `cd react && pnpm build:shared` (**`-O2` 금지** — RTI subtype check 깨짐).
-산출물 `react/app/lib/shared/face_engine.js` 는 commit 안 함.
+빌드: `cd web && pnpm build:shared` (**`-O2` 금지** — RTI subtype check 깨짐).
+산출물 `web/app/lib/shared/face_engine.js` 는 commit 안 함.
 
 **flutter/lib** — 앱 셸:
 
@@ -214,7 +214,7 @@ filter 매칭 한계로 폴링이 커버.
 
 ## 5. 외부 인프라
 
-### facely.kr — Cloudflare Workers + R2 (`react/`)
+### facely.kr — Cloudflare Workers + R2 (`web/`)
 
 | 경로 | 책임 |
 |---|---|
@@ -230,7 +230,7 @@ R2: `thumbnails/{YYYYMM}/{uuid}.jpg`(영구, CDN `cdn.facely.kr`) · `temp/`(1�
 
 ### Supabase (project `jicaenyzunjdlcxcdbfb`)
 
-DDL SSOT: `react/db/migrations/0001_baseline.sql` (단일 baseline 직접 수정).
+DDL SSOT: `web/db/migrations/0001_baseline.sql` (단일 baseline 직접 수정).
 
 | Table | 핵심 컬럼 | 비고 |
 |---|---|---|
@@ -293,7 +293,7 @@ owner, 상태 전이는 RPC 전용. `team_members` public read, 쓰기는 전부
 - Flutter SDK `^3.11.0` · App id `com.scienceintegration.facely` · MediaPipe `tools/face_landmarker.task`
 
 ```bash
-cd react && pnpm build:shared       # 엔진 JS 산출물 (-O1)
+cd web && pnpm build:shared       # 엔진 JS 산출물 (-O1)
 cd flutter && flutter pub get
 flutter analyze                     # 기준선 7건 (경미)
 flutter test                        # 전부 green

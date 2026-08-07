@@ -5,7 +5,7 @@
 
 **Goal:** 화면별 지적 5건을 스펙 문구 그대로 반영 — subtitle 3상태, entry 정비, already 가로 레이아웃, 정보 확인 3-select 폼, 카메라 영역 사전 확보, 로스터 빈 슬롯.
 
-**Tech:** react/ 단독 (JoinWizard.tsx · g.$id.tsx · join.ts · app.css). 검증 = typecheck 신규 0 + build + deploy + prod chunk grep.
+**Tech:** web/ 단독 (JoinWizard.tsx · g.$id.tsx · join.ts · app.css). 검증 = typecheck 신규 0 + build + deploy + prod chunk grep.
 
 ### Task 1: 데이터 계약 (join.ts)
 - [ ] fetchRoster → 전 멤버 `{name, joined, thumbnailKey}` (joined 필터 제거, joined 플래그)

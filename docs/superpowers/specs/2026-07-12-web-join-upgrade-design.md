@@ -44,7 +44,7 @@
 
 ## 3. 아키텍처
 
-전부 `react/` 안. 서버 스키마·RLS·Worker API 변경 0. 앱(Flutter) 변경 0.
+전부 `web/` 안. 서버 스키마·RLS·Worker API 변경 0. 앱(Flutter) 변경 0.
 
 ```
 app/lib/auth.ts        (신규)  supabase-js 브라우저 클라이언트 + kakao OAuth + 세션/닉네임
@@ -132,7 +132,7 @@ entry ──[카카오로 참여하기]──► (미로그인이면 kakao redir
 
 ### 3.5 UI 재작업 (app.css)
 
-react 4색 팔레트(`#1a1a1a`/`#666`/`#c44`/`#f7f7f8`) + 흰색 유지. 인라인 스타일을
+web 4색 팔레트(`#1a1a1a`/`#666`/`#c44`/`#f7f7f8`) + 흰색 유지. 인라인 스타일을
 `.join-*` 클래스로 이관:
 
 - 칩: **흰 배경 + 1px `#ddd` 테두리**, 선택 시 `1px #1a1a1a` + `font-weight 600`.
@@ -160,7 +160,7 @@ react 4색 팔레트(`#1a1a1a`/`#666`/`#c44`/`#f7f7f8`) + 흰색 유지. 인라�
 2. 로컬 dev: 데모 그룹으로 entry→미리보기→로그인→참여 전 단계 통과.
 3. 실기기: 카톡 링크 → 외부 브라우저 → 카카오 로그인 → 참여 → 방장 앱
    pull-to-refresh 합류 확인 → 참여자가 앱 설치+로그인 → rehydrate 복원 확인.
-4. 문서 현행화: `KAKAO.md`(앱 미설치 흐름), `react/docs/HOW-IT-WORKS.md`,
+4. 문서 현행화: `KAKAO.md`(앱 미설치 흐름), `web/docs/HOW-IT-WORKS.md`,
    `PRD.md` 해당 절.
 
 ## 6. 명시적 비범위

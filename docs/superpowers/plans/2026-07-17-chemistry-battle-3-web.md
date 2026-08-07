@@ -12,13 +12,13 @@
 
 ## Global Constraints
 
-- 웹 디자인 규칙 (react/CLAUDE.md): system font only · 5단 size 24/16/14/13/12px · 4컬러 `#1a1a1a`/`#666`/`#c44`(점수만)/`#f7f7f8`. 스타일은 `app/app.css` 클래스(BEM-ish) 또는 기존 관례의 inline CSSProperties — Tailwind/CSS-in-JS 금지. 매트릭스는 이모지만, 색 채움 금지 (기존 원칙).
+- 웹 디자인 규칙 (web/CLAUDE.md): system font only · 5단 size 24/16/14/13/12px · 4컬러 `#1a1a1a`/`#666`/`#c44`(점수만)/`#f7f7f8`. 스타일은 `app/app.css` 클래스(BEM-ish) 또는 기존 관례의 inline CSSProperties — Tailwind/CSS-in-JS 금지. 매트릭스는 이모지만, 색 채움 금지 (기존 원칙).
 - 엔진 React 재구현 금지 — 계산은 `globalThis.runBattle`/`runCompat` 만.
 - Worker 는 Supabase 에 write 하지 않는다 (평상시) — 쓰기는 전부 브라우저 supabase-js (RPC 포함).
 - payload·계약에 version 필드 금지.
 - result_payload 계약: `{players:[{slot,name}], pairs:[{a,b,band}], best:{a,b,score}}` — pairs 정렬=순위, band 0~3(0=🟢 천작지합·1=🔵 금슬상화·2=🟠 마합가성·3=🔴 형극난조), 점수는 best.score 만.
 - 서버 에러 계약: AUTH_REQUIRED·NOT_FOUND·NOT_RECRUITING·BAD_PASSWORD·NO_MY_FACE·AGE_NOT_ALLOWED·FULL·ALREADY_JOINED (join 경로).
-- 게이트: `cd react && pnpm typecheck` — **유일한 pre-existing 실패는 contact.tsx 의 WEB3FORMS_ACCESS_KEY 1건** (로컬 typegen stale). 그 외 신규 에러 0. `pnpm build` 성공.
+- 게이트: `cd web && pnpm typecheck` — **유일한 pre-existing 실패는 contact.tsx 의 WEB3FORMS_ACCESS_KEY 1건** (로컬 typegen stale). 그 외 신규 에러 0. `pnpm build` 성공.
 - 배포는 `pnpm build && pnpm run deploy` — **deploy 는 빌드 안 함, build 생략 금지.**
 - 커밋 트레일러: `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`
 
@@ -32,16 +32,16 @@
 | `app/routes/g.$id.tsx` | 재작성 | status 분기·meta·Invite·Showcase(신형)·reveal fallback |
 | `app/components/JoinWizard.tsx` | 수술 | name 스테이지 삭제·PIN/동의·RPC 조인·라이브 로비 |
 | `app/app.css` | 추가 | 신규 클래스 (pledge 배너·PIN 필드 재사용 위주 최소) |
-| docs 5종 | 갱신(T5) | PRD·flutter ARCHITECTURE·react HOW-IT-WORKS·flutter CLAUDE.md·spec §11 정리 |
+| docs 5종 | 갱신(T5) | PRD·flutter ARCHITECTURE·web HOW-IT-WORKS·flutter CLAUDE.md·spec §11 정리 |
 
 ---
 
 ### Task 1: lib 계층 — battle 계약 함수 + runBattle 타이핑
 
 **Files:**
-- Modify: `react/app/lib/join.ts`
-- Modify: `react/app/lib/shared/face_engine.d.ts`
-- Modify: `react/app/lib/supabase.ts` (서버측 fetch 함수)
+- Modify: `web/app/lib/join.ts`
+- Modify: `web/app/lib/shared/face_engine.d.ts`
+- Modify: `web/app/lib/supabase.ts` (서버측 fetch 함수)
 
 **Interfaces:**
 - Consumes: Plan 1 스키마 (teams 새 컬럼·battle_roster·public_battles·RPC 3종), 기존 `getSupabase` 브라우저 클라이언트.
@@ -69,7 +69,7 @@ declare global {
 
 - [ ] **Step 2: join.ts 수술**
 
-`react/app/lib/join.ts` 에서 위 "삭제" 목록의 함수들을 제거하고 다음을 추가 (유지 목록은 무수정):
+`web/app/lib/join.ts` 에서 위 "삭제" 목록의 함수들을 제거하고 다음을 추가 (유지 목록은 무수정):
 
 ```typescript
 // ── Chemistry Battle 계약 (Plan 1 서버) ─────────────────────────────
@@ -298,11 +298,11 @@ export async function fetchBattleSSR(
 
 - [ ] **Step 4: 게이트 + Commit**
 
-Run: `cd react && pnpm typecheck`
+Run: `cd web && pnpm typecheck`
 Expected: contact.tsx 1건 외 신규 에러 0 (추가만 했으므로)
 
 ```bash
-git add react/app/lib/join.ts react/app/lib/shared/face_engine.d.ts react/app/lib/supabase.ts
+git add web/app/lib/join.ts web/app/lib/shared/face_engine.d.ts web/app/lib/supabase.ts
 git commit -m "feat(web): battle lib 계약 — RPC·roster view·Realtime watch·runBattle 타이핑
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
@@ -313,9 +313,9 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 2: g.$id.tsx — status 분기 + 신형 Showcase + reveal fallback
 
 **Files:**
-- Modify: `react/app/routes/g.$id.tsx` (전면 개편 — Invite/ClosedNotice/Showcase 부분)
-- Modify: `react/app/lib/supabase.ts` (구 `fetchTeam` 삭제 — 소비처가 이 파일뿐임을 grep 확인 후)
-- Modify: `react/app/app.css` (신규 클래스 최소 추가)
+- Modify: `web/app/routes/g.$id.tsx` (전면 개편 — Invite/ClosedNotice/Showcase 부분)
+- Modify: `web/app/lib/supabase.ts` (구 `fetchTeam` 삭제 — 소비처가 이 파일뿐임을 grep 확인 후)
+- Modify: `web/app/app.css` (신규 클래스 최소 추가)
 
 **Interfaces:**
 - Consumes: Task 1 의 `fetchBattleSSR`/`BattlePayload`/`computeBattlePayload`/`submitBattleResult`/`fetchBattle`/`fetchBattleRoster`, 기존 `getSupabase`·CTA·OpenBridge.
@@ -543,10 +543,10 @@ function RevealFallback({ data }: { data: ReturnType<typeof useLoaderData<typeof
 - 구 `Showcase`/`ClosedNotice`/`Invite`(멤버 name chips)/`TeamPayload` 타입 삭제. `lib/supabase.ts` 의 구 `fetchTeam`·`TeamShowcase` 타입 삭제 (소비처 grep 으로 이 라우트뿐임을 확인).
 - JoinWizard 신 props (`battle`/`roster`) 는 Task 3 에서 구현 — **이 task 커밋 시점의 typecheck 를 위해**, Task 3 을 같은 브랜치에서 바로 잇는다면 JoinWizard 호출부를 임시로 남기지 말고 **Task 2·3 을 같은 구현자가 연속 수행 후 task 별 커밋** (Task 2 커밋은 JoinWizard 호출부를 신 props 형태로 작성해두고, Task 3 이 JoinWizard 쪽 시그니처를 맞춘 뒤에야 typecheck 가 green — Task 2 커밋 직전 게이트는 `pnpm typecheck 2>&1 | grep -v contact.tsx | grep -c "error TS"` 가 **JoinWizard props 불일치 에러만** 남는지 확인으로 대체).
 
-Run: `cd react && pnpm typecheck` (JoinWizard props 에러 외 신규 0)
+Run: `cd web && pnpm typecheck` (JoinWizard props 에러 외 신규 0)
 
 ```bash
-git add react/app/routes/g.\$id.tsx react/app/lib/supabase.ts react/app/app.css
+git add web/app/routes/g.\$id.tsx web/app/lib/supabase.ts web/app/app.css
 git commit -m "feat(web): /g/:id status 분기 — 신형 쇼케이스·reveal fallback·만료 안내
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
@@ -557,9 +557,9 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 3: JoinWizard 수술 — RPC 조인 + 라이브 로비
 
 **Files:**
-- Modify: `react/app/components/JoinWizard.tsx`
-- Modify: `react/app/lib/join.ts` (구 팀 함수 삭제 — 최종 정리)
-- Modify: `react/app/app.css` (필요 클래스)
+- Modify: `web/app/components/JoinWizard.tsx`
+- Modify: `web/app/lib/join.ts` (구 팀 함수 삭제 — 최종 정리)
+- Modify: `web/app/app.css` (필요 클래스)
 
 **Interfaces:**
 - Consumes: Task 1 lib (joinBattle/fetchBattle/fetchBattleRoster/watchBattle), Task 2 의 신 props 계약 `JoinWizard({ battle, roster, supabaseUrl, supabaseAnonKey, cdnBase, onActive })`.
@@ -573,19 +573,19 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 4. **조인 흐름 교체**: `runSave` 는 saveCapture(my-face upsert)까지 동일하되, 마지막 `joinTeam(...)` 호출을 `joinBattle(sb, battle.id, pin)` 으로. 반환 코드 매핑: `'ok'|'ALREADY_JOINED'` → done, `BAD_PASSWORD` → entry 로 롤백 + 에러 문구 '비밀번호가 일치하지 않습니다', `AGE_NOT_ALLOWED` → '이 방의 연령대에 해당하지 않습니다', `FULL` → '정원이 가득 찼습니다', `NOT_RECRUITING` → '모집이 끝난 방입니다' (+ 새로고침 유도), `NO_MY_FACE` → confirm 단계 유지 + 재시도. reuse 경로(기촬영 my-face)는 카메라 없이 바로 joinBattle.
 5. **done 스테이지 = 라이브 로비**: `watchBattle(sb, battle.id, refetch)` 구독 + 15초 폴링. refetch = `fetchBattle`+`fetchBattleRoster` → roster 를 `join-roster` 클래스로 렌더(닉네임 + 빈 슬롯 `join-slot-empty` '대기 중' × (max−n)), `n / max 명` 카운터, 공약 배너 유지. `battle.status` 가 recruiting 이 아니게 되면 `window.location.reload()` — SSR 분기(Task 2)가 쇼케이스/fallback 을 렌더한다 (웹 카운트다운 연출은 넣지 않는다 — 리로드 한 번이 웹에선 가장 단순·견고). 언마운트 시 `sb.removeChannel(channel)`.
 6. **onShowMatrix/MatrixTable/BAND_EMOJI 삭제** — 부분 결과 미리보기는 배틀 세계에 없음 (결과는 시작 후 쇼케이스가 전담). `fetchMemberBodies` 의존 소멸.
-7. **join.ts 최종 정리**: `isTeamOpen`/`fetchMembership`/`fetchRoster`(구형)/`fetchProgress`/`joinTeam`/`fetchMemberBodies` 삭제. dangling grep: `grep -rn "joinTeam\|fetchMembership\|fetchProgress\|isTeamOpen\|fetchMemberBodies\|matrix_payload\|closed_at" react/app/ && exit 1 || echo CLEAN` (workers/cron.ts 의 closed_at 은 서버 정리용이라 예외 — grep 범위가 app/ 라 안 걸림).
+7. **join.ts 최종 정리**: `isTeamOpen`/`fetchMembership`/`fetchRoster`(구형)/`fetchProgress`/`joinTeam`/`fetchMemberBodies` 삭제. dangling grep: `grep -rn "joinTeam\|fetchMembership\|fetchProgress\|isTeamOpen\|fetchMemberBodies\|matrix_payload\|closed_at" web/app/ && exit 1 || echo CLEAN` (workers/cron.ts 의 closed_at 은 서버 정리용이라 예외 — grep 범위가 app/ 라 안 걸림).
 
 - [ ] **Step 1~7 구현** (위 수술 목록 순서대로 — 각 항목이 곧 스텝)
 
 - [ ] **Step 8: 게이트**
 
-Run: `cd react && pnpm build:shared && pnpm typecheck && pnpm build`
+Run: `cd web && pnpm build:shared && pnpm typecheck && pnpm build`
 Expected: typecheck 는 contact.tsx 1건 외 0 (JoinWizard props 에러 이제 해소) · build 성공
 
 - [ ] **Step 9: Commit**
 
 ```bash
-git add react/app/components/JoinWizard.tsx react/app/lib/join.ts react/app/app.css
+git add web/app/components/JoinWizard.tsx web/app/lib/join.ts web/app/app.css
 git commit -m "feat(web): JoinWizard 배틀 전환 — RPC 조인·PIN·공약 동의·라이브 로비, 이름 슬롯 폐기
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
@@ -597,7 +597,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 **Files:** 없음 (배포 절차)
 
-- [ ] **Step 1: 빌드·배포** — `cd react && pnpm build:shared && pnpm build && pnpm run deploy` (deploy 는 빌드 안 하므로 build 생략 금지)
+- [ ] **Step 1: 빌드·배포** — `cd web && pnpm build:shared && pnpm build && pnpm run deploy` (deploy 는 빌드 안 하므로 build 생략 금지)
 - [ ] **Step 2: 브라우저 스모크 (사람 또는 브라우저 자동화)**
   1. 앱에서 공개방 생성 → `facely.kr/g/<id>` 열기 → 초대장에 n/N·연령대·공약 표시
   2. 웹 카카오 로그인 → (비밀방이면 PIN) → 공약 동의 → 캡처/재사용 → 참가 → 로비에 내 닉네임 등장, 앱 로비에도 실시간 반영
@@ -612,7 +612,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 **Files:**
 - Modify: `PRD.md` — §1.2(케미→케미 배틀 정의)·§3(시나리오: 로비/QR/공약)·§4.1 전면(그룹 생성→배틀 생성·인원 정책→정원 하드리밋·이름 슬롯/직접촬영 폐기 반영)·§5.3(실시간: 폴링 non-goal 해제, Supabase Realtime 채택)·§6(상태 스냅샷 갱신)
 - Modify: `flutter/docs/ARCHITECTURE.md` — §1 케미 화면(배틀 화면 5종)·§3(teamsProvider→battle providers)·§4 케미 원격 경로(서버 우선·RPC·snapshot/payload)·§5 Supabase 표(teams/team_members 새 스키마·RPC·view)
-- Modify: `react/docs/HOW-IT-WORKS.md` — /g 라우트 상태 분기·JoinWizard 배틀 흐름·cron 4종·RLS/column grant/Realtime 발행 요약
+- Modify: `web/docs/HOW-IT-WORKS.md` — /g 라우트 상태 분기·JoinWizard 배틀 흐름·cron 4종·RLS/column grant/Realtime 발행 요약
 - Modify: `flutter/CLAUDE.md` — 용어 규칙(공식 명칭 "케미 배틀")·테스트 수 151→현재값·§SSOT 링크 유지
 - Modify: `KAKAO.md` — 초대 FeedTemplate 카피가 배틀 언어와 일치하는지 확인·갱신
 
@@ -623,7 +623,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 - [ ] **Step 3: Commit**
 
 ```bash
-git add PRD.md flutter/docs/ARCHITECTURE.md react/docs/HOW-IT-WORKS.md flutter/CLAUDE.md KAKAO.md
+git add PRD.md flutter/docs/ARCHITECTURE.md web/docs/HOW-IT-WORKS.md flutter/CLAUDE.md KAKAO.md
 git commit -m "docs: Chemistry Battle 전환 반영 — PRD·ARCHITECTURE·HOW-IT-WORKS·CLAUDE·KAKAO 일괄 현행화
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"

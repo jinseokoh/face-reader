@@ -64,7 +64,7 @@ dependencies:
   google_mobile_ads: ^9.0.0
   qr_flutter: ^4.1.0
 
-  # Shared physiognomy engine (also consumed by react/ via dart compile js).
+  # Shared physiognomy engine (also consumed by web/ via dart compile js).
   face_engine:
     path: ../shared
   sentry: ^9.25.0

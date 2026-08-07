@@ -19,7 +19,7 @@ MediaPipe Face Mesh (468 landmarks · 정면 + 3/4 측면)
 Entry point: `flutter/lib/domain/models/face_analysis.dart::analyzeFaceReading()`.
 
 **코드 위치** — 엔진 계산은 순수 Dart 패키지 `shared/`(`package:face_engine`).
-Flutter 는 path dep, react 는 `dart compile js -O1` 산출물로 같은 엔진 사용.
+Flutter 는 path dep, web 은 `dart compile js -O1` 산출물로 같은 엔진 사용.
 
 | 위치 | 파일 |
 |---|---|
@@ -27,7 +27,7 @@ Flutter 는 path dep, react 는 `dart compile js -O1` 산출물로 같은 엔진
 | `flutter/lib/` | `face_analysis` · `face_metrics`(+lateral) · `life_question_narrative` · `report_assembler` · text_blocks · `face_shape_classifier` |
 
 JS export: `runEngine`(solo) / `runCompat`(궁합) / `runMetrics`(웹 티저).
-빌드 `cd react && pnpm build:shared` (`-O2` 금지 — RTI subtype check 깨짐).
+빌드 `cd web && pnpm build:shared` (`-O2` 금지 — RTI subtype check 깨짐).
 
 ## 2. 26 Frontal + 8 Lateral Metric
 

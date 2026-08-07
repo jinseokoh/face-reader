@@ -13,7 +13,7 @@
 
 ## ⚠️ 출시 전 필수 — 오늘의 관상 필터 3개 켜기
 
-- [ ] `react/app/routes/_index.tsx` 의 `DAILY_FACES` 세 값을 전부 `true` 로 바꾸고
+- [ ] `web/app/routes/_index.tsx` 의 `DAILY_FACES` 세 값을 전부 `true` 로 바꾸고
   `pnpm build && pnpm run deploy`. 현재는 테스트 모드(전부 false = 전 metrics 노출,
   미허용 행은 모자이크). 오픈 모드 = **todayOnly**(KST 오늘 분석만) ·
   **optedOnly**(공개 허용 사용자만) · **myFaceOnly**(내 관상 행만).

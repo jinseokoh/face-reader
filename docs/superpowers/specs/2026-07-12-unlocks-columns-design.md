@@ -27,7 +27,7 @@ create table public.unlocks (
 
 RLS 정책(`unlocks_self_read`/`unlocks_self_delete`)은 그대로.
 
-## 변경 SQL (react/db/migrations/0002)
+## 변경 SQL (web/db/migrations/0002)
 
 1. `pair_key` → `partner_id` rename + `uuid` 타입 캐스팅, `owner_body` → `user_body` rename
 2. `user_alias`, `partner_alias` 컬럼 추가

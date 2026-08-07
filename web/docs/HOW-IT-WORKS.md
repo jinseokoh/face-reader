@@ -88,7 +88,7 @@
 
 **외부 자원**:
 
-- Supabase Postgres + REST — 공유 카드 SSOT `metrics` 테이블 (UUID PK, `body` TEXT(JSON 문자열), `user_id`, `alias`, `is_my_face`, `views`, `created_at`, `updated_at`) + 코인 경제 테이블 `users`/`coins`/`compatibilities`/`ad_rewards` (Flutter ↔ Supabase 직통, Worker 미관여). 익명 분석은 `user_id=null`, 로그인 후 재공유 시 본인 소유로 claim (§5.3). DDL SSOT: `react/db/migrations/0001_baseline.sql`.
+- Supabase Postgres + REST — 공유 카드 SSOT `metrics` 테이블 (UUID PK, `body` TEXT(JSON 문자열), `user_id`, `alias`, `is_my_face`, `views`, `created_at`, `updated_at`) + 코인 경제 테이블 `users`/`coins`/`compatibilities`/`ad_rewards` (Flutter ↔ Supabase 직통, Worker 미관여). 익명 분석은 `user_id=null`, 로그인 후 재공유 시 본인 소유로 claim (§5.3). DDL SSOT: `web/db/migrations/0001_baseline.sql`.
 - App Store / Play Store — bundle ID `com.scienceintegration.facely`
 
 ---
@@ -454,7 +454,7 @@ bucket: facely
 `metrics` 는 이미 운영 중인 테이블 — 별도 `share_card` 신설 X. `metrics` 행은 **한 사람의 관상 측정 데이터만** 담는다 (1 face → 1 metrics row). 궁합·페어링 같은 관계형 메타는 일절 없음 — 궁합은 두 metrics UUID 를 URL 로 묶는 것 뿐 (§4.1 참조). 같은 metrics 행은 N 개 서로 다른 compat 페어에 그대로 참여할 수 있다 (write 0회).
 
 ```sql
--- DDL SSOT: react/db/migrations/0001_baseline.sql (단일 baseline — 마이그레이션 누적 안 함)
+-- DDL SSOT: web/db/migrations/0001_baseline.sql (단일 baseline — 마이그레이션 누적 안 함)
 create table if not exists metrics (
   id          uuid primary key default gen_random_uuid(),  -- 정상 경로는 client 가 명시. default 는 fallback only.
   user_id     uuid references auth.users(id) on delete set null,  -- 익명 분석=null, 로그인 후 claim
@@ -533,7 +533,7 @@ $$ language sql;
 **저장 금지 (절대 body 에 안 들어감)**:
 
 - 사용자 이름·생년월일·landmark 좌표 (정규화된 rawValue 만; 좌표 X)
-- archetype / 점수 / 친밀 챕터 본문 / 갈등 시나리오 본문 — engine 매 load 재계산 (react/CLAUDE.md §5)
+- archetype / 점수 / 친밀 챕터 본문 / 갈등 시나리오 본문 — engine 매 load 재계산 (web/CLAUDE.md §5)
 - **관계형 메타**: `kind`, `partnerUuid`, `pairedWith`, `compat*` 등 — 1인 측정 데이터 외 금지. 페어링은 URL 이 표현 (결제 궁합 스냅샷은 `compatibilities` 테이블이 별도 보존).
 
 Worker SSR 이 `body.metrics` + `lateralMetrics` 만으로 shared engine 을 호출해서 archetype·score 를 매번 산출. 룰 업데이트 시 과거 카드도 새 해석으로 자동 갱신.
@@ -640,11 +640,11 @@ shared/lib/face_engine.dart            ← SSOT (모든 룰·reference·quantile
         │ pnpm build:shared
         │ = dart compile js -O1 ../shared/lib/face_engine.dart -o app/lib/shared/face_engine.js
         ▼
-react/app/lib/shared/face_engine.js    ← build artifact (.gitignore)
+web/app/lib/shared/face_engine.js    ← build artifact (.gitignore)
         │
         │ import (side-effect: globalThis.runEngine / runCompat 등록)
         ▼
-react/app/lib/traits.ts                ← out = JSON.parse(globalThis.runEngine(JSON.stringify(raw)))
+web/app/lib/traits.ts                ← out = JSON.parse(globalThis.runEngine(JSON.stringify(raw)))
         │
         ▼
 share.tsx SSR 렌더링
@@ -658,7 +658,7 @@ Flutter 측은 `pubspec.yaml` 에 `path: ../shared` 의존으로 들고 옴 — 
 
 ## 8. 디렉토리 SSOT
 
-### react/
+### web/
 
 | 경로                                | 역할                                                                                                                                                                                                  |
 | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -701,7 +701,7 @@ DeepFace `/analyze` (`{age, gender, ethnicity}` enum name 정규화 반환) + �
 
 ## 9. 환경 변수 정리
 
-### Worker (`react/wrangler.jsonc` vars + secrets)
+### Worker (`web/wrangler.jsonc` vars + secrets)
 
 | 이름                                          | 종류   | 용도                                                                                                                                            |
 | --------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -742,7 +742,7 @@ DeepFace `/analyze` (`{age, gender, ethnicity}` enum name 정규화 반환) + �
 
 ```
 1. shared/ Dart 룰 변경
-   → cd react && pnpm build:shared
+   → cd web && pnpm build:shared
 2. (필요시) Flutter 빌드 / Worker typecheck
 3. Worker: pnpm run build && pnpm run deploy
 4. Python: cd python && docker compose up -d --build
@@ -756,7 +756,7 @@ R2 lifecycle / Supabase 스키마 변경은 별도 절차 (대시보드 또는 �
 새 머신·새 staging·secret rotation 시:
 
 ```bash
-cd react
+cd web
 pnpm wrangler secret put R2_ACCESS_KEY_ID
 pnpm wrangler secret put R2_SECRET_ACCESS_KEY
 pnpm wrangler secret put FACE_API_SECRET

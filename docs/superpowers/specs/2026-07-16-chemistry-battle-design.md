@@ -38,7 +38,7 @@
 
 ---
 
-## 2. 데이터 모델 (`react/db/migrations/0001_baseline.sql` 직접 개편)
+## 2. 데이터 모델 (`web/db/migrations/0001_baseline.sql` 직접 개편)
 
 출시 전 단일 baseline 직접 수정 원칙 유지. drop-recreate 자유.
 
@@ -144,7 +144,7 @@ revealing  ─ 아무 참가자의 submit_battle_result ─────► compl
 completed / expired ─ closed_at + 30일 ─────────────► cron 실삭제 (기존 정책 유지)
 ```
 
-- `react/workers/cron.ts`: closeStaleTeams → 48h expired 처리로 교체 (cron 은 시작을 수행하지 않음).
+- `web/workers/cron.ts`: closeStaleTeams → 48h expired 처리로 교체 (cron 은 시작을 수행하지 않음).
 - recruiting 중 참가자 나가기 허용(leave_battle), 방장 방 삭제 허용. 시작 후엔 조인·이탈 불가 (명단 고정 — RPC status 가드).
 
 ---
@@ -275,7 +275,7 @@ DESIGN.md 토큰 체계 전면 준수 (신규 색상 금지, SongMyung 은 displ
 
 ---
 
-## 8. 웹 표면 (`react/`)
+## 8. 웹 표면 (`web/`)
 
 | 라우트 | 변경 |
 |---|---|
@@ -311,5 +311,5 @@ DESIGN.md 토큰 체계 전면 준수 (신규 색상 금지, SongMyung 은 displ
 ## 11. 문서 후속 갱신 대상
 
 `flutter/docs/ARCHITECTURE.md`(케미 섹션 전면) · `PRD.md`(§1.2, §3, §4.1, §6.3 폴링 non-goal 해제) ·
-`react/docs/HOW-IT-WORKS.md`(§g 라우트·cron·RLS) · `flutter/CLAUDE.md` 용어(케미 → 케미 배틀) ·
+`web/docs/HOW-IT-WORKS.md`(§g 라우트·cron·RLS) · `flutter/CLAUDE.md` 용어(케미 → 케미 배틀) ·
 `KAKAO.md`(초대 카피).

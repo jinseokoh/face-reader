@@ -4,20 +4,20 @@
 
 **Goal:** 앱 미설치자가 `facely.kr/g/{id}`에서 카카오 로그인 → 슬롯 선택 → 정면 캡처 → 그룹 참여(전원 등록 카운트)까지 완료한다.
 
-**Architecture:** react/ 단독 변경. supabase-js 브라우저 클라이언트(PKCE Kakao OAuth)로 앱과 같은 `auth.users` 계정을 쓰고, 기존 RLS(`team_members_claim_slot`/`insert`)와 presign API로 metrics+썸네일+멤버 행을 쓴다. CameraTeaser를 단계형 JoinWizard로 대체.
+**Architecture:** web/ 단독 변경. supabase-js 브라우저 클라이언트(PKCE Kakao OAuth)로 앱과 같은 `auth.users` 계정을 쓰고, 기존 RLS(`team_members_claim_slot`/`insert`)와 presign API로 metrics+썸네일+멤버 행을 쓴다. CameraTeaser를 단계형 JoinWizard로 대체.
 
 **Tech Stack:** React Router 7 (Cloudflare Workers SSR), @supabase/supabase-js, @mediapipe/tasks-vision, shared face_engine.js (dart→JS)
 
 ## Global Constraints
 
 - 서버 스키마·RLS·Worker API 변경 0. Flutter 변경 0.
-- react 디자인: system font, 5단 size(24/16/14/13/12), 4색(`#1a1a1a`/`#666`/`#c44`/`#f7f7f8`)+흰색. (react/CLAUDE.md)
+- web 디자인: system font, 5단 size(24/16/14/13/12), 4색(`#1a1a1a`/`#666`/`#c44`/`#f7f7f8`)+흰색. (web/CLAUDE.md)
 - body JSON 계약: `{schemaVersion:1, ethnicity:"eastAsian", gender, ageGroup, timestamp, source:"camera", thumbnailKey?, metrics, lateralMetrics:null, faceShape:"oval"}` — 앱 `toBodyJson()`과 동일 키.
 - metrics 행: `{id, user_id, body, alias: nickname, is_my_face: true}` upsert onConflict `id`.
 - team_members 행: `{team_id, metrics_id, name, is_owner:false}` upsert onConflict `team_id,name`.
 - 1 capture = 1 uuid (`crypto.randomUUID()` 한 번, 썸네일 key·metrics.id 공유).
 - disabled 은닉 금지 — 버튼 항상 가시, 미충족 시 인라인 안내.
-- 테스트 인프라 없음(react/) — 검증은 `pnpm typecheck` + `pnpm dev` 스모크 + 실기기.
+- 테스트 인프라 없음(web/) — 검증은 `pnpm typecheck` + `pnpm dev` 스모크 + 실기기.
 - typecheck 기왕 결함 1건(contact.tsx `WEB3FORMS_ACCESS_KEY`)은 무시 — 신규 오류 0 기준.
 - 모든 명령은 `/Users/chuck/Code/face/react` 에서 실행 (cwd가 매 호출 리셋됨).
 
@@ -28,8 +28,8 @@
 ### Task 1: supabase-js 의존성 + `app/lib/auth.ts`
 
 **Files:**
-- Modify: `react/package.json` (pnpm add)
-- Create: `react/app/lib/auth.ts`
+- Modify: `web/package.json` (pnpm add)
+- Create: `web/app/lib/auth.ts`
 
 **Interfaces:**
 - Produces: `getSupabase(url: string, anonKey: string): SupabaseClient` (lazy singleton),
@@ -109,7 +109,7 @@ Expected: 신규 오류 0 (contact.tsx 기왕 1건만).
 - [ ] **Step 4: Commit**
 
 ```bash
-git add react/package.json react/pnpm-lock.yaml react/app/lib/auth.ts
+git add web/package.json web/pnpm-lock.yaml web/app/lib/auth.ts
 git commit -m "feat(web): supabase-js 카카오 OAuth 브라우저 클라이언트"
 ```
 
@@ -118,7 +118,7 @@ git commit -m "feat(web): supabase-js 카카오 OAuth 브라우저 클라이언�
 ### Task 2: `app/lib/join.ts` — 저장 파이프라인
 
 **Files:**
-- Create: `react/app/lib/join.ts`
+- Create: `web/app/lib/join.ts`
 
 **Interfaces:**
 - Consumes: Task 1의 SupabaseClient
@@ -256,7 +256,7 @@ export function dataUrlToBlob(u: string): Blob {
 
 ```bash
 cd /Users/chuck/Code/face/react && pnpm typecheck
-git add react/app/lib/join.ts
+git add web/app/lib/join.ts
 git commit -m "feat(web): 웹 캡처 저장·그룹 합류 파이프라인 (presign→metrics→team_members)"
 ```
 
@@ -265,9 +265,9 @@ git commit -m "feat(web): 웹 캡처 저장·그룹 합류 파이프라인 (pres
 ### Task 3: TeamShowcase 슬롯 상세 + loader config + 초대장 칩
 
 **Files:**
-- Modify: `react/app/lib/supabase.ts` (TeamShowcase.memberNames → members)
-- Modify: `react/app/routes/g.$id.tsx` (loader + meta + Invite)
-- Modify: `react/app/app.css` (초대장 칩 클래스)
+- Modify: `web/app/lib/supabase.ts` (TeamShowcase.memberNames → members)
+- Modify: `web/app/routes/g.$id.tsx` (loader + meta + Invite)
+- Modify: `web/app/app.css` (초대장 칩 클래스)
 
 **Interfaces:**
 - Produces: `TeamShowcase.members: { name: string; joined: boolean; isOwner: boolean }[]`
@@ -360,7 +360,7 @@ CameraTeaser 가 아직 memberNames 를 안 쓰는지 확인 (`team.owner` 만 �
 
 ```bash
 cd /Users/chuck/Code/face/react && pnpm typecheck
-git add react/app/lib/supabase.ts react/app/routes/g.\$id.tsx react/app/app.css
+git add web/app/lib/supabase.ts web/app/routes/g.\$id.tsx web/app/app.css
 git commit -m "feat(web): 초대장 슬롯 등록 현황 + supabase 공개 config 전달"
 ```
 
@@ -369,7 +369,7 @@ git commit -m "feat(web): 초대장 슬롯 등록 현황 + supabase 공개 confi
 ### Task 4: `.join-*` CSS
 
 **Files:**
-- Modify: `react/app/app.css` (Task 3 블록에 이어서)
+- Modify: `web/app/app.css` (Task 3 블록에 이어서)
 
 **Interfaces:**
 - Produces: JoinWizard(Task 5)가 쓰는 클래스: `.join`, `.join-q`, `.join-sub`, `.join-notice`, `.join-chips`, `.join-chip`, `.join-chip--on`, `.join-chip--taken`, `.join-input`, `.join-btn`, `.join-btn--ghost`, `.join-video`, `.join-score`, `.join-badge`
@@ -495,7 +495,7 @@ git commit -m "feat(web): 초대장 슬롯 등록 현황 + supabase 공개 confi
 - [ ] **Step 2: Commit**
 
 ```bash
-git add react/app/app.css
+git add web/app/app.css
 git commit -m "feat(web): 참여 위저드 CSS — 흰 칩 + 항상 가시 버튼 (배경 은닉 폐기)"
 ```
 
@@ -504,9 +504,9 @@ git commit -m "feat(web): 참여 위저드 CSS — 흰 칩 + 항상 가시 버�
 ### Task 5: JoinWizard + 배선 + CameraTeaser 삭제
 
 **Files:**
-- Create: `react/app/components/JoinWizard.tsx`
-- Modify: `react/app/routes/g.$id.tsx` (import·렌더 교체)
-- Delete: `react/app/components/CameraTeaser.tsx`
+- Create: `web/app/components/JoinWizard.tsx`
+- Modify: `web/app/routes/g.$id.tsx` (import·렌더 교체)
+- Delete: `web/app/components/CameraTeaser.tsx`
 
 **Interfaces:**
 - Consumes: Task 1 `getSupabase/loginWithKakao/fetchNickname/cleanAuthParams`, Task 2 `WebCaptureBody/isTeamOpen/saveCapture/joinTeam/dataUrlToBlob`, Task 3 `TeamShowcase.members`, Task 4 CSS
@@ -1230,7 +1230,7 @@ function Stores({
 - [ ] **Step 3: CameraTeaser.tsx 삭제**
 
 ```bash
-git rm react/app/components/CameraTeaser.tsx
+git rm web/app/components/CameraTeaser.tsx
 ```
 
 - [ ] **Step 4: typecheck + dev 스모크**
@@ -1243,7 +1243,7 @@ Expected: 신규 오류 0. face_engine.js 부재 시 `pnpm build:shared` 먼저.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add -A react/app
+git add -A web/app
 git commit -m "feat(web): JoinWizard — 카카오 로그인·슬롯 claim·웹 캡처로 그룹 참여 완결"
 ```
 
@@ -1253,7 +1253,7 @@ git commit -m "feat(web): JoinWizard — 카카오 로그인·슬롯 claim·웹 
 
 **Files:**
 - Modify: `KAKAO.md` (앱 미설치 bullet)
-- Modify: `react/docs/HOW-IT-WORKS.md` (책임 목록 + /g 절)
+- Modify: `web/docs/HOW-IT-WORKS.md` (책임 목록 + /g 절)
 - Modify: `PRD.md` (웹 티저 관련 절)
 
 - [ ] **Step 1: KAKAO.md** — "앱 미설치" bullet 을 웹 참여로 교체:
@@ -1268,7 +1268,7 @@ git commit -m "feat(web): JoinWizard — 카카오 로그인·슬롯 claim·웹 
 
 전제 조건의 "합류자: 앱 설치 + 로그인 + 내 관상" 도 "합류자: 앱 또는 웹(카카오 로그인)" 로 갱신.
 
-- [ ] **Step 2: react/docs/HOW-IT-WORKS.md** — 서두 책임 목록에 5번 추가:
+- [ ] **Step 2: web/docs/HOW-IT-WORKS.md** — 서두 책임 목록에 5번 추가:
 
 ```
 5. **웹 참여** (`/g/:id` client) — 미설치 합류자가 브라우저에서 카카오 로그인
@@ -1283,7 +1283,7 @@ git commit -m "feat(web): JoinWizard — 카카오 로그인·슬롯 claim·웹 
 
 ```bash
 cd /Users/chuck/Code/face/react && pnpm typecheck && pnpm build:shared && pnpm deploy
-git add KAKAO.md react/docs/HOW-IT-WORKS.md PRD.md
+git add KAKAO.md web/docs/HOW-IT-WORKS.md PRD.md
 git commit -m "docs: 웹 풀 참여 반영 (KAKAO/HOW-IT-WORKS/PRD)"
 git push
 ```

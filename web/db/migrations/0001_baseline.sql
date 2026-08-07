@@ -41,12 +41,12 @@
 --   • grants    : RPC 권한 + 테이블/시퀀스 (§11-1)
 --
 -- SSOT for application contract:
---   • Worker  : react/app/lib/supabase.ts (fetchMetrics / incrementMetricsViews)
---               react/app/routes/api.r2.presign.ts
+--   • Worker  : web/app/lib/supabase.ts (fetchMetrics / incrementMetricsViews)
+--               web/app/routes/api.r2.presign.ts
 --   • Flutter : flutter/lib/data/services/{supabase_service, auth_service,
 --               wallet_service, compat_unlock_service, ad_service}.dart
 --
--- 아키텍처 문서: react/docs/HOW-IT-WORKS.md
+-- 아키텍처 문서: web/docs/HOW-IT-WORKS.md
 --
 -- ============================================================================
 
@@ -1691,7 +1691,7 @@ grant execute on function public.claim_daily_face_bonus() to authenticated;
 -- 용도일 뿐 노출 범위를 넓히지 않는다. id 는 반환하지 않는다 (/r/{id} 비공개).
 -- "오늘" 판정은 updated_at (재촬영 upsert 가 touch trigger 로 갱신) KST 기준.
 -- 세 filter 는 launch 전 테스트용 완화 스위치 — Worker 쪽 상수로 켜고 끈다
--- (react/app/routes/_index.tsx 의 DAILY_FACES). 오픈 시 전부 true.
+-- (web/app/routes/_index.tsx 의 DAILY_FACES). 오픈 시 전부 true.
 -- opted = "이 행을 원본으로 노출해도 되는가" — 소유자의 허용 **그리고**
 -- my-face 행일 것. 소유자 단위로만 판정하면 opt-in 한 사용자가 앨범으로
 -- 분석한 타인 얼굴(비 my-face 행)까지 풀리는 사고가 난다 (2026-08-01 실사고

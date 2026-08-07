@@ -53,7 +53,7 @@
 - [ ] 2기기 시나리오 통과: A폰 매칭 생성 → 카톡 초대 → B폰 조인 → 정원 충족 자동 시작 → `/g/{id}` 웹 쇼케이스
 - [ ] 현장 시나리오 통과: 매칭 생성 → 상세 페이지 QR 로 셀프 조인 → 정원 충족 자동 시작 → 매트릭스(🏆 무료·내 행 고정) → 1🪙 unlock → 상세
 - [ ] 웹 참여 실기기 통과: 카톡 인앱 → 외부 브라우저 탈출 → 카카오 로그인 → 카메라 → 조인 완료 → 설치 후 rehydrate 복원
-- [ ] 48h 자동 종료 + 24h revealing 안전망 + 30일 purge 서버 cron 동작 (방치 방이 영원히 열려 있지 않음) — 구현·배포됨(`react/workers/cron.ts`), 실동작 확인 남음
+- [ ] 48h 자동 종료 + 24h revealing 안전망 + 30일 purge 서버 cron 동작 (방치 방이 영원히 열려 있지 않음) — 구현·배포됨(`web/workers/cron.ts`), 실동작 확인 남음
 - [ ] Android 프로덕션 출시 → iOS 재제출 패키지 제출
 
 ---
@@ -260,7 +260,7 @@
 - 웹 공개 뷰는 이름 + 밴드만 기본, 썸네일은 방장 옵트인.
 - 링크 read = UUID 아는 사람(링크 공유 모델) — 유출 시 그룹명·멤버 이름 노출됨을 인지한 설계.
 
-**데이터 수명주기 (worker cron `react/workers/cron.ts`)** — 로그인 rehydrate(관상·궁합 복원)과 한 쌍. 케미 그룹은 서버 우선이라 로그인만 하면 `team_members` 조회로 즉시 뜬다 — 별도 복원 로직이 없다.
+**데이터 수명주기 (worker cron `web/workers/cron.ts`)** — 로그인 rehydrate(관상·궁합 복원)과 한 쌍. 케미 그룹은 서버 우선이라 로그인만 하면 `team_members` 조회로 즉시 뜬다 — 별도 복원 로직이 없다.
 
 - **탈퇴** (`/api/account/delete`): 본인 metrics 전부 hard delete + R2 썸네일 삭제 + 모집 중(open, `closed_at is null`) teams 삭제. metrics FK 는 `on delete cascade` — endpoint 우회 경로(관리 콘솔 등)에서도 고아 row 가 남지 않는 안전망.
 - **90일 미활동 anon metrics**: `user_id IS NULL` + `updated_at < 90일` row 를 매일 cron(`cleanupStaleMetrics`)이 R2 썸네일과 함께 삭제. 공유 링크 조회가 `updated_at` 을 touch 하므로 아직 보는 카드는 생존. 로그인 유저 소유 row 는 cron 대상 아님 (내 관상 백업 보호 — 삭제는 탈퇴만).
@@ -279,11 +279,11 @@
 
 ```
 shared/ (face_engine, 순수 Dart SSOT) ── path dep ──▶ flutter/ (앱 셸)
-        └── dart compile js -O1 ──▶ react/ (facely.kr Workers — share 카드 SSR + /g 초대장·쇼케이스·웹 티저)
+        └── dart compile js -O1 ──▶ web/ (facely.kr Workers — share 카드 SSR + /g 초대장·쇼케이스·웹 티저)
 python/ (DeepFace FastAPI — 성별·연령·인종 추정)     Supabase (metrics·coins·unlocks·teams·team_members·team_matches·team_messages)
 ```
 
-- 궁합·케미 계산은 웹도 같은 shared 엔진 — react 는 `runCompat`/`runTeam` 으로 호출한다. 렌더는 `result_payload` 가 있으면 그대로, 없으면 즉석 계산 후 backfill.
+- 궁합·케미 계산은 웹도 같은 shared 엔진 — web 은 `runCompat`/`runTeam` 으로 호출한다. 렌더는 `result_payload` 가 있으면 그대로, 없으면 즉석 계산 후 backfill.
 - JS export 는 `runEngine` / `runCompat` / `runMetrics` / `runTeam` 4개.
 - **실시간 = Supabase Realtime** — 케미 그룹 상세 페이지는 `teams`(UPDATE) + `team_members`(INSERT/DELETE) `postgres_changes` 구독 + 10초(앱)/15초(웹) 백업 폴링을 상시 병행한다(이탈 반영은 DELETE 필터 매칭 한계로 폴링이 커버, 백그라운드 push 알림은 범위 외). 매칭 성사(`team_matches` UPDATE)·인앱 채팅(`team_messages` INSERT)도 같은 Realtime — 쌍 외 수신은 RLS 가 차단.
 

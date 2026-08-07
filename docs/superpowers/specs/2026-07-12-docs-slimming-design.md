@@ -1,4 +1,4 @@
-# 문서 경량화 (react 제외) — 설계
+# 문서 경량화 (web 제외) — 설계
 
 2026-07-12 승인. 목표: 문서를 "현재 로직의 핵심"만 남기고 감축.
 
@@ -13,7 +13,7 @@
 - **포함**: flutter/docs 3종(HOW-IT-WORKS·ARCHITECTURE·DESIGN), PRD.md,
   flutter/README.md, python/README.md, tools/face_shape_ml/README.md,
   RECALIBRATION-metrics-spec.md, KAKAO.md, shared/README.md
-- **제외**: react/* 전체, CLAUDE.md 2종(작업 규칙 파일 — 정보 문서 아님)
+- **제외**: web/* 전체, CLAUDE.md 2종(작업 규칙 파일 — 정보 문서 아님)
 - **로드맵 문서(PRD·flutter/README)**: 계획이 본체지만 규칙 3에 따라 계획도 삭제.
   PRD 는 "현재 제품이 무엇인가" 스펙만 남김
 - **참조 표는 예외**: metric·node·attribute·토큰·레시피·스키마 표는 보존.

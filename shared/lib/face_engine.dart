@@ -1,8 +1,8 @@
 /// face_engine — single entry point for the shared physiognomy + compat engine.
 ///
-/// Compile (run from react/ via `pnpm build:shared`):
+/// Compile (run from web/ via `pnpm build:shared`):
 ///   dart compile js -O1 lib/face_engine.dart
-///     -o ../react/app/lib/shared/face_engine.js
+///     -o ../web/app/lib/shared/face_engine.js
 ///
 /// **`-O1` 강제** — `-O2` 의 type elimination + class minification 이 vite/rollup
 /// ESM 번들 + workerd 실행 단계에서 RTI subtype check 깨뜨린다.

@@ -9,7 +9,7 @@ import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart' hide Gender;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
-/// `react/` share host (facely.kr) 와 1:1 계약 — UUID 기반, Worker 미경유.
+/// `web/` share host (facely.kr) 와 1:1 계약 — UUID 기반, Worker 미경유.
 ///
 /// publishSolo / publishCompat:
 ///   1) 해당 report 의 supabaseId 보장 (없으면 SupabaseService.saveMetrics 로 생성)
