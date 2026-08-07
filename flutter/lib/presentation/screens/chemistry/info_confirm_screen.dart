@@ -66,7 +66,7 @@ const _kEstimateBusyMessage = '너무 요청이 몰려 추정을 할 수 없습�
 const _kEstimateFailedMessage = '서버 오류로 인해 추정에 실패했습니다. 직접 선택해주세요.';
 
 /// 캡처 프레임이 없어 추정을 시도조차 못 한 경우.
-const _kEstimateNoImageMessage = '이미지를 전달 받지 못했습니다. 직접 선택해주세요.';
+const _kEstimateNoImageMessage = '이미지를 전달 받지 못했습니다. 다시 시도해주세요.';
 
 class _InfoConfirmScreenState
     extends ConsumerState<InfoConfirmScreen> {
