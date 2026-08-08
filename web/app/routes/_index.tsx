@@ -67,6 +67,10 @@ export function meta(_: Route.MetaArgs) {
     { name: 'twitter:title', content: title },
     { name: 'twitter:description', content: description },
     { name: 'twitter:image', content: ogImage },
+    // canonical — http/https 두 주소가 같은 내용을 서빙해 Google 이 서로 다른
+    // URL 로 세는 것을 막는다 (GSC 에 http://facely.kr/ 와 https://facely.kr/ 가
+    // 둘 다 잡혀 있다). sitemap.xml 의 <loc> 과 정확히 같은 형태로 적는다.
+    { tagName: 'link', rel: 'canonical', href: 'https://facely.kr/' },
   ]
 }
 

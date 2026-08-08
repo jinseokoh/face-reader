@@ -30,6 +30,9 @@ export function meta(_: Route.MetaArgs) {
       name: 'description',
       content: '관상은 과학이다 계정 및 분석 데이터 삭제 요청 폼',
     },
+    // 페이지마다 자기 URL 이어야 한다 — 전부 '/' 로 적으면 이 페이지가 랜딩의
+    // 중복으로 취급돼 오히려 색인에서 빠진다. sitemap.xml 의 <loc> 과 일치.
+    { tagName: 'link', rel: 'canonical', href: 'https://facely.kr/contact' },
   ]
 }
 

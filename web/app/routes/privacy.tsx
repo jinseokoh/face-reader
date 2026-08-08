@@ -5,6 +5,7 @@ export function meta(_: Route.MetaArgs) {
   return [
     { title: '관상은 과학이다 — 개인정보처리방침' },
     { name: 'description', content: '관상은 과학이다 개인정보처리방침' },
+    { tagName: 'link', rel: 'canonical', href: 'https://facely.kr/privacy' },
   ]
 }
 

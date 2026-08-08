@@ -5,6 +5,7 @@ export function meta(_: Route.MetaArgs) {
   return [
     { title: '관상은 과학이다 — 이용약관' },
     { name: 'description', content: '관상은 과학이다 서비스 이용약관' },
+    { tagName: 'link', rel: 'canonical', href: 'https://facely.kr/terms' },
   ]
 }
 
