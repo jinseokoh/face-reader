@@ -5,7 +5,11 @@ services:
     container_name: face-meta
     restart: unless-stopped
     ports:
-      - '8000:8000'
+      # 루프백 바인딩. 호스트 IP 를 생략하면 Docker 가 0.0.0.0 을 붙여 LAN 의
+      # 모든 기기가 Cloudflare 를 우회해 직접 닿는다 — 엣지의 WAF·레이트리밋이
+      # 무의미해진다. 유일한 인바운드 경로는 같은 호스트의 cloudflared 이며
+      # ingress 가 meta.facely.kr → http://localhost:8000 으로 넘긴다.
+      - '127.0.0.1:8000:8000'
     environment:
       - LOG_LEVEL=INFO
       - MAX_DOWNLOAD_MB=10
