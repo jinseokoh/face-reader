@@ -23,9 +23,20 @@ services:
       - R2_BUCKET_NAME=${R2_BUCKET_NAME}
       - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
       - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
+    volumes:
+      # DeepFace 가중치(약 1.6GB)를 컨테이너 밖에 둔다. 컨테이너 레이어에 두면
+      # `docker compose up` 이 컨테이너를 recreate 할 때마다 통째로 다시
+      # 받는다 — 실측 3분간 502 였다. DEEPFACE_HOME 은 Dockerfile 이 정한다.
+      - face-meta-models:/app/.deepface
     healthcheck:
       test: ['CMD', 'curl', '-fsS', 'http://localhost:8000/health']
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 60s
+      # 첫 기동은 가중치를 받느라 오래 걸린다(실측 약 3분). 볼륨이 붙은 뒤로는
+      # 재기동이 빠르지만, 볼륨이 비어 있는 최초 1회를 견딜 만큼은 줘야
+      # 컨테이너가 unhealthy 로 잘못 표시되지 않는다.
+      start_period: 300s
+
+volumes:
+  face-meta-models:
