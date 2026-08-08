@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - 'refine/**'
+      # face_engine.js 는 refine/ 안에 있지만 gitignore 되고 shared/ 의 Dart
+      # 소스에서 생성된다. Dart 를 고치면 refine/ 은 안 바뀌므로 여기도 본다.
+      - 'shared/**'
       - '.github/workflows/console-deploy.yml'
   workflow_dispatch:
 
@@ -36,9 +39,21 @@ jobs:
         with:
           package_json_file: refine/package.json
 
+      # web 과 마찬가지로 src/lib/shared/face_engine.js 가 gitignore 되어 리포에
+      # 없다. src/lib/share-engine.ts 가 이걸 import 하므로 없으면 rollup 이
+      # 모듈을 못 찾아 빌드가 깨진다. 출력 경로만 web 과 다르고 생성 방법은 같다.
+      - name: Setup Dart
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: '3.12.2'
+
       - name: Install dependencies
         working-directory: refine
         run: pnpm install --frozen-lockfile
+
+      - name: Compile shared Dart engine
+        working-directory: refine
+        run: pnpm build:shared
 
       # Vite 는 VITE_* 를 빌드 시점에 번들로 인라인한다. 러너에는 .env 가 없으므로
       # 여기서 주입하지 않으면 값이 빈 문자열로 박혀 콘솔이 Supabase 에 붙지 못한다.
