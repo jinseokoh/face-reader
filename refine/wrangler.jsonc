@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "facely-console",
+  // 개인 계정(jinseokoh@hotmail.com) 고정. web/wrangler.jsonc 와 같은 이유다 —
+  // 명시하지 않으면 wrangler 가 로그인된 토큰이 보는 계정을 암묵적으로 골라,
+  // 다른 계정으로 인증된 상태에서 배포하면 엉뚱한 곳에 워커가 새로 생긴다.
+  "account_id": "ca1ff6eccc34cde965e29dd59de4e1ee",
+  "compatibility_date": "2026-04-26",
+
+  // 서버 코드가 없다. Vite 가 만든 정적 SPA 를 그대로 서빙하는 것이 전부라
+  // "main" 을 두지 않는다.
+  "assets": {
+    "directory": "./dist",
+    // SPA 라 /users, /orders 같은 경로에 해당하는 파일이 없다. 이 값이 없으면
+    // 새로고침이나 링크 직접 진입이 전부 404 가 된다 — index.html 을 돌려주고
+    // 라우팅은 브라우저의 라우터가 하도록 맡긴다.
+    "not_found_handling": "single-page-application"
+  },
+
+  "observability": { "enabled": true },
+
+  "routes": [
+    {
+      "pattern": "console.facely.kr",
+      "custom_domain": true
+    }
+  ]
+}

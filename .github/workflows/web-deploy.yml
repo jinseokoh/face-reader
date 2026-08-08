@@ -1,0 +1,58 @@
+name: Deploy Web to Cloudflare Workers
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
+      # face_engine.js 는 web/ 안에 있지만 gitignore 되고 shared/ 의 Dart
+      # 소스에서 생성된다. Dart 를 고치면 web/ 은 안 바뀌므로 여기도 본다.
+      - 'shared/**'
+      - '.github/workflows/web-deploy.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Build and Deploy facely web
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      # web/app/lib/shared/face_engine.js 는 gitignore 되어 리포에 없다.
+      # 없으면 app/lib/traits.ts 의 import 가 해결되지 않아 빌드가 실패한다.
+      # 따라서 Dart 로 먼저 생성해야 한다 (shared/pubspec.yaml: sdk ^3.5.0).
+      - name: Setup Dart
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: '3.12.2'
+
+      - name: Install web dependencies
+        working-directory: web
+        run: pnpm install --frozen-lockfile
+
+      - name: Compile shared Dart engine
+        working-directory: web
+        run: pnpm build:shared
+
+      - name: Build web
+        working-directory: web
+        run: pnpm build
+
+      # wrangler.jsonc 에 account_id 가 박혀 있어 토큰이 다른 계정이면
+      # 조용히 엉뚱한 곳에 배포되지 않고 인증 에러로 실패한다.
+      - name: Deploy to Cloudflare Workers
+        working-directory: web
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: pnpm wrangler deploy
