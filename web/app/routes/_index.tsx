@@ -20,13 +20,13 @@ const DELAY_BLUR_VARIANTS: Variants = {
 
 /**
  * 오늘의 관상 그리드 필터 — 출시 전 테스트 스위치 (baseline §14 daily_faces).
- * 지금은 전부 완화(모든 metrics 노출). 오픈 시 세 값 모두 true 로:
  *   todayOnly  — KST 오늘 분석(updated_at)만
  *   optedOnly  — 설정 > 오늘의 관상 공개 를 켠 사용자만
  *   myFaceOnly — 내 관상(my-face) 행만
+ * 오픈 시 나머지 두 값도 true 로.
  */
 const DAILY_FACES = {
-  todayOnly: false,
+  todayOnly: true,
   optedOnly: false,
   myFaceOnly: false,
   limit: 60,
