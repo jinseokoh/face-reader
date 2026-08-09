@@ -41,6 +41,10 @@ crash.*.log
 *.fb-admin-key.json
 .sentryclirc
 
+# ===== Cloudflare Workers =====
+# 로컬 dev 세션 상태와 D1·KV·R2 시뮬레이션 데이터가 들어간다. 머신 종속.
+.wrangler/
+
 # ===== Node.js =====
 node_modules/
 dist/
