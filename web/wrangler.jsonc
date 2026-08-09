@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "facely",
+  "name": "facely-web",
   // 개인 계정(jinseokoh@hotmail.com) 고정. 명시하지 않으면 wrangler 가
   // 로그인된 토큰이 보는 계정을 암묵적으로 골라, 회사 계정으로 로그인된
   // 상태에서 deploy 하면 엉뚱한 계정에 `facely` 워커가 새로 생긴다.
