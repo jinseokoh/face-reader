@@ -1,4 +1,3 @@
-import { RefineThemes } from "@refinedev/antd";
 import { ConfigProvider, theme } from "antd";
 import {
   type PropsWithChildren,
@@ -51,9 +50,10 @@ export const ColorModeContextProvider: React.FC<PropsWithChildren> = ({
       }}
     >
       <ConfigProvider
-        // you can change the theme colors here. example: ...RefineThemes.Magenta,
+        // colorPrimary 는 Ps 앱 아이콘의 글리프 파랑(#3F96F3). 로그인 버튼을
+        // 포함한 antd primary 버튼 전체가 이 값을 쓴다.
         theme={{
-          ...RefineThemes.Blue,
+          token: { colorPrimary: "#3F96F3" },
           algorithm: mode === "light" ? defaultAlgorithm : darkAlgorithm,
         }}
       >

@@ -3,7 +3,6 @@ import { DevtoolsPanel, DevtoolsProvider } from '@refinedev/devtools'
 import { RefineKbar, RefineKbarProvider } from '@refinedev/kbar'
 
 import {
-    AuthPage,
     ErrorComponent,
     ThemedLayout,
     ThemedSider,
@@ -37,6 +36,7 @@ import { AdImageCreate, AdImageList } from './pages/ad-images'
 import { AdVideoCreate, AdVideoList } from './pages/ad-videos'
 import { CoinList } from './pages/coins'
 import { DashboardPage } from './pages/dashboard'
+import { LoginPage } from './pages/login'
 import { MetricList, MetricShow } from './pages/metrics'
 import { ReportList, ReportShow } from './pages/reports'
 import { SystemPage } from './pages/system'
@@ -194,21 +194,7 @@ function App() {
                       </Authenticated>
                     }
                   >
-                    <Route
-                      path="/login"
-                      element={
-                        <AuthPage
-                          type="login"
-                          title="Facely Console"
-                          formProps={{
-                            initialValues: {},
-                          }}
-                          providers={[]}
-                          registerLink={false}
-                          forgotPasswordLink={false}
-                        />
-                      }
-                    />
+                    <Route path="/login" element={<LoginPage />} />
                   </Route>
                 </Routes>
 
