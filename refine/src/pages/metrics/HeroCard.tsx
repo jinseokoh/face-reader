@@ -139,7 +139,9 @@ function SubScore({ label, value }: { label: string; value: number }) {
 }
 
 function portraitFor(gender: string): string {
-  return gender === "female" ? "/female.png" : "/male.png";
+  return gender === "female"
+    ? "https://cdn.facely.kr/assets/female.png"
+    : "https://cdn.facely.kr/assets/male.png";
 }
 
 function elementKo(e: string): string {

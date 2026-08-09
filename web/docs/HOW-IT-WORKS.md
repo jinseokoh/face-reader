@@ -684,7 +684,7 @@ Flutter 측은 `pubspec.yaml` 에 `path: ../shared` 의존으로 들고 옴 — 
 > | `app/components/ShareCard.tsx` | 카드 UI |
 > | `app/components/CTA.tsx` | 1.5s deep link 시도 + 스토어 fallback |
 > | `app/types/env.d.ts` | secret 타입 augmentation (cf-typegen 자동 보완 전 사용) |
-> | `public/{male,female}.png` | 카드 portrait fallback (성별만 보고 swap) |
+> | `cdn.facely.kr/assets/{male,female}.png` | 카드 portrait fallback (성별만 보고 swap) |
 > | `public/logo.png` | OG static fallback (1200×630) |
 > | `public/.well-known/{aasa,assetlinks}` | prod 직전 실값 |
 > | `wrangler.jsonc` | env vars + assets binding + routes |

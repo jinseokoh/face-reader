@@ -21,7 +21,7 @@ function statusTag(t: Team) {
     case "revealing":
       return <Tag color="blue">발표 중</Tag>;
     case "completed":
-      return <Tag color="blue">완료</Tag>;
+      return <Tag color="blue">구성완료</Tag>;
     default:
       return <Tag>인원 미달 종료</Tag>;
   }

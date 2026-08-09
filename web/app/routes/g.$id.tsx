@@ -226,7 +226,7 @@ function TeamInvite({
       {rosterChipLabel(r)}
     </span>
   );
-  // match 방 빈자리는 성별 아이콘(public/male.png·female.png), all 방은 텍스트.
+  // match 방 빈자리는 성별 아이콘(CDN assets/male.png·female.png), all 방은 텍스트.
   const waitChips = (count: number, keyPrefix: string, iconSrc?: string) =>
     Array.from({ length: count }).map((_, i) => (
       <span
@@ -265,7 +265,7 @@ function TeamInvite({
             {waitChips(
               remainingGenderSlots(roster, team.maxPlayers, "male"),
               "wait-m",
-              "/male.png",
+              "https://cdn.facely.kr/assets/male.png",
             )}
           </div>
           <div className="invite-col">
@@ -274,7 +274,7 @@ function TeamInvite({
             {waitChips(
               remainingGenderSlots(roster, team.maxPlayers, "female"),
               "wait-f",
-              "/female.png",
+              "https://cdn.facely.kr/assets/female.png",
             )}
           </div>
         </div>

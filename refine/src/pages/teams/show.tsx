@@ -32,7 +32,7 @@ function statusTag(t: Team) {
     case "revealing":
       return <Tag color="blue">발표 중</Tag>;
     case "completed":
-      return <Tag color="blue">완료</Tag>;
+      return <Tag color="blue">구성완료</Tag>;
     default:
       return <Tag>인원 미달 종료</Tag>;
   }
@@ -379,7 +379,7 @@ export const TeamShow = () => {
             description={
               team.status === "expired"
                 ? "인원이 모이지 않아 종료된 그룹입니다 — 결과표가 만들어지지 않습니다."
-                : "시작된 그룹이지만 result_payload 가 아직 없습니다 — 참가자가 결과 화면을 열면 기록됩니다."
+                : "멤버 구성완료 그룹이지만 result_payload 가 아직 없습니다 — 참가자가 결과 화면을 열면 기록됩니다."
             }
           />
         ) : null}

@@ -104,8 +104,8 @@ export interface RenderedShare {
   /// engine 의 archetype `portraitUrl` 로 fallback.
   soloThumbUrl?: string;
   /// compat 전용 — a/b 양쪽의 R2 thumbnail 절대 URL.
-  /// thumbnailKey 가 비어있으면 gender stock png (`/female.png` / `/male.png`)
-  /// 로 fallback.
+  /// thumbnailKey 가 비어있으면 CDN gender stock png
+  /// (`/assets/female.png` / `/assets/male.png`) 로 fallback.
   compatAThumbUrl?: string;
   compatBThumbUrl?: string;
 }

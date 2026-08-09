@@ -60,14 +60,16 @@ function ogImageFor(row: MetricsRow, ctx: RenderInput): string {
 }
 
 /// compat 카드의 두 인물 thumbnail 용 — R2 thumbnailKey 가 있으면 직통,
-/// 없으면 gender stock png (`/female.png` / `/male.png`) fallback.
+/// 없으면 CDN gender stock png (`/assets/female.png` / `/assets/male.png`) fallback.
 function compatThumbUrlFor(row: MetricsRow, ctx: RenderInput): string {
   const key = (row.raw as unknown as Record<string, unknown>).thumbnailKey;
   if (typeof key === "string" && key.length > 0 && ctx.cdnBase) {
     return `${ctx.cdnBase.replace(/\/$/, "")}/${key}`;
   }
   const gender = row.raw.gender;
-  return `${ctx.origin}${gender === "female" ? "/female.png" : "/male.png"}`;
+  return gender === "female"
+    ? "https://cdn.facely.kr/assets/female.png"
+    : "https://cdn.facely.kr/assets/male.png";
 }
 
 /// solo 카드의 사용자 thumbnail — 있으면 R2 직통, 없으면 undefined.
