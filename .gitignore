@@ -184,6 +184,9 @@ tools/face_shape_ml/datasets/
 .continue/
 .codeium/
 .windsurfrules
+# 에이전트 실행 흔적(task brief·report·review diff). 설계 문서는 여기가
+# 아니라 docs/superpowers/ 에 있고 그쪽은 계속 추적한다.
+.superpowers/
 
 # ===== Local-only scratch =====
 *.bak
