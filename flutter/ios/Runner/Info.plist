@@ -74,7 +74,7 @@
 		<!-- AdMob iOS app ID (실 앱 ID). 광고 유닛 ID 는 .env 의
 		     ADMOB_REWARDED_UNIT_ID_IOS (slash 형식) 로 별도 관리. -->
 		<key>GADApplicationIdentifier</key>
-		<string>ca-app-pub-6207520648206097~9925492444</string>
+		<string>ca-app-pub-6207520648206097~4813960474</string>
 		<key>SKAdNetworkItems</key>
 		<array>
 			<dict>

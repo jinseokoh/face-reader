@@ -32,9 +32,12 @@
     // 이곳에서 제외한 7개 비공개 Secrets 는 아래 명령으로 확인 가능 
     // `pnpm wrangler secret list`
     "WEBAPP_BASE": "https://facely.kr",
+    // ⚠️ iOS 앱 레코드가 MeSo(id6478495062)로 이관 중이다. 이 URL 은 MeSo
+    // 업데이트가 승인되어 라이브가 된 직후에 `id6478495062` 로 바꾼다.
+    // 지금 바꾸면 공유 링크를 연 iOS 사용자가 서버 없는 구 MeSo 를 설치하게 된다.
     "APP_STORE_URL": "https://apps.apple.com/app/id6776864670",
     "PLAY_STORE_URL": "https://play.google.com/store/apps/details?id=com.scienceintegration.facely",
-    "APP_BUNDLE_ID_IOS": "com.scienceintegration.facely",
+    "APP_BUNDLE_ID_IOS": "com.scienceintegration.meetsocrates",
     "APP_BUNDLE_ID_ANDROID": "com.scienceintegration.facely",
     "R2_ACCOUNT_ID": "ca1ff6eccc34cde965e29dd59de4e1ee",
     "R2_BUCKET_NAME": "facely",
