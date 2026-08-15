@@ -128,8 +128,8 @@ void main() {
           _buildReport(gender: Gender.male, age: AgeGroup.thirties);
       final full = assembleLifeQuestions(report);
 
-      // v3 섹션: 재능·건강·재물·대인·연애·관능도·조언 = 7.
-      // 바람기 섹션은 연애운 Shadow 의 1-line 특징으로 통합됨.
+      // 섹션: 재능·건강·재력·대인관계·연애·관능도·조언 = 7.
+      // 관능도 제목은 iOS 에서 '활력'. 테스트는 host 실행이라 '관능도'.
       expect(_countSections(full), 7,
           reason: '30대 이상은 관능도 포함 7개 섹션');
       expect(full.contains('## 바람기'), isFalse,
@@ -149,10 +149,10 @@ void main() {
       final full = assembleLifeQuestions(report);
 
       expect(_countSections(full), 6,
-          reason: '20대는 관능도·바람기 모두 제외, 연애운 안에서 바람기 한 줄 평 처리');
+          reason: '20대는 관능도 섹션 제외');
       expect(full.contains('## 바람기'), isFalse);
       expect(full.contains('## 관능도'), isFalse);
-      expect(full.contains('## 연애운'), isTrue);
+      expect(full.contains('## 연애'), isTrue);
     });
 
     test('10대: 관능도 제외 6개 섹션', () {

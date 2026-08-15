@@ -1,9 +1,12 @@
 library;
 
+import 'dart:io';
+
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/attribute.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
+import 'package:face_engine/domain/services/attribute_normalize.dart';
 import 'package:face_engine/domain/services/yin_yang.dart';
 
 /// v2 코퍼스. part 이므로 `_Frag`·`_Features`·`_BeatPool` 등 private 타입을
@@ -1805,17 +1808,18 @@ typedef _SectionDef = ({
 
 final List<_SectionDef> _v1Sections = [
   (title: '타고난 재능', salt: 10, pools: (f) => _talentBeats, when: null),
-  (title: '건강과 수명', salt: 70, pools: (f) => _healthBeats, when: null),
+  (title: '건강', salt: 70, pools: (f) => _healthBeats, when: null),
   (title: '재력', salt: 20, pools: (f) => _wealthBeats, when: null),
   (title: '대인관계', salt: 30, pools: (f) => _socialBeats, when: null),
   (
-    title: '연애운',
+    title: '연애',
     salt: 40,
     pools: (f) => f.isMale ? _romanceBeatsMale : _romanceBeatsFemale,
     when: null,
   ),
   (
-    title: '관능도',
+    // iOS 만 '활력'. Android 는 현행 유지.
+    title: Platform.isIOS ? '활력' : '관능도',
     salt: 60,
     pools: (f) => f.isMale ? _sensualBeatsMale : _sensualBeatsFemale,
     when: (f) => f.age.isOver30,
@@ -1924,6 +1928,11 @@ _Features _extractFeatures(FaceReadingReport r) {
   final scores = <Attribute, double>{
     for (final e in r.attributes.entries) e.key: e.value.normalizedScore,
   };
+  final percentiles = <Attribute, double>{
+    for (final e in r.attributes.entries)
+      e.key: attributePercentile(
+          e.value.rawTotal, e.key, r.gender, r.faceShape),
+  };
   final sorted = scores.entries.toList()
     ..sort((a, b) => b.value.compareTo(a.value));
   final top = sorted.first.key;
@@ -1973,6 +1982,7 @@ _Features _extractFeatures(FaceReadingReport r) {
     bottom: bottom,
     bands: bands,
     scores: scores,
+    percentiles: percentiles,
     gender: r.gender,
     age: r.ageGroup,
     firedRules: firedRules,
@@ -2098,6 +2108,12 @@ String _resolveText(String text, _Features f, int seed) {
       .replaceAll('@__SECOND_NODE__', f.secondStrongestNodeKo)
       .replaceAll('@__DOMINANT_PALACE__', f.dominantPalace)
       .replaceAll('@__ONELINER__', f.oneLiner);
+  // Step 0: 동적 슬롯 @{pct:attrName} — v2 코퍼스의 백분위 사실 문장용.
+  t = t.replaceAllMapped(RegExp(r'@\{pct:(\w+)\}'), (m) {
+    final attr = Attribute.values.asNameMap()[m.group(1)!];
+    if (attr == null) return '';
+    return _v2PctPhrase(f.percentiles[attr] ?? 0.5);
+  });
   // Step 1: @{slot}
   t = t.replaceAllMapped(RegExp(r'@\{(\w+)\}'), (m) {
     final key = m.group(1)!;
@@ -2153,6 +2169,9 @@ class _Features {
   final Attribute bottom;
   final Map<Attribute, _Band> bands;
   final Map<Attribute, double> scores;
+
+  /// 같은 성별·얼굴형 분포에서의 백분위 (0..1). v2 코퍼스가 쓴다.
+  final Map<Attribute, double> percentiles;
   final Gender gender;
   final AgeGroup age;
   final Set<String> firedRules;
@@ -2176,6 +2195,7 @@ class _Features {
     required this.bottom,
     required this.bands,
     required this.scores,
+    required this.percentiles,
     required this.gender,
     required this.age,
     required this.firedRules,

@@ -210,6 +210,15 @@ List<double> _quantileFor(Attribute attr, Gender gender, FaceShape shape) {
       : _attrQuantilesFemale[attr]!;
 }
 
+/// raw attribute score → 같은 성별·얼굴형 분포에서의 백분위 (0..1).
+///
+/// [normalizeAllScores] 가 내부적으로 쓰는 값과 동일하다. 5~10 점수는
+/// within-face rank 가 35% 섞여 있어 분포상 위치를 그대로 나타내지 않으므로,
+/// "분포에서 어디인가"를 서술할 때는 이 값을 쓴다.
+double attributePercentile(
+        double raw, Attribute attr, Gender gender, FaceShape shape) =>
+    _rawToPercentile(raw, attr, gender, shape);
+
 /// raw → empirical percentile (0..1) by linear interp between quantile points.
 double _rawToPercentile(
     double raw, Attribute attr, Gender gender, FaceShape shape) {
