@@ -2,11 +2,11 @@ import 'package:facely/domain/models/team.dart';
 
 const List<TeamTitleCategory> kTeamTitleCatalog = [
   TeamTitleCategory('취미', [
-    TeamTitlePreset('천생연분 궁합이면 전시회 한번 같이 가요.', _kBoth),
-    TeamTitlePreset('천생연분 궁합이면 영화 한편 같이 봐요.', _kBoth),
-    TeamTitlePreset('천생연분 궁합이면 식사 한번 같이해요.', _kBoth),
-    TeamTitlePreset('천생연분 궁합이면 커피 한잔 같이해요.', _kBoth),
-    TeamTitlePreset('천생연분 궁합이면 술 한잔 같이해요.', _kBoth),
+    TeamTitlePreset('케미 잘 맞는 사람끼리 전시회 한번 같이 가요.', _kBoth),
+    TeamTitlePreset('케미 잘 맞는 사람끼리 영화 한편 같이 봐요.', _kBoth),
+    TeamTitlePreset('케미 잘 맞는 사람끼리 식사 한번 같이해요.', _kBoth),
+    TeamTitlePreset('케미 잘 맞는 사람끼리 커피 한잔 같이해요.', _kBoth),
+    TeamTitlePreset('케미 잘 맞는 사람끼리 술 한잔 같이해요.', _kBoth),
   ]),
   TeamTitleCategory('즉석', [
     TeamTitlePreset('케미, 그것이 알고 싶다', _kBoth),
