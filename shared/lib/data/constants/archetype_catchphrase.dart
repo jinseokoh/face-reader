@@ -47,7 +47,7 @@ const attributeShadowLine = <Attribute, String>{
 
 /// Attribute 강할 때 chip 키워드 (TL;DR 칩 그리드).
 const attributeChipHigh = <Attribute, String>{
-  Attribute.wealth: '#재력형',
+  Attribute.wealth: '#돈감각',
   Attribute.leadership: '#리더감',
   Attribute.intelligence: '#명석함',
   Attribute.sociability: '#인싸기운',
