@@ -17,7 +17,12 @@ class AssembledReport {
   });
 }
 
-AssembledReport assembleReport(FaceReadingReport report) {
+/// [narrativeVersion] 미지정 시 v1. 호출부가 `AppConfigService.instance
+/// .narrativeVersion` 을 넘기면 원격 설정이 그대로 반영된다.
+AssembledReport assembleReport(
+  FaceReadingReport report, {
+  NarrativeVersion narrativeVersion = NarrativeVersion.v1,
+}) {
   final buf = StringBuffer();
 
   // Archetype intro (성별 분기)
@@ -28,7 +33,7 @@ AssembledReport assembleReport(FaceReadingReport report) {
   }
 
   // 8 인생 질문 본문 (장점 → 단점 → 조언 구조)
-  buf.write(assembleLifeQuestions(report));
+  buf.write(assembleLifeQuestions(report, version: narrativeVersion));
 
   // 특수 관상 문장
   final special = report.archetype.specialArchetype;

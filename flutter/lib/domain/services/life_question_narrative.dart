@@ -1,8 +1,14 @@
+library;
+
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/attribute.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/services/yin_yang.dart';
+
+/// v2 코퍼스. part 이므로 `_Frag`·`_Features`·`_BeatPool` 등 private 타입을
+/// 그대로 쓴다. 식별자는 `_v2` 접두사로 v1 과 충돌을 피한다.
+part 'narrative_corpus_v2.dart';
 
 const _nodeDominantPalaceKo = <String, String>{
   'forehead': '직장 운',
@@ -1784,21 +1790,54 @@ final List<_Frag> _wealthStrength = [
 // 같은 조건 안에서도 슬롯 곱셈으로 수만 변종. 같은 얼굴 → 같은 결과.
 // ═══════════════════════════════════════════════════════════════════════
 
-String assembleLifeQuestions(FaceReadingReport r) {
+/// 코퍼스 버전. 플랫폼별 선택은 `app_config.{ios,android}_narrative_version`.
+/// 기본값 v1 — 조회 실패 시에도 현행 서술이 나온다.
+enum NarrativeVersion { v1, v2 }
+
+/// 섹션 하나의 정의. 제목·salt·풀 선택자·포함 조건.
+/// 풀 선택자가 [_Features] 를 받으므로 성별 분리 pool 을 여기서 고른다.
+typedef _SectionDef = ({
+  String title,
+  int salt,
+  List<_BeatPool> Function(_Features f) pools,
+  bool Function(_Features f)? when,
+});
+
+final List<_SectionDef> _v1Sections = [
+  (title: '타고난 재능', salt: 10, pools: (f) => _talentBeats, when: null),
+  (title: '건강과 수명', salt: 70, pools: (f) => _healthBeats, when: null),
+  (title: '재력', salt: 20, pools: (f) => _wealthBeats, when: null),
+  (title: '대인관계', salt: 30, pools: (f) => _socialBeats, when: null),
+  (
+    title: '연애운',
+    salt: 40,
+    pools: (f) => f.isMale ? _romanceBeatsMale : _romanceBeatsFemale,
+    when: null,
+  ),
+  (
+    title: '관능도',
+    salt: 60,
+    pools: (f) => f.isMale ? _sensualBeatsMale : _sensualBeatsFemale,
+    when: (f) => f.age.isOver30,
+  ),
+  (title: '종합 조언', salt: 80, pools: (f) => _conclusionBeats, when: null),
+];
+
+List<_SectionDef> _sectionsOf(NarrativeVersion v) => switch (v) {
+      NarrativeVersion.v1 => _v1Sections,
+      NarrativeVersion.v2 => _v2Sections,
+    };
+
+String assembleLifeQuestions(
+  FaceReadingReport r, {
+  NarrativeVersion version = NarrativeVersion.v1,
+}) {
   final f = _extractFeatures(r);
-  final parts = <MapEntry<String, String>>[
-    MapEntry('타고난 재능', _buildSection(f, _talentBeats, 10)),
-    MapEntry('건강과 수명', _buildSection(f, _healthBeats, 70)),
-    MapEntry('재물운', _buildSection(f, _wealthBeats, 20)),
-    MapEntry('대인관계', _buildSection(f, _socialBeats, 30)),
-    MapEntry('연애운', _buildSection(
-        f, f.isMale ? _romanceBeatsMale : _romanceBeatsFemale, 40)),
-  ];
-  if (f.age.isOver30) {
-    parts.add(MapEntry('관능도', _buildSection(
-        f, f.isMale ? _sensualBeatsMale : _sensualBeatsFemale, 60)));
+  final parts = <MapEntry<String, String>>[];
+  for (final s in _sectionsOf(version)) {
+    if (s.when != null && !s.when!(f)) continue;
+    parts.add(MapEntry(s.title, _buildSection(f, s.pools(f), s.salt)));
   }
-  parts.add(MapEntry('종합 조언', _buildSection(f, _conclusionBeats, 80)));
   return parts.map((e) => '## ${e.key}\n${e.value}').join('\n\n');
 }
 

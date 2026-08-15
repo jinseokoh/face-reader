@@ -47,7 +47,7 @@ const attributeShadowLine = <Attribute, String>{
 
 /// Attribute 강할 때 chip 키워드 (TL;DR 칩 그리드).
 const attributeChipHigh = <Attribute, String>{
-  Attribute.wealth: '#재물복',
+  Attribute.wealth: '#재력형',
   Attribute.leadership: '#리더감',
   Attribute.intelligence: '#명석함',
   Attribute.sociability: '#인싸기운',
@@ -56,13 +56,13 @@ const attributeChipHigh = <Attribute, String>{
   Attribute.sensuality: '#끌림강함',
   Attribute.trustworthiness: '#신뢰감',
   Attribute.attractiveness: '#미모',
-  Attribute.libido: '#뜨거움',
+  Attribute.libido: '#하이텐션',
 };
 
 /// Attribute 약할 때 chip 키워드 (TL;DR 약점 칩).
 /// 솔직한 약점 평가 톤 — 애둘러 미화하지 않음.
 const attributeChipLow = <Attribute, String>{
-  Attribute.wealth: '#재물복약함',
+  Attribute.wealth: '#재력약함',
   Attribute.leadership: '#결단력약함',
   Attribute.intelligence: '#판단력약함',
   Attribute.sociability: '#사교성약함',

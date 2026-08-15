@@ -1746,8 +1746,17 @@ create table if not exists public.app_config (
   id                 int  primary key default 1 check (id = 1),
   android_min_build  int  not null default 1,
   ios_min_build      int  not null default 1,
-  notice             text                        -- 게이트에 띄울 공지 (선택)
+  notice             text,                       -- 게이트에 띄울 공지 (선택)
+  -- 인생 질문 서술 코퍼스 버전. 1 = 현행, 2 = 현재 시제 코퍼스.
+  -- 앱 재배포 없이 플랫폼별로 전환한다. 앱은 2 가 아니면 전부 1 로 읽는다.
+  android_narrative_version int not null default 1,
+  ios_narrative_version     int not null default 1
 );
+
+-- 라이브 DB 반영용 (기존 테이블에 컬럼만 추가 — 구 버전 앱 무영향):
+--   alter table public.app_config
+--     add column if not exists android_narrative_version int not null default 1,
+--     add column if not exists ios_narrative_version     int not null default 1;
 
 insert into public.app_config (id) values (1) on conflict do nothing;
 

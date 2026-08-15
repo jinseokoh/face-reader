@@ -30,6 +30,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
+import 'package:facely/data/services/app_config_service.dart';
 
 const _nodeLabels = <String, String>{
   'face': '얼굴 전체',
@@ -1371,7 +1372,8 @@ class _ReportPageState extends ConsumerState<ReportPage> {
 
   // ─── Deterministic Reading (조립된 블록) ───
   Widget _buildReadingSection() {
-    final assembled = assembleReport(report);
+    final assembled = assembleReport(report,
+        narrativeVersion: AppConfigService.instance.narrativeVersion);
     final blocks = assembled.assembledText;
     if (blocks.isEmpty) return const SizedBox.shrink();
 

@@ -8,6 +8,7 @@ import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/domain/services/report_assembler.dart';
+import 'package:facely/data/services/app_config_service.dart';
 
 class MetaphorRepository {
   final MetaphorRemoteDataSource remoteDataSource;
@@ -33,7 +34,8 @@ class MetaphorRepository {
     final cached = localDataSource.get(key);
     if (cached != null) return cached;
 
-    final assembled = assembleReport(report);
+    final assembled = assembleReport(report,
+        narrativeVersion: AppConfigService.instance.narrativeVersion);
 
     final dto = {
       // ─── 대상 정보 ───
