@@ -195,13 +195,7 @@ class _OnboardingIntroState extends State<_OnboardingIntro>
               nextButtonBuilder: (_) => _page == _kPages.length - 1
                   ? const SizedBox.shrink()
                   : const _RevealButtonIcon(),
-              itemBuilder: (index) => _OnboardingPage(
-                data: _kPages[index],
-                // 기능 3장은 이미지 여백을 텍스트(huge)의 절반으로 — 더 크게.
-                imageHInset: index < _kPages.length - 1
-                    ? AppSpacing.lg
-                    : AppSpacing.huge,
-              ),
+              itemBuilder: (index) => _OnboardingPage(data: _kPages[index]),
             ),
           ),
           // 원판 흡수 cover — 패키지 버튼과 동일 좌표 (verticalPosition * H,
@@ -353,11 +347,11 @@ class _OnboardingIntroState extends State<_OnboardingIntro>
 class _OnboardingPage extends StatelessWidget {
   final _OnboardingPageData data;
 
-  /// 일러스트 좌우 여백 — 기능 3장(관상·궁합·케미)은 텍스트 여백의 절반으로
-  /// 이미지를 더 크게, 마지막 장(banner)은 텍스트와 동일.
-  final double imageHInset;
+  const _OnboardingPage({required this.data});
 
-  const _OnboardingPage({required this.data, required this.imageHInset});
+  /// 일러스트 좌우 여백 — 텍스트 여백(huge)의 절반으로 이미지를 더 크게.
+  /// 네 장 모두 동일하다.
+  static const double _imageHInset = AppSpacing.lg;
 
   @override
   Widget build(BuildContext context) {
@@ -370,7 +364,7 @@ class _OnboardingPage extends StatelessWidget {
         AppSpacing.md +
         _kTopBarHeight +
         AppSpacing.sm;
-    // 좌우 여백은 요소별로: 일러스트 = imageHInset, 텍스트·chip = huge.
+    // 좌우 여백은 요소별로: 일러스트 = _imageHInset, 텍스트·chip = huge.
     return Padding(
       padding: EdgeInsets.only(top: topInset, bottom: _kContentBottomInset),
       child: Column(
@@ -381,7 +375,8 @@ class _OnboardingPage extends StatelessWidget {
           // 렌더된다 (작은 화면 overflow 방지).
           Flexible(
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: imageHInset),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: _imageHInset),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(AppRadius.xl),
                 child: Image.asset(data.asset, fit: BoxFit.contain),
