@@ -158,41 +158,37 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
               onPressed: () => _showInfoDialog(context),
             ),
           ],
-          // 내부 탭은 내 관상 등록 후에만 노출 — 궁합·관상 탭과 동일 규칙.
-          bottom: hasMyFace
-              ? const TabBar(
-                  labelColor: AppColors.textPrimary,
-                  unselectedLabelColor: AppColors.textHint,
-                  indicatorColor: AppColors.textPrimary,
-                  tabs: [
-                    // '모집중' — 지금 참가 가능한 공개 그룹만 나오는 탭.
-                    // 장소가 아니라 상태어라 한국 앱 문법에 맞다 (2026-07-30
-                    // '공개 그룹'에서 재명명 — 내 그룹과 축이 겹쳐 보이던
-                    // 문제 해소. 개념어 '공개 그룹'은 본문 카피에 유지).
-                    Tab(text: '모집중'),
-                    Tab(text: '내 그룹'),
-                  ],
-                )
-              : null,
+          // 그룹 목록은 내 관상 없이도 항상 열어둔다. 관상은 참가할 때 내는
+          // 재료이지 목록을 보기 위한 통행세가 아니다. 참가·생성 시점의
+          // my-face 게이트는 team_detail_screen 의 _join 과 여기 _create 가
+          // 각각 처리한다 (그 자리에서 촬영을 띄운다).
+          bottom: const TabBar(
+            labelColor: AppColors.textPrimary,
+            unselectedLabelColor: AppColors.textHint,
+            indicatorColor: AppColors.textPrimary,
+            tabs: [
+              // '모집중' — 지금 참가 가능한 공개 그룹만 나오는 탭.
+              // 장소가 아니라 상태어라 한국 앱 문법에 맞다 (2026-07-30
+              // '공개 그룹'에서 재명명 — 내 그룹과 축이 겹쳐 보이던
+              // 문제 해소. 개념어 '공개 그룹'은 본문 카피에 유지).
+              Tab(text: '모집중'),
+              Tab(text: '내 그룹'),
+            ],
+          ),
         ),
-        body: !hasMyFace
-            ? const EmotionEmptyState(
-                asset: 'assets/images/emotion-shrug.png',
-                message: '내 관상을 등록하면 케미 그룹에 참가할 수 있습니다',
-              )
-            : TabBarView(
-                children: [
-                  _PublicTab(
-                    order: _publicOrder,
-                    onOrderChanged: (o) => setState(() => _publicOrder = o),
-                  ),
-                  _MineTab(
-                    onOpen: _openMine,
-                    filter: _mineFilter,
-                    onFilterChanged: (f) => setState(() => _mineFilter = f),
-                  ),
-                ],
-              ),
+        body: TabBarView(
+          children: [
+            _PublicTab(
+              order: _publicOrder,
+              onOrderChanged: (o) => setState(() => _publicOrder = o),
+            ),
+            _MineTab(
+              onOpen: _openMine,
+              filter: _mineFilter,
+              onFilterChanged: (f) => setState(() => _mineFilter = f),
+            ),
+          ],
+        ),
       ),
     );
   }
