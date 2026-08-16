@@ -25,7 +25,7 @@ const _kPageColors = [
 const _kPages = [
   _OnboardingPageData(
     asset: 'assets/images/onboarding1.png',
-    title: '얼굴로 알아보는 우리 모임의 케미',
+    title: '얼굴로 알아보는\n우리 모임의 케미',
     body: '우리 그룹의 케미를 한눈에 보고\n새로운 대화의 계기를 만들어보세요.',
     warm: true,
   ),
@@ -72,7 +72,7 @@ const double _kTopBarHeight = 48;
 /// warm beige 팔레트(cream/shell)와 흰색을 교대 배치한다.
 ///
 /// 내 관상이 등록되거나 "다시 보지 않기"를 누르기 전까지 매 실행 노출.
-/// [OnboardingIntroResult] 처리(촬영 진입·flag 기록)는 호출부 몫.
+/// [OnboardingIntroResult] 처리(flag 기록)는 호출부 몫.
 Future<OnboardingIntroResult> showOnboardingIntro(BuildContext context) async {
   final size = MediaQuery.of(context).size;
   // useSafeArea 금지 — ConcentricPageView 는 리플 원판을 시트 높이로,
@@ -103,13 +103,10 @@ double _statusBarHeight(BuildContext context) {
 }
 
 enum OnboardingIntroResult {
-  /// "내 관상 보기" CTA — 촬영 플로우로 이어간다.
-  startCapture,
-
   /// "다시 보지 않기" — flag 를 기록해 이후 노출을 끈다.
   neverAgain,
 
-  /// 건너뛰기·뒤로가기 — 기록 없음, 다음 실행 때 다시 노출.
+  /// [시작하기]·건너뛰기·뒤로가기 — 기록 없음, 다음 실행 때 다시 노출.
   later,
 }
 
@@ -166,7 +163,7 @@ class _OnboardingIntroState extends State<_OnboardingIntro>
   );
   bool _absorbArmed = true;
 
-  /// "내 관상 보기" CTA fade-in — 원판 흡수가 끝난 뒤에만 forward.
+  /// [시작하기] CTA fade-in — 원판 흡수가 끝난 뒤에만 forward.
   /// value 0 = 숨김 (초기값).
   late final AnimationController _ctaFade = AnimationController(
     vsync: this,
@@ -194,7 +191,7 @@ class _OnboardingIntroState extends State<_OnboardingIntro>
               pageController: _pageController,
               onChange: (page) => setState(() => _page = page),
               onFinish: _finish,
-              // 마지막 페이지는 CTA(내 관상 보기)가 있으므로 화살표 숨김.
+              // 마지막 페이지는 [시작하기] CTA 가 있으므로 화살표 숨김.
               nextButtonBuilder: (_) => _page == _kPages.length - 1
                   ? const SizedBox.shrink()
                   : const _RevealButtonIcon(),
@@ -234,10 +231,14 @@ class _OnboardingIntroState extends State<_OnboardingIntro>
               ),
             ),
           ),
-          // 마지막 장 CTA 행 — 흡수된 원판과 같은 세로 중심선
+          // 마지막 장 CTA — 흡수된 원판과 같은 세로 중심선
           // (verticalPosition * H + radius)에서 흡수 완료 후 fade-in.
           // 버튼 높이 48 의 절반만큼 올려 원 중심과 정렬한다.
-          // [닫기] 1/3 : [내 관상 등록] 2/3 — 닫기는 인트로만 내린다.
+          //
+          // [시작하기] 한 개. 인트로만 내리고 아무것도 강요하지 않는다 —
+          // 그룹 목록은 얼굴 등록 없이 볼 수 있고, 촬영은 참가하려는 순간
+          // team_detail_screen 의 _join 이 그 자리에서 띄운다. 의도가 생긴
+          // 뒤에 묻는 편이 맥락 없이 먼저 요구하는 것보다 잘 붙는다.
           Positioned(
             top: screenHeight * _kRevealVerticalPosition +
                 _kRevealRadius -
@@ -256,24 +257,9 @@ class _OnboardingIntroState extends State<_OnboardingIntro>
                     child: child,
                   ),
                 ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: SecondaryButton(
-                        label: '닫기',
-                        onPressed: () => Navigator.of(context)
-                            .pop(OnboardingIntroResult.later),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      flex: 2,
-                      child: PrimaryButton(
-                        label: '내 관상 등록',
-                        onPressed: _finish,
-                      ),
-                    ),
-                  ],
+                child: PrimaryButton(
+                  label: '시작하기',
+                  onPressed: _finish,
                 ),
               ),
             ),
@@ -347,7 +333,7 @@ class _OnboardingIntroState extends State<_OnboardingIntro>
   }
 
   void _finish() =>
-      Navigator.of(context).pop(OnboardingIntroResult.startCapture);
+      Navigator.of(context).pop(OnboardingIntroResult.later);
 
   void _onScroll() {
     if (_onLastPage) {

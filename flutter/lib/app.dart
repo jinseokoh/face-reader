@@ -22,7 +22,6 @@ import 'package:facely/presentation/screens/physiognomy/physiognomy_screen.dart'
 import 'package:facely/presentation/screens/settings/settings_screen.dart';
 import 'package:facely/presentation/screens/update_gate_screen.dart';
 import 'package:facely/presentation/widgets/ad_banner_dialog.dart';
-import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
 import 'package:facely/presentation/widgets/onboarding_intro.dart';
 
 class MainApp extends ConsumerStatefulWidget {
@@ -89,8 +88,6 @@ class _MainAppState extends ConsumerState<MainApp> {
     final result = await showOnboardingIntro(context);
     if (!mounted) return;
     switch (result) {
-      case OnboardingIntroResult.startCapture:
-        await startMyFaceCapture(context, ref);
       case OnboardingIntroResult.neverAgain:
         await prefs.put(kOnboardingNeverAgainKey, '1');
       case OnboardingIntroResult.later:
