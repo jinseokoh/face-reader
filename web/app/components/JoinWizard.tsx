@@ -569,11 +569,16 @@ export function JoinWizard({
     const video = videoRef.current
     const thumb = video ? await frameToThumb(video) : null
     const frame = video ? await frameToFull(video) : null
+    // MediaPipe 좌표는 x=폭, y=높이로 각각 정규화된다. 각도·세로÷가로 비율이
+    // 프레임 종횡비에 왜곡되므로 실제 비율을 넘긴다. stopCamera() 이후에는
+    // videoWidth 가 0 이 되므로 반드시 그 전에 읽는다.
+    const aspect =
+      video && video.videoWidth > 0 ? video.videoHeight / video.videoWidth : 1
     stopCamera()
     let body: WebCaptureBody
     try {
       const metrics = JSON.parse(
-        globalThis.runMetrics(JSON.stringify(points)),
+        globalThis.runMetrics(JSON.stringify(points), aspect),
       ) as Record<string, number>
       body = {
         schemaVersion: 1,

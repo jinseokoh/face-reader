@@ -62,12 +62,16 @@ void main() {
 
   // 웹 티저 — MediaPipe 468 landmarks([[x,y],...] JSON) → 26 정면 raw 메트릭.
   // 측면·z-score 는 안 함(report 로 감싸 runCompat/runEngine 이 처리).
-  _setRunMetrics = ((String landmarksJson) {
+  //
+  // aspect = imageHeight / imageWidth. MediaPipe 좌표는 x 를 폭, y 를 높이로
+  // 각각 정규화하므로 정사각형이 아닌 프레임에서는 각도·세로÷가로 비율이
+  // 왜곡된다. 호출측이 반드시 실제 프레임 종횡비를 넘겨야 한다.
+  _setRunMetrics = ((String landmarksJson, double aspect) {
     final raw = jsonDecode(landmarksJson) as List;
     final pts = [
       for (final p in raw) [(p[0] as num).toDouble(), (p[1] as num).toDouble()],
     ];
-    return jsonEncode(WebFaceMetrics(pts).computeAll());
+    return jsonEncode(WebFaceMetrics(pts, aspect: aspect).computeAll());
   }).toJS;
 
   // Chemistry Team — chemistry_snapshot 기반 배틀 집계 (rev2 §3 payload 계약).

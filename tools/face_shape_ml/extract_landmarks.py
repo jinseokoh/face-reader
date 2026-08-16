@@ -73,7 +73,7 @@ LM10_CORRECTION = 1.05  # face_analysis.dart::kLandmark10Correction
 
 FEATURE_NAMES = [
     # ─── Original 18 (nasalHeightRatio formula changed 2026-04-17: nose bridge) ───
-    "faceAspectRatio",    # includes (imgH/imgW)*1.05 correction (Flutter parity)
+    "faceAspectRatio",    # 등방화 후 *1.05 랜드마크10 보정 (Flutter parity)
     "faceTaperRatio",
     "lowerFaceFullness",
     "upperFaceRatio",
@@ -116,6 +116,15 @@ def _ang(lm, a, v, b):
 
 
 def compute_ratios(lm: np.ndarray, img_w: int, img_h: int) -> np.ndarray:
+    # MediaPipe 는 x 를 이미지 폭, y 를 높이로 각각 나눈 0~1 좌표를 준다.
+    # 정사각형이 아닌 사진에서는 두 축의 축척이 달라 좌표계가 비등방이 되고,
+    # 각도(gonialAngle · chinAngle · eyeCanthalTilt · mouthCornerAngle)와
+    # 세로÷가로 비율(faceAspectRatio · eyeAspect)이 사진 종횡비에 오염된다.
+    # y 를 되돌려 등방 공간으로 만든 뒤 계산한다 — face_metrics.dart 의
+    # `FaceMetrics.aspect` 와 동일한 처리 (수식 1:1 parity).
+    lm = lm.copy()
+    lm[:, 1] *= img_h / img_w
+
     fh = _d(lm, FOREHEAD_TOP, CHIN)
     fw = _d(lm, R_FACE_EDGE, L_FACE_EDGE)
     jaw = _d(lm, R_GONION, L_GONION)
@@ -123,8 +132,10 @@ def compute_ratios(lm: np.ndarray, img_w: int, img_h: int) -> np.ndarray:
     chin_s = _d(lm, R_CHIN_SIDE, L_CHIN_SIDE)
     icd = _d(lm, R_ENDO, L_ENDO)
 
+    # 종횡비 보정은 위 등방화가 이미 처리한다. 여기 남은 건 랜드마크 10 이
+    # 실제 헤어라인보다 아래에 찍히는 것에 대한 보정뿐.
     aspect_raw = fh / fw if fw > 0 else 0.0
-    aspect_corr = aspect_raw * (img_h / img_w) * LM10_CORRECTION
+    aspect_corr = aspect_raw * LM10_CORRECTION
 
     taper = jaw / fw if fw > 0 else 0.0
     fullness = (jaw + jaw_lo + chin_s) / (3.0 * fw) if fw > 0 else 0.0

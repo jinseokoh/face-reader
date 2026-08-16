@@ -1,8 +1,8 @@
 """Recalibrate face_reference_data.dart from the All-Age-Faces (AAF) dataset.
 
 Reuses `extract_landmarks.compute_ratios` (verified Flutter parity with
-face_metrics.dart: normalized [0,1] coords, faceAspectRatio gets
-(imgH/imgW)*1.05 correction, everything else raw-normalized).
+face_metrics.dart: normalized [0,1] coords가 y*=imgH/imgW 로 등방화된 뒤
+계산되고, faceAspectRatio 만 추가로 *1.05 랜드마크10 보정을 받는다).
 
 For each AAF "original images" photo:
   - MediaPipe FaceLandmarker → 468 normalized landmarks

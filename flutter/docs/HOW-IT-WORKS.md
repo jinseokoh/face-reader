@@ -34,6 +34,23 @@ JS export: `runEngine`(solo) / `runCompat`(궁합) / `runMetrics`(웹 티저).
 z = (측정값 − μ) / σ. 좌표 기준 `faceWidth = dist(234,454)`, `faceHeight = dist(10,152)`.
 코드 SSOT: `face_metrics.dart::computeAll()` + `face_reference_data.dart::metricInfoList`.
 
+**등방 보정 (필수)** — MediaPipe 는 x 를 이미지 **폭**, y 를 **높이**로 각각 나눈
+0~1 좌표를 준다. 정사각형이 아닌 사진에서는 두 축의 축척이 달라 좌표계가
+비등방이 되고, **각도와 세로÷가로 비율이 사진 규격에 따라 달라진다**
+(`faceAspectRatio` · `gonialAngle` · `chinAngle` · `eyeCanthalTilt` ·
+`mouthCornerAngle` · `eyeAspect` 6개). 가로÷가로 · 세로÷세로 비율 20개는 축척이
+약분돼 영향이 없다.
+
+`FaceMetrics(landmarks, aspect: imageHeight / imageWidth)` 가 y 를 되돌려 등방
+공간에서 계산한다. **모든 호출부는 실제 이미지 종횡비를 넘겨야 한다** — 앱은
+`face_analysis.dart::analyzeFace`, 웹은 `runMetrics(landmarksJson, aspect)`,
+레퍼런스 추출은 `extract_landmarks.py::compute_ratios`. 세 경로의 수식은 1:1
+동일해야 하며, `faceAspectRatio` 에만 추가로 `kLandmark10Correction = 1.05`
+(랜드마크 10 이 실제 헤어라인보다 아래에 찍히는 것) 가 곱해진다.
+
+이 성질은 `test/face_metrics_isotropy_test.dart` 가 지킨다 — 같은 픽셀 얼굴을
+400×400 · 400×600 · 1080×1440 에 담아 26개 metric 이 모두 같게 나오는지 검사한다.
+
 **Frontal 26** (μ/σ = AAF 재보정 여성 empirical, 남성 등은 `face_reference_data.dart`):
 
 | # | 항목 (id) | 측정 정의 | 타입 | μ/σ (AAF♀) | z>0 해석 | z<0 해석 | 주 영향 |

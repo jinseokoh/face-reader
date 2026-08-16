@@ -77,26 +77,38 @@ abstract class LandmarkIndex {
 class FaceMetrics {
   final List<FaceMeshLandmark> landmarks;
 
-  FaceMetrics(this.landmarks);
+  /// 세로 축척 보정 = imageHeight / imageWidth.
+  ///
+  /// MediaPipe 는 x 를 이미지 **폭**으로, y 를 이미지 **높이**로 각각 나눈
+  /// 0~1 좌표를 준다. 정사각형이 아닌 사진에서는 가로와 세로의 축척이 달라
+  /// 좌표계가 비등방(anisotropic)이 된다.
+  ///
+  /// - 가로÷가로, 세로÷세로 비율은 축척이 약분돼 영향이 없다.
+  /// - **각도와 세로÷가로 비율은 왜곡된다** (gonialAngle · chinAngle ·
+  ///   eyeCanthalTilt · mouthCornerAngle · eyeAspect · faceAspectRatio).
+  ///
+  /// y 에 이 값을 곱하면 좌표가 실제 픽셀에 비례하는 등방 공간이 되어 모든
+  /// 거리·각도가 사진 종횡비와 무관해진다. 1.0 이면 보정 없음(정사각 가정).
+  final double aspect;
 
-  FaceMeshLandmark _lm(int index) => landmarks[index];
+  FaceMetrics(this.landmarks, {this.aspect = 1.0});
+
+  double _x(int index) => landmarks[index].x;
+
+  /// 등방 보정된 y. 좌표를 읽는 모든 계산은 반드시 이 접근자를 쓴다.
+  double _y(int index) => landmarks[index].y * aspect;
 
   double _dist(int a, int b) {
-    final la = _lm(a);
-    final lb = _lm(b);
-    final dx = la.x - lb.x;
-    final dy = la.y - lb.y;
+    final dx = _x(a) - _x(b);
+    final dy = _y(a) - _y(b);
     return sqrt(dx * dx + dy * dy);
   }
 
   double _angle(int a, int vertex, int b) {
-    final pa = _lm(a);
-    final pv = _lm(vertex);
-    final pb = _lm(b);
-    final ax = pa.x - pv.x;
-    final ay = pa.y - pv.y;
-    final bx = pb.x - pv.x;
-    final by = pb.y - pv.y;
+    final ax = _x(a) - _x(vertex);
+    final ay = _y(a) - _y(vertex);
+    final bx = _x(b) - _x(vertex);
+    final by = _y(b) - _y(vertex);
     final dot = ax * bx + ay * by;
     final cross = ax * by - ay * bx;
     return atan2(cross.abs(), dot) * (180.0 / pi);
@@ -182,15 +194,17 @@ class FaceMetrics {
 
   /// #6 눈꼬리 각도 (양측 평균, degrees)
   double get eyeCanthalTilt {
-    final rExo = _lm(LandmarkIndex.rightExocanthion);
-    final rEndo = _lm(LandmarkIndex.rightEndocanthion);
-    final lExo = _lm(LandmarkIndex.leftExocanthion);
-    final lEndo = _lm(LandmarkIndex.leftEndocanthion);
+    const rExo = LandmarkIndex.rightExocanthion;
+    const rEndo = LandmarkIndex.rightEndocanthion;
+    const lExo = LandmarkIndex.leftExocanthion;
+    const lEndo = LandmarkIndex.leftEndocanthion;
 
     final rightAngle =
-        atan2(-(rExo.y - rEndo.y), (rExo.x - rEndo.x).abs()) * (180.0 / pi);
+        atan2(-(_y(rExo) - _y(rEndo)), (_x(rExo) - _x(rEndo)).abs()) *
+            (180.0 / pi);
     final leftAngle =
-        atan2(-(lExo.y - lEndo.y), (lExo.x - lEndo.x).abs()) * (180.0 / pi);
+        atan2(-(_y(lExo) - _y(lEndo)), (_x(lExo) - _x(lEndo)).abs()) *
+            (180.0 / pi);
     return (rightAngle + leftAngle) / 2.0;
   }
 
@@ -256,19 +270,19 @@ class FaceMetrics {
   /// 2026-04-17 버그 수정: 이전 구현은 `midLipY`를 x-좌표 기준으로 잘못 사용하여
   /// 각도 크기가 왜곡되었다. 정상화된 midLipX 기준으로 계산.
   double get mouthCornerAngle {
-    final midLipX = (_lm(LandmarkIndex.upperLipInner).x +
-            _lm(LandmarkIndex.lowerLipInner).x) /
-        2.0;
-    final midLipY = (_lm(LandmarkIndex.upperLipInner).y +
-            _lm(LandmarkIndex.lowerLipInner).y) /
-        2.0;
-    final rightCorner = _lm(LandmarkIndex.rightCheilion);
-    final leftCorner = _lm(LandmarkIndex.leftCheilion);
+    final midLipX =
+        (_x(LandmarkIndex.upperLipInner) + _x(LandmarkIndex.lowerLipInner)) /
+            2.0;
+    final midLipY =
+        (_y(LandmarkIndex.upperLipInner) + _y(LandmarkIndex.lowerLipInner)) /
+            2.0;
+    const rightCorner = LandmarkIndex.rightCheilion;
+    const leftCorner = LandmarkIndex.leftCheilion;
 
     final rightAngle =
-        atan2(-(rightCorner.y - midLipY), (rightCorner.x - midLipX).abs());
+        atan2(-(_y(rightCorner) - midLipY), (_x(rightCorner) - midLipX).abs());
     final leftAngle =
-        atan2(-(leftCorner.y - midLipY), (leftCorner.x - midLipX).abs());
+        atan2(-(_y(leftCorner) - midLipY), (_x(leftCorner) - midLipX).abs());
 
     return ((rightAngle + leftAngle) / 2.0) * (180.0 / pi);
   }
@@ -304,12 +318,10 @@ class FaceMetrics {
   /// outer.y < inner.y (outer가 위) → 양수. faceHeight로 정규화.
   /// 이미지 좌표계(y 아래 증가) 기준: `inner.y - outer.y` 가 양수면 outer 위.
   double get eyebrowTiltDirection {
-    final rInner = _lm(LandmarkIndex.rightBrowInner);
-    final rOuter = _lm(LandmarkIndex.rightBrowUpper1);
-    final lInner = _lm(LandmarkIndex.leftBrowInner);
-    final lOuter = _lm(LandmarkIndex.leftBrowUpper1);
-    final rTilt = (rInner.y - rOuter.y); // + if outer higher
-    final lTilt = (lInner.y - lOuter.y);
+    final rTilt = _y(LandmarkIndex.rightBrowInner) -
+        _y(LandmarkIndex.rightBrowUpper1); // + if outer higher
+    final lTilt =
+        _y(LandmarkIndex.leftBrowInner) - _y(LandmarkIndex.leftBrowUpper1);
     if (faceHeight == 0) return 0.0;
     return ((rTilt + lTilt) / 2.0) / faceHeight;
   }
@@ -320,12 +332,9 @@ class FaceMetrics {
   /// 작으면(이미지 y기준 위) 양수 → 아치. 큰 값이면 처짐(음수).
   double get eyebrowCurvature {
     double curve(int inner, int middle, int outer) {
-      final pi_ = _lm(inner);
-      final pm = _lm(middle);
-      final po = _lm(outer);
       // middle에 대응하는 inner-outer 직선상의 y
-      final yLine = (pi_.y + po.y) / 2.0; // 단순 중점 근사
-      return yLine - pm.y; // + if middle is above the chord (arched)
+      final yLine = (_y(inner) + _y(outer)) / 2.0; // 단순 중점 근사
+      return yLine - _y(middle); // + if middle is above the chord (arched)
     }
     final rCurve = curve(LandmarkIndex.rightBrowInner,
         LandmarkIndex.rightBrowUpper3, LandmarkIndex.rightBrowUpper1);

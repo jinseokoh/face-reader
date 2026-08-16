@@ -251,71 +251,83 @@ const metricInfoList = [
 /// Reference data: [Ethnicity][Gender][metricId] → MetricReference(mean, sd)
 const Map<Ethnicity, Map<Gender, Map<String, MetricReference>>> referenceData = {
   Ethnicity.eastAsian: {
-    // ─── AAF-recalibrated reference (2026-06-01) ───
+    // ─── AAF-recalibrated reference (2026-08-16, 등방 좌표) ───
     // All-Age-Faces (AAF) 실사진 11,800장(정면 yaw<18°, male=5361 female=6439)을
-    // 앱과 동일 파이프라인(MediaPipe 468 → face_metrics.dart::computeAll(), 정규화
-    // 좌표·faceAspectRatio 만 (imgH/imgW)·1.05 보정)으로 측정한 metric별 empirical
-    // mean/std (population, ddof=0). 추출·집계: tools/face_shape_ml/extract_aaf.py.
-    // 추정치 기반 reference 가 production z 를 체계적으로 +로 띄워 전 속성이 CDF
-    // 상단에 saturate 되던 문제의 근본 교정.
+    // 앱과 동일 파이프라인(MediaPipe 468 → face_metrics.dart::computeAll())으로
+    // 측정한 metric별 empirical mean/std (population, ddof=0).
+    // 추출·집계: tools/face_shape_ml/extract_aaf.py.
+    //
+    // MediaPipe 좌표는 x 를 이미지 폭, y 를 높이로 각각 나눈 값이라 정사각형이
+    // 아닌 사진에서 좌표계가 비등방이 된다. y*=imgH/imgW 로 등방화한 뒤 측정한다
+    // (faceAspectRatio 만 추가로 *1.05 랜드마크10 보정). 등방화 이전 값 대비
+    // eyeAspect·chinAngle·eyeCanthalTilt·gonialAngle·mouthCornerAngle·
+    // faceAspectRatio 와 눈썹 구간 2개(eyebrowThickness·browEyeDistance)가 이동했다.
+    // 나머지 18개는 0.04σ 이내로 사실상 불변.
     // 측면 8 metric(lateralReferenceData)은 정면 표본으로 측정 불가 → 미변경.
     Gender.male: {
-      'faceAspectRatio': MetricReference(1.221, 0.06563),
-      'faceTaperRatio': MetricReference(0.801, 0.02482),
-      'lowerFaceFullness': MetricReference(0.5151, 0.01937),
-      'upperFaceRatio': MetricReference(0.2965, 0.01789),
-      'midFaceRatio': MetricReference(0.2954, 0.01756),
-      'lowerFaceRatio': MetricReference(0.4087, 0.0308),
-      'gonialAngle': MetricReference(139.7, 4.509),
+      'faceAspectRatio': MetricReference(1.217, 0.06517),
+      'faceTaperRatio': MetricReference(0.801, 0.02479),
+      'lowerFaceFullness': MetricReference(0.5151, 0.01935),
+      'upperFaceRatio': MetricReference(0.2966, 0.0179),
+      'midFaceRatio': MetricReference(0.2955, 0.01758),
+      'lowerFaceRatio': MetricReference(0.4085, 0.03085),
+      'gonialAngle': MetricReference(140.3, 4.679),
       'intercanthalRatio': MetricReference(0.252, 0.01507),
-      'eyeFissureRatio': MetricReference(0.1828, 0.01017),
-      'eyeCanthalTilt': MetricReference(3.778, 2.329),
-      'eyebrowThickness': MetricReference(0.03412, 0.00256),
-      'browEyeDistance': MetricReference(0.1424, 0.01737),
-      'nasalWidthRatio': MetricReference(0.9643, 0.08373),
-      'nasalHeightRatio': MetricReference(0.2648, 0.02175),
-      'mouthWidthRatio': MetricReference(0.3664, 0.04232),
-      'mouthCornerAngle': MetricReference(2.623, 5.324),
-      'lipFullnessRatio': MetricReference(0.1177, 0.03088),
-      'philtrumLength': MetricReference(0.0994, 0.01616),
-      'foreheadWidth': MetricReference(0.8516, 0.02643),
-      'cheekboneWidth': MetricReference(0.9043, 0.0123),
-      'chinAngle': MetricReference(171.5, 2.5),
-      'eyeAspect': MetricReference(0.2561, 0.07213),
-      'eyebrowCurvature': MetricReference(0.03748, 0.003897),
-      'eyebrowTiltDirection': MetricReference(-0.007304, 0.01407),
-      'upperVsLowerLipRatio': MetricReference(0.6243, 0.1162),
+      'eyeFissureRatio': MetricReference(0.183, 0.0102),
+      'eyeCanthalTilt': MetricReference(4.28, 2.629),
+      'eyebrowThickness': MetricReference(0.03242, 0.002413),
+      'browEyeDistance': MetricReference(0.1387, 0.01738),
+      'nasalWidthRatio': MetricReference(0.9642, 0.08372),
+      'nasalHeightRatio': MetricReference(0.2648, 0.02178),
+      'mouthWidthRatio': MetricReference(0.3664, 0.04233),
+      'mouthCornerAngle': MetricReference(2.955, 5.972),
+      'lipFullnessRatio': MetricReference(0.1177, 0.03087),
+      'philtrumLength': MetricReference(0.09926, 0.0162),
+      'eyebrowTiltDirection': MetricReference(-0.007309, 0.01409),
+      'eyebrowCurvature': MetricReference(0.03754, 0.003896),
       'browSpacing': MetricReference(0.1866, 0.01272),
+      'eyeAspect': MetricReference(0.2883, 0.08089),
+      'upperVsLowerLipRatio': MetricReference(0.6233, 0.1164),
+      'chinAngle': MetricReference(170.4, 2.766),
+      'foreheadWidth': MetricReference(0.8516, 0.02641),
+      'cheekboneWidth': MetricReference(0.9043, 0.0123),
     },
     Gender.female: {
-      'faceAspectRatio': MetricReference(1.223, 0.06561),
-      'faceTaperRatio': MetricReference(0.7931, 0.0251),
-      'lowerFaceFullness': MetricReference(0.5067, 0.02026),
-      'upperFaceRatio': MetricReference(0.3063, 0.01944),
-      'midFaceRatio': MetricReference(0.3013, 0.0195),
-      'lowerFaceRatio': MetricReference(0.3936, 0.03463),
-      'gonialAngle': MetricReference(141.7, 4.383),
-      'intercanthalRatio': MetricReference(0.2569, 0.01549),
-      'eyeFissureRatio': MetricReference(0.1888, 0.01135),
-      'eyeCanthalTilt': MetricReference(5.935, 2.579),
-      'eyebrowThickness': MetricReference(0.03371, 0.00264),
-      'browEyeDistance': MetricReference(0.1412, 0.01572),
-      'nasalWidthRatio': MetricReference(0.947, 0.07906),
-      'nasalHeightRatio': MetricReference(0.274, 0.02376),
+      'faceAspectRatio': MetricReference(1.219, 0.06443),
+      'faceTaperRatio': MetricReference(0.7931, 0.02508),
+      'lowerFaceFullness': MetricReference(0.5067, 0.02024),
+      'upperFaceRatio': MetricReference(0.3064, 0.01945),
+      'midFaceRatio': MetricReference(0.3013, 0.01952),
+      'lowerFaceRatio': MetricReference(0.3933, 0.0347),
+      'gonialAngle': MetricReference(142.4, 4.48),
+      'intercanthalRatio': MetricReference(0.257, 0.01549),
+      'eyeFissureRatio': MetricReference(0.1892, 0.01146),
+      'eyeCanthalTilt': MetricReference(6.687, 2.899),
+      'eyebrowThickness': MetricReference(0.03228, 0.002503),
+      'browEyeDistance': MetricReference(0.1381, 0.01563),
+      'nasalWidthRatio': MetricReference(0.9469, 0.07905),
+      'nasalHeightRatio': MetricReference(0.2739, 0.0238),
       'mouthWidthRatio': MetricReference(0.3864, 0.04726),
-      'mouthCornerAngle': MetricReference(6.739, 6.011),
-      'lipFullnessRatio': MetricReference(0.1286, 0.03176),
-      'philtrumLength': MetricReference(0.08641, 0.01676),
-      'foreheadWidth': MetricReference(0.8484, 0.0315),
+      'mouthCornerAngle': MetricReference(7.565, 6.734),
+      'lipFullnessRatio': MetricReference(0.1285, 0.03176),
+      'philtrumLength': MetricReference(0.08621, 0.01683),
+      'eyebrowTiltDirection': MetricReference(0.001603, 0.01412),
+      'eyebrowCurvature': MetricReference(0.03941, 0.003771),
+      'browSpacing': MetricReference(0.1929, 0.01235),
+      'eyeAspect': MetricReference(0.3319, 0.08095),
+      'upperVsLowerLipRatio': MetricReference(0.5952, 0.1105),
+      'chinAngle': MetricReference(168.2, 2.779),
+      'foreheadWidth': MetricReference(0.8485, 0.03148),
       'cheekboneWidth': MetricReference(0.9107, 0.01399),
-      'chinAngle': MetricReference(169.5, 2.5),
-      'eyeAspect': MetricReference(0.2963, 0.07239),
-      'eyebrowCurvature': MetricReference(0.03933, 0.003766),
-      'eyebrowTiltDirection': MetricReference(0.001593, 0.01409),
-      'upperVsLowerLipRatio': MetricReference(0.5966, 0.1103),
-      'browSpacing': MetricReference(0.1928, 0.01235),
     },
   },
+  // ⚠️ 아래 5개 비-동아시아 블록은 값이 전부 동일하며, **비등방 좌표로 측정된
+  // 값이다** (2026-08-16 등방화 이전). eastAsian 은 AAF 로 재측정했지만 이쪽은
+  // 원본 데이터셋이 로컬에 없어(datasets/ 에 AAF 만 있음) 못 했다. 8개 metric —
+  // eyeAspect · chinAngle · eyeCanthalTilt · gonialAngle · mouthCornerAngle ·
+  // faceAspectRatio · eyebrowThickness · browEyeDistance — 의 μ 가 최대 0.7σ
+  // 어긋나 있다. 나머지 18개는 0.04σ 이내라 무시 가능.
+  // 고치려면 Kaggle FaceShape 를 받아 extract_niten_reference.py 를 재실행한다.
   Ethnicity.caucasian: {
     // ─── niten19 pooled non-EA baseline (2026-06-03, N=4597) ───
     // Kaggle FaceShape dataset, measured through the SAME pipeline as

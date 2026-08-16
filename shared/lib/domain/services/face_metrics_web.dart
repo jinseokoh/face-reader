@@ -2,19 +2,30 @@ import 'dart:math';
 
 /// Web/headless port of the Flutter `FaceMetrics` (flutter/lib/domain/services/
 /// face_metrics.dart). 좌표 입력만 `FaceMeshLandmark` → `List<List<double>>`
-/// ([x, y] 또는 [x, y, z], 정규화 0..1 무관 — 전부 비율/각도라 scale-invariant)
-/// 로 바꾼 verbatim 포팅. **수식은 Flutter 원본과 1:1 동일해야 한다** (z-score
-/// reference 가 이 raw 스케일에 맞춰져 있으므로). 측면 8개는 웹 미수집.
+/// ([x, y] 또는 [x, y, z]) 로 바꾼 verbatim 포팅. **수식은 Flutter 원본과 1:1
+/// 동일해야 한다** (z-score reference 가 이 raw 스케일에 맞춰져 있으므로).
+/// 측면 8개는 웹 미수집.
+///
+/// 등방 확대·축소에는 불변이지만 **비등방에는 불변이 아니다.** MediaPipe 좌표는
+/// x 를 이미지 폭, y 를 높이로 각각 나눈 값이라 정사각형이 아닌 사진에서 두 축의
+/// 축척이 다르다. 그래서 [aspect] 로 y 를 되돌려 등방 공간에서 계산한다.
 ///
 /// face_engine.dart 의 `runMetrics(landmarksJson)` 진입점이 사용한다.
 class WebFaceMetrics {
   /// 468 MediaPipe Face Mesh landmarks — each point = [x, y, (z)].
   final List<List<double>> landmarks;
 
-  WebFaceMetrics(this.landmarks);
+  /// 세로 축척 보정 = imageHeight / imageWidth. `FaceMetrics.aspect` 와 동일.
+  ///
+  /// MediaPipe 는 x 를 이미지 폭, y 를 높이로 각각 나눈 0~1 좌표를 준다.
+  /// 정사각형이 아닌 사진에서는 두 축의 축척이 달라 각도와 세로÷가로 비율이
+  /// 왜곡된다. y 에 이 값을 곱해 등방 좌표로 만든다.
+  final double aspect;
+
+  WebFaceMetrics(this.landmarks, {this.aspect = 1.0});
 
   double _x(int i) => landmarks[i][0];
-  double _y(int i) => landmarks[i][1];
+  double _y(int i) => landmarks[i][1] * aspect;
 
   double _dist(int a, int b) {
     final dx = _x(a) - _x(b);

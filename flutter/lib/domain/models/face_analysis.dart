@@ -37,18 +37,20 @@ FaceReadingReport analyzeFaceReading({
   final isOver50 = ageGroup.isOver50;
 
   // Step 1: Compute 15 raw metrics
-  final faceMetrics = FaceMetrics(landmarks);
+  //
+  // 사진이 정사각형이 아니면 MediaPipe 좌표(x=폭 기준, y=높이 기준)의 두 축
+  // 축척이 달라 각도와 세로÷가로 비율이 왜곡된다. aspect 를 넘겨 등방 공간에서
+  // 계산하게 한다 — faceAspectRatio · gonialAngle · chinAngle · eyeCanthalTilt ·
+  // mouthCornerAngle · eyeAspect 6개가 여기에 걸린다.
+  final aspectCorrection = imageHeight / imageWidth;
+  final faceMetrics = FaceMetrics(landmarks, aspect: aspectCorrection);
   final measured = faceMetrics.computeAll();
 
-  // Correct faceAspectRatio:
-  // 1) Non-square image: landmarks normalized 0~1 independently per axis
-  // 2) Landmark 10 (foreheadTop) sits below actual hairline
-  //    → Adjust this single value to fine-tune face shape classification
+  // Landmark 10 (foreheadTop) sits below actual hairline
+  //   → Adjust this single value to fine-tune face shape classification
   const kLandmark10Correction = 1.05; // > 1.0 = 더 길게 보정
-  final aspectCorrection = imageHeight / imageWidth;
   final faceAspectRaw = measured['faceAspectRatio']!; // pre-correction
-  measured['faceAspectRatio'] =
-      faceAspectRaw * aspectCorrection * kLandmark10Correction;
+  measured['faceAspectRatio'] = faceAspectRaw * kLandmark10Correction;
 
   debugPrint('[Analysis] faceAspectRatio raw=${measured['faceAspectRatio']?.toStringAsFixed(4)} '
       'faceH=${faceMetrics.faceHeight.toStringAsFixed(4)} '
