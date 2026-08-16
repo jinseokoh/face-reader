@@ -27,7 +27,7 @@ const _kPages = [
     asset: 'assets/images/onboarding1.png',
     title: '관상',
     chips: ['관상풀이 무료'],
-    body: '카메라로 찍거나 앨범 사진을 올리면 상세한\n관상 분석을 무료로 볼 수 있습니다.',
+    body: '얼굴을 측량하여 내 프로필을 만듭니다.\n궁합과 케미가 이 프로필로 계산됩니다.',
     warm: true,
   ),
   _OnboardingPageData(
@@ -41,13 +41,13 @@ const _kPages = [
     asset: 'assets/images/onboarding3.png',
     title: '케미',
     chips: ['케미 그룹 무료'],
-    body: '케미 그룹은 누구나 만들거나 참여할 수 있고\n참가자 중 가장 케미가 좋은 1쌍에게 채팅기회를 드립니다.',
+    body: '케미 그룹은 누구나 만들거나 참여할 수 있고\n참가자들의 그룹 케미 결과표를 보여드립니다.',
     warm: true,
   ),
   _OnboardingPageData(
-    asset: 'assets/images/banner-start.png',
-    title: '시작은 내 관상부터',
-    body: '궁합과 케미는 내 관상이 등록되어 있어야\n볼 수 있습니다. 지금 내 관상을 등록하세요.',
+    asset: 'assets/images/onboarding4.png',
+    title: '얼굴로 알아보는 우리 모임의 케미',
+    body: '내 얼굴을 재서 프로필을 만들면,\n모임에 모인 사람들과의 케미가 한 장으로 나옵니다.',
     warm: false,
   ),
 ];
@@ -61,7 +61,8 @@ const double _kRevealVerticalPosition = 0.75;
 /// 흘러내리는 것을 차단한다.
 const double _kTopBarHeight = 48;
 
-/// 온보딩 안내 — 관상 → 궁합 → 케미 → 시작(내 관상 등록) 4페이지 인트로.
+/// 온보딩 안내 — 관상 → 궁합 → 케미 → 전체 흐름 4페이지 인트로.
+/// 이미지는 `onboarding1.png` ~ `onboarding4.png` 를 순서대로 쓴다.
 /// MainApp 이 첫 프레임 뒤에 호출한다.
 ///
 /// 전환은 ConcentricPageView — 하단 원형 버튼에서 다음 페이지 배경이
