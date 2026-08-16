@@ -36,7 +36,7 @@
 
 근거 제시는 세 가지로만:
 1. **현재 엔진의 구조적 특성** (row 합 = 1.00, stage firing rate 등)
-2. **Monte Carlo 측정** (20,000 샘플, seed=42, input = `sampleCalibratedZ` factor 모델 — 분포 검증 테스트도 반드시 같은 generator)
+2. **AAF 11,800장 실측** (male 5361 / female 6439 — 분포 검증 테스트도 반드시 같은 얼굴을 읽는다: `test/support/aaf_faces.dart`)
 3. **UX 판단** (bar chart 가독성, 사용자 해석 난이도, saturation 등)
 
 과거 상태를 비교 기준으로 제시하는 순간 트리거. 설계 제안에 "nullable optional", "기존 호환" 같은 safety hook 금지. 데이터·Hive·스키마 전부 drop-recreate 자유.
@@ -75,9 +75,9 @@ flutter test             # 168 test 전부 green
 flutter run              # 실기 (camera/MediaPipe simulator 불가)
 ```
 
-Monte Carlo 재보정 (weight matrix/rule/reference 수정 후):
+실측 재보정 (weight matrix/rule/reference 수정 후):
 ```bash
-flutter test test/calibration_test.dart
+flutter test test/calibration_empirical_test.dart
 # 출력 21-point map 을 attribute_normalize.dart 에 paste
 flutter test test/archetype_fairness_test.dart test/score_distribution_test.dart
 ```

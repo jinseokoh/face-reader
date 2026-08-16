@@ -23,7 +23,7 @@ Flutter 는 path dep, web 은 `dart compile js -O1` 산출물로 같은 엔진 �
 
 | 위치 | 파일 |
 |---|---|
-| `shared/lib/` | `physiognomy_tree` · `face_reading_report` · `metric_score` · `physiognomy_scoring` · `attribute_derivation` · `attribute_normalize` · `score_calibration` · `archetype` · `age_adjustment` · `yin_yang` · `compat/` · `face_reference_data` · enums |
+| `shared/lib/` | `physiognomy_tree` · `face_reading_report` · `metric_score` · `physiognomy_scoring` · `attribute_derivation` · `attribute_normalize` · `archetype` · `age_adjustment` · `yin_yang` · `compat/` · `face_reference_data` · enums |
 | `flutter/lib/` | `face_analysis` · `face_metrics`(+lateral) · `life_question_narrative` · `report_assembler` · text_blocks · `face_shape_classifier` |
 
 JS export: `runEngine`(solo) / `runCompat`(궁합) / `runMetrics`(웹 티저).
@@ -200,12 +200,20 @@ raw → globalPct = _rawToPercentile(raw, attr, gender)   ← 21-point quantile 
 ```
 
 - quantile table 은 **per-shape × gender** (`_attrQuantilesMale`/`_attrQuantilesFemale`) —
-  상관 Monte Carlo 20,000 샘플(seed=42, bone/mid latent + 얼굴형 prior)로 오프라인 생성해
-  코드에 박음. 앱 런타임은 표를 읽기만 한다.
+  **AAF 11,800장 실측**(male 5361 / female 6439)을 프로덕션 파이프라인에 통과시켜
+  오프라인 생성해 코드에 박음. 앱 런타임은 표를 읽기만 한다. 합성 분포가 아니므로
+  부위 간 상관·왜도·얼굴형 구성비가 전부 데이터에서 나온다.
+- 표본 400장 미만 (얼굴형×성별) 셀은 싣지 않는다 (oblong♀ 244 · square♀ 362 ·
+  heart♂ 60). `_quantileFor` 가 성별 전체 테이블로 폴백한다.
 - weight matrix·rule·reference 변경 시 재생성 필수:
-  `flutter test test/calibration_test.dart` → 출력 map 을 `attribute_normalize.dart` 에 paste.
-- Invariant (`score_distribution_test.dart`): spread ≥ 2.0 · 평균 ~7.0 · std ~1.2 ·
-  saturation(≥9.5) < 5%.
+  `flutter test test/calibration_empirical_test.dart` → 출력 map 을
+  `attribute_normalize.dart` 에 paste.
+- **분포 검증 테스트는 반드시 같은 실측 얼굴을 입력으로 쓴다**
+  (`test/support/aaf_faces.dart`). 합성 입력으로 재놓고 실측 테이블로 정규화하면
+  서로 다른 두 세계를 섞는 것이라 발동률·포화도 수치가 의미를 잃는다.
+- Invariant (`score_distribution_test.dart`, AAF 실측): median 7.3~7.8 ·
+  saturation(>9.5) 3.1~9.5%. 공정성(`archetype_fairness_test.dart`):
+  primary 최저 7.20% ~ 최고 14.67%.
 - 궁합도 동일 방식 별도 도구: `compat_calibration_test.dart` → `compat_label.dart` 경계 +
   `compat_aggregator.dart` anchor(p30/p60/p90 → 56/78/90).
 
@@ -238,7 +246,7 @@ Hive Box 3종: `history`(리포트 JSON list) · `prefs` · `auth`(Supabase 세�
 3. 같은 파일 `referenceData` 12 (ethnicity×gender) entry mean/sd
 4. `physiognomy_tree.dart` 노드 `metricIds`
 5. `attribute_derivation.dart` weight/rule (필요 시)
-6. calibration_test → 새 quantile → `attribute_normalize.dart`
+6. `extract_aaf.py` 재추출 → `calibration_empirical_test` → 새 quantile → `attribute_normalize.dart`
 7. `kReportSchemaVersion` bump (신규 rule 만이면 bump 불필요)
 
 ## 7. 궁합 엔진 (5 frame)

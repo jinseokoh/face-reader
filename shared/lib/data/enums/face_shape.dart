@@ -81,18 +81,25 @@ extension FaceShapeLabel on FaceShape {
   }
 }
 
-/// 한국 성인 얼굴형 분포 — MC calibration (score_calibration).
-/// 합 = 1.00. 실사용자 데이터 확보 후 재보정 대상.
+/// 동아시아 성인 얼굴형 분포 — **AAF 11,800장 실측** (2026-08-16).
+///
+/// 프로덕션 분류기(`face_shape_ratios.tflite`)를 AAF 전체에 적용해 센 비율을
+/// 0.90 으로 스케일하고, 분류 실패분 `unknown` 에 0.10 을 뒀다 (unknown 몫만
+/// 측정값이 아니라 모델링 여유다 — 실사용자 실패율 확보 후 교체 대상).
+///
+/// 성별로 구성이 크게 갈린다 (남 square 33%·round 28% / 여 oval 44%·round 39%).
+/// 이 상수는 성별 구분 없는 pooled 값이라, 성별이 있는 계산에는
+/// `attribute_normalize.dart` 의 per-shape × gender 테이블을 써야 한다.
 const Map<FaceShape, double> koreanShapeDistribution = {
-  FaceShape.oval: 0.35,
-  FaceShape.oblong: 0.18,
-  FaceShape.round: 0.15,
-  FaceShape.square: 0.12,
-  FaceShape.heart: 0.10,
-  FaceShape.unknown: 0.10,
+  FaceShape.oval: 0.2904,
+  FaceShape.oblong: 0.0955,
+  FaceShape.round: 0.3074,
+  FaceShape.square: 0.1644,
+  FaceShape.heart: 0.0423,
+  FaceShape.unknown: 0.1000,
 };
 
-/// koreanShapeDistribution 에서 샘플 1개 드로우. calibration MC 공용.
+/// koreanShapeDistribution 에서 샘플 1개 드로우.
 FaceShape drawShape(Random rng) {
   final u = rng.nextDouble();
   double acc = 0;

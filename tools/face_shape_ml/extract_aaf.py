@@ -148,12 +148,15 @@ def main():
     (OUT / "aaf_reference.json").write_text(json.dumps(result, indent=2))
     print(f"  → {OUT/'aaf_reference.json'}")
 
-    # per-face raw CSV (for Dart end-to-end validation through the real engine)
+    # per-face raw CSV — Dart 엔진 end-to-end 검증 + attribute quantile 실측
+    # 캘리브레이션용. 얼굴형 분류기(face_shape_ratios.tflite)가 28 feature 를
+    # 전부 요구하므로 referenceData 미사용 2개(eyebrowLength·noseBridgeRatio)도
+    # 함께 남긴다.
     with open(OUT / "aaf_per_face.csv", "w") as fh:
-        fh.write("gender," + ",".join(REF_METRICS) + "\n")
+        fh.write("gender," + ",".join(FEATURE_NAMES) + "\n")
         for g in ("male", "female"):
             for vec in bucket[g]:
-                vals = [f"{vec[idx[m]]:.6f}" for m in REF_METRICS]
+                vals = [f"{vec[idx[m]]:.6f}" for m in FEATURE_NAMES]
                 fh.write(g + "," + ",".join(vals) + "\n")
     print(f"  → {OUT/'aaf_per_face.csv'}")
 

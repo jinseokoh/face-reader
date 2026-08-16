@@ -1,5 +1,7 @@
-// Verifies that normalized attribute scores are spread evenly in [5, 10]
-// for the realistic input distribution N(0.2, 0.85).
+// 정규화된 attribute 점수가 [5, 10] 안에 고르게 퍼지는지 검증한다.
+//
+// 입력은 AAF 11,800장 실측 얼굴이다 — quantile 테이블이 만들어진 세계와 같아야
+// 포화도 수치가 의미를 갖는다.
 //
 // Run via: flutter test test/score_distribution_test.dart
 
@@ -11,10 +13,13 @@ import 'package:face_engine/data/constants/face_reference_data.dart';
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/attribute.dart';
 import 'package:face_engine/data/enums/ethnicity.dart';
+import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/services/attribute_derivation.dart';
 import 'package:face_engine/domain/services/attribute_normalize.dart';
 import 'package:face_engine/domain/services/physiognomy_scoring.dart';
+
+import 'support/aaf_faces.dart';
 
 double _normal(Random rng) {
   double u1, u2;
@@ -25,32 +30,22 @@ double _normal(Random rng) {
   return sqrt(-2.0 * log(u1)) * cos(2.0 * pi * u2);
 }
 
-const double _inputMean = 0.2;
-const double _inputStd = 0.85;
-double _realisticZ(Random rng) =>
-    (_normal(rng) * _inputStd + _inputMean).clamp(-3.5, 3.5);
-
 void main() {
   test('normalized score distribution per attribute', () {
-    const samples = 20000;
-    const seed = 1234;
-    final rng = Random(seed);
+    final faces = loadAafFaces();
     final scores = {for (final a in Attribute.values) a: <double>[]};
 
-    for (int i = 0; i < samples; i++) {
-      final gender = i.isEven ? Gender.male : Gender.female;
-      final z = <String, double>{};
-      for (final info in metricInfoList) {
-        z[info.id] = _realisticZ(rng);
-      }
+    for (final f in faces) {
       final raws = deriveAttributeScores(
-        tree: scoreTree(z),
-        gender: gender,
+        tree: scoreTree(f.z),
+        gender: f.gender,
         ethnicity: Ethnicity.eastAsian,
         ageGroup: AgeGroup.thirties,
         hasLateral: false,
+        faceShape: f.shape,
+        shapeConfidence: f.shape == FaceShape.unknown ? 0.0 : 0.8,
       );
-      final normalized = normalizeAllScores(raws, gender);
+      final normalized = normalizeAllScores(raws, f.gender, shape: f.shape);
       for (final attr in Attribute.values) {
         scores[attr]!.add(normalized[attr]!);
       }

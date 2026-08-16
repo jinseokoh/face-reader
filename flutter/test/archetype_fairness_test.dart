@@ -6,46 +6,42 @@
 // Expected: each of 10 archetypes is selected as primary roughly 10% of
 // the time (1 in 10) over a large random sample.
 
-import 'dart:math';
-
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/attribute.dart';
 import 'package:face_engine/data/enums/ethnicity.dart';
-import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/services/archetype.dart';
 import 'package:face_engine/domain/services/attribute_derivation.dart';
 import 'package:face_engine/domain/services/attribute_normalize.dart';
 import 'package:face_engine/domain/services/physiognomy_scoring.dart';
-import 'package:face_engine/domain/services/score_calibration.dart';
 
-// 입력은 반드시 캘리브레이션과 동일한 generator(sampleCalibratedZ) —
-// quantile 테이블이 만들어진 세계와 같은 세계를 측정해야 공정성 검증이
-// 성립한다. (과거 독립 N(0.2, 0.85) 샘플은 marginal 을 49~77% 로 왜곡해
-// 제왕형 57% 같은 실제 편향을 테스트가 보지 못했다 — 2026-07-25.)
+import 'support/aaf_faces.dart';
+
+// 입력은 반드시 quantile 테이블이 만들어진 세계와 같아야 공정성 검증이
+// 성립한다. 그 테이블이 AAF 11,800장 실측이므로 여기서도 같은 얼굴들을 읽는다.
+// (합성 generator 로 뽑아놓고 실측 테이블로 정규화하면 서로 다른 두 세계를
+// 섞는 셈이라 발동률 수치가 아무것도 뜻하지 않는다.)
 
 void main() {
   test('archetype primary distribution is fair (within ±5%)', () {
-    const samples = 20000;
-    const seed = 1234;
-    final rng = Random(seed);
+    final faces = loadAafFaces();
+    final samples = faces.length;
     final counts = {for (final a in Attribute.values) a: 0};
 
-    for (int i = 0; i < samples; i++) {
-      final gender = i.isEven ? Gender.male : Gender.female;
-      final sample = sampleCalibratedZ(rng);
+    for (final f in faces) {
       final raws = deriveAttributeScores(
-        tree: scoreTree(sample.z),
-        gender: gender,
+        tree: scoreTree(f.z),
+        gender: f.gender,
         ethnicity: Ethnicity.eastAsian,
         ageGroup: AgeGroup.thirties,
         hasLateral: false,
-        faceShape: sample.shape,
+        faceShape: f.shape,
         shapeConfidence: 0.8,
       );
-      final normalized = normalizeAllScores(raws, gender, shape: sample.shape);
-      final archetype = classifyArchetype(normalized, gender, shape: sample.shape);
+      final normalized = normalizeAllScores(raws, f.gender, shape: f.shape);
+      final archetype =
+          classifyArchetype(normalized, f.gender, shape: f.shape);
       counts[archetype.primary] = counts[archetype.primary]! + 1;
     }
 
@@ -64,9 +60,9 @@ void main() {
     // ±5% 안이면 leadership 쏠림 같은 심각한 편향은 사라진 것으로 간주.
     for (final entry in counts.entries) {
       final pct = entry.value / samples;
-      // 2026-07-25 재보정 후 실측: 최저 trust 5.8% / 최고 libido 16.0%.
-      // 잔여 편차는 bone·mid factor 상관구조의 구조적 산물 (상관 높은
-      // attribute 끼리 top-1 을 나눠 갖는다). 여유 1.5%p 를 둔 hard bound —
+      // AAF 11,800장 실측: 최저 wealth 7.20% / 최고 libido 14.67%.
+      // 잔여 편차는 실제 얼굴에서 attribute 끼리 상관이 있기 때문이다 (상관
+      // 높은 attribute 끼리 top-1 을 나눠 갖는다). 여유를 둔 hard bound —
       // 이 밖으로 나가면 랭킹 편향이 재발한 것이다.
       expect(pct, greaterThan(0.043),
           reason: '\${entry.key.name} too rare: \${(pct * 100).toStringAsFixed(2)}%');
@@ -76,25 +72,23 @@ void main() {
   });
 
   test('special archetype rates stay rare and gender-balanced', () {
-    const samples = 20000;
-    final rng = Random(42);
+    final faces = loadAafFaces();
+    final samples = faces.length;
     final counts = <String, int>{};
     var none = 0;
 
-    for (int i = 0; i < samples; i++) {
-      final gender = i.isEven ? Gender.male : Gender.female;
-      final sample = sampleCalibratedZ(rng);
+    for (final f in faces) {
       final raws = deriveAttributeScores(
-        tree: scoreTree(sample.z),
-        gender: gender,
+        tree: scoreTree(f.z),
+        gender: f.gender,
         ethnicity: Ethnicity.eastAsian,
         ageGroup: AgeGroup.thirties,
         hasLateral: false,
-        faceShape: sample.shape,
+        faceShape: f.shape,
         shapeConfidence: 0.8,
       );
-      final normalized = normalizeAllScores(raws, gender, shape: sample.shape);
-      final r = classifyArchetype(normalized, gender, shape: sample.shape);
+      final normalized = normalizeAllScores(raws, f.gender, shape: f.shape);
+      final r = classifyArchetype(normalized, f.gender, shape: f.shape);
       final sp = r.specialArchetype;
       if (sp == null) {
         none++;
