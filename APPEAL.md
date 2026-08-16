@@ -115,6 +115,41 @@ We use it for two reasons, and we want to state both plainly:
 We are not neutral about this and we are not hiding it. The Korean app
 name references physiognomy directly.
 
+ON WHAT PHYSIOGNOMY IS
+
+We think this is worth a paragraph, because the English word carries
+associations that the Korean subject does not.
+
+East Asian physiognomy is a written compilation of folk observation
+about faces, accumulated and systematized over several centuries. Its
+content is of the form "people with this feature were often found to be
+like this" — inference from appearance to disposition, recorded, argued
+over, and organized into a scheme. It is a body of claims about
+correlation, assembled before anyone had the tools to test correlation.
+
+Traditions of this kind exist because the underlying behavior is
+universal. People read faces and form judgments from them everywhere,
+and every language we know of carries the vocabulary for it — an honest
+face, a hard face, a kind face. This is one of the better-established
+findings in face perception research: such inferences are made rapidly,
+and different observers agree with one another to a striking degree
+(Oosterhof & Todorov, PNAS, 2008). That work establishes that the
+judgments are consistent. It does not establish that they are correct,
+and we are not claiming that it does.
+
+What separates these traditions is not whether the inference happens but
+how a culture wrote it down. East Asian physiognomy wrote it down in
+unusual detail, mapping specific facial regions to specific domains of
+life. That map is what our engine encodes.
+
+We should be straightforward about one thing. The tradition is not
+uniform. Alongside its descriptive material it also contains
+fortune-telling — claims about a person's future, their fate, the year
+their luck turns. We do not carry that layer. The app's text is written
+entirely in the present tense and describes only how the tradition read
+a given feature. This was an editorial decision on our part, and it is
+verifiable in the product rather than only asserted here.
+
 ON THE APP NAME
 
 The Korean name translates literally as "Physiognomy Is Science." We
