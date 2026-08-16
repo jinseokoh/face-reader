@@ -25,29 +25,29 @@ const _kPageColors = [
 const _kPages = [
   _OnboardingPageData(
     asset: 'assets/images/onboarding1.png',
-    title: '관상',
-    chips: ['관상풀이 무료'],
-    body: '얼굴을 측량하여 내 프로필을 만듭니다.\n궁합과 케미가 이 프로필로 계산됩니다.',
+    title: '얼굴로 알아보는 우리 모임의 케미',
+    body: '우리 그룹의 케미를 한눈에 보고\n새로운 대화의 계기를 만들어보세요.',
     warm: true,
   ),
   _OnboardingPageData(
     asset: 'assets/images/onboarding2.png',
-    title: '궁합',
-    chips: ['궁합해석 1코인'],
-    body: '내 관상이 등록된 상태 이후에 올리는 모든\n사진 속 인물과 나와의 궁합을 볼 수 있습니다.',
+    title: '관상',
+    chips: ['관상풀이 무료'],
+    body: '얼굴을 측량하여 내 프로필을 만듭니다.\n궁합과 케미가 이 프로필로 계산됩니다.',
     warm: false,
   ),
   _OnboardingPageData(
     asset: 'assets/images/onboarding3.png',
-    title: '케미',
-    chips: ['케미 그룹 무료'],
-    body: '케미 그룹은 누구나 만들거나 참여할 수 있고\n참가자들의 그룹 케미 결과표를 보여드립니다.',
+    title: '궁합',
+    chips: ['궁합해석 1코인'],
+    body: '내 관상이 등록된 상태 이후에 올리는 모든\n사진 속 인물과 나와의 궁합을 볼 수 있습니다.',
     warm: true,
   ),
   _OnboardingPageData(
     asset: 'assets/images/onboarding4.png',
-    title: '얼굴로 알아보는 우리 모임의 케미',
-    body: '내 얼굴을 재서 프로필을 만들면,\n모임에 모인 사람들과의 케미가 한 장으로 나옵니다.',
+    title: '케미',
+    chips: ['케미 그룹 무료'],
+    body: '케미 그룹은 누구나 만들거나 참여할 수 있고\n참가자들의 그룹 케미 결과표를 보여드립니다.',
     warm: false,
   ),
 ];
@@ -61,8 +61,10 @@ const double _kRevealVerticalPosition = 0.75;
 /// 흘러내리는 것을 차단한다.
 const double _kTopBarHeight = 48;
 
-/// 온보딩 안내 — 관상 → 궁합 → 케미 → 전체 흐름 4페이지 인트로.
+/// 온보딩 안내 — 전체 흐름 → 관상 → 궁합 → 케미 4페이지 인트로.
 /// 이미지는 `onboarding1.png` ~ `onboarding4.png` 를 순서대로 쓴다.
+/// `warm` 은 [_kPageColors] 의 짝을 따른다 — index 짝수(cream·shell)가 true,
+/// 홀수(흰 배경)가 false. **페이지를 재배열하면 이 교대를 다시 맞출 것.**
 /// MainApp 이 첫 프레임 뒤에 호출한다.
 ///
 /// 전환은 ConcentricPageView — 하단 원형 버튼에서 다음 페이지 배경이
