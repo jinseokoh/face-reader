@@ -703,7 +703,7 @@ class _PublicTab extends ConsumerWidget {
               children: const [
                 SizedBox(height: 120),
                 EmotionEmptyState(
-                  asset: 'assets/images/emotion-frown.png',
+                  asset: 'assets/images/emotion-surprise.png',
                   message: '모집 중인 공개 그룹이 없습니다',
                 ),
               ],

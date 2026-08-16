@@ -93,6 +93,15 @@ class _MainAppState extends ConsumerState<MainApp> {
       case OnboardingIntroResult.later:
         break;
     }
+    if (!mounted) return;
+    // 온보딩 직후 착지는 케미 탭. 마지막으로 본 장이 케미고, 목록은 내 관상
+    // 없이도 열려 있어(chemistry_screen) 바로 볼 게 있다. 기본값 0(관상)에
+    // 떨어뜨리면 1인 화면이 첫인상이 되는데, 관상은 케미에 넣는 재료지
+    // 출발점이 아니다.
+    //
+    // 온보딩은 내 관상이 없는 사용자에게만 뜨므로(위 early return) 이미
+    // 등록을 마친 사용자의 착지 탭은 건드리지 않는다.
+    ref.read(selectedTabProvider.notifier).selectTab(_chemistryTabIndex);
   }
 
   @override
@@ -177,6 +186,9 @@ class _MainAppState extends ConsumerState<MainApp> {
       ),
     );
   }
+
+  /// 케미 탭 index — 온보딩 직후 착지 지점.
+  static const _chemistryTabIndex = 2;
 
   /// 채팅 탭의 IndexedStack index — 뱃지·밴드·탭 전환이 공유.
   static const _chatTabIndex = 3;
