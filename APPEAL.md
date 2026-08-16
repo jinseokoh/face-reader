@@ -14,7 +14,8 @@ App Review Board 정식 appeal 문안.
 | 1차 리젝 | 2026-06-07 · build 6 |
 | 2차 리젝 | 2026-08-12 · build 15 (**같은 Submission ID** → 새 심사가 아니라 템플릿 재확인) |
 | 제출 경로 | App Review Board appeal (Resolution Center 답장 아님) |
-| 앱 이름 | 한국어 `관상은 과학이다` **유지** (§0.2 참조) |
+| 출시 지역 | **대한민국 단독** — 편지의 ON DISTRIBUTION 논거 |
+| 앱 이름 | `관상은 과학이다` **변경 없음** — 편지에서 정면 설명 (§0.2) |
 
 ---
 
@@ -35,23 +36,27 @@ App Review Board 정식 appeal 문안.
 직접 말하고 있었다.** 지금은 목록·상세·케미 개념이 전부 열려 있고, 관상은 **참가
 버튼을 눌렀을 때** 요구된다 (`team_detail_screen.dart::_join`).
 
-### 0.2 앱 이름 — 한국어 유지, 영어 로케일 분리
+### 0.2 앱 이름 — 그대로 두고 편지에서 정면으로 설명한다
 
-한국어 **`관상은 과학이다`** 는 관용 어법이다. `야구는 과학이다`·`다이어트는 과학이다`
-계열의 훅이고, 한국어 화자는 "여기 진짜 패턴이 있다"는 반농담으로 읽는다.
+**앱 이름은 `관상은 과학이다` 를 바꾸지 않는다.** 영문 로케일도 추가하지 않는다.
 
-이 뉘앙스는 **번역에서 죽는다.** 심사관이 보는 건 `Physiognomy Is Science` 이고,
-영어로는 문자 그대로의 과학적 타당성 주장이 된다. 그리고 그건 앱 본문이 스스로
-부정하는 문장이라 **편지 안에서 자가당착이 생긴다.**
+한국 전용 출시라 primary language 가 한국어이고, 대표 이름은 계속 한국어다.
+영문 로케일을 하나 더 만들어도 **심사관 눈에서 한국어 이름이 사라지지 않는다** —
+비영어권 앱 심사에는 번역이 기본으로 들어간다. 우회가 안 되는 문제다.
 
-해결은 개명이 아니다. App Store Connect 는 로케일별 앱 이름을 따로 받는다.
+어차피 보이고 번역된다면 **설명 없이 두는 게 최악**이다. 심사관이
+`Physiognomy Is Science` 를 혼자 해석하게 된다.
 
-| 로케일 | 이름 |
-| --- | --- |
-| ko | **관상은 과학이다** — 그대로. 훅 유지. 실제 시장 |
-| en | 과학 주장이 없는 이름 |
+그래서 편지에 `ON THE APP NAME` 문단을 넣는다. 논거는 **영어에도 같은 어법이
+있다**는 것 — *sales is a science*, *parenting is a science*. 한국어 `야구는
+과학이다`·`다이어트는 과학이다` 와 뜻이 같다. 둘 다 "운이 아니라 반복 가능한
+방법이 있다"는 뜻이지 동료심사 논문이 있다는 주장이 아니다.
 
-코드 분기 아니고, Play 스토어 무관이고, 한국 사용자 화면은 한 글자도 안 바뀐다.
+그리고 **이름이 결정적이면 그렇다고 말해달라**고 편지에서 명시적으로 요구한다.
+두 번 다 같은 템플릿만 받아서 추론이 안 되는 유일한 항목이다.
+
+앱 로케일과 **별개로** 이 둘은 무조건 영어다 — App Review Information 의 리뷰
+노트(§2), 그리고 어필 편지 본문.
 
 ### 0.3 라벨 정리 — 완료
 
@@ -109,6 +114,41 @@ We use it for two reasons, and we want to state both plainly:
 
 We are not neutral about this and we are not hiding it. The Korean app
 name references physiognomy directly.
+
+ON THE APP NAME
+
+The Korean name translates literally as "Physiognomy Is Science." We
+want to be clear about how that phrase reads to the audience it is
+written for, because the literal translation is misleading.
+
+"X is a science" is an idiomatic construction in Korean — 야구는
+과학이다 ("baseball is a science"), 다이어트는 과학이다 ("dieting is a
+science") — used the same way the English phrases "sales is a science"
+or "parenting is a science" are used. It asserts that something has a
+repeatable method rather than being luck. It is a hook, and native
+speakers read it as one.
+
+It is not a claim of scientific validation, and the app does not make
+that claim to users. Where the app conveys a traditional reading, the
+tradition is the stated subject.
+
+We are keeping the name because it is how our market recognizes the
+product. If the Board considers the name itself determinative under
+4.3(b), we would ask to be told that specifically. It is the one
+element we cannot infer from the template we have now received twice.
+
+ON DISTRIBUTION
+
+The app is released in South Korea only. It is written in Korean, for a
+Korean cultural reference that does not translate cleanly, and we have
+no plan to distribute it elsewhere.
+
+We mention this because we understand 4.3(b) to be aimed at a pattern:
+large numbers of interchangeable applications pushed into every
+territory at once. This app is the opposite shape — a single-market
+product built around a local cultural vocabulary, with a group social
+mechanic that only works if the people in a room already know each
+other or want to.
 
 WHAT THE APP DOES NOT DO
 
@@ -213,6 +253,13 @@ Steps:
 There is no birth date, birth time, or horoscope anywhere in the app.
 Every number shown is computed on-device from the participant's own
 facial landmarks.
+
+Face processing runs on-device. Landmarks are converted to
+dimensionless ratios immediately; the app does not perform facial
+recognition and does not use the face to identify a person against any
+database.
+
+The app is distributed in South Korea only and its interface is Korean.
 ```
 
 ⬜ `<ID>` · `<PW>` · `<ROOM NAME>` · 참가자 N명 채우기 — **제출 전 필수**
@@ -257,7 +304,8 @@ facial landmarks.
 | [Current Opinion in Behavioral Sciences (2024)](https://www.sciencedirect.com/science/article/abs/pii/S2352250X24000289) | *"these inferences are not very accurate"* |
 
 **"관상은 과학적으로 검증됐다"를 주장하는 순간 위 셋이 그대로 반박이 된다.**
-영어 앱 이름을 분리하는 이유가 이것이다 (§0.2).
+편지가 앱 이름을 관용 어법으로 설명하고 타당성 주장을 명시적으로 부인하는 이유가
+이것이다 (§0.2).
 
 ### 한국 학계 (문화·사상 층위)
 
@@ -280,7 +328,8 @@ facial landmarks.
 | ⬜ | 새 **버전 번호**로 제출 (2.0.0) — 같은 버전에 빌드만 올리면 Submission ID 가 유지돼 템플릿 재확인만 돌아온다 |
 | ⬜ | 리뷰 노트에 데모 계정·방·단계 기입 (§2) |
 | ⬜ | 데모 방에 참가자 N명 미리 채워두기 |
-| ⬜ | 영어 로케일 앱 이름 분리 (§0.2) |
+| ⬜ | 출시 지역이 **대한민국 단독**으로 설정돼 있는지 확인 (편지 논거의 전제) |
+| ✅ | 앱 이름 유지 + 편지에 ON THE APP NAME 문단 |
 | ✅ | 그룹 목록 게이트 제거 |
 | ✅ | 속성 라벨 정리 |
 | ✅ | 계측·레퍼런스 결함 수정 |
