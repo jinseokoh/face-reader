@@ -469,22 +469,22 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage>
         Text('어떤 그룹을 만들까요?', style: AppText.display),
         const SizedBox(height: AppSpacing.xxl),
         _choiceTile(
-          selected: _roomKind == TeamRoomKind.match,
-          title: '이성 케미 매칭그룹',
-          caption: '남녀 비율이 똑같고 케미 결과는 남녀 쌍만 계산합니다',
+          selected: _roomKind == TeamRoomKind.all,
+          title: '전체 케미 매칭그룹',
+          caption: '남녀 구분 없이 모든 전체 쌍의 케미를 계산합니다',
           onTap: () => setState(() {
-            _roomKind = TeamRoomKind.match;
+            _roomKind = TeamRoomKind.all;
             _categorySel = null;
             _selectedTitle = null;
           }),
         ),
         const SizedBox(height: AppSpacing.md),
         _choiceTile(
-          selected: _roomKind == TeamRoomKind.all,
-          title: '전체 케미 매칭그룹',
-          caption: '남녀 구분 없이 모든 전체 쌍의 케미를 계산합니다',
+          selected: _roomKind == TeamRoomKind.match,
+          title: '이성 케미 매칭그룹',
+          caption: '남녀 비율이 똑같고 케미 결과는 남녀 쌍만 계산합니다',
           onTap: () => setState(() {
-            _roomKind = TeamRoomKind.all;
+            _roomKind = TeamRoomKind.match;
             _categorySel = null;
             _selectedTitle = null;
           }),

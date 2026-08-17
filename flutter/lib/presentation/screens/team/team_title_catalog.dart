@@ -1,13 +1,6 @@
 import 'package:facely/domain/models/team.dart';
 
 const List<TeamTitleCategory> kTeamTitleCatalog = [
-  TeamTitleCategory('취미', [
-    TeamTitlePreset('케미 잘 맞는 사람끼리 전시회 한번 같이 가요.', _kBoth),
-    TeamTitlePreset('케미 잘 맞는 사람끼리 영화 한편 같이 봐요.', _kBoth),
-    TeamTitlePreset('케미 잘 맞는 사람끼리 식사 한번 같이해요.', _kBoth),
-    TeamTitlePreset('케미 잘 맞는 사람끼리 커피 한잔 같이해요.', _kBoth),
-    TeamTitlePreset('케미 잘 맞는 사람끼리 술 한잔 같이해요.', _kBoth),
-  ]),
   TeamTitleCategory('즉석', [
     TeamTitlePreset('케미, 그것이 알고 싶다', _kBoth),
     TeamTitlePreset('나는 케미 솔로', _kBoth),
@@ -19,6 +12,13 @@ const List<TeamTitleCategory> kTeamTitleCatalog = [
     TeamTitlePreset('전지적 케미 참견 시점', _kBoth),
     TeamTitlePreset('전국 케미 자랑', _kBoth),
     TeamTitlePreset('세상에 이런 케미들이', _kBoth),
+  ]),
+  TeamTitleCategory('취미', [
+    TeamTitlePreset('케미 잘 맞는 사람끼리 전시회 한번 같이 가요.', _kBoth),
+    TeamTitlePreset('케미 잘 맞는 사람끼리 영화 한편 같이 봐요.', _kBoth),
+    TeamTitlePreset('케미 잘 맞는 사람끼리 식사 한번 같이해요.', _kBoth),
+    TeamTitlePreset('케미 잘 맞는 사람끼리 커피 한잔 같이해요.', _kBoth),
+    TeamTitlePreset('케미 잘 맞는 사람끼리 술 한잔 같이해요.', _kBoth),
   ]),
   TeamTitleCategory('MBTI', [
     TeamTitlePreset('MBTI E끼리 모이는 자리', _kBoth),
