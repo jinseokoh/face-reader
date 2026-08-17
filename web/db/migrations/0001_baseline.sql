@@ -1518,9 +1518,26 @@ create view public.my_blocks with (security_invoker = on) as
 -- Realtime full-row payload 가 column grant 를 우회해 password 를 실어나르지
 -- 않도록 컬럼 리스트로 발행 (PG15+). chemistry_snapshot/result_payload 도
 -- 제외 — 변경 이벤트는 신호이고 본문은 클라이언트가 refetch 한다.
+--
+-- is_private 만 목록에서 뺀다. stored 생성 컬럼이라 값은 디스크에 실재하지만
+-- Postgres 는 발행 컬럼 목록에 생성 컬럼의 "이름을 적는 것"을 거부한다
+-- (cannot use generated column ... in publication column list). 목록을 아예
+-- 생략하면 생성 컬럼도 함께 발행되므로, 막히는 것은 이름을 적는 경우뿐이다.
+-- 여기서는 password 를 빼야 해서 목록이 필수고, 따라서 is_private 를 뺀다.
+--
+-- ⚠️ 그래서 이 테이블은 반드시 컬럼 목록으로만 등록한다. 대시보드에서
+-- Realtime 토글로 켜면 목록 없는 전체 발행이 되어 password 가 방송을 탄다.
+--
+-- 이 한 단어 탓에 문장 전체가 실패해 teams 가 발행 목록에서 빠져 있었다.
+-- 정원 마감(recruiting→revealing)은 같은 트랜잭션의 team_members INSERT
+-- 알림이 대신 잡아 즉시 반영됐고 — 그래서 눈에 띄지 않았다 — 못 받던 것은
+-- team_members 가 그대로인 채 teams 만 바뀌는 사건들이다: 결과 저장
+-- (completed), 제목 수정, 만료(expired). 이들은 team_detail_screen 의 10초
+-- 폴링에만 의존했다. 뺀다고 잃는 것은 없다 — 클라이언트는 payload 를 버리고
+-- (`callback: (_) => onChange()`) 필터에 쓰는 id 는 목록에 남아 있다.
 do $$ begin
   alter publication supabase_realtime add table public.teams
-    (id, owner_id, title, is_private, room_kind, max_players,
+    (id, owner_id, title, room_kind, max_players,
      age_min, age_max, status, started_at, closed_at, created_at, updated_at);
 exception when duplicate_object then null; end $$;
 do $$ begin
