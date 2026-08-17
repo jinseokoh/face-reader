@@ -65,14 +65,14 @@ part of 'life_question_narrative.dart';
 /// 판단·읽힘·봄·들어감·나옴 다섯 틀을 돌려 쓴다. 뜻은 같고 어조만 다르다.
 const _v2Verdicts = <Attribute, Map<_Band, String>>{
   Attribute.wealth: {
-    _Band.high: '재물을 상당히 모을 가능성이 높은 부류로 판단했습니다.',
+    _Band.high: '재물을 상당히 모을 가능성이 높은 부류로 판단합니다.',
     _Band.mid: '재물을 충분히 모을 가능성이 높은 쪽으로 읽힙니다.',
     _Band.low: '재물을 아쉬워할 가능성이 높은 부류에 들어갑니다.',
   },
   Attribute.stability: {
     _Band.high: '큰 일에도 좀처럼 흔들리지 않을 쪽으로 봅니다.',
     _Band.mid: '웬만한 일에는 흔들리지 않을 가능성이 높은 부류예요.',
-    _Band.low: '기복을 자주 겪을 가능성이 높은 쪽으로 나왔습니다.',
+    _Band.low: '기복을 자주 겪을 가능성이 높은 쪽으로 나옵니다.',
   },
   Attribute.attractiveness: {
     _Band.high: '첫인상에서 호감을 크게 얻을 부류로 판단됩니다.',
@@ -82,7 +82,7 @@ const _v2Verdicts = <Attribute, Map<_Band, String>>{
   Attribute.emotionality: {
     _Band.high: '감정을 깊고 세게 느끼는 쪽으로 봅니다.',
     _Band.mid: '감정을 고르게 다루는 부류에 들어갑니다.',
-    _Band.low: '감정보다 사실을 앞세우는 쪽으로 판단했습니다.',
+    _Band.low: '감정보다 사실을 앞세우는 쪽으로 판단합니다.',
   },
   Attribute.libido: {
     _Band.high: '기운이 왕성한 부류예요.',
@@ -97,7 +97,7 @@ const _v2Verdicts = <Attribute, Map<_Band, String>>{
   Attribute.sociability: {
     _Band.high: '사람을 널리 모으는 쪽으로 봅니다.',
     _Band.mid: '사람과 무난히 어울리는 부류예요.',
-    _Band.low: '넓게 사귀기보다 좁고 깊게 사귀는 쪽으로 판단했습니다.',
+    _Band.low: '넓게 사귀기보다 좁고 깊게 사귀는 쪽으로 판단합니다.',
   },
   Attribute.trustworthiness: {
     _Band.high: '남에게 크게 신뢰받을 부류에 들어갑니다.',
@@ -107,12 +107,12 @@ const _v2Verdicts = <Attribute, Map<_Band, String>>{
   Attribute.intelligence: {
     _Band.high: '상황을 남보다 빨리 읽어내는 쪽입니다.',
     _Band.mid: '상황을 무난히 읽어내는 부류로 봅니다.',
-    _Band.low: '머리로 재기보다 몸으로 먼저 부딪치는 쪽으로 나왔어요.',
+    _Band.low: '머리로 재기보다 몸으로 먼저 부딪치는 쪽으로 나와요.',
   },
   Attribute.leadership: {
     _Band.high: '무리를 이끄는 자리에 설 가능성이 높은 부류입니다.',
     _Band.mid: '무리 안에서 제 몫을 해내는 쪽으로 읽힙니다.',
-    _Band.low: '앞에 서기보다 뒤에서 받쳐 주는 부류로 판단했습니다.',
+    _Band.low: '앞에 서기보다 뒤에서 받쳐 주는 부류로 판단합니다.',
   },
 };
 
@@ -136,7 +136,7 @@ String _v2Verdict(Attribute a, _Band b) => _v2Verdicts[a]?[b] ?? '';
 
 final List<_Frag> _v2WealthLead = [
   _Frag(_highPair(Attribute.wealth, Attribute.stability), [
-    '@{verdict:wealth} 코와 턱이 함께 두툼합니다. 버는 힘과 지키는 힘 중 한쪽만 도드라지지 않았습니다.',
+    '@{verdict:wealth} 코와 턱이 함께 두툼합니다. 버는 힘과 지키는 힘 중 한쪽만 도드라지지 않습니다.',
   ]),
   _Frag(_bandPair(Attribute.wealth, _Band.high, Attribute.stability, _Band.mid), [
     '@{verdict:wealth} 콧대가 곧고 콧방울이 도톰합니다. 기회를 먼저 알아보는 얼굴입니다.',
@@ -145,11 +145,11 @@ final List<_Frag> _v2WealthLead = [
     '@{verdict:wealth} 다만 턱이 얇습니다. 들어오는 폭이 큰 만큼 나가는 폭도 큽니다.',
   ]),
   _Frag(_bandPair(Attribute.wealth, _Band.mid, Attribute.stability, _Band.high), [
-    '@{verdict:stability} 코보다 턱이 발달했습니다. 새로 만드는 쪽보다 이미 가진 것을 지키는 쪽이 강합니다.',
+    '@{verdict:stability} 코보다 턱이 발달해 있습니다. 새로 만드는 쪽보다 이미 가진 것을 지키는 쪽이 강합니다.',
   ]),
   _Frag(_bandPair(Attribute.wealth, _Band.mid, Attribute.stability, _Band.mid), [
-    '@{verdict:wealth} 코와 턱이 어느 쪽으로도 치우치지 않았습니다.',
-    '@{verdict:wealth} 얼굴에서 돈과 관련된 자리가 고르게 나왔습니다. 한 번에 크게 갈리는 구성은 아닙니다.',
+    '@{verdict:wealth} 코와 턱이 어느 쪽으로도 치우치지 않습니다.',
+    '@{verdict:wealth} 얼굴에서 돈과 관련된 자리가 고르게 나옵니다. 한 번에 크게 갈리는 구성은 아닙니다.',
   ]),
   _Frag(_bandPair(Attribute.wealth, _Band.mid, Attribute.stability, _Band.low), [
     '@{verdict:stability} 턱이 얇은 편입니다. 마음이 자주 옮겨 앉습니다.',
@@ -161,7 +161,7 @@ final List<_Frag> _v2WealthLead = [
     '@{verdict:wealth} 콧방울이 얇습니다. 돈보다 다른 데 무게가 실린 얼굴입니다.',
   ]),
   _Frag(_lowPair(Attribute.wealth, Attribute.stability), [
-    '@{verdict:wealth} 코도 턱도 두드러지지 않았습니다. 돈이 이 얼굴의 중심축은 아닙니다.',
+    '@{verdict:wealth} 코도 턱도 두드러지지 않습니다. 돈이 이 얼굴의 중심축은 아닙니다.',
   ]),
   _Frag.hard((f) => true, [
     '@{verdict:wealth} 판단의 근거는 콧대의 곧기와 콧방울의 두께입니다.',
@@ -176,7 +176,7 @@ final List<_Frag> _v2WealthReading = [
         '다만 쥐는 힘이 세면 내놓아야 할 때를 놓치기 쉽습니다.',
   ]),
   _Frag.hard((f) => f.fired('O-CK') || f.nodeZ('cheekbone') >= 0.8, [
-    '광대가 평균보다 섰습니다. 옛사람들은 이 자리를 사람을 움직이는 힘으로 봤습니다. '
+    '광대가 평균보다 서 있습니다. 옛사람들은 이 자리를 사람을 움직이는 힘으로 봤습니다. '
         '혼자 벌기보다 사람을 통해 판을 넓히는 쪽이라는 이야기입니다. '
         '다만 나서는 힘이 앞서면 정작 챙길 것을 놓칩니다.',
   ]),
@@ -186,7 +186,7 @@ final List<_Frag> _v2WealthReading = [
         '대신 판을 갈아타야 할 때 늦습니다.',
   ]),
   _Frag.hard((f) => f.fired('O-NM1') || f.fired('O-NM2'), [
-    '코와 입이 함께 발달했습니다. 옛 관상에서는 코를 들어오는 자리, 입을 나가는 자리로 나눠 봤습니다. '
+    '코와 입이 함께 발달해 있습니다. 옛 관상에서는 코를 들어오는 자리, 입을 나가는 자리로 나눠 봤습니다. '
         '둘 다 크면 수입도 지출도 큽니다. '
         '문제는 액수가 아니라 두 폭의 차이입니다.',
   ]),
@@ -271,7 +271,7 @@ final List<_Frag> _v2HealthLead = [
     '@{verdict:stability} 콧대 위쪽이 곧고 눈에 물기가 돕니다. 몸의 기운이 잘 도는 얼굴입니다.',
   ]),
   _Frag(_bandPair(Attribute.stability, _Band.high, Attribute.emotionality, _Band.mid), [
-    '@{verdict:stability} 콧대 위쪽이 곧게 섰습니다. 컨디션이 크게 오르내리지 않습니다.',
+    '@{verdict:stability} 콧대 위쪽이 곧게 서 있습니다. 컨디션이 크게 오르내리지 않습니다.',
   ]),
   _Frag(_bandPair(Attribute.stability, _Band.high, Attribute.emotionality, _Band.low), [
     '@{verdict:stability} 표정의 진폭이 작습니다. 힘든 것을 안으로 눌러 두는 편입니다.',
@@ -280,7 +280,7 @@ final List<_Frag> _v2HealthLead = [
     '@{verdict:emotionality} 눈의 기운이 셉니다. 몸보다 마음이 먼저 반응합니다.',
   ]),
   _Frag(_bandPair(Attribute.stability, _Band.mid, Attribute.emotionality, _Band.mid), [
-    '@{verdict:stability} 몸과 관련된 자리가 어느 쪽으로도 치우치지 않았습니다.',
+    '@{verdict:stability} 몸과 관련된 자리가 어느 쪽으로도 치우치지 않습니다.',
     '@{verdict:stability} 크게 앓지도, 크게 넘치지도 않는 구성입니다.',
   ]),
   _Frag(_bandPair(Attribute.stability, _Band.mid, Attribute.emotionality, _Band.low), [
@@ -293,7 +293,7 @@ final List<_Frag> _v2HealthLead = [
     '@{verdict:stability} 턱과 콧대 위쪽이 얇습니다. 버티는 힘보다 흐르는 힘이 앞섭니다.',
   ]),
   _Frag(_lowPair(Attribute.stability, Attribute.emotionality), [
-    '@{verdict:stability} 몸과 관련된 자리가 전반적으로 낮게 나왔습니다.',
+    '@{verdict:stability} 몸과 관련된 자리가 전반적으로 낮게 나옵니다.',
   ]),
   _Frag.hard((f) => true, [
     '@{verdict:stability} 판단의 근거는 콧대 위쪽의 곧기와 턱의 두께입니다.',
@@ -328,7 +328,7 @@ final List<_Frag> _v2HealthReading = [
         '다만 같은 문헌이 몸을 코 하나로 판단하지 말라고도 적어 뒀습니다.',
   ]),
   _Frag.hard((f) => true, [
-    '옛사람들은 몸을 한 자리로 보지 않았습니다. 이마·콧대 위쪽·눈·턱이 서로 받쳐 준다고 봤고, 이 얼굴은 그 네 항목이 비슷한 수준으로 나왔습니다.',
+    '옛사람들은 몸을 한 자리로 보지 않았습니다. 이마·콧대 위쪽·눈·턱이 서로 받쳐 준다고 봤고, 이 얼굴은 그 네 항목이 비슷한 수준으로 나옵니다.',
     '옛사람들은 병을 얻은 뒤보다 얻기 전을 보려 했습니다. 자리의 모양보다 그날의 얼굴빛을 먼저 살핀 이유입니다. '
         '거울에서 낯빛이 달라졌다고 느낀 날이 곧 신호입니다.',
     '전통 관상에서 몸은 한 자리로 정해지지 않습니다. 크기보다 흐트러짐이 없는지를 먼저 봤습니다.',
@@ -414,7 +414,7 @@ final List<_Frag> _v2RomanceLead = [
     '@{verdict:emotionality} 눈의 기운이 셉니다. 마음을 깊게 쓰는 쪽입니다.',
   ]),
   _Frag(_bandPair(Attribute.attractiveness, _Band.mid, Attribute.emotionality, _Band.mid), [
-    '@{verdict:attractiveness} 인연과 관련된 자리가 어느 쪽으로도 치우치지 않았습니다.',
+    '@{verdict:attractiveness} 인연과 관련된 자리가 어느 쪽으로도 치우치지 않습니다.',
     '@{verdict:attractiveness} 관계가 급하게 오르내리지 않는 구성입니다.',
   ]),
   _Frag(_bandPair(Attribute.attractiveness, _Band.mid, Attribute.emotionality, _Band.low), [
@@ -427,7 +427,7 @@ final List<_Frag> _v2RomanceLead = [
     '@{verdict:attractiveness} 눈에 띄는 쪽보다 흐트러지지 않는 쪽입니다.',
   ]),
   _Frag(_bandPair(Attribute.attractiveness, _Band.low, Attribute.emotionality, _Band.low), [
-    '@{verdict:attractiveness} 인연과 관련된 자리가 전반적으로 낮게 나왔습니다.',
+    '@{verdict:attractiveness} 인연과 관련된 자리가 전반적으로 낮게 나옵니다.',
   ]),
   _Frag.hard((f) => true, [
     '@{verdict:attractiveness} 판단의 근거는 눈꼬리 자리와 표정의 폭입니다.',
@@ -447,7 +447,7 @@ final List<_Frag> _v2RomanceReading = [
         '대신 표현이 빠른 만큼 식는 것도 빠를 수 있습니다.',
   ]),
   _Frag.hard((f) => f.bandOf(Attribute.trustworthiness) == _Band.high, [
-    '이마가 곧게 섰습니다. 전통 관상은 이 자리를 말과 행동이 어긋나지 않는 힘으로 읽었습니다. '
+    '이마가 곧게 서 있습니다. 전통 관상은 이 자리를 말과 행동이 어긋나지 않는 힘으로 읽었습니다. '
         '연애에서 이 자리는 설렘보다 안심을 만듭니다.',
   ]),
   _Frag.hard((f) => f.bandOf(Attribute.emotionality) == _Band.high, [
@@ -461,7 +461,7 @@ final List<_Frag> _v2RomanceReading = [
         '먼저 다가가지 않으면 지나가는 인연이 생깁니다.',
   ]),
   _Frag.hard((f) => true, [
-    '옛 문헌은 인연이 눈 하나로 정해지지 않는다고 봤습니다. 눈썹·입·턱까지 같이 봤고, 이 얼굴은 어느 한 항목도 크게 앞서지 않았습니다.',
+    '옛 문헌은 인연이 눈 하나로 정해지지 않는다고 봤습니다. 눈썹·입·턱까지 같이 봤고, 이 얼굴은 어느 한 항목도 크게 앞서지 않습니다.',
     '옛사람들은 눈꼬리가 좋아도 두 눈썹 사이가 흐리면 그 자리만으로 읽지 않았습니다. '
         '인연은 얼굴 한 곳으로 정해지지 않는다고 본 것입니다.',
     '전통 관상에서 눈은 짝을 보는 자리이면서 사는 자리를 보는 곳이기도 합니다. '
@@ -545,7 +545,7 @@ final List<_BeatPool> _v2RomanceBeatsMale = [
 
 final List<_Frag> _v2VitalityLead = [
   _Frag(_highPair(Attribute.libido, Attribute.sensuality), [
-    '@{verdict:libido} 눈썹이 짙고 인중이 또렷합니다. 기운과 결이 함께 섰습니다.',
+    '@{verdict:libido} 눈썹이 짙고 인중이 또렷합니다. 기운과 결이 함께 서 있습니다.',
   ]),
   _Frag(_bandPair(Attribute.libido, _Band.high, Attribute.sensuality, _Band.mid), [
     '@{verdict:libido} 눈썹이 짙고 인중이 또렷합니다. 기운이 안에서 잘 돕니다.',
@@ -557,7 +557,7 @@ final List<_Frag> _v2VitalityLead = [
     '@{verdict:sensuality} 눈꼬리와 입가의 결이 뚜렷합니다. 사람의 눈이 머무는 얼굴입니다.',
   ]),
   _Frag(_bandPair(Attribute.libido, _Band.mid, Attribute.sensuality, _Band.mid), [
-    '@{verdict:libido} 기운과 관련된 자리가 어느 쪽으로도 치우치지 않았습니다.',
+    '@{verdict:libido} 기운과 관련된 자리가 어느 쪽으로도 치우치지 않습니다.',
     '@{verdict:libido} 크게 타오르지도, 쉽게 꺼지지도 않는 구성입니다.',
   ]),
   _Frag(_bandPair(Attribute.libido, _Band.mid, Attribute.sensuality, _Band.low), [
@@ -570,7 +570,7 @@ final List<_Frag> _v2VitalityLead = [
     '@{verdict:libido} 눈썹과 인중의 결이 옅습니다. 기운을 아껴 쓰는 얼굴입니다.',
   ]),
   _Frag(_lowPair(Attribute.libido, Attribute.sensuality), [
-    '@{verdict:libido} 기운과 관련된 자리가 전반적으로 낮게 나왔습니다.',
+    '@{verdict:libido} 기운과 관련된 자리가 전반적으로 낮게 나옵니다.',
   ]),
   _Frag.hard((f) => true, [
     '@{verdict:libido} 판단의 근거는 눈썹의 짙기와 인중의 또렷함입니다.',
@@ -598,7 +598,7 @@ final List<_Frag> _v2VitalityReading = [
         '몰아쓰는 방식이 가장 안 맞습니다.',
   ]),
   _Frag.hard((f) => true, [
-    '전통 관상은 기운이 눈·눈썹·인중·입에 나뉘어 있다고 봤습니다. 한 곳만 세게 도는 것보다 네 곳이 같이 도는 쪽을 좋게 여겼고, 이 얼굴이 그 구성에 가깝게 나왔습니다.',
+    '전통 관상은 기운이 눈·눈썹·인중·입에 나뉘어 있다고 봤습니다. 한 곳만 세게 도는 것보다 네 곳이 같이 도는 쪽을 좋게 여겼고, 이 얼굴이 그 구성에 가깝게 나옵니다.',
     '옛사람들은 자리의 모양보다 그날의 얼굴빛이 기운을 먼저 알린다고 했습니다. '
         '생활이 어지러우면 좋은 자리도 흐려진다고 본 것입니다.',
     '전통 관상에서 눈썹은 곁에 두는 사람의 자리이면서 기운의 성쇠를 보는 자리이기도 합니다.',
@@ -692,10 +692,10 @@ final List<_Frag> _v2SocialLead = [
     '@{verdict:sociability} 다만 이마가 받쳐 주지 않습니다. 말이 행동보다 먼저 나갑니다.',
   ]),
   _Frag(_bandPair(Attribute.sociability, _Band.mid, Attribute.trustworthiness, _Band.high), [
-    '@{verdict:trustworthiness} 이마가 곧게 섰습니다. 한 말을 지키는 쪽입니다.',
+    '@{verdict:trustworthiness} 이마가 곧게 서 있습니다. 한 말을 지키는 쪽입니다.',
   ]),
   _Frag(_bandPair(Attribute.sociability, _Band.mid, Attribute.trustworthiness, _Band.mid), [
-    '@{verdict:sociability} 사람과 관련된 자리가 어느 쪽으로도 치우치지 않았습니다.',
+    '@{verdict:sociability} 사람과 관련된 자리가 어느 쪽으로도 치우치지 않습니다.',
     '@{verdict:sociability} 관계의 온도가 급하게 오르내리지 않는 구성입니다.',
   ]),
   _Frag(_bandPair(Attribute.sociability, _Band.mid, Attribute.trustworthiness, _Band.low), [
@@ -708,7 +708,7 @@ final List<_Frag> _v2SocialLead = [
     '@{verdict:sociability} 넓게 트기보다 깊게 두는 얼굴입니다.',
   ]),
   _Frag(_lowPair(Attribute.sociability, Attribute.trustworthiness), [
-    '@{verdict:sociability} 사람과 관련된 자리가 전반적으로 낮게 나왔습니다.',
+    '@{verdict:sociability} 사람과 관련된 자리가 전반적으로 낮게 나옵니다.',
   ]),
   _Frag.hard((f) => true, [
     '@{verdict:sociability} 판단의 근거는 입의 크기와 이마의 곧기입니다.',
@@ -723,7 +723,7 @@ final List<_Frag> _v2SocialReading = [
         '다만 옛사람들은 말의 양보다 그 말이 지켜지는지를 먼저 봤습니다.',
   ]),
   _Frag.hard((f) => f.fired('P-10') || f.nodeZ('eye') >= 0.8, [
-    '눈에 기운이 실렸습니다. 옛 관상에서는 이런 얼굴이 상대의 기색을 먼저 알아본다고 했습니다. '
+    '눈에 기운이 실려 있습니다. 옛 관상에서는 이런 얼굴이 상대의 기색을 먼저 알아본다고 했습니다. '
         '분위기가 바뀌는 순간을 남보다 빨리 감지하는 쪽입니다. '
         '대신 없는 기색까지 읽어 혼자 지치기도 합니다.',
   ]),
@@ -824,23 +824,23 @@ final List<_Frag> _v2TalentLead = [
     '@{verdict:intelligence} 다만 턱이 얇습니다. 헤아리되 앞에 나서지는 않습니다.',
   ]),
   _Frag(_bandPair(Attribute.intelligence, _Band.mid, Attribute.leadership, _Band.high), [
-    '@{verdict:leadership} 턱과 광대가 함께 섰습니다. 사람을 끌고 가는 힘이 실렸습니다.',
+    '@{verdict:leadership} 턱과 광대가 함께 서 있습니다. 사람을 끌고 가는 힘이 실려 있습니다.',
   ]),
   _Frag(_bandPair(Attribute.intelligence, _Band.mid, Attribute.leadership, _Band.mid), [
-    '@{verdict:intelligence} 재주와 관련된 자리가 한쪽으로 몰리지 않았습니다.',
+    '@{verdict:intelligence} 재주와 관련된 자리가 한쪽으로 몰리지 않습니다.',
     '@{verdict:intelligence} 한 분야에 몰아넣기보다 여러 곳을 잇는 구성입니다.',
   ]),
   _Frag(_bandPair(Attribute.intelligence, _Band.mid, Attribute.leadership, _Band.low), [
     '@{verdict:leadership} 턱이 얇은 편입니다. 뒤에서 받치는 자리가 맞습니다.',
   ]),
   _Frag(_bandPair(Attribute.intelligence, _Band.low, Attribute.leadership, _Band.high), [
-    '@{verdict:intelligence} 대신 턱과 광대가 섰습니다. 재기보다 밀고 나가는 쪽입니다.',
+    '@{verdict:intelligence} 대신 턱과 광대가 서 있습니다. 재기보다 밀고 나가는 쪽입니다.',
   ]),
   _Frag(_bandPair(Attribute.intelligence, _Band.low, Attribute.leadership, _Band.mid), [
-    '@{verdict:intelligence} 이마보다 아래쪽이 발달했습니다. 머리보다 손발이 앞섭니다.',
+    '@{verdict:intelligence} 이마보다 아래쪽이 발달해 있습니다. 머리보다 손발이 앞섭니다.',
   ]),
   _Frag(_lowPair(Attribute.intelligence, Attribute.leadership), [
-    '@{verdict:intelligence} 재주와 관련된 자리가 전반적으로 낮게 나왔습니다.',
+    '@{verdict:intelligence} 재주와 관련된 자리가 전반적으로 낮게 나옵니다.',
   ]),
   _Frag.hard((f) => true, [
     '@{verdict:intelligence} 판단의 근거는 이마의 넓이와 턱의 받침입니다.',
@@ -860,7 +860,7 @@ final List<_Frag> _v2TalentReading = [
         '대신 방향이 틀렸을 때 되돌리는 데도 그만큼 걸립니다.',
   ]),
   _Frag.hard((f) => f.fired('O-CK') || f.nodeZ('cheekbone') >= 0.8, [
-    '광대가 평균보다 섰습니다. 전통 관상은 이 자리를 사람을 움직이는 힘으로 봤습니다. '
+    '광대가 평균보다 서 있습니다. 전통 관상은 이 자리를 사람을 움직이는 힘으로 봤습니다. '
         '혼자 하는 일보다 사람을 데리고 하는 일에서 값이 올라갑니다.',
   ]),
   _Frag.hard((f) => f.fired('O-EM'), [
@@ -873,7 +873,7 @@ final List<_Frag> _v2TalentReading = [
         '받치는 힘을 낮게 본 것은 아닙니다.',
   ]),
   _Frag.hard((f) => true, [
-    '옛사람들은 재주가 한 자리에 몰려 있다고 보지 않았습니다. 이마·눈썹·눈·턱을 함께 봤고, 이 얼굴은 그 네 항목이 비슷한 수준으로 나왔습니다.',
+    '옛사람들은 재주가 한 자리에 몰려 있다고 보지 않았습니다. 이마·눈썹·눈·턱을 함께 봤고, 이 얼굴은 그 네 항목이 비슷한 수준으로 나옵니다.',
     '옛사람들은 타고난 바탕보다 그것을 쓰는 결을 먼저 봤습니다. '
         '무엇을 아느냐보다 무엇에 오래 매달렸느냐가 남는다는 이야기입니다.',
     '전통 관상에서 이마는 바탕을 보는 자리이면서 자리 옮김을 보는 자리이기도 합니다. '
