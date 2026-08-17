@@ -47,7 +47,13 @@ CompatNarrative buildCompatNarrative({
   required int pairSeed,
   CompatVersion version = CompatVersion.v1,
 }) {
-  final findings = _gatherFindings(report);
+  final base = _gatherFindings(report);
+  // finding 은 §2·§3·§4 가 공유하는 데이터층이다. v2 는 톤 규칙을 어기는
+  // 항목만 덮어쓴 사본을 쓴다 (`compat_finding_v2.dart`).
+  final findings = switch (version) {
+    CompatVersion.v1 => base,
+    CompatVersion.v2 => base.map((f) => f.toV2()).toList(),
+  };
   return switch (version) {
     CompatVersion.v1 => CompatNarrative(
         summary: _summarySection(report, findings),

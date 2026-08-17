@@ -47,6 +47,34 @@ Map<Gender, Map<String, List<String>>> _closingPoolForToneV2(
   }
 }
 
+/// 등급의 전통 귀속 — 네 등급 이름은 우리가 지어낸 것이 아니라 관상·명리
+/// 전통이 쓰던 말이다. 어느 자리를 보고 그렇게 불렀는지까지 한 줄로 밝힌다.
+///
+/// 48개 문장에 각각 귀속을 넣지 않고 빌더가 한 줄을 앞에 붙이는 방식이다.
+/// 문장 풀은 seed 로 하나를 뽑으므로 개별 문장에 넣으면 귀속이 나왔다
+/// 안 나왔다 한다. 근거는 조합마다 반드시 보여야 한다.
+String _labelTraditionV2(CompatLabel l) {
+  switch (l) {
+    case CompatLabel.cheonjakjihap:
+      return '전통 관상은 이런 짝을 천생연분이라 불렀습니다. '
+          '두 얼굴의 오행이 서로를 살리고 열두 자리가 고르게 맞물릴 때 쓰던 말이에요.';
+    case CompatLabel.geumseulsanghwa:
+      return '전통 관상은 이런 짝을 금슬화합이라 불렀습니다. '
+          '거문고와 비파가 음을 맞추듯 두 얼굴의 결이 어긋나지 않는다는 뜻이에요.';
+    case CompatLabel.mahapgaseong:
+      return '전통 관상은 이런 짝을 상부상조라 불렀습니다. '
+          '한쪽이 모자란 자리를 다른 쪽이 채우는 구도로 보았다는 뜻이에요.';
+    case CompatLabel.hyeonggeuknanjo:
+      return '전통 관상은 이런 짝을 형극난조라 불렀습니다. '
+          '오행이 서로를 누르는 자리가 있어 고르기가 쉽지 않다고 본 구도예요.';
+  }
+}
+
+/// 판단의 층위를 밝히는 마무리 — 우리가 무엇을 근거로 말했는지.
+/// 섹션마다 다르게 쓰되, 문장의 주어는 항상 우리(측정) 아니면 전통이다.
+const String _v2Basis = '이 해석은 두 얼굴의 계측값과 전통 관상의 읽는 법을 '
+    '겹쳐 놓은 것입니다. 두 사람의 앞일을 맞히려는 것이 아닙니다.';
+
 // ─────────────── §1 한줄 요약 ───────────────
 
 String _summarySectionV2(CompatibilityReport r, List<CompatFinding> findings) {
@@ -72,6 +100,12 @@ String _coreSectionV2(List<CompatFinding> findings) {
   }
 
   final buf = StringBuffer();
+  // 전통은 총점을 매기지 않고 어느 자리가 맞물리는지를 보았다. 아래 세 항목이
+  // 그 자리들이고, 우리가 점수를 낸 근거이기도 하다.
+  buf.writeln('전통 관상은 두 사람을 볼 때 총합을 매기지 않고 '
+      '열두 자리 가운데 어디가 맞물리는지를 따로 보았습니다. '
+      '아래 세 가지가 이 두 얼굴에서 가장 크게 맞물린 자리입니다.');
+  buf.writeln();
   for (int i = 0; i < top.length; i++) {
     final f = top[i];
     buf.writeln('${i + 1}. ${f.title} (${f.domain})');
@@ -100,6 +134,9 @@ String _conflictSectionV2(
   }
 
   final buf = StringBuffer();
+
+  buf.writeln(_labelTraditionV2(r.label));
+  buf.writeln();
 
   final introPool = conflictIntroByLabelV2[r.label] ?? const <String>[];
   final intro = _pickVariant(introPool, pairSeed);
@@ -138,6 +175,10 @@ String _strategySectionV2(
 
   final buf = StringBuffer();
 
+  buf.writeln('전통 관상은 맞지 않는 자리를 두고 사람을 바꾸라 하지 않고, '
+      '그 자리를 어떻게 다룰지를 말했습니다. 아래는 그 자리에 맞춘 실행안입니다.');
+  buf.writeln();
+
   final introPool = strategyIntroByLabelV2[r.label] ?? const <String>[];
   final intro = _pickVariant(introPool, pairSeed + 0x2A);
   if (intro.isNotEmpty) {
@@ -166,8 +207,12 @@ String _strategySectionV2(
   final outro = _pickVariant(outroPool, pairSeed + 0x4E2);
   if (outro.isNotEmpty) {
     buf.writeln();
-    buf.write(outro);
+    buf.writeln(outro);
   }
+
+  // 마지막 섹션이 아니므로 여기서 근거 층위를 한 번 밝혀 둔다.
+  buf.writeln();
+  buf.write(_v2Basis);
 
   return buf.toString().trimRight();
 }

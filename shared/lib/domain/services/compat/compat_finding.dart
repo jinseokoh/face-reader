@@ -17,6 +17,10 @@ import 'palace.dart';
 import 'yinyang_matcher.dart';
 import 'zone_harmony.dart';
 
+/// finding 텍스트의 v2 짝. part 이므로 `_FindingTemplate` 등 private 타입을
+/// 그대로 쓴다.
+part 'compat_finding_v2.dart';
+
 // ─────────────── 도메인 가중치 (결혼 맥락 기준) ───────────────
 
 const Map<String, double> _domainWeight = {
