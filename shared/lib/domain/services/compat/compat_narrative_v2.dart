@@ -94,28 +94,34 @@ String _summarySectionV2(CompatibilityReport r, List<CompatFinding> findings) {
 String _coreSectionV2(List<CompatFinding> findings) {
   final top = findings.take(3).toList();
   if (top.isEmpty) {
-    return '특별히 도드라지는 특징이 없습니다. '
-        '일상이 큰 기복 없이 평탄하게 흘러갈 조합이에요. '
-        '다만 평탄함이 지루함으로 바뀌지 않도록, 작은 변화를 의식적으로 만들어 가세요.';
+    return '특별히 도드라지는 특징이 없습니다. 큰 기복 없이 흘러갈 조합이에요. '
+        '다만 평탄함이 지루함으로 바뀌지 않도록 작은 변화를 의식적으로 만들어 가세요.';
   }
 
+  // v1 은 의미·실제 모습·장점·주의할 점 네 칸을 모두 찍었는데, 템플릿에서
+  // 네 칸이 같은 내용을 다르게 적은 것이라 읽을 때 같은 말을 네 번 듣게 된다.
+  // 구체적인 장면(observation)과 경계(caution 첫 문장)만 남긴다.
   final buf = StringBuffer();
-  // 전통은 총점을 매기지 않고 어느 자리가 맞물리는지를 보았다. 아래 세 항목이
-  // 그 자리들이고, 우리가 점수를 낸 근거이기도 하다.
-  buf.writeln('전통 관상은 두 사람을 볼 때 총합을 매기지 않고 '
-      '열두 자리 가운데 어디가 맞물리는지를 따로 보았습니다. '
+  buf.writeln('전통 관상은 두 사람을 볼 때 총점을 매기지 않고 '
+      '열두 자리 가운데 어디가 맞물리는지를 따로 봤습니다. '
       '아래 세 가지가 이 두 얼굴에서 가장 크게 맞물린 자리입니다.');
-  buf.writeln();
   for (int i = 0; i < top.length; i++) {
     final f = top[i];
+    buf.writeln();
     buf.writeln('${i + 1}. ${f.title} (${f.domain})');
-    buf.writeln('   - 의미: ${f.meaning}');
-    buf.writeln('   - 실제 모습: ${f.observation}');
-    buf.writeln('   - 장점: ${f.strength}');
-    buf.writeln('   - 주의할 점: ${f.caution}');
-    if (i != top.length - 1) buf.writeln();
+    buf.writeln(f.observation.isNotEmpty ? f.observation : f.meaning);
+    final caution = _firstSentence(f.caution);
+    if (caution.isNotEmpty) buf.writeln('다만 $caution');
   }
   return buf.toString().trimRight();
+}
+
+/// 첫 문장만. 뒤 문장은 대개 앞 문장을 바꿔 말한 것이라 잘라도 뜻이 남는다.
+String _firstSentence(String text) {
+  final t = text.trim();
+  if (t.isEmpty) return '';
+  final i = t.indexOf('. ');
+  return i < 0 ? t : t.substring(0, i + 1);
 }
 
 // ─────────────── §3 현실 갈등 시나리오 ───────────────
@@ -124,37 +130,28 @@ String _conflictSectionV2(
     CompatibilityReport r, List<CompatFinding> findings, int pairSeed) {
   final neg = findings.where((f) => f.delta < 0 && f.scenario != null).toList();
   neg.sort((a, b) => a.delta.compareTo(b.delta));
-  final pick = neg.take(3).toList();
+  final pick = neg.take(2).toList();
 
   if (pick.isEmpty) {
-    return '두 분 사이에서 눈에 띄게 터질 지점은 읽히지 않습니다. '
-        '어른의 관계에서 갈등이 없다는 건 불가능하지만, 이 조합은 예측 가능한 범위 안에 있어요. '
-        '평소 기본 관리만 해 주시면 크게 흔들릴 일이 드문 조합입니다. '
-        '단, 예측 가능해 보이는 평온을 권태로 읽는 순간부터 숨은 마찰이 튀어나오니 그 경계를 놓치지 마세요.';
+    return '눈에 띄게 터질 지점은 읽히지 않습니다. 갈등이 없다는 뜻은 아니고, '
+        '예측 가능한 범위 안에 있다는 뜻이에요. '
+        '다만 그 평온을 권태로 읽는 순간부터 숨은 마찰이 나옵니다.';
   }
 
+  // 라벨(근거·실제로 나타나는 모습·확대 양상)을 걷어냈다. 근거는 §2 에서
+  // 이미 말했고, 여기서 읽고 싶은 것은 "그래서 무슨 장면이 벌어지는가" 다.
   final buf = StringBuffer();
-
   buf.writeln(_labelTraditionV2(r.label));
-  buf.writeln();
-
-  final introPool = conflictIntroByLabelV2[r.label] ?? const <String>[];
-  final intro = _pickVariant(introPool, pairSeed);
-  if (intro.isNotEmpty) {
-    buf.writeln(intro);
-    buf.writeln();
-  }
 
   for (int i = 0; i < pick.length; i++) {
     final f = pick[i];
-    buf.writeln('시나리오 ${i + 1} — ${f.title} (${f.domain})');
-    buf.writeln('근거: ${f.meaning}');
-    buf.writeln('실제로 나타나는 모습: ${f.scenario!}');
+    buf.writeln();
+    buf.writeln('${i + 1}. ${f.title} (${f.domain})');
+    buf.writeln(f.scenario!);
     final escPool = conflictEscalationByDomainV2[f.domain] ??
         conflictEscalationByDomainV2['_default']!;
-    final esc = _pickVariant(escPool, pairSeed + f.id.hashCode + i);
-    buf.writeln('확대 양상: $esc');
-    if (i != pick.length - 1) buf.writeln();
+    buf.writeln(_firstSentence(
+        _pickVariant(escPool, pairSeed + f.id.hashCode + i)));
   }
 
   final outroPool = conflictOutroByLabelV2[r.label] ?? const <String>[];
@@ -163,7 +160,6 @@ String _conflictSectionV2(
     buf.writeln();
     buf.write(outro);
   }
-
   return buf.toString().trimRight();
 }
 
@@ -171,36 +167,26 @@ String _conflictSectionV2(
 
 String _strategySectionV2(
     CompatibilityReport r, List<CompatFinding> findings, int pairSeed) {
-  final items = _strategyItems(r, findings);
+  final items = _strategyItems(r, findings).take(3).toList();
 
+  // rationale 은 §2 의 meaning 과 같은 문장이라 뺐다. 실행 방법과 실패
+  // 패턴도 둘 다 붙이면 조언 하나에 네 줄이 달린다. 하나만 쓴다.
   final buf = StringBuffer();
-
-  buf.writeln('전통 관상은 맞지 않는 자리를 두고 사람을 바꾸라 하지 않고, '
-      '그 자리를 어떻게 다룰지를 말했습니다. 아래는 그 자리에 맞춘 실행안입니다.');
-  buf.writeln();
-
-  final introPool = strategyIntroByLabelV2[r.label] ?? const <String>[];
-  final intro = _pickVariant(introPool, pairSeed + 0x2A);
-  if (intro.isNotEmpty) {
-    buf.writeln(intro);
-    buf.writeln();
-  }
+  buf.writeln('전통 관상은 맞지 않는 자리를 두고 사람을 바꾸라 하지 않았습니다. '
+      '그 자리를 어떻게 다룰지를 말했어요.');
 
   for (int i = 0; i < items.length; i++) {
     final item = items[i];
     final domainKey = item.domain ?? '_default';
-    final howPool =
-        strategyHowByDomainV2[domainKey] ?? strategyHowByDomainV2['_default']!;
-    final failPool = strategyFailureByDomainV2[domainKey] ??
-        strategyFailureByDomainV2['_default']!;
-    final how = _pickVariant(howPool, pairSeed + i * 37 + 13);
-    final fail = _pickVariant(failPool, pairSeed + i * 41 + 29);
-
-    buf.writeln('${i + 1}. ${item.action}');
-    buf.writeln('   근거: ${item.rationale}');
-    buf.writeln('   실행 방법: $how');
-    buf.writeln('   실패하는 경우: $fail');
-    if (i != items.length - 1) buf.writeln();
+    final even = ((pairSeed + i) & 1) == 0;
+    final pool = even
+        ? (strategyHowByDomainV2[domainKey] ??
+            strategyHowByDomainV2['_default']!)
+        : (strategyFailureByDomainV2[domainKey] ??
+            strategyFailureByDomainV2['_default']!);
+    buf.writeln();
+    buf.writeln('${i + 1}. ${_firstSentence(item.action)}');
+    buf.writeln(_firstSentence(_pickVariant(pool, pairSeed + i * 37 + 13)));
   }
 
   final outroPool = strategyOutroByLabelV2[r.label] ?? const <String>[];
@@ -209,11 +195,8 @@ String _strategySectionV2(
     buf.writeln();
     buf.writeln(outro);
   }
-
-  // 마지막 섹션이 아니므로 여기서 근거 층위를 한 번 밝혀 둔다.
   buf.writeln();
   buf.write(_v2Basis);
-
   return buf.toString().trimRight();
 }
 
@@ -233,17 +216,20 @@ String _intimacyChapterV2(CompatibilityReport r, int pairSeed) {
 
   final openerPool = openerByBucket[bucket] ?? const <String>[];
   final opener = _pickVariant(openerPool, pairSeed).replaceAll('{X}', subInt);
-  if (opener.isNotEmpty) {
-    buf.writeln(opener);
-  }
+  if (opener.isNotEmpty) buf.writeln(opener);
 
   final axisDetails = (tone == IntimacyTone.spicy
           ? intimacySpicyAxisDetailsByGenderV2[r.myGender]
           : intimacyAxisDetailsByGenderV2[r.myGender]) ??
       const <String, IntimacyAxisDetail>{};
-  for (final comp in r.intimacy.components) {
-    final sign = _intimacySign(comp.value);
-    final detail = axisDetails['${comp.id}-$sign'];
+
+  // v1 은 네 축을 모두, 축마다 근거·관찰·조언 세 문장씩 찍었다. 열두 문장이
+  // 이어지면 어느 것이 이 두 사람 이야기인지 묻히므로, 값이 큰 두 축만
+  // 남기고 근거와 관찰을 한 문단으로 합친다.
+  final ranked = [...r.intimacy.components]
+    ..sort((a, b) => b.value.abs().compareTo(a.value.abs()));
+  for (final comp in ranked.take(2)) {
+    final detail = axisDetails['${comp.id}-${_intimacySign(comp.value)}'];
     if (detail == null) continue;
 
     final advice = bucket == 'high'
@@ -256,16 +242,15 @@ String _intimacyChapterV2(CompatibilityReport r, int pairSeed) {
 
     buf.writeln();
     buf.writeln('[${_axisLabel(comp.id)}]');
-    buf.writeln(detail.cause);
-    buf.writeln(detail.observation);
-    buf.writeln(advice);
+    buf.writeln('${detail.cause} ${_firstSentence(detail.observation)}');
+    buf.writeln(_firstSentence(advice));
   }
 
   final closingPool = closingByBucket[bucket] ?? const <String>[];
   final closing = _pickVariant(closingPool, pairSeed + 0x1F49C);
   if (closing.isNotEmpty) {
     buf.writeln();
-    buf.write(closing);
+    buf.write(_firstSentence(closing));
   }
 
   return buf.toString().trim();
