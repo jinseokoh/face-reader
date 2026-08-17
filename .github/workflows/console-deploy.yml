@@ -65,12 +65,19 @@ jobs:
 
       # Vite 는 VITE_* 를 빌드 시점에 번들로 인라인한다. 러너에는 .env 가 없으므로
       # 여기서 주입하지 않으면 값이 빈 문자열로 박혀 콘솔이 Supabase 에 붙지 못한다.
+      #
+      # R2 자격도 같다. 빠뜨렸더니 아바타·광고 업로드 버튼이 "자격 없음"으로
+      # 죽은 채 배포되었고, 손으로 올린 정상 번들을 push 마다 이 워크플로가
+      # 덮어썼다. bucket·CDN base 는 코드의 fallback 이 .env 값과 같아 뺐다.
       - name: Build
         working-directory: refine
         env:
           VITE_SUPABASE_URL: ${{ secrets.CONSOLE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.CONSOLE_SUPABASE_ANON_KEY }}
           VITE_SUPABASE_SERVICE_KEY: ${{ secrets.CONSOLE_SUPABASE_SERVICE_KEY }}
+          VITE_R2_ACCOUNT_ID: ${{ secrets.CONSOLE_R2_ACCOUNT_ID }}
+          VITE_R2_ACCESS_KEY_ID: ${{ secrets.CONSOLE_R2_ACCESS_KEY_ID }}
+          VITE_R2_SECRET_ACCESS_KEY: ${{ secrets.CONSOLE_R2_SECRET_ACCESS_KEY }}
         run: pnpm build
 
       - name: Deploy to Cloudflare Workers
