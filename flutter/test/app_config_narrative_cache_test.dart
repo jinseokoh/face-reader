@@ -31,18 +31,17 @@ void main() {
     AppConfigService.instance.debugResetNarrativeVersion();
   });
 
-  test('캐시가 비어 있으면 "모름" — 리포트는 v1 로 떨어진다', () {
-    expect(AppConfigService.instance.knownNarrativeVersion, isNull,
-        reason: '최초 설치 직후 첫 실행. v1 과 구분돼야 한다');
-    expect(AppConfigService.instance.narrativeVersion, NarrativeVersion.v1);
-    expect(AppConfigService.instance.compatVersion, CompatVersion.v1);
+  test('캐시가 비어 있으면 v2 — 최초 설치 직후 첫 실행', () {
+    // v1 은 상대의 앞으로의 행동을 단정하고 미래를 말하는 서술이라,
+    // 조회가 안 될 때 그쪽이 나가는 것이 더 위험하다.
+    expect(AppConfigService.instance.narrativeVersion, NarrativeVersion.v2);
+    expect(AppConfigService.instance.compatVersion, CompatVersion.v2);
   });
 
-  test('모름이면 온보딩은 v2 제목 — v1 제목은 v1 확정일 때만', () {
+  test('온보딩 제목 — v1 은 v1 확정일 때만', () {
     // 온보딩의 resolvedTitle 조건과 같은 식.
     bool usesV1Title() =>
-        AppConfigService.instance.knownNarrativeVersion ==
-            NarrativeVersion.v1;
+        AppConfigService.instance.narrativeVersion == NarrativeVersion.v1;
 
     expect(usesV1Title(), isFalse, reason: '모름 → v2 제목');
 

@@ -23,28 +23,23 @@ class AppConfigService {
   NarrativeVersion? _narrativeVersion;
   bool _cacheRead = false;
 
-  /// 아직 확정되지 않았으면 null — 원격 조회도 안 끝났고 캐시도 없는 상태다.
+  /// 서술 코퍼스 버전. `checkForceUpdate()` 가 같은 조회에서 갱신한다.
   ///
   /// 조회는 네트워크라 수백 ms 가 걸리는데 온보딩은 첫 프레임 직후에 뜬다
   /// (`app.dart` 의 `addPostFrameCallback`). 마지막으로 받은 값을 Hive 에
-  /// 남겨 두고 다음 실행부터 그 값으로 시작하지만, **최초 설치 직후 첫
-  /// 실행**은 캐시가 없어 어느 쪽인지 알 수 없다.
+  /// 남겨 다음 실행부터 그 값으로 시작하지만, **최초 설치 직후 첫 실행**은
+  /// 캐시가 없어 어느 쪽인지 알 수 없다.
   ///
-  /// 그 "모름" 을 v1 으로 접으면 안 되는 화면이 있어 따로 노출한다.
-  /// 모름과 v1 은 다른 상태다.
-  NarrativeVersion? get knownNarrativeVersion {
+  /// 확정 전 기본값은 **v2** 다. v1 은 사진 속 상대의 앞으로의 행동을
+  /// 단정하고 미래를 말하는 서술이라, 조회가 안 될 때 그쪽이 나가는 것이
+  /// 더 위험하다. 안전한 쪽으로 떨어뜨린다.
+  NarrativeVersion get narrativeVersion {
     if (!_cacheRead) {
       _cacheRead = true;
       _narrativeVersion ??= _readCachedVersion();
     }
-    return _narrativeVersion;
+    return _narrativeVersion ?? NarrativeVersion.v2;
   }
-
-  /// 서술 코퍼스 버전. `checkForceUpdate()` 가 같은 조회에서 갱신한다.
-  /// 확정 전에는 v1 — 조회 실패로 새 서술이 나가는 일이 없도록 하는 쪽이
-  /// 리포트 본문에서는 안전하다.
-  NarrativeVersion get narrativeVersion =>
-      knownNarrativeVersion ?? NarrativeVersion.v1;
 
   /// 캐시에 남은 값. 키가 없으면 null (= 아직 모름).
   static NarrativeVersion? _readCachedVersion() {

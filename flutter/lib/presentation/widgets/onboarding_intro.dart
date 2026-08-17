@@ -455,17 +455,10 @@ class _OnboardingPageData {
   });
 
   /// 원격 설정(`app_config.{ios,android}_narrative_version`)이 정한 코퍼스
-  /// 버전에 맞는 제목.
-  ///
-  /// v1 제목은 **v1 이라고 확인됐을 때만** 쓴다. 온보딩은 첫 프레임 직후에
-  /// 뜨는데 원격 조회는 수백 ms 가 걸려, 최초 설치 직후 첫 실행에서는 아직
-  /// 어느 쪽인지 모른다. 그 "모름" 을 v1 으로 접으면 앱을 새로 깐 사람이
-  /// 매번 v1 제목을 보게 된다 — 첫인상이 걸린 화면이라 fallback 은 v2 다.
-  ///
-  /// 리포트 본문은 반대로 fallback 이 v1 이다. 조회 실패로 새 서술이
-  /// 나가는 것보다 현행 서술이 나가는 쪽이 안전하기 때문이다.
+  /// 버전에 맞는 제목. v1 제목은 v1 이라고 확인됐을 때만 쓴다 —
+  /// 확정 전 기본값은 v2 다 (`AppConfigService.narrativeVersion`).
   String get resolvedTitle =>
-      AppConfigService.instance.knownNarrativeVersion == NarrativeVersion.v1
+      AppConfigService.instance.narrativeVersion == NarrativeVersion.v1
           ? (titleV1 ?? title)
           : title;
 }
