@@ -87,9 +87,9 @@ drop policy if exists "users_self_read"   on public.users;
 drop policy if exists "users_self_update" on public.users;
 
 create policy "users_self_read"
-  on public.users for select using (id = auth.uid());
+  on public.users for select using (id = (select auth.uid()));
 create policy "users_self_update"
-  on public.users for update using (id = auth.uid()) with check (id = auth.uid());
+  on public.users for update using (id = (select auth.uid())) with check (id = (select auth.uid()));
 -- INSERT 는 handle_new_user 트리거 (SECURITY DEFINER) 전용.
 
 -- admin_users — public.users + auth.users.email (service_role 전용).
@@ -142,7 +142,7 @@ alter table public.coins enable row level security;
 
 drop policy if exists "coins_self_read" on public.coins;
 create policy "coins_self_read"
-  on public.coins for select using (user_id = auth.uid());
+  on public.coins for select using (user_id = (select auth.uid()));
 -- INSERT/UPDATE/DELETE 정책 없음 — RPC (SECURITY DEFINER) 만.
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -206,7 +206,7 @@ create policy "metrics_public_read"
 -- 사용 시 정상 capture 의 anon insert 가 전부 reject 됨.
 create policy "metrics_insert_anon"
   on public.metrics for insert with check (
-        (user_id is null or user_id = auth.uid())
+        (user_id is null or user_id = (select auth.uid()))
     and (body::jsonb ->> 'username') is null
     and (body::jsonb ->> 'alias')    is null
     and (body::jsonb ->> 'birthday') is null
@@ -220,12 +220,12 @@ create policy "metrics_insert_anon"
 -- anon→anon (양쪽 null) 도 IS NOT DISTINCT 로 통과. 타 유저 소유 행은 차단.
 create policy "metrics_owner_update"
   on public.metrics for update
-    using (user_id is null or user_id = auth.uid())
-    with check (user_id is not distinct from auth.uid());
+    using (user_id is null or user_id = (select auth.uid()))
+    with check (user_id is not distinct from (select auth.uid()));
 
 create policy "metrics_owner_delete"
   on public.metrics for delete
-    using (user_id is null or user_id = auth.uid());
+    using (user_id is null or user_id = (select auth.uid()));
 -- cron · /api/erase 는 service-role 로 직접 DELETE (RLS bypass).
 
 -- 어떤 UPDATE 든 updated_at 자동 touch. views++ RPC 의 사이드이펙트 활용.
@@ -286,13 +286,13 @@ alter table public.compatibilities enable row level security;
 
 drop policy if exists "compatibilities_self_read" on public.compatibilities;
 create policy "compatibilities_self_read"
-  on public.compatibilities for select using (user_id = auth.uid());
+  on public.compatibilities for select using (user_id = (select auth.uid()));
 
 -- 사용자가 확인 리스트에서 "내 목록에서 제거" — 본인 unlock 행만 삭제 가능.
 -- (INSERT 는 여전히 unlock_compat RPC 만. 코인 환불 없음 — 단순 ledger 제거.)
 drop policy if exists "compatibilities_self_delete" on public.compatibilities;
 create policy "compatibilities_self_delete"
-  on public.compatibilities for delete using (user_id = auth.uid());
+  on public.compatibilities for delete using (user_id = (select auth.uid()));
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 5. public.bonus_recipients — 가입 보너스 dedup ledger (영구)
@@ -584,7 +584,7 @@ alter table public.ad_rewards enable row level security;
 
 drop policy if exists "ad_rewards_self_read" on public.ad_rewards;
 create policy "ad_rewards_self_read"
-  on public.ad_rewards for select using (user_id = auth.uid());
+  on public.ad_rewards for select using (user_id = (select auth.uid()));
 
 -- write 는 RPC (security definer) 만. anon/authenticated 직접 write 없음.
 
@@ -774,13 +774,13 @@ create policy "teams_public_read"
   on public.teams for select using (true);
 -- 생성: owner 본인. status 등 계산 컬럼은 column grant 로 insert 불가 (§11-4).
 create policy "teams_owner_insert"
-  on public.teams for insert with check (owner_id = auth.uid());
+  on public.teams for insert with check (owner_id = (select auth.uid()));
 -- 수정: owner 본인 — 단 column grant 가 title 로 제한 (상태 전이는 RPC 전용).
 create policy "teams_owner_update"
-  on public.teams for update using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+  on public.teams for update using (owner_id = (select auth.uid())) with check (owner_id = (select auth.uid()));
 -- 삭제: owner 본인 (모집 중 방 접기 — 멤버는 FK cascade).
 create policy "teams_owner_delete"
-  on public.teams for delete using (owner_id = auth.uid());
+  on public.teams for delete using (owner_id = (select auth.uid()));
 
 -- 어떤 UPDATE 든 updated_at 자동 touch.
 create or replace function public.touch_teams_updated_at()
@@ -876,7 +876,7 @@ drop policy if exists "team_matches_pair_read" on public.team_matches;
 -- 읽기: 해당 쌍 본인만 — 타 참가자에게 동의 현황 비노출.
 create policy "team_matches_pair_read"
   on public.team_matches for select
-  using (auth.uid() = user_a or auth.uid() = user_b);
+  using ((select auth.uid()) = user_a or (select auth.uid()) = user_b);
 
 -- 인앱 1:1 채팅 — 성사된 쌍 전용. 방 삭제(30일 purge)와 함께 cascade.
 create table if not exists public.team_messages (
@@ -900,17 +900,17 @@ create policy "team_messages_pair_read"
     select 1 from public.team_matches m
      where m.team_id = team_messages.team_id
        and m.opened_at is not null
-       and (auth.uid() = m.user_a or auth.uid() = m.user_b)
+       and ((select auth.uid()) = m.user_a or (select auth.uid()) = m.user_b)
   ));
 create policy "team_messages_pair_insert"
   on public.team_messages for insert
   with check (
-    sender_id = auth.uid()
+    sender_id = (select auth.uid())
     and exists (
       select 1 from public.team_matches m
        where m.team_id = team_messages.team_id
          and m.opened_at is not null
-         and (auth.uid() = m.user_a or auth.uid() = m.user_b)
+         and ((select auth.uid()) = m.user_a or (select auth.uid()) = m.user_b)
     )
   );
 
@@ -944,12 +944,12 @@ drop policy if exists "team_reports_pair_insert" on public.team_reports;
 create policy "team_reports_pair_insert"
   on public.team_reports for insert
   with check (
-    reporter_id = auth.uid()
+    reporter_id = (select auth.uid())
     and exists (
       select 1 from public.team_matches m
        where m.team_id = team_reports.team_id
-         and ((auth.uid() = m.user_a and team_reports.reported_id = m.user_b)
-           or (auth.uid() = m.user_b and team_reports.reported_id = m.user_a))
+         and (((select auth.uid()) = m.user_a and team_reports.reported_id = m.user_b)
+           or ((select auth.uid()) = m.user_b and team_reports.reported_id = m.user_a))
     )
   );
 
@@ -976,11 +976,11 @@ drop policy if exists "user_blocks_self_insert" on public.user_blocks;
 drop policy if exists "user_blocks_self_delete" on public.user_blocks;
 
 create policy "user_blocks_self_read"
-  on public.user_blocks for select using (blocker_id = auth.uid());
+  on public.user_blocks for select using (blocker_id = (select auth.uid()));
 create policy "user_blocks_self_insert"
-  on public.user_blocks for insert with check (blocker_id = auth.uid());
+  on public.user_blocks for insert with check (blocker_id = (select auth.uid()));
 create policy "user_blocks_self_delete"
-  on public.user_blocks for delete using (blocker_id = auth.uid());
+  on public.user_blocks for delete using (blocker_id = (select auth.uid()));
 
 -- 차단 순간, 두 사람이 같이 있는 모집 중 방에서 차단자가 자동 퇴장한다
 -- (차단 비용은 차단자 부담). 차단자가 방장인 방만은 방장 자리를 비울 수
@@ -1028,14 +1028,14 @@ drop policy if exists "push_tokens_self_update" on public.push_tokens;
 drop policy if exists "push_tokens_self_delete" on public.push_tokens;
 
 create policy "push_tokens_self_select"
-  on public.push_tokens for select using (user_id = auth.uid());
+  on public.push_tokens for select using (user_id = (select auth.uid()));
 create policy "push_tokens_self_insert"
-  on public.push_tokens for insert with check (user_id = auth.uid());
+  on public.push_tokens for insert with check (user_id = (select auth.uid()));
 create policy "push_tokens_self_update"
   on public.push_tokens for update
-  using (user_id = auth.uid()) with check (user_id = auth.uid());
+  using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
 create policy "push_tokens_self_delete"
-  on public.push_tokens for delete using (user_id = auth.uid());
+  on public.push_tokens for delete using (user_id = (select auth.uid()));
 
 -- 서버 전용 비밀 저장소 — API 로 절대 노출 금지 (RLS 켜고 정책 없음 + revoke).
 -- push_webhook_secret 값은 baseline 에 싣지 않는다 — 운영 patch 로 1회 insert.
