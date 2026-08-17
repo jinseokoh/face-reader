@@ -163,6 +163,46 @@ String _conflictSectionV2(
   return buf.toString().trimRight();
 }
 
+
+/// 명령형 어미를 돌린다.
+///
+/// §4 가 출력하는 조언 문장은 `CompatFinding.action` 에서 오는데, 이 데이터는
+/// v1 과 공유한다. 53개 중 47개가 "~세요" 로 끝나고 그중 21개가 "두세요" 라
+/// 세 줄만 이어져도 같은 소리로 들린다. 데이터를 복제하는 대신 출력 시점에
+/// 어미만 바꾼다 — v1 은 그대로 두고 v2 만 달라진다.
+///
+/// 조언이므로 전부 서술형으로 바꾸지는 않는다. 원형을 섞어 남긴다.
+const _kImperativeCycles = <String, List<String>>{
+  // 긴 형태를 앞에 둔다 — '짜 두세요' 가 '두세요' 보다 먼저 걸려야 한다.
+  '해 두세요': ['해 두세요', '해 두는 편이 낫습니다', '해 두면 충분합니다'],
+  '어 두세요': ['어 두세요', '어 두면 됩니다'],
+  '아 두세요': ['아 두세요', '아 두면 됩니다'],
+  '짜 두세요': ['짜 두세요', '짜 두는 편이 낫습니다'],
+  '을 두세요': ['을 두세요', '이 필요합니다'],
+  '를 두세요': ['를 두세요', '가 필요합니다'],
+  '두세요': ['두세요', '두는 편이 낫습니다', '두면 됩니다'],
+  '잡으세요': ['잡으세요', '잡아 두면 됩니다'],
+  '바꾸세요': ['바꾸세요', '바꾸는 편이 낫습니다'],
+  '만드세요': ['만드세요', '만들어 두면 됩니다'],
+  '정하세요': ['정하세요', '정해 두는 편이 낫습니다'],
+  '주세요': ['주세요', '주는 편이 낫습니다'],
+  '들이세요': ['들이세요', '들이면 됩니다'],
+  '합의하세요': ['합의하세요', '합의해 두면 됩니다'],
+  '관리하세요': ['관리하세요', '관리하는 편이 낫습니다'],
+  '마세요': ['마세요', '않는 편이 낫습니다'],
+};
+
+String _varyImperative(String text, int seed) {
+  for (final e in _kImperativeCycles.entries) {
+    if (!text.endsWith('${e.key}.') && !text.endsWith(e.key)) continue;
+    final alt = e.value[seed.abs() % e.value.length];
+    if (alt == e.key) return text;
+    return text.replaceRange(
+        text.lastIndexOf(e.key), text.lastIndexOf(e.key) + e.key.length, alt);
+  }
+  return text;
+}
+
 // ─────────────── §4 관계 운영 전략 ───────────────
 
 String _strategySectionV2(
@@ -185,7 +225,8 @@ String _strategySectionV2(
         : (strategyFailureByDomainV2[domainKey] ??
             strategyFailureByDomainV2['_default']!);
     buf.writeln();
-    buf.writeln('${i + 1}. ${_firstSentence(item.action)}');
+    buf.writeln('${i + 1}. '
+        '${_varyImperative(_firstSentence(item.action), pairSeed + i)}');
     buf.writeln(_firstSentence(_pickVariant(pool, pairSeed + i * 37 + 13)));
   }
 
