@@ -4,9 +4,9 @@ part of 'life_question_narrative.dart';
 // 인생 질문 서술 코퍼스 v2 — 측정 + 전통 귀속
 //
 // 문장 규칙 — 두 문장, 각각 주어가 다르다.
-//   [1 측정]      우리가 잰 값. 주어는 항목이다.
-//                 "재력 항목이 같은 성별·얼굴형 분포에서 @{pct:wealth}
-//                  구간입니다."
+//   [1 판정]      우리가 잰 값이 어느 부류인가. `@{verdict:attr}` 슬롯이
+//                 문장 하나를 통째로 뱉는다.
+//                 "재물을 상당히 모을 가능성이 높은 부류로 판단했습니다."
 //   [2 전통 귀속]  전통이 그 부위를 무엇으로 보고 어떻게 읽었는지.
 //                 주어는 반드시 **전통**이다.
 //                 "전통 관상은 코를 재백궁이라 부르고 재물이 드나드는
@@ -37,8 +37,14 @@ part of 'life_question_narrative.dart';
 // 전통의 유년운기는 미래를 말하는 층이라 쓰지 않기로 했고, 그 자리에는
 // 얼굴과 무관한 일반 조언만 둔다.
 //
-// 백분위의 출처는 `attributePercentile()` — 같은 성별·얼굴형 quantile
-// 테이블에서의 위치이고, 그 테이블은 AAF 11,800장 실측이다.
+// 부류(상위권·중위권·하위권)의 출처는 `_band()` — 같은 성별·얼굴형 quantile
+// 테이블 위에서 매긴 정규화 점수의 구간이고, 그 테이블은 AAF 11,800장
+// 실측이다. 숫자 백분위를 쓰지 않는 이유는 "상위 27%"가 읽는 사람에게
+// 아무 의미도 주지 않기 때문이다. 알아야 할 것은 어느 부류이고 전통이
+// 그 부류를 무엇으로 보았는가다.
+//
+// 부류 판정은 문장을 고르는 조건(`_bandPair`·`_highPair`)과 **같은 함수**를
+// 쓴다. 다른 기준을 쓰면 "중위권이고, 함께 높습니다" 같은 자기모순이 난다.
 //
 // 조건 구조는 v1 풀과 1:1 대응한다. 조건 로직·가중치·엔트로피는 건드리지
 // 않고 문장만 새로 썼다. 각 풀의 마지막은 반드시 `_Frag.hard((f) => true)`
@@ -50,12 +56,65 @@ part of 'life_question_narrative.dart';
 // 측정 서술이 성별에 따라 달라질 근거가 없으므로 공용 풀 하나로 합쳤다.
 // ═══════════════════════════════════════════════════════════════════════
 
-/// 백분위(0..1) → 한국어 구절. `@{pct:attr}` 슬롯이 이걸 부른다.
-/// 1% 미만·99% 초과는 과장으로 읽히므로 1~50 으로 clamp 한다.
-String _v2PctPhrase(double p) {
-  if (p >= 0.5) return '상위 ${((1 - p) * 100).round().clamp(1, 50)}%';
-  return '하위 ${(p * 100).round().clamp(1, 50)}%';
-}
+/// 항목 × 부류 → 판정 문장. `@{verdict:attr}` 슬롯이 이걸 부른다.
+///
+/// "상위 27%" 같은 숫자는 쓰지 않는다. 읽는 사람이 알고 싶은 것은 자기가
+/// 어느 부류이고 그게 무슨 뜻인가지, 소수점이 아니다. 부류 판정은 문장을
+/// 고르는 조건(`_band`)과 같은 함수를 쓰므로 뒤따르는 서술과 어긋나지 않는다.
+const _v2Verdicts = <Attribute, Map<_Band, String>>{
+  Attribute.wealth: {
+    _Band.high: '재물을 상당히 모을 가능성이 높은 부류로 판단했습니다.',
+    _Band.mid: '재물을 충분히 모을 가능성이 높은 부류로 판단했습니다.',
+    _Band.low: '재물을 아쉬워할 가능성이 높은 부류로 판단했습니다.',
+  },
+  Attribute.stability: {
+    _Band.high: '큰 일에도 좀처럼 흔들리지 않을 가능성이 높은 부류로 판단했습니다.',
+    _Band.mid: '웬만한 일에는 흔들리지 않을 가능성이 높은 부류로 판단했습니다.',
+    _Band.low: '기복을 자주 겪을 가능성이 높은 부류로 판단했습니다.',
+  },
+  Attribute.attractiveness: {
+    _Band.high: '첫인상에서 호감을 크게 얻을 가능성이 높은 부류로 판단했습니다.',
+    _Band.mid: '첫인상에서 무난히 호감을 얻을 가능성이 높은 부류로 판단했습니다.',
+    _Band.low: '첫인상보다 겪어 봐야 알아질 가능성이 높은 부류로 판단했습니다.',
+  },
+  Attribute.emotionality: {
+    _Band.high: '감정을 깊고 세게 느낄 가능성이 높은 부류로 판단했습니다.',
+    _Band.mid: '감정을 고르게 다룰 가능성이 높은 부류로 판단했습니다.',
+    _Band.low: '감정보다 사실을 앞세울 가능성이 높은 부류로 판단했습니다.',
+  },
+  Attribute.libido: {
+    _Band.high: '기운이 왕성할 가능성이 높은 부류로 판단했습니다.',
+    _Band.mid: '기운이 꾸준할 가능성이 높은 부류로 판단했습니다.',
+    _Band.low: '기운을 아껴 쓸 가능성이 높은 부류로 판단했습니다.',
+  },
+  Attribute.sensuality: {
+    _Band.high: '이성의 눈길을 크게 끌 가능성이 높은 부류로 판단했습니다.',
+    _Band.mid: '이성의 눈길을 무난히 끌 가능성이 높은 부류로 판단했습니다.',
+    _Band.low: '눈길을 끄는 쪽보다 오래 두고 볼수록 좋아질 가능성이 높은 부류로 판단했습니다.',
+  },
+  Attribute.sociability: {
+    _Band.high: '사람을 널리 모을 가능성이 높은 부류로 판단했습니다.',
+    _Band.mid: '사람과 무난히 어울릴 가능성이 높은 부류로 판단했습니다.',
+    _Band.low: '넓게 사귀기보다 좁고 깊게 사귈 가능성이 높은 부류로 판단했습니다.',
+  },
+  Attribute.trustworthiness: {
+    _Band.high: '남에게 크게 신뢰받을 가능성이 높은 부류로 판단했습니다.',
+    _Band.mid: '남에게 무난히 신뢰받을 가능성이 높은 부류로 판단했습니다.',
+    _Band.low: '신뢰를 얻는 데 시간이 걸릴 가능성이 높은 부류로 판단했습니다.',
+  },
+  Attribute.intelligence: {
+    _Band.high: '상황을 남보다 빨리 읽어낼 가능성이 높은 부류로 판단했습니다.',
+    _Band.mid: '상황을 무난히 읽어낼 가능성이 높은 부류로 판단했습니다.',
+    _Band.low: '머리로 재기보다 몸으로 먼저 부딪칠 가능성이 높은 부류로 판단했습니다.',
+  },
+  Attribute.leadership: {
+    _Band.high: '무리를 이끄는 자리에 설 가능성이 높은 부류로 판단했습니다.',
+    _Band.mid: '무리 안에서 제 몫을 해낼 가능성이 높은 부류로 판단했습니다.',
+    _Band.low: '앞에 서기보다 뒤에서 받쳐 줄 가능성이 높은 부류로 판단했습니다.',
+  },
+};
+
+String _v2Verdict(Attribute a, _Band b) => _v2Verdicts[a]?[b] ?? '';
 
 // ═══════════════════════════════════════════════════════════════════════
 // 재력 — wealth × stability
@@ -63,37 +122,37 @@ String _v2PctPhrase(double p) {
 
 final List<_Frag> _v2WealthOpening = [
   _Frag(_highPair(Attribute.wealth, Attribute.stability), [
-    '재력 항목이 같은 성별·얼굴형 분포에서 @{pct:wealth} 구간이고, 안정성 항목도 함께 높습니다. 전통 관상은 코를 재백궁, 턱을 노복궁으로 두고 두 자리가 같이 실한 얼굴을 재물이 들어오고 또 머무는 상으로 읽었습니다.',
+    '@{verdict:wealth} 안정성 항목도 함께 높게 나왔습니다. 전통 관상은 코를 재백궁, 턱을 노복궁으로 두고 두 자리가 같이 실한 얼굴을 재물이 들어오고 또 머무는 상으로 읽었습니다.',
   ]),
   _Frag(_bandPair(Attribute.wealth, _Band.high, Attribute.stability, _Band.mid), [
-    '재력 항목이 @{pct:wealth} 구간이고 안정성은 평균대입니다. 전통 관상은 코를 재백궁이라 하여 재물이 드나드는 자리로 보았고, 이 자리가 실한 얼굴을 기회가 먼저 눈에 들어오는 상이라 했습니다.',
+    '@{verdict:wealth} 안정성은 평균대입니다. 전통 관상은 코를 재백궁이라 하여 재물이 드나드는 자리로 보았고, 이 자리가 실한 얼굴을 기회가 먼저 눈에 들어오는 상이라 했습니다.',
   ]),
   _Frag(_bandPair(Attribute.wealth, _Band.high, Attribute.stability, _Band.low), [
-    '재력 항목은 @{pct:wealth} 구간인데 안정성이 낮은 쪽입니다. 전통 관상은 코가 실하고 턱이 얇은 얼굴을 두고 들어오는 폭과 나가는 폭이 함께 큰 상이라 했습니다.',
+    '@{verdict:wealth} 다만 안정성은 낮은 쪽입니다. 전통 관상은 코가 실하고 턱이 얇은 얼굴을 두고 들어오는 폭과 나가는 폭이 함께 큰 상이라 했습니다.',
   ]),
   _Frag(_bandPair(Attribute.wealth, _Band.mid, Attribute.stability, _Band.high), [
-    '재력 항목은 평균대이고 안정성이 @{pct:stability} 구간입니다. 전통 관상은 턱을 노복궁으로 두고, 이 자리가 두터운 얼굴을 지키는 힘이 앞선 상으로 읽었습니다.',
+    '@{verdict:stability} 재력 항목은 평균대입니다. 전통 관상은 턱을 노복궁으로 두고, 이 자리가 두터운 얼굴을 지키는 힘이 앞선 상으로 읽었습니다.',
   ]),
   _Frag(_bandPair(Attribute.wealth, _Band.mid, Attribute.stability, _Band.mid), [
-    '재력과 안정성 항목이 모두 평균대에 놓여 있습니다. 전통 관상은 어느 한 자리가 유독 튀지 않고 고른 얼굴을 두고 균형이 잡힌 상이라 했습니다.',
-    '재력 항목이 @{pct:wealth} 구간으로 분포 가운데에 있습니다. 전통 관상은 코가 지나치게 크지도 작지도 않은 얼굴을 재백궁이 순한 상으로 보았습니다.',
+    '@{verdict:wealth} 안정성도 비슷한 자리에 있습니다. 전통 관상은 어느 한 자리가 유독 튀지 않고 고른 얼굴을 두고 균형이 잡힌 상이라 했습니다.',
+    '@{verdict:wealth} 전통 관상은 코가 지나치게 크지도 작지도 않은 얼굴을 재백궁이 순한 상으로 보았습니다.',
   ]),
   _Frag(_bandPair(Attribute.wealth, _Band.mid, Attribute.stability, _Band.low), [
-    '재력 항목은 평균대인데 안정성이 @{pct:stability} 구간입니다. 전통 관상은 턱이 얇은 얼굴을 두고 마음이 자주 옮겨 앉는 상이라 했습니다.',
+    '@{verdict:stability} 재력 항목은 평균대입니다. 전통 관상은 턱이 얇은 얼굴을 두고 마음이 자주 옮겨 앉는 상이라 했습니다.',
   ]),
   _Frag(_bandPair(Attribute.wealth, _Band.low, Attribute.stability, _Band.high), [
-    '재력 항목이 @{pct:wealth} 구간이고 안정성은 높은 쪽입니다. 전통 관상은 코보다 턱이 발달한 얼굴을 두고 만드는 쪽보다 지키는 쪽이 강한 상이라 했습니다.',
+    '@{verdict:wealth} 대신 안정성은 높은 쪽입니다. 전통 관상은 코보다 턱이 발달한 얼굴을 두고 만드는 쪽보다 지키는 쪽이 강한 상이라 했습니다.',
   ]),
   _Frag(_bandPair(Attribute.wealth, _Band.low, Attribute.stability, _Band.mid), [
-    '재력 항목이 @{pct:wealth} 구간이고 안정성은 평균대입니다. 전통 관상에서 재백궁이 크게 두드러지지 않는 얼굴은 재물보다 다른 자리에 무게가 실린 상으로 읽혔습니다.',
+    '@{verdict:wealth} 안정성은 평균대입니다. 전통 관상에서 재백궁이 크게 두드러지지 않는 얼굴은 재물보다 다른 자리에 무게가 실린 상으로 읽혔습니다.',
   ]),
   _Frag(_lowPair(Attribute.wealth, Attribute.stability), [
-    '재력과 안정성 항목이 모두 분포 아래쪽에 있습니다. 전통 관상은 열두 자리 가운데 어디가 실한지를 보았지 총합을 매기지 않았고, 이 얼굴은 재백궁이 아닌 다른 자리에 무게가 실린 상입니다.',
+    '@{verdict:wealth} 안정성도 함께 아래쪽입니다. 전통 관상은 열두 자리 가운데 어디가 실한지를 보았지 총합을 매기지 않았고, 이 얼굴은 재백궁이 아닌 다른 자리에 무게가 실린 상입니다.',
   ]),
   _Frag.hard((f) => true, [
-    '재력 항목이 같은 성별·얼굴형 분포에서 @{pct:wealth} 구간입니다. 전통 관상은 코를 재백궁이라 부르고 재물이 드나드는 자리로 보았습니다.',
-    '재력 항목이 @{pct:wealth} 구간에 놓여 있습니다. 전통 관상은 콧대의 곧기와 콧방울의 두께를 재백궁의 두께로 읽었습니다.',
-    '재력 항목이 @{pct:wealth} 구간으로 측정됩니다. 전통 관상에서 이 자리는 열두 궁 가운데 재물을 맡은 자리입니다.',
+    '@{verdict:wealth} 전통 관상은 코를 재백궁이라 부르고 재물이 드나드는 자리로 보았습니다.',
+    '@{verdict:wealth} 전통 관상은 콧대의 곧기와 콧방울의 두께를 재백궁의 두께로 읽었습니다.',
+    '@{verdict:wealth} 전통 관상에서 이 자리는 열두 궁 가운데 재물을 맡은 자리입니다.',
   ]),
 ];
 
@@ -134,7 +193,7 @@ final List<_Frag> _v2WealthStrength = [
     '코와 입 항목의 값이 함께 높습니다. 관상서에서는 코를 재백궁, 입을 출납관이라 하여 들어오는 자리와 나가는 자리로 나누어 보았습니다.',
   ]),
   _Frag.hard((f) => true, [
-    '관상서는 재물을 이마·코·광대·턱 네 자리로 나누어 보았습니다. 이 얼굴은 그 가운데 여러 자리가 함께 평균 위에 있습니다.',
+    '관상서는 재물을 이마·코·광대·턱 네 자리로 나누어 보았습니다. 총합을 매기지 않고 어느 자리가 실한지를 따로 보았다는 뜻입니다.',
     '옛 관상서는 코가 홀로 큰 얼굴보다 이마와 턱이 받쳐 주는 얼굴을 더 높게 보았습니다.',
     '관상서에서는 광대와 코가 함께 선 얼굴을 두고 혼자보다 사람을 통해 넓히는 상이라 했습니다.',
     '관상서에서 이마는 관록궁, 코는 재백궁입니다. 두 자리가 함께 서 있으면 이름과 재물을 같은 길에서 얻는 상으로 읽었습니다.',
@@ -230,37 +289,37 @@ final List<_BeatPool> _v2WealthBeats = [
 
 final List<_Frag> _v2HealthOpening = [
   _Frag(_highPair(Attribute.stability, Attribute.emotionality), [
-    '안정성 항목이 @{pct:stability} 구간이고 감정성도 함께 높습니다. 전통 관상은 코를 질액궁이라 하여 몸의 자리로도 보았고, 산근이 곧으면서 눈에 물기가 도는 얼굴을 기운이 살아 있는 상으로 읽었습니다.',
+    '@{verdict:stability} 감정성 항목도 함께 높게 나왔습니다. 전통 관상은 코를 질액궁이라 하여 몸의 자리로도 보았고, 산근이 곧으면서 눈에 물기가 도는 얼굴을 기운이 살아 있는 상으로 읽었습니다.',
   ]),
   _Frag(_bandPair(Attribute.stability, _Band.high, Attribute.emotionality, _Band.mid), [
-    '안정성 항목이 @{pct:stability} 구간이고 감정성은 평균대입니다. 전통 관상은 코를 질액궁이라 하여 병과 액이 드러나는 자리로 보았고, 이 자리가 곧은 얼굴을 몸이 고른 상이라 했습니다.',
+    '@{verdict:stability} 감정성은 평균대입니다. 전통 관상은 코를 질액궁이라 하여 병과 액이 드러나는 자리로 보았고, 이 자리가 곧은 얼굴을 몸이 고른 상이라 했습니다.',
   ]),
   _Frag(_bandPair(Attribute.stability, _Band.high, Attribute.emotionality, _Band.low), [
-    '안정성 항목은 @{pct:stability} 구간인데 감정성이 낮은 쪽입니다. 전통 관상은 얼굴에 기복이 적은 상을 두고 안으로 눌러 두는 힘이 강하다고 보았습니다.',
+    '@{verdict:stability} 감정성은 낮은 쪽입니다. 전통 관상은 얼굴에 기복이 적은 상을 두고 안으로 눌러 두는 힘이 강하다고 보았습니다.',
   ]),
   _Frag(_bandPair(Attribute.stability, _Band.mid, Attribute.emotionality, _Band.high), [
-    '안정성은 평균대이고 감정성이 @{pct:emotionality} 구간입니다. 전통 관상은 눈을 사독 가운데 하(河)라 하여 기운이 흐르는 자리로 보았고, 이 자리가 강한 얼굴은 안팎의 진폭이 크다고 했습니다.',
+    '@{verdict:emotionality} 안정성은 평균대입니다. 전통 관상은 눈을 사독 가운데 하(河)라 하여 기운이 흐르는 자리로 보았고, 이 자리가 강한 얼굴은 안팎의 진폭이 크다고 했습니다.',
   ]),
   _Frag(_bandPair(Attribute.stability, _Band.mid, Attribute.emotionality, _Band.mid), [
-    '안정성과 감정성 항목이 모두 평균대에 놓여 있습니다. 전통 관상은 어느 자리도 유독 튀지 않은 얼굴을 두고 기운이 고르게 도는 상이라 했습니다.',
-    '두 항목이 모두 분포 가운데에 있습니다. 전통 관상은 질액궁이 순한 얼굴을 크게 앓지도 크게 넘치지도 않는 상으로 보았습니다.',
+    '@{verdict:stability} 감정성도 비슷한 자리에 있습니다. 전통 관상은 어느 자리도 유독 튀지 않은 얼굴을 두고 기운이 고르게 도는 상이라 했습니다.',
+    '@{verdict:stability} 전통 관상은 질액궁이 순한 얼굴을 크게 앓지도 크게 넘치지도 않는 상으로 보았습니다.',
   ]),
   _Frag(_bandPair(Attribute.stability, _Band.mid, Attribute.emotionality, _Band.low), [
-    '안정성은 평균대인데 감정성 항목이 @{pct:emotionality} 구간입니다. 전통 관상은 표정의 움직임이 적은 얼굴을 두고 속을 밖으로 내지 않는 상이라 했습니다.',
+    '@{verdict:emotionality} 안정성은 평균대입니다. 전통 관상은 표정의 움직임이 적은 얼굴을 두고 속을 밖으로 내지 않는 상이라 했습니다.',
   ]),
   _Frag(_bandPair(Attribute.stability, _Band.low, Attribute.emotionality, _Band.high), [
-    '안정성 항목이 @{pct:stability} 구간이고 감정성은 높은 쪽입니다. 전통 관상은 산근이 얕고 눈의 기운이 센 얼굴을 두고 기복이 몸에 먼저 나타나는 상이라 했습니다.',
+    '@{verdict:stability} 대신 감정성은 높은 쪽입니다. 전통 관상은 산근이 얕고 눈의 기운이 센 얼굴을 두고 기복이 몸에 먼저 나타나는 상이라 했습니다.',
   ]),
   _Frag(_bandPair(Attribute.stability, _Band.low, Attribute.emotionality, _Band.mid), [
-    '안정성 항목이 @{pct:stability} 구간이고 감정성은 평균대입니다. 전통 관상은 턱과 산근이 얇은 얼굴을 두고 버티는 힘보다 흐르는 힘이 앞선 상으로 읽었습니다.',
+    '@{verdict:stability} 감정성은 평균대입니다. 전통 관상은 턱과 산근이 얇은 얼굴을 두고 버티는 힘보다 흐르는 힘이 앞선 상으로 읽었습니다.',
   ]),
   _Frag(_lowPair(Attribute.stability, Attribute.emotionality), [
-    '두 항목이 모두 분포 아래쪽에 있습니다. 전통 관상은 열두 자리 가운데 어디가 실한지를 보았지 총합을 매기지 않았고, 이 얼굴은 질액궁보다 다른 자리에 무게가 실린 상입니다.',
+    '@{verdict:stability} 감정성도 함께 아래쪽입니다. 전통 관상은 열두 자리 가운데 어디가 실한지를 보았지 총합을 매기지 않았고, 이 얼굴은 질액궁보다 다른 자리에 무게가 실린 상입니다.',
   ]),
   _Frag.hard((f) => true, [
-    '건강과 관련된 항목들이 같은 성별·얼굴형 분포에서 가운데 부근에 놓여 있습니다. 전통 관상은 코를 질액궁이라 부르고 병과 액이 드러나는 자리로 보았습니다.',
-    '안정성 항목이 @{pct:stability} 구간입니다. 전통 관상은 콧대 위쪽 산근을 몸의 기운이 지나는 길목으로 여겼습니다.',
-    '몸과 관련된 항목들이 분포 가운데에 모여 있습니다. 전통 관상에서 질액궁은 열두 궁 가운데 몸을 맡은 자리입니다.',
+    '@{verdict:stability} 전통 관상은 코를 질액궁이라 부르고 병과 액이 드러나는 자리로 보았습니다.',
+    '@{verdict:stability} 전통 관상은 콧대 위쪽 산근을 몸의 기운이 지나는 길목으로 여겼습니다.',
+    '@{verdict:stability} 전통 관상에서 질액궁은 열두 궁 가운데 몸을 맡은 자리입니다.',
   ]),
 ];
 
@@ -409,36 +468,36 @@ final List<_BeatPool> _v2HealthBeats = [
 
 final List<_Frag> _v2RomanceOpening = [
   _Frag(_bandPair(Attribute.attractiveness, _Band.high, Attribute.emotionality, _Band.high), [
-    '매력도 항목이 @{pct:attractiveness} 구간이고 감정성도 함께 높습니다. 전통 관상은 눈꼬리 자리를 처첩궁이라 하여 배우자 인연을 보는 곳으로 여겼고, 이 자리에 기운이 실린 얼굴을 사람이 모이는 상으로 읽었습니다.',
+    '@{verdict:attractiveness} 감정성 항목도 함께 높게 나왔습니다. 전통 관상은 눈꼬리 자리를 처첩궁이라 하여 배우자 인연을 보는 곳으로 여겼고, 이 자리에 기운이 실린 얼굴을 사람이 모이는 상으로 읽었습니다.',
   ]),
   _Frag(_bandPair(Attribute.attractiveness, _Band.high, Attribute.emotionality, _Band.mid), [
-    '매력도 항목이 @{pct:attractiveness} 구간이고 감정성은 평균대입니다. 전통 관상은 처첩궁이 도톰한 얼굴을 두고 인연이 늦지 않은 상이라 했습니다.',
+    '@{verdict:attractiveness} 감정성은 평균대입니다. 전통 관상은 처첩궁이 도톰한 얼굴을 두고 인연이 늦지 않은 상이라 했습니다.',
   ]),
   _Frag(_bandPair(Attribute.attractiveness, _Band.high, Attribute.emotionality, _Band.low), [
-    '매력도 항목은 @{pct:attractiveness} 구간인데 감정성이 낮은 쪽입니다. 전통 관상은 얼굴은 서 있으나 표정의 움직임이 적은 상을 두고, 다가오기는 쉬워도 가까워지기는 더디다고 했습니다.',
+    '@{verdict:attractiveness} 감정성은 낮은 쪽입니다. 전통 관상은 얼굴은 서 있으나 표정의 움직임이 적은 상을 두고, 다가오기는 쉬워도 가까워지기는 더디다고 했습니다.',
   ]),
   _Frag(_bandPair(Attribute.attractiveness, _Band.mid, Attribute.emotionality, _Band.high), [
-    '매력도는 평균대이고 감정성이 @{pct:emotionality} 구간입니다. 전통 관상은 눈을 사독 가운데 하(河)라 하여 정이 흐르는 자리로 보았고, 이 자리가 강한 얼굴을 마음을 깊게 쓰는 상이라 했습니다.',
+    '@{verdict:emotionality} 매력도는 평균대입니다. 전통 관상은 눈을 사독 가운데 하(河)라 하여 정이 흐르는 자리로 보았고, 이 자리가 강한 얼굴을 마음을 깊게 쓰는 상이라 했습니다.',
   ]),
   _Frag(_bandPair(Attribute.attractiveness, _Band.mid, Attribute.emotionality, _Band.mid), [
-    '매력도와 감정성 항목이 모두 평균대에 놓여 있습니다. 전통 관상은 어느 자리도 유독 튀지 않은 얼굴을 두고 관계가 급하게 오르내리지 않는 상이라 했습니다.',
+    '@{verdict:attractiveness} 감정성도 비슷한 자리에 있습니다. 전통 관상은 어느 자리도 유독 튀지 않은 얼굴을 두고 관계가 급하게 오르내리지 않는 상이라 했습니다.',
   ]),
   _Frag(_bandPair(Attribute.attractiveness, _Band.mid, Attribute.emotionality, _Band.low), [
-    '매력도는 평균대인데 감정성 항목이 @{pct:emotionality} 구간입니다. 전통 관상은 표정의 결이 잔잔한 얼굴을 두고 속을 늦게 내보이는 상이라 했습니다.',
+    '@{verdict:emotionality} 매력도는 평균대입니다. 전통 관상은 표정의 결이 잔잔한 얼굴을 두고 속을 늦게 내보이는 상이라 했습니다.',
   ]),
   _Frag(_bandPair(Attribute.attractiveness, _Band.low, Attribute.emotionality, _Band.high), [
-    '매력도 항목이 @{pct:attractiveness} 구간이고 감정성은 높은 쪽입니다. 전통 관상은 첫눈보다 오래 볼수록 달라 보이는 상을 따로 두었고, 처첩궁은 시간이 지나며 드러난다고 했습니다.',
+    '@{verdict:attractiveness} 대신 감정성은 높은 쪽입니다. 전통 관상은 첫눈보다 오래 볼수록 달라 보이는 상을 따로 두었고, 처첩궁은 시간이 지나며 드러난다고 했습니다.',
   ]),
   _Frag(_bandPair(Attribute.attractiveness, _Band.low, Attribute.emotionality, _Band.mid), [
-    '매력도 항목이 @{pct:attractiveness} 구간이고 감정성은 평균대입니다. 전통 관상은 눈에 띄는 자리보다 흐트러지지 않은 자리를 관계에서 더 높게 보았습니다.',
+    '@{verdict:attractiveness} 감정성은 평균대입니다. 전통 관상은 눈에 띄는 자리보다 흐트러지지 않은 자리를 관계에서 더 높게 보았습니다.',
   ]),
   _Frag(_bandPair(Attribute.attractiveness, _Band.low, Attribute.emotionality, _Band.low), [
-    '두 항목이 모두 분포 아래쪽에 있습니다. 전통 관상은 열두 자리 가운데 어디가 실한지를 보았지 총합을 매기지 않았고, 이 얼굴은 처첩궁보다 다른 자리에 무게가 실린 상입니다.',
+    '@{verdict:attractiveness} 감정성도 함께 아래쪽입니다. 전통 관상은 열두 자리 가운데 어디가 실한지를 보았지 총합을 매기지 않았고, 이 얼굴은 처첩궁보다 다른 자리에 무게가 실린 상입니다.',
   ]),
   _Frag.hard((f) => true, [
-    '연애와 관련된 항목들이 같은 성별·얼굴형 분포에서 가운데 부근에 놓여 있습니다. 전통 관상은 눈꼬리 자리를 처첩궁이라 부르고 배우자 인연을 보는 곳으로 여겼습니다.',
-    '매력도 항목이 @{pct:attractiveness} 구간입니다. 전통 관상에서 눈은 처첩궁이면서 남녀궁이기도 하여, 짝과 자식을 같은 자리에서 읽었습니다.',
-    '관계와 관련된 항목들이 분포 가운데에 모여 있습니다. 전통 관상은 눈썹을 형제궁이라 하여 곁에 두는 사람의 자리로 보았습니다.',
+    '@{verdict:attractiveness} 전통 관상은 눈꼬리 자리를 처첩궁이라 부르고 배우자 인연을 보는 곳으로 여겼습니다.',
+    '@{verdict:attractiveness} 전통 관상에서 눈은 처첩궁이면서 남녀궁이기도 하여, 짝과 자식을 같은 자리에서 읽었습니다.',
+    '@{verdict:attractiveness} 전통 관상은 눈썹을 형제궁이라 하여 곁에 두는 사람의 자리로 보았습니다.',
   ]),
 ];
 
@@ -682,36 +741,36 @@ final List<_BeatPool> _v2RomanceBeatsMale = [
 
 final List<_Frag> _v2VitalityOpening = [
   _Frag(_highPair(Attribute.libido, Attribute.sensuality), [
-    '활력 항목이 @{pct:libido} 구간이고 흡인력도 함께 높습니다. 전통 관상은 눈을 남녀궁이라 하여 기운이 도는 자리로 보았고, 눈썹과 인중이 함께 뚜렷한 얼굴을 정기가 성한 상으로 읽었습니다.',
+    '@{verdict:libido} 흡인력 항목도 함께 높게 나왔습니다. 전통 관상은 눈을 남녀궁이라 하여 기운이 도는 자리로 보았고, 눈썹과 인중이 함께 뚜렷한 얼굴을 정기가 성한 상으로 읽었습니다.',
   ]),
   _Frag(_bandPair(Attribute.libido, _Band.high, Attribute.sensuality, _Band.mid), [
-    '활력 항목이 @{pct:libido} 구간이고 흡인력은 평균대입니다. 전통 관상은 눈썹이 짙고 인중이 또렷한 얼굴을 기운이 안에서 도는 상이라 했습니다.',
+    '@{verdict:libido} 흡인력은 평균대입니다. 전통 관상은 눈썹이 짙고 인중이 또렷한 얼굴을 기운이 안에서 도는 상이라 했습니다.',
   ]),
   _Frag(_bandPair(Attribute.libido, _Band.high, Attribute.sensuality, _Band.low), [
-    '활력 항목은 @{pct:libido} 구간인데 흡인력이 낮은 쪽입니다. 전통 관상은 기운은 성한데 밖으로 드러나는 결이 적은 상을 따로 두었습니다.',
+    '@{verdict:libido} 흡인력은 낮은 쪽입니다. 전통 관상은 기운은 성한데 밖으로 드러나는 결이 적은 상을 따로 두었습니다.',
   ]),
   _Frag(_bandPair(Attribute.libido, _Band.mid, Attribute.sensuality, _Band.high), [
-    '활력은 평균대이고 흡인력이 @{pct:sensuality} 구간입니다. 전통 관상은 눈꼬리와 입가의 결이 뚜렷한 얼굴을 사람의 눈이 머무는 상으로 보았습니다.',
+    '@{verdict:sensuality} 활력은 평균대입니다. 전통 관상은 눈꼬리와 입가의 결이 뚜렷한 얼굴을 사람의 눈이 머무는 상으로 보았습니다.',
   ]),
   _Frag(_bandPair(Attribute.libido, _Band.mid, Attribute.sensuality, _Band.mid), [
-    '활력과 흡인력 항목이 모두 평균대에 놓여 있습니다. 전통 관상은 어느 자리도 유독 튀지 않은 얼굴을 두고 기운이 고르게 도는 상이라 했습니다.',
+    '@{verdict:libido} 흡인력도 비슷한 자리에 있습니다. 전통 관상은 어느 자리도 유독 튀지 않은 얼굴을 두고 기운이 고르게 도는 상이라 했습니다.',
   ]),
   _Frag(_bandPair(Attribute.libido, _Band.mid, Attribute.sensuality, _Band.low), [
-    '활력은 평균대인데 흡인력 항목이 @{pct:sensuality} 구간입니다. 전통 관상은 결이 잔잔한 얼굴을 두고 안으로 두는 상이라 했습니다.',
+    '@{verdict:sensuality} 활력은 평균대입니다. 전통 관상은 결이 잔잔한 얼굴을 두고 안으로 두는 상이라 했습니다.',
   ]),
   _Frag(_bandPair(Attribute.libido, _Band.low, Attribute.sensuality, _Band.high), [
-    '활력 항목이 @{pct:libido} 구간이고 흡인력은 높은 쪽입니다. 전통 관상은 기운의 세기와 밖으로 드러나는 결을 다른 자리에서 읽었습니다.',
+    '@{verdict:libido} 대신 흡인력은 높은 쪽입니다. 전통 관상은 기운의 세기와 밖으로 드러나는 결을 다른 자리에서 읽었습니다.',
   ]),
   _Frag(_bandPair(Attribute.libido, _Band.low, Attribute.sensuality, _Band.mid), [
-    '활력 항목이 @{pct:libido} 구간이고 흡인력은 평균대입니다. 전통 관상은 눈썹과 인중의 결이 옅은 얼굴을 두고 기운을 아껴 쓰는 상이라 했습니다.',
+    '@{verdict:libido} 흡인력은 평균대입니다. 전통 관상은 눈썹과 인중의 결이 옅은 얼굴을 두고 기운을 아껴 쓰는 상이라 했습니다.',
   ]),
   _Frag(_lowPair(Attribute.libido, Attribute.sensuality), [
-    '두 항목이 모두 분포 아래쪽에 있습니다. 전통 관상은 열두 자리 가운데 어디가 실한지를 보았지 총합을 매기지 않았고, 이 얼굴은 남녀궁보다 다른 자리에 무게가 실린 상입니다.',
+    '@{verdict:libido} 흡인력도 함께 아래쪽입니다. 전통 관상은 열두 자리 가운데 어디가 실한지를 보았지 총합을 매기지 않았고, 이 얼굴은 남녀궁보다 다른 자리에 무게가 실린 상입니다.',
   ]),
   _Frag.hard((f) => true, [
-    '활력 항목이 같은 성별·얼굴형 분포에서 @{pct:libido} 구간입니다. 전통 관상은 눈을 남녀궁이라 부르고 기운이 도는 자리로 보았습니다.',
-    '활력 항목이 @{pct:libido} 구간에 놓여 있습니다. 전통 관상은 인중을 정기가 지나는 길목으로 여겼습니다.',
-    '활력 항목이 @{pct:libido} 구간으로 측정됩니다. 전통 관상에서 눈썹은 형제궁이면서 기운의 성쇠를 보는 자리이기도 했습니다.',
+    '@{verdict:libido} 전통 관상은 눈을 남녀궁이라 부르고 기운이 도는 자리로 보았습니다.',
+    '@{verdict:libido} 전통 관상은 인중을 정기가 지나는 길목으로 여겼습니다.',
+    '@{verdict:libido} 전통 관상에서 눈썹은 형제궁이면서 기운의 성쇠를 보는 자리이기도 했습니다.',
   ]),
 ];
 
@@ -1026,37 +1085,37 @@ final List<_BeatPool> _v2VitalityBeatsMale = [
 
 final List<_Frag> _v2SocialOpening = [
   _Frag(_highPair(Attribute.sociability, Attribute.trustworthiness), [
-    '사회성 항목이 @{pct:sociability} 구간이고 신뢰성도 함께 높습니다. 전통 관상은 입을 오관 가운데 출납관이라 하여 말이 드나드는 자리로 보았고, 이 자리가 단정하면서 이마가 곧은 얼굴을 말이 무게를 갖는 상으로 읽었습니다.',
+    '@{verdict:sociability} 신뢰성 항목도 함께 높게 나왔습니다. 전통 관상은 입을 오관 가운데 출납관이라 하여 말이 드나드는 자리로 보았고, 이 자리가 단정하면서 이마가 곧은 얼굴을 말이 무게를 갖는 상으로 읽었습니다.',
   ]),
   _Frag(_bandPair(Attribute.sociability, _Band.high, Attribute.trustworthiness, _Band.mid), [
-    '사회성 항목이 @{pct:sociability} 구간이고 신뢰성은 평균대입니다. 전통 관상은 입이 큰 얼굴을 두고 사람이 모이는 상이라 했습니다.',
+    '@{verdict:sociability} 신뢰성은 평균대입니다. 전통 관상은 입이 큰 얼굴을 두고 사람이 모이는 상이라 했습니다.',
   ]),
   _Frag(_bandPair(Attribute.sociability, _Band.high, Attribute.trustworthiness, _Band.low), [
-    '사회성 항목은 @{pct:sociability} 구간인데 신뢰성이 낮은 쪽입니다. 전통 관상은 말이 앞서고 이마가 받쳐 주지 않는 상을 따로 두었습니다.',
+    '@{verdict:sociability} 신뢰성은 낮은 쪽입니다. 전통 관상은 말이 앞서고 이마가 받쳐 주지 않는 상을 따로 두었습니다.',
   ]),
   _Frag(_bandPair(Attribute.sociability, _Band.mid, Attribute.trustworthiness, _Band.high), [
-    '사회성은 평균대이고 신뢰성이 @{pct:trustworthiness} 구간입니다. 전통 관상은 이마를 관록궁이라 하여 이름이 서는 자리로 보았고, 이 자리가 곧은 얼굴을 말과 행동이 어긋나지 않는 상으로 읽었습니다.',
+    '@{verdict:trustworthiness} 사회성은 평균대입니다. 전통 관상은 이마를 관록궁이라 하여 이름이 서는 자리로 보았고, 이 자리가 곧은 얼굴을 말과 행동이 어긋나지 않는 상으로 읽었습니다.',
   ]),
   _Frag(_bandPair(Attribute.sociability, _Band.mid, Attribute.trustworthiness, _Band.mid), [
-    '사회성과 신뢰성 항목이 모두 평균대에 놓여 있습니다. 전통 관상은 어느 자리도 유독 튀지 않은 얼굴을 두고 사람과의 거리가 급하게 오르내리지 않는 상이라 했습니다.',
-    '두 항목이 모두 분포 가운데에 있습니다. 전통 관상은 출납관이 순한 얼굴을 두고 말이 넘치지도 모자라지도 않은 상으로 보았습니다.',
+    '@{verdict:sociability} 신뢰성도 비슷한 자리에 있습니다. 전통 관상은 어느 자리도 유독 튀지 않은 얼굴을 두고 사람과의 거리가 급하게 오르내리지 않는 상이라 했습니다.',
+    '@{verdict:sociability} 전통 관상은 출납관이 순한 얼굴을 두고 말이 넘치지도 모자라지도 않은 상으로 보았습니다.',
   ]),
   _Frag(_bandPair(Attribute.sociability, _Band.mid, Attribute.trustworthiness, _Band.low), [
-    '사회성은 평균대인데 신뢰성 항목이 @{pct:trustworthiness} 구간입니다. 전통 관상은 이마가 좁은 얼굴을 두고 말이 자리를 늦게 얻는 상이라 했습니다.',
+    '@{verdict:trustworthiness} 사회성은 평균대입니다. 전통 관상은 이마가 좁은 얼굴을 두고 말이 자리를 늦게 얻는 상이라 했습니다.',
   ]),
   _Frag(_bandPair(Attribute.sociability, _Band.low, Attribute.trustworthiness, _Band.high), [
-    '사회성 항목이 @{pct:sociability} 구간이고 신뢰성은 높은 쪽입니다. 전통 관상은 말수가 적고 이마가 곧은 얼굴을 두고 적게 말하되 그 말이 남는 상이라 했습니다.',
+    '@{verdict:sociability} 대신 신뢰성은 높은 쪽입니다. 전통 관상은 말수가 적고 이마가 곧은 얼굴을 두고 적게 말하되 그 말이 남는 상이라 했습니다.',
   ]),
   _Frag(_bandPair(Attribute.sociability, _Band.low, Attribute.trustworthiness, _Band.mid), [
-    '사회성 항목이 @{pct:sociability} 구간이고 신뢰성은 평균대입니다. 전통 관상은 넓게 트는 자리보다 깊게 두는 자리를 따로 보았습니다.',
+    '@{verdict:sociability} 신뢰성은 평균대입니다. 전통 관상은 넓게 트는 자리보다 깊게 두는 자리를 따로 보았습니다.',
   ]),
   _Frag(_lowPair(Attribute.sociability, Attribute.trustworthiness), [
-    '두 항목이 모두 분포 아래쪽에 있습니다. 전통 관상은 열두 자리 가운데 어디가 실한지를 보았지 총합을 매기지 않았고, 이 얼굴은 출납관보다 다른 자리에 무게가 실린 상입니다.',
+    '@{verdict:sociability} 신뢰성도 함께 아래쪽입니다. 전통 관상은 열두 자리 가운데 어디가 실한지를 보았지 총합을 매기지 않았고, 이 얼굴은 출납관보다 다른 자리에 무게가 실린 상입니다.',
   ]),
   _Frag.hard((f) => true, [
-    '대인관계와 관련된 항목들이 같은 성별·얼굴형 분포에서 가운데 부근에 놓여 있습니다. 전통 관상은 입을 출납관이라 부르고 말이 드나드는 자리로 보았습니다.',
-    '사회성 항목이 @{pct:sociability} 구간입니다. 전통 관상은 눈썹을 형제궁이라 하여 곁에 두는 사람의 자리로 여겼습니다.',
-    '관계와 관련된 항목들이 분포 가운데에 모여 있습니다. 전통 관상에서 이마는 관록궁이면서 천이궁이라, 이름과 사람의 오감을 같은 자리에서 읽었습니다.',
+    '@{verdict:sociability} 전통 관상은 입을 출납관이라 부르고 말이 드나드는 자리로 보았습니다.',
+    '@{verdict:sociability} 전통 관상은 눈썹을 형제궁이라 하여 곁에 두는 사람의 자리로 여겼습니다.',
+    '@{verdict:sociability} 전통 관상에서 이마는 관록궁이면서 천이궁이라, 이름과 사람의 오감을 같은 자리에서 읽었습니다.',
   ]),
 ];
 
@@ -1195,37 +1254,37 @@ final List<_BeatPool> _v2SocialBeats = [
 
 final List<_Frag> _v2TalentOpening = [
   _Frag(_highPair(Attribute.intelligence, Attribute.leadership), [
-    '통찰력 항목이 @{pct:intelligence} 구간이고 리더십도 함께 높습니다. 전통 관상은 이마를 관록궁이라 하여 이름과 자리가 서는 곳으로 보았고, 이 자리가 넓으면서 턱이 받쳐 주는 얼굴을 앞에 서는 상으로 읽었습니다.',
+    '@{verdict:intelligence} 리더십 항목도 함께 높게 나왔습니다. 전통 관상은 이마를 관록궁이라 하여 이름과 자리가 서는 곳으로 보았고, 이 자리가 넓으면서 턱이 받쳐 주는 얼굴을 앞에 서는 상으로 읽었습니다.',
   ]),
   _Frag(_bandPair(Attribute.intelligence, _Band.high, Attribute.leadership, _Band.mid), [
-    '통찰력 항목이 @{pct:intelligence} 구간이고 리더십은 평균대입니다. 전통 관상은 이마가 넓고 반듯한 얼굴을 두고 먼저 헤아리는 상이라 했습니다.',
+    '@{verdict:intelligence} 리더십은 평균대입니다. 전통 관상은 이마가 넓고 반듯한 얼굴을 두고 먼저 헤아리는 상이라 했습니다.',
   ]),
   _Frag(_bandPair(Attribute.intelligence, _Band.high, Attribute.leadership, _Band.low), [
-    '통찰력 항목은 @{pct:intelligence} 구간인데 리더십이 낮은 쪽입니다. 전통 관상은 이마는 서고 턱이 얇은 상을 두고, 헤아리기는 하되 앞에 나서지는 않는다고 했습니다.',
+    '@{verdict:intelligence} 리더십은 낮은 쪽입니다. 전통 관상은 이마는 서고 턱이 얇은 상을 두고, 헤아리기는 하되 앞에 나서지는 않는다고 했습니다.',
   ]),
   _Frag(_bandPair(Attribute.intelligence, _Band.mid, Attribute.leadership, _Band.high), [
-    '통찰력은 평균대이고 리더십이 @{pct:leadership} 구간입니다. 전통 관상은 턱과 광대가 함께 선 얼굴을 두고 사람을 이끄는 힘이 실린 상이라 했습니다.',
+    '@{verdict:leadership} 통찰력은 평균대입니다. 전통 관상은 턱과 광대가 함께 선 얼굴을 두고 사람을 이끄는 힘이 실린 상이라 했습니다.',
   ]),
   _Frag(_bandPair(Attribute.intelligence, _Band.mid, Attribute.leadership, _Band.mid), [
-    '통찰력과 리더십 항목이 모두 평균대에 놓여 있습니다. 전통 관상은 어느 자리도 유독 튀지 않은 얼굴을 두고 재주가 한쪽으로 몰리지 않은 상이라 했습니다.',
-    '두 항목이 모두 분포 가운데에 있습니다. 전통 관상은 관록궁이 순한 얼굴을 두고 자리가 천천히 서는 상으로 보았습니다.',
+    '@{verdict:intelligence} 리더십도 비슷한 자리에 있습니다. 전통 관상은 어느 자리도 유독 튀지 않은 얼굴을 두고 재주가 한쪽으로 몰리지 않은 상이라 했습니다.',
+    '@{verdict:intelligence} 전통 관상은 관록궁이 순한 얼굴을 두고 자리가 천천히 서는 상으로 보았습니다.',
   ]),
   _Frag(_bandPair(Attribute.intelligence, _Band.mid, Attribute.leadership, _Band.low), [
-    '통찰력은 평균대인데 리더십 항목이 @{pct:leadership} 구간입니다. 전통 관상은 턱이 얇은 얼굴을 두고 뒤에서 받치는 자리가 맞는 상이라 했습니다.',
+    '@{verdict:leadership} 통찰력은 평균대입니다. 전통 관상은 턱이 얇은 얼굴을 두고 뒤에서 받치는 자리가 맞는 상이라 했습니다.',
   ]),
   _Frag(_bandPair(Attribute.intelligence, _Band.low, Attribute.leadership, _Band.high), [
-    '통찰력 항목이 @{pct:intelligence} 구간이고 리더십은 높은 쪽입니다. 전통 관상은 헤아리는 자리와 이끄는 자리를 나누어 보았고, 이 얼굴은 뒤쪽에 무게가 실려 있습니다.',
+    '@{verdict:intelligence} 대신 리더십은 높은 쪽입니다. 전통 관상은 헤아리는 자리와 이끄는 자리를 나누어 보았고, 이 얼굴은 뒤쪽에 무게가 실려 있습니다.',
   ]),
   _Frag(_bandPair(Attribute.intelligence, _Band.low, Attribute.leadership, _Band.mid), [
-    '통찰력 항목이 @{pct:intelligence} 구간이고 리더십은 평균대입니다. 전통 관상은 이마보다 아래 자리가 발달한 얼굴을 두고 머리보다 손과 발이 앞서는 상이라 했습니다.',
+    '@{verdict:intelligence} 리더십은 평균대입니다. 전통 관상은 이마보다 아래 자리가 발달한 얼굴을 두고 머리보다 손과 발이 앞서는 상이라 했습니다.',
   ]),
   _Frag(_lowPair(Attribute.intelligence, Attribute.leadership), [
-    '두 항목이 모두 분포 아래쪽에 있습니다. 전통 관상은 열두 자리 가운데 어디가 실한지를 보았지 총합을 매기지 않았고, 이 얼굴은 관록궁보다 다른 자리에 무게가 실린 상입니다.',
+    '@{verdict:intelligence} 리더십도 함께 아래쪽입니다. 전통 관상은 열두 자리 가운데 어디가 실한지를 보았지 총합을 매기지 않았고, 이 얼굴은 관록궁보다 다른 자리에 무게가 실린 상입니다.',
   ]),
   _Frag.hard((f) => true, [
-    '재능과 관련된 항목들이 같은 성별·얼굴형 분포에서 가운데 부근에 놓여 있습니다. 전통 관상은 이마를 관록궁이라 부르고 이름과 자리가 서는 곳으로 보았습니다.',
-    '통찰력 항목이 @{pct:intelligence} 구간입니다. 전통 관상은 이마를 삼정 가운데 위 구역으로 두고 타고난 바탕을 여기서 읽었습니다.',
-    '재능과 관련된 항목들이 분포 가운데에 모여 있습니다. 전통 관상에서 이마는 관록궁이면서 천이궁이라, 이름과 옮겨 다님을 같은 자리에서 보았습니다.',
+    '@{verdict:intelligence} 전통 관상은 이마를 관록궁이라 부르고 이름과 자리가 서는 곳으로 보았습니다.',
+    '@{verdict:intelligence} 전통 관상은 이마를 삼정 가운데 위 구역으로 두고 타고난 바탕을 여기서 읽었습니다.',
+    '@{verdict:intelligence} 전통 관상에서 이마는 관록궁이면서 천이궁이라, 이름과 옮겨 다님을 같은 자리에서 보았습니다.',
   ]),
 ];
 
@@ -1409,7 +1468,7 @@ final List<_Frag> _v2ConcludeStage = [
     '전통 관상은 미간을 명궁이라 하여 열두 자리 가운데 가장 먼저이자 마지막에 보는 곳으로 두었습니다. 지금 구간에서는 쌓는 일보다 남길 것과 흘려보낼 것을 가르는 판단이 중심에 놓입니다.',
   ]),
   _Frag.hard((f) => f.age.isOver30 && !f.age.isOver50, [
-    '전통 관상은 미간을 명궁이라 하여 열두 자리를 다 본 뒤 마지막에 한 번 더 살폈습니다. 지금 구간에서는 드러난 재능을 어떤 구조 위에 올리느냐가 앞으로 10년을 가릅니다.',
+    '전통 관상은 미간을 명궁이라 하여 열두 자리를 다 본 뒤 마지막에 한 번 더 살폈습니다. 자리 하나가 아니라 자리들이 서로 어떻게 놓였는지를 마지막에 보았다는 뜻입니다.',
   ]),
   _Frag.hard((f) => f.age.isOver20 && !f.age.isOver30, [
     '전통 관상은 미간을 명궁이라 하여 그 사람의 중심을 보는 자리로 두었습니다. 지금 구간에서는 답을 서둘러 찾기보다 자기 질문을 또렷이 세우는 일이 먼저입니다.',

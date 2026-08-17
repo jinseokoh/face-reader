@@ -6,7 +6,6 @@ import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/attribute.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
-import 'package:face_engine/domain/services/attribute_normalize.dart';
 import 'package:face_engine/domain/services/yin_yang.dart';
 
 /// v2 코퍼스. part 이므로 `_Frag`·`_Features`·`_BeatPool` 등 private 타입을
@@ -185,10 +184,10 @@ final List<_Frag> _concludeOpening = [
     "당신 얼굴은 음과 양이 고르게 맞물린 조화형입니다. '@__PRIMARY_ARCHETYPE__'과 '@__SECONDARY_ARCHETYPE__'이 겹친 위에 강함과 부드러움을 자유롭게 바꿔 쓰는 중용이 있어서, 어떤 환경에서도 자기 자리를 빨리 찾습니다.",
   ]),
   _Frag.hard((f) => f.specialArchetype != null, [
-    "여러 영역을 한 장으로 모아 보면, '@__PRIMARY_ARCHETYPE__' 위에 '@__SECONDARY_ARCHETYPE__'의 결이 겹쳐 흐릅니다. 특히 '@__SPECIAL_ARCHETYPE__'이 같이 서려 있어서, 평범한 해석을 넘어서는 결정적 국면을 인생 중·후반에 한 번 이상 지나가게 될 가능성이 높습니다.",
+    "여러 영역을 한 장으로 모아 보면, '@__PRIMARY_ARCHETYPE__' 위에 '@__SECONDARY_ARCHETYPE__'의 결이 겹쳐 흐릅니다. 특히 '@__SPECIAL_ARCHETYPE__'이 같이 서려 있어서, 세 가지가 한 얼굴에 겹친 드문 구성입니다.",
   ]),
   _Frag.hard((f) => true, [
-    "여러 영역을 한 장으로 모아 보면, '@__PRIMARY_ARCHETYPE__'의 골격 위에 '@__SECONDARY_ARCHETYPE__'의 결이 함께 흐릅니다. 겉으로 먼저 보이는 건 '@__PRIMARY_ARCHETYPE__'이지만, 인생 중반을 실제로 움직이는 동력은 오히려 '@__SECONDARY_ARCHETYPE__' 쪽에 더 많습니다.",
+    "여러 영역을 한 장으로 모아 보면, '@__PRIMARY_ARCHETYPE__'의 골격 위에 '@__SECONDARY_ARCHETYPE__'의 결이 함께 흐릅니다. 겉으로 먼저 보이는 건 '@__PRIMARY_ARCHETYPE__'이지만, 관상은 한 축만 보고 사람을 정하지 않았습니다.",
     "당신 얼굴엔 '@__PRIMARY_ARCHETYPE__'과 '@__SECONDARY_ARCHETYPE__'이 한 몸에 겹쳐 있어서, 한 방향으로만 힘을 쏟기보다 상황에 따라 두 얼굴을 번갈아 쓸 수 있습니다.",
   ]),
 ];
@@ -388,9 +387,9 @@ final List<_Frag> _healthStrength = [
     '감정의 해상도가 높아서 스트레스의 뿌리를 먼저 알아챕니다. 불안으로 방치만 안 하면 오히려 건강 관리의 조기 경보기가 됩니다.',
   ]),
   _Frag.hard((f) => true, [
-    '평균의 체질을 갖추되 한 가지 약한 고리가 있어서, 그 고리를 일찍 찾는 사람이 상한에 닿습니다.',
-    '기운과 혈색이 고르게 흐르는 편이라 큰 파고가 없는 대신, 섬세한 유지가 필요한 타입입니다.',
-    '한 장기의 강점보다 전체 균형에서 힘이 나오는 분산형이라, 한 군데가 무너져도 나머지가 보완해 줍니다.',
+    '어떤 체질이든 대개 한 가지 약한 고리가 있습니다. 그 고리를 일찍 찾는 사람이 상한에 닿습니다.',
+    '기운과 혈색이 고르게 흐르면 큰 파고가 없는 대신, 섬세한 유지가 더 중요해집니다.',
+    '한 장기의 강점보다 전체 균형에서 힘이 나오는 쪽이라면, 한 군데가 무너져도 나머지가 보완해 줍니다.',
     '정신의 맑음이 몸의 활력으로 바로 번역되는 편이라, 스트레스 관리 하나가 다른 모든 지표를 좌우합니다.',
     '잘 쉬는 습관이 곧 가장 확실한 장수의 열쇠인 타입입니다. 정서가 안정되면 곧장 몸이 안정됩니다.',
   ]),
@@ -430,7 +429,7 @@ final List<_Frag> _romanceAdviceFemale = [
   // age-stratified Advice (♀) — 20대 / 30~40대 / 50대 이후 연애 변곡점.
   _Frag.hard(_isYoung, [
     '20대 여성의 연애는 "내가 누구와 안 맞는지"를 배우는 시기입니다. 잘 안 된 만남을 정직하게 쌓아둔 사람이 30대에 더 편안한 관계를 만듭니다. 상대의 외모나 직업보다, 그 사람과 같이 있을 때 자신이 어떤 모습이 되는지를 기준으로 삼아 보세요.',
-    '20대는 이상형의 그림은 그리되 거기에 갇히지 않는 게 중요합니다. 20대에 만난 사람이 평생 동반자가 될 확률은 통계적으로 낮습니다. 그러니 결과보다 과정에서 배우는 자세가 더 큰 자산이 됩니다.',
+    '20대는 이상형의 그림은 그리되 거기에 갇히지 않는 게 중요합니다. 지금 그린 그림이 30대에도 그대로일 이유는 없습니다. 그러니 결과보다 과정에서 배우는 자세가 더 큰 자산이 됩니다.',
     '20대 연애는 자기 자신을 알아가는 거울입니다. 누구를 좋아하는지보다 좋아할 때 자신이 어떻게 변하는지를 관찰하면, 30대에 진짜 맞는 사람을 알아보기 쉬워집니다. 감정이 크게 흔들리는 시기일수록 큰 결정은 24시간 묵혀두는 습관이 도움이 됩니다.',
   ]),
   _Frag.hard(_isMid, [
@@ -478,7 +477,7 @@ final List<_Frag> _romanceAdviceMale = [
   // age-stratified Advice (♂) — 20대 / 30~40대 / 50대 이후 남성 연애 변곡점.
   _Frag.hard(_isYoung, [
     '20대 남성의 연애는 잘 시작하는 것보다 잘 헤어지는 법을 배우는 시기입니다. 깨끗하게 마무리한 한 번의 이별이 다음 인연 세 번의 깊이를 만듭니다. 외모·인기·트렌드에 흔들리기 쉬운 나이지만, 그 안에서 자기가 어떤 사람으로 변하는지를 관찰해 두는 게 30년 뒤 기준이 됩니다.',
-    '20대에 만난 사람이 평생 동반자가 될 확률은 통계적으로 낮습니다. 그러니 지금은 결정을 내리는 시기가 아니라 기준을 만드는 시기입니다. 결과보다 과정에서 배우는 자세가 핵심입니다.',
+    '20대는 결정을 내리는 시기라기보다 기준을 만드는 시기입니다. 누구를 만났는지보다 그때 무엇을 배웠는지가 남습니다. 결과보다 과정에서 배우는 자세가 핵심입니다.',
     '20대 남성의 연애에서 가장 큰 함정은 외모 비교입니다. 키·외모·인기 차이를 매력의 본질로 보는 데서 벗어난 사람만이 30대에 진짜 매력을 키웁니다. 지금은 직업·취미·세계관 같은 자기만의 깊이를 쌓는 일이 가장 큰 연애 자산입니다.',
   ]),
   _Frag.hard(_isMid, [
@@ -847,7 +846,7 @@ final List<_Frag> _sensualVignette = [
 final List<_Frag> _sensualOpeningFemale = [
   _Frag(_highPair(Attribute.libido, Attribute.sensuality), [
     '누군가의 시선이 스치는 순간, 공기가 반 박자 먼저 데워집니다. 곁에 사람이 있다는 그 미묘한 긴장—그게 곧 불씨입니다. 관상학은 이걸 진한 매력형이라 부릅니다. 욕망의 선이 선명한데, 상대의 숨과 체온의 미세한 떨림까지 집어내는 안테나가 같이 켜진 결입니다. 드문 조합입니다.',
-    '욕구도 감각도 동시에 상위입니다. 한 사람과 시간이 쌓일수록 오히려 몸의 기억이 켜켜이 접히는 구조입니다. 10년 된 관계의 어느 밤이 첫 밤보다 선명해지는—그런 타입입니다.',
+    '욕구도 감각도 함께 높은 쪽으로 나왔습니다. 한 사람과 시간이 쌓일수록 오히려 몸의 기억이 켜켜이 접히는 구조입니다. 10년 된 관계의 어느 밤이 첫 밤보다 선명해지는—그런 타입입니다.',
   ]),
   _Frag(_bandPair(Attribute.libido, _Band.high, Attribute.sensuality, _Band.mid), [
     '욕구의 선이 굵습니다. 해석을 거치지 않는 직선의 리듬입니다. 세밀한 감각은 아직 평균권이지만, 이건 시간이 얹어 주는 축입니다. 서른, 마흔을 지나며 농도가 오히려 풍부해지는 성장형 결입니다.',
@@ -898,7 +897,7 @@ final List<_Frag> _sensualOpeningMale = [
     _highPair(Attribute.libido, Attribute.sensuality),
     [
       '어떤 남자는 방에 들어서는 순간부터 공기가 바뀝니다. 말을 많이 하지 않아도 체온이 먼저 닿는 타입이 있습니다. 관상학은 이걸 "진한 매력형" 이라 부릅니다. 쉽게 말하면 이런 겁니다. 욕구의 선이 굵은데, 상대의 숨결과 떨림을 읽는 센서까지 같이 켜져 있는 구조입니다.',
-      '욕구도, 감각도 동시에 상위입니다. 드문 조합입니다. 처음 마주 앉은 술자리에서도 상대 손끝의 긴장이 그대로 읽히는 타입입니다. 같은 사람과 오래 만날수록 오히려 밀도가 짙어지는 결입니다—첫 밤보다 100번째 밤이 더 깊어지는 구조입니다.',
+      '욕구도, 감각도 함께 높은 쪽으로 나왔습니다. 드문 조합입니다. 처음 마주 앉은 술자리에서도 상대 손끝의 긴장이 그대로 읽히는 타입입니다. 같은 사람과 오래 만날수록 오히려 밀도가 짙어지는 결입니다—첫 밤보다 100번째 밤이 더 깊어지는 구조입니다.',
     ],
   ),
   _Frag(
@@ -1153,8 +1152,8 @@ final List<_Frag> _sensualStrengthFemale = [
     '인중 쪽 결이 유독 두드러진 구조입니다. 호르몬과 생리 주기의 흐름이 표정과 밀도에 직접 나타나는 타입—그래서 몸의 리듬을 읽는 습관 하나가 이 결의 지속력을 결정합니다.',
   ]),
   _Frag.hard((f) => true, [
-    '관능의 신호가 특정 부위에 몰리지 않고 얼굴 전체에 고르게 분포해 있습니다. 드라마틱한 단서 하나는 없지만 여러 부위가 함께 협업하는 결—폭이 넓고 안정적입니다.',
-    '부위별 신호가 모두 평균권에서 움직입니다. 한 군데에 집중된 장점 대신 여러 축이 동시에 돌아가는 팀플레이형 결—상황별 적응력이 가장 큰 자산입니다.',
+    '관능은 한 부위가 아니라 여러 부위가 같이 만들어내는 신호입니다. 드라마틱한 단서 하나가 없어도 여러 부위가 함께 협업하는 결이면 폭이 넓고 안정적입니다.',
+    '한 군데에 집중된 장점 대신 여러 축이 동시에 돌아가는 결도 있습니다. 이런 팀플레이형은 상황별 적응력이 가장 큰 자산입니다.',
   ]),
 ];
 
@@ -1255,8 +1254,8 @@ final List<_Frag> _sensualStrengthMale = [
     '얼굴에 음양이 고르게 자리했습니다. 주도와 수용 사이를 자유롭게 오가는 유연형—오늘은 리드하고 내일은 받아주는 식의 전환이 매끄럽습니다. 파트너의 결에 맞춰 모드를 바꾸는 적응력이 최대 강점입니다.',
   ]),
   _Frag.hard((f) => true, [
-    '관능의 신호가 특정 부위에 몰리지 않고 얼굴 전체에 고르게 분포합니다. 드라마틱한 단서 하나는 없지만 여러 부위가 함께 협업하는 구조—폭이 넓고 안정적입니다.',
-    '부위별 신호가 모두 평균권에서 움직입니다. 한 군데에 집중된 장점 대신 여러 축이 동시에 돌아가는 팀플레이형 결입니다. 상황별 적응력이 이 구조의 진짜 자산입니다.',
+    '관능은 한 부위가 아니라 여러 부위가 같이 만들어내는 신호입니다. 드라마틱한 단서 하나가 없어도 여러 부위가 함께 협업하는 구조면 폭이 넓고 안정적입니다.',
+    '한 군데에 집중된 장점 대신 여러 축이 동시에 돌아가는 구조도 있습니다. 이런 팀플레이형은 상황별 적응력이 진짜 자산입니다.',
   ]),
 ];
 
@@ -1377,7 +1376,7 @@ final List<_Frag> _socialOpening = [
     '사람을 많이 만나는 것도, 오래 붙잡는 것도 크게 신경 쓰지 않는 편으로 보입니다. 혼자 있는 시간이 불편하지 않고, 오히려 그 시간에 결과물이 나오는 타입입니다.',
   ]),
   _Frag.hard((f) => true, [
-    '한쪽으로 쏠리지 않고 상황에 맞춰 사람을 대하는 편입니다. 넓이와 깊이 사이에서 적당히 균형을 잡는, 어느 자리에 놔도 무난하게 섞이는 스타일로 보입니다.',
+    '한쪽으로 쏠리지 않고 상황에 맞춰 사람을 대하는 쪽이라면, 어느 자리에 놔도 무난하게 섞입니다. 넓이와 깊이 사이에서 적당히 균형을 잡는 스타일입니다.',
     '첫인상의 임팩트보다, 몇 번 만나고 나서 "편하다"는 느낌을 주는 쪽입니다. 그래서 시간이 갈수록 사람이 붙는 편입니다.',
     '두루 친하게 지내는 편인데, 그중에서도 진짜 마음 주는 사람은 따로 있는 편으로 보입니다.',
     '말을 많이 안 해도 사람들이 자연스럽게 가운데 자리에 앉히는 편입니다. 나서지 않아도 어느새 중재자가 되어 있곤 합니다.',
@@ -1548,9 +1547,9 @@ final List<_Frag> _talentOpening = [
     '머리의 날카로움이나 통솔력이 무대 중앙은 아닌 편입니다. 대신 손끝·몸·감각으로 자라는 쪽이라, 몸으로 익히는 솜씨에서 진가가 납니다.',
   ]),
   _Frag.hard((f) => true, [
-    '재능이 한쪽으로 안 쏠리고 여러 곳에 고루 깔린 편입니다. 한 분야 천재성보다, 서로 다른 두 세계를 잇는 "연결자" 쪽에서 크게 열립니다.',
+    '재능이 한쪽으로 쏠리지 않고 여러 곳에 고루 깔린 경우, 한 분야 천재성보다 서로 다른 두 세계를 잇는 "연결자" 쪽에서 크게 열립니다.',
     '한 번의 스파크보다 3년·5년·10년 쌓일 때 진짜 모습이 나오는 축적형입니다. 같은 일을 다른 각도로 반복할수록 깊이가 붙습니다.',
-    '한 군데가 혼자 튀기보다 여러 곳이 같이 받쳐주는 편이라, 독주보다 합주가 어울립니다. 팀·협업 속에서 진가가 나는 쪽입니다.',
+    '한 군데가 혼자 튀기보다 여러 곳이 같이 받쳐주는 쪽이라면, 독주보다 합주가 어울립니다. 팀·협업 속에서 진가가 나는 구조입니다.',
   ]),
 ];
 
@@ -1928,11 +1927,6 @@ _Features _extractFeatures(FaceReadingReport r) {
   final scores = <Attribute, double>{
     for (final e in r.attributes.entries) e.key: e.value.normalizedScore,
   };
-  final percentiles = <Attribute, double>{
-    for (final e in r.attributes.entries)
-      e.key: attributePercentile(
-          e.value.rawTotal, e.key, r.gender, r.faceShape),
-  };
   final sorted = scores.entries.toList()
     ..sort((a, b) => b.value.compareTo(a.value));
   final top = sorted.first.key;
@@ -1982,7 +1976,6 @@ _Features _extractFeatures(FaceReadingReport r) {
     bottom: bottom,
     bands: bands,
     scores: scores,
-    percentiles: percentiles,
     gender: r.gender,
     age: r.ageGroup,
     firedRules: firedRules,
@@ -2029,6 +2022,21 @@ double _hi(double s) {
 
 // Helper predicates — 모두 soft weight 반환. band cutoff 경계의
 // plateau/cliff 를 연속 ramp 로 풀어낸다.
+/// 판정 문장이 쓰는 부류. `_band` 의 딱딱한 경계 대신 문장 선택에 실제로
+/// 쓰이는 세 가중치(_hi·_mi·_lo) 가운데 가장 큰 쪽을 고른다.
+///
+/// `_band` 를 쓰면 점수 7.8 인 얼굴이 `_hi`=0.87 로 "둘 다 높은" 문장을
+/// 뽑아 놓고 판정은 중위권이라 말하는 자기모순이 난다. 6.5~8.0 구간이
+/// 통째로 어긋나므로 드문 일도 아니다.
+_Band _softBand(double s) {
+  final h = _hi(s);
+  final l = _lo(s);
+  final m = _mi(s);
+  if (h >= m && h >= l) return _Band.high;
+  if (l >= m) return _Band.low;
+  return _Band.mid;
+}
+
 _WeightFn _highOf(Attribute a) => (f) => _hi(f.scoreOf(a));
 
 _WeightFn _highPair(Attribute a, Attribute b) =>
@@ -2108,11 +2116,12 @@ String _resolveText(String text, _Features f, int seed) {
       .replaceAll('@__SECOND_NODE__', f.secondStrongestNodeKo)
       .replaceAll('@__DOMINANT_PALACE__', f.dominantPalace)
       .replaceAll('@__ONELINER__', f.oneLiner);
-  // Step 0: 동적 슬롯 @{pct:attrName} — v2 코퍼스의 백분위 사실 문장용.
-  t = t.replaceAllMapped(RegExp(r'@\{pct:(\w+)\}'), (m) {
+  // Step 0: 동적 슬롯 @{verdict:attrName} — v2 코퍼스의 부류 판정 문장용.
+  // 문장 하나를 통째로 뱉는다. 부류 판정은 문장 선택 조건과 같은 `_band`.
+  t = t.replaceAllMapped(RegExp(r'@\{verdict:(\w+)\}'), (m) {
     final attr = Attribute.values.asNameMap()[m.group(1)!];
     if (attr == null) return '';
-    return _v2PctPhrase(f.percentiles[attr] ?? 0.5);
+    return _v2Verdict(attr, _softBand(f.scoreOf(attr)));
   });
   // Step 1: @{slot}
   t = t.replaceAllMapped(RegExp(r'@\{(\w+)\}'), (m) {
@@ -2169,9 +2178,6 @@ class _Features {
   final Attribute bottom;
   final Map<Attribute, _Band> bands;
   final Map<Attribute, double> scores;
-
-  /// 같은 성별·얼굴형 분포에서의 백분위 (0..1). v2 코퍼스가 쓴다.
-  final Map<Attribute, double> percentiles;
   final Gender gender;
   final AgeGroup age;
   final Set<String> firedRules;
@@ -2195,7 +2201,6 @@ class _Features {
     required this.bottom,
     required this.bands,
     required this.scores,
-    required this.percentiles,
     required this.gender,
     required this.age,
     required this.firedRules,

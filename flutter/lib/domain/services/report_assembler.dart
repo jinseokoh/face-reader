@@ -1,4 +1,5 @@
 import 'package:facely/data/constants/archetype_text_blocks.dart';
+import 'package:facely/data/constants/archetype_text_blocks_v2.dart';
 import 'package:facely/data/constants/rule_text_blocks.dart';
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
@@ -24,9 +25,10 @@ AssembledReport assembleReport(
   NarrativeVersion narrativeVersion = NarrativeVersion.v1,
 }) {
   final buf = StringBuffer();
+  final isV2 = narrativeVersion == NarrativeVersion.v2;
 
   // Archetype intro (성별 분기)
-  final intro = _archetypeIntro(report);
+  final intro = _archetypeIntro(report, isV2);
   if (intro.isNotEmpty) {
     buf.write(intro);
     buf.write('\n\n');
@@ -38,7 +40,8 @@ AssembledReport assembleReport(
   // 특수 관상 문장
   final special = report.archetype.specialArchetype;
   if (special != null) {
-    final specialText = specialArchetypeTexts[special];
+    final specialText =
+        (isV2 ? specialArchetypeTextsV2 : specialArchetypeTexts)[special];
     if (specialText != null && specialText.isNotEmpty) {
       buf.write('\n\n');
       buf.write(specialText);
@@ -46,7 +49,8 @@ AssembledReport assembleReport(
   }
 
   // 나이대 마무리
-  final closing = ageClosings[report.ageGroup.isOver50] ?? '';
+  final closing =
+      (isV2 ? ageClosingsV2 : ageClosings)[report.ageGroup.isOver50] ?? '';
   if (closing.isNotEmpty) {
     buf.write('\n\n');
     buf.write(closing);
@@ -66,9 +70,9 @@ AssembledReport assembleReport(
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
 
-String _archetypeIntro(FaceReadingReport report) {
+String _archetypeIntro(FaceReadingReport report, bool isV2) {
   final label = report.archetype.primaryLabel;
-  final genderMap = archetypeIntros[label];
+  final genderMap = (isV2 ? archetypeIntrosV2 : archetypeIntros)[label];
   if (genderMap == null) return '';
   return genderMap[report.gender] ?? '';
 }
