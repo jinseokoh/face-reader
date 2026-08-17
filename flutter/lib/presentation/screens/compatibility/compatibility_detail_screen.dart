@@ -357,56 +357,21 @@ class _NarrativeSections extends StatelessWidget {
     return Column(
       children: [
         for (final s in sections) _NarrativeCard(title: s.title, body: s.body),
-        const _CompatBasisCard(),
+        // 마무리 — 이 리포트가 무엇인지. 앞 문단은 성격, 뒤 문단은 방법론이다.
+        // 서술 코퍼스가 아니라 화면 위젯이라 v1·v2 양쪽에 똑같이 나온다.
+        // 앱의 입장은 코퍼스 버전과 무관하기 때문이다.
+        const _NarrativeCard(title: '관상학적 궁합이란', body: _kCompatBasis),
       ],
     );
   }
 }
 
-/// 리포트가 무엇인지 밝히는 마무리 카드.
-///
-/// 서술 코퍼스가 아니라 화면 위젯이라 v1·v2 양쪽에 똑같이 나온다. 이 앱이
-/// 궁합을 무엇으로 보는지는 코퍼스 버전과 무관한 입장이기 때문이다.
-///
-/// 두 문단의 역할이 다르다 — 앞은 이것이 무엇인가(성격), 뒤는 무엇이
-/// 아닌가(방법론). 읽는 순서도 그래야 맞다.
-class _CompatBasisCard extends StatelessWidget {
-  const _CompatBasisCard();
-
-  static const _what = '관상학적 궁합은 오랜 세월 얼굴에 나타난 특징을 통해 '
-      '두 사람의 조화와 관계를 살펴온 지혜를 집대성한 관상 문헌을 바탕으로, '
-      '두 사람의 관계를 성찰하고 그 지혜를 나누는 것입니다.';
-
-  static const _howNot = '이 해석은 두 얼굴의 계측값과 전통 관상의 읽는 법을 '
-      '겹쳐 놓은 것입니다. 두 사람의 앞일을 맞히려는 것이 아닙니다.';
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-        border: Border.all(color: AppColors.shell),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            _what,
-            style: AppText.body.copyWith(color: AppColors.textPrimary),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            _howNot,
-            style: AppText.caption.copyWith(color: AppColors.textHint),
-          ),
-        ],
-      ),
-    );
-  }
-}
+const String _kCompatBasis =
+    '관상학적 궁합은 오랜 세월 얼굴에 나타난 특징을 통해 두 사람의 조화와 '
+    '관계를 살펴온 지혜를 집대성한 관상 문헌을 바탕으로, 두 사람의 관계를 '
+    '성찰하고 그 지혜를 나누는 것입니다.\n\n'
+    '이 해석은 두 얼굴의 계측값과 전통 관상의 읽는 법을 겹쳐 놓은 것입니다. '
+    '두 사람의 앞일을 맞히려는 것이 아닙니다.';
 
 class _ShareHashtag extends StatelessWidget {
   final CompatChip chip;
