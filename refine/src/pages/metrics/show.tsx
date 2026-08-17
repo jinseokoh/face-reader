@@ -37,7 +37,7 @@ export const MetricShow = () => {
                 alias={row.alias}
                 body={row.body}
                 thumbKey={metricThumbKey(row.body)}
-                onReplaced={() => query.refetch()}
+                onReplaced={() => void query.refetch()}
               />
             </Descriptions.Item>
             <Descriptions.Item label="ID">
