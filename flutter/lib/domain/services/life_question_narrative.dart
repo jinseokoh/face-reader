@@ -1867,6 +1867,49 @@ double _bandWeight(double s, _Band b) {
   }
 }
 
+/// 전통을 주어로 쓰는 표현들. 뜻은 같고 말맛만 다르다.
+/// 코퍼스에 골고루 섞어 뒀지만 어느 조각이 뽑힐지는 얼굴마다 달라서,
+/// 조립하고 나면 한 문단에 같은 주어가 연달아 오는 조합이 생긴다.
+const _kTraditionSubjects = [
+  '전통 관상은',
+  '옛 관상서는',
+  '관상서는',
+  '관상 전통은',
+  '예로부터 관상에서는',
+];
+
+/// 한 섹션 안에서 같은 전통 주어가 되풀이되지 않게 바꿔 끼운다.
+///
+/// "옛 관상서는… 옛 관상서는… 옛 관상서는…" 이 이어지면 내용과 무관하게
+/// 읽기가 힘들어진다. 코퍼스 쪽에서 아무리 섞어 둬도 조각 선택이 얼굴마다
+/// 달라 조립 결과까지는 보장되지 않으므로 여기서 마지막으로 정리한다.
+///
+/// "다만" 뒤에는 "예로부터" 를 쓰지 않는다 — 부사가 겹쳐 읽히기 때문이다.
+String _varyTraditionSubjects(String text) {
+  final pattern = RegExp('(다만 )?(${_kTraditionSubjects.join('|')})');
+  final used = <String>{};
+  return text.replaceAllMapped(pattern, (m) {
+    final prefix = m.group(1) ?? '';
+    var subject = m.group(2)!;
+    if (used.contains(subject)) {
+      final swap = _kTraditionSubjects.firstWhere(
+        (s) =>
+            !used.contains(s) &&
+            !(prefix.isNotEmpty && s.startsWith('예로부터')),
+        orElse: () => subject,
+      );
+      subject = swap;
+    } else if (prefix.isNotEmpty && subject.startsWith('예로부터')) {
+      subject = _kTraditionSubjects.firstWhere(
+        (s) => !used.contains(s) && !s.startsWith('예로부터'),
+        orElse: () => subject,
+      );
+    }
+    used.add(subject);
+    return '$prefix$subject';
+  });
+}
+
 String _buildSection(_Features f, List<_BeatPool> beats, int sectionSalt) {
   final buf = StringBuffer();
   for (var i = 0; i < beats.length; i++) {
@@ -1875,7 +1918,7 @@ String _buildSection(_Features f, List<_BeatPool> beats, int sectionSalt) {
     if (buf.isNotEmpty) buf.write(i == beats.length - 1 ? '\n\n' : ' ');
     buf.write(text);
   }
-  return buf.toString();
+  return _varyTraditionSubjects(buf.toString());
 }
 
 /// v3.1 (2026-04-18): entropy 다각화. 비슷한 얼굴이 같은 seed 로 수렴하던
