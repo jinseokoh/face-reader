@@ -1438,48 +1438,80 @@ grant  execute on function public.submit_team_result(uuid, jsonb) to authenticat
 grant  execute on function public.respond_match(uuid, boolean)     to authenticated;
 grant  execute on function public.leave_chat(uuid)               to authenticated;
 
+-- ─── view 승격 범위 축소용 헬퍼 ──────────────────────────────────────────
+-- 아래 세 view 는 owner 권한 실행(비-invoker)이었다. 본문 전체가 RLS 를
+-- 우회하므로 select 목록을 한 번만 잘못 고쳐도 users 전 컬럼이 샌다. 폰이
+-- Postgres 에 직접 붙는 구조라 중간에서 걸러줄 앱 서버도 없다 (Supabase
+-- Advisor 의 security_definer_view CRITICAL).
+--
+-- 우회가 실제로 필요한 지점은 두 곳뿐이다:
+--   • users.nickname     — users RLS 가 self-read 라 남의 닉네임을 못 읽는다
+--   • user_blocks 역방향 — "상대가 나를 차단" 은 본인 행 RLS 로 안 보인다
+-- teams·team_members 는 이미 `for select using (true)` 라 우회가 필요 없다.
+--
+-- 그래서 저 두 지점만 함수로 승격하고 view 는 invoker 로 되돌린다. 반환이
+-- text·boolean 스칼라라 실수로 컬럼을 늘리는 것 자체가 문법적으로 안 된다.
+-- 두 함수 모두 인자는 상대 id 뿐이고 "나" 는 auth.uid() 로 내부에서 정한다 —
+-- 제3자끼리의 관계를 캐물을 수 있는 오라클이 되지 않게.
+create or replace function public.nickname_of(p_user_id uuid)
+returns text
+language sql stable security definer set search_path = public
+as $$
+  select u.nickname from users u where u.id = p_user_id;
+$$;
+
+create or replace function public.is_blocked_with_me(p_other uuid)
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select exists (
+    select 1 from user_blocks b
+     where (b.blocker_id = auth.uid() and b.blocked_id = p_other)
+        or (b.blocker_id = p_other     and b.blocked_id = auth.uid())
+  );
+$$;
+
+revoke execute on function public.nickname_of(uuid)        from public;
+revoke execute on function public.is_blocked_with_me(uuid) from public;
+grant  execute on function public.nickname_of(uuid)        to anon, authenticated;
+grant  execute on function public.is_blocked_with_me(uuid) to anon, authenticated;
+
 -- 공개 매칭 목록 — 모집 중 공개방만, 컬럼 화이트리스트 (password 접근 없음).
 -- 모집 중 전 방 노출 — 비밀방도 목록에 보이고(is_private 로 자물쇠 표시),
--- 입장만 PIN 으로 잠긴다. 방장과 차단 관계면 방향 무관 숨김 (상호 비공개) —
--- "나를 차단한 방장" 방향은 user_blocks RLS(본인 행만)로는 볼 수 없어
--- team_roster 와 같은 owner 실행 view 로 양방향을 필터한다. 노출 컬럼은
--- 종전과 동일 화이트리스트라 owner 실행이 새로 여는 정보는 없다. 비로그인은
--- 차단 행이 없어 전 방 노출.
-create or replace view public.public_teams with (security_invoker = off) as
+-- 입장만 PIN 으로 잠긴다. 방장과 차단 관계면 방향 무관 숨김 (상호 비공개).
+-- 역방향("나를 차단한 방장")은 user_blocks RLS(본인 행만)로는 안 보이므로
+-- is_blocked_with_me 로만 승격한다. teams 는 teams_public_read(using true)와
+-- §11-4 컬럼 grant 를 그대로 타므로 invoker 로 잃는 접근이 없다. 비로그인은
+-- auth.uid() 가 null 이라 차단 판정이 항상 false — 전 방 노출.
+drop view if exists public.public_teams;
+create view public.public_teams with (security_invoker = on) as
   select t.id, t.title, t.room_kind, t.is_private, t.max_players,
          t.age_min, t.age_max, t.created_at,
          (select count(*)::int from public.team_members tm where tm.team_id = t.id)
            as player_count
     from public.teams t
    where t.status = 'recruiting'
-     and not exists (
-       select 1 from public.user_blocks b
-        where (b.blocker_id = auth.uid() and b.blocked_id = t.owner_id)
-           or (b.blocker_id = t.owner_id and b.blocked_id = auth.uid())
-     );
+     and not public.is_blocked_with_me(t.owner_id);
 
--- 로비·리빌 명단 — team_members 에 users.nickname 을 붙인 읽기 전용 view.
--- 의도적으로 owner 권한 실행(비-invoker): users RLS(self-read)를 우회해
--- 참가자 "닉네임만" 노출한다 (coins·kakao_user_id 등은 select 목록에 없음).
--- 읽기 범위 = 방과 동일 link-share 모델. 다중 테이블 join 이라 auto-update
--- 불가지만 §11-4 에서 write revoke 로 이중 봉인.
--- alias = 조인 시점 동결 이름 (team_members.alias). 구버전 행(컬럼 도입 전)만
--- users.nickname 으로 보충. left join 이라 탈퇴 후에도 로스터 행이 살아 있다.
+-- 로비·리빌 명단 — team_members 에 이름을 붙인 읽기 전용 view.
+-- team_members 는 team_members_public_read(using true) 라 invoker 로 충분하다.
+-- 읽기 범위 = 방과 동일 link-share 모델. §11-4 에서 write revoke 로 이중 봉인.
+-- alias = 조인 시점 동결 이름 (team_members.alias — join_team 이 항상 채운다).
+-- 구버전 행(컬럼 도입 전)만 nickname_of 로 보충. users 를 join 하지 않으므로
+-- 탈퇴 후에도 로스터 행이 살아 있다.
 drop view if exists public.team_roster;
-create view public.team_roster as
+create view public.team_roster with (security_invoker = on) as
   select tm.team_id, tm.user_id, tm.slot_no, tm.gender, tm.is_owner, tm.joined_at,
-         coalesce(tm.alias, u.nickname) as alias
-    from public.team_members tm
-    left join public.users u on u.id = tm.user_id;
+         coalesce(tm.alias, public.nickname_of(tm.user_id)) as alias
+    from public.team_members tm;
 
--- 내 차단 목록 — team_roster 와 같은 owner 실행 view 패턴으로 users RLS
--- (self-read)를 우회해 차단 상대의 "닉네임만" 노출한다. 행 범위는 본인 차단
--- 행만 (auth.uid() 필터).
-create or replace view public.my_blocks as
-  select b.blocker_id, b.blocked_id, b.created_at, u.nickname
-    from public.user_blocks b
-    join public.users u on u.id = b.blocked_id
-   where b.blocker_id = auth.uid();
+-- 내 차단 목록 — 차단 상대의 "닉네임만" 노출한다. 행 범위는 user_blocks RLS
+-- (blocker_id = auth.uid())가 담당하므로 view 자체 필터가 필요 없다.
+drop view if exists public.my_blocks;
+create view public.my_blocks with (security_invoker = on) as
+  select b.blocker_id, b.blocked_id, b.created_at,
+         public.nickname_of(b.blocked_id) as nickname
+    from public.user_blocks b;
 
 -- Realtime: 로비 라이브 반영 — teams UPDATE(status 전이) + team_members
 -- INSERT/DELETE(입장·이탈). 재실행 안전 (duplicate 무시).
@@ -1543,8 +1575,9 @@ revoke insert, update, delete on public.team_members from anon, authenticated;
 revoke insert, update, delete on public.team_matches from anon, authenticated;
 -- team_messages: update/delete 차단 (불변 로그) — insert 는 RLS 정책이 쌍 본인만 허용.
 revoke update, delete on public.team_messages from anon, authenticated;
--- view 쓰기 봉인 — public_teams 는 단일 테이블이라 auto-updatable,
--- owner 권한 실행이면 RLS 우회 쓰기 통로가 된다 (final review Critical).
+-- view 쓰기 봉인 — 단일 테이블 view 는 auto-updatable 이라 쓰기 통로가 열린다.
+-- 지금은 셋 다 invoker 라 쓰기도 RLS 를 타지만, definer 로 되돌아가는 순간
+-- RLS 우회 통로가 되므로 grant 자체를 걷어 이중으로 막는다 (final review Critical).
 revoke insert, update, delete on public.public_teams from anon, authenticated;
 revoke insert, update, delete on public.team_roster  from anon, authenticated;
 revoke insert, update, delete on public.my_blocks      from anon, authenticated;
