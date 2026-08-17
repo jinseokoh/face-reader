@@ -31,9 +31,28 @@ void main() {
     AppConfigService.instance.debugResetNarrativeVersion();
   });
 
-  test('캐시가 비어 있으면 v1', () {
+  test('캐시가 비어 있으면 "모름" — 리포트는 v1 로 떨어진다', () {
+    expect(AppConfigService.instance.knownNarrativeVersion, isNull,
+        reason: '최초 설치 직후 첫 실행. v1 과 구분돼야 한다');
     expect(AppConfigService.instance.narrativeVersion, NarrativeVersion.v1);
     expect(AppConfigService.instance.compatVersion, CompatVersion.v1);
+  });
+
+  test('모름이면 온보딩은 v2 제목 — v1 제목은 v1 확정일 때만', () {
+    // 온보딩의 resolvedTitle 조건과 같은 식.
+    bool usesV1Title() =>
+        AppConfigService.instance.knownNarrativeVersion ==
+            NarrativeVersion.v1;
+
+    expect(usesV1Title(), isFalse, reason: '모름 → v2 제목');
+
+    AppConfigService.instance
+        .debugApplyNarrativeVersion({'android_narrative_version': 1});
+    expect(usesV1Title(), isTrue, reason: 'v1 확정 → v1 제목');
+
+    AppConfigService.instance
+        .debugApplyNarrativeVersion({'android_narrative_version': 2});
+    expect(usesV1Title(), isFalse, reason: 'v2 확정 → v2 제목');
   });
 
   test("캐시에 '2' 가 있으면 조회 전에도 v2", () async {

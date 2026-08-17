@@ -21,30 +21,41 @@ class AppConfigService {
   static const String _kNarrativeVersionKey = 'narrative_version';
 
   NarrativeVersion? _narrativeVersion;
+  bool _cacheRead = false;
 
-  /// 서술 코퍼스 버전. `checkForceUpdate()` 가 같은 조회에서 갱신한다.
+  /// 아직 확정되지 않았으면 null — 원격 조회도 안 끝났고 캐시도 없는 상태다.
   ///
   /// 조회는 네트워크라 수백 ms 가 걸리는데 온보딩은 첫 프레임 직후에 뜬다
-  /// (`app.dart` 의 `addPostFrameCallback`). 메모리 기본값만 두면 온보딩은
-  /// 매번 조회를 앞질러 v1 을 읽는다. 그래서 마지막으로 받은 값을 Hive 에
-  /// 남겨 두고 다음 실행부터는 그 값으로 시작한다.
+  /// (`app.dart` 의 `addPostFrameCallback`). 마지막으로 받은 값을 Hive 에
+  /// 남겨 두고 다음 실행부터 그 값으로 시작하지만, **최초 설치 직후 첫
+  /// 실행**은 캐시가 없어 어느 쪽인지 알 수 없다.
   ///
-  /// 최초 설치 직후 첫 실행은 캐시가 없어 여전히 v1 이다. 온보딩을 조회에
-  /// 묶으면 첫 화면이 네트워크만큼 늦어지고 조회 실패 시 아예 안 뜰 수 있어,
-  /// 그쪽 대가가 더 크다고 봤다.
-  NarrativeVersion get narrativeVersion =>
+  /// 그 "모름" 을 v1 으로 접으면 안 되는 화면이 있어 따로 노출한다.
+  /// 모름과 v1 은 다른 상태다.
+  NarrativeVersion? get knownNarrativeVersion {
+    if (!_cacheRead) {
+      _cacheRead = true;
       _narrativeVersion ??= _readCachedVersion();
+    }
+    return _narrativeVersion;
+  }
 
-  static NarrativeVersion _readCachedVersion() {
+  /// 서술 코퍼스 버전. `checkForceUpdate()` 가 같은 조회에서 갱신한다.
+  /// 확정 전에는 v1 — 조회 실패로 새 서술이 나가는 일이 없도록 하는 쪽이
+  /// 리포트 본문에서는 안전하다.
+  NarrativeVersion get narrativeVersion =>
+      knownNarrativeVersion ?? NarrativeVersion.v1;
+
+  /// 캐시에 남은 값. 키가 없으면 null (= 아직 모름).
+  static NarrativeVersion? _readCachedVersion() {
     try {
-      final box = Hive.box<String>(HiveBoxes.prefs);
-      return box.get(_kNarrativeVersionKey) == '2'
-          ? NarrativeVersion.v2
-          : NarrativeVersion.v1;
+      final raw = Hive.box<String>(HiveBoxes.prefs).get(_kNarrativeVersionKey);
+      if (raw == null) return null;
+      return raw == '2' ? NarrativeVersion.v2 : NarrativeVersion.v1;
     } catch (e) {
       // 박스 미개방 (테스트·초기화 이전). 캐시 없음과 같게 취급한다.
       debugPrint('[AppConfig] narrative version cache unavailable: $e');
-      return NarrativeVersion.v1;
+      return null;
     }
   }
 
@@ -100,7 +111,10 @@ class AppConfigService {
 
   /// 테스트 전용 — 메모리 상태만 날려 "다음 실행" 을 흉내 낸다.
   @visibleForTesting
-  void debugResetNarrativeVersion() => _narrativeVersion = null;
+  void debugResetNarrativeVersion() {
+    _narrativeVersion = null;
+    _cacheRead = false;
+  }
 
   /// 테스트 전용 — 원격 row 적용 경로를 네트워크 없이 부른다.
   @visibleForTesting
