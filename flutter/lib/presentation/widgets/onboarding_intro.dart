@@ -25,7 +25,7 @@ const _kPageColors = [
 const _kPages = [
   _OnboardingPageData(
     asset: 'assets/images/onboarding1.png',
-    title: '얼굴로 알아보는\n우리 모임의 케미',
+    title: '관상으로 풀어보는\n친구 만들기',
     body: '우리 그룹의 케미를 한눈에 보고\n새로운 대화의 계기를 만들어보세요.',
     warm: true,
   ),

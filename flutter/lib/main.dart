@@ -162,7 +162,7 @@ class _BootSplash extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Text(
-                '안면 계측 데이터 기반 인공지능 관상앱',
+                '관상으로 풀어보는 친구 만들기',
                 style: AppText.body.copyWith(
                   color: AppTheme.textSecondary,
                   height: 1.5,
