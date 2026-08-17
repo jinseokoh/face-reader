@@ -57,14 +57,19 @@ export function parseDemographics(body: string | null | undefined): Demographics
 }
 
 /** metrics.body 의 thumbnailKey → R2 CDN URL (없으면 null). */
-export function metricThumbUrl(body: string | null | undefined): string | null {
+/** body JSON 의 thumbnailKey 원본. R2 에 PUT 할 때 이 값을 그대로 쓴다. */
+export function metricThumbKey(body: string | null | undefined): string | null {
   if (!body) return null;
   try {
-    const key = (JSON.parse(body) as { thumbnailKey?: string }).thumbnailKey;
-    return key ? `https://cdn.facely.kr/${key}` : null;
+    return (JSON.parse(body) as { thumbnailKey?: string }).thumbnailKey ?? null;
   } catch {
     return null;
   }
+}
+
+export function metricThumbUrl(body: string | null | undefined): string | null {
+  const key = metricThumbKey(body);
+  return key ? `https://cdn.facely.kr/${key}` : null;
 }
 
 // 케미 그룹 — teams row (서버 계약 SSOT: web/db/migrations/0001_baseline.sql).
