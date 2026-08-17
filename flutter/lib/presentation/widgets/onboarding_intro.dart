@@ -35,21 +35,25 @@ const _kPages = [
   _OnboardingPageData(
     asset: 'assets/images/onboarding2.png',
     title: '관상',
-    chips: ['관상풀이 무료'],
+    // chip 은 가격만 말한다. 무엇이 무료인지는 제목과 본문이 이미 말하고
+    // 있어, chip 에 "관상풀이"·"케미 그룹" 을 또 넣으면 같은 말이 겹친다.
+    chips: ['무료'],
     body: '얼굴을 측량하여 내 프로필을 만듭니다.\n궁합과 케미가 이 프로필로 계산됩니다.',
     warm: false,
   ),
   _OnboardingPageData(
     asset: 'assets/images/onboarding3.png',
     title: '궁합',
-    chips: ['궁합해석 1코인'],
+    // "유료" 대신 "1코인" — 가입 보너스가 3코인이라 세 번은 볼 수 있다는
+    // 뜻이 된다. "유료" 는 그 정보를 지우고 결제 벽처럼 읽힌다.
+    chips: ['1코인'],
     body: '내 관상이 등록된 상태 이후에 올리는 모든\n사진 속 인물과 나와의 궁합을 볼 수 있습니다.',
     warm: true,
   ),
   _OnboardingPageData(
     asset: 'assets/images/onboarding4.png',
     title: '케미',
-    chips: ['케미 그룹 무료'],
+    chips: ['무료'],
     body: '케미 그룹은 누구나 만들거나 참여할 수 있고\n참가자들의 그룹 케미 결과표를 보여드립니다.',
     warm: false,
   ),
