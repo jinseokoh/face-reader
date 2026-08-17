@@ -1,8 +1,10 @@
 import 'dart:io';
 
 import 'package:face_engine/domain/services/compat/compat_narrative.dart';
+import 'package:facely/core/hive/hive_setup.dart';
 import 'package:facely/domain/services/life_question_narrative.dart';
 import 'package:flutter/foundation.dart';
+import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -15,9 +17,36 @@ class AppConfigService {
   AppConfigService._();
   static final instance = AppConfigService._();
 
-  /// 서술 코퍼스 버전. `checkForceUpdate()` 가 같은 조회에서 채운다.
-  /// 조회 전·실패 시에는 v1 — 현행 서술이 나온다.
-  NarrativeVersion narrativeVersion = NarrativeVersion.v1;
+  /// 마지막으로 받은 코퍼스 버전을 담아 두는 prefs 키.
+  static const String _kNarrativeVersionKey = 'narrative_version';
+
+  NarrativeVersion? _narrativeVersion;
+
+  /// 서술 코퍼스 버전. `checkForceUpdate()` 가 같은 조회에서 갱신한다.
+  ///
+  /// 조회는 네트워크라 수백 ms 가 걸리는데 온보딩은 첫 프레임 직후에 뜬다
+  /// (`app.dart` 의 `addPostFrameCallback`). 메모리 기본값만 두면 온보딩은
+  /// 매번 조회를 앞질러 v1 을 읽는다. 그래서 마지막으로 받은 값을 Hive 에
+  /// 남겨 두고 다음 실행부터는 그 값으로 시작한다.
+  ///
+  /// 최초 설치 직후 첫 실행은 캐시가 없어 여전히 v1 이다. 온보딩을 조회에
+  /// 묶으면 첫 화면이 네트워크만큼 늦어지고 조회 실패 시 아예 안 뜰 수 있어,
+  /// 그쪽 대가가 더 크다고 봤다.
+  NarrativeVersion get narrativeVersion =>
+      _narrativeVersion ??= _readCachedVersion();
+
+  static NarrativeVersion _readCachedVersion() {
+    try {
+      final box = Hive.box<String>(HiveBoxes.prefs);
+      return box.get(_kNarrativeVersionKey) == '2'
+          ? NarrativeVersion.v2
+          : NarrativeVersion.v1;
+    } catch (e) {
+      // 박스 미개방 (테스트·초기화 이전). 캐시 없음과 같게 취급한다.
+      debugPrint('[AppConfig] narrative version cache unavailable: $e');
+      return NarrativeVersion.v1;
+    }
+  }
 
   /// 궁합 코퍼스 버전 — 관상과 같은 컬럼을 쓴다. 플래그를 따로 두면 관상 v2 +
   /// 궁합 v1 같은 어긋난 조합까지 관리해야 하고 마이그레이션이 하나 더 쌓인다.
@@ -55,10 +84,26 @@ class AppConfigService {
   }
 
   /// 플랫폼별 코퍼스 버전 컬럼을 읽는다. 컬럼이 없거나 값이 이상하면 v1.
+  /// 받은 값은 다음 실행의 시작값이 되도록 Hive 에 남긴다.
   void _applyNarrativeVersion(Map<String, dynamic> row) {
     final v = (Platform.isIOS
         ? row['ios_narrative_version']
         : row['android_narrative_version']) as int?;
-    narrativeVersion = v == 2 ? NarrativeVersion.v2 : NarrativeVersion.v1;
+    _narrativeVersion = v == 2 ? NarrativeVersion.v2 : NarrativeVersion.v1;
+    try {
+      Hive.box<String>(HiveBoxes.prefs)
+          .put(_kNarrativeVersionKey, v == 2 ? '2' : '1');
+    } catch (e) {
+      debugPrint('[AppConfig] narrative version cache write skipped: $e');
+    }
   }
+
+  /// 테스트 전용 — 메모리 상태만 날려 "다음 실행" 을 흉내 낸다.
+  @visibleForTesting
+  void debugResetNarrativeVersion() => _narrativeVersion = null;
+
+  /// 테스트 전용 — 원격 row 적용 경로를 네트워크 없이 부른다.
+  @visibleForTesting
+  void debugApplyNarrativeVersion(Map<String, dynamic> row) =>
+      _applyNarrativeVersion(row);
 }
