@@ -70,11 +70,6 @@ String _labelTraditionV2(CompatLabel l) {
   }
 }
 
-/// 판단의 층위를 밝히는 마무리 — 우리가 무엇을 근거로 말했는지.
-/// 섹션마다 다르게 쓰되, 문장의 주어는 항상 우리(측정) 아니면 전통이다.
-const String _v2Basis = '이 해석은 두 얼굴의 계측값과 전통 관상의 읽는 법을 '
-    '겹쳐 놓은 것입니다. 두 사람의 앞일을 맞히려는 것이 아닙니다.';
-
 // ─────────────── §1 한줄 요약 ───────────────
 
 String _summarySectionV2(CompatibilityReport r, List<CompatFinding> findings) {
@@ -234,10 +229,8 @@ String _strategySectionV2(
   final outro = _pickVariant(outroPool, pairSeed + 0x4E2);
   if (outro.isNotEmpty) {
     buf.writeln();
-    buf.writeln(outro);
+    buf.write(outro);
   }
-  buf.writeln();
-  buf.write(_v2Basis);
   return buf.toString().trimRight();
 }
 
