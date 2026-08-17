@@ -302,9 +302,10 @@ class _CompatShareSide extends StatelessWidget {
 }
 
 class _NarrativeCard extends StatelessWidget {
-  final String title;
+  /// null 이면 제목 없이 본문만. 설명글은 소제목이 필요 없다.
+  final String? title;
   final String body;
-  const _NarrativeCard({required this.title, required this.body});
+  const _NarrativeCard({this.title, required this.body});
 
   @override
   Widget build(BuildContext context) {
@@ -320,14 +321,16 @@ class _NarrativeCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: AppText.modalTitle.copyWith(
-              color: AppColors.darkBrown,
-              fontWeight: FontWeight.w700,
+          if (title != null) ...[
+            Text(
+              title!,
+              style: AppText.modalTitle.copyWith(
+                color: AppColors.darkBrown,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-          ),
-          const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.md),
+          ],
           Text(body, style: AppText.body.copyWith(color: AppColors.darkBrown)),
         ],
       ),
@@ -360,7 +363,7 @@ class _NarrativeSections extends StatelessWidget {
         // 마무리 — 이 리포트가 무엇인지. 앞 문단은 성격, 뒤 문단은 방법론이다.
         // 서술 코퍼스가 아니라 화면 위젯이라 v1·v2 양쪽에 똑같이 나온다.
         // 앱의 입장은 코퍼스 버전과 무관하기 때문이다.
-        const _NarrativeCard(title: '관상학적 궁합이란', body: _kCompatBasis),
+        const _NarrativeCard(body: _kCompatBasis),
       ],
     );
   }
@@ -370,8 +373,8 @@ const String _kCompatBasis =
     '관상학적 궁합은 오랜 세월 얼굴에 나타난 특징을 통해 두 사람의 조화와 '
     '관계를 살펴온 지혜를 집대성한 관상 문헌을 바탕으로, 두 사람의 관계를 '
     '성찰하고 그 지혜를 나누는 것입니다.\n\n'
-    '이 해석은 두 얼굴의 계측값과 전통 관상의 읽는 법을 겹쳐 놓은 것입니다. '
-    '두 사람의 앞일을 맞히려는 것이 아닙니다.';
+    '전통 관상학상의 해석을 현대적으로 풀이한 것입니다. '
+    '두 사람의 미래를 맞히려는 것이 아닙니다.';
 
 class _ShareHashtag extends StatelessWidget {
   final CompatChip chip;
