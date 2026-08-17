@@ -20,24 +20,6 @@ import 'compat_sub_display.dart';
 import 'five_element.dart';
 import 'palace.dart';
 
-const String kFiveFeaturesEnglish = 'Five Features';
-
-// ─────────────────────── Dimension (4 축) ───────────────────────────────────
-
-/// 五官 모던 별칭.
-const String kFiveFeaturesModern = '얼굴 5 부위';
-
-const String kThreeZonesEnglish = 'Three Zones';
-
-/// 三停 (이마/코/턱) 모던 별칭.
-const String kThreeZonesModern = '얼굴 3 구역';
-
-const String kYinYangEnglish = 'Energy';
-
-// ─────────────────────── Yin-Yang / Three Zones 모던 표현 ───────────────────
-
-/// 음양 모던 별칭. "음양" 직접 노출 대신 사용.
-const String kYinYangModern = '에너지 균형';
 // ─────────────────────── CompatLabel (4 등급) ───────────────────────────────
 
 extension CompatLabelModern on CompatLabel {

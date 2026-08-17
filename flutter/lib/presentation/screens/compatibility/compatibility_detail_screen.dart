@@ -9,6 +9,7 @@ import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/services/compat/compat_adapter.dart';
+import 'package:facely/data/services/app_config_service.dart';
 import 'package:face_engine/domain/services/compat/compat_label.dart';
 import 'package:face_engine/domain/services/compat/compat_narrative.dart';
 import 'package:face_engine/domain/services/compat/compat_pipeline.dart';
@@ -72,6 +73,7 @@ class _CompatibilityDetailScreenState
   late final CompatibilityBundle _bundle = analyzeCompatibilityFromReports(
     my: widget.my,
     album: widget.album,
+    version: AppConfigService.instance.compatVersion,
   );
 
   /// RepaintBoundary key — off-screen 합성 카드 캡처용.

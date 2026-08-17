@@ -488,12 +488,18 @@ class _MineTab extends ConsumerWidget {
         ),
         data: (list) {
           if (list.isEmpty) {
-            return ListView(
-              children: const [
-                SizedBox(height: 120),
-                EmotionEmptyState(
-                  asset: 'assets/images/emotion-laugh.png',
-                  message: '참가 중인 그룹이 없습니다',
+            // 관상 탭과 동일한 §3.8 레시피 — SliverFillRemaining 이 남은
+            // 높이를 다 받아야 EmotionEmptyState 의 Center 가 작동한다.
+            // ListView 안에서는 세로가 무한이라 중앙 정렬이 죽는다.
+            return CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: const [
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: EmotionEmptyState(
+                    asset: 'assets/images/emotion-laugh.png',
+                    message: '참가 중인 그룹이 없습니다',
+                  ),
                 ),
               ],
             );
@@ -699,12 +705,15 @@ class _PublicTab extends ConsumerWidget {
         ),
         data: (list) {
           if (list.isEmpty) {
-            return ListView(
-              children: const [
-                SizedBox(height: 120),
-                EmotionEmptyState(
-                  asset: 'assets/images/emotion-surprise.png',
-                  message: '모집 중인 공개 그룹이 없습니다',
+            return CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: const [
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: EmotionEmptyState(
+                    asset: 'assets/images/emotion-surprise.png',
+                    message: '모집 중인 공개 그룹이 없습니다',
+                  ),
                 ),
               ],
             );

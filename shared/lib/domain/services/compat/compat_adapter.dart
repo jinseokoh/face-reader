@@ -46,6 +46,7 @@ class CompatibilityBundle {
 CompatibilityBundle analyzeCompatibilityFromReports({
   required FaceReadingReport my,
   required FaceReadingReport album,
+  CompatVersion version = CompatVersion.v1,
 }) {
   final myInput = reportToCompatInput(my);
   final albumInput = reportToCompatInput(album);
@@ -54,6 +55,10 @@ CompatibilityBundle analyzeCompatibilityFromReports({
     my.supabaseId ?? my.timestamp.toIso8601String(),
     album.supabaseId ?? album.timestamp.toIso8601String(),
   );
-  final narrative = buildCompatNarrative(report: report, pairSeed: seed);
+  final narrative = buildCompatNarrative(
+    report: report,
+    pairSeed: seed,
+    version: version,
+  );
   return CompatibilityBundle(report: report, narrative: narrative);
 }

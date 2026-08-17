@@ -1,17 +1,28 @@
-/// Narrative phrase pool.
+/// 궁합 서술 phrase pool — **v2**.
 ///
-/// 각 rule/pattern 의 verdict 을 바탕으로, label 오프너·가치관 관계 라벨·
-/// 장기 조언·에너지 균형 코멘트·로맨스 네 축 해설을 모던 한국어 산문체로 담는다.
-/// 본문 text 에 한자를 쓰지 않는다.
+/// v1(`compat_phrase_pool.dart`) 의 풀 15개와 1:1 짝을 이룬다. 이름은 `V2`
+/// 접미사만 다르고 키 구조는 완전히 같다. 내용이 v1 과 같은 풀도 별칭이
+/// 아니라 실물로 둔다 — 별칭이면 "아직 안 고친 것"과 "같기로 결정한 것"이
+/// 구분되지 않는다.
+///
+/// v2 톤 규칙 (`narrative_corpus_v2.dart` 와 동일한 기준):
+///   사진 속 상대의 성격·행동을 단정하지 않는다.
+///   사용자가 무슨 생각을 했는지 맞혔다고 주장하지 않는다.
+///   미래를 말하지 않는다.
+///   판단의 주어는 우리(측정) 아니면 전통이다.
+///
+/// 짝을 강제하는 장치는 `buildCompatNarrative` 의 version switch 다. 섹션이
+/// 늘면 두 분기를 모두 채워야 컴파일된다.
 library;
 
 import 'package:face_engine/data/enums/gender.dart';
 
 import 'compat_label.dart';
+import 'compat_phrase_pool.dart';
 
 /// 도메인별 갈등 확장 — "어떻게 번져 가는가". 빈도·누적·회복 시간·극단 주제 연결.
 /// 키는 `CompatFinding.domain` 와 일치. 없는 도메인은 `_default` fallback.
-const Map<String, List<String>> conflictEscalationByDomain = {
+const Map<String, List<String>> conflictEscalationByDomainV2 = {
   '결혼·부부생활': [
     '한 번 폭발하면 회복에 열흘 이상 걸리며, 미해결로 누적될 경우 결혼·이혼 같은 극단 주제로 튀기 쉽습니다.',
     '초기에는 말다툼 수준이지만, 반복되면 "이 관계를 유지해야 하나"라는 근본 질문으로 주제가 이동합니다.',
@@ -89,7 +100,7 @@ const Map<String, List<String>> conflictEscalationByDomain = {
 };
 
 /// 갈등 섹션 도입 — label 별 갈등의 전반 성격 요약.
-const Map<CompatLabel, List<String>> conflictIntroByLabel = {
+const Map<CompatLabel, List<String>> conflictIntroByLabelV2 = {
   CompatLabel.cheonjakjihap: [
     '최고의 케미 구간에서도 갈등의 씨앗은 있습니다. 다만 터지는 횟수가 적고 회복 속도가 빠를 뿐, 방심이 가장 큰 위협이에요.',
     '궁합이 좋은 쪽의 갈등은 대체로 "당연해졌을 때" 시작됩니다. 싸울 일이 적어 보이는 만큼 기본기 하나가 어긋나면 체감이 더 크게 와요.',
@@ -113,7 +124,7 @@ const Map<CompatLabel, List<String>> conflictIntroByLabel = {
 };
 
 /// 갈등 섹션 마무리 — 세 갈등의 공통분모 한 줄.
-const Map<CompatLabel, List<String>> conflictOutroByLabel = {
+const Map<CompatLabel, List<String>> conflictOutroByLabelV2 = {
   CompatLabel.cheonjakjihap: [
     '세 갈등을 관통하는 건 "방심"입니다. 궁합이 좋다는 이유로 기본 관리를 소홀히 하지 않으면 대부분 예방 가능한 범주예요.',
     '좋은 구간의 갈등은 예측 가능한 쪽에 속합니다. 위 세 시나리오만 달력에 미리 표시해 두셔도 상당 부분 피하실 수 있어요.',
@@ -140,7 +151,7 @@ const Map<CompatLabel, List<String>> conflictOutroByLabel = {
 /// advice 방향을 다르게 줄 수 있도록 male/female 두 map 으로 물리적 분리.
 /// 지인이 아닐 수 있으므로 상호작용 이력 단정 금지 (2026-07-24 v4) —
 /// observation 은 "이런 조합은 만나면 ~" 예측형, advice 는 조건형으로 쓴다.
-const Map<Gender, Map<String, IntimacyAxisDetail>> intimacyAxisDetailsByGender = {
+const Map<Gender, Map<String, IntimacyAxisDetail>> intimacyAxisDetailsByGenderV2 = {
   // ═══════════════════════════════════════════════════════════════════
   // 남성 (Gender.male) — 적극·결단 톤
   // ═══════════════════════════════════════════════════════════════════
@@ -334,7 +345,7 @@ const Map<Gender, Map<String, IntimacyAxisDetail>> intimacyAxisDetailsByGender =
 /// Flirty closing — punch line 위주. 지인이 아닐 수 있으므로 상호작용 이력
 /// 단정 금지 (2026-07-24 v4) — 조건형 결론으로만 매듭짓는다.
 const Map<Gender, Map<String, List<String>>>
-    intimacyFlirtyClosingByBucketByGender = {
+    intimacyFlirtyClosingByBucketByGenderV2 = {
   Gender.male: {
     'high': [
       '이런 점수는 자주 안 나옵니다 — 기회가 오면 그게 답이에요.',
@@ -381,7 +392,7 @@ const Map<Gender, Map<String, List<String>>>
 /// 지인이 아닐 수 있으므로 상호작용 이력 단정 금지 (2026-07-24 v4) —
 /// 사진을 보며 드는 반응, 관상 조합이 예측하는 장면, 조건형 조언만 소재로 쓴다.
 const Map<Gender, Map<String, List<String>>>
-    intimacyFlirtyOpenerByBucketByGender = {
+    intimacyFlirtyOpenerByBucketByGenderV2 = {
   Gender.male: {
     'high': [
       '끌림 강도 {X}점. 이 사람 얼굴에서 시선이 한 번 멈췄다면 그게 이 점수의 근거입니다. 관상 조합상 마주 앉으면 대화가 예상보다 길어지는 상이에요. 기회가 닿으면 재지 말고 자리를 만들어 보세요.',
@@ -433,7 +444,7 @@ const Map<Gender, Map<String, List<String>>>
 /// 동성 페어 OR 한쪽이라도 10대/70대 이상인 경우 사용.
 // closing 은 짧은 펀치라인으로 통일 (flirty/spicy 와 같은 format). pure 는 톤만
 // 점잖게 — 존댓말·절제된 단정, 슬랭 없이 한 줄로 매듭짓는다.
-const Map<Gender, Map<String, List<String>>> intimacyPureClosingByBucketByGender = {
+const Map<Gender, Map<String, List<String>>> intimacyPureClosingByBucketByGenderV2 = {
   // ═══════════════════════════════════════════════════════════════════
   // 남성 (Gender.male)
   // ═══════════════════════════════════════════════════════════════════
@@ -485,7 +496,7 @@ const Map<Gender, Map<String, List<String>>> intimacyPureClosingByBucketByGender
 
 /// 로맨스 섹션 opener — gender x bucket 별 pool (pure tone). `{X}` 토큰은 narrative 에서 정수 점수로 치환.
 /// 동성 페어 OR 한쪽이라도 10대/70대 이상인 경우 사용.
-const Map<Gender, Map<String, List<String>>> intimacyPureOpenerByBucketByGender = {
+const Map<Gender, Map<String, List<String>>> intimacyPureOpenerByBucketByGenderV2 = {
   // ═══════════════════════════════════════════════════════════════════
   // 남성 (Gender.male)
   // ═══════════════════════════════════════════════════════════════════
@@ -541,13 +552,13 @@ const Map<Gender, Map<String, List<String>>> intimacyPureOpenerByBucketByGender 
 // ═══════════════════════════════════════════════════════════════
 
 /// Spicy 전용 축 산문 — 4 axis x 3 sign x 2 gender. spicy 페어는 공통
-/// [intimacyAxisDetailsByGender] 대신 이 pool 을 쓴다. 구조는 본능 반응 →
+/// [intimacyAxisDetailsByGenderV2] 대신 이 pool 을 쓴다. 구조는 본능 반응 →
 /// 끌림의 폭로 → 행동 권유: cause(관상 근거) → observation(관찰 가능한
 /// 반응·장면) → advice(구체적인 다음 행동). 추상어·심리 분석·직업 특정
 /// 장면 금지, 보편 소재(거리·시선·목소리·향·연락·둘만의 자리)로만 말한다.
 /// neu 까지 채워 분량이 pure/flirty 와 같게 유지된다.
 const Map<Gender, Map<String, IntimacyAxisDetail>>
-    intimacySpicyAxisDetailsByGender = {
+    intimacySpicyAxisDetailsByGenderV2 = {
   // ═══════════════════════════════════════════════════════════════════
   // 남성 (Gender.male) — 상대: "이 여성". 관상 근거 → 예측 장면 → 조건형
   // 과감 추진 조언. 지인이 아닐 수 있으므로 상호작용 이력 단정 금지.
@@ -727,7 +738,7 @@ const Map<Gender, Map<String, IntimacyAxisDetail>>
 /// 남 = 진심 어린 접근 허가 + 상대의 긍정 반응 예측(high 일수록 확률 단정) /
 /// 여 = 이 남자가 진심으로 다가오면 밀어내지 말고 기꺼이 받아 주라는 수용 권유.
 const Map<Gender, Map<String, List<String>>>
-    intimacySpicyClosingByBucketByGender = {
+    intimacySpicyClosingByBucketByGenderV2 = {
   Gender.male: {
     'high': [
       '한 번뿐인 인생입니다. 이런 궁합의 상대를 만났을 때, 서로에게 끌리는 마음과 본능을 애써 외면하며 기회를 흘려보내는 것. 아마 훗날 가장 오래 마음에 남을 후회는 바로 그것일지도 모릅니다.',
@@ -781,7 +792,7 @@ const Map<Gender, Map<String, List<String>>>
 /// 봐 가며 / low 가벼운 시작). 여 = 이 남자가 다가오면 밀어내지 말고
 /// 받아 주라는 수용 권유(high 기꺼이 / mid 문 열어 두기 / low 천천히 판정).
 const Map<Gender, Map<String, List<String>>>
-    intimacySpicyOpenerByBucketByGender = {
+    intimacySpicyOpenerByBucketByGenderV2 = {
   Gender.male: {
     'high': [
       '끌림 강도 {X}점. 이 여성의 얼굴을 무심히 넘기지 못했다면, 이 점수가 그 이유를 설명해 줍니다. 시선이 한 번 더 머물고, 둘만 있게 된다면 어떤 공기가 흐를지 잠시 상상하게 되는 조합 — 그 상상은 이상한 것이 아니라 관상 조합이 만들어 내는 자연스러운 반응입니다. 마음만 궁금한 것이 아니라 그보다 깊은 곳까지 궁금해지는 상대이고, 이 궁합에서는 그 마음을 억지로 누를 이유가 없습니다. 진심을 담아 다가간다면, 상대도 긍정적으로 받아들일 가능성이 가장 높은 조합이니까요.',
@@ -831,7 +842,7 @@ const Map<Gender, Map<String, List<String>>>
 
 
 /// 도메인별 실패 패턴 — "이 조언이 어긋나는 전형".
-const Map<String, List<String>> strategyFailureByDomain = {
+const Map<String, List<String>> strategyFailureByDomainV2 = {
   '결혼·부부생활': [
     '관계 점검 대화가 "불만 리스트 낭독"으로 변질되면 오히려 독이 됩니다. 감사 1 : 요청 1 비율을 유지하세요.',
     '데이트가 의무처럼 느껴지는 순간부터 효과가 역전돼요. 형식에 갇히지 않는 변주를 주기적으로 섞으세요.',
@@ -905,7 +916,7 @@ const Map<String, List<String>> strategyFailureByDomain = {
 };
 
 /// 도메인별 실행 디테일 — "어떻게 실행". 빈도·도구·시점 구체.
-const Map<String, List<String>> strategyHowByDomain = {
+const Map<String, List<String>> strategyHowByDomainV2 = {
   '결혼·부부생활': [
     '분기마다 "관계 점검 대화"를 1시간 확보하세요 — 장소는 집 밖, 주제는 합의된 5가지 질문 안에서.',
     '기념일·주말 데이트를 달력에 선약으로 고정하고, 우선순위에서 밀리지 않게 다른 일정을 그 뒤에 배치하세요.',
@@ -981,7 +992,7 @@ const Map<String, List<String>> strategyHowByDomain = {
 //  관계 운영 전략 섹션 — label별 도입/마무리 + domain별 실행·실패
 // ═══════════════════════════════════════════════════════════════
 
-const Map<CompatLabel, List<String>> strategyIntroByLabel = {
+const Map<CompatLabel, List<String>> strategyIntroByLabelV2 = {
   CompatLabel.cheonjakjihap: [
     '좋은 궁합의 전략은 관리의 전략입니다. 아래 지침은 상한선을 지키기 위한 것이지, 하한선을 끌어올리는 것이 아니에요.',
     '이 구간의 조합은 대부분의 전략이 이미 작동 중입니다. 아래 항목은 "이미 작동하는 것을 놓치지 않기 위한" 체크리스트에 가까워요.',
@@ -1004,7 +1015,7 @@ const Map<CompatLabel, List<String>> strategyIntroByLabel = {
   ],
 };
 
-const Map<CompatLabel, List<String>> strategyOutroByLabel = {
+const Map<CompatLabel, List<String>> strategyOutroByLabelV2 = {
   CompatLabel.cheonjakjihap: [
     '높은 점수의 조합은 유지가 가장 어렵습니다. 위 지침 중 하나라도 매달 점검하시면 상한선을 지킬 수 있어요.',
     '이 구간에서는 "하고 있다"와 "의식적으로 하고 있다"의 차이가 결과를 가릅니다. 그 차이를 두 분의 언어로 정의해 두세요.',
@@ -1044,25 +1055,3 @@ const Map<CompatLabel, List<String>> strategyOutroByLabel = {
 /// 도덕어 배제. low bucket 에서는 격려 대신 경계·관찰자 톤. high bucket
 /// 에서만 적극 권유. 모든 axis 문단은 "어떤 얼굴이기에 이렇게 읽히는가"
 /// 의 근거로 시작해 농후함을 확보.
-
-/// axis x sign 한 조합의 3-part 서술.
-class IntimacyAxisDetail {
-  /// 얼굴 근거 — 어떤 얼굴 모양이기에 이렇게 읽히는가.
-  final String cause;
-
-  /// 실생활 관찰 — 이 얼굴 조합이 일상에서 어떻게 드러나는가.
-  final String observation;
-
-  /// high bucket 전용 조언 — 기회 인식·관리 권유.
-  final String adviceHigh;
-
-  /// low bucket 전용 조언 — 경계·속도 조절·자기 보호.
-  final String adviceLow;
-
-  const IntimacyAxisDetail({
-    required this.cause,
-    required this.observation,
-    required this.adviceHigh,
-    required this.adviceLow,
-  });
-}

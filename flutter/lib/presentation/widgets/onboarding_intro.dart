@@ -1,5 +1,7 @@
 import 'package:concentric_transition/concentric_transition.dart';
 import 'package:facely/core/theme.dart';
+import 'package:facely/data/services/app_config_service.dart';
+import 'package:facely/domain/services/life_question_narrative.dart';
 import 'package:facely/presentation/widgets/primary_button.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -26,6 +28,7 @@ const _kPages = [
   _OnboardingPageData(
     asset: 'assets/images/onboarding1.png',
     title: '관상으로 풀어보는\n친구 만들기',
+    titleV1: 'AI로 얼굴의 특징을 측정하고\n학문적으로 그 의미를 해석합니다.',
     body: '우리 그룹의 케미를 한눈에 보고\n새로운 대화의 계기를 만들어보세요.',
     warm: true,
   ),
@@ -386,10 +389,16 @@ class _OnboardingPage extends StatelessWidget {
           const SizedBox(height: AppSpacing.huge),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.huge),
-            child: Text(
-              data.title,
-              style: AppText.display.copyWith(color: titleColor),
-              textAlign: TextAlign.center,
+            // v1 제목은 display(28) 로 두면 줄마다 한 번 더 접혀 4줄이 된다.
+            // scaleDown 은 폭이 모자랄 때만 줄이므로 짧은 제목은 28 그대로다.
+            // 기기 폭과 실제 글리프 폭으로 계산하니 매직 넘버가 필요 없다.
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                data.resolvedTitle,
+                style: AppText.display.copyWith(color: titleColor),
+                textAlign: TextAlign.center,
+              ),
             ),
           ),
           if (data.chips.isNotEmpty) ...[
@@ -425,6 +434,10 @@ class _OnboardingPage extends StatelessWidget {
 class _OnboardingPageData {
   final String asset;
   final String title;
+
+  /// v1 코퍼스일 때 [title] 대신 쓰는 제목. null 이면 버전과 무관하게 [title].
+  /// v1 은 관상 자체를 앞세우는 서술이라 첫 장 제목도 그쪽에 맞춘다.
+  final String? titleV1;
   final List<String> chips;
   final String body;
 
@@ -435,10 +448,18 @@ class _OnboardingPageData {
   const _OnboardingPageData({
     required this.asset,
     required this.title,
+    this.titleV1,
     this.chips = const [],
     required this.body,
     required this.warm,
   });
+
+  /// 원격 설정(`app_config.{ios,android}_narrative_version`)이 정한 코퍼스
+  /// 버전에 맞는 제목. 조회 전·실패 시 기본값이 v1 이다.
+  String get resolvedTitle =>
+      AppConfigService.instance.narrativeVersion == NarrativeVersion.v1
+          ? (titleV1 ?? title)
+          : title;
 }
 
 /// 무료·유료 표기 chip — §3.3 단일톤. 배경색 페이지 위에서도 보이도록

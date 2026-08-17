@@ -19,26 +19,53 @@ import 'package:face_engine/data/enums/gender.dart';
 import 'compat_finding.dart';
 import 'compat_label.dart';
 import 'compat_phrase_pool.dart';
+import 'compat_phrase_pool_v2.dart';
 import 'compat_pipeline.dart';
 import 'compat_sub_display.dart';
 import 'five_element.dart';
 import 'intimacy.dart';
 
+/// v2 섹션 빌더 6개. part 이므로 `_StrategyItem`·`_pickVariant` 같은
+/// private 식별자를 그대로 쓴다. 이름은 `V2` 접미사로 v1 과 구분한다.
+part 'compat_narrative_v2.dart';
+
+/// 서술 코퍼스 버전. 관상의 `NarrativeVersion` 과 같은 원격 설정
+/// (`app_config.{ios,android}_narrative_version`) 이 정하지만, `shared` 는
+/// flutter 패키지를 import 할 수 없으므로 여기 따로 둔다. 호출부가 매핑한다.
+enum CompatVersion { v1, v2 }
+
 // ─────────────── top-level builder ───────────────
 
+/// 섹션 6개를 버전별로 조립한다.
+///
+/// switch 가 두 분기를 모두 채우지 않으면 컴파일되지 않는다. 섹션을 추가할
+/// 때 한쪽 버전만 붙이는 사고를 막는 장치다 — 관상에서 유형 소개·특수 유형·
+/// 나이대 마무리 세 문단이 버전 체계 밖에 있어 v2 를 켜도 옛 문장이 그대로
+/// 나왔던 문제가 여기서는 구조적으로 불가능하다.
 CompatNarrative buildCompatNarrative({
   required CompatibilityReport report,
   required int pairSeed,
+  CompatVersion version = CompatVersion.v1,
 }) {
   final findings = _gatherFindings(report);
-  return CompatNarrative(
-    summary: _summarySection(report, findings),
-    corePoints: _coreSection(findings),
-    conflictScenarios: _conflictSection(report, findings, pairSeed),
-    strategy: _strategySection(report, findings, pairSeed),
-    scoreReason: _scoreSection(report),
-    intimacyChapter: _intimacyChapter(report, pairSeed),
-  );
+  return switch (version) {
+    CompatVersion.v1 => CompatNarrative(
+        summary: _summarySection(report, findings),
+        corePoints: _coreSection(findings),
+        conflictScenarios: _conflictSection(report, findings, pairSeed),
+        strategy: _strategySection(report, findings, pairSeed),
+        scoreReason: _scoreSection(report),
+        intimacyChapter: _intimacyChapter(report, pairSeed),
+      ),
+    CompatVersion.v2 => CompatNarrative(
+        summary: _summarySectionV2(report, findings),
+        corePoints: _coreSectionV2(findings),
+        conflictScenarios: _conflictSectionV2(report, findings, pairSeed),
+        strategy: _strategySectionV2(report, findings, pairSeed),
+        scoreReason: _scoreSectionV2(report),
+        intimacyChapter: _intimacyChapterV2(report, pairSeed),
+      ),
+  };
 }
 
 /// pair-hash seed — 현재 구조에서는 decorative. 인터페이스 유지를 위해 남김.
@@ -360,8 +387,11 @@ String _scoreSection(CompatibilityReport r) {
   return buf.toString();
 }
 
-String _strategySection(
-    CompatibilityReport r, List<CompatFinding> findings, int pairSeed) {
+/// 전략 item 생성 — 라벨 기본 1개 + 부정 finding 2개 + 긍정 finding 1개.
+/// v1·v2 가 공유한다. 여기 나오는 문장은 라벨·finding 에서 오므로
+/// 버전별로 갈리지 않는다 (갈리는 것은 도입·실행·실패 pool 이다).
+List<_StrategyItem> _strategyItems(
+    CompatibilityReport r, List<CompatFinding> findings) {
   final items = <_StrategyItem>[];
 
   // 라벨별 기본 전략 1 개 — rationale 은 label 자체.
@@ -434,6 +464,13 @@ String _strategySection(
       rationale: f.meaning,
     ));
   }
+
+  return items;
+}
+
+String _strategySection(
+    CompatibilityReport r, List<CompatFinding> findings, int pairSeed) {
+  final items = _strategyItems(r, findings);
 
   final buf = StringBuffer();
 
