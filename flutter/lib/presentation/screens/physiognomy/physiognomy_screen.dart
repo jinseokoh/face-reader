@@ -8,6 +8,7 @@ import 'package:facely/core/theme.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/providers/tab_provider.dart';
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
+import 'package:facely/presentation/widgets/credits_empty_state.dart';
 import 'package:facely/presentation/widgets/emotion_empty_state.dart';
 import 'package:facely/presentation/widgets/face_scan_pill.dart';
 import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
@@ -20,6 +21,15 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
+
+/// 미등록 첫 화면의 크레딧 문구 — 빈 여백을 채운다.
+/// 줄바꿈은 이 목록 그대로 유지된다 ([CreditsEmptyState]).
+const List<String> _kEmptyCredits = [
+  '관상은 마음의 창이로다.',
+  '내 관상 등록 버튼을 눌러서',
+  '관상을 입력하면 AI 로 분석한',
+  '전통 관상학의 지혜를 볼 수 있느리라.',
+];
 
 // 화면-국지 팔레트 — DESIGN.md §2.4 (file-local 격리).
 // 본 화면은 AppColors 의 gold / goldDim / goldSoft / surface / border / textHint
@@ -646,10 +656,18 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
             // §3.8 일러스트 빈 상태 — 궁합 탭과 동일한 공용 EmotionEmptyState.
             SliverFillRemaining(
               hasScrollBody: false,
-              child: EmotionEmptyState(
-                asset: emptyAsset,
-                message: emptyMessage,
-              ),
+              // 미등록 첫 화면은 통째로 비어 화면이 멎어 보인다. 크레딧
+              // 문구가 올라간 뒤 일러스트가 떠오르는 2단 연출로 채운다.
+              child: hasMyFace
+                  ? EmotionEmptyState(
+                      asset: emptyAsset,
+                      message: emptyMessage,
+                    )
+                  : CreditsEmptyState(
+                      lines: _kEmptyCredits,
+                      asset: emptyAsset,
+                      message: emptyMessage,
+                    ),
             )
           else ...[
             for (var gi = 0; gi < groups.length; gi++)

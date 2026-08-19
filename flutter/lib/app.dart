@@ -24,6 +24,16 @@ import 'package:facely/presentation/screens/update_gate_screen.dart';
 import 'package:facely/presentation/widgets/ad_banner_dialog.dart';
 import 'package:facely/presentation/widgets/onboarding_intro.dart';
 
+/// 탭 화면 5개. 순서 = 인원수 위계: 1인 관상 → 2인 궁합 → 다인 교감 →
+/// 그 결과물인 채팅 → 설정.
+const List<Widget> _kTabScreens = [
+  PhysiognomyScreen(),
+  CompatibilityScreen(),
+  ChemistryScreen(),
+  ChatTabScreen(),
+  SettingsScreen(),
+];
+
 /// 온보딩을 띄우기 전에 원격 설정 응답을 기다려 주는 최대 시간.
 /// 첫 프레임 뒤에 뜨는 모달이라 이 정도 지연은 눈에 띄지 않는다.
 const Duration _kRemoteConfigWait = Duration(milliseconds: 500);
@@ -214,16 +224,19 @@ class _MainAppState extends ConsumerState<MainApp> {
       body: Column(
         children: [
           Expanded(
-            // 탭 순서 = 인원수 위계: 1인 관상 → 2인 궁합 → 다인 교감 →
-            // 그 결과물인 채팅 → 설정.
             child: IndexedStack(
               index: selectedIndex,
-              children: const [
-                PhysiognomyScreen(),
-                CompatibilityScreen(),
-                ChemistryScreen(),
-                ChatTabScreen(),
-                SettingsScreen(),
+              children: [
+                // IndexedStack 은 보이지 않는 탭도 전부 build 한다. TickerMode
+                // 로 감싸지 않으면 그 탭의 애니메이션이 사용자가 탭을 열기도
+                // 전에 흘러가 끝나 버린다 (관상 빈 화면의 크레딧이 그 예).
+                // 선택된 탭에서만 ticker 를 돌려 "화면이 보이는 순간" 부터
+                // 애니메이션이 시작되게 한다.
+                for (var i = 0; i < _kTabScreens.length; i++)
+                  TickerMode(
+                    enabled: i == selectedIndex,
+                    child: _kTabScreens[i],
+                  ),
               ],
             ),
           ),
