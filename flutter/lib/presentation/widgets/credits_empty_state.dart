@@ -63,17 +63,25 @@ class CreditsEmptyState extends StatefulWidget {
 
 class _CreditsEmptyStateState extends State<CreditsEmptyState>
     with TickerProviderStateMixin {
+  // animationBehavior.preserve — 기기의 "애니메이션 제거"(개발자 옵션의 전환
+  // 애니메이션 배율 0 포함)가 켜져 있으면 AnimationController 는 지속시간을
+  // 5% 로 줄인다. 그러면 10초짜리 연출이 0.5초 만에 지나가, 탭을 열었을 때
+  // 이미 중간이거나 끝나 있다. 이 연출은 화면을 채우는 내용 자체라 그 축약을
+  // 따르지 않는다.
   late final AnimationController _scroll = AnimationController(
     vsync: this,
     duration: _kScrollDuration,
+    animationBehavior: AnimationBehavior.preserve,
   );
   late final AnimationController _exit = AnimationController(
     vsync: this,
     duration: _kExitDuration,
+    animationBehavior: AnimationBehavior.preserve,
   );
   late final AnimationController _reveal = AnimationController(
     vsync: this,
     duration: _kRevealDuration,
+    animationBehavior: AnimationBehavior.preserve,
   );
 
   @override

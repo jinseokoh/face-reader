@@ -36,20 +36,20 @@ double _creditsOpacity(WidgetTester tester) => tester
     .fold<double>(1, (acc, f) => acc * f.opacity.value);
 
 Widget get _subject => const CreditsEmptyState(
-      lines: _lines,
-      asset: 'assets/images/emotion-frown.png',
-      message: _message,
-    );
+  lines: _lines,
+  asset: 'assets/images/emotion-frown.png',
+  message: _message,
+);
 
 Future<void> _pump(WidgetTester tester) => tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: SizedBox(height: _height, width: _width, child: _subject),
-          ),
-        ),
+  MaterialApp(
+    home: Scaffold(
+      body: Center(
+        child: SizedBox(height: _height, width: _width, child: _subject),
       ),
-    );
+    ),
+  ),
+);
 
 /// 탭 셸과 같은 구조 — IndexedStack 은 숨은 탭도 build 하므로, 선택된 탭만
 /// TickerMode 로 열어 줘야 애니메이션이 "보이는 순간" 부터 시작한다.
@@ -80,8 +80,9 @@ Finder get _text => find.text(_lines.join('\n'));
 /// 문구 블록 중심의 세로 위치 — 영역 위쪽 기준.
 double _textCenter(WidgetTester tester, {bool skipOffstage = true}) {
   final finder = find.text(_lines.join('\n'), skipOffstage: skipOffstage);
-  final regionTop =
-      tester.getTopLeft(find.byType(CreditsEmptyState, skipOffstage: false)).dy;
+  final regionTop = tester
+      .getTopLeft(find.byType(CreditsEmptyState, skipOffstage: false))
+      .dy;
   return tester.getCenter(finder).dy - regionTop;
 }
 
@@ -151,13 +152,39 @@ void main() {
     expect(find.text(_message), findsOneWidget);
   });
 
-  testWidgets('숨은 탭에서는 흐르지 않고, 탭이 열린 순간부터 시작한다',
-      (tester) async {
+  testWidgets('기기 "애니메이션 제거" 설정에도 지속시간이 줄지 않는다', (tester) async {
+    // 이 설정이 켜지면 AnimationController 는 기본값(normal)에서 지속시간을
+    // 5% 로 줄인다 — 10초 연출이 0.5초가 되어 탭을 열자마자 끝나 있다.
+    tester.binding.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(
+      tester.binding.platformDispatcher.clearAccessibilityFeaturesTestValue,
+    );
+
+    await _pump(tester);
+    final textHeight = tester.getSize(_text).height;
+    final start = _height - textHeight / 2;
+
+    // 5% 로 줄었다면 이 시점엔 이미 다 끝나 1/4 에 가 있다.
+    await tester.pump(const Duration(seconds: 1));
+    final afterOneSecond = _textCenter(tester);
+    expect(afterOneSecond, lessThan(start), reason: '움직이긴 한다');
+    expect(
+      afterOneSecond,
+      greaterThan(_height * 0.5),
+      reason: '1초 만에 절반 넘게 가면 안 된다',
+    );
+  });
+
+  testWidgets('숨은 탭에서는 흐르지 않고, 탭이 열린 순간부터 시작한다', (tester) async {
     await _pumpInTabShell(tester, 1);
     final start = _textCenter(tester, skipOffstage: false);
     await tester.pump(const Duration(seconds: 20));
-    expect(_textCenter(tester, skipOffstage: false), start,
-        reason: '숨은 동안에는 제자리 — 애니메이션이 먼저 끝나면 안 된다');
+    expect(
+      _textCenter(tester, skipOffstage: false),
+      start,
+      reason: '숨은 동안에는 제자리 — 애니메이션이 먼저 끝나면 안 된다',
+    );
 
     await _pumpInTabShell(tester, 0);
     expect(_textCenter(tester), start, reason: '열린 순간에도 아직 처음 위치');
@@ -165,8 +192,7 @@ void main() {
     expect(_textCenter(tester), lessThan(start));
   });
 
-  testWidgets('SliverFillRemaining 안에서도 레이아웃 예외 없이 그려진다',
-      (tester) async {
+  testWidgets('SliverFillRemaining 안에서도 레이아웃 예외 없이 그려진다', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
