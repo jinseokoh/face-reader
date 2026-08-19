@@ -6,6 +6,11 @@ import 'package:flutter/material.dart';
 
 /// 관상 미등록 첫 화면 — 빈 여백을 영화 엔딩 크레딧처럼 채운다.
 ///
+/// 연출은 [CreditsEmptyState.active] 가 처음 true 가 된 순간(= 관상 탭으로
+/// 이동한 순간) 딱 한 번 시작한다. 탭 셸이 IndexedStack 이라 이 위젯은 앱을
+/// 켤 때 이미 만들어져 있어, 만들어진 시점을 시작 신호로 쓸 수 없다. 다른
+/// 탭에 갔다 돌아와도 다시 재생하지 않는다.
+///
 /// 1. 크레딧 문구가 맨 아래(하단 탭 바 바로 위)에서 나타나 **일정한 속도로**
 ///    계속 올라가고, 영역 위끝을 지나는 글자부터 차례로 잘려 사라진다.
 ///    중간에 멈추거나 제자리에서 fade out 하지 않는다.
@@ -41,7 +46,12 @@ class CreditsEmptyState extends StatefulWidget {
     required this.lines,
     required this.asset,
     required this.message,
+    required this.active,
   });
+
+  /// 이 화면이 지금 사용자에게 보이는 중인가. false → true 로 바뀌는 첫
+  /// 순간에 연출이 시작된다.
+  final bool active;
 
   /// 크레딧 문구. 줄바꿈은 이 목록 그대로 유지된다.
   final List<String> lines;
@@ -72,11 +82,24 @@ class _CreditsEmptyStateState extends State<CreditsEmptyState>
     animationBehavior: AnimationBehavior.preserve,
   );
 
+  bool _started = false;
+
   @override
   void initState() {
     super.initState();
-    // 탭이 보이는 순간부터 흐른다 — 숨은 탭에서는 TickerMode 가 꺼져 있어
-    // (app.dart 의 IndexedStack) 여기서 시작해도 멈춰 있다.
+    if (widget.active) _start();
+  }
+
+  @override
+  void didUpdateWidget(CreditsEmptyState oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.active) _start();
+  }
+
+  /// 첫 호출에만 반응한다 — 탭을 오갈 때마다 다시 재생하지 않는다.
+  void _start() {
+    if (_started) return;
+    _started = true;
     // 마지막 글자가 위로 빠져나간 뒤에 일러스트가 떠오른다 — 문구가 아직
     // 화면에 남아 있는 채로 겹치면 안 된다.
     _scroll.forward().whenComplete(() {

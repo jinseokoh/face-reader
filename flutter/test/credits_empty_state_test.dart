@@ -29,11 +29,14 @@ Future<void> _settleAll(WidgetTester tester) async {
 double _textBottom(WidgetTester tester) =>
     _textCenter(tester) + tester.getSize(_text).height / 2;
 
-Widget get _subject => const CreditsEmptyState(
+Widget _subjectWith({bool active = true}) => CreditsEmptyState(
   lines: _lines,
   asset: 'assets/images/emotion-frown.png',
   message: _message,
+  active: active,
 );
+
+Widget get _subject => _subjectWith();
 
 Future<void> _pump(WidgetTester tester) => tester.pumpWidget(
   MaterialApp(
@@ -45,8 +48,8 @@ Future<void> _pump(WidgetTester tester) => tester.pumpWidget(
   ),
 );
 
-/// 탭 셸과 같은 구조 — IndexedStack 은 숨은 탭도 build 하므로, 선택된 탭만
-/// TickerMode 로 열어 줘야 애니메이션이 "보이는 순간" 부터 시작한다.
+/// 탭 셸과 같은 구조 — IndexedStack 은 숨은 탭도 build 하므로 이 위젯은 앱을
+/// 켤 때 이미 만들어져 있다. 연출의 시작 신호는 생성 시점이 아니라 `active` 다.
 Future<void> _pumpInTabShell(WidgetTester tester, int index) =>
     tester.pumpWidget(
       MaterialApp(
@@ -60,7 +63,9 @@ Future<void> _pumpInTabShell(WidgetTester tester, int index) =>
                   child: SizedBox(
                     height: _height,
                     width: _width,
-                    child: i == 0 ? _subject : const SizedBox.shrink(),
+                    child: i == 0
+                        ? _subjectWith(active: index == 0)
+                        : const SizedBox.shrink(),
                   ),
                 ),
             ],
@@ -180,6 +185,44 @@ void main() {
     expect(_textCenter(tester), start, reason: '열린 순간에도 아직 처음 위치');
     await tester.pump(const Duration(seconds: 3));
     expect(_textCenter(tester), lessThan(start));
+  });
+
+  testWidgets('탭을 다시 열어도 되감기지 않는다 — 최초 1회만', (tester) async {
+    await _pumpInTabShell(tester, 1);
+    await _pumpInTabShell(tester, 0); // 최초 진입 — 여기서 시작
+    await tester.pump(const Duration(seconds: 4));
+    final afterFirstVisit = _textCenter(tester);
+
+    // 다른 탭으로 갔다가 돌아온다.
+    await _pumpInTabShell(tester, 1);
+    await _pumpInTabShell(tester, 0);
+    expect(
+      _textCenter(tester),
+      afterFirstVisit,
+      reason: '되돌아왔다고 처음부터 다시 시작하면 안 된다',
+    );
+    await tester.pump(const Duration(seconds: 2));
+    expect(_textCenter(tester), lessThan(afterFirstVisit), reason: '이어서 진행');
+  });
+
+  testWidgets('active 가 false 면 시작조차 하지 않는다', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              height: _height,
+              width: _width,
+              child: _subjectWith(active: false),
+            ),
+          ),
+        ),
+      ),
+    );
+    final start = _textCenter(tester);
+    await tester.pump(const Duration(seconds: 30));
+    expect(_textCenter(tester), start);
+    expect(_revealOpacity(tester), 0);
   });
 
   testWidgets('SliverFillRemaining 안에서도 레이아웃 예외 없이 그려진다', (tester) async {

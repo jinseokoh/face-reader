@@ -15,6 +15,10 @@ final selectedTabProvider = NotifierProvider<SelectedTabNotifier, int>(
 /// 가려진다. 시작 탭은 조건 없는 사실이므로 기본값 자리에 적는다.
 const int kInitialTabIndex = 2;
 
+/// 관상 탭의 index. 그 화면이 실제로 보이는지 판단해야 하는 곳이 쓴다
+/// (미등록 첫 화면의 크레딧 연출은 탭이 열린 순간에 시작해야 한다).
+const int kPhysiognomyTabIndex = 0;
+
 class SelectedTabNotifier extends Notifier<int> {
   @override
   int build() => kInitialTabIndex;

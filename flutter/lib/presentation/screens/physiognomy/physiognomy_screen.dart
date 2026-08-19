@@ -659,14 +659,19 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
               // 미등록 첫 화면은 통째로 비어 화면이 멎어 보인다. 크레딧
               // 문구가 올라간 뒤 일러스트가 떠오르는 2단 연출로 채운다.
               child: hasMyFace
-                  ? EmotionEmptyState(
-                      asset: emptyAsset,
-                      message: emptyMessage,
-                    )
-                  : CreditsEmptyState(
-                      lines: _kEmptyCredits,
-                      asset: emptyAsset,
-                      message: emptyMessage,
+                  ? EmotionEmptyState(asset: emptyAsset, message: emptyMessage)
+                  // 연출은 관상 탭이 실제로 열린 순간에 시작해야 한다. 탭
+                  // 셸이 IndexedStack 이라 이 화면은 앱을 켤 때 이미 만들어져
+                  // 있어, 만들어진 시점을 시작 신호로 쓸 수 없다.
+                  : Consumer(
+                      builder: (ctx, ref, _) => CreditsEmptyState(
+                        lines: _kEmptyCredits,
+                        asset: emptyAsset,
+                        message: emptyMessage,
+                        active:
+                            ref.watch(selectedTabProvider) ==
+                            kPhysiognomyTabIndex,
+                      ),
                     ),
             )
           else ...[
@@ -793,8 +798,7 @@ class _ProfileHintCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return const EmotionEmptyState(
       asset: 'assets/images/emotion-sad.png',
-      message:
-          '내 관상 등록이 필요합니다.',
+      message: '내 관상 등록이 필요합니다.',
     );
   }
 }
