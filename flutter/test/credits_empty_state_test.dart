@@ -17,13 +17,23 @@ const _width = 360.0;
 /// 스크롤 1회(10초)를 넘기는 시간.
 const _afterScroll = Duration(seconds: 12);
 
-/// 스크롤이 끝난 뒤 fade in 까지 마저 흘린다. 2단계는 1단계의
-/// `whenComplete` 로 시작하므로 프레임을 한 번 더 줘야 진행된다.
+/// 스크롤 → 문구 퇴장 → 일러스트 등장까지 전부 흘린다. 각 단계는 앞 단계의
+/// `whenComplete` 로 시작하므로 단계마다 프레임을 한 번 더 줘야 진행된다.
 Future<void> _settleAll(WidgetTester tester) async {
   await tester.pump(_afterScroll);
-  await tester.pump();
-  await tester.pump(const Duration(seconds: 1));
+  for (var i = 0; i < 2; i++) {
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 2));
+  }
 }
+
+/// 크레딧 문구를 감싼 FadeTransition 두 겹(등장·퇴장)의 곱.
+double _creditsOpacity(WidgetTester tester) => tester
+    .widgetList<FadeTransition>(
+      find.ancestor(of: _text, matching: find.byType(FadeTransition)),
+    )
+    .take(2)
+    .fold<double>(1, (acc, f) => acc * f.opacity.value);
 
 Widget get _subject => const CreditsEmptyState(
       lines: _lines,
@@ -107,15 +117,34 @@ void main() {
     expect(_textCenter(tester), closeTo(_height * 0.25, 1));
   });
 
-  testWidgets('일러스트·문구는 크레딧이 끝난 뒤에야 떠오른다', (tester) async {
+  testWidgets('문구는 3/4 에서 나타나고 1/4 에 닿은 뒤 사라진다', (tester) async {
+    await _pump(tester);
+    expect(_creditsOpacity(tester), 0, reason: '나타나기 전');
+
+    await tester.pump(const Duration(seconds: 2));
+    expect(_creditsOpacity(tester), 1, reason: '올라가는 동안엔 또렷하다');
+
+    await _settleAll(tester);
+    expect(_creditsOpacity(tester), 0, reason: '다 올라간 뒤 사라진다');
+  });
+
+  testWidgets('일러스트·문구는 크레딧이 사라진 뒤에야 떠오른다', (tester) async {
     await _pump(tester);
     expect(_revealOpacity(tester), 0, reason: '시작 시점엔 보이지 않는다');
 
     await tester.pump(const Duration(seconds: 5));
     expect(_revealOpacity(tester), 0, reason: '크레딧이 흐르는 동안에도 숨어 있다');
 
+    // 스크롤은 끝났지만 문구가 아직 사라지는 중 — 겹쳐 보이면 안 된다.
+    await tester.pump(const Duration(seconds: 6));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(_creditsOpacity(tester), greaterThan(0), reason: '아직 사라지는 중');
+    expect(_revealOpacity(tester), 0, reason: '문구가 남아 있으면 아직 안 뜬다');
+
     await _settleAll(tester);
-    expect(_revealOpacity(tester), 1, reason: '끝난 뒤 완전히 드러난다');
+    expect(_creditsOpacity(tester), 0);
+    expect(_revealOpacity(tester), 1, reason: '문구가 사라진 뒤 완전히 드러난다');
     expect(find.text(_message), findsOneWidget);
   });
 
