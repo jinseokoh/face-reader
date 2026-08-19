@@ -11,6 +11,7 @@ import 'package:facely/presentation/providers/compatibility_provider.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 import 'package:facely/presentation/widgets/purchase_sheet.dart';
+import 'package:facely/presentation/widgets/spinning_number_wheel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -164,7 +165,7 @@ Future<void> _ensureSupabaseId(WidgetRef ref, FaceReadingReport report) async {
 }
 
 /// "1코인이 필요합니다" 확인 다이얼로그 — 카메라 path 의 instructional modal 과
-/// 동일 스타일 (compatibility.png + 타이틀 + 안내 + [취소] [궁합보기]).
+/// 동일 스타일 (회전하는 숫자 휠 일러스트 + 타이틀 + 안내 + [취소] [궁합보기]).
 Future<bool?> _showConfirmDialog(BuildContext context) {
   return showDialog<bool>(
     context: context,
@@ -181,11 +182,7 @@ Future<bool?> _showConfirmDialog(BuildContext context) {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Image.asset(
-              'assets/images/compatibility.png',
-              height: 200,
-              fit: BoxFit.contain,
-            ),
+            const SpinningNumberWheel(size: 200),
             const SizedBox(height: 16),
             Text(
               '궁합 보기',
