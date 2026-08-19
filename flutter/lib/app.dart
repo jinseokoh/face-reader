@@ -24,6 +24,10 @@ import 'package:facely/presentation/screens/update_gate_screen.dart';
 import 'package:facely/presentation/widgets/ad_banner_dialog.dart';
 import 'package:facely/presentation/widgets/onboarding_intro.dart';
 
+/// 온보딩을 띄우기 전에 원격 설정 응답을 기다려 주는 최대 시간.
+/// 첫 프레임 뒤에 뜨는 모달이라 이 정도 지연은 눈에 띄지 않는다.
+const Duration _kRemoteConfigWait = Duration(milliseconds: 500);
+
 class MainApp extends ConsumerStatefulWidget {
   const MainApp({super.key});
 
@@ -45,6 +49,8 @@ class _MainAppState extends ConsumerState<MainApp> {
     super.initState();
     // 강제 업그레이드 게이트 — min_build 미달이면 닫을 수 없는 화면으로
     // 전부 덮는다 (딥링크 cold-start 도 MainApp 이 먼저 mount 되므로 관통).
+    // 조회 자체는 부팅 중에 이미 시작됐다 (`main.dart` 의 `_bootstrap`) —
+    // 여기서는 그 결과를 받아 쓴다.
     AppConfigService.instance.checkForceUpdate().then((r) {
       if (!mounted || !r.required) return;
       Navigator.of(context, rootNavigator: true).push(
@@ -85,6 +91,12 @@ class _MainAppState extends ConsumerState<MainApp> {
     if (prefs.get(kOnboardingNeverAgainKey) != null) return;
     // 내 관상이 등록돼 있으면 온보딩의 목적이 끝난 것 — 노출 종료.
     if (ref.read(historyProvider).any((r) => r.isMyFace)) return;
+    // 온보딩 첫 장의 제목·이미지는 원격 코퍼스 버전에 따라 갈린다. 조회는
+    // 부팅 중에 시작되지만 아직 안 왔을 수 있어 잠깐만 기다린다 — 넘기면
+    // 그냥 띄운다 (온보딩을 네트워크에 인질로 잡지 않는다).
+    await AppConfigService.instance.ready
+        .timeout(_kRemoteConfigWait, onTimeout: () {});
+    if (!mounted) return;
     final result = await showOnboardingIntro(context);
     if (!mounted) return;
     switch (result) {

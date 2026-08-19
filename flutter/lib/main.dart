@@ -6,6 +6,7 @@ import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/data/services/admob_service.dart';
 import 'package:facely/data/services/analytics_service.dart';
+import 'package:facely/data/services/app_config_service.dart';
 import 'package:facely/data/services/auth_service.dart';
 import 'package:facely/data/services/coin_service.dart';
 import 'package:facely/data/services/deep_link_service.dart';
@@ -69,6 +70,11 @@ Future<void> _bootstrap() async {
     ),
   );
   await initHive();
+  // 원격 설정(app_config) — 응답 없이는 온보딩 문구·이미지가 fallback 으로
+  // 나가므로 부팅 대기 시간에 미리 띄워 남은 init 과 겹쳐 돌린다. 응답의
+  // Hive 캐시 기록이 걸려 있어 initHive 뒤에서 시작한다. 결과 소비는
+  // `app.dart` 의 강제 업그레이드 게이트와 온보딩(AppConfigService.ready).
+  unawaited(AppConfigService.instance.checkForceUpdate());
   await ThumbnailPaths.initCache();
   await AuthService().initialize();
   // 딥링크 pending 은 MainApp build 이전에 준비돼야 initState 가 회수 가능 —

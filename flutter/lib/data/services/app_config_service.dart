@@ -23,12 +23,17 @@ class AppConfigService {
   NarrativeVersion? _narrativeVersion;
   bool _cacheRead = false;
 
+  /// 진행 중이거나 이미 끝난 조회. 호출부가 둘(부팅 · 강제 업그레이드 게이트)
+  /// 이라 요청이 두 번 나가지 않도록 첫 호출의 Future 를 재사용한다.
+  Future<ForceUpdateResult>? _check;
+
   /// 서술 코퍼스 버전. `checkForceUpdate()` 가 같은 조회에서 갱신한다.
   ///
-  /// 조회는 네트워크라 수백 ms 가 걸리는데 온보딩은 첫 프레임 직후에 뜬다
-  /// (`app.dart` 의 `addPostFrameCallback`). 마지막으로 받은 값을 Hive 에
-  /// 남겨 다음 실행부터 그 값으로 시작하지만, **최초 설치 직후 첫 실행**은
-  /// 캐시가 없어 어느 쪽인지 알 수 없다.
+  /// 조회는 네트워크라 수백 ms 가 걸린다. 부팅 중(`main.dart` 의 `_bootstrap`)
+  /// 에 미리 띄우고 온보딩은 표시 직전에 [ready] 를 짧게 기다리지만, 응답이
+  /// 그 예산을 넘기면 여전히 확정 전이다. 마지막으로 받은 값을 Hive 에 남겨
+  /// 다음 실행부터 그 값으로 시작하고, **최초 설치 직후 첫 실행**만 캐시가
+  /// 없어 어느 쪽인지 알 수 없다.
   ///
   /// 확정 전 기본값은 **v2** 다. v1 은 사진 속 상대의 앞으로의 행동을
   /// 단정하고 미래를 말하는 서술이라, 조회가 안 될 때 그쪽이 나가는 것이
@@ -61,9 +66,20 @@ class AppConfigService {
       ? CompatVersion.v2
       : CompatVersion.v1;
 
+  /// 조회가 끝날 때까지 (성공·실패 무관). 아직 시작 전이면 즉시 완료.
+  /// 원격 값에 따라 화면이 갈리는 곳이 조회를 짧게 기다릴 때 쓴다 —
+  /// 기다리는 쪽이 반드시 자기 타임아웃을 걸 것. 이 Future 자체는
+  /// [checkForceUpdate] 의 2초 예산이 끝나야 완료된다.
+  Future<void> get ready async {
+    await _check;
+  }
+
   /// 내 buildNumber < 플랫폼별 min_build 면 required=true.
   /// 조회 실패·타임아웃은 fail-open (네트워크 사정으로 앱을 잠그지 않는다).
-  Future<ForceUpdateResult> checkForceUpdate() async {
+  /// 두 번째 호출부터는 첫 호출의 결과를 그대로 돌려준다 (요청 1회).
+  Future<ForceUpdateResult> checkForceUpdate() => _check ??= _fetch();
+
+  Future<ForceUpdateResult> _fetch() async {
     const pass = (required: false, notice: null);
     try {
       final row = await Supabase.instance.client
@@ -104,11 +120,12 @@ class AppConfigService {
     }
   }
 
-  /// 테스트 전용 — 메모리 상태만 날려 "다음 실행" 을 흉내 낸다.
+  /// 테스트 전용 — 메모리 상태(조회 결과 포함)만 날려 "다음 실행" 을 흉내 낸다.
   @visibleForTesting
   void debugResetNarrativeVersion() {
     _narrativeVersion = null;
     _cacheRead = false;
+    _check = null;
   }
 
   /// 테스트 전용 — 원격 row 적용 경로를 네트워크 없이 부른다.

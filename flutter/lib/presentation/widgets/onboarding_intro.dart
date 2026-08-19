@@ -27,6 +27,7 @@ const _kPageColors = [
 const _kPages = [
   _OnboardingPageData(
     asset: 'assets/images/onboarding1.png',
+    assetV1: 'assets/images/onboarding0.png',
     title: '관상으로 풀어보는\n친구 만들기',
     titleV1: 'AI로 얼굴의 특징을 측정하고\n학문적으로 그 의미를 해석합니다.',
     body: '우리 그룹의 케미를 한눈에 보고\n새로운 대화의 계기를 만들어보세요.',
@@ -69,7 +70,8 @@ const double _kRevealVerticalPosition = 0.75;
 const double _kTopBarHeight = 48;
 
 /// 온보딩 안내 — 전체 흐름 → 관상 → 궁합 → 케미 4페이지 인트로.
-/// 이미지는 `onboarding1.png` ~ `onboarding4.png` 를 순서대로 쓴다.
+/// 이미지는 `onboarding1.png` ~ `onboarding4.png` 를 순서대로 쓰되, 코퍼스가
+/// v1 로 확정된 경우 첫 장만 `onboarding0.png` 로 갈린다 ([_OnboardingPageData.resolvedAsset]).
 /// `warm` 은 [_kPageColors] 의 짝을 따른다 — index 짝수(cream·shell)가 true,
 /// 홀수(흰 배경)가 false. **페이지를 재배열하면 이 교대를 다시 맞출 것.**
 /// MainApp 이 첫 프레임 뒤에 호출한다.
@@ -386,7 +388,7 @@ class _OnboardingPage extends StatelessWidget {
                   const EdgeInsets.symmetric(horizontal: _imageHInset),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(AppRadius.xl),
-                child: Image.asset(data.asset, fit: BoxFit.contain),
+                child: Image.asset(data.resolvedAsset, fit: BoxFit.contain),
               ),
             ),
           ),
@@ -437,6 +439,9 @@ class _OnboardingPage extends StatelessWidget {
 
 class _OnboardingPageData {
   final String asset;
+
+  /// v1 코퍼스일 때 [asset] 대신 쓰는 이미지. null 이면 버전과 무관하게 [asset].
+  final String? assetV1;
   final String title;
 
   /// v1 코퍼스일 때 [title] 대신 쓰는 제목. null 이면 버전과 무관하게 [title].
@@ -451,6 +456,7 @@ class _OnboardingPageData {
 
   const _OnboardingPageData({
     required this.asset,
+    this.assetV1,
     required this.title,
     this.titleV1,
     this.chips = const [],
@@ -461,10 +467,13 @@ class _OnboardingPageData {
   /// 원격 설정(`app_config.{ios,android}_narrative_version`)이 정한 코퍼스
   /// 버전에 맞는 제목. v1 제목은 v1 이라고 확인됐을 때만 쓴다 —
   /// 확정 전 기본값은 v2 다 (`AppConfigService.narrativeVersion`).
-  String get resolvedTitle =>
-      AppConfigService.instance.narrativeVersion == NarrativeVersion.v1
-          ? (titleV1 ?? title)
-          : title;
+  String get resolvedTitle => _isV1 ? (titleV1 ?? title) : title;
+
+  /// [resolvedTitle] 과 같은 규칙으로 고른 이미지.
+  String get resolvedAsset => _isV1 ? (assetV1 ?? asset) : asset;
+
+  static bool get _isV1 =>
+      AppConfigService.instance.narrativeVersion == NarrativeVersion.v1;
 }
 
 /// 무료·유료 표기 chip — §3.3 단일톤. 배경색 페이지 위에서도 보이도록

@@ -8,6 +8,8 @@
 // 실행:
 //   flutter test test/app_config_narrative_cache_test.dart
 
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 
@@ -76,6 +78,27 @@ void main() {
     // 다음 실행 흉내 — 메모리 상태만 날린다.
     AppConfigService.instance.debugResetNarrativeVersion();
     expect(AppConfigService.instance.narrativeVersion, NarrativeVersion.v2);
+  });
+
+  test('조회는 한 번만 — 부팅과 강제 업그레이드 게이트가 같은 Future 를 쓴다', () {
+    // 부팅(main.dart) 이 먼저 띄우고 MainApp.initState 가 결과를 받아 쓴다.
+    // 두 호출이 각각 요청을 내면 앱 시작마다 원격 조회가 두 번 나간다.
+    final first = AppConfigService.instance.checkForceUpdate();
+    expect(identical(AppConfigService.instance.checkForceUpdate(), first),
+        isTrue);
+  });
+
+  test('ready — 조회 전에는 즉시, 시작 뒤에는 조회가 끝나야 완료', () async {
+    var done = false;
+    // 아무도 조회를 시작하지 않았으면 기다릴 것이 없다.
+    await AppConfigService.instance.ready;
+
+    final check = AppConfigService.instance.checkForceUpdate();
+    unawaited(AppConfigService.instance.ready.then((_) => done = true));
+    expect(done, isFalse, reason: '조회가 끝나기 전에는 완료되면 안 된다');
+    await check;
+    await Future<void>.delayed(Duration.zero);
+    expect(done, isTrue);
   });
 
   test('원격이 1 로 내려오면 캐시도 1 로 덮인다', () async {
