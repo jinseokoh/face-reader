@@ -17,23 +17,17 @@ const _width = 360.0;
 /// 스크롤 1회(10초)를 넘기는 시간.
 const _afterScroll = Duration(seconds: 12);
 
-/// 스크롤 → 문구 퇴장 → 일러스트 등장까지 전부 흘린다. 각 단계는 앞 단계의
-/// `whenComplete` 로 시작하므로 단계마다 프레임을 한 번 더 줘야 진행된다.
+/// 스크롤 → 일러스트 등장까지 전부 흘린다. 등장은 스크롤의 `whenComplete`
+/// 로 시작하므로 프레임을 한 번 더 줘야 진행된다.
 Future<void> _settleAll(WidgetTester tester) async {
   await tester.pump(_afterScroll);
-  for (var i = 0; i < 2; i++) {
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 2));
-  }
+  await tester.pump();
+  await tester.pump(const Duration(seconds: 2));
 }
 
-/// 크레딧 문구를 감싼 FadeTransition 두 겹(등장·퇴장)의 곱.
-double _creditsOpacity(WidgetTester tester) => tester
-    .widgetList<FadeTransition>(
-      find.ancestor(of: _text, matching: find.byType(FadeTransition)),
-    )
-    .take(2)
-    .fold<double>(1, (acc, f) => acc * f.opacity.value);
+/// 문구 블록 아래끝 — 영역 위끝 기준. 0 이하면 화면에서 완전히 빠져나갔다.
+double _textBottom(WidgetTester tester) =>
+    _textCenter(tester) + tester.getSize(_text).height / 2;
 
 Widget get _subject => const CreditsEmptyState(
   lines: _lines,
@@ -101,54 +95,51 @@ double _revealOpacity(WidgetTester tester) => tester
     .value;
 
 void main() {
-  testWidgets('맨 아래에서 시작해 1/4 지점에서 멈춘다', (tester) async {
+  testWidgets('맨 아래에서 시작해 위로 완전히 빠져나간다', (tester) async {
     await _pump(tester);
     // 시작할 때 문구 아래끝이 영역 아래끝(= 하단 탭 바 바로 위)에 붙는다.
-    final textHeight = tester.getSize(_text).height;
-    final start = _height - textHeight / 2;
-    expect(_textCenter(tester), closeTo(start, 1));
-
-    await tester.pump(const Duration(seconds: 5));
-    final mid = _textCenter(tester);
-    expect(mid, lessThan(start));
-    expect(mid, greaterThan(_height * 0.25));
+    expect(_textBottom(tester), closeTo(_height, 1));
 
     await _settleAll(tester);
-    expect(_textCenter(tester), closeTo(_height * 0.25, 1));
+    // 끝날 때 마지막 글자까지 영역 위끝 밖으로 나간다.
+    expect(_textBottom(tester), lessThanOrEqualTo(0));
 
-    // 멈춘 뒤로는 더 움직이지 않는다 (1회만).
+    // 빠져나간 뒤로는 더 움직이지 않는다 (1회만).
+    final end = _textCenter(tester);
     await tester.pump(const Duration(seconds: 20));
-    expect(_textCenter(tester), closeTo(_height * 0.25, 1));
+    expect(_textCenter(tester), end);
   });
 
-  testWidgets('문구는 맨 아래에서 나타나고 1/4 에 닿은 뒤 사라진다', (tester) async {
+  testWidgets('멈추지 않고 일정한 속도로 올라간다', (tester) async {
     await _pump(tester);
-    expect(_creditsOpacity(tester), 0, reason: '나타나기 전');
-
-    await tester.pump(const Duration(seconds: 2));
-    expect(_creditsOpacity(tester), 1, reason: '올라가는 동안엔 또렷하다');
-
-    await _settleAll(tester);
-    expect(_creditsOpacity(tester), 0, reason: '다 올라간 뒤 사라진다');
+    const step = Duration(seconds: 2);
+    final marks = <double>[_textCenter(tester)];
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(step);
+      marks.add(_textCenter(tester));
+    }
+    final deltas = [
+      for (var i = 1; i < marks.length; i++) marks[i - 1] - marks[i],
+    ];
+    // 2초마다 같은 거리만큼 올라간다 — 중간에 느려지거나 멈추지 않는다.
+    for (final d in deltas) {
+      expect(d, closeTo(deltas.first, 0.5));
+      expect(d, greaterThan(0));
+    }
   });
 
-  testWidgets('일러스트·문구는 크레딧이 사라진 뒤에야 떠오른다', (tester) async {
+  testWidgets('일러스트·문구는 크레딧이 다 빠져나간 뒤에야 떠오른다', (tester) async {
     await _pump(tester);
     expect(_revealOpacity(tester), 0, reason: '시작 시점엔 보이지 않는다');
 
-    await tester.pump(const Duration(seconds: 5));
-    expect(_revealOpacity(tester), 0, reason: '크레딧이 흐르는 동안에도 숨어 있다');
-
-    // 스크롤은 끝났지만 문구가 아직 사라지는 중 — 겹쳐 보이면 안 된다.
-    await tester.pump(const Duration(seconds: 6));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
-    expect(_creditsOpacity(tester), greaterThan(0), reason: '아직 사라지는 중');
-    expect(_revealOpacity(tester), 0, reason: '문구가 남아 있으면 아직 안 뜬다');
+    // 문구가 아직 화면에 걸쳐 있는 동안에는 겹쳐 보이면 안 된다.
+    await tester.pump(const Duration(seconds: 9));
+    expect(_textBottom(tester), greaterThan(0), reason: '아직 남아 있다');
+    expect(_revealOpacity(tester), 0, reason: '남아 있으면 아직 안 뜬다');
 
     await _settleAll(tester);
-    expect(_creditsOpacity(tester), 0);
-    expect(_revealOpacity(tester), 1, reason: '문구가 사라진 뒤 완전히 드러난다');
+    expect(_textBottom(tester), lessThanOrEqualTo(0));
+    expect(_revealOpacity(tester), 1, reason: '다 빠져나간 뒤 완전히 드러난다');
     expect(find.text(_message), findsOneWidget);
   });
 
@@ -162,10 +153,9 @@ void main() {
     );
 
     await _pump(tester);
-    final textHeight = tester.getSize(_text).height;
-    final start = _height - textHeight / 2;
+    final start = _textCenter(tester);
 
-    // 5% 로 줄었다면 이 시점엔 이미 다 끝나 1/4 에 가 있다.
+    // 5% 로 줄었다면 이 시점엔 이미 화면 밖으로 다 빠져나갔다.
     await tester.pump(const Duration(seconds: 1));
     final afterOneSecond = _textCenter(tester);
     expect(afterOneSecond, lessThan(start), reason: '움직이긴 한다');

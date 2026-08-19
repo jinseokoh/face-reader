@@ -4,13 +4,13 @@ import 'package:facely/core/theme.dart';
 import 'package:facely/presentation/widgets/emotion_empty_state.dart';
 import 'package:flutter/material.dart';
 
-/// 관상 미등록 첫 화면 — 빈 여백을 세 단계로 채운다.
+/// 관상 미등록 첫 화면 — 빈 여백을 영화 엔딩 크레딧처럼 채운다.
 ///
-/// 1. 크레딧 문구가 맨 아래(하단 탭 바 바로 위)에서 천천히 나타나 영역의
-///    1/4 지점까지 올라간다.
-/// 2. 올라간 자리에서 문구가 완전히 사라진다.
-/// 3. 화면이 비워진 다음에야 [EmotionEmptyState] (일러스트 + 문구)가 화면
-///    중앙에 한꺼번에 fade in 한다.
+/// 1. 크레딧 문구가 맨 아래(하단 탭 바 바로 위)에서 나타나 **일정한 속도로**
+///    계속 올라가고, 영역 위끝을 지나는 글자부터 차례로 잘려 사라진다.
+///    중간에 멈추거나 제자리에서 fade out 하지 않는다.
+/// 2. 마지막 글자까지 위로 빠져나간 다음에야 [EmotionEmptyState]
+///    (일러스트 + 문구)가 화면 중앙에 한꺼번에 fade in 한다.
 ///
 /// 글자는 [AppText.displaySubtitle] (SongMyung) 고정 — 장식 문구라 본문
 /// 토큰과 섞이지 않는다.
@@ -20,20 +20,13 @@ import 'package:flutter/material.dart';
 /// 재는 `SliverFillRemaining(hasScrollBody: false)` 안에 넣으면 그 영역의
 /// 레이아웃이 통째로 실패한다.
 
-/// 문구가 3/4 에서 1/4 까지 올라가는 데 걸리는 시간.
-/// 읽는 속도보다 느려야 해서 넉넉히 잡는다.
+/// 문구 아래끝이 영역 아래끝에 붙은 상태에서 출발해 위끝 밖으로 완전히
+/// 빠져나가기까지 걸리는 시간. 이동 거리는 영역 높이와 같고 곡선을 걸지
+/// 않으므로 속도가 일정하다. 읽는 속도보다 느려야 해서 넉넉히 잡는다.
 const Duration _kScrollDuration = Duration(seconds: 10);
 
-/// 다 올라간 문구가 사라지는 시간.
-const Duration _kExitDuration = Duration(milliseconds: 900);
-
-/// 문구가 사라진 뒤 일러스트·문구가 떠오르는 시간.
+/// 문구가 다 빠져나간 뒤 일러스트·문구가 떠오르는 시간.
 const Duration _kRevealDuration = Duration(milliseconds: 700);
-
-/// 문구 블록이 멈추는 지점 — 영역 높이 대비 비율(블록 중심 기준).
-/// 시작 지점은 비율이 아니라 "블록 아래끝 = 영역 아래끝" 이다. 영역의 아래끝은
-/// 하단 탭 바 바로 위라, 문구가 탭 바 위에서 떠올라 올라가는 것처럼 보인다.
-const double _kScrollTo = 0.25;
 
 /// 문구가 불쑥 나타나지 않도록 이동 초반에 걸치는 fade in 구간.
 const double _kTextFadeIn = 0.08;
@@ -73,11 +66,6 @@ class _CreditsEmptyStateState extends State<CreditsEmptyState>
     duration: _kScrollDuration,
     animationBehavior: AnimationBehavior.preserve,
   );
-  late final AnimationController _exit = AnimationController(
-    vsync: this,
-    duration: _kExitDuration,
-    animationBehavior: AnimationBehavior.preserve,
-  );
   late final AnimationController _reveal = AnimationController(
     vsync: this,
     duration: _kRevealDuration,
@@ -89,20 +77,16 @@ class _CreditsEmptyStateState extends State<CreditsEmptyState>
     super.initState();
     // 탭이 보이는 순간부터 흐른다 — 숨은 탭에서는 TickerMode 가 꺼져 있어
     // (app.dart 의 IndexedStack) 여기서 시작해도 멈춰 있다.
-    // 올라간다 → 사라진다 → 일러스트가 떠오른다. 각 단계는 앞 단계가 끝난
-    // 뒤에만 시작한다 — 문구가 남아 있는 채로 일러스트가 겹치면 안 된다.
+    // 마지막 글자가 위로 빠져나간 뒤에 일러스트가 떠오른다 — 문구가 아직
+    // 화면에 남아 있는 채로 겹치면 안 된다.
     _scroll.forward().whenComplete(() {
-      if (!mounted) return;
-      _exit.forward().whenComplete(() {
-        if (mounted) _reveal.forward();
-      });
+      if (mounted) _reveal.forward();
     });
   }
 
   @override
   void dispose() {
     _scroll.dispose();
-    _exit.dispose();
     _reveal.dispose();
     super.dispose();
   }
@@ -115,30 +99,28 @@ class _CreditsEmptyStateState extends State<CreditsEmptyState>
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
             child: ClipRect(
-              // 등장(이동 초반)과 퇴장(이동 완료 후)을 각각 건다.
+              // 등장에만 fade 를 건다. 퇴장은 영역 위끝을 지나며 잘려
+              // 나가는 것으로 처리한다 (엔딩 크레딧과 같은 방식).
               child: FadeTransition(
                 opacity: CurvedAnimation(
                   parent: _scroll,
                   curve: const Interval(0, _kTextFadeIn),
                 ),
-                child: FadeTransition(
-                  opacity: ReverseAnimation(_exit),
-                  child: CustomSingleChildLayout(
-                    delegate: _CreditsLayout(_scroll),
-                    child: Text(
-                      widget.lines.join('\n'),
-                      style: AppText.displaySubtitle.copyWith(
-                        height: _kLineHeight,
-                      ),
-                      textAlign: TextAlign.center,
+                child: CustomSingleChildLayout(
+                  delegate: _CreditsLayout(_scroll),
+                  child: Text(
+                    widget.lines.join('\n'),
+                    style: AppText.displaySubtitle.copyWith(
+                      height: _kLineHeight,
                     ),
+                    textAlign: TextAlign.center,
                   ),
                 ),
               ),
             ),
           ),
         ),
-        // 문구가 완전히 사라진 뒤 일러스트와 한 줄 문구가 한꺼번에 떠오른다.
+        // 문구가 위로 다 빠져나간 뒤 일러스트와 한 줄 문구가 함께 떠오른다.
         Center(
           child: FadeTransition(
             opacity: _reveal,
@@ -153,9 +135,10 @@ class _CreditsEmptyStateState extends State<CreditsEmptyState>
   }
 }
 
-/// 문구 블록을 영역 맨 아래(아래끝 맞춤)에서 [_kScrollTo] 지점까지 밀어
-/// 올린다. 자식 높이를 레이아웃 단계에서 직접 받으므로 문구가 몇 줄이든
-/// 시작할 때 잘리지 않고, 멈추는 지점도 정확하다.
+/// 문구 블록을 영역 맨 아래(아래끝 맞춤)에서 위끝 밖(아래끝이 영역 위끝에
+/// 닿는 지점)까지 일정한 속도로 밀어 올린다. 자식 높이를 레이아웃 단계에서
+/// 직접 받으므로 문구가 몇 줄이든 시작할 때 잘리지 않고, 끝날 때는 마지막
+/// 글자까지 확실히 빠져나간다.
 class _CreditsLayout extends SingleChildLayoutDelegate {
   _CreditsLayout(this.progress) : super(relayout: progress);
 
@@ -169,7 +152,7 @@ class _CreditsLayout extends SingleChildLayoutDelegate {
   Offset getPositionForChild(Size size, Size childSize) {
     final center = lerpDouble(
       size.height - childSize.height / 2,
-      size.height * _kScrollTo,
+      -childSize.height / 2,
       progress.value,
     )!;
     return Offset(0, center - childSize.height / 2);
