@@ -37,6 +37,11 @@ class FaceMeshPage extends ConsumerStatefulWidget {
   ConsumerState<FaceMeshPage> createState() => _FaceMeshPageState();
 }
 
+/// 정면 auto-countdown — 녹색을 이만큼 유지하면 자동 촬영한다.
+/// 안내 문구([_FaceMeshPageState._phaseInstruction])도 이 값을 그대로 쓴다.
+/// 숫자를 두 곳에 따로 적으면 문구와 실제 동작이 어긋난다.
+const int _kCountdownSeconds = 2;
+
 enum _CapturePhase { frontal, lateral }
 
 class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBindingObserver {
@@ -270,7 +275,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
             ),
           ),
         ),
-        // Auto-countdown big number (3→2→1) — fires when overlay is stably
+        // Auto-countdown big number (2→1) — fires when overlay is stably
         // green. Cancelled if green is broken.
         if (_countdownRemaining != null)
           Positioned.fill(
@@ -749,7 +754,8 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
   /// modal popup 본문에 표시되는 phase 별 안내 문구.
   String _phaseInstruction(String title) {
     if (title.contains('정면')) {
-      return '안면 계측 점선이 녹색으로 변할 때까지 조정 후 3초 이상 유지하면 자동 촬영됩니다.';
+      return '안면 계측 점선이 녹색으로 변할 때까지 조정 후 '
+          '$_kCountdownSeconds초 이상 유지하면 자동 촬영됩니다.';
     }
     return '한쪽 귀가 살짝 안 보일 때까지\n고개를 45도 정도 옆으로 돌려주세요.';
   }
@@ -988,9 +994,10 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
 
   void _startCountdown() {
     _countdownTimer?.cancel();
-    setState(() => _countdownRemaining = 2);
-    _countdownTimer =
-        Timer.periodic(const Duration(milliseconds: 800), (timer) {
+    setState(() => _countdownRemaining = _kCountdownSeconds);
+    // 1초 tick — 숫자가 [_kCountdownSeconds] 에서 1 까지 내려가고 그 다음
+    // tick 에 촬영하므로, 녹색을 실제로 유지해야 하는 시간이 그대로 초가 된다.
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) {
         timer.cancel();
         return;
