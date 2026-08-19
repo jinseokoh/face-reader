@@ -6,7 +6,8 @@ import 'package:flutter/material.dart';
 
 /// 관상 미등록 첫 화면 — 빈 여백을 세 단계로 채운다.
 ///
-/// 1. 크레딧 문구가 영역의 3/4 지점에서 천천히 나타나 1/4 지점까지 올라간다.
+/// 1. 크레딧 문구가 맨 아래(하단 탭 바 바로 위)에서 천천히 나타나 영역의
+///    1/4 지점까지 올라간다.
 /// 2. 올라간 자리에서 문구가 완전히 사라진다.
 /// 3. 화면이 비워진 다음에야 [EmotionEmptyState] (일러스트 + 문구)가 화면
 ///    중앙에 한꺼번에 fade in 한다.
@@ -29,8 +30,9 @@ const Duration _kExitDuration = Duration(milliseconds: 900);
 /// 문구가 사라진 뒤 일러스트·문구가 떠오르는 시간.
 const Duration _kRevealDuration = Duration(milliseconds: 700);
 
-/// 문구 블록 중심이 지나는 구간 — 영역 높이 대비 비율.
-const double _kScrollFrom = 0.75;
+/// 문구 블록이 멈추는 지점 — 영역 높이 대비 비율(블록 중심 기준).
+/// 시작 지점은 비율이 아니라 "블록 아래끝 = 영역 아래끝" 이다. 영역의 아래끝은
+/// 하단 탭 바 바로 위라, 문구가 탭 바 위에서 떠올라 올라가는 것처럼 보인다.
 const double _kScrollTo = 0.25;
 
 /// 문구가 불쑥 나타나지 않도록 이동 초반에 걸치는 fade in 구간.
@@ -143,9 +145,9 @@ class _CreditsEmptyStateState extends State<CreditsEmptyState>
   }
 }
 
-/// 문구 블록의 중심을 영역의 [_kScrollFrom] 지점에서 [_kScrollTo] 지점까지
-/// 밀어 올린다. 자식 높이를 레이아웃 단계에서 직접 받으므로 문구가 몇 줄이든
-/// 중심이 정확히 그 두 지점을 지난다.
+/// 문구 블록을 영역 맨 아래(아래끝 맞춤)에서 [_kScrollTo] 지점까지 밀어
+/// 올린다. 자식 높이를 레이아웃 단계에서 직접 받으므로 문구가 몇 줄이든
+/// 시작할 때 잘리지 않고, 멈추는 지점도 정확하다.
 class _CreditsLayout extends SingleChildLayoutDelegate {
   _CreditsLayout(this.progress) : super(relayout: progress);
 
@@ -158,7 +160,7 @@ class _CreditsLayout extends SingleChildLayoutDelegate {
   @override
   Offset getPositionForChild(Size size, Size childSize) {
     final center = lerpDouble(
-      size.height * _kScrollFrom,
+      size.height - childSize.height / 2,
       size.height * _kScrollTo,
       progress.value,
     )!;

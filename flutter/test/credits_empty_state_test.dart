@@ -100,13 +100,16 @@ double _revealOpacity(WidgetTester tester) => tester
     .value;
 
 void main() {
-  testWidgets('3/4 지점에서 시작해 1/4 지점에서 멈춘다', (tester) async {
+  testWidgets('맨 아래에서 시작해 1/4 지점에서 멈춘다', (tester) async {
     await _pump(tester);
-    expect(_textCenter(tester), closeTo(_height * 0.75, 1));
+    // 시작할 때 문구 아래끝이 영역 아래끝(= 하단 탭 바 바로 위)에 붙는다.
+    final textHeight = tester.getSize(_text).height;
+    final start = _height - textHeight / 2;
+    expect(_textCenter(tester), closeTo(start, 1));
 
     await tester.pump(const Duration(seconds: 5));
     final mid = _textCenter(tester);
-    expect(mid, lessThan(_height * 0.75));
+    expect(mid, lessThan(start));
     expect(mid, greaterThan(_height * 0.25));
 
     await _settleAll(tester);
@@ -117,7 +120,7 @@ void main() {
     expect(_textCenter(tester), closeTo(_height * 0.25, 1));
   });
 
-  testWidgets('문구는 3/4 에서 나타나고 1/4 에 닿은 뒤 사라진다', (tester) async {
+  testWidgets('문구는 맨 아래에서 나타나고 1/4 에 닿은 뒤 사라진다', (tester) async {
     await _pump(tester);
     expect(_creditsOpacity(tester), 0, reason: '나타나기 전');
 
