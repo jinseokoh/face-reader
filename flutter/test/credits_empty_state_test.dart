@@ -130,6 +130,55 @@ void main() {
     expect(_textCenter(tester), end);
   });
 
+  testWidgets('문구가 화면보다 길어도 화면 아래 바깥에서 시작한다', (tester) async {
+    // 문구는 계속 길어진다. 출발 자세가 문구 길이에 따라 달라지면(예: 아래끝
+    // 맞춤) 화면을 가득 채운 채 시작해 "위에서 시작" 처럼 보인다.
+    final long = [for (var i = 0; i < 40; i++) '$i 번째 줄이로다.'];
+    await _pumpAndPrime(
+      tester,
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              height: _height,
+              width: _width,
+              child: CreditsEmptyState(
+                lines: long,
+                asset: 'assets/images/emotion-frown.png',
+                message: _message,
+                active: true,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    final text = find.text(long.join('\n'));
+    final regionTop = tester
+        .getTopLeft(find.byType(CreditsEmptyState, skipOffstage: false))
+        .dy;
+    final textHeight = tester.getSize(text).height;
+    expect(
+      textHeight,
+      greaterThan(_height),
+      reason: '이 테스트는 문구가 화면보다 긴 경우를 다룬다',
+    );
+
+    final top = tester.getTopLeft(text).dy - regionTop;
+    expect(top, closeTo(_height, 1), reason: '첫 줄이 영역 아래끝에서 출발한다');
+
+    // 속도는 문구 길이와 무관하게 일정하다 — 거리에서 지속시간을 역산한다.
+    await tester.pump(const Duration(seconds: 1));
+    final moved = _height - (tester.getTopLeft(text).dy - regionTop);
+    expect(moved, closeTo(60, 2), reason: '초당 60px');
+
+    // 길이에 비례한 시간이 지나면 마지막 글자까지 빠져나간다.
+    final travel = _height + textHeight;
+    await tester.pump(Duration(milliseconds: (travel / 60 * 1000).round()));
+    final bottom = tester.getBottomLeft(text).dy - regionTop;
+    expect(bottom, lessThanOrEqualTo(0));
+  });
+
   testWidgets('멈추지 않고 일정한 속도로 올라간다', (tester) async {
     await _pump(tester);
     const step = Duration(seconds: 1);
