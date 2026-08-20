@@ -24,6 +24,7 @@ import 'package:facely/presentation/screens/compatibility/compatibility_unlock_a
 import 'package:facely/presentation/widgets/coin_chip.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
+import 'package:facely/presentation/widgets/credits_empty_state.dart';
 import 'package:facely/presentation/widgets/emotion_empty_state.dart';
 import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
 import 'package:facely/presentation/widgets/primary_button.dart';
@@ -35,6 +36,28 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
+/// 미등록 첫 화면의 크레딧 문구 — 빈 여백을 채운다.
+/// 줄바꿈은 이 목록 그대로 유지된다 ([CreditsEmptyState]).
+const List<String> _kEmptyCredits = [
+  '궁합은 두 얼굴이',
+  '마주 보는 자리로다.\n',
+  '누구와는 맞고 누구와는',
+  '어긋난다는 점괘가 아니라,',
+  '서로 다른 두 사람이',
+  '어디서 부딪히고',
+  '어디서 통하는지',
+  '그 결을 살피는 일이오.\n',
+  '기질이 닮아 편안한 사이가 있고,',
+  '모자란 곳을 채워 주어',
+  '오래가는 사이가 있으니,',
+  '그 차이를 알고 대하는 것이',
+  '인연을 다루는 법이라네.\n',
+  '내 관상을 먼저 등록하면',
+  '상대의 얼굴과 견주어',
+  '두 사람 사이의 결을',
+  '읽어 드릴 것이오...',
+];
 
 /// 궁합 탭 — 내 얼굴이 아닌 다른 인물 리스트. 기본 lock, 1 코인 해제.
 /// 두 섹션 (미확인 → 확인) 으로 분리, 각 섹션은 자체 정렬 selector 보유.
@@ -56,10 +79,17 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
 
   // 미확인/확인 2탭 — 관상 탭과 동일한 inner-tab 구성. 탭 라벨의 개수로
   // 스크롤 없이 존재 여부가 보인다.
-  late final TabController _tabController = TabController(
-    length: 2,
-    vsync: this,
-  );
+  //
+  // initState 에서 만든다. 필드 초기화로 미루면 미등록 상태(탭이 없어 build
+  // 가 한 번도 건드리지 않는 경우)에서 dispose 가 첫 접근이 되고, 이미
+  // 비활성인 element 로 vsync 를 잡으려다 터진다.
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
 
   // 최초 노출 시 1회 — 개수가 더 많은 탭을 기본 선택 (빈 탭부터 보여주지
   // 않기). 이후엔 사용자의 탭 선택을 존중해 다시 건드리지 않는다.
@@ -108,7 +138,9 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
 
     // 최초 노출 기본 탭 = 개수가 더 많은 쪽. unlock 데이터가 async 라 로드
     // 완료(asData) 후 첫 build 에 판정해야 확인 개수를 오판하지 않는다.
-    if (showTabs && !_appliedInitialTab && compatibilityKeysAsync.asData != null) {
+    if (showTabs &&
+        !_appliedInitialTab &&
+        compatibilityKeysAsync.asData != null) {
       _appliedInitialTab = true;
       if (unlockedList.length > lockedList.length) _tabController.index = 1;
     }
@@ -242,11 +274,17 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
 
   /// 탭 없이 표시되는 안내 화면 — 내 관상 미설정 한정 (등록 후엔 항상 탭).
   Widget _guideBody(List<FaceReadingReport> others) {
-    // 비교할 상대가 하나도 없으면 빈 상태 — 관상 탭과 동일한 §3.8 레시피.
+    // 비교할 상대가 하나도 없으면 빈 상태 — 관상 탭 미등록 첫 화면과 같은
+    // 2단 연출(크레딧이 흐른 뒤 일러스트 등장)로 채운다. 연출은 궁합 탭이
+    // 실제로 열린 순간에 시작해야 하므로 선택된 탭을 그대로 넘긴다.
     if (others.isEmpty) {
-      return const EmotionEmptyState(
-        asset: 'assets/images/emotion-sad.png',
-        message: '궁합을 보려면 내 관상 등록이 필요합니다.',
+      return Consumer(
+        builder: (ctx, ref, _) => CreditsEmptyState(
+          lines: _kEmptyCredits,
+          asset: 'assets/images/emotion-sad.png',
+          message: '궁합을 보려면 내 관상 등록이 필요합니다.',
+          active: ref.watch(selectedTabProvider) == kCompatibilityTabIndex,
+        ),
       );
     }
     // 저장된 상대는 있는데 내 관상이 없으면 — "등록만 하면 이 사람들과 궁합을
@@ -1441,10 +1479,7 @@ class _Thumb extends StatelessWidget {
       child: SvgPicture.asset(
         asset,
         height: radius * 0.85,
-        colorFilter: const ColorFilter.mode(
-          AppTheme.textHint,
-          BlendMode.srcIn,
-        ),
+        colorFilter: const ColorFilter.mode(AppTheme.textHint, BlendMode.srcIn),
       ),
     );
   }
