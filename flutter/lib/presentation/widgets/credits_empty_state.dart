@@ -36,9 +36,9 @@ const Duration _kFallbackScrollDuration = Duration(seconds: 20);
 /// 문구가 다 빠져나간 뒤 일러스트·문구가 떠오르는 시간.
 const Duration _kRevealDuration = Duration(milliseconds: 700);
 
-/// 줄 간격 — [AppText.displaySubtitle] 기본값(1.5)의 1.5 배.
+/// 줄 간격 — [AppText.displaySubtitle] 기본값(1.5)의 1.2 배.
 /// 크레딧은 한 줄씩 천천히 읽히는 문구라 본문보다 성기게 벌린다.
-const double _kLineHeight = 1.5 * 1.5;
+const double _kLineHeight = 1.5 * 1.2;
 
 class CreditsEmptyState extends StatefulWidget {
   const CreditsEmptyState({
