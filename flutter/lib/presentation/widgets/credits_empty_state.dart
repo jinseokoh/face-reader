@@ -3,6 +3,7 @@ import 'dart:ui' show lerpDouble;
 import 'package:facely/core/theme.dart';
 import 'package:facely/presentation/widgets/emotion_empty_state.dart';
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 /// 관상 미등록 첫 화면 — 빈 여백을 영화 엔딩 크레딧처럼 채운다.
 ///
@@ -17,6 +18,9 @@ import 'package:flutter/material.dart';
 ///    문구가 화면보다 길어도 같다 — 시작 자세가 화면을 채우지 않는다.
 /// 2. 마지막 글자까지 위로 빠져나간 다음에야 [EmotionEmptyState]
 ///    (일러스트 + 문구)가 화면 중앙에 한꺼번에 fade in 한다.
+///
+/// 흐르는 동안 화면을 누르면 멈추고 반투명 일시정지 표시가 뜬다. 다시 누르면
+/// 멈춘 자리에서 같은 속도로 이어진다.
 ///
 /// 글자는 [AppText.displaySubtitle] (SongMyung) 고정 — 장식 문구라 본문
 /// 토큰과 섞이지 않는다.
@@ -35,6 +39,13 @@ const Duration _kFallbackScrollDuration = Duration(seconds: 20);
 
 /// 문구가 다 빠져나간 뒤 일러스트·문구가 떠오르는 시간.
 const Duration _kRevealDuration = Duration(milliseconds: 700);
+
+/// 일시정지 표시의 지름과 불투명도. 문구를 가리지 않을 만큼만 드러낸다.
+const double _kPauseBadgeSize = 72;
+const double _kPauseBadgeOpacity = 0.28;
+
+/// 일시정지 표시가 뜨고 지는 시간.
+const Duration _kPauseBadgeFade = Duration(milliseconds: 150);
 
 /// 줄 간격 — [AppText.displaySubtitle] 기본값(1.5)의 1.2 배.
 /// 크레딧은 한 줄씩 천천히 읽히는 문구라 본문보다 성기게 벌린다.
@@ -87,11 +98,36 @@ class _CreditsEmptyStateState extends State<CreditsEmptyState>
   );
 
   bool _started = false;
+  bool _paused = false;
 
   @override
   void initState() {
     super.initState();
+    // 마지막 글자가 위로 빠져나간 뒤에 일러스트가 떠오른다 — 문구가 아직
+    // 화면에 남아 있는 채로 겹치면 안 된다. 일시정지로 멈춘 것과 끝까지
+    // 흐른 것을 구분해야 해서 상태로 듣는다 (`whenComplete` 는 둘을 못
+    // 가린다).
+    _scroll.addStatusListener(_onScrollStatus);
     if (widget.active) _start();
+  }
+
+  void _onScrollStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed && mounted) _reveal.forward();
+  }
+
+  /// 흐르는 동안 화면을 누르면 멈추고, 다시 누르면 멈춘 자리에서 이어진다.
+  /// 시작 전이거나 이미 다 흐른 뒤에는 무시한다.
+  void _togglePause() {
+    if (!_started || _scroll.isCompleted) return;
+    setState(() {
+      _paused = !_paused;
+      if (_paused) {
+        _scroll.stop(canceled: false);
+      } else {
+        // forward() 는 남은 구간만큼만 시간을 쓰므로 속도가 그대로다.
+        _scroll.forward();
+      }
+    });
   }
 
   @override
@@ -113,16 +149,13 @@ class _CreditsEmptyStateState extends State<CreditsEmptyState>
           milliseconds: (travel / _kScrollSpeed * 1000).round(),
         );
       }
-      // 마지막 글자가 위로 빠져나간 뒤에 일러스트가 떠오른다 — 문구가 아직
-      // 화면에 남아 있는 채로 겹치면 안 된다.
-      _scroll.forward().whenComplete(() {
-        if (mounted) _reveal.forward();
-      });
+      _scroll.forward();
     });
   }
 
   @override
   void dispose() {
+    _scroll.removeStatusListener(_onScrollStatus);
     _scroll.dispose();
     _reveal.dispose();
     super.dispose();
@@ -130,39 +163,59 @@ class _CreditsEmptyStateState extends State<CreditsEmptyState>
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
-            // 등장도 퇴장도 영역 경계에서 잘려 나가는 것으로 처리한다
-            // (엔딩 크레딧과 같은 방식). 별도의 fade 는 걸지 않는다.
-            child: ClipRect(
-              child: CustomSingleChildLayout(
-                delegate: _CreditsLayout(
-                  _scroll,
-                  onMeasured: (travel) => _travel = travel,
-                ),
-                child: Text(
-                  widget.lines.join('\n'),
-                  style: AppText.displaySubtitle.copyWith(height: _kLineHeight),
-                  textAlign: TextAlign.center,
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _togglePause,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
+              // 등장도 퇴장도 영역 경계에서 잘려 나가는 것으로 처리한다
+              // (엔딩 크레딧과 같은 방식). 별도의 fade 는 걸지 않는다.
+              child: ClipRect(
+                child: CustomSingleChildLayout(
+                  delegate: _CreditsLayout(
+                    _scroll,
+                    onMeasured: (travel) => _travel = travel,
+                  ),
+                  child: Text(
+                    widget.lines.join('\n'),
+                    style: AppText.displaySubtitle.copyWith(
+                      height: _kLineHeight,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-        // 문구가 위로 다 빠져나간 뒤 일러스트와 한 줄 문구가 함께 떠오른다.
-        Center(
-          child: FadeTransition(
-            opacity: _reveal,
-            child: EmotionEmptyState(
-              asset: widget.asset,
-              message: widget.message,
+          // 문구가 위로 다 빠져나간 뒤 일러스트와 한 줄 문구가 함께 떠오른다.
+          Center(
+            child: FadeTransition(
+              opacity: _reveal,
+              child: EmotionEmptyState(
+                asset: widget.asset,
+                message: widget.message,
+              ),
             ),
           ),
-        ),
-      ],
+          // 멈춰 있는 동안만 보이는 표시. 탭은 아래 GestureDetector 가 받는다.
+          IgnorePointer(
+            child: Center(
+              child: AnimatedOpacity(
+                duration: _kPauseBadgeFade,
+                opacity: _paused ? _kPauseBadgeOpacity : 0,
+                child: const FaIcon(
+                  FontAwesomeIcons.solidCirclePause,
+                  size: _kPauseBadgeSize,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

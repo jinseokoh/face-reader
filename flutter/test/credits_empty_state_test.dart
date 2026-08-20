@@ -26,6 +26,13 @@ Future<void> _settleAll(WidgetTester tester) async {
   await tester.pump(const Duration(seconds: 2));
 }
 
+/// 일시정지 표시의 현재 불투명도.
+double _pauseBadgeOpacity(WidgetTester tester) =>
+    tester.widget<AnimatedOpacity>(find.byType(AnimatedOpacity)).opacity;
+
+/// 일시정지 표시가 뜨고 지는 데 걸리는 시간보다 넉넉한 값.
+const _kBadgeFade = Duration(milliseconds: 300);
+
 /// 문구 블록 위끝 — 영역 위끝 기준. 영역 높이 이상이면 아직 화면 아래 바깥.
 double _textTop(WidgetTester tester) =>
     _textCenter(tester) - tester.getSize(_text).height / 2;
@@ -197,6 +204,46 @@ void main() {
     }
   });
 
+  testWidgets('화면을 누르면 멈추고 다시 누르면 이어진다', (tester) async {
+    await _pump(tester);
+    await tester.pump(const Duration(seconds: 2));
+    final beforeTap = _textCenter(tester);
+    expect(_pauseBadgeOpacity(tester), 0, reason: '흐르는 동안엔 표시가 없다');
+
+    // 첫 터치 — 멈춘다.
+    await tester.tap(find.byType(CreditsEmptyState));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 3));
+    expect(_textCenter(tester), beforeTap, reason: '멈춰 있어야 한다');
+    expect(
+      _pauseBadgeOpacity(tester),
+      greaterThan(0),
+      reason: '멈춤 표시가 반투명으로 뜬다',
+    );
+    expect(_pauseBadgeOpacity(tester), lessThan(1), reason: '반투명이다');
+    expect(_revealOpacity(tester), 0, reason: '멈춤은 완료가 아니다');
+
+    // 다시 터치 — 같은 속도로 이어진다.
+    await tester.tap(find.byType(CreditsEmptyState));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(_textCenter(tester), closeTo(beforeTap - 60, 2), reason: '초당 60px');
+    await tester.pump(_kBadgeFade);
+    expect(_pauseBadgeOpacity(tester), 0, reason: '이어지면 표시가 사라진다');
+  });
+
+  testWidgets('다 흐른 뒤의 터치는 아무 일도 하지 않는다', (tester) async {
+    await _pump(tester);
+    await _settleAll(tester);
+    expect(_revealOpacity(tester), 1);
+
+    await tester.tap(find.byType(CreditsEmptyState));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(_pauseBadgeOpacity(tester), 0);
+    expect(_revealOpacity(tester), 1);
+  });
+
   testWidgets('일러스트·문구는 크레딧이 다 빠져나간 뒤에야 떠오른다', (tester) async {
     await _pump(tester);
     expect(_revealOpacity(tester), 0, reason: '시작 시점엔 보이지 않는다');
@@ -285,6 +332,34 @@ void main() {
     await tester.pump(const Duration(seconds: 30));
     expect(_textCenter(tester), start);
     expect(_revealOpacity(tester), 0);
+  });
+
+  testWidgets('터치 처리가 당겨서 새로고침을 막지 않는다', (tester) async {
+    var refreshed = false;
+    await _pumpAndPrime(
+      tester,
+      MaterialApp(
+        home: Scaffold(
+          body: RefreshIndicator(
+            onRefresh: () async => refreshed = true,
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverFillRemaining(hasScrollBody: false, child: _subject),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.fling(
+      find.byType(CustomScrollView),
+      const Offset(0, 300),
+      800,
+    );
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(refreshed, isTrue, reason: '탭 처리가 세로 드래그를 삼키면 안 된다');
   });
 
   testWidgets('SliverFillRemaining 안에서도 레이아웃 예외 없이 그려진다', (tester) async {
