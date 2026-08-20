@@ -25,20 +25,23 @@ import 'package:top_snackbar_flutter/top_snack_bar.dart';
 /// 미등록 첫 화면의 크레딧 문구 — 빈 여백을 채운다.
 /// 줄바꿈은 이 목록 그대로 유지된다 ([CreditsEmptyState]).
 const List<String> _kEmptyCredits = [
-  '관상은 내 마음을 비추는 창이로다.\n',
+  '얼굴은 내 마음을',
+  '비추는 창이로다.\n',
   '관상은 미래의 운명을',
   '단정짓는 점술이 아니라,',
-  '지금의 삶의 모습을 살피고',
+  '내 삶의 모습을 살피고',
   '그 안에 비친 나 자신을',
-  '객관적으로 돌아보는',
-  '축적된 지혜에 가깝소.\n',
-  '그리고 그것 바탕으로',
-  '앞으로 어떤 길을 걸을지',
-  '어떤 삶을 살아갈지',
+  '돌아보게 하는',
+  '오랜 지혜에 가깝소.\n',
+  '그리고 그걸 바탕으로,',
+  '앞으로 어떤 삶을 살아갈지,',
+  '어떤 길을 걸어갈지,',
   '스스로 헤아려 볼 수 있는',
   '혜안을 얻기 위함이오.\n',
   '내 관상을 등록하면',
-  '그 영감을 얻게 될 것이라네.',
+  '그 해석으로부터',
+  '삶에 보탬이 될 영감을',
+  '얻게 될 것이로다.',
 ];
 
 // 화면-국지 팔레트 — DESIGN.md §2.4 (file-local 격리).
@@ -634,7 +637,7 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
     bool hasMyFace, {
     required String description,
     String emptyAsset = 'assets/images/emotion-frown.png',
-    String emptyMessage = '아직 관상을 등록하지 않았다니!',
+    String emptyMessage = '아직 관상을 등록하지 않았구려!',
   }) {
     final groups = <(AnalysisSource, List<(int, FaceReadingReport)>)>[];
     for (final s in sources) {

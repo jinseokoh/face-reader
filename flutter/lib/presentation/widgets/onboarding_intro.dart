@@ -29,7 +29,7 @@ const _kPages = [
     asset: 'assets/images/onboarding1.png',
     assetV1: 'assets/images/onboarding0.png',
     title: '관상으로 풀어보는\n친구 만들기',
-    titleV1: 'AI로 얼굴의 특징을 측정하고\n학문적으로 그 의미를 해석합니다.',
+    titleV1: '얼굴 특징을 측정하여\n그 의미를 해석해 드립니다.',
     body: '우리 그룹의 케미를 한눈에 보고\n새로운 대화의 계기를 만들어보세요.',
     warm: true,
   ),
@@ -354,13 +354,13 @@ class _OnboardingIntroState extends State<_OnboardingIntro>
 }
 
 class _OnboardingPage extends StatelessWidget {
-  final _OnboardingPageData data;
-
-  const _OnboardingPage({required this.data});
-
   /// 일러스트 좌우 여백 — 텍스트 여백(huge)의 절반으로 이미지를 더 크게.
   /// 네 장 모두 동일하다.
   static const double _imageHInset = AppSpacing.lg;
+
+  final _OnboardingPageData data;
+
+  const _OnboardingPage({required this.data});
 
   @override
   Widget build(BuildContext context) {
@@ -438,16 +438,19 @@ class _OnboardingPage extends StatelessWidget {
 }
 
 class _OnboardingPageData {
-  final String asset;
+  static bool get _isV1 =>
+      AppConfigService.instance.narrativeVersion == NarrativeVersion.v1;
 
+  final String asset;
   /// v1 코퍼스일 때 [asset] 대신 쓰는 이미지. null 이면 버전과 무관하게 [asset].
   final String? assetV1;
-  final String title;
 
+  final String title;
   /// v1 코퍼스일 때 [title] 대신 쓰는 제목. null 이면 버전과 무관하게 [title].
   /// v1 은 관상 자체를 앞세우는 서술이라 첫 장 제목도 그쪽에 맞춘다.
   final String? titleV1;
   final List<String> chips;
+
   final String body;
 
   /// cream/shell 배경 페이지 — DESIGN.md §1.2 warm beige 짝
@@ -464,16 +467,13 @@ class _OnboardingPageData {
     required this.warm,
   });
 
+  /// [resolvedTitle] 과 같은 규칙으로 고른 이미지.
+  String get resolvedAsset => _isV1 ? (assetV1 ?? asset) : asset;
+
   /// 원격 설정(`app_config.{ios,android}_narrative_version`)이 정한 코퍼스
   /// 버전에 맞는 제목. v1 제목은 v1 이라고 확인됐을 때만 쓴다 —
   /// 확정 전 기본값은 v2 다 (`AppConfigService.narrativeVersion`).
   String get resolvedTitle => _isV1 ? (titleV1 ?? title) : title;
-
-  /// [resolvedTitle] 과 같은 규칙으로 고른 이미지.
-  String get resolvedAsset => _isV1 ? (assetV1 ?? asset) : asset;
-
-  static bool get _isV1 =>
-      AppConfigService.instance.narrativeVersion == NarrativeVersion.v1;
 }
 
 /// 무료·유료 표기 chip — §3.3 단일톤. 배경색 페이지 위에서도 보이도록
