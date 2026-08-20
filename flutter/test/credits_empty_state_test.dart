@@ -14,8 +14,9 @@ const _message = '아직 관상을 등록하지 않았다니!';
 const _height = 400.0;
 const _width = 360.0;
 
-/// 스크롤 1회(10초)를 넘기는 시간.
-const _afterScroll = Duration(seconds: 12);
+/// 스크롤 1회를 넉넉히 넘기는 시간. 지속시간은 이동 거리 / 속도라
+/// 문구 길이에 따라 달라진다.
+const _afterScroll = Duration(seconds: 30);
 
 /// 스크롤 → 일러스트 등장까지 전부 흘린다. 등장은 스크롤의 `whenComplete`
 /// 로 시작하므로 프레임을 한 번 더 줘야 진행된다.
@@ -24,6 +25,10 @@ Future<void> _settleAll(WidgetTester tester) async {
   await tester.pump();
   await tester.pump(const Duration(seconds: 2));
 }
+
+/// 문구 블록 위끝 — 영역 위끝 기준. 영역 높이 이상이면 아직 화면 아래 바깥.
+double _textTop(WidgetTester tester) =>
+    _textCenter(tester) - tester.getSize(_text).height / 2;
 
 /// 문구 블록 아래끝 — 영역 위끝 기준. 0 이하면 화면에서 완전히 빠져나갔다.
 double _textBottom(WidgetTester tester) =>
@@ -38,7 +43,16 @@ Widget _subjectWith({bool active = true}) => CreditsEmptyState(
 
 Widget get _subject => _subjectWith();
 
-Future<void> _pump(WidgetTester tester) => tester.pumpWidget(
+/// 첫 프레임 뒤(post-frame)에 시작되는 애니메이션의 첫 tick 을 잡아 주는
+/// 0초 pump 를 붙인다. 이게 없으면 다음 `pump(d)` 가 시작 시각으로 소비돼
+/// 시간이 흐르지 않는다. 실기에서는 매 프레임이 이어지므로 해당 없음.
+Future<void> _pumpAndPrime(WidgetTester tester, Widget app) async {
+  await tester.pumpWidget(app);
+  await tester.pump();
+}
+
+Future<void> _pump(WidgetTester tester) => _pumpAndPrime(
+  tester,
   MaterialApp(
     home: Scaffold(
       body: Center(
@@ -50,29 +64,29 @@ Future<void> _pump(WidgetTester tester) => tester.pumpWidget(
 
 /// 탭 셸과 같은 구조 — IndexedStack 은 숨은 탭도 build 하므로 이 위젯은 앱을
 /// 켤 때 이미 만들어져 있다. 연출의 시작 신호는 생성 시점이 아니라 `active` 다.
-Future<void> _pumpInTabShell(WidgetTester tester, int index) =>
-    tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: IndexedStack(
-            index: index,
-            children: [
-              for (var i = 0; i < 2; i++)
-                TickerMode(
-                  enabled: i == index,
-                  child: SizedBox(
-                    height: _height,
-                    width: _width,
-                    child: i == 0
-                        ? _subjectWith(active: index == 0)
-                        : const SizedBox.shrink(),
-                  ),
-                ),
-            ],
-          ),
-        ),
+Future<void> _pumpInTabShell(WidgetTester tester, int index) => _pumpAndPrime(
+  tester,
+  MaterialApp(
+    home: Scaffold(
+      body: IndexedStack(
+        index: index,
+        children: [
+          for (var i = 0; i < 2; i++)
+            TickerMode(
+              enabled: i == index,
+              child: SizedBox(
+                height: _height,
+                width: _width,
+                child: i == 0
+                    ? _subjectWith(active: index == 0)
+                    : const SizedBox.shrink(),
+              ),
+            ),
+        ],
       ),
-    );
+    ),
+  ),
+);
 
 Finder get _text => find.text(_lines.join('\n'));
 
@@ -100,10 +114,11 @@ double _revealOpacity(WidgetTester tester) => tester
     .value;
 
 void main() {
-  testWidgets('맨 아래에서 시작해 위로 완전히 빠져나간다', (tester) async {
+  testWidgets('화면 아래 바깥에서 시작해 위로 완전히 빠져나간다', (tester) async {
     await _pump(tester);
-    // 시작할 때 문구 아래끝이 영역 아래끝(= 하단 탭 바 바로 위)에 붙는다.
-    expect(_textBottom(tester), closeTo(_height, 1));
+    // 시작할 때 문구 위끝이 영역 아래끝(= 하단 탭 바 바로 위)에 있다.
+    // 문구가 화면보다 길어도 시작 자세가 화면을 채우지 않는다.
+    expect(_textTop(tester), closeTo(_height, 1));
 
     await _settleAll(tester);
     // 끝날 때 마지막 글자까지 영역 위끝 밖으로 나간다.
@@ -117,7 +132,7 @@ void main() {
 
   testWidgets('멈추지 않고 일정한 속도로 올라간다', (tester) async {
     await _pump(tester);
-    const step = Duration(seconds: 2);
+    const step = Duration(seconds: 1);
     final marks = <double>[_textCenter(tester)];
     for (var i = 0; i < 5; i++) {
       await tester.pump(step);
@@ -138,7 +153,7 @@ void main() {
     expect(_revealOpacity(tester), 0, reason: '시작 시점엔 보이지 않는다');
 
     // 문구가 아직 화면에 걸쳐 있는 동안에는 겹쳐 보이면 안 된다.
-    await tester.pump(const Duration(seconds: 9));
+    await tester.pump(const Duration(seconds: 4));
     expect(_textBottom(tester), greaterThan(0), reason: '아직 남아 있다');
     expect(_revealOpacity(tester), 0, reason: '남아 있으면 아직 안 뜬다');
 
@@ -159,16 +174,13 @@ void main() {
 
     await _pump(tester);
     final start = _textCenter(tester);
+    final travel = _height + tester.getSize(_text).height;
 
     // 5% 로 줄었다면 이 시점엔 이미 화면 밖으로 다 빠져나갔다.
     await tester.pump(const Duration(seconds: 1));
-    final afterOneSecond = _textCenter(tester);
-    expect(afterOneSecond, lessThan(start), reason: '움직이긴 한다');
-    expect(
-      afterOneSecond,
-      greaterThan(_height * 0.5),
-      reason: '1초 만에 절반 넘게 가면 안 된다',
-    );
+    final moved = start - _textCenter(tester);
+    expect(moved, greaterThan(0), reason: '움직이긴 한다');
+    expect(moved, lessThan(travel * 0.5), reason: '1초 만에 절반 넘게 가면 안 된다');
   });
 
   testWidgets('숨은 탭에서는 흐르지 않고, 탭이 열린 순간부터 시작한다', (tester) async {
@@ -206,7 +218,8 @@ void main() {
   });
 
   testWidgets('active 가 false 면 시작조차 하지 않는다', (tester) async {
-    await tester.pumpWidget(
+    await _pumpAndPrime(
+      tester,
       MaterialApp(
         home: Scaffold(
           body: Center(
@@ -226,7 +239,8 @@ void main() {
   });
 
   testWidgets('SliverFillRemaining 안에서도 레이아웃 예외 없이 그려진다', (tester) async {
-    await tester.pumpWidget(
+    await _pumpAndPrime(
+      tester,
       MaterialApp(
         home: Scaffold(
           appBar: AppBar(title: const Text('관상')),

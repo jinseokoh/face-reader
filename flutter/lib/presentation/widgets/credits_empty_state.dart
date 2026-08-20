@@ -11,9 +11,10 @@ import 'package:flutter/material.dart';
 /// 켤 때 이미 만들어져 있어, 만들어진 시점을 시작 신호로 쓸 수 없다. 다른
 /// 탭에 갔다 돌아와도 다시 재생하지 않는다.
 ///
-/// 1. 크레딧 문구가 맨 아래(하단 탭 바 바로 위)에서 나타나 **일정한 속도로**
-///    계속 올라가고, 영역 위끝을 지나는 글자부터 차례로 잘려 사라진다.
-///    중간에 멈추거나 제자리에서 fade out 하지 않는다.
+/// 1. 크레딧 문구가 화면 아래 바깥에서 올라와 **일정한 속도로** 지나간다.
+///    첫 줄이 아래끝(하단 탭 바 바로 위)에 나타나고, 위끝을 지나는 줄부터
+///    차례로 잘려 사라진다. 중간에 멈추거나 제자리에서 fade out 하지 않는다.
+///    문구가 화면보다 길어도 같다 — 시작 자세가 화면을 채우지 않는다.
 /// 2. 마지막 글자까지 위로 빠져나간 다음에야 [EmotionEmptyState]
 ///    (일러스트 + 문구)가 화면 중앙에 한꺼번에 fade in 한다.
 ///
@@ -25,16 +26,15 @@ import 'package:flutter/material.dart';
 /// 재는 `SliverFillRemaining(hasScrollBody: false)` 안에 넣으면 그 영역의
 /// 레이아웃이 통째로 실패한다.
 
-/// 문구 아래끝이 영역 아래끝에 붙은 상태에서 출발해 위끝 밖으로 완전히
-/// 빠져나가기까지 걸리는 시간. 이동 거리는 영역 높이와 같고 곡선을 걸지
-/// 않으므로 속도가 일정하다. 읽는 속도보다 느려야 해서 넉넉히 잡는다.
-const Duration _kScrollDuration = Duration(seconds: 10);
+/// 흐르는 속도(logical px/초). 지속시간을 고정하면 문구 길이가 바뀔 때마다
+/// 속도가 달라지므로, 이동 거리에서 지속시간을 역산한다.
+const double _kScrollSpeed = 60;
+
+/// 이동 거리를 아직 재지 못했을 때 쓰는 지속시간 (레이아웃 전 시작 등).
+const Duration _kFallbackScrollDuration = Duration(seconds: 20);
 
 /// 문구가 다 빠져나간 뒤 일러스트·문구가 떠오르는 시간.
 const Duration _kRevealDuration = Duration(milliseconds: 700);
-
-/// 문구가 불쑥 나타나지 않도록 이동 초반에 걸치는 fade in 구간.
-const double _kTextFadeIn = 0.08;
 
 /// 줄 간격 — [AppText.displaySubtitle] 기본값(1.5)의 1.5 배.
 /// 크레딧은 한 줄씩 천천히 읽히는 문구라 본문보다 성기게 벌린다.
@@ -73,9 +73,13 @@ class _CreditsEmptyStateState extends State<CreditsEmptyState>
   // 따르지 않는다.
   late final AnimationController _scroll = AnimationController(
     vsync: this,
-    duration: _kScrollDuration,
+    duration: _kFallbackScrollDuration,
     animationBehavior: AnimationBehavior.preserve,
   );
+
+  /// 마지막 레이아웃에서 잰 이동 거리(영역 높이 + 문구 높이). 지속시간을
+  /// 여기서 역산해 문구 길이와 무관하게 속도를 일정하게 유지한다.
+  double? _travel;
   late final AnimationController _reveal = AnimationController(
     vsync: this,
     duration: _kRevealDuration,
@@ -97,13 +101,23 @@ class _CreditsEmptyStateState extends State<CreditsEmptyState>
   }
 
   /// 첫 호출에만 반응한다 — 탭을 오갈 때마다 다시 재생하지 않는다.
+  /// 이동 거리는 레이아웃에서 나오므로 프레임이 끝난 뒤에 읽는다.
   void _start() {
     if (_started) return;
     _started = true;
-    // 마지막 글자가 위로 빠져나간 뒤에 일러스트가 떠오른다 — 문구가 아직
-    // 화면에 남아 있는 채로 겹치면 안 된다.
-    _scroll.forward().whenComplete(() {
-      if (mounted) _reveal.forward();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final travel = _travel;
+      if (travel != null && travel > 0) {
+        _scroll.duration = Duration(
+          milliseconds: (travel / _kScrollSpeed * 1000).round(),
+        );
+      }
+      // 마지막 글자가 위로 빠져나간 뒤에 일러스트가 떠오른다 — 문구가 아직
+      // 화면에 남아 있는 채로 겹치면 안 된다.
+      _scroll.forward().whenComplete(() {
+        if (mounted) _reveal.forward();
+      });
     });
   }
 
@@ -121,23 +135,18 @@ class _CreditsEmptyStateState extends State<CreditsEmptyState>
         Positioned.fill(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
+            // 등장도 퇴장도 영역 경계에서 잘려 나가는 것으로 처리한다
+            // (엔딩 크레딧과 같은 방식). 별도의 fade 는 걸지 않는다.
             child: ClipRect(
-              // 등장에만 fade 를 건다. 퇴장은 영역 위끝을 지나며 잘려
-              // 나가는 것으로 처리한다 (엔딩 크레딧과 같은 방식).
-              child: FadeTransition(
-                opacity: CurvedAnimation(
-                  parent: _scroll,
-                  curve: const Interval(0, _kTextFadeIn),
+              child: CustomSingleChildLayout(
+                delegate: _CreditsLayout(
+                  _scroll,
+                  onMeasured: (travel) => _travel = travel,
                 ),
-                child: CustomSingleChildLayout(
-                  delegate: _CreditsLayout(_scroll),
-                  child: Text(
-                    widget.lines.join('\n'),
-                    style: AppText.displaySubtitle.copyWith(
-                      height: _kLineHeight,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
+                child: Text(
+                  widget.lines.join('\n'),
+                  style: AppText.displaySubtitle.copyWith(height: _kLineHeight),
+                  textAlign: TextAlign.center,
                 ),
               ),
             ),
@@ -158,14 +167,22 @@ class _CreditsEmptyStateState extends State<CreditsEmptyState>
   }
 }
 
-/// 문구 블록을 영역 맨 아래(아래끝 맞춤)에서 위끝 밖(아래끝이 영역 위끝에
-/// 닿는 지점)까지 일정한 속도로 밀어 올린다. 자식 높이를 레이아웃 단계에서
-/// 직접 받으므로 문구가 몇 줄이든 시작할 때 잘리지 않고, 끝날 때는 마지막
-/// 글자까지 확실히 빠져나간다.
+/// 문구 블록을 영역 아래 바깥(위끝이 영역 아래끝에 닿는 지점)에서 위 바깥
+/// (아래끝이 영역 위끝에 닿는 지점)까지 일정한 속도로 밀어 올린다. 자식
+/// 높이를 레이아웃 단계에서 직접 받으므로, 문구가 화면보다 길어도 시작 자세가
+/// 화면을 채우지 않고 끝날 때는 마지막 글자까지 확실히 빠져나간다.
+///
+/// 잰 이동 거리는 [onMeasured] 로 돌려준다 — 지속시간을 거기서 역산해야
+/// 문구 길이가 달라져도 속도가 같다.
 class _CreditsLayout extends SingleChildLayoutDelegate {
-  _CreditsLayout(this.progress) : super(relayout: progress);
+  _CreditsLayout(this.progress, {required this.onMeasured})
+    : super(relayout: progress);
 
   final Animation<double> progress;
+
+  /// 이동 거리(영역 높이 + 문구 높이)를 알린다. 레이아웃 중 호출되므로
+  /// 받는 쪽은 값만 담아 두고 rebuild 를 일으키지 않아야 한다.
+  final ValueChanged<double> onMeasured;
 
   @override
   BoxConstraints getConstraintsForChild(BoxConstraints constraints) =>
@@ -173,12 +190,11 @@ class _CreditsLayout extends SingleChildLayoutDelegate {
 
   @override
   Offset getPositionForChild(Size size, Size childSize) {
-    final center = lerpDouble(
-      size.height - childSize.height / 2,
-      -childSize.height / 2,
-      progress.value,
-    )!;
-    return Offset(0, center - childSize.height / 2);
+    onMeasured(size.height + childSize.height);
+    return Offset(
+      0,
+      lerpDouble(size.height, -childSize.height, progress.value)!,
+    );
   }
 
   @override
