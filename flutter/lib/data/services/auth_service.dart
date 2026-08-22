@@ -98,6 +98,12 @@ class AuthService {
   AuthUser? get currentUser => _currentUser;
   bool get isLoggedIn => _currentUser != null;
 
+  /// 세션이 물고 있는 계정 uid — 프로필(users row) 조회와 무관하다.
+  /// 오프라인 cold start 는 세션이 살아 있어도 [_loadProfile] 이 실패해
+  /// [currentUser] 가 null 인 채 시작하므로, "지금 이 기기는 누구 것인가" 를
+  /// 물을 때는 프로필이 아니라 이 값을 본다.
+  String? get sessionUserId => _client.auth.currentUser?.id;
+
   StreamSubscription<AuthState>? _sub;
   final _profileChanged = StreamController<AuthUser?>.broadcast();
   final _signupBonusSkippedNotice = StreamController<void>.broadcast();

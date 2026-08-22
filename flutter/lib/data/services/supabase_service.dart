@@ -240,19 +240,30 @@ class SupabaseService {
     // 살아 있다. 실패해도 claim 자체는 유효 — 앱 재시작 claim 에서 재시도된다.
     if (myFaceId != null) {
       try {
-        await _client
+        // 승격이 실제로 행을 바꿨을 때만 강등한다. myFaceId 가 이 계정 소유가
+        // 아니면 승격은 매치 0 으로 조용히 지나가는데, 강등은 neq(myFaceId)
+        // 라 **이 계정의 진짜 my-face 행**을 제외 대상에서 놓치고 꺼 버린다
+        // (계정의 true 행이 0 → 새 기기 로그인이 내 관상 없이 복원). 승격
+        // 결과를 받아 게이트를 걸면 그 경로가 구조적으로 막힌다.
+        final promoted = await _client
             .from('metrics')
             .update({'is_my_face': true})
             .eq('id', myFaceId)
-            .eq('user_id', uid);
-        await _client
-            .from('metrics')
-            .update({'is_my_face': false})
             .eq('user_id', uid)
-            .eq('is_my_face', true)
-            .neq('id', myFaceId);
-        debugPrint('[Supabase] promoted my-face + demoted stale rows '
-            '(keep=$myFaceId)');
+            .select('id');
+        if (promoted.isEmpty) {
+          debugPrint('[Supabase] my-face promote 매치 0 — 강등 skip '
+              '(id=$myFaceId 는 $uid 소유 아님)');
+        } else {
+          await _client
+              .from('metrics')
+              .update({'is_my_face': false})
+              .eq('user_id', uid)
+              .eq('is_my_face', true)
+              .neq('id', myFaceId);
+          debugPrint('[Supabase] promoted my-face + demoted stale rows '
+              '(keep=$myFaceId)');
+        }
       } catch (e) {
         debugPrint('[Supabase] my-face promote/demote error (계속 진행): $e');
       }

@@ -29,6 +29,11 @@ final historyProvider =
 
 class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
   Box<String> get _box => Hive.box<String>(HiveBoxes.history);
+  Box<String> get _prefs => Hive.box<String>(HiveBoxes.prefs);
+
+  /// 이 기기 history 의 소유 계정 uid. 키가 없으면 익명(로그인 전 촬영분)
+  /// 이라 다음 로그인이 claim 해 간다. 값이 박혀 있으면 그 계정 전용이다.
+  static const String _kOwnerUidKey = 'history_owner_uid';
 
   StreamSubscription<AuthUser?>? _authSub;
   // 같은 uid 로 중복 claim 방지 (profileStream 은 코인 갱신에도 발화).
@@ -37,7 +42,10 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
   @override
   List<FaceReadingReport> build() {
     _log('build() — initial load from Hive');
-    final reports = _loadFromHive();
+    var reports = _loadFromHive();
+    // 계정 각인 검사는 claim·정규화보다 먼저. 남의 목록을 들고 claim 에
+    // 들어가면 서버의 my-face 플래그까지 망가진다.
+    if (_enforceOwner()) reports = <FaceReadingReport>[];
     // 내 관상 싱글톤 강제 — 불변식을 쓰기 시점에만 지키면, 과거 데이터·중단된
     // 저장으로 isMyFace 가 2개 이상 박힌 경우 영구히 남는다. 로드 때 정규화해
     // "나"가 항상 정확히 1개이게 한다 (궁합·케미가 live "나" 를 모호함 없이 resolve).
@@ -51,6 +59,7 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
     final existing = AuthService().currentUser;
     if (existing != null) {
       _lastClaimedUid = existing.id;
+      _writeOwner(existing.id);
       _claimAnonymousMetrics(reports);
       // build 중엔 state 재할당 금지 — 다음 틱에.
       Future(() => _rehydrateFromServer());
@@ -99,14 +108,63 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
     final uid = user?.id;
     if (uid == null) {
       _lastClaimedUid = null;
+      // 세션까지 사라진 경우(로그아웃·만료·다른 기기 로그아웃)만 폐기.
+      // users row 조회 실패로 프로필만 null 이 된 경우는 세션이 살아 있어
+      // _enforceOwner 가 각인과 일치를 확인하고 그냥 지나간다.
+      if (_enforceOwner()) state = <FaceReadingReport>[];
       return;
     }
+    if (_enforceOwner()) state = <FaceReadingReport>[];
     if (uid == _lastClaimedUid) return;
     _lastClaimedUid = uid;
+    _writeOwner(uid);
     _claimAnonymousMetrics(state);
     // 로그인 rehydrate — 서버 소유 metrics 복원 (새 기기·웹 티저 capture).
     // claim 과 대상이 겹치지 않아 claim 과는 순서 의존 없음.
     unawaited(_rehydrateFromServer());
+  }
+
+  String? _readOwner() {
+    try {
+      return _prefs.get(_kOwnerUidKey);
+    } catch (e) {
+      _log('owner read unavailable: $e');
+      return null;
+    }
+  }
+
+  void _writeOwner(String? uid) {
+    try {
+      if (uid == null) {
+        _prefs.delete(_kOwnerUidKey);
+      } else {
+        _prefs.put(_kOwnerUidKey, uid);
+      }
+    } catch (e) {
+      _log('owner write skipped: $e');
+    }
+  }
+
+  /// 계정 각인 검사 — 각인이 세션 uid 와 어긋나면 로컬 history 를 통째로
+  /// 버리고 true. 훅(로그아웃 버튼)이 아니라 불변식으로 두는 이유: 세션은
+  /// 토큰 갱신 실패·만료·다른 기기 로그아웃으로도 끊기고 그 경로들은
+  /// AuthService.signOut() 을 거치지 않는다. 로그아웃 도중 강제종료도 같다.
+  /// 각인을 로드마다 대조하면 어느 경로로 끊겼든 다음 로드에서 잡힌다.
+  ///
+  /// 판정 기준은 프로필이 아니라 **세션**([AuthService.sessionUserId]) —
+  /// 오프라인 cold start 는 세션이 살아 있어도 프로필 조회가 실패해
+  /// currentUser 가 null 이라, 프로필로 판정하면 본인 데이터를 지운다.
+  ///
+  /// 각인이 없으면(익명) 버리지 않는다 — 로그인 전 촬영분을 다음 로그인이
+  /// claim 해 가는 설계된 흐름이다.
+  bool _enforceOwner() {
+    final owner = _readOwner();
+    if (owner == null) return false;
+    if (owner == AuthService().sessionUserId) return false;
+    _log('owner mismatch — 로컬 history 폐기 (owner=$owner)');
+    unawaited(_box.clear());
+    _writeOwner(null);
+    return true;
   }
 
   void _claimAnonymousMetrics(List<FaceReadingReport> reports) {
