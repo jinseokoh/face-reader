@@ -15,25 +15,44 @@ export type WebCaptureBody = {
   faceShape: "oval";
 };
 
-/** 캡처 프레임 200px JPEG → presign PUT. 실패해도 참여는 진행 (null). */
-async function uploadThumbnail(id: string, blob: Blob): Promise<string | null> {
+/**
+ * 캡처 프레임 200px JPEG → presign PUT. 실패해도 참여는 진행 (null).
+ *
+ * 키는 내용 주소(sha256) — 행 id 로 만들면 재참여 때 같은 키를 덮어써 CDN 이
+ * 옛 얼굴을 계속 내준다. 서버가 이미 있는 객체엔 409 를 주는데, 그건 같은
+ * 바이트가 저장돼 있다는 뜻이라 성공으로 취급한다.
+ */
+async function uploadThumbnail(blob: Blob): Promise<string | null> {
   try {
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    const digest = await crypto.subtle.digest("SHA-256", bytes);
+    const hash = Array.from(new Uint8Array(digest))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+
     const res = await fetch("/api/r2/presign", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ prefix: "thumbnails", uuid: id }),
+      body: JSON.stringify({ prefix: "thumbnails", hash }),
     });
-    if (!res.ok) return null;
-    const { uploadUrl, key } = (await res.json()) as {
-      uploadUrl: string;
-      key: string;
-    };
-    const put = await fetch(uploadUrl, {
+    const body = (await res.json().catch(() => null)) as {
+      uploadUrl?: string;
+      key?: string;
+      cacheControl?: string;
+    } | null;
+    if (!body?.key) return null;
+    if (res.status === 409) return body.key; // 같은 바이트가 이미 있다.
+    if (!res.ok || !body.uploadUrl) return null;
+
+    const put = await fetch(body.uploadUrl, {
       method: "PUT",
-      headers: { "content-type": "image/jpeg" },
+      headers: {
+        "content-type": "image/jpeg",
+        ...(body.cacheControl ? { "cache-control": body.cacheControl } : {}),
+      },
       body: blob,
     });
-    return put.ok ? key : null;
+    return put.ok ? body.key : null;
   } catch {
     return null;
   }
@@ -163,29 +182,14 @@ export async function saveCapture(
     id?: string;
     /** 재촬영 시 교체 대상인 옛 썸네일 키 — 새 키 성립 후 즉시 삭제. */
     oldKey?: string | null;
-    /** 옛 썸네일 삭제 API 인증용 (session.access_token). */
-    accessToken?: string;
   },
 ): Promise<string | null> {
   const id = args.id ?? crypto.randomUUID();
-  // 재촬영(overwrite)의 썸네일은 반드시 **새 키**로 — 같은 키에 재업로드하면
-  // CDN·브라우저 캐시가 옛 사진을 계속 서빙한다 (키는 불변, 내용 교체 금지).
-  // 신규 캡처는 1 capture = 1 uuid 원칙대로 metrics id 를 키에 쓴다.
-  const thumbUuid = args.id ? crypto.randomUUID() : id;
-  const key = args.thumb ? await uploadThumbnail(thumbUuid, args.thumb) : null;
-  // 새 썸네일이 성립했으면 옛 객체를 즉시 삭제 (고아 0, cron 불필요).
-  // body 가 아직 옛 키를 참조하는 upsert **이전** 시점이라 서버 소유 검증 통과.
-  // 실패해도 참여 흐름은 계속 (고아 1개 감수).
-  if (key && args.oldKey && args.accessToken) {
-    await fetch("/api/r2/delete", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${args.accessToken}`,
-      },
-      body: JSON.stringify({ key: args.oldKey }),
-    }).catch(() => {});
-  }
+  // 썸네일 키는 사진 내용에서 나온다 — 재촬영이면 바이트가 달라 자동으로 다른
+  // 키가 되므로, 캐시가 옛 사진을 서빙할 여지가 없다.
+  const key = args.thumb ? await uploadThumbnail(args.thumb) : null;
+  // 옛 객체 회수는 아래 upsert 가 맡는다 — body 의 thumbnailKey 가 바뀌면
+  // metrics_thumbnail_gc 트리거가 옛 키를 아웃박스에 넣고 cron 이 지운다.
   // 새 업로드 실패 시엔 옛 키를 보존해 아바타가 깨지지 않게 한다.
   const body: WebCaptureBody = key
     ? { ...args.body, thumbnailKey: key }

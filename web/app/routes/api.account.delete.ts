@@ -1,4 +1,3 @@
-import { AwsClient } from 'aws4fetch'
 import type { Route } from './+types/api.account.delete'
 
 /**
@@ -8,15 +7,14 @@ import type { Route } from './+types/api.account.delete'
  *
  * 흐름:
  *   1) JWT 검증 + user_id 추출 (Supabase /auth/v1/user)
- *   2) RLS-scoped SELECT 으로 user 의 metrics.body → thumbnailKey 수집
- *   3) R2 thumbnails 일괄 DELETE
- *   4) service_role 로 DELETE FROM metrics WHERE user_id — FK 가 cascade 라
- *      5)에서 어차피 지워지지만, R2 정리(3) 와의 순서 보장 + auth DELETE 가
- *      중간 실패해도 metrics 부터 확실히 사라지게 명시 삭제 유지
- *   5) service_role 로 owner 의 **모집 중(open) teams** DELETE — 초대 링크가
+ *   2) service_role 로 DELETE FROM metrics WHERE user_id — FK 가 cascade 라
+ *      4)에서 어차피 지워지지만, auth DELETE 가 중간 실패해도 metrics 부터
+ *      확실히 사라지게 명시 삭제 유지. 이 삭제가 metrics_thumbnail_gc 트리거를
+ *      깨워 R2 썸네일 키를 아웃박스에 넣는다 (회수는 cron drainThumbnailGc).
+ *   3) service_role 로 owner 의 **모집 중(open) teams** DELETE — 초대 링크가
  *      주인 없는 좀비 방으로 남지 않게. 발표된(closed) 팀은 30일 수명주기
  *      cron 이 정리 (참여자들이 결과를 계속 볼 수 있어야 하므로 즉시 삭제 X)
- *   6) service_role admin API 로 auth.users DELETE → cascade 로
+ *   4) service_role admin API 로 auth.users DELETE → cascade 로
  *      users/coins/compatibilities/metrics 자동 삭제, teams.owner_id 는 set null
  *
  * 재가입 보너스 farming 방지: handle_new_user 트리거가 bonus_recipients 영구
@@ -51,45 +49,12 @@ export async function action({ request, context }: Route.ActionArgs) {
   }
   const user = (await userRes.json()) as { id: string }
 
-  // 2) thumbnailKey 수집 (RLS-scoped, user 본인 row 만)
-  const metricsRes = await fetch(
-    `${env.SUPABASE_URL}/rest/v1/metrics?user_id=eq.${user.id}&select=body`,
-    {
-      headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: auth },
-    },
-  )
-  const rows = metricsRes.ok
-    ? ((await metricsRes.json()) as Array<{ body: string }>)
-    : []
-  const thumbnailKeys: string[] = []
-  for (const r of rows) {
-    try {
-      const b = JSON.parse(r.body) as { thumbnailKey?: string }
-      if (b.thumbnailKey) thumbnailKeys.push(b.thumbnailKey)
-    } catch {
-      /* malformed body — skip */
-    }
-  }
+  // 썸네일 회수는 여기서 하지 않는다 — 아래 metrics DELETE 가
+  // metrics_thumbnail_gc 트리거를 깨워 키를 아웃박스에 넣고, cron
+  // drainThumbnailGc 가 참조를 확인한 뒤 지운다. 여기서 직접 지우면 실패해도
+  // 재시도가 없고 "행보다 객체를 먼저" 순서를 여기서도 지켜야 한다.
 
-  // 3) R2 DELETE — 병렬, 실패해도 계속 진행 (이미 삭제됐을 수도)
-  const r2 = new AwsClient({
-    accessKeyId: env.R2_ACCESS_KEY_ID,
-    secretAccessKey: env.R2_SECRET_ACCESS_KEY,
-    service: 's3',
-    region: 'auto',
-  })
-  const r2Base = `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${env.R2_BUCKET_NAME}`
-  let deletedThumbnails = 0
-  await Promise.all(
-    thumbnailKeys.map(async (key) => {
-      const url = `${r2Base}/${key}`
-      const signed = await r2.sign(new Request(url, { method: 'DELETE' }))
-      const r = await fetch(signed)
-      if (r.ok || r.status === 404) deletedThumbnails++
-    }),
-  )
-
-  // 4) metrics 명시적 DELETE — cascade 의 선행 보장 (헤더 주석 참조)
+  // 2) metrics 명시적 DELETE — cascade 의 선행 보장 (헤더 주석 참조)
   const metricsDel = await fetch(
     `${env.SUPABASE_URL}/rest/v1/metrics?user_id=eq.${user.id}`,
     {
@@ -146,9 +111,5 @@ export async function action({ request, context }: Route.ActionArgs) {
     )
   }
 
-  return Response.json({
-    success: true,
-    deletedThumbnails,
-    totalThumbnails: thumbnailKeys.length,
-  })
+  return Response.json({ success: true })
 }

@@ -641,7 +641,6 @@ export function JoinWizard({
         thumb: thumbRef.current,
         id: existing?.id ?? undefined,
         oldKey: existing?.thumbnailKey ?? null,
-        accessToken: s.access_token,
       })
     }
     if (!metricsIdRef.current) {

@@ -11,7 +11,6 @@ export default [
   route("/g/:id", "./routes/g.$id.tsx"),
   route("/g/:id/open", "./routes/g.$id.open.tsx"),
   route("/api/r2/presign", "./routes/api.r2.presign.ts"),
-  route("/api/r2/delete", "./routes/api.r2.delete.ts"),
   route("/api/analyze", "./routes/api.analyze.ts"),
   route("/api/account/delete", "./routes/api.account.delete.ts"),
   route("/api/push/match", "./routes/api.push.match.ts"),
