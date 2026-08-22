@@ -67,7 +67,7 @@ class CompatibilityService {
   /// `상대 id → 결제 시점 상대 스냅샷(FaceReadingReport)` 맵 — 내 쌍만.
   ///
   /// body 는 `toBodyJson()` 출력이라 supabaseId 가 빠져 있으므로 상대 id 를
-  /// supabaseId 로 주입하고, source/isMyFace/alias/thumbnailPath 를 override 한
+  /// supabaseId 로 주입하고, source/isMyFace/alias 를 override 한
   /// 뒤 parse. metrics row·로컬 history 에 의존하지 않는 self-contained 복원 —
   /// ledger(코인 사용내역)·확인 리스트가 기기·재설치·eviction 무관하게 항상
   /// 상대 사진/인적정보를 띄우는 source of truth. 이름은 body 가 아니라
@@ -103,7 +103,6 @@ class CompatibilityService {
           'source': AnalysisSource.received.name,
           'isMyFace': false,
           'alias': alias,
-          'thumbnailPath': null,
         };
         map[partnerId] = FaceReadingReport.fromJsonString(
           jsonEncode(overridden),
@@ -162,7 +161,6 @@ class CompatibilityService {
           'source': AnalysisSource.received.name,
           'isMyFace': false,
           'alias': alias,
-          'thumbnailPath': null,
         }),
       );
     } catch (e) {

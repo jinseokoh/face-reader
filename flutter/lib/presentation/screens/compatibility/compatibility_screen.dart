@@ -32,6 +32,7 @@ import 'package:facely/presentation/widgets/face_scan_pill.dart';
 import 'package:facely/presentation/widgets/sort_selector.dart';
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 import 'package:facely/presentation/widgets/source_badge.dart';
+import 'package:facely/presentation/widgets/cdn_thumbnail.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -829,7 +830,6 @@ class _PairThumbs extends StatelessWidget {
         color: Colors.white,
       ),
       child: _Thumb(
-        path: r.thumbnailPath,
         thumbnailKey: r.thumbnailKey,
         size: AppAvatar.md,
         gender: r.gender,
@@ -899,7 +899,6 @@ class _CompatLockedCard extends ConsumerWidget {
               // 관상 list item 과 동일 thumb 사이즈 (42) + 동일 title/subtitle
               // 토큰·간격 (DESIGN.md §0.0.1 통일성).
               _Thumb(
-                path: album.thumbnailPath,
                 thumbnailKey: album.thumbnailKey,
                 size: AppAvatar.md,
                 gender: album.gender,
@@ -1412,13 +1411,12 @@ class _TaglinePair {
 // ─────────────────────────────────────────────────────────────
 
 class _Thumb extends StatelessWidget {
-  final String? path;
   final String? thumbnailKey;
   final double size;
   final Gender? gender;
   final AnalysisSource? source;
   const _Thumb({
-    required this.path,
+
     required this.size,
     this.thumbnailKey,
     this.gender,
@@ -1432,7 +1430,7 @@ class _Thumb extends StatelessWidget {
     // 받은 카드·결제 궁합 복원 파트너는 thumbnailPath=null 이지만 thumbnailKey 는
     // 들고 있으므로 CDN 으로 실제 얼굴을 띄운다.
     // border 는 source 규칙 (sourceBorderColor — 카메라 gold / 앨범 lightGray).
-    final file = ThumbnailPaths.resolveFileSync(path);
+    final file = ThumbnailPaths.cacheFileSync(thumbnailKey);
     final cdn = ThumbnailPaths.cdnUrl(thumbnailKey);
     Widget inner = _networkOrFallback(radius, cdn);
     if (file != null) {
@@ -1490,12 +1488,10 @@ class _Thumb extends StatelessWidget {
   Widget _networkOrFallback(double radius, String? cdn) {
     if (cdn == null) return _genderFallback(radius);
     return ClipOval(
-      child: Image.network(
-        cdn,
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => _genderFallback(radius),
+      child: cdnThumbnail(
+        url: cdn,
+        size: size,
+        fallback: _genderFallback(radius),
       ),
     );
   }

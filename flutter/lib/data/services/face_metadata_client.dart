@@ -7,26 +7,25 @@ import 'package:facely/data/services/r2_uploader.dart';
 import 'package:facely/domain/models/face_metadata.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
-import 'package:sentry/sentry.dart';
 import 'package:uuid/uuid.dart';
 
 /// 옵션 F (with 0 orphan strategy) 전체 파이프라인의 client-side orchestrator.
 ///
 /// 흐름:
-///   1) UUID v4 한 번 발급 — 이후 temp/thumbnails/metrics/share link 전부 같은 값
+///   1) UUID v4 한 번 발급 — 이후 temp/metrics/share link 전부 같은 값
 ///   2) Flutter 가 원본을 720px 로 리사이즈 → R2 temp/{uuid}.jpg 로 PUT
 ///   3) Python /analyze 호출 → {age, gender, ethnicity}
-///   4) **분석 성공한 경우에만** 200 리사이즈 → R2 thumbnails/{YYYYMM}/{uuid}.jpg 로 PUT
-///   5) FaceMetadata 반환 (uuid + thumbnailUrl 포함)
 ///
 /// 발급한 uuid 는 caller 가 [FaceReadingReport.supabaseId] 에 즉시 assign 해야
 /// 한다. 그래야 publish 시점에 SupabaseService.saveMetrics 가 metrics.id 로
-/// 그대로 사용 → temp/uuid·thumbnails/uuid·metrics.id·/r/uuid 가 단일 trace id
-/// 로 묶인다.
+/// 그대로 사용 → temp/uuid·metrics.id·/r/uuid 가 단일 trace id 로 묶인다.
+///
+/// **썸네일은 여기서 올리지 않는다.** 사용자가 정보 확인을 마치고 카드를 저장할
+/// 때 올린다 — 여기서 올리면 확인 화면에서 취소한 사람의 얼굴 이미지가 참조하는
+/// 행 없이 R2 에 영구히 남는다 (소유자가 없어 탈퇴·90일 정리에도 안 걸린다).
 ///
 /// orphan 정책:
-///   * temp/ : R2 lifecycle 1일 자동 삭제 — 분석 실패해도 깨끗
-///   * thumbnails/ : 영구 — 단, 분석 성공 케이스에만 업로드되므로 orphan 0
+///   * temp/ : R2 lifecycle 1일 자동 삭제 — 분석 실패해도, 중도 포기해도 깨끗
 class FaceMetadataClient {
   static const _kAnalyzePath = '/analyze';
   static const _kAnalyzeTimeout = Duration(seconds: 30);
@@ -47,8 +46,7 @@ class FaceMetadataClient {
         _http = httpClient ?? http.Client(),
         _uuid = uuid ?? const Uuid();
 
-  /// 전체 파이프라인 실행. analyze 실패 → 예외, thumbnail 단계 실패 → 로그만
-  /// (이미 analyze 결과는 받았으므로 사용자에겐 metadata 반환, thumbnail null).
+  /// 전체 파이프라인 실행. analyze 실패 → 예외.
   Future<FaceMetadata> analyze(File originalImage) async {
     final originalBytes = await originalImage.readAsBytes();
     final uuid = _uuid.v4();
@@ -71,63 +69,7 @@ class FaceMetadataClient {
       key: tempUpload.key,
     );
 
-    // ── 3) 분석 성공 → 200×200 얼굴 중심 square crop thumbnail 업로드 ────
-    // (실패해도 metadata 는 반환 — orphan-zero 정책: 실패 시 thumbnail null)
-    String? thumbnailUrl;
-    String? thumbnailKey;
-    try {
-      final small = await ImageResizer.faceCenterSquareCrop(
-        originalImage,
-        outSize: 200,
-      );
-      // R2 thumbnail 은 영속 이미지의 유일한 사본 — 로컬 파일은 재설치/샌드박스
-      // 회전 시 소멸하므로 여기서 실패하면 그 카드는 어디서도 못 띄운다.
-      // 일시적 실패 방어로 2회 retry, 최종 실패는 Sentry 로 보고(비fatal 유지).
-      Object? lastErr;
-      StackTrace? lastSt;
-      for (var attempt = 1; attempt <= 2; attempt++) {
-        try {
-          final thumbUpload = await _uploader.upload(
-            prefix: 'thumbnails',
-            uuid: uuid,
-            bytes: small,
-          );
-          thumbnailUrl = thumbUpload.publicUrl.toString();
-          thumbnailKey = thumbUpload.key;
-          lastErr = null;
-          break;
-        } catch (e, st) {
-          lastErr = e;
-          lastSt = st;
-          // ignore: avoid_print
-          print('[FaceMetadataClient] thumbnail upload attempt '
-              '$attempt/2 failed: $e');
-          if (attempt < 2) {
-            await Future.delayed(const Duration(milliseconds: 600));
-          }
-        }
-      }
-      if (lastErr != null) {
-        await Sentry.captureException(lastErr, stackTrace: lastSt,
-            withScope: (s) {
-          s.setTag('op', 'thumbnail_upload');
-          s.setTag('uuid', uuid);
-        });
-      }
-    } catch (e, st) {
-      // crop 등 준비 단계 실패 — 비fatal, 보고만.
-      // ignore: avoid_print
-      print('[FaceMetadataClient] thumbnail prep failed (non-fatal): $e');
-      await Sentry.captureException(e, stackTrace: st, withScope: (s) {
-        s.setTag('op', 'thumbnail_prep');
-        s.setTag('uuid', uuid);
-      });
-    }
-
-    return metadata.copyWith(
-      thumbnailUrl: thumbnailUrl,
-      thumbnailKey: thumbnailKey,
-    );
+    return metadata;
   }
 
   Future<FaceMetadata> _callAnalyze(

@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
+import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/presentation/widgets/picker_row.dart';
 import 'package:facely/presentation/widgets/primary_button.dart';
@@ -308,31 +311,37 @@ class _InfoConfirmScreenState
       // uuid 부분과 매칭되어야 single trace id 유지). 없으면 fallback v4.
       final id = _inferred?.uuid ?? const Uuid().v4();
       report.supabaseId = id;
-      // R2 영구 thumbnail 의 path key — analyze 시점에 이미 PUT 됨.
-      // Worker SSR 의 og:image 가 `cdn.facely.kr/${thumbnailKey}` 로 조립.
-      report.thumbnailKey = _inferred?.thumbnailKey;
 
-      // 썸네일 생성 — ML Kit bbox 기반 face-centered 256 square crop.
+      // 썸네일 — ML Kit bbox 기반 face-centered 200×200 square crop.
       // 단순 비례 축소 (FlutterImageCompress) 만 하면 album path 의 square-padded
       // 1024×1024 이미지가 그대로 작아지면서 face 가 가운데 점처럼 보이는 문제 발생.
       // faceCenterSquareCrop 가 ML Kit 으로 face 위치를 찾아 padding 25% 둘러
       // 200×200 으로 출력 → 사용자가 보는 thumbnail 은 항상 얼굴 중심.
+      //
+      // crop 은 여기서 딱 한 번 돈다. 이 바이트가 곧 R2 키(내용 주소)이자 로컬
+      // 캐시 파일명이다 — 같은 사진은 같은 키, 다른 사진은 다른 URL 이라 CDN 이
+      // 옛 얼굴을 내줄 수 없다. 업로드는 카드를 저장한 **뒤** 백그라운드로 한다
+      // (여기서 올리면 이 화면에서 취소한 사람의 얼굴이 참조하는 행 없이 R2 에
+      // 영구히 남는다).
+      Uint8List? thumbBytes;
       final still = c.stillBytes;
       if (still != null) {
         try {
-          final cropped = await ImageResizer.faceCenterSquareCropFromBytes(
+          thumbBytes = await ImageResizer.faceCenterSquareCropFromBytes(
             still,
             outSize: 200,
           );
-          final dir = await getApplicationDocumentsDirectory();
-          final file = File('${dir.path}/$id.jpg');
-          await file.writeAsBytes(cropped);
+          final key = ThumbnailPaths.contentKey(thumbBytes);
+          report.thumbnailKey = key;
           // 절대경로 박지 말 것 — iOS sandbox UUID 회전 / Android applicationId
           // 변경 시 stale 됨. filename 만 저장 → 읽을 때 ThumbnailPaths 가 현재
           // documents dir 와 조립.
-          report.thumbnailPath = '$id.jpg';
+          final dir = await getApplicationDocumentsDirectory();
+          final name = ThumbnailPaths.fileNameForKey(key);
+          await File('${dir.path}/$name').writeAsBytes(thumbBytes);
         } catch (e) {
           debugPrint('[Thumbnail] save error: $e');
+          thumbBytes = null;
         }
       }
 
@@ -343,10 +352,16 @@ class _InfoConfirmScreenState
       // 고정 row — 서버에 내 관상 row 가 이미 있으면 그 id 를 미리 물려받아,
       // add() 의 supabaseId 교체(옛 카드 제거)와 saveMetrics 덮어쓰기가 같은
       // row 를 가리키게 한다. 비로그인·조회 실패면 null → 현행 신규 생성.
+      // 썸네일 키도 여기서 함께 물려받는다 — 이번 분석이 새 썸네일을 못 만든
+      // 경우 서버 body 는 옛 키를 유지하므로, 로컬 카드도 같은 키를 들고
+      // Hive 에 들어가야 둘이 갈리지 않는다.
       if (widget.asMyFace) {
-        final fixedId = await SupabaseService().myFaceRowId();
+        final fixed = await SupabaseService().myFaceRow();
         if (!mounted) return;
-        if (fixedId != null) report.supabaseId = fixedId;
+        if (fixed != null) {
+          report.supabaseId = fixed.id;
+          report.thumbnailKey ??= fixed.thumbnailKey;
+        }
       }
       // 상대방 이름 (optional) — 로컬 alias + saveMetrics 의 metrics.alias.
       if (_showAliasField) {
@@ -362,6 +377,14 @@ class _InfoConfirmScreenState
         debugPrint('[InfoConfirm] saveMetrics error: $e');
         return report.supabaseId ?? '';
       });
+      // 사진 업로드 — 행을 만든 뒤에. 실패하면 대기열에 남아 다음 실행이 재시도한다.
+      final key = report.thumbnailKey;
+      final bytes = thumbBytes;
+      if (key != null && bytes != null) {
+        unawaited(
+          ref.read(historyProvider.notifier).uploadThumbnail(key, bytes),
+        );
+      }
       if (widget.popWithReport) {
         // 팀 스캔 루프 — 탭 그대로, 리포트를 들고 방 화면으로 복귀.
         if (!mounted) return;

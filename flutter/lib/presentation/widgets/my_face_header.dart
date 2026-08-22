@@ -6,6 +6,7 @@ import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/presentation/widgets/source_badge.dart';
+import 'package:facely/presentation/widgets/cdn_thumbnail.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
@@ -135,17 +136,15 @@ class _HeaderAvatar extends StatelessWidget {
     // 1순위 로컬 파일 → 2순위 CDN(thumbnailKey) → placeholder (앱 공통 3단
     // — rehydrate 복원 내 관상은 thumbnailPath=null 이라 CDN 이 얼굴을 띄운다).
     Widget inner = const _HeaderAvatarPlaceholder();
-    final file = ThumbnailPaths.resolveFileSync(myFace?.thumbnailPath);
+    final file = ThumbnailPaths.cacheFileSync(myFace?.thumbnailKey);
     final cdn = ThumbnailPaths.cdnUrl(myFace?.thumbnailKey);
     if (file != null && file.existsSync()) {
       inner = Image.file(file, width: size, height: size, fit: BoxFit.cover);
     } else if (cdn != null) {
-      inner = Image.network(
-        cdn,
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => const _HeaderAvatarPlaceholder(),
+      inner = cdnThumbnail(
+        url: cdn,
+        size: size,
+        fallback: const _HeaderAvatarPlaceholder(),
       );
     }
     return Container(

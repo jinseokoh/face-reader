@@ -24,6 +24,7 @@ import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/presentation/widgets/detail_avatar.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 import 'package:facely/presentation/widgets/source_badge.dart';
+import 'package:facely/presentation/widgets/cdn_thumbnail.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:go_router/go_router.dart';
@@ -262,7 +263,6 @@ class _CompatShareSide extends StatelessWidget {
     return Column(
       children: [
         DetailAvatar(
-          thumbnailPath: report.thumbnailPath,
           thumbnailKey: report.thumbnailKey,
           // border 색은 전 탭 공통 source 규칙 (카메라 gold / 앨범 lightGray).
           borderColor: sourceBorderColor(report.source),
@@ -717,7 +717,6 @@ class _CompatShareCardComposite extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             _CompatThumb(
-                              path: my.thumbnailPath,
                               thumbnailKey: my.thumbnailKey,
                               gender: my.gender,
                             ),
@@ -733,7 +732,6 @@ class _CompatShareCardComposite extends StatelessWidget {
                             ),
                             const SizedBox(width: 24),
                             _CompatThumb(
-                              path: album.thumbnailPath,
                               thumbnailKey: album.thumbnailKey,
                               gender: album.gender,
                             ),
@@ -804,11 +802,9 @@ class _CompatIconLineRow extends StatelessWidget {
 }
 
 class _CompatThumb extends StatelessWidget {
-  final String? path;
   final String? thumbnailKey;
   final Gender gender;
   const _CompatThumb({
-    required this.path,
     this.thumbnailKey,
     required this.gender,
   });
@@ -818,8 +814,8 @@ class _CompatThumb extends StatelessWidget {
     // 관상 share card (_ShareCardComposite) thumb 와 동일 크기·radius 로
     // 통일 — 카카오 link preview hero 의 통일감 보장.
     const size = 180.0;
-    // 로컬 thumbnailPath → CDN thumbnailKey → gender fallback(male/female svg).
-    final file = ThumbnailPaths.resolveFileSync(path);
+    // 로컬 캐시 → CDN → gender fallback(male/female svg).
+    final file = ThumbnailPaths.cacheFileSync(thumbnailKey);
     final cdn = ThumbnailPaths.cdnUrl(thumbnailKey);
     final genderAsset = switch (gender) {
       Gender.male => 'assets/svgs/male.svg',
@@ -853,13 +849,7 @@ class _CompatThumb extends StatelessWidget {
     if (cdn != null) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(14),
-        child: Image.network(
-          cdn,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => placeholder,
-        ),
+        child: cdnThumbnail(url: cdn, size: size, fallback: placeholder),
       );
     }
     return placeholder;

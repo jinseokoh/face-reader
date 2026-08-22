@@ -15,6 +15,7 @@ import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
 import 'package:facely/presentation/widgets/physiognomy_info_dialog.dart';
 import 'package:facely/presentation/widgets/sort_selector.dart';
 import 'package:facely/presentation/widgets/source_badge.dart';
+import 'package:facely/presentation/widgets/cdn_thumbnail.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -325,17 +326,15 @@ class _PhysiognomyItem extends ConsumerWidget {
     // border 는 source 규칙 (sourceBorderColor — 카메라 gold / 앨범 lightGray).
     const size = AppAvatar.md;
     Widget inner = _sourceIconAvatar(report, size);
-    final file = ThumbnailPaths.resolveFileSync(report.thumbnailPath);
+    final file = ThumbnailPaths.cacheFileSync(report.thumbnailKey);
     final cdn = ThumbnailPaths.cdnUrl(report.thumbnailKey);
     if (file != null && file.existsSync()) {
       inner = Image.file(file, width: size, height: size, fit: BoxFit.cover);
     } else if (cdn != null) {
-      inner = Image.network(
-        cdn,
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => _sourceIconAvatar(report, size),
+      inner = cdnThumbnail(
+        url: cdn,
+        size: size,
+        fallback: _sourceIconAvatar(report, size),
       );
     }
     return Container(
@@ -443,14 +442,19 @@ class _PhysiognomyItem extends ConsumerWidget {
         color: AppColors.border,
         shape: BoxShape.circle,
       ),
-      child: FaIcon(
-        switch (report.source) {
-          AnalysisSource.camera => FontAwesomeIcons.faceSmile,
-          AnalysisSource.album => FontAwesomeIcons.images,
-          AnalysisSource.received => FontAwesomeIcons.shareNodes,
-        },
-        color: AppColors.textSecondary,
-        size: 18,
+      // FaIcon 은 원본 Icon 에서 SizedBox·Center 를 걷어낸 위젯이라, 크기가
+      // 정해진 부모의 tight 제약을 그대로 받으면 글리프가 좌상단에 그려진다.
+      // 원형 아바타 폴백은 Center 로 감싸는 것이 전 탭 공통 (team_reveal 동일).
+      child: Center(
+        child: FaIcon(
+          switch (report.source) {
+            AnalysisSource.camera => FontAwesomeIcons.faceSmile,
+            AnalysisSource.album => FontAwesomeIcons.images,
+            AnalysisSource.received => FontAwesomeIcons.shareNodes,
+          },
+          color: AppColors.textSecondary,
+          size: 18,
+        ),
       ),
     );
   }

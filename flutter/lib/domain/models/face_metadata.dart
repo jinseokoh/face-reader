@@ -7,7 +7,6 @@ import 'package:face_engine/data/enums/gender.dart';
 /// `uuid` is the **single capture id** generated once at analyze time and
 /// reused across the entire face lifecycle:
 ///   - `temp/{uuid}.jpg`                (analyze 입력, 즉시 삭제)
-///   - `thumbnails/{YYYYMM}/{uuid}.jpg` (영구 256 PNG)
 ///   - `FaceReadingReport.supabaseId`  (caller 가 즉시 assign)
 ///   - `metrics.id` (Supabase row PK)
 ///   - `https://facely.kr/r/{uuid}`    (share link)
@@ -17,9 +16,8 @@ import 'package:face_engine/data/enums/gender.dart';
 /// `report.supabaseId` 에 흘려넣어야 한다 (saveMetrics 의 fallback v4 가
 /// 발동하는 경로는 analyze 미경유 케이스 한정).
 ///
-/// `thumbnailUrl` is null until the post-analyze 256×256 thumbnail upload
-/// completes (orphan-zero strategy: thumbnail is only uploaded if analysis
-/// succeeds, so until then the UI must show a gender-based fallback).
+/// 썸네일은 이 객체와 무관하다 — 사용자가 정보 확인을 마치고 카드를 저장할 때
+/// 그 시점의 crop 바이트에서 내용 주소 키가 나온다 (`ThumbnailPaths.contentKey`).
 class FaceMetadata {
   final String uuid;
   final int age;
@@ -30,31 +28,13 @@ class FaceMetadata {
   // "middleEastern" — Python /analyze 응답에서 Flutter Ethnicity enum name 으로
   // 정규화된 값. 그대로 `Ethnicity.values.byName(...)` 로 매핑 가능.
   final String ethnicity;
-  /// R2 영구 CDN URL — `https://cdn.facely.kr/{thumbnailKey}`. 표시 fallback.
-  final String? thumbnailUrl;
-  /// R2 object key — `thumbnails/{YYYYMM}/{uuid}.jpg`. Supabase body 및 Hive
-  /// `FaceReadingReport.thumbnailKey` 에 박힘. Worker SSR 의 og:image 가 이 값을
-  /// `${R2_CDN_BASE}/${thumbnailKey}` 로 조립.
-  final String? thumbnailKey;
 
   const FaceMetadata({
     required this.uuid,
     required this.age,
     required this.gender,
     required this.ethnicity,
-    this.thumbnailUrl,
-    this.thumbnailKey,
   });
-
-  FaceMetadata copyWith({String? thumbnailUrl, String? thumbnailKey}) =>
-      FaceMetadata(
-        uuid: uuid,
-        age: age,
-        gender: gender,
-        ethnicity: ethnicity,
-        thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
-        thumbnailKey: thumbnailKey ?? this.thumbnailKey,
-      );
 
   /// Python `/analyze` 응답엔 uuid 가 없다 (서버는 모름). 호출자가 client-side
   /// 에서 발급한 uuid 를 그대로 주입해야 한다.
@@ -74,8 +54,6 @@ class FaceMetadata {
         'age': age,
         'gender': gender,
         'ethnicity': ethnicity,
-        if (thumbnailUrl != null) 'thumbnail_url': thumbnailUrl,
-        if (thumbnailKey != null) 'thumbnail_key': thumbnailKey,
       };
 
   /// DeepFace `gender` 문자열을 [Gender] enum 으로. 알 수 없으면 null.

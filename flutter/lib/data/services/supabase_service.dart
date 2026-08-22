@@ -6,7 +6,6 @@ import 'package:uuid/uuid.dart';
 
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/data/services/auth_service.dart';
-import 'package:facely/data/services/r2_uploader.dart';
 
 class SupabaseService {
   static final SupabaseService _instance = SupabaseService._();
@@ -25,39 +24,32 @@ class SupabaseService {
   ///   * fallback v4: analyze 미경유 케이스 한정 — 라이브 mesh-only 캡처
   ///     (R2 업로드 없이 메타만), legacy entry, compat 페어링의 보조 슬롯 등.
   /// 결과 UUID 를 반환.
+  ///
+  /// **[report] 를 바꾸지 않는다.** 넘어오는 카드는 Hive 가 이미 저장을 끝낸
+  /// 객체라, 여기서 필드를 손대면 메모리와 Hive 가 갈린다 (갈린 카드는 다음
+  /// 당김 동기화에서 서버와 어긋난 것으로 취급돼 썸네일·심하면 카드 자체를
+  /// 잃는다). 최종 id 는 **반환값**으로만 알린다 — 로컬 카드에 반영할지는
+  /// 호출부가 정하고, 반영했으면 호출부가 Hive 에 다시 쓴다.
   Future<String> saveMetrics(FaceReadingReport report) async {
     final uid = _client.auth.currentUser?.id;
 
     // 내 관상 고정 row — 서버에 기존 my-face row 가 있으면 새 row 를 만들지
     // 않고 그 id 에 덮어쓴다 (row id 영구 고정 · 웹 saveCapture 와 동일 모델.
-    // 케미 슬롯 FK·/r/{id} 링크가 항상 유효하고 최신 관상을 가리킴). 재촬영의
-    // 분석 uuid 는 썸네일 키로만 남는다. 옛 썸네일 삭제는 body 가 아직 옛 키를
-    // 참조하는 upsert **이전** 이어야 /api/r2/delete 소유 검증을 통과한다.
+    // 케미 슬롯 FK·/r/{id} 링크가 항상 유효하고 최신 관상을 가리킴).
     ({String id, String? thumbnailKey})? existing;
+    // 새 썸네일이 없으면(crop 실패 등) body 가 계속 옛 키를 가리키게 둔다 —
+    // 살아있는 R2 객체를 가리켜야 아바타가 안 깨진다 (웹 saveCapture 와 동일).
+    //
+    // 교체된 옛 객체를 여기서 지우지 않는다. body 를 새 키로 upsert 하면
+    // metrics_thumbnail_gc 트리거가 옛 키를 아웃박스에 넣고, cron 이 참조를
+    // 확인한 뒤 지운다 — 실패해도 재시도되고 순서 제약도 없다.
+    String? bodyKey = report.thumbnailKey;
     if (report.isMyFace && uid != null) {
-      existing = await _myFaceRow(uid);
-      final oldKey = existing?.thumbnailKey;
-      if (oldKey != null) {
-        if (report.thumbnailKey == null) {
-          // 새 썸네일이 없으면(메타데이터 타임아웃 등) 옛 키를 보존 — 아바타가
-          // 깨지지 않게 body 가 계속 살아있는 객체를 가리키게 한다 (웹 saveCapture
-          // 와 동일 규칙). 삭제하지 않는다.
-          report.thumbnailKey = oldKey;
-        } else if (oldKey != report.thumbnailKey) {
-          final token = _client.auth.currentSession?.accessToken;
-          if (token != null) {
-            final ok =
-                await R2Uploader().deleteObject(oldKey, accessToken: token);
-            debugPrint(
-                '[Supabase.saveMetrics] old thumbnail delete ok=$ok key=$oldKey');
-          }
-        }
-      }
+      existing = await myFaceRow();
+      bodyKey ??= existing?.thumbnailKey;
     }
+
     final id = existing?.id ?? report.supabaseId ?? _uuid.v4();
-    // 로컬 카드가 최종 row 를 가리키도록 동기화 — InfoConfirm 이 미리 고정 id
-    // 를 물려받은 경우엔 no-op.
-    report.supabaseId = id;
 
     // alias 컬럼 = 소유자 지정 이름 (RLS 는 body 안의 alias 만 금지 — 컬럼 OK).
     // 내 관상의 로컬 전용 표기 '나' 는 서버 밖에선 무의미 — 설정에서 수정
@@ -71,7 +63,7 @@ class SupabaseService {
     final data = {
       'id': id,
       'user_id': uid,
-      'body': report.toBodyJson(),
+      'body': bodyWithThumbnailKey(report, bodyKey),
       'alias': alias,
       'is_my_face': report.isMyFace,
     };
@@ -140,13 +132,28 @@ class SupabaseService {
     }
   }
 
-  /// 저장 전에 호출해 재촬영 카드가 처음부터 고정 row id 를 갖게 한다 —
-  /// 로컬 히스토리의 supabaseId 교체(add)와 saveMetrics 덮어쓰기가 같은
-  /// row 를 가리키는 전제. 비로그인·행 없음·조회 실패면 null.
-  Future<String?> myFaceRowId() async {
+  /// 저장 전에 호출해 재촬영 카드가 처음부터 고정 row id 와 서버가 들고 있는
+  /// 썸네일 키를 갖게 한다 — 로컬 히스토리의 supabaseId 교체(add)와 saveMetrics
+  /// 덮어쓰기가 같은 row 를 가리키고, Hive 에 들어가는 카드가 서버 body 와 같은
+  /// 썸네일을 가리키게 하는 전제. 비로그인·행 없음·조회 실패면 null.
+  Future<({String id, String? thumbnailKey})?> myFaceRow() async {
     final uid = _client.auth.currentUser?.id;
     if (uid == null) return null;
-    return (await _myFaceRow(uid))?.id;
+    return _myFaceRow(uid);
+  }
+
+  /// body 직렬화 + thumbnailKey 만 [key] 로 교체. report 를 건드리지 않고
+  /// 서버에 실을 값만 바꾸기 위한 것 (body-override 파싱과 같은 문법).
+  @visibleForTesting
+  static String bodyWithThumbnailKey(FaceReadingReport report, String? key) {
+    if (key == report.thumbnailKey) return report.toBodyJson();
+    final body = jsonDecode(report.toBodyJson()) as Map<String, dynamic>;
+    if (key == null) {
+      body.remove('thumbnailKey');
+    } else {
+      body['thumbnailKey'] = key;
+    }
+    return jsonEncode(body);
   }
 
   /// 로그인 사용자 소유 metrics 전체 — 로그인 rehydrate(새 기기 복원)용.

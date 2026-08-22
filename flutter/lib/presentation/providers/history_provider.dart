@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'dart:developer' as dev;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -22,6 +23,28 @@ void _log(String msg) {
   dev.log(msg, name: 'History');
 }
 
+/// metrics row → FaceReadingReport. 공유받기(fetchByUuid)와 같은
+/// body-override 파싱이되, 소유자 관점이라 source·isMyFace·alias 를 살린다.
+/// thumbnailPath 는 이 기기에 파일이 없으므로 null — 리스트가 thumbnailKey
+/// 의 CDN URL 로 fallback (ThumbnailPaths.cdnUrl).
+FaceReadingReport? _reportFromRow(Map<String, dynamic> row) {
+  final body = row['body'];
+  if (body is! String || body.isEmpty) return null;
+  try {
+    final original = jsonDecode(body) as Map<String, dynamic>;
+    final overridden = <String, dynamic>{
+      ...original,
+      'isMyFace': row['is_my_face'] == true,
+      'alias': row['alias'],
+      'supabaseId': row['id'],
+    };
+    return FaceReadingReport.fromJsonString(jsonEncode(overridden));
+  } catch (e) {
+    _log('rehydrate parse failed id=${row['id']}: $e');
+    return null;
+  }
+}
+
 final historyProvider =
     NotifierProvider<HistoryNotifier, List<FaceReadingReport>>(
   HistoryNotifier.new,
@@ -34,6 +57,17 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
   /// 이 기기 history 의 소유 계정 uid. 키가 없으면 익명(로그인 전 촬영분)
   /// 이라 다음 로그인이 claim 해 간다. 값이 박혀 있으면 그 계정 전용이다.
   static const String _kOwnerUidKey = 'history_owner_uid';
+
+  /// 사진 필드가 `thumbnailKey` 하나가 되기 전에 저장된 카드의 로컬 파일명.
+  /// 그 시절 파일명은 분석 uuid 라 키에서 파생되지 않는다 — Hive JSON 에만 남은
+  /// 이름을 건져 두었다가 [retryPendingUploads] 가 파일을 해시해 키로 바꾼다.
+  /// 이 회수가 없으면 아직 업로드 못 한 사진이 이름을 잃어 사라진다.
+  static const String _kFilesToAdoptKey = 'thumbnail_files_to_adopt';
+
+  /// R2 업로드가 아직 안 끝난 썸네일 키 목록. 카드의 필드가 아니라 별도
+  /// 대기열이다 — 사진의 진실은 `thumbnailKey` 하나이고, 여기 있는 것은
+  /// "아직 서버가 모르는 사진" 이라는 진행 상태일 뿐이다.
+  static const String _kPendingUploadsKey = 'pending_thumbnail_uploads';
 
   StreamSubscription<AuthUser?>? _authSub;
   // 같은 uid 로 중복 claim 방지 (profileStream 은 코인 갱신에도 발화).
@@ -64,6 +98,12 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
       // build 중엔 state 재할당 금지 — 다음 틱에.
       Future(() => _rehydrateFromServer());
     }
+    // 지난 실행에서 못 올린 사진 재시도 — 로그인 여부와 무관 (익명 업로드 허용).
+    // 입양(이름 옮기기)이 끝난 뒤에 캐시를 쓸어야 살아있는 파일을 안 지운다.
+    Future(() async {
+      await retryPendingUploads();
+      await _sweepCacheFiles();
+    });
     return reports;
   }
 
@@ -292,10 +332,6 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
           next.add(r); // 서버 body 파싱 실패 — 로컬 유지.
           continue;
         }
-        // 같은 capture(동일 thumbnailKey)면 이 기기의 로컬 썸네일 파일 우선.
-        if (fresh.thumbnailKey == r.thumbnailKey) {
-          fresh.thumbnailPath = r.thumbnailPath;
-        }
         // 내 관상의 로컬 표기는 '나' — 서버 alias(nickname)는 서버 전용.
         if (fresh.isMyFace) fresh.alias = null;
         next.add(fresh);
@@ -316,29 +352,6 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
       await _saveToHive();
     } catch (e) {
       _log('sync error: $e');
-    }
-  }
-
-  /// metrics row → FaceReadingReport. 공유받기(fetchByUuid)와 같은
-  /// body-override 파싱이되, 소유자 관점이라 source·isMyFace·alias 를 살린다.
-  /// thumbnailPath 는 이 기기에 파일이 없으므로 null — 리스트가 thumbnailKey
-  /// 의 CDN URL 로 fallback (ThumbnailPaths.cdnUrl).
-  FaceReadingReport? _reportFromRow(Map<String, dynamic> row) {
-    final body = row['body'];
-    if (body is! String || body.isEmpty) return null;
-    try {
-      final original = jsonDecode(body) as Map<String, dynamic>;
-      final overridden = <String, dynamic>{
-        ...original,
-        'isMyFace': row['is_my_face'] == true,
-        'alias': row['alias'],
-        'thumbnailPath': null,
-        'supabaseId': row['id'],
-      };
-      return FaceReadingReport.fromJsonString(jsonEncode(overridden));
-    } catch (e) {
-      _log('rehydrate parse failed id=${row['id']}: $e');
-      return null;
     }
   }
 
@@ -402,38 +415,155 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
     await _saveToHive();
   }
 
-  /// lazy 자가치유 — thumbnailKey 가 비었지만 로컬 thumbnail 파일이 아직 있으면
-  /// R2 에 재업로드하고 key 를 채워 Hive·Supabase 에 영속화한다. 분석 당시
-  /// 썸네일 업로드가 일시 실패해 thumbnailKey 가 비었던 카드를, 재설치로 로컬
-  /// 파일이 소멸하기 전에 복구한다(재설치 후엔 소스가 없어 복구 불가 → Sentry
-  /// 가 그 빈도를 알려준다). 받은 카드·복원 파트너는 로컬 파일이 없어 자동 skip.
-  Future<void> backfillThumbnailIfMissing(FaceReadingReport report) async {
-    if (report.thumbnailKey != null) return;
-    final uuid = report.supabaseId;
-    if (uuid == null) return;
-    final idx = state.indexWhere((r) => r.supabaseId == uuid);
-    if (idx < 0) return; // 로컬 history 카드에 한함
-    final file = await ThumbnailPaths.resolveFile(report.thumbnailPath);
-    if (file == null || !await file.exists()) return;
+  /// 썸네일 업로드 — 저장을 마친 카드의 사진을 R2 에 올린다. 실패하면 대기열에
+  /// 남겨 다음 실행이 재시도한다. 키가 내용 주소라 재시도가 멱등하다
+  /// (서버 409 = 같은 바이트가 이미 있음 = 성공).
+  Future<void> uploadThumbnail(String key, Uint8List bytes) async {
+    final hash = ThumbnailPaths.hashFromKey(key);
+    if (hash == null) return;
     try {
-      final bytes = await file.readAsBytes();
-      final up = await R2Uploader()
-          .upload(prefix: 'thumbnails', uuid: uuid, bytes: bytes);
-      state[idx].thumbnailKey = up.key;
-      state = [...state];
-      await _saveToHive();
-      await SupabaseService().upsertMetricsBody(state[idx]).catchError((e, st) {
-        _log('backfill supabase upsert error: $e');
-        Sentry.captureException(e, stackTrace: st);
-      });
-      _log('backfilled thumbnailKey uuid=$uuid → ${up.key}');
+      await R2Uploader().upload(prefix: 'thumbnails', hash: hash, bytes: bytes);
+      await _dropPendingUpload(key);
+      _log('thumbnail uploaded $key');
     } catch (e, st) {
-      _log('backfill failed uuid=$uuid: $e');
-      await Sentry.captureException(e, stackTrace: st, withScope: (s) {
-        s.setTag('op', 'thumbnail_backfill');
-        s.setTag('uuid', uuid);
+      await _addPendingUpload(key);
+      _log('thumbnail upload 대기열로 $key: $e');
+      await Sentry.captureException(e, stackTrace: st, withScope: (sc) {
+        sc.setTag('op', 'thumbnail_upload');
       });
     }
+  }
+
+  /// 아직 R2 에 없는 사진을 올린다. 두 갈래를 함께 처리한다:
+  ///   1. 업로드가 실패해 대기열에 남은 키 — 로컬 캐시 파일로 재시도
+  ///   2. 키가 없고 로컬 파일만 있는 카드 — 파일에서 키를 계산해 올리고 영속화
+  ///
+  /// 2번이 이 기기에만 있던 사진을 서버가 아는 사진으로 바꾼다. 재설치로 로컬
+  /// 파일이 사라지기 전에 해두지 않으면 그 얼굴은 어디서도 복구할 수 없다.
+  Future<void> retryPendingUploads() async {
+    for (final key in List<String>.from(_readPendingUploads())) {
+      final file = await ThumbnailPaths.resolveFile(
+        ThumbnailPaths.fileNameForKey(key),
+      );
+      if (file == null || !await file.exists()) {
+        await _dropPendingUpload(key); // 캐시가 사라졌다 — 올릴 원본이 없다.
+        continue;
+      }
+      await uploadThumbnail(key, await file.readAsBytes());
+    }
+
+    final adopt = _readFilesToAdopt();
+    if (adopt.isEmpty) return;
+    for (final entry in adopt.entries.toList()) {
+      final idx = state.indexWhere((r) => r.supabaseId == entry.key);
+      if (idx < 0) {
+        adopt.remove(entry.key);
+        continue;
+      }
+      final r = state[idx];
+      if (r.thumbnailKey != null || r.source == AnalysisSource.received) {
+        adopt.remove(entry.key);
+        continue;
+      }
+      final file = await ThumbnailPaths.resolveFile(entry.value);
+      if (file == null || !await file.exists()) {
+        adopt.remove(entry.key); // 파일이 사라졌다 — 되살릴 원본이 없다.
+        continue;
+      }
+      final bytes = await file.readAsBytes();
+      final key = ThumbnailPaths.contentKey(bytes);
+      // 파일명을 키에 맞춰 옮긴다 — 그래야 업로드 전에도 화면이 사진을 찾는다.
+      final renamed = await ThumbnailPaths.cacheFile(key);
+      if (renamed != null && !await renamed.exists()) {
+        await file.rename(renamed.path).catchError((Object e) {
+          _log('캐시 파일 이름 변경 실패: $e');
+          return file;
+        });
+      }
+      r.thumbnailKey = key;
+      state = [...state];
+      await _saveToHive();
+      await SupabaseService().upsertMetricsBody(r).catchError((e, st) {
+        _log('thumbnail key upsert error: $e');
+        Sentry.captureException(e, stackTrace: st);
+      });
+      await uploadThumbnail(key, bytes);
+      adopt.remove(entry.key);
+    }
+    await _prefs.put(_kFilesToAdoptKey, jsonEncode(adopt));
+  }
+
+  /// 키가 없는 카드의 옛 파일명을 raw JSON 에서 건진다. 키가 있으면 파일명이
+  /// 키에서 파생되므로 할 일이 없다.
+  void _rememberFileToAdopt(FaceReadingReport report, String rawJson) {
+    if (report.thumbnailKey != null || report.supabaseId == null) return;
+    try {
+      final j = jsonDecode(rawJson) as Map<String, dynamic>;
+      final name = j['thumbnailPath'] as String?;
+      if (name == null || name.isEmpty) return;
+      final map = _readFilesToAdopt();
+      if (map[report.supabaseId] == name) return;
+      map[report.supabaseId!] = name;
+      _prefs.put(_kFilesToAdoptKey, jsonEncode(map));
+    } catch (e) {
+      _log('adopt 대상 기록 실패: $e');
+    }
+  }
+
+  Map<String, String> _readFilesToAdopt() {
+    try {
+      final raw = _prefs.get(_kFilesToAdoptKey);
+      if (raw == null || raw.isEmpty) return {};
+      return (jsonDecode(raw) as Map<String, dynamic>).cast<String, String>();
+    } catch (_) {
+      return {};
+    }
+  }
+
+  /// 어떤 카드의 키와도 이름이 맞지 않는 캐시 파일 정리. 아직 입양하지 않은
+  /// 옛 파일은 지키고 지운다 — 그 파일은 이름이 키에서 안 나오지만 유일한
+  /// 사본일 수 있다.
+  Future<void> _sweepCacheFiles() async {
+    final keep = <String>{
+      for (final r in state)
+        if (r.thumbnailKey != null)
+          ThumbnailPaths.fileNameForKey(r.thumbnailKey!),
+      ..._readFilesToAdopt().values,
+    };
+    final removed = await ThumbnailPaths.sweepCache(keep);
+    if (removed > 0) _log('캐시 파일 $removed개 정리');
+  }
+
+  List<String> _readPendingUploads() {
+    try {
+      final raw = _prefs.get(_kPendingUploadsKey);
+      if (raw == null || raw.isEmpty) return const [];
+      return (jsonDecode(raw) as List).cast<String>();
+    } catch (e) {
+      _log('pending uploads read 실패: $e');
+      return const [];
+    }
+  }
+
+  Future<void> _writePendingUploads(List<String> keys) async {
+    try {
+      await _prefs.put(_kPendingUploadsKey, jsonEncode(keys));
+    } catch (e) {
+      _log('pending uploads write 실패: $e');
+    }
+  }
+
+  Future<void> _addPendingUpload(String key) async {
+    final keys = List<String>.from(_readPendingUploads());
+    if (keys.contains(key)) return;
+    keys.add(key);
+    await _writePendingUploads(keys);
+  }
+
+  Future<void> _dropPendingUpload(String key) async {
+    final keys = List<String>.from(_readPendingUploads());
+    if (!keys.remove(key)) return;
+    await _writePendingUploads(keys);
   }
 
   /// Pull-to-refresh 재계산 파이프라인:
@@ -524,6 +654,7 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
         final report = FaceReadingReport.fromJsonString(json);
         _log('load entry $i PARSED: supabaseId=${report.supabaseId}');
         reports.add(report);
+        _rememberFileToAdopt(report, json);
       } catch (e, st) {
         failCount++;
         _log('load FAIL entry $i: $e');

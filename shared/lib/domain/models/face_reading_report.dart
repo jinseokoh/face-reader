@@ -56,7 +56,7 @@ enum AnalysisSource {
   album,
 
   /// 다른 사람이 분석한 결과를 카톡 등으로 받아 bookmark 한 카드.
-  /// 본인이 분석한 것이 아니므로 thumbnailPath(local file)는 없고 R2
+  /// 본인이 분석한 것이 아니므로 로컬 캐시 파일이 없고 R2
   /// `thumbnailKey` (cdn.facely.kr 직통) 로만 이미지 노출. UI 의 album tab
   /// 안 "받은 카드" section 으로 grouping.
   received,
@@ -207,7 +207,6 @@ class FaceReadingReport {
   String? supabaseId;
   String? alias;
   bool isMyFace;
-  String? thumbnailPath;
 
   /// R2 thumbnail 객체 key (`thumbnails/YYYYMM/{uuid}.jpg`). publish 시점에
   /// 채워짐. Worker SSR 의 `og:image` 가 `${R2_CDN_BASE}/${thumbnailKey}` 로 조립.
@@ -255,7 +254,6 @@ class FaceReadingReport {
     this.supabaseId,
     this.alias,
     this.isMyFace = false,
-    this.thumbnailPath,
     this.thumbnailKey,
     required this.metrics,
     this.lateralMetrics,
@@ -277,11 +275,9 @@ class FaceReadingReport {
 
   /// 서버 metrics.body 전용 직렬화.
   ///
-  /// body = 분석 결과 payload. 소유/관계 메타(alias, isMyFace)와 로컬 전용
-  /// 필드(thumbnailPath)는 제외한다.
+  /// body = 분석 결과 payload. 소유/관계 메타(alias, isMyFace)는 제외한다.
   /// - alias → metrics 컬럼
   /// - isMyFace → metrics 컬럼 (is_my_face)
-  /// - thumbnailPath → 디바이스 로컬 경로
   String toBodyJson() => jsonEncode({
         'schemaVersion': schemaVersion,
         'ethnicity': ethnicity.name,
@@ -320,8 +316,8 @@ class FaceReadingReport {
         'supabaseId': supabaseId,
         'alias': alias,
         'isMyFace': isMyFace,
-        'thumbnailPath': thumbnailPath,
-        // R2 thumbnail 포인터.
+        // R2 thumbnail 포인터 — 사진의 유일한 필드. 로컬 캐시 파일명은 이
+        // 키에서 파생된다 (ThumbnailPaths.fileNameForKey).
         if (thumbnailKey != null) 'thumbnailKey': thumbnailKey,
         // rawValue 만 저장 — id → double. 현재 ref 에 의존하는 z/zAdjusted/
         // metricScore 는 절대 저장 금지 (저장하면 ref 변경이 기존 리포트에
@@ -490,7 +486,6 @@ class FaceReadingReport {
       supabaseId: j['supabaseId'] as String?,
       alias: j['alias'] as String?,
       isMyFace: j['isMyFace'] as bool? ?? false,
-      thumbnailPath: j['thumbnailPath'] as String?,
       // optional fields — null 이어도 정상.
       thumbnailKey: j['thumbnailKey'] as String?,
       metrics: metrics,

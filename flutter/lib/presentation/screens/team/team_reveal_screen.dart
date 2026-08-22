@@ -28,6 +28,7 @@ import '../compatibility/compatibility_unlock_action.dart';
 import 'team_band.dart';
 import 'team_match_card.dart';
 import 'team_stat_header.dart';
+import 'package:facely/presentation/widgets/cdn_thumbnail.dart';
 
 /// 쌍 상세 unlock 시트 — runCompatibilityUnlock/pushCompat 호출과 동일 계약.
 /// 무료 = 밴드 닷 + 라벨만(케미 그룹 payload 는 best 외 점수를 싣지 않는다,
@@ -194,18 +195,16 @@ Future<void> openTeamPairDetail(
 /// 원형 thumbnail 아바타 — 1순위 로컬 파일 → 2순위 CDN(thumbnailKey) →
 /// 사람 아이콘.
 Widget _pairAvatar(FaceReadingReport r, {double size = AppAvatar.sm}) {
-  final file = ThumbnailPaths.resolveFileSync(r.thumbnailPath);
+  final file = ThumbnailPaths.cacheFileSync(r.thumbnailKey);
   final cdn = ThumbnailPaths.cdnUrl(r.thumbnailKey);
   Widget inner = _pairIconAvatar(size);
   if (file != null && file.existsSync()) {
     inner = Image.file(file, width: size, height: size, fit: BoxFit.cover);
   } else if (cdn != null) {
-    inner = Image.network(
-      cdn,
-      width: size,
-      height: size,
-      fit: BoxFit.cover,
-      errorBuilder: (_, _, _) => _pairIconAvatar(size),
+    inner = cdnThumbnail(
+      url: cdn,
+      size: size,
+      fallback: _pairIconAvatar(size),
     );
   }
   // border 색은 전 탭 공통 source 규칙 (카메라 gold / 앨범 lightGray).

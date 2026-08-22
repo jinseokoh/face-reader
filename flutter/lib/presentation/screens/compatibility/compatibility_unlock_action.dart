@@ -155,8 +155,8 @@ Future<bool> runCompatibilityUnlock(
 Future<void> _ensureSupabaseId(WidgetRef ref, FaceReadingReport report) async {
   if (!report.isMyFace && report.supabaseId != null) return;
   final before = report.supabaseId;
-  // saveMetrics 가 report.supabaseId 를 최종 id 로 직접 갱신하므로,
-  // 호출 전 값과 비교해 바뀐 경우에만 Hive 재영속.
+  // saveMetrics 는 report 를 건드리지 않고 최종 id 를 반환만 한다 — 로컬
+  // 카드 반영과 Hive 재영속은 이 호출부 몫. 바뀐 경우에만 쓴다.
   final uuid = await SupabaseService().saveMetrics(report);
   if (before != uuid) {
     report.supabaseId = uuid;

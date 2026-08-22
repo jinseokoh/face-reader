@@ -48,7 +48,6 @@ class ShareReceiveService {
         'isMyFace': false,
         // 받는 사람 시점에선 alias·local thumbnail 초기화.
         'alias': null,
-        'thumbnailPath': null,
         // supabaseId 는 URL 의 uuid 와 동일해야 함.
         'supabaseId': uuid,
       };

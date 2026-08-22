@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
+import 'package:facely/presentation/widgets/cdn_thumbnail.dart';
 
 /// 상세 페이지 공용 아바타 — **56px 원형 + 1.5px ring**. 관상 상세의 원형이
 /// 기준 구조: 이미지는 [ClipOval] 로 ring **안쪽**에 클리핑해 border 가 사진
@@ -13,16 +14,15 @@ import 'package:facely/core/theme.dart';
 /// white 30%, 흰 배경(케미 방 멤버 그리드)은 [borderColor] 로
 /// AppColors.border 지정.
 ///
-/// 이미지 3단: 로컬 thumbnailPath → CDN thumbnailKey → [fallback].
+/// 이미지 3단: 로컬 캐시 → CDN → [fallback]. 로컬 캐시 파일명은 thumbnailKey
+/// 에서 파생되므로(ThumbnailPaths.cacheFileSync) 경로를 따로 받지 않는다.
 class DetailAvatar extends StatelessWidget {
-  final String? thumbnailPath;
   final String? thumbnailKey;
   final Widget fallback;
   final Color? borderColor;
 
   const DetailAvatar({
     super.key,
-    required this.thumbnailPath,
     required this.thumbnailKey,
     required this.fallback,
     this.borderColor,
@@ -32,19 +32,13 @@ class DetailAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final file = ThumbnailPaths.resolveFileSync(thumbnailPath);
+    final file = ThumbnailPaths.cacheFileSync(thumbnailKey);
     final cdn = ThumbnailPaths.cdnUrl(thumbnailKey);
     Widget inner = fallback;
     if (file != null && file.existsSync()) {
       inner = Image.file(file, width: size, height: size, fit: BoxFit.cover);
     } else if (cdn != null) {
-      inner = Image.network(
-        cdn,
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => fallback,
-      );
+      inner = cdnThumbnail(url: cdn, size: size, fallback: fallback);
     }
     return Container(
       width: size,

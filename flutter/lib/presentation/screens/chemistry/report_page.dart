@@ -876,7 +876,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     if (report.source != AnalysisSource.received &&
         report.thumbnailKey == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        ref.read(historyProvider.notifier).backfillThumbnailIfMissing(report);
+        ref.read(historyProvider.notifier).retryPendingUploads();
       });
     }
   }
@@ -1088,7 +1088,6 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     DetailAvatar(
-                      thumbnailPath: report.thumbnailPath,
                       thumbnailKey: report.thumbnailKey,
                       // border 색은 전 탭 공통 source 규칙
                       // (카메라 gold / 앨범 lightGray).
@@ -1725,7 +1724,7 @@ class _ShareCardComposite extends StatelessWidget {
     final catchphrase = archetypeCatchphrase[arch.primary] ?? '';
 
     const thumbSize = 180.0;
-    final thumbFile = ThumbnailPaths.resolveFileSync(report.thumbnailPath);
+    final thumbFile = ThumbnailPaths.cacheFileSync(report.thumbnailKey);
     Widget thumb;
     if (thumbFile != null && thumbFile.existsSync()) {
       thumb = Image.file(
