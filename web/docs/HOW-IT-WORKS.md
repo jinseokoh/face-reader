@@ -4,12 +4,12 @@
 
 `facely.kr` 의 Cloudflare Workers 앱. 책임:
 
-1. **R2 presign URL 발급** (`POST /api/r2/presign`) — 모바일 앱이 분석용 임시 이미지·공유 thumbnail 을 R2 에 직접 PUT 할 수 있도록 단기 SigV4 URL 만 발급. 객체 자체엔 손 안 댄다.
+1. **R2 presign URL 발급** (`POST /api/r2/presign`) — 모바일 앱이 분석용 임시 이미지·공유 thumbnail 을 R2 에 직접 PUT 할 수 있도록 단기 SigV4 URL 만 발급. 객체 자체엔 손 안 댄다(존재 확인만 HEAD). 썸네일 키는 클라이언트가 보낸 `hash`(sha256)로 조립하고, **이미 있는 객체면 409** — 이 엔드포인트는 인증이 없고 키를 호출자가 지정하므로 발급해 주면 남의 썸네일을 임의 이미지로 덮어쓸 수 있다(피해자 키는 공유 링크 og:image 에 노출된다).
 2. **공유 link 의 SSR host** (`GET /r/{uuid}`) — 받는 사람이 카톡에서 link 탭했을 때 OG 카드·리포트·딥링크·스토어 fallback. Supabase `metrics` 행을 **read-only** 로 fetch.
-3. **계정 삭제 admin endpoint** (`POST /api/account/delete`) — 사용자 JWT 검증 후 R2 thumbnails 일괄 삭제 + metrics row 삭제 + Supabase admin API 로 `auth.users` 삭제 (cascade 로 users/coins/compatibilities). `SUPABASE_SERVICE_ROLE_KEY` 사용.
+3. **계정 삭제 admin endpoint** (`POST /api/account/delete`) — 사용자 JWT 검증 후 metrics row 삭제 + Supabase admin API 로 `auth.users` 삭제 (cascade 로 users/coins/compatibilities). R2 썸네일은 metrics DELETE 가 깨우는 `metrics_thumbnail_gc` 트리거 → cron 이 회수한다. `SUPABASE_SERVICE_ROLE_KEY` 사용.
 4. **landing & 정적 문서** (`/`, `/app`, `/terms`, `/privacy`, `/contact`) — hero / 이용약관 / 개인정보처리방침 / 개인정보 삭제 요청 폼.
 5. **케미 그룹 웹 참가** (`GET /g/:id` + client `JoinWizard`) — 앱 미설치 참가자가 브라우저에서 카카오 로그인(supabase-js PKCE, 앱과 같은 `auth.users`) 후 사진 공개 계약 확인 → 정면 캡처 → `join_team` RPC 로 셀프 조인한다. 비밀방 PIN 스텝 없음 — capability 모델(2026-07-30): 초대 링크 소지 = 초대받음, `join_team` 도 검사하지 않는다. match 방은 초대장에 남은 성별 자리를 표기하고, 성별 정원이 차면 RPC 가 `GENDER_FULL` 로 거부한다("남자/여자 자리가 다 찼습니다"). write 는 전부 클라이언트 → Supabase 직통 (metrics upsert + `join_team`/`submit_team_result` RPC 호출) + `/api/r2/presign` 썸네일 PUT — Worker(`fetchTeamSSR`)는 읽기만 한다. 정원이 차면 RPC 트랜잭션이 `chemistry_snapshot` 을 동결하고 상태를 `revealing` 으로 전이하며, 결과 공개는 `result_payload` 가 있으면 그대로 렌더하고(쇼케이스 매트릭스: `all` 방 = N×N, `match` 방 = `players[].gender` 로 남×여 직사각) 없으면 클라이언트가 `runTeam` 로 즉석 계산한 뒤 로그인 참가자가 `submit_team_result` 로 backfill 한다. 베스트 쌍의 매칭 성사·인앱 채팅은 앱 전용 — 웹은 "앱에서 확인" 안내만. 선행 조건: Supabase Auth Redirect URLs 에 `https://facely.kr/g/*` 등록. 이후 앱 설치 + 같은 카카오 로그인 시 rehydrate 가 캡처를 자동 복원하고, 조인한 매칭은 `team_members` 로 이미 서버에 귀속돼 있어 별도 복원 없이 "내 그룹" 목록에 나타난다.
-6. **Cron Triggers** (`workers/cron.ts`) — 매시 `expireStaleTeams`(모집 48h 초과 방 expired 처리) + `completeOrphanReveals`(`revealing` 24h 고아 방 completed 안전망), 매일 `cleanupStaleMetrics`(90일 미활동 anon metrics + R2 썸네일 삭제) + `purgeExpiredTeams`(종료 후 30일 지난 teams 삭제, 멤버는 FK cascade).
+6. **Cron Triggers** (`workers/cron.ts`) — 매시 `expireStaleTeams`(모집 48h 초과 방 expired 처리) + `completeOrphanReveals`(`revealing` 24h 고아 방 completed 안전망), 매일 `cleanupStaleMetrics`(90일 미활동 anon metrics 삭제) + `purgeExpiredTeams`(종료 후 30일 지난 teams 삭제, 멤버는 FK cascade) + `drainThumbnailGc`(참조 끊긴 R2 썸네일 회수 — 참조 검사와 재업로드 여부를 확인한 뒤 삭제 + 엣지 캐시 퍼지).
 
 이미지 본체는 단 한 번도 Worker 메모리에 안 들어옴 (R2 직통 PUT, CDN GET). Worker 의 Supabase write 는 `/api/account/delete` (service_role) 하나뿐 — 웹 참여를 포함한 평상시 분석/공유/합류 흐름은 클라이언트(Flutter·브라우저) ↔ Supabase 직통이고 Worker 는 read-only.
 
@@ -36,7 +36,7 @@
 │   │                                                                 │
 │   └─(C) 공유 publish                                                 │
 │        Flutter ──presign(thumbnails)──► Worker (signing only)        │
-│        Flutter ──200 PUT──► R2 thumbnails/{YYYYMM}/{uuid}.jpg      │
+│        Flutter ──200 PUT──► R2 thumbnails/{2hex}/{sha256}.jpg      │
 │        Flutter ──UPSERT──► Supabase metrics (id=uuid)                │
 │        Flutter ─[share_plus]─► https://facely.kr/r/{uuid}            │
 │        (카톡 link — Worker 호출 0회)                                  │
@@ -65,7 +65,8 @@
 - **시스템 안 PII 의 실질 보관소는 R2 `thumbnails/` 한 곳** (200² 얼굴 = PII). UUID-as-unguessable-URL access control. Supabase 행은 비-PII (정규화 카테고리·rawValue·thumbnailKey 포인터). 즉 "Supabase 엔 PII 없음" 은 사실이지만 **시스템 전체에 PII 없음 ≠ 사실** — §12 Privacy 참조. landmark 좌표·alias·사용자 이름·생년월일은 어떤 store 에도 안 들어감.
 - **해석 엔진은 `shared/` 한 곳** — Flutter 와 Worker SSR 이 같은 Dart 코드를 컴파일된 JS 로 공유. 룰 변경 시 양쪽 동시 반영.
 - **공유·재계산·OG 모두 `metrics` 테이블의 `body` 한 곳을 SSOT 로 사용.** 별도 `share_card` 같은 행 단위 압축 metadata 테이블 도입 금지.
-- **1 face capture = 1 UUID.** Flutter 가 analyze 시점에 v4 한 번 발급 → 그 uuid 가 `temp/{uuid}.jpg` → `thumbnails/{YYYYMM}/{uuid}.jpg` → `metrics.id` → `https://facely.kr/r/{uuid}` 까지 그대로 흐름. 단일 trace id 로 incident response·log grep 한 번에 끝. publish 단계에서 새 uuid 발급 금지.
+- **1 capture = 1 trace uuid, 1 image = 1 content key.** Flutter 가 analyze 시점에 v4 한 번 발급 → 그 uuid 가 `temp/{uuid}.jpg` → `metrics.id` → `https://facely.kr/r/{uuid}` 까지 그대로 흐름 (단일 trace id 로 incident response·log grep 한 번에 끝, publish 단계에서 새 uuid 발급 금지). 썸네일 객체만 내용 주소로 분리된다 — 키가 `sha256(200×200 jpeg)` 라 같은 사진은 같은 객체, 다른 사진은 다른 URL 이라 캐시 무효화가 필요 없고 재업로드가 멱등하다.
+- **썸네일 업로드는 카드 저장 이후.** 예전엔 정면 캡처 직후 올려서, 정보 확인 화면에서 취소하면 참조하는 행 없는 얼굴 이미지가 영구히 남았다(소유자가 없어 탈퇴·90일 정리에도 안 걸림). 지금은 행을 만든 뒤 올린다 — 중도 포기면 `temp/` 만 남고 그건 1일 lifecycle 로 사라진다.
 
 ---
 
@@ -83,7 +84,7 @@
 - Workers 스크립트 `facely` (이 repo)
 - R2 bucket `facely` — prefix 두 갈래:
   - `temp/{uuid}.jpg` — 분석용 임시. Python 이 즉시 삭제. lifecycle rule 로 1일 백업 정리.
-  - `thumbnails/{YYYYMM}/{uuid}.jpg` — 영구 200×200.
+  - `thumbnails/{2hex}/{sha256}.jpg` — 영구 200×200. 내용 주소(sha256) 키.
 - DNS records (Workers 자동 관리: facely.kr, www; tunnel: meta; R2: cdn)
 
 **외부 자원**:
@@ -98,7 +99,7 @@
 ### 3.1 분석 (analyze pipeline)
 
 > Flutter 는 **analyze 진입 시점에 UUID v4 를 한 번 발급**한다. 이 uuid 가
-> `temp/{uuid}.jpg`, (분석 성공 시) `thumbnails/{YYYYMM}/{uuid}.jpg`, 그리고
+> `temp/{uuid}.jpg`, (카드 저장 시) `thumbnails/{2hex}/{sha256}.jpg`, 그리고
 > 이후 publish 시점의 `metrics.id` + `/r/{uuid}` 까지 그대로 흐른다. 단일
 > capture 의 모든 부산물이 같은 trace id 로 묶임 — Flutter ↔ Worker ↔ Python ↔
 > Supabase 로그 grep 한 번이면 끝.
@@ -161,7 +162,7 @@ Python 이 DeepFace raw(`race:"asian"` 등)를 enum name 으로 매핑해 반환
 ```
 Flutter
   ├─ POST /api/r2/presign {prefix:"thumbnails", uuid}  → Worker (signing only)
-  ├─ PUT (presigned, 200 JPG)                          → R2 thumbnails/{YYYYMM}/{uuid}.jpg
+  ├─ PUT (presigned, 200 JPG · 카드 저장 후)           → R2 thumbnails/{2hex}/{sha256}.jpg
   │
   └─ Supabase REST UPSERT /rest/v1/metrics             → Supabase (anon key)
         body: { id: "<uuid>", body: { … thumbnailKey 포함 … } }
@@ -435,8 +436,8 @@ bucket: facely
 │   └── {uuid}.jpg                  Python 이 즉시 DELETE
 │                                   lifecycle 룰: ExpirationInDays=1 (백업 정리)
 └── thumbnails/                   ← 영구 200×200
-    └── {YYYYMM}/
-        └── {uuid}.jpg              Worker 가 buildKey 에서 YYYYMM 자동 산출
+    └── {2hex}/
+        └── {sha256}.jpg            Worker buildKey 가 클라이언트 hash 로 조립
                                     cdn.facely.kr 로 public read
                                     lifecycle 룰 없음 (의도적)
 ```
@@ -786,7 +787,7 @@ pnpm cf-typegen      # Cloudflare.Env 타입 재생성
 - Flutter 앱에 R2 secret·Supabase service-role key 박기 — **금지**. presigned URL + anon key 만.
 - OG meta 를 client-only 로 주입 — **금지**. `route.meta` export 만.
 - 친밀 챕터·갈등 시나리오 본문을 Worker 응답에 포함 — **금지** (앱 안에서만 생성).
-- publish 단계에서 **새 UUID 발급** — **금지**. analyze 시점에 발급한 uuid 가 `temp/{uuid}.jpg` → `thumbnails/{YYYYMM}/{uuid}.jpg` → `metrics.id` → `/r/{uuid}` 까지 그대로 흐른다. `SupabaseService.saveMetrics` 의 `?? _uuid.v4()` fallback 은 analyze 미경유 케이스(라이브 mesh-only 캡처 등) 한정.
+- publish 단계에서 **새 UUID 발급** — **금지**. analyze 시점에 발급한 uuid 가 `temp/{uuid}.jpg` → `metrics.id` → `/r/{uuid}` 까지 그대로 흐른다 (썸네일 키만 내용 주소로 분리). `SupabaseService.saveMetrics` 의 `?? _uuid.v4()` fallback 은 analyze 미경유 케이스(라이브 mesh-only 캡처 등) 한정.
 
 ---
 
@@ -826,7 +827,7 @@ P0 출시 전 필수:
 
 ### 12.4 access control 의 실체
 
-`cdn.facely.kr/thumbnails/{YYYYMM}/{uuid}.jpg` 는 **public read** — UUID 만 알면 누구나 GET. 보호는 "UUID 가 unguessable" 에 의존 (security through obscurity, 단 122 bit entropy 라 brute-force 가 사실상 불가능):
+`cdn.facely.kr/thumbnails/{2hex}/{sha256}.jpg` 는 **public read** — 키만 알면 누구나 GET. 보호는 "키가 unguessable" 에 의존한다. 내용 주소라 키를 만들려면 그 사진의 바이트가 정확히 있어야 하고(256 bit), 이미 그 사진을 가진 사람에게는 새로 드러나는 것이 없다:
 
 - **공유 link 발송 = 그 thumbnail URL 의 발송과 사실상 동일** — 사용자가 share_plus 로 카톡에 보내는 행위는 "이 사진 URL 을 카톡방 참여자에게 공개한다" 는 동의로 간주.
 - **검색엔진 indexing 방지** — `/r/*` 라우트에 `<meta name="robots" content="noindex">` SSR 강제 + `cdn.facely.kr` 의 R2 객체에 robots.txt 또는 `X-Robots-Tag` 헤더로 noindex.

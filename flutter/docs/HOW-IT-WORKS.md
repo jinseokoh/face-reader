@@ -232,8 +232,7 @@ raw → globalPct = _rawToPercentile(raw, attr, gender)   ← 21-point quantile 
 | alias | body | **column** | 소유자 지정 이름 (내 관상은 nickname 파이프라인) |
 | isMyFace | body | **column `is_my_face`** | 본인 얼굴 플래그 |
 | views / createdAt / updatedAt | ✗ | **column** | 조회수·publish·활동 (updatedAt = 90일 정리 기준) |
-| schemaVersion · demographics · timestamp · source · thumbnailKey · metrics · lateralMetrics · faceShape* | body | body | 분석 payload (z/score 는 load 시 재계산) |
-| thumbnailPath | body | ✗ | 기기 로컬 파일명 |
+| schemaVersion · demographics · timestamp · source · thumbnailKey · metrics · lateralMetrics · faceShape* | body | body | 분석 payload (z/score 는 load 시 재계산). thumbnailKey = `thumbnails/{2hex}/{sha256}.jpg` — 로컬 캐시 파일명이 여기서 파생된다 |
 
 재계산 흐름 (`fromJsonString()`): raw→z(현재 reference)→age 보정 → lateralFlags →
 scoreTree → deriveAttributeScoresDetailed → normalizeAllScores → classifyArchetype.
