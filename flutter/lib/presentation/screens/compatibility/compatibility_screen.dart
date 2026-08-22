@@ -39,25 +39,30 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 /// 미등록 첫 화면의 크레딧 문구 — 빈 여백을 채운다.
 /// 줄바꿈은 이 목록 그대로 유지된다 ([CreditsEmptyState]).
-const List<String> _kEmptyCredits = [
-  '궁합은 두 얼굴이',
-  '마주 보는 자리로다.\n',
-  '누구와는 맞고 누구와는',
-  '어긋난다는 점괘가 아니라,',
-  '서로 다른 두 사람이',
-  '어디서 부딪히고',
-  '어디서 통하는지',
-  '그 결을 살피는 일이오.\n',
-  '기질이 닮아 편안한 사이가 있고,',
-  '모자란 곳을 채워 주어',
-  '오래가는 사이가 있으니,',
-  '그 차이를 알고 대하는 것이',
-  '인연을 다루는 법이라네.\n',
+///
+/// 궁합이 무엇인지 처음 설명하고, 마지막에 내 관상 등록을 청한다.
+/// 궁합을 남녀 사이로 좁혀 읽는 오해를 먼저 걷어낸다 — 벗·동료와도
+/// 보는 것이고, 맞다/안 맞다가 아니라 어느 면이 좋은지를 짚는다.
+const List<String> _kCreditsBeforeRegister = [
+  '궁합은 남녀 사이에만',
+  '있는 것이 아니라오.\n',
+  '오래된 벗이든',
+  '함께 일하는 이든,',
+  '마주 앉는 사이라면',
+  '저마다의 궁합이 있소.\n',
+  '맞다 안 맞다를',
+  '가르자는 것이 아니라,',
+  '둘이 함께일 때',
+  '어느 면이 특히 좋은지',
+  '그 자리를 짚는 일이오.\n',
+  '말이 잘 통하는 사이가 있고,',
+  '일을 함께하면',
+  '힘이 나는 사이가 있으니.\n',
   '내 관상을 먼저 등록하면',
   '상대의 얼굴과 견주어',
-  '두 사람 사이의 결을',
-  '읽어 드릴 것이오...',
+  '그 장점을 읽어 드리리다...',
 ];
+
 
 /// 궁합 탭 — 내 얼굴이 아닌 다른 인물 리스트. 기본 lock, 1 코인 해제.
 /// 두 섹션 (미확인 → 확인) 으로 분리, 각 섹션은 자체 정렬 selector 보유.
@@ -280,7 +285,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
     if (others.isEmpty) {
       return Consumer(
         builder: (ctx, ref, _) => CreditsEmptyState(
-          lines: _kEmptyCredits,
+          lines: _kCreditsBeforeRegister,
           asset: 'assets/images/emotion-sad.png',
           message: '궁합을 보려면 내 관상 등록이 필요합니다.',
           active: ref.watch(selectedTabProvider) == kCompatibilityTabIndex,
@@ -291,6 +296,26 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
     // 볼 수 있다"를 비활성 프리뷰로 한눈에 보여준다(원인 즉시 이해).
     // 등록 CTA 는 nudge 스낵바 [내 관상 등록하기]가 전담 (중복 제거).
     return _InactiveCompatPreview(others: others);
+  }
+
+  /// 내 관상 등록 후의 빈 탭 — §3.8 일러스트 + 안내 한 줄이 즉시 뜬다.
+  /// 크레딧 연출은 미등록 첫 화면([_guideBody]) 전용 — 등록을 마친 사람이
+  /// 빈 탭을 열 때마다 문구가 다 흘러가길 기다리게 할 이유가 없다.
+  /// 빈 상태도 당겨서 새로고침 가능 — 케미 탭과 동일 패턴.
+  Widget _emptyTab({required String asset, required String message}) {
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      color: AppColors.textPrimary,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: EmotionEmptyState(asset: asset, message: message),
+          ),
+        ],
+      ),
+    );
   }
 
   /// 잠금 카드의 [궁합보기] → 공용 1코인 unlock 흐름(확인 다이얼로그 포함).
@@ -322,26 +347,15 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
     if (lockedList.isEmpty) {
       // 상대 0명 = 다음 행동(상대 추가) 안내 / 상대는 있는데 미확인 0 =
       // 전부 확인함(happy). 같은 빈 탭이라도 가리키는 곳이 다르다.
-      // 빈 상태도 당겨서 새로고침 가능 — 케미 탭과 동일 패턴.
-      return RefreshIndicator(
-        onRefresh: _refresh,
-        color: AppColors.textPrimary,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: [
-            const SizedBox(height: 120),
-            noPartners
-                ? const EmotionEmptyState(
-                    asset: 'assets/images/emotion-love.png',
-                    message: '카메라나 앨범으로 상대방의 관상을 추가하세요.',
-                  )
-                : const EmotionEmptyState(
-                    asset: 'assets/images/emotion-happy.png',
-                    message: '미확인 궁합이 없습니다.',
-                  ),
-          ],
-        ),
-      );
+      return noPartners
+          ? _emptyTab(
+              asset: 'assets/images/emotion-love.png',
+              message: '카메라나 앨범으로 상대방의 관상을 추가하세요.',
+            )
+          : _emptyTab(
+              asset: 'assets/images/emotion-happy.png',
+              message: '미확인 궁합이 없습니다.',
+            );
     }
 
     // 미확인 — 시간 기준 정렬만.
@@ -468,20 +482,9 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
     List<CompatibilityPair> pairs,
   ) {
     if (pairs.isEmpty) {
-      // 빈 상태도 당겨서 새로고침 가능 — 케미 탭과 동일 패턴.
-      return RefreshIndicator(
-        onRefresh: _refresh,
-        color: AppColors.textPrimary,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: const [
-            SizedBox(height: 120),
-            EmotionEmptyState(
-              asset: 'assets/images/emotion-surprise.png',
-              message: '아직 궁합을 보지 않았다니!',
-            ),
-          ],
-        ),
+      return _emptyTab(
+        asset: 'assets/images/emotion-surprise.png',
+        message: '아직 궁합을 보지 않았다니!',
       );
     }
 

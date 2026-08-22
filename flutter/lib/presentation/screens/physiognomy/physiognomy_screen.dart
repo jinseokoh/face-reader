@@ -22,26 +22,22 @@ import 'package:go_router/go_router.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
+
 /// 미등록 첫 화면의 크레딧 문구 — 빈 여백을 채운다.
 /// 줄바꿈은 이 목록 그대로 유지된다 ([CreditsEmptyState]).
-const List<String> _kEmptyCredits = [
-  '얼굴은 내 마음을',
-  '비추는 창이로다.\n',
+///
+/// 관상이 무엇인지 처음 설명하고, 마지막에 등록을 청한다.
+const List<String> _kCreditsBeforeRegister = [
   '관상은 미래의 운명을',
   '단정짓는 점술이 아니라,',
   '내 삶의 모습을 살피고',
   '그 안에 비친 나 자신을',
   '돌아보게 하는',
-  '오랜 지혜에 가깝소.\n',
-  '그리고 그걸 바탕으로,',
-  '앞으로 어떤 삶을 살아갈지,',
-  '어떤 길을 걸어갈지,',
-  '스스로 헤아려 볼 수 있는',
-  '혜안을 얻기 위함이오.\n',
-  '내 관상을 등록하면',
+  '오랜 지혜라 할 수 있소.\n',
+  '내 관상을 등록하고',
   '그 해석으로부터',
   '삶에 보탬이 될 영감을',
-  '얻게 될 것이로다.',
+  '얻게 되길 바라오.',
 ];
 
 // 화면-국지 팔레트 — DESIGN.md §2.4 (file-local 격리).
@@ -583,6 +579,7 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
                   hasMyFace,
                   description: '카메라로 찍은 사진으로 본 관상입니다.',
                   emptyAsset: 'assets/images/emotion-anger.png',
+                  emptyMessage: '상단의 `상대방 관상 추가` 버튼을 누르고 카메라로 촬영하기를 선택하세요.',
                 ),
                 _buildList(
                   history,
@@ -590,6 +587,7 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
                   hasMyFace,
                   description: '앨범 사진으로 본 관상입니다.',
                   emptyAsset: 'assets/images/emotion-frown.png',
+                  emptyMessage: '상단의 `상대방 관상 추가` 버튼을 누르고 앨범으로 추가하기를 선택하세요.',
                 ),
                 // 공유받음 — 상시 노출 (0개 포함). 빈 상태가 "공유받기"
                 // 라는 기능의 존재를 학습시킨다 (구조 고정 원칙).
@@ -599,7 +597,7 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
                   hasMyFace,
                   description: '공유받아 북마크한 관상입니다.',
                   emptyAsset: 'assets/images/emotion-smile.png',
-                  emptyMessage: '공유받은 관상 카드를 북마크하면 여기에 보관됩니다.',
+                  emptyMessage: '공유받은 관상 카드를 북마크하면 이 곳에 저장됩니다.',
                 ),
               ],
             )
@@ -637,6 +635,8 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
     bool hasMyFace, {
     required String description,
     String emptyAsset = 'assets/images/emotion-frown.png',
+    // 기본값은 미등록 단일 리스트 전용 — 등록 후의 탭 세 개는 각자 자기
+    // 문구를 넘긴다 (등록을 마친 사람에게 등록하라고 할 수는 없다).
     String emptyMessage = '아직 관상을 등록하지 않았구려!',
   }) {
     final groups = <(AnalysisSource, List<(int, FaceReadingReport)>)>[];
@@ -666,23 +666,27 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           if (allEmpty)
-            // §3.8 일러스트 빈 상태 — 궁합 탭과 동일한 공용 EmotionEmptyState.
             SliverFillRemaining(
               hasScrollBody: false,
-              // 미등록 첫 화면은 통째로 비어 화면이 멎어 보인다. 크레딧
-              // 문구가 올라간 뒤 일러스트가 떠오르는 2단 연출로 채운다.
+              // 등록 후 세 탭의 빈 상태는 §3.8 일러스트 + 안내 한 줄이 즉시
+              // 뜬다. 문구가 "버튼을 누르고 고르세요" 라는 행동 안내라,
+              // 앞에 크레딧이 다 흘러갈 때까지 기다리면 안내가 안 된다.
+              //
+              // 미등록 첫 화면만 2단 연출 — 크레딧이 올라간 뒤 일러스트가
+              // 떠오른다. 연출은 관상 탭이 실제로 열린 순간에 시작해야
+              // 한다. 탭 셸이 IndexedStack 이라 이 화면은 앱을 켤 때 이미
+              // 만들어져 있어, 만들어진 시점을 시작 신호로 쓸 수 없다.
               child: hasMyFace
-                  ? EmotionEmptyState(asset: emptyAsset, message: emptyMessage)
-                  // 연출은 관상 탭이 실제로 열린 순간에 시작해야 한다. 탭
-                  // 셸이 IndexedStack 이라 이 화면은 앱을 켤 때 이미 만들어져
-                  // 있어, 만들어진 시점을 시작 신호로 쓸 수 없다.
+                  ? EmotionEmptyState(
+                      asset: emptyAsset,
+                      message: emptyMessage,
+                    )
                   : Consumer(
                       builder: (ctx, ref, _) => CreditsEmptyState(
-                        lines: _kEmptyCredits,
+                        lines: _kCreditsBeforeRegister,
                         asset: emptyAsset,
                         message: emptyMessage,
-                        active:
-                            ref.watch(selectedTabProvider) ==
+                        active: ref.watch(selectedTabProvider) ==
                             kPhysiognomyTabIndex,
                       ),
                     ),
