@@ -64,7 +64,6 @@ const List<String> _kCreditsBeforeRegister = [
   '그 장점을 읽어 드리리다...',
 ];
 
-
 /// 궁합 탭 — 내 얼굴이 아닌 다른 인물 리스트. 기본 lock, 1 코인 해제.
 /// 두 섹션 (미확인 → 확인) 으로 분리, 각 섹션은 자체 정렬 selector 보유.
 class CompatibilityScreen extends ConsumerStatefulWidget {
@@ -490,16 +489,27 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
     }
 
     final myId = myFace.supabaseId?.toLowerCase();
-    // 내 쪽은 live 리포트·'나' 표기로 치환 — 표시 점수는 현재 내 관상 재계산
-    // (기존 신선도 규약 유지). 상대·제3자는 결제 시점 스냅샷.
-    ({FaceReadingReport report, String name}) side(
+    // **양쪽 다 결제 시점 스냅샷.** 구매한 건 "그때 두 사람의 궁합" 이라,
+    // 내가 사진을 다시 찍었다고 이미 판 결과의 얼굴과 점수가 바뀌면 안 된다.
+    // 예전엔 내 쪽만 live 리포트로 치환했는데, 그러면 상대는 그대로인 채 내
+    // 얼굴만 바뀌어 같은 카드 안에서 시점이 어긋났다.
+    //
+    // '나' 표기는 유지한다 — 그건 이름이지 데이터가 아니다.
+    //
+    // [fallbackKey] 는 내 쪽에만 준다. 옛 모델은 재촬영 때 내 옛 썸네일을 R2
+    // 에서 즉시 지웠으므로 그 시절 구매분은 동결 사진이 아예 없다. 없는 걸
+    // 실루엣으로 떨구느니 현재 사진이라도 보여준다.
+    ({FaceReadingReport report, String name, String? fallbackKey}) side(
       String id,
       FaceReadingReport snap,
     ) {
-      if (id == myId) return (report: myFace, name: '나');
+      if (id == myId) {
+        return (report: snap, name: '나', fallbackKey: myFace.thumbnailKey);
+      }
       return (
         report: snap,
         name: snap.alias ?? '${snap.ageGroup.labelKo} ${snap.gender.labelKo}',
+        fallbackKey: null,
       );
     }
 
@@ -585,6 +595,8 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
                       b: e.second.report,
                       aName: e.first.name,
                       bName: e.second.name,
+                      aFallbackKey: e.first.fallbackKey,
+                      bFallbackKey: e.second.fallbackKey,
                       createdAt: e.pair.createdAt,
                       onTap: () {
                         ref.read(recentUnlockFocusProvider.notifier).clear();
@@ -618,6 +630,10 @@ class _CompatListCard extends StatelessWidget {
   final String aName;
   final String bName;
 
+  /// 동결 사진이 R2 에 없을 때 그 자리에 쓸 대체 키 (내 쪽 전용, §side).
+  final String? aFallbackKey;
+  final String? bFallbackKey;
+
   /// 좌하단 결제(확인) 시각 — 관상·케미 카드 timestamp 와 동일 포맷·토큰
   /// (timeago + AppText.hint). 최신순/오래된순 정렬의 근거 데이터.
   final DateTime createdAt;
@@ -631,6 +647,8 @@ class _CompatListCard extends StatelessWidget {
     required this.createdAt,
     required this.onTap,
     required this.onDelete,
+    this.aFallbackKey,
+    this.bFallbackKey,
   });
 
   @override
@@ -661,7 +679,12 @@ class _CompatListCard extends StatelessWidget {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      _PairThumbs(a: a, b: b),
+                      _PairThumbs(
+                        a: a,
+                        b: b,
+                        aFallbackKey: aFallbackKey,
+                        bFallbackKey: bFallbackKey,
+                      ),
                       const SizedBox(width: AppSpacing.md),
                       Expanded(
                         child: Column(
@@ -819,11 +842,18 @@ class _CompatListCard extends StatelessWidget {
 class _PairThumbs extends StatelessWidget {
   final FaceReadingReport a;
   final FaceReadingReport b;
-  const _PairThumbs({required this.a, required this.b});
+  final String? aFallbackKey;
+  final String? bFallbackKey;
+  const _PairThumbs({
+    required this.a,
+    required this.b,
+    this.aFallbackKey,
+    this.bFallbackKey,
+  });
 
   @override
   Widget build(BuildContext context) {
-    Widget ring(FaceReadingReport r) => Container(
+    Widget ring(FaceReadingReport r, String? fallbackKey) => Container(
       padding: const EdgeInsets.all(2),
       decoration: const BoxDecoration(
         shape: BoxShape.circle,
@@ -831,6 +861,7 @@ class _PairThumbs extends StatelessWidget {
       ),
       child: _Thumb(
         thumbnailKey: r.thumbnailKey,
+        fallbackKey: fallbackKey,
         size: AppAvatar.md,
         gender: r.gender,
         source: r.source,
@@ -841,8 +872,8 @@ class _PairThumbs extends StatelessWidget {
       height: 46,
       child: Stack(
         children: [
-          Positioned(left: 0, child: ring(a)),
-          Positioned(left: 32, child: ring(b)),
+          Positioned(left: 0, child: ring(a, aFallbackKey)),
+          Positioned(left: 32, child: ring(b, bFallbackKey)),
         ],
       ),
     );
@@ -1412,13 +1443,18 @@ class _TaglinePair {
 
 class _Thumb extends StatelessWidget {
   final String? thumbnailKey;
+
+  /// [thumbnailKey] 의 사진이 어디에도 없을 때 대신 시도할 키.
+  /// 결제 궁합의 내 쪽에만 쓴다 — 옛 모델이 재촬영 때 내 옛 썸네일을 지웠기
+  /// 때문에 그 시절 구매분은 동결 사진이 R2 에 없다.
+  final String? fallbackKey;
   final double size;
   final Gender? gender;
   final AnalysisSource? source;
   const _Thumb({
-
     required this.size,
     this.thumbnailKey,
+    this.fallbackKey,
     this.gender,
     this.source,
   });
@@ -1426,24 +1462,16 @@ class _Thumb extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final radius = size / 2;
-    // 1순위 로컬 파일(thumbnailPath) → 2순위 CDN(thumbnailKey) → gender fallback.
-    // 받은 카드·결제 궁합 복원 파트너는 thumbnailPath=null 이지만 thumbnailKey 는
-    // 들고 있으므로 CDN 으로 실제 얼굴을 띄운다.
+    // 키 하나당 로컬 캐시 → CDN 을 시도하고, 실패하면 다음 단계로 내려간다:
+    //   thumbnailKey → (있으면) fallbackKey → gender 실루엣.
+    // 받은 카드·결제 궁합 파트너는 로컬 파일이 없지만 키는 들고 있으므로
+    // CDN 으로 실제 얼굴을 띄운다.
     // border 는 source 규칙 (sourceBorderColor — 카메라 gold / 앨범 lightGray).
-    final file = ThumbnailPaths.cacheFileSync(thumbnailKey);
-    final cdn = ThumbnailPaths.cdnUrl(thumbnailKey);
-    Widget inner = _networkOrFallback(radius, cdn);
-    if (file != null) {
-      inner = ClipOval(
-        child: Image.file(
-          file,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => _networkOrFallback(radius, cdn),
-        ),
-      );
+    Widget inner = _genderFallback(radius);
+    if (fallbackKey != null && fallbackKey != thumbnailKey) {
+      inner = _forKey(fallbackKey, inner);
     }
+    inner = _forKey(thumbnailKey, inner);
     return Container(
       width: size,
       height: size,
@@ -1485,13 +1513,23 @@ class _Thumb extends StatelessWidget {
     );
   }
 
-  Widget _networkOrFallback(double radius, String? cdn) {
-    if (cdn == null) return _genderFallback(radius);
+  /// 키 하나를 로컬 캐시 → CDN 순으로 시도하고, 둘 다 실패하면 [next] 를 그린다.
+  Widget _forKey(String? key, Widget next) {
+    final cdn = ThumbnailPaths.cdnUrl(key);
+    final network = cdn == null
+        ? next
+        : ClipOval(
+            child: cdnThumbnail(url: cdn, size: size, fallback: next),
+          );
+    final file = ThumbnailPaths.cacheFileSync(key);
+    if (file == null) return network;
     return ClipOval(
-      child: cdnThumbnail(
-        url: cdn,
-        size: size,
-        fallback: _genderFallback(radius),
+      child: Image.file(
+        file,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => network,
       ),
     );
   }
