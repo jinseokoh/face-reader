@@ -9,8 +9,18 @@ import type { Route } from "./+types/api.r2.presign";
  *
  * 요청:
  *   { prefix: "temp", uuid: string, ext?, contentType? }
- *   { prefix: "thumbnails", hash: string, ext?, contentType? }   ← 내용 주소
- *   { prefix: "thumbnails", uuid: string, ... }                  ← uuid 경로
+ *   { prefix: "thumbnails", hash: string, scope?, ext?, contentType? }
+ *   { prefix: "thumbnails", uuid: string, ... }                  ← 레거시 경로
+ *
+ * 썸네일 키의 첫 칸은 **소유자**다 — `thumbnails/{owner}/{sha256}.jpg`.
+ * 사진의 수명이 카드가 아니라 사람에게 묶이는 지점이고, 탈퇴는 이 prefix 를
+ * 통째로 지우는 한 번의 연산이 된다. 참조 계수도 회수 잡도 필요 없어진다.
+ *
+ *   로그인  owner = JWT 의 user.id — **서버가 읽는다.** 호출자가 남의 uid 를
+ *           지정할 수 없고, 그래서 남의 폴더에 쓸 수 없다.
+ *   익명    owner = 요청의 `scope` (= `anon-{metrics_id}`). 그 id 는
+ *           unguessable uuid 다.
+ *   레거시  토큰도 scope 도 없으면 소유자 없는 옛 키 (배포된 앱).
  *
  * 응답 200:
  *   { uploadUrl, publicUrl, key, cacheControl, token? }
@@ -49,7 +59,10 @@ export async function action({ request, context }: Route.ActionArgs) {
   if (!cfg)
     return new Response("Server misconfigured", { status: 500 });
 
-  const key = buildKey(parsed);
+  const resolved = await resolveOwner(request, env, parsed);
+  if (!resolved.ok) return new Response("Invalid token", { status: 401 });
+
+  const key = buildKey(parsed, resolved.owner);
   const publicUrl = `${cfg.cdnBase}/${key}`;
 
   // 덮어쓰기 차단 — thumbnails/ 에 한해. temp/ 는 1일 만료 작업 공간이라 제외.
@@ -94,6 +107,8 @@ interface ParsedBody {
   source: KeySource;
   ext: string;
   contentType: string;
+  /** 익명 촬영분의 소유자 스코프 (`anon-{metrics_id}`). 로그인이면 무시된다. */
+  scope: string | null;
 }
 
 function parseBody(b: unknown): ParsedBody | null {
@@ -111,18 +126,25 @@ function parseBody(b: unknown): ParsedBody | null {
     : "image/jpeg";
   if (!contentType.startsWith("image/")) return null;
 
+  // 익명 소유자 스코프. `anon-` 접두사를 강제해 로그인 uid 를 사칭할 수 없게
+  // 한다 — uid 는 이 형식과 절대 겹치지 않는다.
+  const scope = typeof o.scope === "string" &&
+      /^anon-[0-9a-f-]{36}$/i.test(o.scope)
+    ? o.scope.toLowerCase()
+    : null;
+
   // 내용 주소 — sha256 hex 64자. thumbnails/ 전용.
   const hash = typeof o.hash === "string" && /^[a-f0-9]{64}$/i.test(o.hash)
     ? o.hash.toLowerCase()
     : null;
   if (prefix === "thumbnails" && hash) {
-    return { prefix, source: { kind: "hash", hash }, ext, contentType };
+    return { prefix, source: { kind: "hash", hash }, ext, contentType, scope };
   }
 
   // uuid 경로 — temp/ 와, hash 를 보내지 않는 호출자.
   const uuid = typeof o.uuid === "string" ? o.uuid : null;
   if (!uuid || !/^[a-f0-9-]{8,}$/i.test(uuid)) return null;
-  return { prefix, source: { kind: "uuid", uuid }, ext, contentType };
+  return { prefix, source: { kind: "uuid", uuid }, ext, contentType, scope };
 }
 
 interface Cfg {
@@ -152,12 +174,44 @@ function readConfig(env: Env): Cfg | null {
 
 // ─── key composition ─────────────────────────────────────────────────────
 
-function buildKey(p: ParsedBody): string {
+/**
+ * 이 요청이 만들 객체의 소유자. `temp/` 와 레거시 uuid 경로는 소유자가 없다.
+ *
+ * 로그인 토큰이 오면 **서버가 Supabase 에 물어** uid 를 얻는다
+ * (`api.account.delete.ts` 와 같은 패턴). 호출자가 보낸 값을 믿지 않는 게
+ * 핵심 — 이 엔드포인트로 남의 폴더에 쓰는 길이 없어야 한다.
+ */
+async function resolveOwner(
+  request: Request,
+  env: Env,
+  parsed: ParsedBody,
+): Promise<{ ok: true; owner: string | null } | { ok: false }> {
+  if (parsed.prefix !== "thumbnails" || parsed.source.kind !== "hash") {
+    return { ok: true, owner: null };
+  }
+  const auth = request.headers.get("authorization");
+  if (!auth?.startsWith("Bearer ")) {
+    return { ok: true, owner: parsed.scope };
+  }
+  const res = await fetch(`${env.SUPABASE_URL}/auth/v1/user`, {
+    headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: auth },
+  });
+  if (!res.ok) return { ok: false };
+  const user = (await res.json()) as { id?: string };
+  if (!user.id) return { ok: false };
+  return { ok: true, owner: user.id };
+}
+
+function buildKey(p: ParsedBody, owner: string | null): string {
   // 내용 주소 — 같은 바이트는 같은 키, 다른 바이트는 다른 URL. 캐시 무효화가
-  // 필요 없어지고 재업로드가 멱등해진다. 앞 2자로 샤딩해 LIST 단위를 쪼갠다.
+  // 필요 없어지고 재업로드가 멱등해진다.
   // (parseBody 가 thumbnails/ 에만 hash 를 허용한다.)
   if (p.source.kind === "hash") {
     const h = p.source.hash;
+    // 소유자 스코프 — 탈퇴가 이 prefix 하나를 지우는 일이 된다. 같은 사진을
+    // 두 사람이 가져도 객체가 둘이라 한쪽의 삭제가 다른 쪽을 건드리지 않는다.
+    if (owner) return `thumbnails/${owner}/${h}.${p.ext}`;
+    // 레거시 — 소유자를 모르는 호출자. 앞 2자 샤딩.
     return `thumbnails/${h.slice(0, 2)}/${h}.${p.ext}`;
   }
 

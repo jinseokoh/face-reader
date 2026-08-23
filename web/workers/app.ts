@@ -3,7 +3,6 @@ import { createRequestHandler } from "react-router";
 import {
   cleanupStaleMetrics,
   completeOrphanReveals,
-  drainThumbnailGc,
   expireStaleTeams,
   purgeExpiredTeams,
 } from "./cron";
@@ -30,8 +29,6 @@ export default {
       // 매일 UTC 18:00 = KST 새벽 3시 — 정리 2종.
       await cleanupStaleMetrics(env);
       await purgeExpiredTeams(env);
-      // 앞의 두 잡이 지운 행의 썸네일 키가 아웃박스에 들어온 뒤에 비운다.
-      await drainThumbnailGc(env);
     } else {
       // 매시 정각 — 48h 만료 + revealing 고아 안전망.
       await expireStaleTeams(env);

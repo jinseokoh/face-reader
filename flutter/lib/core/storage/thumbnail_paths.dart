@@ -52,6 +52,33 @@ class ThumbnailPaths {
     return slashIdx == -1 ? path : path.substring(slashIdx + 1);
   }
 
+  /// 스윕에서 **지킬** 캐시 파일명 집합. null 이면 스윕 자체를 하지 않는다.
+  ///
+  /// 로컬 파일은 서버 원본의 캐시라 지워도 대개 손실이 없다. 예외가 하나 있다 —
+  /// **아직 못 올린 사진.** 그건 이 기기의 파일이 유일한 사본이다. 그래서
+  /// 카드뿐 아니라 대기열([pendingKeys])과 입양 목록([adoptFileNames])도 함께
+  /// 본다.
+  ///
+  /// 셋 다 비어 있으면 "지킬 게 없다" 가 아니라 **"아직 모른다"** 이다 —
+  /// 로그아웃이 방금 목록을 비웠거나 서버 복원 전이다. 그 상태에서 지우면
+  /// 아직 못 올린 사진의 유일한 사본이 사라지고, 다음 재시도가 "원본이 없다"
+  /// 며 키를 버린다. 근거가 없을 때의 정답은 삭제가 아니라 대기다.
+  static Set<String>? cacheKeepSet({
+    required Iterable<String?> cardKeys,
+    required Iterable<String> pendingKeys,
+    required Iterable<String> adoptFileNames,
+  }) {
+    final cards = cardKeys.whereType<String>().toList();
+    final pending = pendingKeys.toList();
+    final adopt = adoptFileNames.toList();
+    if (cards.isEmpty && pending.isEmpty && adopt.isEmpty) return null;
+    return {
+      for (final k in cards) fileNameForKey(k),
+      for (final k in pending) fileNameForKey(k),
+      ...adopt,
+    };
+  }
+
   /// [keep] 에 없는 캐시 파일(`*.jpg`)을 지운다. 사진 파일명이 키에서 나오므로
   /// 그 집합에 없는 파일은 어떤 카드도 다시 찾지 않는다 — 지우지 않으면 재촬영
   /// 때마다 옛 파일이 그대로 쌓인다. 지워도 손실은 없다 (CDN 에 원본이 있다).
@@ -84,15 +111,34 @@ class ThumbnailPaths {
       dotenv.maybeGet('R2_CDN_BASE')?.trim().replaceAll(RegExp(r'/$'), '') ??
       _kCdnDefault;
 
-  /// 200×200 jpeg bytes → R2 object key. **서버 `api.r2.presign.ts` 의
-  /// buildKey 와 같은 규칙이어야 한다** (`thumbnails/{앞2자}/{sha256}.jpg`).
+  /// 200×200 jpeg bytes → sha256 hex.
+  static String hashBytes(Uint8List bytes) => sha256.convert(bytes).toString();
+
+  /// 사진의 소유자 — 키의 첫 칸. 로그인 사용자는 uid, 익명 촬영분은
+  /// `anon-{metrics_id}`.
   ///
-  /// 내용 주소라 같은 바이트는 같은 키다. 재업로드가 멱등하고, 재촬영은 바이트가
-  /// 달라 URL 자체가 바뀌므로 CDN 캐시가 옛 얼굴을 내줄 수 없다.
-  static String contentKey(Uint8List bytes) {
-    final h = sha256.convert(bytes).toString();
-    return 'thumbnails/${h.substring(0, 2)}/$h.jpg';
+  /// 사진의 수명이 카드가 아니라 **사람**에게 묶이는 지점이다. 재촬영도 카드
+  /// 삭제도 사진을 지우지 않는다 — 지우는 건 탈퇴뿐이고, 그건 이 prefix 를
+  /// 통째로 지우는 한 번의 연산이다.
+  static String? owner({String? userId, String? metricsId}) {
+    if (userId != null && userId.isNotEmpty) return userId;
+    if (metricsId != null && metricsId.isNotEmpty) return 'anon-$metricsId';
+    return null;
   }
+
+  /// 소유자 + 해시 → R2 object key. **서버 `api.r2.presign.ts` 의 buildKey 와
+  /// 같은 규칙이어야 한다** (`thumbnails/{owner}/{sha256}.jpg`).
+  ///
+  /// 같은 사진을 두 사람이 가져도 객체가 둘이다. dedup 을 일부러 포기한 것 —
+  /// 10KB 를 아끼려다 "정확한 참조 계수가 없으면 사진이 죽는" 모델을 샀던 게
+  /// 실제 데이터 손실로 돌아왔다.
+  static String keyFor(String hash, String owner) =>
+      'thumbnails/$owner/$hash.jpg';
+
+  /// 바이트에서 바로 키. 해시가 같으면 키도 같아 재업로드가 멱등하고,
+  /// 재촬영은 바이트가 달라 URL 이 바뀌므로 CDN 이 옛 얼굴을 못 내준다.
+  static String contentKey(Uint8List bytes, {required String owner}) =>
+      keyFor(hashBytes(bytes), owner);
 
   /// 키에서 로컬 캐시 파일명을 뽑는다. 로컬 파일은 키의 함수이지 별개의
   /// 사실이 아니다 — 키가 바뀌면 파일명도 바뀐다.
@@ -107,6 +153,14 @@ class ThumbnailPaths {
 
   static Future<File?> cacheFile(String? thumbnailKey) async =>
       thumbnailKey == null ? null : resolveFile(fileNameForKey(thumbnailKey));
+
+  /// 키가 익명 소유자 스코프면 그 값 (presign 의 `scope` 인자). 로그인 소유자나
+  /// 레거시 키면 null — 그 경우 소유자는 서버가 JWT 에서 읽거나 없다.
+  static String? anonScopeOfKey(String key) {
+    final parts = key.split('/');
+    if (parts.length != 3 || parts[0] != 'thumbnails') return null;
+    return parts[1].startsWith('anon-') ? parts[1] : null;
+  }
 
   /// 내용 주소 키에서 sha256 hex 를 되뽑는다 (presign 요청용).
   /// 내용 주소가 아닌 키면 null — 그 키는 바이트에서 다시 계산해야 한다.

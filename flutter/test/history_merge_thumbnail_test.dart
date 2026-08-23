@@ -62,7 +62,7 @@ void main() {
   group('서버 카드로 교체돼도 사진을 잃지 않는다', () {
     test('body 왕복 후에도 같은 캐시 파일을 가리킨다', () {
       final bytes = Uint8List.fromList([1, 2, 3]);
-      final key = ThumbnailPaths.contentKey(bytes);
+      final key = ThumbnailPaths.contentKey(bytes, owner: 'u1');
       final local = _report(thumbnailKey: key);
 
       // 서버가 들고 있는 것은 body 뿐이고, 당김 동기화는 그 body 로 카드를
@@ -77,7 +77,7 @@ void main() {
     });
 
     test('Hive 왕복도 키를 보존한다', () {
-      final key = ThumbnailPaths.contentKey(Uint8List.fromList([4, 5, 6]));
+      final key = ThumbnailPaths.contentKey(Uint8List.fromList([4, 5, 6]), owner: 'u1');
       final again = FaceReadingReport.fromJsonString(
         _report(thumbnailKey: key).toJsonString(),
       );

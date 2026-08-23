@@ -39,15 +39,16 @@ class PresignedUpload {
 /// 서버측 contract (별도 구현 필요):
 ///   POST {WEBAPP_BASE}/api/r2/presign
 ///   body: { "prefix": "temp",       "uuid": "...", "ext", "contentType" }
-///         { "prefix": "thumbnails", "hash": "`sha256 hex`", ... }
+///         { "prefix": "thumbnails", "hash": "`sha256 hex`", "scope"?, ... }
 ///   resp 200: { uploadUrl, publicUrl, key, cacheControl, token? }
 ///   resp 409: { key, publicUrl, exists: true }
 ///
 /// 서버 책임:
 ///   * temp/ prefix 는 R2 lifecycle 룰로 자동 삭제 (orphan 정리)
-///   * thumbnails/ prefix 는 영구 보관, 키는 내용 주소로 서버가 조립
-///   * 이미 있는 thumbnails/ 객체엔 PUT URL 을 발급하지 않는다 (409) — 이
-///     엔드포인트는 인증이 없어서, 발급하면 남의 썸네일을 덮어쓸 수 있다
+///   * thumbnails/ 는 영구 보관. 키의 첫 칸은 **소유자**이고, 로그인 요청의
+///     소유자는 서버가 `Authorization` 의 JWT 에서 읽는다 — 호출자가 남의
+///     폴더를 지정할 수 없다. 익명은 `scope: anon-{metrics_id}`
+///   * 이미 있는 객체엔 PUT URL 을 발급하지 않는다 (409)
 ///   * SigV4 signed URL TTL 은 5~10분 권장
 class R2Uploader {
   static const _kPathPresign = '/api/r2/presign';
@@ -61,22 +62,32 @@ class R2Uploader {
   R2Uploader({http.Client? client}) : _client = client ?? http.Client();
 
   /// 서버에 prefix 와 키 재료를 알리고 단기 PUT URL 을 받아온다. 키 조립은
-  /// 서버 몫이다 (`thumbnails/` 는 [hash], `temp/` 는 [uuid]).
+  /// 서버 몫이다 (`thumbnails/` 는 소유자 + [hash], `temp/` 는 [uuid]).
+  ///
+  /// [accessToken] 이 있으면 소유자를 서버가 JWT 에서 읽는다. 없으면 [scope]
+  /// (`anon-{metrics_id}`) 가 소유자가 된다. **응답의 `key` 가 최종 진실이다** —
+  /// 클라이언트가 계산한 키와 다르면 서버 쪽을 따라야 한다.
   Future<PresignedUpload> presign({
     required String prefix, // "temp" | "thumbnails"
     String? uuid, // temp/ 경로
     String? hash, // thumbnails/ 내용 주소 (sha256 hex)
+    String? scope, // 익명 소유자 (anon-{metrics_id})
+    String? accessToken, // 로그인 소유자 — 서버가 JWT 에서 uid 를 읽는다
     required String contentType,
     String ext = 'jpg',
   }) async {
     assert(uuid != null || hash != null, 'uuid 나 hash 중 하나는 있어야 한다');
     final res = await _client.post(
       Uri.parse('$_hostBase$_kPathPresign'),
-      headers: const {'content-type': 'application/json'},
+      headers: {
+        'content-type': 'application/json',
+        if (accessToken != null) 'authorization': 'Bearer $accessToken',
+      },
       body: jsonEncode({
         'prefix': prefix,
         'hash': ?hash,
         if (hash == null) 'uuid': ?uuid,
+        'scope': ?scope,
         'ext': ext,
         'contentType': contentType,
       }),
@@ -134,6 +145,8 @@ class R2Uploader {
     required String prefix,
     String? uuid,
     String? hash,
+    String? scope,
+    String? accessToken,
     required Uint8List bytes,
     String contentType = 'image/jpeg',
     String ext = 'jpg',
@@ -142,6 +155,8 @@ class R2Uploader {
       prefix: prefix,
       uuid: uuid,
       hash: hash,
+      scope: scope,
+      accessToken: accessToken,
       contentType: contentType,
       ext: ext,
     );

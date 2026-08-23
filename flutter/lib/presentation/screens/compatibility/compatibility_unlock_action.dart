@@ -1,4 +1,5 @@
 import 'package:face_engine/domain/models/face_reading_report.dart';
+import 'package:facely/data/services/thumbnail_copier.dart';
 import 'package:face_engine/domain/services/compat/compat_adapter.dart';
 import 'package:face_engine/domain/services/compat/compat_pair_key.dart';
 import 'package:facely/core/theme.dart';
@@ -109,13 +110,19 @@ Future<bool> runCompatibilityUnlock(
   String? aliasOf(FaceReadingReport r) => identical(r, my)
       ? (myAlias ?? AuthService().currentUser?.nickname)
       : (albumAlias ?? album.alias);
+  // 사진을 내 폴더로 복사한 뒤 그 키로 동결한다. 주소만 베끼면 원본 주인이
+  // 재촬영·탈퇴하는 순간 산 사람 화면이 깨진다 — 구매분 영구 보존
+  // (`privacy.md:27`)은 사본이 있어야 지켜지는 약속이다. 복사 실패는 결제를
+  // 막지 않는다: 원본 키로 저장되고 시작 시 대조가 뒤따라 고친다.
+  final aBody = await ThumbnailCopier.withCopiedThumbnail(aReport.toBodyJson());
+  final bBody = await ThumbnailCopier.withCopiedThumbnail(bReport.toBodyJson());
   final int newBalance;
   try {
     newBalance = await CompatibilityService().unlock(
       aId: pairIds[0],
       bId: pairIds[1],
-      aBody: aReport.toBodyJson(),
-      bBody: bReport.toBodyJson(),
+      aBody: aBody,
+      bBody: bBody,
       aAlias: aliasOf(aReport),
       bAlias: aliasOf(bReport),
       totalScore: preBundle.report.total,

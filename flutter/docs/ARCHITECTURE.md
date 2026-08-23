@@ -123,7 +123,7 @@ age_adjustment, yin_yang, compat/).
 ```
 ├── main.dart / app.dart            # entry · MainApp(IndexedStack + 딥링크 dedup)
 ├── config/router.dart              # GoRouter: /main · /main/ledger · /r/:id(/open) · /g/:id · /capture/confirm
-├── core/                           # theme(토큰 SSOT) · hive_setup · thumbnail_paths(키→캐시파일·CDN URL)
+├── core/                           # theme(토큰 SSOT) · hive_setup · thumbnail_paths(소유자키→캐시파일·CDN URL)
 ├── data/services/                  # face_shape_classifier(TFLite) · face_metadata_client(R2+DeepFace)
 │                                   # · image_resizer · r2_uploader · supabase_service · auth_service
 │                                   # · team_service · wallet/coin/free_coin · admob · compatibility
@@ -172,8 +172,8 @@ FaceReadingReport(capture-only) → Hive + 썸네일 + `saveMetrics`(alias 포�
 받은 카드는 `ShareReceiveService` 가 `source=received`·alias null 로 override.
 
 내 관상은 서버에 사용자당 1행, row id 영구 고정. 재촬영은 기존 row 에 새 body·새
-썸네일 키로 덮어쓰고(웹 saveCapture 와 동일 모델) 옛 썸네일은 body 가 새 키로
-바뀔 때 `metrics_thumbnail_gc` 트리거가 아웃박스에 넣어 cron 이 회수한다.
+썸네일 키로 덮어쓰고(웹 saveCapture 와 동일 모델) **옛 썸네일은 지우지 않는다** —
+사진의 수명은 카드가 아니라 계정에 묶인다(탈퇴 시 폴더 통째 삭제).
 케미 슬롯 FK 와 `/r/{id}` 링크는 항상 유효하며 최신
 관상을 가리킨다. 신규 캡처의 "1 capture = 1 uuid" 는 유지 — 재촬영의 분석 uuid 는
 썸네일 키로만 쓰인다. 예외 = 익명 촬영 → 로그인 claim: 익명 row 가 새 my-face 로
@@ -212,8 +212,14 @@ filter 매칭 한계로 폴링이 커버.
 
 **멀티디바이스**: 로그인 rehydrate(metrics 전체 + 모집 중 케미 방) + anon claim.
 썸네일 표시는 전 화면 공통 3단 — 로컬 캐시 → CDN(thumbnailKey) → fallback.
-캐시 파일명은 `thumbnailKey` 에서 파생되므로(내용 주소) 카드가 사진을 가리키는
-필드는 `thumbnailKey` 하나다. CDN 렌더는 `cdnThumbnail()` 공용 위젯 (디스크 캐시).
+캐시 파일명은 `thumbnailKey` 의 basename(sha256)에서 파생되므로 카드가 사진을
+가리키는 필드는 `thumbnailKey` 하나이고, 소유자가 바뀌어도 파일 이관이 없다.
+CDN 렌더는 `cdnThumbnail()` 공용 위젯 (디스크 캐시).
+
+**사진의 주인은 사람이다** — 키가 `thumbnails/{owner}/{sha256}.jpg` 라 재촬영·카드
+삭제는 사진을 지우지 않고, 지우는 사건은 탈퇴와 익명 90일뿐이다. 구매한 궁합은
+결제 시점에 두 사진을 **구매자 폴더로 복사**해 얼려서, 상대가 지우거나 탈퇴해도
+산 사람 화면이 안 깨진다 (`ThumbnailCopier`).
 
 ## 5. 외부 인프라
 
@@ -223,12 +229,12 @@ filter 매칭 한계로 폴링이 커버.
 |---|---|
 | `GET /r/:id(/open)` | 공유 카드 SSR (1 UUID solo / `~` 2 UUID 궁합) + universal link bridge |
 | `GET /g/:id(/open)` | 케미: 초대장(+웹 티저 카메라) / 결과표 쇼케이스 / 종료 안내 |
-| `POST /api/r2/presign` | R2 presigned PUT (`temp/{uuid}`·`thumbnails/{2hex}/{sha256}`) + /analyze HMAC 토큰. 이미 있는 썸네일이면 409 — 인증이 없는 엔드포인트라 발급하면 남의 사진을 덮어쓸 수 있다 |
-| `POST /api/account/delete` | 탈퇴 — metrics hard delete + open teams 삭제 (R2 썸네일은 트리거→cron 이 회수) |
-| `scheduled` (Cron Triggers) | 매시: 48h 방치 방 expired + 24h revealing 고아 안전망 / 매일: 30일 teams·90일 anon metrics 정리 + `thumbnail_gc` 아웃박스 회수 (`workers/cron.ts`) |
+| `POST /api/r2/presign` | R2 presigned PUT (`temp/{uuid}`·`thumbnails/{owner}/{sha256}`) + /analyze HMAC 토큰. 썸네일 소유자는 서버가 요청 JWT 에서 읽는다(익명은 `scope`) — 남의 폴더에 못 쓴다. 이미 있는 객체면 409 |
+| `POST /api/account/delete` | 탈퇴 — R2 `thumbnails/{uid}/` 폴더 통째 삭제 + metrics hard delete + open teams 삭제 |
+| `scheduled` (Cron Triggers) | 매시: 48h 방치 방 expired + 24h revealing 고아 안전망 / 매일: 30일 teams·90일 anon metrics 정리(+ 그 행의 `thumbnails/anon-{id}/` 폴더) (`workers/cron.ts`) |
 | `.well-known/*` | iOS Universal Link · Android App Link |
 
-R2: `thumbnails/{2hex}/{sha256}.jpg`(내용 주소·영구, CDN `cdn.facely.kr`) · `temp/{uuid}.jpg`(1일 자동 삭제) ·
+R2: `thumbnails/{owner}/{sha256}.jpg`(소유자별·영구, CDN `cdn.facely.kr`) · `temp/{uuid}.jpg`(1일 자동 삭제) ·
 `assets/og.png`(공유 배너 800×420).
 
 ### Supabase (project `jicaenyzunjdlcxcdbfb`)

@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:face_engine/domain/models/face_reading_report.dart';
+import 'package:facely/data/services/thumbnail_copier.dart';
 
 /// 구매한 궁합 쌍 1건 — compatibilities 행의 양쪽을 결제 시점 스냅샷으로 복원한 것.
 class CompatibilityPair {
@@ -130,6 +132,9 @@ class CompatibilityService {
       debugPrint('[Compatibility] pairs fetch error: $e');
       return const [];
     }
+    // 남의 폴더를 가리키는 스냅샷을 내 사본으로 고친다 — 결제 시점 복사가
+    // 실패했거나 이 모델 이전에 산 궁합이 대상이다. 목록 표시를 막지 않는다.
+    unawaited(_reconcileThumbnails(rows));
     final pairs = <CompatibilityPair>[];
     for (final r in rows) {
       final a = _decodeSide(r['a_id'], r['a_body'], r['a_alias']);
@@ -148,6 +153,49 @@ class CompatibilityService {
       );
     }
     return pairs;
+  }
+
+  /// 구매 스냅샷이 남의 폴더 사진을 가리키면 내 폴더로 복사하고 스냅샷이 그
+  /// 사본을 가리키게 고친다.
+  ///
+  /// 구매의 약속("상대방의 데이터 삭제 여부와 무관하게 이용", `privacy.md:27`)을
+  /// 지키는 건 "서버가 한 번 잘 했다" 가 아니라 **구매 행이 남아 있는 한 앱이
+  /// 몇 번이고 다시 시도한다** 이다. 사본이 이미 있으면 presign 이 409 를 주고
+  /// 그것도 성공이라, 몇 번을 돌아도 안전하다.
+  Future<void> _reconcileThumbnails(List<dynamic> rows) async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) return;
+    final minePrefix = 'thumbnails/$uid/';
+    for (final r in rows) {
+      final aId = r['a_id'] as String?;
+      final bId = r['b_id'] as String?;
+      if (aId == null || bId == null) continue;
+      for (final side in const ['a', 'b']) {
+        final body = r['${side}_body'] as String?;
+        if (body == null || body.isEmpty) continue;
+        String? key;
+        try {
+          key = (jsonDecode(body) as Map<String, dynamic>)['thumbnailKey']
+              as String?;
+        } catch (_) {
+          continue;
+        }
+        if (key == null || key.isEmpty || key.startsWith(minePrefix)) continue;
+        final mine = await ThumbnailCopier.copyToMyScope(key);
+        if (mine == null) continue;
+        try {
+          await _client.rpc('patch_compat_thumbnail', params: {
+            'p_a_id': aId,
+            'p_b_id': bId,
+            'p_side': side,
+            'p_key': mine,
+          });
+          debugPrint('[Compatibility] 스냅샷 사진 복구 $aId~$bId.$side → $mine');
+        } catch (e) {
+          debugPrint('[Compatibility] 스냅샷 패치 실패 $aId~$bId.$side: $e');
+        }
+      }
+    }
   }
 
   FaceReadingReport? _decodeSide(dynamic id, dynamic body, dynamic alias) {

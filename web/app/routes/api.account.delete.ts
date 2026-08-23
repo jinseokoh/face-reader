@@ -1,4 +1,9 @@
 import type { Route } from './+types/api.account.delete'
+import {
+  deleteKeys,
+  deleteOwnerThumbnails,
+  readR2Cfg,
+} from '../lib/r2-thumbnails'
 
 /**
  * POST /api/account/delete — 회원 탈퇴 (탈퇴 후 복구 불가).
@@ -7,14 +12,16 @@ import type { Route } from './+types/api.account.delete'
  *
  * 흐름:
  *   1) JWT 검증 + user_id 추출 (Supabase /auth/v1/user)
- *   2) service_role 로 DELETE FROM metrics WHERE user_id — FK 가 cascade 라
- *      4)에서 어차피 지워지지만, auth DELETE 가 중간 실패해도 metrics 부터
- *      확실히 사라지게 명시 삭제 유지. 이 삭제가 metrics_thumbnail_gc 트리거를
- *      깨워 R2 썸네일 키를 아웃박스에 넣는다 (회수는 cron drainThumbnailGc).
- *   3) service_role 로 owner 의 **모집 중(open) teams** DELETE — 초대 링크가
+ *   2) R2 `thumbnails/{uid}/` 폴더 통째 삭제 — 키의 첫 칸이 소유자라 이 한
+ *      번의 연산이 "이 사람의 사진 전부" 다. 소유자 스코프 이전에 저장된
+ *      레거시 키만 body 에서 따로 걷는다.
+ *   3) service_role 로 DELETE FROM metrics WHERE user_id — FK 가 cascade 라
+ *      5)에서 어차피 지워지지만, auth DELETE 가 중간 실패해도 metrics 부터
+ *      확실히 사라지게 명시 삭제 유지.
+ *   4) service_role 로 owner 의 **모집 중(open) teams** DELETE — 초대 링크가
  *      주인 없는 좀비 방으로 남지 않게. 발표된(closed) 팀은 30일 수명주기
  *      cron 이 정리 (참여자들이 결과를 계속 볼 수 있어야 하므로 즉시 삭제 X)
- *   4) service_role admin API 로 auth.users DELETE → cascade 로
+ *   5) service_role admin API 로 auth.users DELETE → cascade 로
  *      users/coins/compatibilities/metrics 자동 삭제, teams.owner_id 는 set null
  *
  * 재가입 보너스 farming 방지: handle_new_user 트리거가 bonus_recipients 영구
@@ -49,12 +56,42 @@ export async function action({ request, context }: Route.ActionArgs) {
   }
   const user = (await userRes.json()) as { id: string }
 
-  // 썸네일 회수는 여기서 하지 않는다 — 아래 metrics DELETE 가
-  // metrics_thumbnail_gc 트리거를 깨워 키를 아웃박스에 넣고, cron
-  // drainThumbnailGc 가 참조를 확인한 뒤 지운다. 여기서 직접 지우면 실패해도
-  // 재시도가 없고 "행보다 객체를 먼저" 순서를 여기서도 지켜야 한다.
+  // 2) R2 썸네일 — 행보다 먼저. 행을 먼저 지우면 레거시 키를 알 방법이 없다.
+  //    (소유자 폴더는 행과 무관하게 지울 수 있지만, 레거시 키는 body 에만 있다.)
+  //    구매한 궁합에 들어간 **사본**은 구매자 폴더에 있으므로 여기서 안 지워진다
+  //    — `privacy.md:27` 의 "상대방의 데이터 삭제 여부와 무관하게 이용" 이 이
+  //    구조에서 그대로 성립한다.
+  const r2 = readR2Cfg(env)
+  if (r2) {
+    const bodies = await fetch(
+      `${env.SUPABASE_URL}/rest/v1/metrics?user_id=eq.${user.id}&select=body`,
+      {
+        headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+      },
+    )
+    const legacy: string[] = []
+    if (bodies.ok) {
+      for (const row of (await bodies.json()) as Array<{ body: string | null }>) {
+        if (!row.body) continue
+        try {
+          const k = (JSON.parse(row.body) as { thumbnailKey?: string })
+            .thumbnailKey
+          if (k && !k.startsWith(`thumbnails/${user.id}/`)) legacy.push(k)
+        } catch {
+          /* body 가 깨진 행 — 키를 알 수 없다 */
+        }
+      }
+    }
+    try {
+      await deleteOwnerThumbnails(r2, user.id)
+      await deleteKeys(r2, legacy)
+    } catch (e) {
+      // 사진 삭제 실패가 탈퇴 자체를 막지 않는다. 계정은 사라져야 한다.
+      console.log(`[account.delete] 썸네일 삭제 실패 uid=${user.id}: ${e}`)
+    }
+  }
 
-  // 2) metrics 명시적 DELETE — cascade 의 선행 보장 (헤더 주석 참조)
+  // 3) metrics 명시적 DELETE — cascade 의 선행 보장 (헤더 주석 참조)
   const metricsDel = await fetch(
     `${env.SUPABASE_URL}/rest/v1/metrics?user_id=eq.${user.id}`,
     {
@@ -73,7 +110,7 @@ export async function action({ request, context }: Route.ActionArgs) {
     )
   }
 
-  // 5) 모집 중(recruiting) teams DELETE — 내 그룹만. team_members 는
+  // 4) 모집 중(recruiting) teams DELETE — 내 그룹만. team_members 는
   // FK cascade. closed 팀은 owner_id 만 null 이 되고 30일 cron 이 정리.
   const teamsDel = await fetch(
     `${env.SUPABASE_URL}/rest/v1/teams?owner_id=eq.${user.id}&status=eq.recruiting`,
@@ -93,7 +130,7 @@ export async function action({ request, context }: Route.ActionArgs) {
     )
   }
 
-  // 6) auth.users DELETE (admin) — cascade: users/coins/compatibilities/metrics
+  // 5) auth.users DELETE (admin) — cascade: users/coins/compatibilities/metrics
   const authDel = await fetch(
     `${env.SUPABASE_URL}/auth/v1/admin/users/${user.id}`,
     {

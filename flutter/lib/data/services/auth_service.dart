@@ -104,6 +104,10 @@ class AuthService {
   /// 물을 때는 프로필이 아니라 이 값을 본다.
   String? get sessionUserId => _client.auth.currentUser?.id;
 
+  /// presign 이 썸네일 소유자를 검증할 때 싣는 세션 토큰. 소유자를 서버가
+  /// 이 토큰에서 읽으므로 클라이언트가 남의 폴더를 지정할 수 없다.
+  String? get accessToken => _client.auth.currentSession?.accessToken;
+
   StreamSubscription<AuthState>? _sub;
   final _profileChanged = StreamController<AuthUser?>.broadcast();
   final _signupBonusSkippedNotice = StreamController<void>.broadcast();

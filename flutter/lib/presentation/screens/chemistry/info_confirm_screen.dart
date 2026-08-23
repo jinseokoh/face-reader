@@ -10,6 +10,7 @@ import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/presentation/widgets/picker_row.dart';
 import 'package:facely/presentation/widgets/primary_button.dart';
+import 'package:facely/data/services/auth_service.dart';
 import 'package:facely/data/services/face_metadata_client.dart';
 import 'package:facely/data/services/image_resizer.dart';
 import 'package:facely/data/services/supabase_service.dart';
@@ -331,7 +332,13 @@ class _InfoConfirmScreenState
             still,
             outSize: 200,
           );
-          final key = ThumbnailPaths.contentKey(thumbBytes);
+          // 소유자가 키의 첫 칸이다 — 로그인이면 내 uid, 아니면 익명 스코프.
+          // 사진의 수명이 이 카드가 아니라 사람에게 묶인다.
+          final owner = ThumbnailPaths.owner(
+            userId: AuthService().sessionUserId,
+            metricsId: report.supabaseId,
+          );
+          final key = ThumbnailPaths.contentKey(thumbBytes, owner: owner!);
           report.thumbnailKey = key;
           // 절대경로 박지 말 것 — iOS sandbox UUID 회전 / Android applicationId
           // 변경 시 stale 됨. filename 만 저장 → 읽을 때 ThumbnailPaths 가 현재
@@ -369,8 +376,8 @@ class _InfoConfirmScreenState
         if (alias.isNotEmpty) report.alias = alias;
       }
       ref.read(historyProvider.notifier).add(report);
-      // 분석을 마친 모든 카드는 기본으로 metrics row 생성 (썸네일은 analyze
-      // 시점에 이미 R2 업로드됨). 비로그인이면 user_id=null 로 익명 저장되고,
+      // 분석을 마친 모든 카드는 기본으로 metrics row 생성 (썸네일 업로드는
+      // 아래, 행을 만든 뒤). 비로그인이면 user_id=null 로 익명 저장되고,
       // 이후 로그인 시 HistoryNotifier 가 일괄 claim 한다. fire-and-forget —
       // 네트워크/RLS 실패가 화면 전환을 막지 않도록 await 하지 않는다.
       SupabaseService().saveMetrics(report).catchError((Object e) {

@@ -18,11 +18,16 @@ export type WebCaptureBody = {
 /**
  * 캡처 프레임 200px JPEG → presign PUT. 실패해도 참여는 진행 (null).
  *
- * 키는 내용 주소(sha256) — 행 id 로 만들면 재참여 때 같은 키를 덮어써 CDN 이
- * 옛 얼굴을 계속 내준다. 서버가 이미 있는 객체엔 409 를 주는데, 그건 같은
+ * 키는 `thumbnails/{owner}/{sha256}.jpg` — 첫 칸의 소유자는 서버가 [token] 의
+ * JWT 에서 읽으므로 호출자가 남의 폴더를 지정할 수 없고, 탈퇴는 그 폴더 하나를
+ * 지우는 일이 된다. 뒤 칸이 내용 주소라 재참여로 사진이 바뀌면 URL 이 바뀌어
+ * CDN 이 옛 얼굴을 못 내준다. 이미 있는 객체엔 서버가 409 를 주는데, 같은
  * 바이트가 저장돼 있다는 뜻이라 성공으로 취급한다.
  */
-async function uploadThumbnail(blob: Blob): Promise<string | null> {
+async function uploadThumbnail(
+  blob: Blob,
+  token: string | null,
+): Promise<string | null> {
   try {
     const bytes = new Uint8Array(await blob.arrayBuffer());
     const digest = await crypto.subtle.digest("SHA-256", bytes);
@@ -32,7 +37,10 @@ async function uploadThumbnail(blob: Blob): Promise<string | null> {
 
     const res = await fetch("/api/r2/presign", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify({ prefix: "thumbnails", hash }),
     });
     const body = (await res.json().catch(() => null)) as {
@@ -185,12 +193,15 @@ export async function saveCapture(
   },
 ): Promise<string | null> {
   const id = args.id ?? crypto.randomUUID();
-  // 썸네일 키는 사진 내용에서 나온다 — 재촬영이면 바이트가 달라 자동으로 다른
-  // 키가 되므로, 캐시가 옛 사진을 서빙할 여지가 없다.
-  const key = args.thumb ? await uploadThumbnail(args.thumb) : null;
-  // 옛 객체 회수는 아래 upsert 가 맡는다 — body 의 thumbnailKey 가 바뀌면
-  // metrics_thumbnail_gc 트리거가 옛 키를 아웃박스에 넣고 cron 이 지운다.
-  // 새 업로드 실패 시엔 옛 키를 보존해 아바타가 깨지지 않게 한다.
+  // 썸네일은 내 폴더에 올라간다 — 세션 토큰을 실어 서버가 소유자를 정하게 한다.
+  // 재촬영이면 바이트가 달라 자동으로 다른 키가 되므로 캐시가 옛 사진을 서빙할
+  // 여지가 없다.
+  const token =
+    (await sb.auth.getSession()).data.session?.access_token ?? null;
+  const key = args.thumb ? await uploadThumbnail(args.thumb, token) : null;
+  // 옛 썸네일은 지우지 않는다 — 사진 수명은 카드가 아니라 계정에 묶인다
+  // (탈퇴 시 폴더 통째 삭제). 새 업로드 실패 시엔 옛 키를 보존해 아바타가
+  // 깨지지 않게 한다.
   const body: WebCaptureBody = key
     ? { ...args.body, thumbnailKey: key }
     : args.oldKey

@@ -95,6 +95,7 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
       _lastClaimedUid = existing.id;
       _writeOwner(existing.id);
       _claimAnonymousMetrics(reports);
+      Future(() => _rekeyAnonThumbnails(existing.id));
       // build 중엔 state 재할당 금지 — 다음 틱에.
       Future(() => _rehydrateFromServer());
     }
@@ -159,6 +160,9 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
     _lastClaimedUid = uid;
     _writeOwner(uid);
     _claimAnonymousMetrics(state);
+    // 익명 시절 사진은 anon-{id}/ 에 있다 — 내 폴더로 옮기지 않으면 90일
+    // 정리에 걸린다.
+    unawaited(_rekeyAnonThumbnails(uid));
     // 로그인 rehydrate — 서버 소유 metrics 복원 (새 기기·웹 티저 capture).
     // claim 과 대상이 겹치지 않아 claim 과는 순서 의존 없음.
     unawaited(_rehydrateFromServer());
@@ -422,9 +426,17 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
     final hash = ThumbnailPaths.hashFromKey(key);
     if (hash == null) return;
     try {
-      await R2Uploader().upload(prefix: 'thumbnails', hash: hash, bytes: bytes);
+      final p = await R2Uploader().upload(
+        prefix: 'thumbnails',
+        hash: hash,
+        scope: ThumbnailPaths.anonScopeOfKey(key),
+        accessToken: AuthService().accessToken,
+        bytes: bytes,
+      );
       await _dropPendingUpload(key);
-      _log('thumbnail uploaded $key');
+      // 소유자를 서버가 JWT 에서 정하므로 응답의 key 가 최종 진실이다.
+      if (p.key != key) await _adoptServerKey(key, p.key);
+      _log('thumbnail uploaded ${p.key}');
     } catch (e, st) {
       await _addPendingUpload(key);
       _log('thumbnail upload 대기열로 $key: $e');
@@ -432,6 +444,58 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
         sc.setTag('op', 'thumbnail_upload');
       });
     }
+  }
+
+  /// 서버가 조립한 키로 카드를 맞춘다. 로컬 캐시 파일명은 해시라 두 키가
+  /// 같은 파일을 가리키므로 파일은 건드릴 필요가 없다.
+  Future<void> _adoptServerKey(String localKey, String serverKey) async {
+    final changed = <FaceReadingReport>[];
+    for (final r in state) {
+      if (r.thumbnailKey != localKey) continue;
+      r.thumbnailKey = serverKey;
+      changed.add(r);
+    }
+    if (changed.isEmpty) return;
+    _log('서버 키 채택 $localKey → $serverKey (${changed.length}장)');
+    state = [...state];
+    await _saveToHive();
+    for (final r in changed) {
+      if (r.supabaseId == null) continue;
+      await SupabaseService().upsertMetricsBody(r).catchError((e, st) {
+        _log('서버 키 upsert 실패: $e');
+        Sentry.captureException(e, stackTrace: st);
+      });
+    }
+  }
+
+  /// 익명 촬영분의 사진을 내 폴더로 옮긴다. 계정 귀속(claim)은 **행만** 옮기고
+  /// 사진은 `anon-{id}/` 에 남는데, 그 폴더는 90일 정리의 대상이다 — 옮기지
+  /// 않으면 로그인한 사용자의 사진이 어느 날 사라진다.
+  ///
+  /// 로컬 캐시 파일명이 해시라 파일은 그대로 쓰이고, 업로드만 다시 하면 된다.
+  Future<void> _rekeyAnonThumbnails(String uid) async {
+    final changed = <FaceReadingReport>[];
+    for (final r in state) {
+      final key = r.thumbnailKey;
+      if (key == null || ThumbnailPaths.anonScopeOfKey(key) == null) continue;
+      final hash = ThumbnailPaths.hashFromKey(key);
+      if (hash == null) continue;
+      r.thumbnailKey = ThumbnailPaths.keyFor(hash, uid);
+      await _addPendingUpload(r.thumbnailKey!);
+      changed.add(r);
+    }
+    if (changed.isEmpty) return;
+    _log('익명 사진 ${changed.length}장을 내 폴더로 재지정');
+    state = [...state];
+    await _saveToHive();
+    for (final r in changed) {
+      if (r.supabaseId == null) continue;
+      await SupabaseService().upsertMetricsBody(r).catchError((e, st) {
+        _log('익명 재지정 upsert 실패: $e');
+        Sentry.captureException(e, stackTrace: st);
+      });
+    }
+    await retryPendingUploads();
   }
 
   /// 아직 R2 에 없는 사진을 올린다. 두 갈래를 함께 처리한다:
@@ -457,7 +521,9 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
     for (final entry in adopt.entries.toList()) {
       final idx = state.indexWhere((r) => r.supabaseId == entry.key);
       if (idx < 0) {
-        adopt.remove(entry.key);
+        // 아직 이 카드가 로컬에 없다 — 로그인 rehydrate 전이거나 계정 각인이
+        // 방금 목록을 비웠다. 여기서 지우면 파일명이 영영 사라지므로 다음
+        // 실행으로 미룬다. 근거가 없을 때의 정답은 삭제가 아니라 대기다.
         continue;
       }
       final r = state[idx];
@@ -471,7 +537,12 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
         continue;
       }
       final bytes = await file.readAsBytes();
-      final key = ThumbnailPaths.contentKey(bytes);
+      final owner = ThumbnailPaths.owner(
+        userId: AuthService().sessionUserId,
+        metricsId: r.supabaseId,
+      );
+      if (owner == null) continue;
+      final key = ThumbnailPaths.contentKey(bytes, owner: owner);
       // 파일명을 키에 맞춰 옮긴다 — 그래야 업로드 전에도 화면이 사진을 찾는다.
       final renamed = await ThumbnailPaths.cacheFile(key);
       if (renamed != null && !await renamed.exists()) {
@@ -520,16 +591,22 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
     }
   }
 
-  /// 어떤 카드의 키와도 이름이 맞지 않는 캐시 파일 정리. 아직 입양하지 않은
-  /// 옛 파일은 지키고 지운다 — 그 파일은 이름이 키에서 안 나오지만 유일한
-  /// 사본일 수 있다.
+  /// 어떤 카드의 키와도 이름이 맞지 않는 캐시 파일 정리.
+  ///
+  /// 로컬 파일은 서버 원본의 캐시라 지워도 대개 손실이 없다. 예외가 하나 있다 —
+  /// **아직 못 올린 사진.** 그건 이 기기의 파일이 유일한 사본이다. 대기열과
+  /// 입양 목록을 keep 에 넣지 않으면, 로그아웃이 Hive 를 비운 직후 스윕이 그
+  /// 유일한 사본을 지우고 다음 재시도가 "원본이 없다" 며 키를 버린다.
   Future<void> _sweepCacheFiles() async {
-    final keep = <String>{
-      for (final r in state)
-        if (r.thumbnailKey != null)
-          ThumbnailPaths.fileNameForKey(r.thumbnailKey!),
-      ..._readFilesToAdopt().values,
-    };
+    final keep = ThumbnailPaths.cacheKeepSet(
+      cardKeys: state.map((r) => r.thumbnailKey),
+      pendingKeys: _readPendingUploads(),
+      adoptFileNames: _readFilesToAdopt().values,
+    );
+    if (keep == null) {
+      _log('캐시 스윕 건너뜀 — 지킬 목록이 비어 판단 근거가 없다');
+      return;
+    }
     final removed = await ThumbnailPaths.sweepCache(keep);
     if (removed > 0) _log('캐시 파일 $removed개 정리');
   }

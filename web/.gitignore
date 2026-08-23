@@ -10,3 +10,4 @@ app/lib/shared/face_engine.js.deps
 .env*.local
 *.log
 .DS_Store
+tsconfig.tsbuildinfo
