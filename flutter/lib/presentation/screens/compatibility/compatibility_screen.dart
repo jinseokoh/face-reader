@@ -129,7 +129,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
       for (final o in others) {
         // 무방향 쌍 키 — 내 사진을 바꿔도(내 my-face id 영구 고정) 같은 상대면
         // 키가 동일해 unlock 이 유지된다. 점수는 현재 내 관상으로 재계산.
-        final key = tryPairKey(myFace, o);
+        final key = tryPairKey(myFace, o, buyerFaceId: myFace.supabaseId);
         final isUnlocked = key != null && unlocked.contains(key);
         if (!isUnlocked) lockedList.add(o);
       }
@@ -526,12 +526,12 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
     }
 
     final entries = pairs.map((p) {
-      final a = side(p.aId, p.a);
-      final b = side(p.bId, p.b);
-      // 내가 낀 쌍은 나를 앞에 (읽기 규약: 나 × 상대).
-      final meFirst = p.bId == myId;
-      final first = meFirst ? b : a;
-      final second = meFirst ? a : b;
+      // 저장 순서가 곧 표시 순서다 — 구매자 카드가 a 로 저장된다
+      // (`compat_pair_key.dart`). 화면에서 다시 뒤집지 않는다. 예전엔 여기서
+      // 재배치했는데, 그 규칙이 앱에만 있고 admin 콘솔엔 없어서 같은 궁합이
+      // 두 화면에서 좌우가 다르게 보였다.
+      final first = side(p.aId, p.a);
+      final second = side(p.bId, p.b);
       return (
         pair: p,
         first: first,

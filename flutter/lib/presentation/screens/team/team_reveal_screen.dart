@@ -28,6 +28,7 @@ import '../compatibility/compatibility_unlock_action.dart';
 import 'team_band.dart';
 import 'team_match_card.dart';
 import 'team_stat_header.dart';
+import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/widgets/cdn_thumbnail.dart';
 
 /// 쌍 상세 unlock 시트 — runCompatibilityUnlock/pushCompat 호출과 동일 계약.
@@ -45,7 +46,12 @@ Future<void> openTeamPairDetail(
 }) async {
   // 기존 결제 이력 선검사 — unlock 흐름과 동일한 무방향 쌍 키. 이미 본
   // 사이에게 결제 유도 UI 를 보여주지 않는다 (재결제는 어차피 안 된다).
-  final pairIds = tryPairIds(my, album);
+  final buyerFaceId = ref
+      .read(historyProvider)
+      .where((r) => r.isMyFace)
+      .firstOrNull
+      ?.supabaseId;
+  final pairIds = tryPairIds(my, album, buyerFaceId: buyerFaceId);
   final pairKey = pairIds == null ? null : '${pairIds[0]}~${pairIds[1]}';
   var alreadyUnlocked = false;
   if (pairKey != null) {
@@ -201,11 +207,7 @@ Widget _pairAvatar(FaceReadingReport r, {double size = AppAvatar.sm}) {
   if (file != null && file.existsSync()) {
     inner = Image.file(file, width: size, height: size, fit: BoxFit.cover);
   } else if (cdn != null) {
-    inner = cdnThumbnail(
-      url: cdn,
-      size: size,
-      fallback: _pairIconAvatar(size),
-    );
+    inner = cdnThumbnail(url: cdn, size: size, fallback: _pairIconAvatar(size));
   }
   // border 색은 전 탭 공통 source 규칙 (카메라 gold / 앨범 lightGray).
   return Container(
@@ -390,6 +392,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
       ),
     );
   }
+
   @override
   void dispose() {
     _countdownTimer?.cancel();

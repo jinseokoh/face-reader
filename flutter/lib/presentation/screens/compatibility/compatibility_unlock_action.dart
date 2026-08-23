@@ -66,7 +66,14 @@ Future<bool> runCompatibilityUnlock(
     idLoader.dismiss();
   }
 
-  final pairIds = tryPairIds(my, album);
+  // 구매자 카드를 a 로 — 저장 순서가 곧 표시 순서다. 제3자 쌍(구매자가 양쪽 다
+  // 아님)이면 buyerFaceId 가 쌍에 없어 uuid 정렬로 떨어진다.
+  final buyerFaceId = ref
+      .read(historyProvider)
+      .where((r) => r.isMyFace)
+      .firstOrNull
+      ?.supabaseId;
+  final pairIds = tryPairIds(my, album, buyerFaceId: buyerFaceId);
   final key = pairIds == null ? null : '${pairIds[0]}~${pairIds[1]}';
   if (pairIds == null || key == null) {
     if (context.mounted) {

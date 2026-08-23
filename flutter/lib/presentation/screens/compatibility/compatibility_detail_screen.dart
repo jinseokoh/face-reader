@@ -804,10 +804,7 @@ class _CompatIconLineRow extends StatelessWidget {
 class _CompatThumb extends StatelessWidget {
   final String? thumbnailKey;
   final Gender gender;
-  const _CompatThumb({
-    this.thumbnailKey,
-    required this.gender,
-  });
+  const _CompatThumb({this.thumbnailKey, required this.gender});
 
   @override
   Widget build(BuildContext context) {
