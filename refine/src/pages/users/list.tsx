@@ -19,7 +19,7 @@ import {
   message,
 } from "antd";
 import { UserLink } from "../../components/user-link";
-import { deleteR2Object } from "../../lib/r2";
+import { deleteR2Object, deleteR2Prefix } from "../../lib/r2";
 import { adminClient } from "../../providers/data";
 import type { AppUser } from "../../types";
 
@@ -40,20 +40,29 @@ export const UserList = () => {
    *  auth.users 삭제 (cascade: users/coins/compatibilities). */
   const handleDelete = async (record: AppUser) => {
     try {
+      // 사진은 `thumbnails/{uid}/` 폴더 통째로 — body 의 *현재* 키만 세면
+      // 재촬영으로 남은 옛 사진이 그대로 남는다(탈퇴 고지 위반). 소유자 스코프
+      // 이전에 저장된 레거시 키만 body 에서 따로 걷는다.
+      // 이 사람이 **구매한** 궁합의 사본도 같은 폴더라 함께 사라진다 — 맞다.
+      // 반대로 남이 이 사람 얼굴을 사서 뜬 사본은 그쪽 폴더라 살아남는다.
       const { data: rows } = await adminClient
         .from("metrics")
         .select("body")
         .eq("user_id", record.id);
-      const keys: string[] = [];
+      const legacy: string[] = [];
       for (const r of rows ?? []) {
         try {
           const b = JSON.parse(r.body as string) as { thumbnailKey?: string };
-          if (b.thumbnailKey) keys.push(b.thumbnailKey);
+          if (b.thumbnailKey && !b.thumbnailKey.startsWith(`thumbnails/${record.id}/`)) {
+            legacy.push(b.thumbnailKey);
+          }
         } catch {
           /* malformed body — skip */
         }
       }
-      await Promise.all(keys.map((k) => deleteR2Object(k)));
+      const removed = await deleteR2Prefix(`thumbnails/${record.id}/`);
+      await Promise.all(legacy.map((k) => deleteR2Object(k)));
+      console.log(`[users] 썸네일 삭제 ${removed}개 + 레거시 ${legacy.length}개`);
 
       const { error: metricsErr } = await adminClient
         .from("metrics")

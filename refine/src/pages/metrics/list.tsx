@@ -17,7 +17,6 @@ import {
   message,
 } from "antd";
 import { useMemo, useState } from "react";
-import { deleteR2Object } from "../../lib/r2";
 import { runEngine, type EngineOutput } from "../../lib/share-engine";
 import { adminClient } from "../../providers/data";
 import type { AppUser, MetricEntry } from "../../types";
@@ -123,17 +122,14 @@ export const MetricList = () => {
     (usersResult ?? []).map((u) => [u.id, u])
   );
 
-  /** 관상 삭제 — R2 썸네일 + metrics row (teams/show 등록 삭제와 동일).
-   *  team_members.metrics_id 는 FK(on delete set null)로 대기 슬롯이 된다. */
+  /** 관상 삭제 — metrics row 만 (teams/show 등록 삭제와 동일).
+   *  team_members.metrics_id 는 FK(on delete set null)로 대기 슬롯이 된다.
+   *
+   *  **썸네일은 지우지 않는다.** 사진의 수명은 카드가 아니라 계정에 묶인다 —
+   *  지우는 사건은 탈퇴뿐이고 그건 `thumbnails/{uid}/` 폴더를 통째로 지운다.
+   *  여기서 지우면 그 사진을 붙들고 있는 결제된 궁합의 얼굴이 사라진다. */
   const handleDelete = async (record: MetricEntry) => {
     try {
-      const key = record.body
-        ? (JSON.parse(record.body) as { thumbnailKey?: string }).thumbnailKey
-        : undefined;
-      if (key) {
-        const ok = await deleteR2Object(key);
-        if (!ok) message.warning("R2 썸네일 삭제 실패 — row 는 계속 삭제합니다");
-      }
       const { error } = await adminClient
         .from("metrics")
         .delete()

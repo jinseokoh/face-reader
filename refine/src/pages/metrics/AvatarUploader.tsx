@@ -12,25 +12,36 @@ const MAX_BYTES = 5 * 1024 * 1024;
 const TAG = "[AvatarUploader]";
 
 /**
- * 관상 썸네일(아바타) 교체.
+ * 관상 썸네일(아바타) 교체. 앱의 재촬영과 **같은 규칙**이어야 한다.
  *
- * **항상 새 키로 올리고 옛 객체를 지운다.** 앱이 재촬영을 처리하는 방식과
- * 같다. 같은 키에 덮어쓰면 URL 이 그대로라 브라우저와 CDN 이 옛 이미지를
- * 계속 들고 있어 캐시 무효화에 기대야 하는데, 키가 바뀌면 그 문제 자체가
- * 생기지 않는다.
+ * 키는 `thumbnails/{owner}/{sha256}.{ext}` — 첫 칸이 소유자(로그인 uid 또는
+ * `anon-{metrics_id}`), 뒤 칸이 사진 내용의 해시다. 사진이 바뀌면 해시가
+ * 바뀌어 URL 자체가 달라지므로 CDN 캐시 무효화 문제가 생기지 않는다.
  *
- * 순서는 올리기 → body 갱신 → 옛 객체 삭제다. 삭제가 실패해도 화면은 이미
- * 새 이미지를 가리키고 남은 것은 orphan 일 뿐이다. 반대로 먼저 지우면
- * 업로드가 실패했을 때 아바타가 사라진다.
+ * **옛 객체는 지운다.** 이 도구의 목적이 흔적 없는 교체이기 때문이다 —
+ * 앱의 재촬영과 여기가 갈린다. 앱은 사용자 행동이라 옛 사진을 남기지만,
+ * 여기는 운영자가 현재 사진을 바꾸는 자리다.
+ *
+ * **결제된 궁합은 안 깨진다.** 구매 시점에 두 사진이 구매자 폴더로 복사되어
+ * (`ThumbnailCopier`) 스냅샷은 자기 사본을 가리킨다. 여기서 지우는 건 이
+ * 사람 폴더의 객체라 서로 다른 객체다. 단 **구매 사본 도입 이전에 팔린
+ * 궁합**은 아직 이 키를 직접 가리킬 수 있다 — 구매자가 앱을 열면 대조가
+ * 사본을 떠서 고치지만, 그 전에 지우면 그 쌍은 실루엣이 된다.
+ *
+ * 순서는 올리기 → body 갱신 → 옛 객체 삭제. 반대로 하면 업로드가 실패했을 때
+ * 아바타가 사라진다.
  */
 export function AvatarUploader({
   rowId,
+  userId,
   alias,
   body,
   thumbKey,
   onReplaced,
 }: {
   rowId: string;
+  /** metrics.user_id — 없으면(익명 촬영분) 행 id 로 익명 스코프를 만든다. */
+  userId: string | null;
   alias: string | null;
   body: string;
   thumbKey: string | null;
@@ -57,7 +68,7 @@ export function AvatarUploader({
       }
 
       setBusy(true);
-      const nextKey = newThumbKey(file.name);
+      const nextKey = await contentKey(file, userId ?? `anon-${rowId}`);
       console.log(TAG, `새 key=${nextKey} · 옛 key=${thumbKey ?? "없음"}`);
 
       await putR2Object(nextKey, file);
@@ -67,12 +78,15 @@ export function AvatarUploader({
         .update({ body: withThumbKey(body, nextKey) })
         .eq("id", rowId);
       if (error) {
-        // body 가 아직 옛 키를 가리키므로 방금 올린 것은 orphan 이 된다.
-        // 되돌려 둬야 다음 시도가 깨끗한 상태에서 시작한다.
-        await deleteR2Object(nextKey).catch(() => undefined);
-        throw new Error(`body 갱신 실패로 되돌렸습니다: ${error.message}`);
+        // 방금 올린 것을 되돌리지 않는다 — 키가 내용 주소라, 같은 바이트를
+        // 가진 이 사용자의 다른 카드가 이미 같은 객체를 가리키고 있을 수
+        // 있다. 참조를 확인하지 않고 지우는 것이 이번 사고의 원인이었다.
+        // 남은 객체는 이 사람 폴더 안이라 탈퇴 때 함께 사라진다.
+        throw new Error(`body 갱신 실패: ${error.message}`);
       }
 
+      // 교체 완료 — 옛 객체를 지워 흔적을 남기지 않는다. 실패해도 화면은 이미
+      // 새 이미지를 가리키므로 남은 것은 orphan 일 뿐이다.
       if (thumbKey && thumbKey !== nextKey) {
         const ok = await deleteR2Object(thumbKey).catch(() => false);
         console.log(TAG, `옛 객체 삭제 ${ok ? "성공" : "실패 — orphan 으로 남음"}`, thumbKey);
@@ -146,12 +160,20 @@ export function AvatarUploader({
   );
 }
 
-/** 앱과 같은 규칙 — `thumbnails/YYYYMM/{uuid}.{ext}` */
-function newThumbKey(filename: string): string {
-  const now = new Date();
-  const ym = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const ext = (filename.split(".").pop() || "jpg").toLowerCase();
-  return `thumbnails/${ym}/${crypto.randomUUID()}.${ext}`;
+/**
+ * 앱·워커와 같은 규칙 — `thumbnails/{owner}/{sha256}.{ext}`.
+ *
+ * `flutter/lib/core/storage/thumbnail_paths.dart` 의 `contentKey` 와
+ * `web/app/routes/api.r2.presign.ts` 의 `buildKey` 가 같은 문자열을 만든다.
+ * 셋 중 하나만 어긋나도 카드가 자기 사진을 못 찾는다.
+ */
+async function contentKey(file: Blob, owner: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+  const hash = Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  const ext = ((file as File).name?.split(".").pop() || "jpg").toLowerCase();
+  return `thumbnails/${owner}/${hash}.${ext}`;
 }
 
 /** body JSON 에 thumbnailKey 를 넣는다. 파싱 실패면 그대로 던진다. */

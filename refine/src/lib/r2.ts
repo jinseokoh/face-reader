@@ -39,6 +39,43 @@ export async function deleteR2Object(key: string): Promise<boolean> {
 }
 
 /**
+ * prefix 아래 객체 키 전부 (ListObjectsV2, 이어받기 포함).
+ *
+ * 썸네일 키의 첫 칸은 소유자다 — `thumbnails/{owner}/{sha256}.jpg`. 그래서
+ * "이 사람의 사진 전부" 가 prefix 하나로 표현되고, body 에 남아 있는 *현재*
+ * 키만 세는 방식과 달리 옛 사진까지 빠짐없이 잡힌다.
+ */
+export async function listR2Keys(prefix: string): Promise<string[]> {
+  if (!hasR2Credentials()) return [];
+  const keys: string[] = [];
+  let token: string | null = null;
+  do {
+    const url = new URL(
+      `https://${R2.accountId}.r2.cloudflarestorage.com/${R2.bucket}`,
+    );
+    url.searchParams.set("list-type", "2");
+    url.searchParams.set("prefix", prefix);
+    if (token) url.searchParams.set("continuation-token", token);
+    const signed = await signer().sign(new Request(url, { method: "GET" }));
+    const res = await fetch(signed);
+    if (!res.ok) throw new Error(`R2 list ${prefix} 실패: ${res.status}`);
+    const xml = await res.text();
+    for (const m of xml.matchAll(/<Key>([^<]+)<\/Key>/g)) keys.push(m[1]);
+    token = /<IsTruncated>true<\/IsTruncated>/.test(xml)
+      ? xml.match(/<NextContinuationToken>([^<]+)<\/NextContinuationToken>/)?.[1] ?? null
+      : null;
+  } while (token);
+  return keys;
+}
+
+/** 소유자 폴더 통째 삭제 — 탈퇴 처리의 단위. 지운 개수를 돌려준다. */
+export async function deleteR2Prefix(prefix: string): Promise<number> {
+  const keys = await listR2Keys(prefix);
+  const results = await Promise.all(keys.map((k) => deleteR2Object(k)));
+  return results.filter(Boolean).length;
+}
+
+/**
  * R2 객체 PUT.
  *
  * 실패하면 상태 코드를 담은 Error 를 던진다 — 조용히 false 를 돌려주면

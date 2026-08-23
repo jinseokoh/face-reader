@@ -35,6 +35,7 @@ export const MetricShow = () => {
               <AvatarUploader
                 rowId={row.id}
                 alias={row.alias}
+                userId={row.user_id ?? null}
                 body={row.body}
                 thumbKey={metricThumbKey(row.body)}
                 onReplaced={() => void query.refetch()}
