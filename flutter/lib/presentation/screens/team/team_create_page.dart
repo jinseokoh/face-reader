@@ -46,10 +46,14 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage>
   final _customTitleCtrl = TextEditingController();
 
   /// ② 제목 리스트 등장 연출 — 카테고리를 고를 때마다 위→아래로 순차 등장.
-  late final AnimationController _listAnim = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 450),
-  );
+  ///
+  /// 선언과 동시에 초기화(`late final … = AnimationController(...)`)하면 안
+  /// 된다. 이 컨트롤러는 제목 단계에 들어가야 처음 만져지는데, 그 전에 화면을
+  /// 닫으면 한 번도 안 쓰인 채 dispose() 가 불리고 **그 순간 초기화가 처음
+  /// 실행된다.** createTicker 가 이미 트리에서 떨어져 나간 element 에서
+  /// TickerMode 를 찾다 터진다 ("Looking up a deactivated widget's ancestor").
+  /// initState 에서 확실히 만든다.
+  late final AnimationController _listAnim;
 
   TeamRoomKind? _roomKind;
   TeamTitleCategory? _categorySel;
@@ -183,6 +187,10 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage>
   @override
   void initState() {
     super.initState();
+    _listAnim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 450),
+    );
     for (final r in ref.read(historyProvider)) {
       if (r.isMyFace) {
         _ownerAgeDecade = 10 + r.ageGroup.index * 10;
@@ -220,9 +228,11 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage>
           spacing: AppSpacing.sm,
           runSpacing: AppSpacing.sm,
           children: [
-            for (int d = decade <= 40 ? 20 : 30;
-                d <= (decade <= 40 ? 60 : 70);
-                d += 10)
+            for (
+              int d = decade <= 40 ? 20 : 30;
+              d <= (decade <= 40 ? 60 : 70);
+              d += 10
+            )
               _chip(
                 label: d == 70 ? '70+' : '$d대',
                 selected: d >= min && d <= max,

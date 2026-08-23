@@ -367,7 +367,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
           ? _emptyTab(
               tabIndex: 0,
               credits: _kCompatCreditsAfter,
-              asset: 'assets/images/emotion-love.png',
+              asset: 'assets/images/emotion-shrug.png',
               message: '우선 관상을 보셔야 합니다.',
             )
           : _emptyTab(
@@ -514,8 +514,8 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
       return _emptyTab(
         tabIndex: 1,
         credits: myFace == null ? _kCompatCreditsBefore : _kCompatCreditsAfter,
-        asset: 'assets/images/emotion-surprise.png',
-        message: '아직 궁합을 보지 않았다니!',
+        asset: 'assets/images/emotion-shrug.png',
+        message: '아직 확인한 궁합이 없습니다.',
       );
     }
 

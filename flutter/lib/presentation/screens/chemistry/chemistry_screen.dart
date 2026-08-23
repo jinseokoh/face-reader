@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:facely/presentation/providers/tab_provider.dart';
+import 'package:facely/presentation/widgets/credits_empty_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -11,16 +13,14 @@ import 'package:top_snackbar_flutter/top_snack_bar.dart';
 import '../../../core/theme.dart';
 import '../../../data/services/team_service.dart';
 import '../../../domain/models/team.dart';
-import '../../providers/team_provider.dart';
 import '../../providers/history_provider.dart';
+import '../../providers/team_provider.dart';
 import '../../widgets/age_range_pill.dart';
 import '../../widgets/compact_snack_bar.dart';
 import '../../widgets/face_scan_pill.dart';
 import '../../widgets/login_bottom_sheet.dart';
 import '../../widgets/sort_selector.dart';
 import '../../widgets/source_badge.dart';
-import 'package:facely/presentation/providers/tab_provider.dart';
-import 'package:facely/presentation/widgets/credits_empty_state.dart';
 import '../team/team_band.dart';
 import '../team/team_create_page.dart';
 import '../team/team_detail_screen.dart';
@@ -31,19 +31,31 @@ import '../team/team_reveal_screen.dart';
 /// 빈 탭을 채우는 문구 — 위에서 뚝 떨어진 뒤 그 아래로 안내가 뜬다.
 /// 줄바꿈은 이 목록 그대로 유지된다 ([CreditsEmptyState]).
 ///
-/// 케미가 무엇인지 먼저 말하고(그룹 안에서 나와 가장 맞는 사람 찾기),
-/// 비공개·공개 두 갈래로 들어가는 길을 잇는다.
-const List<String> _kChemistryCredits = [
+/// 케미가 무엇인지 먼저 말한다 — 그룹 안에서 나와 가장 맞는 사람 찾기.
+/// 두 탭이 공유하고, 뒤에 그 탭에서 할 일이 붙는다.
+const List<String> _kChemistryIntro = [
   '케미는 그룹 내에서',
-  '나의 조화가 가장 잘맞는',
-  '사람이 누구인지를 궁합',
-  '점수표로 알려주는 기능입니다.\n',
-  '비공개 방을 만들고 지인들을',
-  '카카오톡으로 초대하거나',
-  '공개방을 만들어서 온라인으로',
-  '접속해 있는 사람들 중',
-  '그룹 케미 스코어가 높은 사람을',
+  '나와 조화가 가장 잘 맞는',
+  '사람이 누구인지 점수로 알려줍니다.\n',
+];
+
+/// 모집중 탭 — 방을 찾아 들어가는 길.
+const List<String> _kChemistryCreditsPublic = [
+  ..._kChemistryIntro,
+  '비공개 그룹을 만들고',
+  '지인들을 초대하거나',
+  '공개 그룹을 만들어서 방문자 중',
+  '케미 스코어가 높은 사람을',
   '찾을 수도 있습니다.',
+];
+
+/// 내 그룹 탭 — 내가 방을 여는 길. 공짜라는 것부터 말한다.
+const List<String> _kChemistryCreditsMine = [
+  ..._kChemistryIntro,
+  '케미 그룹은 무료로',
+  '만들 수 있습니다.',
+  '내 그룹을 만들고',
+  '사람들을 초대해 보세요.',
 ];
 
 /// 빈 탭 — 관상·궁합과 같은 2단 연출. 문구가 위에서 떨어진 뒤 그 아래로
@@ -55,6 +67,7 @@ const List<String> _kChemistryCredits = [
 Widget _chemistryEmpty({
   required BuildContext context,
   required int tabIndex,
+  required List<String> credits,
   required String asset,
   required String message,
 }) {
@@ -63,7 +76,7 @@ Widget _chemistryEmpty({
     animation: controller,
     builder: (_, _) => Consumer(
       builder: (ctx, ref, _) => CreditsEmptyState(
-        lines: _kChemistryCredits,
+        lines: credits,
         asset: asset,
         message: message,
         active:
@@ -80,104 +93,6 @@ class ChemistryScreen extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<ChemistryScreen> createState() => _ChemistryScreenState();
-}
-
-/// 공개 그룹·내 그룹 공용 카드 본문 — 제목 / 유형·연령 pill / 참가자 슬롯.
-/// 두 목록의 item 은 이 위젯 하나로 같은 결을 강제한다.
-class _TeamCardBody extends StatelessWidget {
-  final String title;
-  final String ageLabel;
-  final TeamRoomKind roomKind;
-  final int maxPlayers;
-  final bool isPrivate;
-
-  /// 좌하단 생성 시각 — 관상 카드 timestamp 와 동일 포맷·토큰
-  /// (timeago + AppText.hint). 최신순/오래된순 정렬의 근거 데이터.
-  final DateTime createdAt;
-
-  /// 좌하단 참가자 미니 아바타 — 상태 무관 모든 카드 공통.
-  final String teamId;
-
-  /// 인원 미달 종료 방 — 제목을 hint 색으로 낮춰 살아 있는 방과 구분.
-  final bool dimTitle;
-
-  /// 종료(비모집) 방 — 유형 pill 을 흐린 gray 로 낮춘다. 진한 pill 은
-  /// 항상 "참여 가능" 신호로만 쓰는 UX 규칙.
-  final bool dimKind;
-  const _TeamCardBody({
-    required this.title,
-    required this.ageLabel,
-    required this.roomKind,
-    required this.maxPlayers,
-    required this.isPrivate,
-    required this.teamId,
-    required this.createdAt,
-    this.dimTitle = false,
-    this.dimKind = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final kind = roomKind == TeamRoomKind.match ? '이성 케미' : '전체 케미';
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: dimTitle
-              ? AppText.subTitle.copyWith(color: AppColors.textHint)
-              : AppText.subTitle,
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        // 방 유형은 invert pill badge(연령 pill 과 동일 위젯) + 정원 텍스트.
-        Row(
-          children: [
-            AgeRangePill(
-              label: kind,
-              invert: true,
-              dim: dimKind,
-              icons: roomKind == TeamRoomKind.match
-                  ? const [FontAwesomeIcons.child, FontAwesomeIcons.childDress]
-                  : const [
-                      FontAwesomeIcons.childReaching,
-                      FontAwesomeIcons.childReaching,
-                    ],
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            AgeRangePill(label: ageLabel),
-          ],
-        ),
-        // 아바타 줄은 위 pill 줄과 붙으면 답답해서 sm(8px)으로 벌린다.
-        const SizedBox(height: AppSpacing.sm),
-        // 참가자 미니 아바타 + 빈자리 슬롯이 정원 표기를 겸한다
-        // (궁합 확인 탭 pair 아바타의 1/2 스케일). 종료 표시는 corner ribbon.
-        _RosterAvatars(
-          teamId: teamId,
-          maxPlayers: maxPlayers,
-          roomKind: roomKind,
-          // 종료 방 — 빈자리를 그리면 참가 가능으로 오독되므로 생략.
-          showEmptySlots: !dimTitle,
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Row(
-          children: [
-            Text(timeago.format(createdAt, locale: 'ko'), style: AppText.hint),
-            const Spacer(),
-            // 잠금 상태 아이콘 — timestamp 줄 맨 우측 (궁합 미확인 카드와
-            // 동일 문법). 비밀번호 있는 방에만 — 존재/부재가 곧 구분.
-            if (isPrivate)
-              const FaIcon(
-                FontAwesomeIcons.lock,
-                size: 14,
-                color: AppColors.textHint,
-              ),
-          ],
-        ),
-      ],
-    );
-  }
 }
 
 class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
@@ -246,11 +161,6 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
       ),
     );
   }
-
-  /// 관상 `'카메라 (3)'` · 궁합 `'미확인 (2)'` 과 같은 포맷 (§0.0.2 같은 정보 =
-  /// 같은 포맷). 개수를 모르면 라벨만.
-  String _tabLabel(String label, int? count) =>
-      count == null ? label : '$label ($count)';
 
   Future<void> _create() async {
     // 로그인 게이트 — 비로그인 owner_id null 이면 RLS 거부. login_bottom_sheet 패턴.
@@ -356,6 +266,11 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
       ),
     );
   }
+
+  /// 관상 `'카메라 (3)'` · 궁합 `'미확인 (2)'` 과 같은 포맷 (§0.0.2 같은 정보 =
+  /// 같은 포맷). 개수를 모르면 라벨만.
+  String _tabLabel(String label, int? count) =>
+      count == null ? label : '$label ($count)';
 }
 
 /// AppBar 우측 pill — 기존 outlined stadium 레시피 (케미 그룹 시작 자리 승계).
@@ -556,7 +471,8 @@ class _MineTab extends ConsumerWidget {
                   child: _chemistryEmpty(
                     context: context,
                     tabIndex: 1,
-                    asset: 'assets/images/emotion-laugh.png',
+                    credits: _kChemistryCreditsMine,
+                    asset: 'assets/images/emotion-surprise.png',
                     message: '참가 중인 그룹이 없습니다',
                   ),
                 ),
@@ -770,8 +686,9 @@ class _PublicTab extends ConsumerWidget {
                   child: _chemistryEmpty(
                     context: context,
                     tabIndex: 0,
+                    credits: _kChemistryCreditsPublic,
                     asset: 'assets/images/emotion-surprise.png',
-                    message: '모집 중인 공개 그룹이 없습니다',
+                    message: '참가할 수 있는 그룹이 없습니다',
                   ),
                 ),
               ],
@@ -800,7 +717,7 @@ class _PublicTab extends ConsumerWidget {
                   values: _SortOrder.values,
                   labelOf: (o) => o.label,
                   onChanged: onOrderChanged,
-                  description: '지금 참가할 수 있는 케미 그룹입니다.',
+                  description: '지금 참가할 수 있는 그룹입니다.',
                 ),
               ),
               Expanded(
@@ -962,4 +879,102 @@ enum _SortOrder {
 
   final String label;
   const _SortOrder(this.label);
+}
+
+/// 공개 그룹·내 그룹 공용 카드 본문 — 제목 / 유형·연령 pill / 참가자 슬롯.
+/// 두 목록의 item 은 이 위젯 하나로 같은 결을 강제한다.
+class _TeamCardBody extends StatelessWidget {
+  final String title;
+  final String ageLabel;
+  final TeamRoomKind roomKind;
+  final int maxPlayers;
+  final bool isPrivate;
+
+  /// 좌하단 생성 시각 — 관상 카드 timestamp 와 동일 포맷·토큰
+  /// (timeago + AppText.hint). 최신순/오래된순 정렬의 근거 데이터.
+  final DateTime createdAt;
+
+  /// 좌하단 참가자 미니 아바타 — 상태 무관 모든 카드 공통.
+  final String teamId;
+
+  /// 인원 미달 종료 방 — 제목을 hint 색으로 낮춰 살아 있는 방과 구분.
+  final bool dimTitle;
+
+  /// 종료(비모집) 방 — 유형 pill 을 흐린 gray 로 낮춘다. 진한 pill 은
+  /// 항상 "참여 가능" 신호로만 쓰는 UX 규칙.
+  final bool dimKind;
+  const _TeamCardBody({
+    required this.title,
+    required this.ageLabel,
+    required this.roomKind,
+    required this.maxPlayers,
+    required this.isPrivate,
+    required this.teamId,
+    required this.createdAt,
+    this.dimTitle = false,
+    this.dimKind = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final kind = roomKind == TeamRoomKind.match ? '이성 케미' : '전체 케미';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: dimTitle
+              ? AppText.subTitle.copyWith(color: AppColors.textHint)
+              : AppText.subTitle,
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        // 방 유형은 invert pill badge(연령 pill 과 동일 위젯) + 정원 텍스트.
+        Row(
+          children: [
+            AgeRangePill(
+              label: kind,
+              invert: true,
+              dim: dimKind,
+              icons: roomKind == TeamRoomKind.match
+                  ? const [FontAwesomeIcons.child, FontAwesomeIcons.childDress]
+                  : const [
+                      FontAwesomeIcons.childReaching,
+                      FontAwesomeIcons.childReaching,
+                    ],
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            AgeRangePill(label: ageLabel),
+          ],
+        ),
+        // 아바타 줄은 위 pill 줄과 붙으면 답답해서 sm(8px)으로 벌린다.
+        const SizedBox(height: AppSpacing.sm),
+        // 참가자 미니 아바타 + 빈자리 슬롯이 정원 표기를 겸한다
+        // (궁합 확인 탭 pair 아바타의 1/2 스케일). 종료 표시는 corner ribbon.
+        _RosterAvatars(
+          teamId: teamId,
+          maxPlayers: maxPlayers,
+          roomKind: roomKind,
+          // 종료 방 — 빈자리를 그리면 참가 가능으로 오독되므로 생략.
+          showEmptySlots: !dimTitle,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Row(
+          children: [
+            Text(timeago.format(createdAt, locale: 'ko'), style: AppText.hint),
+            const Spacer(),
+            // 잠금 상태 아이콘 — timestamp 줄 맨 우측 (궁합 미확인 카드와
+            // 동일 문법). 비밀번호 있는 방에만 — 존재/부재가 곧 구분.
+            if (isPrivate)
+              const FaIcon(
+                FontAwesomeIcons.lock,
+                size: 14,
+                color: AppColors.textHint,
+              ),
+          ],
+        ),
+      ],
+    );
+  }
 }
