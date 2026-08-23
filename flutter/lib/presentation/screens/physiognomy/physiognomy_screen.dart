@@ -58,7 +58,7 @@ const List<String> _kCreditsIntro = [
 const String _kEmptyAfterMyFace = '계속해서 다른 사람의 관상도 볼 수 있어요.';
 /// 크레딧 뒤 일러스트 아래 문구. 카메라·앨범은 내 관상 등록 전후로 가리키는
 /// 곳이 다르다 — 등록 전엔 나를, 등록 후엔 상대를 추가하라고 말한다.
-const String _kEmptyBeforeMyFace = '내 관상 부터 볼 수 있어요.';
+const String _kEmptyBeforeMyFace = '내 관상부터 확인해 보세요.';
 
 // 화면-국지 팔레트 — DESIGN.md §2.4 (file-local 격리).
 // 본 화면은 AppColors 의 gold / goldDim / goldSoft / surface / border / textHint

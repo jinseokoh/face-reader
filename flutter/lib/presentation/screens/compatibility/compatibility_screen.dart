@@ -23,7 +23,6 @@ import 'package:facely/presentation/providers/tab_provider.dart';
 import 'package:facely/presentation/screens/compatibility/compatibility_unlock_action.dart';
 import 'package:facely/presentation/widgets/cdn_thumbnail.dart';
 import 'package:facely/presentation/widgets/coin_chip.dart';
-import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/presentation/widgets/credits_empty_state.dart';
 import 'package:facely/presentation/widgets/face_scan_pill.dart';
 import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
@@ -35,7 +34,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
-import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
 /// 등록 **후** — 관상이 공짜라는 것부터 알린다. 궁합은 그 다음 이야기다.
 const List<String> _kCompatCreditsAfter = [
@@ -335,8 +333,11 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
   }
 
   /// 잠금 카드의 [궁합보기] → 공용 1코인 unlock 흐름(확인 다이얼로그 포함).
-  /// 성공 시 compatibilityKeysProvider 가 invalidate 돼 카드가 '확인' 섹션으로
-  /// 자동 이동한다 (별도 네비게이션 없음).
+  ///
+  /// 결제가 끝나면 카드가 미확인에서 확인으로 옮겨가기만 해서 어디로 갔는지
+  /// 알 수 없었다. 예전엔 스쳐 지나가는 스낵바로 "확인 탭에서 읽으세요" 라고
+  /// 안내했는데, 코인을 쓴 행동을 그렇게 흘려보낼 일이 아니다 — 한 번 매듭짓고
+  /// 확인을 누르면 앱이 직접 데려간다.
   Future<void> _handleUnlockPressed(
     BuildContext context,
     WidgetRef ref,
@@ -344,14 +345,33 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
     FaceReadingReport album,
   ) async {
     final ok = await runCompatibilityUnlock(context, ref, my: my, album: album);
-    // 결제 후 카드가 미확인 → 확인 리스트로 옮겨가기만 해서 어리둥절하다 —
-    // 어디로 갔는지 snackbar 로 안내.
     if (!ok || !context.mounted) return;
-    showTopSnackBar(
-      Overlay.of(context),
-      CompactSnackBar.success(message: '확인 탭으로 이동 후, 궁합풀이를 읽어보세요.'),
-    );
+    await _showUnlockedDialog(context);
+    if (!context.mounted) return;
+    // 방금 산 상대를 지목하면 확인 탭 전환(§112 리스너)과 최상단 고정이 함께
+    // 일어난다. 정렬을 바꾸거나 카드를 누르면 해제된다.
+    ref.read(recentUnlockFocusProvider.notifier).focus(album.supabaseId);
   }
+
+  /// 궁합 해제 완료 안내 — 내 관상 등록 완료 다이얼로그와 같은 레시피.
+  /// [확인] 이 유일한 출구다 (barrier 로 닫으면 탭 이동이 안 일어난다).
+  Future<void> _showUnlockedDialog(BuildContext context) => showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (ctx) => AlertDialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+      ),
+      content: const Text('궁합 풀이가 완성되었습니다.', style: AppText.body),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('확인', style: AppText.subTitle),
+        ),
+      ],
+    ),
+  );
 
   /// 미확인 탭 — 시간 정렬 + 잠금 카드 리스트.
   Widget _lockedTab(
