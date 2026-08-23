@@ -31,10 +31,23 @@ final matchProposalsProvider = FutureProvider<List<MatchProposal>>(
 );
 
 /// 케미 리스트 카드의 참가자 미니 아바타 — teamId 별 캐시(family).
+///
+/// **팀 목록에 종속시킨다.** family + non-autoDispose 라 한 번 받아오면 앱을
+/// 끌 때까지 그 값이 남는데, 무효화하는 곳이 아무 데도 없어서 누가 방에
+/// 조인해도 카드의 아바타가 그대로였다 (상세 화면은 직접 조회라 정상이었다).
+///
+/// 무효화 지점마다 이 provider 를 함께 적어 주는 방식은 이미 한 번 빠뜨렸다 —
+/// 지우는 쪽이 파생물을 전부 기억해야 하는 구조는 언젠가 어긋난다. 조인·이탈은
+/// 팀 목록 갱신으로 드러나므로, 목록을 구독해 두면 기억할 자리가 없어진다.
+///
+/// 대가는 목록을 새로고침할 때 화면에 보이는 팀 수만큼 roster 조회가 나가는
+/// 것이다. 카드 한 장에 한 번, 사용자가 당겨서 새로고침한 때만이다.
 final teamRosterAvatarsProvider =
-    FutureProvider.family<List<RosterAvatar>, String>(
-      (ref, teamId) => TeamService.instance.fetchTeamRosterAvatars(teamId),
-    );
+    FutureProvider.family<List<RosterAvatar>, String>((ref, teamId) {
+      ref.watch(myTeamsProvider);
+      ref.watch(publicTeamsProvider);
+      return TeamService.instance.fetchTeamRosterAvatars(teamId);
+    });
 
 /// 마지막으로 채팅방을 본 시각의 Hive prefs 키 — 안읽음 판정 기준.
 /// TeamChatScreen 이 메시지 로드마다 갱신, openChatsProvider 가 읽는다.
