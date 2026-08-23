@@ -26,22 +26,13 @@ class CoinService {
   factory CoinService() => _instance;
   CoinService._();
 
-  /// 상품 ID 는 스토어별로 다르다. Android 는 Play 의 `coin_*`, iOS 는 App
-  /// Store 의 `meso_*` — iOS 앱 레코드가 MeSo(`com.scienceintegration.meetsocrates`)
-  /// 라 이미 승인된 소모품 ID 를 재활용한다. 지급 코인 수는 ID 의미와 무관하게
-  /// [_coinMap] 이 정한다.
-  static List<String> get _productIds => Platform.isIOS
-      ? ['meso_coin_1', 'meso_coins_10']
-      : ['coin_3', 'coin_14'];
+  /// 상품 ID 는 두 스토어가 같다 — 둘 다 `com.scienceintegration.facely` 앱
+  /// 레코드의 소모품이다. 한때 iOS 만 MeSo 앱 레코드의 `meso_*` 를 빌려 썼는데,
+  /// 그 우회를 접고 정식 심사로 돌아오면서 원래 ID 로 복귀했다. 지급 코인 수는
+  /// ID 의미와 무관하게 [_coinMap] 이 정한다.
+  static const List<String> _productIds = ['coin_3', 'coin_14'];
 
-  static const _coinMap = {
-    // Android — Play, com.scienceintegration.facely
-    'coin_3': 3,
-    'coin_14': 14,
-    // iOS — App Store, com.scienceintegration.meetsocrates
-    'meso_coin_1': 3,
-    'meso_coins_10': 14,
-  };
+  static const _coinMap = {'coin_3': 3, 'coin_14': 14};
 
   bool _initialized = false;
   bool get isAvailable => _initialized;

@@ -1,4 +1,18 @@
-# PLAN — iOS 앱 레코드 이관 (facely → MeSo)
+# PLAN — iOS 앱 레코드 이관 (facely → MeSo) · **철회됨**
+
+> 🚫 **이 계획은 실행하지 않는다 (2026-08-23 철회).**
+>
+> App Store 리젝을 두 번 받고 이미 승인된 MeSo 앱의 껍데기를 빌리려던 우회였다.
+> 정식 심사로 정면 돌파하기로 방향을 바꿔 **번들 ID 를 `…facely` 로 되돌렸다.**
+> appeal 이 통하지 않으면 2차 대안으로 이 문서를 다시 꺼낸다 — 그래서 지우지
+> 않고 남긴다.
+>
+> 되돌린 것: `project.pbxproj`(6곳) · `web/wrangler.jsonc` 의
+> `APP_BUNDLE_ID_IOS` · `apple-app-site-association` 의 appID ·
+> `coin_service.dart` 의 iOS 제품 ID(`meso_*` → `coin_3`/`coin_14`, 두 스토어
+> 동일). `GoogleService-Info.plist` 는 애초에 `…facely` 라 손댈 것이 없었다.
+>
+> **아래 본문의 번들 ID 는 그 시절 기준이다.** 다시 실행할 때만 유효하다.
 
 지금 iOS 빌드는 번들 ID 가 `com.scienceintegration.facely` 다. 이걸 이미 승인되어
 있는 MeSo 앱의 번들 ID `com.scienceintegration.meetsocrates` 로 바꾼다.
