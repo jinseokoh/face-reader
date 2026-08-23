@@ -1,3 +1,4 @@
+import 'package:facely/presentation/widgets/blocking_loader.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
@@ -18,9 +19,9 @@ class AccountDeletionDialog {
     );
     if (confirmed != true || !context.mounted) return;
 
-    final loadingCompleter = _showBlockingLoader(context);
+    final loader = showBlockingLoader(context);
     final result = await ref.read(authProvider.notifier).deleteAccount();
-    loadingCompleter.complete();
+    loader.dismiss();
     if (!context.mounted) return;
 
     if (result.ok) {
@@ -46,29 +47,11 @@ class AccountDeletionDialog {
         ),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result.message ?? '탈퇴 처리 실패')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(result.message ?? '탈퇴 처리 실패')));
     }
   }
-
-  static _LoaderHandle _showBlockingLoader(BuildContext context) {
-    final completer = _LoaderHandle();
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) {
-        completer._popCallback = () => Navigator.of(ctx).pop();
-        return const Center(child: CircularProgressIndicator());
-      },
-    );
-    return completer;
-  }
-}
-
-class _LoaderHandle {
-  VoidCallback? _popCallback;
-  void complete() => _popCallback?.call();
 }
 
 class _ConfirmDialog extends StatefulWidget {
@@ -102,10 +85,7 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '회원 탈퇴 시 아래 항목이 영구 삭제되며 복구할 수 없습니다.',
-            style: AppText.body,
-          ),
+          const Text('회원 탈퇴 시 아래 항목이 영구 삭제되며 복구할 수 없습니다.', style: AppText.body),
           const SizedBox(height: 12),
           for (final item in _items)
             Padding(
@@ -142,18 +122,11 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: const Text(
-            '취소',
-            style: TextStyle(color: AppColors.textHint),
-          ),
+          child: const Text('취소', style: TextStyle(color: AppColors.textHint)),
         ),
         TextButton(
-          onPressed:
-              _agreed ? () => Navigator.pop(context, true) : null,
-          child: const Text(
-            '탈퇴하기',
-            style: TextStyle(color: AppColors.danger),
-          ),
+          onPressed: _agreed ? () => Navigator.pop(context, true) : null,
+          child: const Text('탈퇴하기', style: TextStyle(color: AppColors.danger)),
         ),
       ],
     );

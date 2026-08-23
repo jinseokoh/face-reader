@@ -10,6 +10,7 @@ import 'package:facely/data/services/supabase_service.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:facely/presentation/providers/compatibility_provider.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
+import 'package:facely/presentation/widgets/blocking_loader.dart';
 import 'package:facely/presentation/widgets/login_bottom_sheet.dart';
 import 'package:facely/presentation/widgets/purchase_sheet.dart';
 import 'package:facely/presentation/widgets/spinning_number_wheel.dart';
@@ -45,10 +46,13 @@ Future<bool> runCompatibilityUnlock(
   }
 
   // 2. supabaseId 보장 — 없으면 saveMetrics 로 생성 후 Hive 갱신.
+  //    서버 왕복이라 무음으로 두면 탭이 먹은 건지 알 수 없다.
+  final idLoader = showBlockingLoader(context);
   try {
     await _ensureSupabaseId(ref, my);
     await _ensureSupabaseId(ref, album);
   } catch (e) {
+    idLoader.dismiss();
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -58,6 +62,8 @@ Future<bool> runCompatibilityUnlock(
       );
     }
     return false;
+  } finally {
+    idLoader.dismiss();
   }
 
   final pairIds = tryPairIds(my, album);
@@ -86,7 +92,13 @@ Future<bool> runCompatibilityUnlock(
     await PurchaseSheet.show(
       context,
       onPurchased: () {
-        runCompatibilityUnlock(context, ref, my: my, album: album, confirm: confirm);
+        runCompatibilityUnlock(
+          context,
+          ref,
+          my: my,
+          album: album,
+          confirm: confirm,
+        );
       },
     );
     return false;
@@ -102,54 +114,72 @@ Future<bool> runCompatibilityUnlock(
   // 5. RPC. unlock 직전에 분석을 실행해 total_score 를 함께 기록 — admin 콘솔
   // (refine) 에서 점수별 정렬·필터 가능하도록. alias 는 결제 시점 이름 스냅샷
   // (내 쪽 = 프로필 닉네임, 상대 쪽 = 카드에 지정한 이름).
-  final preBundle = analyzeCompatibilityFromReports(my: my, album: album);
-  // 쌍 정규화(a<b)에 맞춰 body·alias 도 같은 순서로 정렬.
-  final myIsA = my.supabaseId?.toLowerCase() == pairIds[0];
-  final aReport = myIsA ? my : album;
-  final bReport = myIsA ? album : my;
-  String? aliasOf(FaceReadingReport r) => identical(r, my)
-      ? (myAlias ?? AuthService().currentUser?.nickname)
-      : (albumAlias ?? album.alias);
-  // 사진을 내 폴더로 복사한 뒤 그 키로 동결한다. 주소만 베끼면 원본 주인이
-  // 재촬영·탈퇴하는 순간 산 사람 화면이 깨진다 — 구매분 영구 보존
-  // (`privacy.md:27`)은 사본이 있어야 지켜지는 약속이다. 복사 실패는 결제를
-  // 막지 않는다: 원본 키로 저장되고 시작 시 대조가 뒤따라 고친다.
-  final aBody = await ThumbnailCopier.withCopiedThumbnail(aReport.toBodyJson());
-  final bBody = await ThumbnailCopier.withCopiedThumbnail(bReport.toBodyJson());
-  final int newBalance;
-  try {
-    newBalance = await CompatibilityService().unlock(
-      aId: pairIds[0],
-      bId: pairIds[1],
-      aBody: aBody,
-      bBody: bBody,
-      aAlias: aliasOf(aReport),
-      bAlias: aliasOf(bReport),
-      totalScore: preBundle.report.total,
-    );
-  } catch (e, st) {
-    debugPrint('[Compatibility] unlock failed: $e\n$st');
-    if (!context.mounted) return false;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('해제 중 오류: $e'),
-        backgroundColor: Colors.red.shade700,
-      ),
-    );
-    return false;
-  }
+  //
+  // 여기부터가 가장 긴 구간이다 — 분석, 사진 복사 두 번(CDN GET + presign +
+  // PUT), RPC, 코인 갱신이 줄줄이 이어진다. 확인 다이얼로그를 닫자마자
+  // 화면이 그대로 멈춰 있으면 결제가 안 된 걸로 읽힌다.
   if (!context.mounted) return false;
-  if (newBalance == -1) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('코인이 부족합니다.')));
-    return false;
-  }
+  final payLoader = showBlockingLoader(context);
+  try {
+    final preBundle = analyzeCompatibilityFromReports(my: my, album: album);
+    // 쌍 정규화(a<b)에 맞춰 body·alias 도 같은 순서로 정렬.
+    final myIsA = my.supabaseId?.toLowerCase() == pairIds[0];
+    final aReport = myIsA ? my : album;
+    final bReport = myIsA ? album : my;
+    String? aliasOf(FaceReadingReport r) => identical(r, my)
+        ? (myAlias ?? AuthService().currentUser?.nickname)
+        : (albumAlias ?? album.alias);
+    // 사진을 내 폴더로 복사한 뒤 그 키로 동결한다. 주소만 베끼면 원본 주인이
+    // 재촬영·탈퇴하는 순간 산 사람 화면이 깨진다 — 구매분 영구 보존
+    // (`privacy.md:27`)은 사본이 있어야 지켜지는 약속이다. 복사 실패는 결제를
+    // 막지 않는다: 원본 키로 저장되고 시작 시 대조가 뒤따라 고친다.
+    final aBody = await ThumbnailCopier.withCopiedThumbnail(
+      aReport.toBodyJson(),
+    );
+    final bBody = await ThumbnailCopier.withCopiedThumbnail(
+      bReport.toBodyJson(),
+    );
+    final int newBalance;
+    try {
+      newBalance = await CompatibilityService().unlock(
+        aId: pairIds[0],
+        bId: pairIds[1],
+        aBody: aBody,
+        bBody: bBody,
+        aAlias: aliasOf(aReport),
+        bAlias: aliasOf(bReport),
+        totalScore: preBundle.report.total,
+      );
+    } catch (e, st) {
+      debugPrint('[Compatibility] unlock failed: $e\n$st');
+      payLoader.dismiss();
+      if (!context.mounted) return false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('해제 중 오류: $e'),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+      return false;
+    }
+    if (!context.mounted) return false;
+    if (newBalance == -1) {
+      payLoader.dismiss();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('코인이 부족합니다.')));
+      return false;
+    }
 
-  // 6. 갱신.
-  await auth.refreshCoins();
-  ref.invalidate(compatibilityKeysProvider);
-  return true;
+    // 6. 갱신.
+    await auth.refreshCoins();
+    ref.invalidate(compatibilityKeysProvider);
+    return true;
+  } finally {
+    // 결과 화면으로 넘어가기 직전까지 띄워 둔다 — 여기서 먼저 걷으면 전환
+    // 사이에 다시 정적인 화면이 보인다.
+    payLoader.dismiss();
+  }
 }
 
 /// 궁합 진입 시 metrics row 를 서버에 보장.
