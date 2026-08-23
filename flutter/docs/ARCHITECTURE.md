@@ -24,7 +24,7 @@ python/ (DeepFace FastAPI)          Supabase (metrics·coins·compatibilities·t
 | 0 | `PhysiognomyScreen` | 관상 — 내부 3탭 고정(카메라/앨범/북마크, 개수 표기) + 14-node 리포트 진입 |
 | 1 | `CompatibilityScreen` | 궁합 — 내부 2탭(미확인/확인), 1🪙 unlock |
 | 2 | `ChemistryScreen` | 케미 그룹 — 내부 2탭(모집중/내 그룹) |
-| 3 | `ChatTabScreen` | 채팅 — 열린 매칭 채팅 목록(`openChatsProvider`), 안읽음 gold dot |
+| 3 | `ChatScreen` | 채팅 — 열린 매칭 채팅 목록(`openChatsProvider`), 안읽음 gold dot |
 | 4 | `SettingsScreen` | 설정 · 프로필 이름 수정 · 약관 · 차단 목록 · 앱 정보 팝업 · 로그인/탈퇴 — 진입 시 배너 광고 팝업(§5) |
 
 채팅 접근 경로: ① 채팅 탭(아이콘에 안읽음 dot 뱃지) ② 전역 새 메시지 밴드 —

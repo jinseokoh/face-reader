@@ -27,16 +27,13 @@ import '../team/team_detail_screen.dart';
 import '../team/team_pin_dialog.dart';
 import '../team/team_reveal_screen.dart';
 
-/// 케미 탭 = Chemistry Team 방 목록 브라우저.
-/// 빈 탭을 채우는 문구 — 위에서 뚝 떨어진 뒤 그 아래로 안내가 뜬다.
-/// 줄바꿈은 이 목록 그대로 유지된다 ([CreditsEmptyState]).
-///
-/// 케미가 무엇인지 먼저 말한다 — 그룹 안에서 나와 가장 맞는 사람 찾기.
-/// 두 탭이 공유하고, 뒤에 그 탭에서 할 일이 붙는다.
-const List<String> _kChemistryIntro = [
-  '케미는 그룹 내에서',
-  '나와 조화가 가장 잘 맞는',
-  '사람이 누구인지 점수로 알려줍니다.\n',
+/// 내 그룹 탭 — 내가 방을 여는 길. 공짜라는 것부터 말한다.
+const List<String> _kChemistryCreditsMine = [
+  ..._kChemistryIntro,
+  '케미 그룹은 무료로',
+  '만들 수 있습니다.',
+  '내 그룹을 만들고',
+  '사람들을 초대해 보세요.',
 ];
 
 /// 모집중 탭 — 방을 찾아 들어가는 길.
@@ -49,13 +46,16 @@ const List<String> _kChemistryCreditsPublic = [
   '찾을 수도 있습니다.',
 ];
 
-/// 내 그룹 탭 — 내가 방을 여는 길. 공짜라는 것부터 말한다.
-const List<String> _kChemistryCreditsMine = [
-  ..._kChemistryIntro,
-  '케미 그룹은 무료로',
-  '만들 수 있습니다.',
-  '내 그룹을 만들고',
-  '사람들을 초대해 보세요.',
+/// 케미 탭 = Chemistry Team 방 목록 브라우저.
+/// 빈 탭을 채우는 문구 — 위에서 뚝 떨어진 뒤 그 아래로 안내가 뜬다.
+/// 줄바꿈은 이 목록 그대로 유지된다 ([CreditsEmptyState]).
+///
+/// 케미가 무엇인지 먼저 말한다 — 그룹 안에서 나와 가장 맞는 사람 찾기.
+/// 두 탭이 공유하고, 뒤에 그 탭에서 할 일이 붙는다.
+const List<String> _kChemistryIntro = [
+  '케미는 그룹 내에서',
+  '나와 조화가 가장 잘 맞는',
+  '사람이 누구인지 점수로 알려줍니다.\n',
 ];
 
 /// 빈 탭 — 관상·궁합과 같은 2단 연출. 문구가 위에서 떨어진 뒤 그 아래로
@@ -472,7 +472,7 @@ class _MineTab extends ConsumerWidget {
                     context: context,
                     tabIndex: 1,
                     credits: _kChemistryCreditsMine,
-                    asset: 'assets/images/emotion-surprise.png',
+                    asset: 'assets/images/emotion-smile.png',
                     message: '참가 중인 그룹이 없습니다',
                   ),
                 ),
@@ -687,7 +687,7 @@ class _PublicTab extends ConsumerWidget {
                     context: context,
                     tabIndex: 0,
                     credits: _kChemistryCreditsPublic,
-                    asset: 'assets/images/emotion-surprise.png',
+                    asset: 'assets/images/emotion-smile.png',
                     message: '참가할 수 있는 그룹이 없습니다',
                   ),
                 ),

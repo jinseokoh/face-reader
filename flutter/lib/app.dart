@@ -15,7 +15,7 @@ import 'package:facely/domain/models/team.dart';
 import 'package:facely/presentation/providers/team_provider.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/providers/tab_provider.dart';
-import 'package:facely/presentation/screens/chat/chat_tab_screen.dart';
+import 'package:facely/presentation/screens/chat/chat_screen.dart';
 import 'package:facely/presentation/screens/compatibility/compatibility_screen.dart';
 import 'package:facely/presentation/screens/chemistry/chemistry_screen.dart';
 import 'package:facely/presentation/screens/physiognomy/physiognomy_screen.dart';
@@ -30,7 +30,7 @@ const List<Widget> _kTabScreens = [
   PhysiognomyScreen(),
   CompatibilityScreen(),
   ChemistryScreen(),
-  ChatTabScreen(),
+  ChatScreen(),
   SettingsScreen(),
 ];
 

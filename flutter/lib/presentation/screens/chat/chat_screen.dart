@@ -8,9 +8,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme.dart';
 import '../../../domain/models/team.dart';
-import '../../providers/team_provider.dart';
 import '../../providers/history_provider.dart';
 import '../../providers/tab_provider.dart';
+import '../../providers/team_provider.dart';
 import '../../widgets/emotion_empty_state.dart';
 import '../../widgets/face_scan_pill.dart';
 import '../../widgets/source_badge.dart';
@@ -20,8 +20,8 @@ import 'match_proposal_sheet.dart';
 /// 행: 42 원형 아바타 / 닉네임 + 마지막 메시지 / 시간 + 안읽음 dot.
 /// 탭하면 기존 `/chat/:id` 라우트 재사용 (매칭·닉네임 resolve 포함),
 /// 복귀 시 openChatsProvider invalidate 로 읽음 상태 반영.
-class ChatTabScreen extends ConsumerWidget {
-  const ChatTabScreen({super.key});
+class ChatScreen extends ConsumerWidget {
+  const ChatScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -179,6 +179,54 @@ class _Avatar extends StatelessWidget {
   }
 }
 
+/// 미결 베스트 매칭 주목 callout — danger 말풍선 + award 아이콘을 향한 말꼬리.
+/// 제안이 해소(응답·시한 만료)될 때까지 유지된다.
+class _BestPickCallout extends StatelessWidget {
+  final VoidCallback onTap;
+  const _BestPickCallout({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 말꼬리 — appbar 의 award 아이콘(우측에서 두 번째 액션) 아래 정렬.
+          Padding(
+            padding: const EdgeInsets.only(right: 64),
+            child: Transform.rotate(
+              angle: math.pi / 4,
+              child: Container(width: 10, height: 10, color: AppColors.danger),
+            ),
+          ),
+          Transform.translate(
+            offset: const Offset(0, -5),
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.danger,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Text(
+                '베스트 케미로 선정되었습니다',
+                style: AppText.caption.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// 채팅방 한 줄 — 아바타 42 원형, 닉네임(subTitle) + 마지막 메시지(caption) 1줄,
 /// 우측 시간(hint) + 안읽음 gold dot.
 class _ChatTile extends ConsumerWidget {
@@ -273,8 +321,8 @@ class _EmptyChats extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         const EmotionEmptyState(
-          asset: 'assets/images/emotion-namaste.png',
-          message: '베스트 매칭 후 두 사람이 모두 동의하면\n여기에 1:1 채팅방이 생깁니다.',
+          asset: 'assets/images/emotion-happy.png',
+          message: '케미 그룹 점수가\n가장 좋은 두 사람이 모두 동의하면\n여기에 1:1 채팅방이 생깁니다.',
         ),
         const SizedBox(height: AppSpacing.xl),
         InkWell(
@@ -338,54 +386,6 @@ class _MatchProposalBadge extends ConsumerWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-/// 미결 베스트 매칭 주목 callout — danger 말풍선 + award 아이콘을 향한 말꼬리.
-/// 제안이 해소(응답·시한 만료)될 때까지 유지된다.
-class _BestPickCallout extends StatelessWidget {
-  final VoidCallback onTap;
-  const _BestPickCallout({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // 말꼬리 — appbar 의 award 아이콘(우측에서 두 번째 액션) 아래 정렬.
-          Padding(
-            padding: const EdgeInsets.only(right: 64),
-            child: Transform.rotate(
-              angle: math.pi / 4,
-              child: Container(width: 10, height: 10, color: AppColors.danger),
-            ),
-          ),
-          Transform.translate(
-            offset: const Offset(0, -5),
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.sm,
-              ),
-              decoration: BoxDecoration(
-                color: AppColors.danger,
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
-              child: Text(
-                '베스트 케미로 선정되었습니다',
-                style: AppText.caption.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
