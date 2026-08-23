@@ -489,6 +489,15 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
     }
 
     final myId = myFace.supabaseId?.toLowerCase();
+    // 이름은 얼리지 않는다. 사진·점수는 **구매한 콘텐츠**라 결제 시점 그대로여야
+    // 하지만, 별칭은 내가 붙인 **라벨**이다 — 연락처 이름을 바꾸면 통화기록에도
+    // 새 이름이 나오는 게 맞다. 스냅샷의 alias 는 카드가 사라졌을 때 쓰는
+    // 대비책이다 (`0001_baseline.sql:270` "앱 fallback").
+    final liveAlias = <String, String>{
+      for (final r in ref.watch(historyProvider))
+        if (r.supabaseId != null && r.alias != null)
+          r.supabaseId!.toLowerCase(): r.alias!,
+    };
     // **양쪽 다 결제 시점 스냅샷.** 구매한 건 "그때 두 사람의 궁합" 이라,
     // 내가 사진을 다시 찍었다고 이미 판 결과의 얼굴과 점수가 바뀌면 안 된다.
     // 예전엔 내 쪽만 live 리포트로 치환했는데, 그러면 상대는 그대로인 채 내
@@ -508,7 +517,10 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
       }
       return (
         report: snap,
-        name: snap.alias ?? '${snap.ageGroup.labelKo} ${snap.gender.labelKo}',
+        name:
+            liveAlias[id] ??
+            snap.alias ??
+            '${snap.ageGroup.labelKo} ${snap.gender.labelKo}',
         fallbackKey: null,
       );
     }
