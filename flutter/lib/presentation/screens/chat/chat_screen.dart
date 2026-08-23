@@ -48,7 +48,7 @@ class ChatScreen extends ConsumerWidget {
           !hasMyFace
               ? const EmotionEmptyState(
                   asset: 'assets/images/emotion-yawn.png',
-                  message: '채팅에 참여하려면 내관상을 등록하세요',
+                  message: '채팅에 참여하려면 내 관상을 보세요.',
                 )
               : RefreshIndicator(
                   onRefresh: () {

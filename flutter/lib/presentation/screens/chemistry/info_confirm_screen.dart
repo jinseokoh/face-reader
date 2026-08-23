@@ -59,8 +59,7 @@ class InfoConfirmScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<InfoConfirmScreen> createState() =>
-      _InfoConfirmScreenState();
+  ConsumerState<InfoConfirmScreen> createState() => _InfoConfirmScreenState();
 }
 
 /// 서버가 동시 처리 상한으로 거절(503)한 경우 — 고장이 아니라 혼잡.
@@ -72,8 +71,7 @@ const _kEstimateFailedMessage = '서버 오류로 인해 추정에 실패했습�
 /// 캡처 프레임이 없어 추정을 시도조차 못 한 경우.
 const _kEstimateNoImageMessage = '이미지를 전달 받지 못했습니다. 다시 시도해주세요.';
 
-class _InfoConfirmScreenState
-    extends ConsumerState<InfoConfirmScreen> {
+class _InfoConfirmScreenState extends ConsumerState<InfoConfirmScreen> {
   late Ethnicity _ethnicity;
   late Gender _gender;
   late AgeGroup _ageGroup;
@@ -103,7 +101,11 @@ class _InfoConfirmScreenState
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const FaIcon(FontAwesomeIcons.xmark, color: AppColors.textPrimary, size: 20),
+          icon: const FaIcon(
+            FontAwesomeIcons.xmark,
+            color: AppColors.textPrimary,
+            size: 20,
+          ),
           onPressed: _isAnalyzing ? null : () => Navigator.of(context).pop(),
         ),
         title: const Text('정보 확인'),
@@ -122,87 +124,94 @@ class _InfoConfirmScreenState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-              const SizedBox(height: 16),
-              Text(
-                _estimateProblem == null ? '추정 정보가 맞나요?' : '정보를 확인해주세요',
-                style: AppText.display,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _estimateProblem ??
-                    '인공지능은 실수할 수 있습니다. 확인 후 필요하다면 수정해 주세요.',
-                style: AppText.body.copyWith(color: AppColors.textSecondary),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              PickerRow(
-                label: '인종',
-                value: _ethnicity.labelKo,
-                inferring: _inferring && !_userTouched,
-                onTap: () async {
-                  final v = await showWheelPicker<Ethnicity>(
-                    context,
-                    title: '인종 선택',
-                    values: Ethnicity.values,
-                    current: _ethnicity,
-                    labelOf: (e) => e.labelKo,
-                  );
-                  if (v != null) _touchAndSet(() => _ethnicity = v);
-                },
-              ),
-              const SizedBox(height: 12),
-              PickerRow(
-                label: '성별',
-                value: _gender.labelKo,
-                inferring: _inferring && !_userTouched,
-                onTap: () async {
-                  final v = await showWheelPicker<Gender>(
-                    context,
-                    title: '성별 선택',
-                    values: Gender.values,
-                    current: _gender,
-                    labelOf: (e) => e.labelKo,
-                  );
-                  if (v != null) _touchAndSet(() => _gender = v);
-                },
-              ),
-              const SizedBox(height: 12),
-              PickerRow(
-                label: '나이대',
-                value: _ageGroup.labelKo,
-                inferring: _inferring && !_userTouched,
-                onTap: () async {
-                  final v = await showWheelPicker<AgeGroup>(
-                    context,
-                    title: '나이대 선택',
-                    values: AgeGroup.values
-                        .where((e) => e.index <= AgeGroup.seventies.index)
-                        .toList(),
-                    current: _ageGroup,
-                    labelOf: (e) => e.labelKo,
-                  );
-                  if (v != null) _touchAndSet(() => _ageGroup = v);
-                },
-              ),
-              // 상대방 관상 — 이름을 미리 붙여두면 궁합·공유 리스트에서 바로
-              // 식별된다. 비워도 진행 가능 (optional).
-              if (_showAliasField) ...[
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _aliasController,
-                  maxLength: 10,
-                  style: AppText.body.copyWith(color: AppColors.textPrimary),
-                  decoration: InputDecoration(
-                    hintText: '상대방 이름 입력 (선택)',
-                    hintStyle:
-                        AppText.body.copyWith(color: AppColors.textHint),
-                    counterText: '',
-                  ),
-                ),
-              ],
-              // 하단 안내는 상단 부제로 병합 — 같은 말을 두 번 하지 않는다.
-              const SizedBox(height: 24),
+                      const SizedBox(height: 16),
+                      Text(
+                        _estimateProblem == null ? '추정 정보가 맞나요?' : '정보를 확인해주세요',
+                        style: AppText.display,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _estimateProblem ??
+                            '인공지능은 실수할 수 있습니다. 확인 후 필요하다면 수정해 주세요.',
+                        style: AppText.body.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      PickerRow(
+                        label: '인종',
+                        value: _ethnicity.labelKo,
+                        inferring: _inferring && !_userTouched,
+                        onTap: () async {
+                          final v = await showWheelPicker<Ethnicity>(
+                            context,
+                            title: '인종 선택',
+                            values: Ethnicity.values,
+                            current: _ethnicity,
+                            labelOf: (e) => e.labelKo,
+                          );
+                          if (v != null) _touchAndSet(() => _ethnicity = v);
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      PickerRow(
+                        label: '성별',
+                        value: _gender.labelKo,
+                        inferring: _inferring && !_userTouched,
+                        onTap: () async {
+                          final v = await showWheelPicker<Gender>(
+                            context,
+                            title: '성별 선택',
+                            values: Gender.values,
+                            current: _gender,
+                            labelOf: (e) => e.labelKo,
+                          );
+                          if (v != null) _touchAndSet(() => _gender = v);
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      PickerRow(
+                        label: '나이대',
+                        value: _ageGroup.labelKo,
+                        inferring: _inferring && !_userTouched,
+                        onTap: () async {
+                          final v = await showWheelPicker<AgeGroup>(
+                            context,
+                            title: '나이대 선택',
+                            values: AgeGroup.values
+                                .where(
+                                  (e) => e.index <= AgeGroup.seventies.index,
+                                )
+                                .toList(),
+                            current: _ageGroup,
+                            labelOf: (e) => e.labelKo,
+                          );
+                          if (v != null) _touchAndSet(() => _ageGroup = v);
+                        },
+                      ),
+                      // 상대방 관상 — 이름을 미리 붙여두면 궁합·공유 리스트에서 바로
+                      // 식별된다. 비워도 진행 가능 (optional).
+                      if (_showAliasField) ...[
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _aliasController,
+                          maxLength: 10,
+                          style: AppText.body.copyWith(
+                            color: AppColors.textPrimary,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: '상대방 이름 입력 (선택)',
+                            hintStyle: AppText.body.copyWith(
+                              color: AppColors.textHint,
+                            ),
+                            counterText: '',
+                          ),
+                        ),
+                      ],
+                      // 하단 안내는 상단 부제로 병합 — 같은 말을 두 번 하지 않는다.
+                      const SizedBox(height: 24),
                     ],
                   ),
                 ),
@@ -240,36 +249,40 @@ class _InfoConfirmScreenState
       return;
     }
     _inferring = true;
-    f.then((meta) {
-      if (!mounted) return;
-      setState(() {
-        _inferring = false;
-        _inferred = meta;
-        // null = 캡처 화면이 흡수한 일반 실패.
-        if (meta == null) {
-          _estimateProblem = _kEstimateFailedMessage;
-          return;
-        }
-        if (_userTouched) return;
-        // 사용자가 picker 만지지 않은 경우에만 prefill.
-        final e = meta.ethnicityEnum;
-        final g = meta.genderEnum;
-        if (e != null) _ethnicity = e;
-        if (g != null) _gender = g;
-        _ageGroup = meta.ageGroupEnum;
-      });
-    }, onError: (Object err) {
-      // 여기 도달하는 건 서버가 동시 처리 상한으로 거절한 503 뿐 — 캡처 화면이
-      // 그 외 실패는 null 로 흡수한다. _inferring 을 반드시 풀어야 picker 3개가
-      // 추정 중 상태로 굳지 않는다.
-      if (!mounted) return;
-      setState(() {
-        _inferring = false;
-        _estimateProblem = err is FaceAnalyzeException && err.statusCode == 503
-            ? _kEstimateBusyMessage
-            : _kEstimateFailedMessage;
-      });
-    });
+    f.then(
+      (meta) {
+        if (!mounted) return;
+        setState(() {
+          _inferring = false;
+          _inferred = meta;
+          // null = 캡처 화면이 흡수한 일반 실패.
+          if (meta == null) {
+            _estimateProblem = _kEstimateFailedMessage;
+            return;
+          }
+          if (_userTouched) return;
+          // 사용자가 picker 만지지 않은 경우에만 prefill.
+          final e = meta.ethnicityEnum;
+          final g = meta.genderEnum;
+          if (e != null) _ethnicity = e;
+          if (g != null) _gender = g;
+          _ageGroup = meta.ageGroupEnum;
+        });
+      },
+      onError: (Object err) {
+        // 여기 도달하는 건 서버가 동시 처리 상한으로 거절한 503 뿐 — 캡처 화면이
+        // 그 외 실패는 null 로 흡수한다. _inferring 을 반드시 풀어야 picker 3개가
+        // 추정 중 상태로 굳지 않는다.
+        if (!mounted) return;
+        setState(() {
+          _inferring = false;
+          _estimateProblem =
+              err is FaceAnalyzeException && err.statusCode == 503
+              ? _kEstimateBusyMessage
+              : _kEstimateFailedMessage;
+        });
+      },
+    );
   }
 
   /// 확인된 demographic 으로 full pipeline 실행.
@@ -286,8 +299,9 @@ class _InfoConfirmScreenState
     try {
       if (_inferring && widget.metadataFuture != null) {
         try {
-          final meta = await widget.metadataFuture!
-              .timeout(const Duration(seconds: 8));
+          final meta = await widget.metadataFuture!.timeout(
+            const Duration(seconds: 8),
+          );
           if (!mounted) return;
           if (meta != null) _inferred = meta;
         } catch (e) {
@@ -398,13 +412,22 @@ class _InfoConfirmScreenState
         Navigator.of(context).pop(report);
         return;
       }
-      // 분석은 시작한 탭(관상/궁합/교감)에 그대로 남는다 — 탭 전환 없음.
+      // 상대 분석은 시작한 탭(관상/궁합/교감)에 그대로 남는다 — 탭 전환 없음.
       // 궁합에서 상대를 추가하면 그 자리 미확인 리스트에 새 카드가 보이고,
-      // 관상에서 시작했으면 관상 리스트에 보인다. 관상 inner 탭만 결과가
-      // 놓인 소스(카메라/앨범)로 미리 맞춰 둔다.
-      if (!widget.asMyFace) {
-        ref.read(historyTabProvider.notifier).selectTab(
-            c.source == AnalysisSource.camera ? 0 : 1);
+      // 관상에서 시작했으면 관상 리스트에 보인다. 관상 inner 탭은 결과가 놓인
+      // 소스(카메라/앨범)로 맞춰 둔다.
+      ref
+          .read(historyTabProvider.notifier)
+          .selectTab(c.source == AnalysisSource.camera ? 0 : 1);
+
+      if (widget.asMyFace) {
+        // 내 관상 등록은 앱의 첫 관문이다. 카메라가 닫히고 아무 말 없이 원래
+        // 화면으로 돌아가면 등록이 됐는지조차 알 수 없다 — 여기서 한 번
+        // 매듭짓고, 확인을 누르면 방금 등록한 카드가 있는 자리로 데려간다.
+        if (!mounted) return;
+        await _showRegisteredDialog(context);
+        if (!mounted) return;
+        ref.read(selectedTabProvider.notifier).selectTab(kPhysiognomyTabIndex);
       }
 
       if (!mounted) return;
@@ -413,6 +436,26 @@ class _InfoConfirmScreenState
       if (mounted) setState(() => _isAnalyzing = false);
     }
   }
+
+  /// 내 관상 등록 완료 안내 — 케미 연령 게이트 다이얼로그와 같은 레시피.
+  /// [확인] 이 유일한 출구다 (barrier 로 닫으면 탭 이동이 안 일어난다).
+  Future<void> _showRegisteredDialog(BuildContext context) => showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (ctx) => AlertDialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+      ),
+      content: const Text('관상을 성공적으로 등록했습니다.', style: AppText.body),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('확인', style: AppText.subTitle),
+        ),
+      ],
+    ),
+  );
 
   /// picker 한 항목이 바뀌면 userTouched flag 켜고 setState 로 값 반영.
   void _touchAndSet(VoidCallback updater) {
