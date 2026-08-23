@@ -23,26 +23,6 @@ import 'package:go_router/go_router.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
-/// 미등록 첫 화면의 크레딧 문구 — 빈 여백을 채운다.
-/// 줄바꿈은 이 목록 그대로 유지된다 ([CreditsEmptyState]).
-///
-/// 세 탭이 공유하는 앞부분. 뒤에 탭별 두 줄이 붙는다 — 크레딧이 그 탭에
-/// 무엇이 쌓이는지로 끝나야 빈 화면이 안내 역할을 한다.
-const List<String> _kCreditsIntro = [
-  '관상은 미래의 운명을',
-  '단정짓는 점술이 아니라,',
-  '내 삶의 모습을 살피고',
-  '그 안에 비친 나 자신을',
-  '돌아보게 하는',
-  '오랜 지혜입니다.\n',
-];
-
-const List<String> _kCreditsCamera = [
-  ..._kCreditsIntro,
-  '관상을 카메라로 등록하면',
-  '이곳에 저장됩니다.',
-];
-
 const List<String> _kCreditsAlbum = [
   ..._kCreditsIntro,
   '관상을 앨범으로 등록하면',
@@ -55,10 +35,30 @@ const List<String> _kCreditsBookmark = [
   '북마크하면 이곳에 저장됩니다.',
 ];
 
+const List<String> _kCreditsCamera = [
+  ..._kCreditsIntro,
+  '관상을 카메라로 등록하면',
+  '이곳에 저장됩니다.',
+];
+
+/// 미등록 첫 화면의 크레딧 문구 — 빈 여백을 채운다.
+/// 줄바꿈은 이 목록 그대로 유지된다 ([CreditsEmptyState]).
+///
+/// 세 탭이 공유하는 앞부분. 뒤에 탭별 두 줄이 붙는다 — 크레딧이 그 탭에
+/// 무엇이 쌓이는지로 끝나야 빈 화면이 안내 역할을 한다.
+const List<String> _kCreditsIntro = [
+  '관상은 미래의 운명을',
+  '단정짓는 점술이 아니라,',
+  '내 삶의 모습을 살피고',
+  '그 안에 비친 나 자신을',
+  '돌아보게 하는 전통적',
+  '오랜 지혜입니다.\n',
+];
+
+const String _kEmptyAfterMyFace = '계속해서 다른 사람의 관상도 볼 수 있어요.';
 /// 크레딧 뒤 일러스트 아래 문구. 카메라·앨범은 내 관상 등록 전후로 가리키는
 /// 곳이 다르다 — 등록 전엔 나를, 등록 후엔 상대를 추가하라고 말한다.
-const String _kEmptyBeforeMyFace = '관상 추가 버튼을 누르면, 내 관상을 볼 수 있습니다.';
-const String _kEmptyAfterMyFace = '관상 추가 버튼을 누르면, 원하는 상대방 관상을 추가로 볼 수 있습니다.';
+const String _kEmptyBeforeMyFace = '내 관상 부터 볼 수 있어요.';
 
 // 화면-국지 팔레트 — DESIGN.md §2.4 (file-local 격리).
 // 본 화면은 AppColors 의 gold / goldDim / goldSoft / surface / border / textHint
@@ -603,7 +603,7 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
             tabIndex: 0,
             credits: _kCreditsCamera,
             description: '카메라로 찍은 사진으로 본 관상입니다.',
-            emptyAsset: 'assets/images/emotion-anger.png',
+            emptyAsset: 'assets/images/emotion-smile.png',
             emptyMessage: _kEmptyAfterMyFace,
             emptyMessageBefore: _kEmptyBeforeMyFace,
           ),
@@ -613,7 +613,7 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
             tabIndex: 1,
             credits: _kCreditsAlbum,
             description: '앨범 사진으로 본 관상입니다.',
-            emptyAsset: 'assets/images/emotion-frown.png',
+            emptyAsset: 'assets/images/emotion-smile.png',
             emptyMessage: _kEmptyAfterMyFace,
             emptyMessageBefore: _kEmptyBeforeMyFace,
           ),
@@ -626,7 +626,7 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
             credits: _kCreditsBookmark,
             description: '공유받아 북마크한 관상입니다.',
             emptyAsset: 'assets/images/emotion-smile.png',
-            emptyMessage: '카카오톡으로 전달받은 궁합을 이 곳에 저장해 둘 수 있습니다.',
+            emptyMessage: '전달받은 궁합은 이 곳에 북마크해 둘 수 있어요.',
           ),
         ],
       ),

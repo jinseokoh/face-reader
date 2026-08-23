@@ -21,47 +21,50 @@ import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/providers/recent_unlock_focus_provider.dart';
 import 'package:facely/presentation/providers/tab_provider.dart';
 import 'package:facely/presentation/screens/compatibility/compatibility_unlock_action.dart';
+import 'package:facely/presentation/widgets/cdn_thumbnail.dart';
 import 'package:facely/presentation/widgets/coin_chip.dart';
-import 'package:timeago/timeago.dart' as timeago;
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/presentation/widgets/credits_empty_state.dart';
-import 'package:facely/presentation/widgets/emotion_empty_state.dart';
+import 'package:facely/presentation/widgets/face_scan_pill.dart';
 import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
 import 'package:facely/presentation/widgets/primary_button.dart';
-import 'package:facely/presentation/widgets/face_scan_pill.dart';
 import 'package:facely/presentation/widgets/sort_selector.dart';
-import 'package:top_snackbar_flutter/top_snack_bar.dart';
 import 'package:facely/presentation/widgets/source_badge.dart';
-import 'package:facely/presentation/widgets/cdn_thumbnail.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:timeago/timeago.dart' as timeago;
+import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
-/// 미등록 첫 화면의 크레딧 문구 — 빈 여백을 채운다.
+/// 빈 탭을 채우는 문구 — 위에서 뚝 떨어진 뒤 그 아래로 안내가 뜬다.
 /// 줄바꿈은 이 목록 그대로 유지된다 ([CreditsEmptyState]).
 ///
 /// 궁합이 무엇인지 처음 설명하고, 마지막에 내 관상 등록을 청한다.
 /// 궁합을 남녀 사이로 좁혀 읽는 오해를 먼저 걷어낸다 — 벗·동료와도
 /// 보는 것이고, 맞다/안 맞다가 아니라 어느 면이 좋은지를 짚는다.
-const List<String> _kCreditsBeforeRegister = [
-  '궁합은 남녀 사이에만',
-  '있는 것이 아니라오.\n',
-  '오래된 벗이든',
-  '함께 일하는 이든,',
-  '마주 앉는 사이라면',
-  '저마다의 궁합이 있소.\n',
-  '맞다 안 맞다를',
-  '가르자는 것이 아니라,',
-  '둘이 함께일 때',
-  '어느 면이 특히 좋은지',
-  '그 자리를 짚는 일이오.\n',
-  '말이 잘 통하는 사이가 있고,',
-  '일을 함께하면',
-  '힘이 나는 사이가 있으니.\n',
-  '내 관상을 먼저 등록하면',
-  '상대의 얼굴과 견주어',
-  '그 장점을 읽어 드리리다...',
+const List<String> _kCompatIntro = [
+  '궁합은 오랜 세월 관상에 담겨',
+  '전해져 온 지혜를 바탕으로',
+  '두 사람이 서로 조화를 이루는',
+  '경우가 얼마나 많은지를 살펴보는',
+  '동양철학의 해석법입니다.\n',
+];
+
+/// 내 관상 등록 **전** — 다음 한 걸음만 말한다.
+const List<String> _kCompatCreditsBefore = [
+  ..._kCompatIntro,
+  '우선 내 관상을 본 다음',
+  '다른 사람과의 관상을 볼 수 있어요.',
+];
+
+/// 등록 **후** — 관상이 공짜라는 것부터 알린다. 궁합은 그 다음 이야기다.
+const List<String> _kCompatCreditsAfter = [
+  ..._kCompatIntro,
+  '관상은 얼마든지 무료로',
+  '볼 수 있습니다.',
+  '다른 사람의 관상을 보면',
+  '그들과 나와의 궁합도 볼 수 있어요.',
 ];
 
 /// 궁합 탭 — 내 얼굴이 아닌 다른 인물 리스트. 기본 lock, 1 코인 해제.
@@ -89,12 +92,6 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
   // 가 한 번도 건드리지 않는 경우)에서 dispose 가 첫 접근이 되고, 이미
   // 비활성인 element 로 vsync 를 잡으려다 터진다.
   late final TabController _tabController;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-  }
 
   // 최초 노출 시 1회 — 개수가 더 많은 탭을 기본 선택 (빈 탭부터 보여주지
   // 않기). 이후엔 사용자의 탭 선택을 존중해 다시 건드리지 않는다.
@@ -208,6 +205,12 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
     super.dispose();
   }
 
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
   /// 확인 리스트 항목 삭제 — unlock 행 제거(서버). 파트너는 관상/북마크에 남고
   /// 미확인으로 복귀한다. 코인 환불 없음.
   Future<void> _confirmDeleteUnlock(
@@ -267,13 +270,48 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
     ref.invalidate(compatibilityPartnerBodiesProvider);
   }
 
-  /// pull-to-refresh — 로컬 히스토리 재계산(관상 탭과 동일) + 서버 unlock
-  /// 캐시 무효화(케미 탭과 동일 패턴).
-  Future<void> _refresh() async {
-    await ref.read(historyProvider.notifier).reloadFromHive();
-    ref.invalidate(compatibilityKeysProvider);
-    ref.invalidate(compatibilityPairsProvider);
-    ref.invalidate(compatibilityPartnerBodiesProvider);
+  /// 내 관상 등록 후의 빈 탭 — §3.8 일러스트 + 안내 한 줄이 즉시 뜬다.
+  /// 크레딧 연출은 미등록 첫 화면([_guideBody]) 전용 — 등록을 마친 사람이
+  /// 빈 탭을 열 때마다 문구가 다 흘러가길 기다리게 할 이유가 없다.
+  /// 빈 상태도 당겨서 새로고침 가능 — 케미 탭과 동일 패턴.
+  /// 빈 탭 — 관상 탭과 같은 2단 연출. 문구가 위에서 떨어진 뒤 그 아래로
+  /// 일러스트와 안내가 뜬다.
+  ///
+  /// 연출은 그 탭이 실제로 보이는 순간 시작해야 한다. TabBarView 가 이웃 탭도
+  /// 미리 만들어 두므로 궁합 탭 선택만으로는 안 보이는 탭에서 혼자 떨어진다 —
+  /// 서브탭까지 봐야 한다. 탭 전환에 다시 그려지도록 컨트롤러를 듣는다.
+  Widget _emptyTab({
+    required int tabIndex,
+    required List<String> credits,
+    required String asset,
+    required String message,
+  }) {
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      color: AppColors.textPrimary,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: AnimatedBuilder(
+              animation: _tabController,
+              builder: (_, _) => Consumer(
+                builder: (ctx, ref, _) => CreditsEmptyState(
+                  lines: credits,
+                  asset: asset,
+                  message: message,
+                  active:
+                      ref.watch(selectedTabProvider) ==
+                          kCompatibilityTabIndex &&
+                      _tabController.index == tabIndex,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   /// 탭 없이 표시되는 안내 화면 — 내 관상 미설정 한정 (등록 후엔 항상 탭).
@@ -284,7 +322,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
     if (others.isEmpty) {
       return Consumer(
         builder: (ctx, ref, _) => CreditsEmptyState(
-          lines: _kCreditsBeforeRegister,
+          lines: _kCompatCreditsBefore,
           asset: 'assets/images/emotion-sad.png',
           message: '궁합을 보려면 내 관상 등록이 필요합니다.',
           active: ref.watch(selectedTabProvider) == kCompatibilityTabIndex,
@@ -295,26 +333,6 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
     // 볼 수 있다"를 비활성 프리뷰로 한눈에 보여준다(원인 즉시 이해).
     // 등록 CTA 는 nudge 스낵바 [내 관상 등록하기]가 전담 (중복 제거).
     return _InactiveCompatPreview(others: others);
-  }
-
-  /// 내 관상 등록 후의 빈 탭 — §3.8 일러스트 + 안내 한 줄이 즉시 뜬다.
-  /// 크레딧 연출은 미등록 첫 화면([_guideBody]) 전용 — 등록을 마친 사람이
-  /// 빈 탭을 열 때마다 문구가 다 흘러가길 기다리게 할 이유가 없다.
-  /// 빈 상태도 당겨서 새로고침 가능 — 케미 탭과 동일 패턴.
-  Widget _emptyTab({required String asset, required String message}) {
-    return RefreshIndicator(
-      onRefresh: _refresh,
-      color: AppColors.textPrimary,
-      child: CustomScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        slivers: [
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: EmotionEmptyState(asset: asset, message: message),
-          ),
-        ],
-      ),
-    );
   }
 
   /// 잠금 카드의 [궁합보기] → 공용 1코인 unlock 흐름(확인 다이얼로그 포함).
@@ -348,10 +366,14 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
       // 전부 확인함(happy). 같은 빈 탭이라도 가리키는 곳이 다르다.
       return noPartners
           ? _emptyTab(
+              tabIndex: 0,
+              credits: _kCompatCreditsAfter,
               asset: 'assets/images/emotion-love.png',
               message: '카메라나 앨범으로 상대방의 관상을 추가하세요.',
             )
           : _emptyTab(
+              tabIndex: 0,
+              credits: _kCompatCreditsAfter,
               asset: 'assets/images/emotion-happy.png',
               message: '미확인 궁합이 없습니다.',
             );
@@ -415,6 +437,15 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
         ),
       ],
     );
+  }
+
+  /// pull-to-refresh — 로컬 히스토리 재계산(관상 탭과 동일) + 서버 unlock
+  /// 캐시 무효화(케미 탭과 동일 패턴).
+  Future<void> _refresh() async {
+    await ref.read(historyProvider.notifier).reloadFromHive();
+    ref.invalidate(compatibilityKeysProvider);
+    ref.invalidate(compatibilityPairsProvider);
+    ref.invalidate(compatibilityPartnerBodiesProvider);
   }
 
   void _showInfoDialog(BuildContext context) {
@@ -482,6 +513,8 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
   ) {
     if (pairs.isEmpty) {
       return _emptyTab(
+        tabIndex: 1,
+        credits: myFace == null ? _kCompatCreditsBefore : _kCompatCreditsAfter,
         asset: 'assets/images/emotion-surprise.png',
         message: '아직 궁합을 보지 않았다니!',
       );
@@ -847,48 +880,6 @@ class _CompatListCard extends StatelessWidget {
   }
 
   static String _relationKindKo(ElementRelationKind k) => k.modernKo;
-}
-
-/// 쌍 아바타 — 42px 원 두 개를 살짝 겹쳐 (흰 링으로 경계 분리).
-class _PairThumbs extends StatelessWidget {
-  final FaceReadingReport a;
-  final FaceReadingReport b;
-  final String? aFallbackKey;
-  final String? bFallbackKey;
-  const _PairThumbs({
-    required this.a,
-    required this.b,
-    this.aFallbackKey,
-    this.bFallbackKey,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    Widget ring(FaceReadingReport r, String? fallbackKey) => Container(
-      padding: const EdgeInsets.all(2),
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white,
-      ),
-      child: _Thumb(
-        thumbnailKey: r.thumbnailKey,
-        fallbackKey: fallbackKey,
-        size: AppAvatar.md,
-        gender: r.gender,
-        source: r.source,
-      ),
-    );
-    return SizedBox(
-      width: 78,
-      height: 46,
-      child: Stack(
-        children: [
-          Positioned(left: 0, child: ring(a, aFallbackKey)),
-          Positioned(left: 32, child: ring(b, bFallbackKey)),
-        ],
-      ),
-    );
-  }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1344,6 +1335,48 @@ class _MiniEntry {
   const _MiniEntry(this.korean, this.value, this.muted);
 }
 
+/// 쌍 아바타 — 42px 원 두 개를 살짝 겹쳐 (흰 링으로 경계 분리).
+class _PairThumbs extends StatelessWidget {
+  final FaceReadingReport a;
+  final FaceReadingReport b;
+  final String? aFallbackKey;
+  final String? bFallbackKey;
+  const _PairThumbs({
+    required this.a,
+    required this.b,
+    this.aFallbackKey,
+    this.bFallbackKey,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Widget ring(FaceReadingReport r, String? fallbackKey) => Container(
+      padding: const EdgeInsets.all(2),
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white,
+      ),
+      child: _Thumb(
+        thumbnailKey: r.thumbnailKey,
+        fallbackKey: fallbackKey,
+        size: AppAvatar.md,
+        gender: r.gender,
+        source: r.source,
+      ),
+    );
+    return SizedBox(
+      width: 78,
+      height: 46,
+      child: Stack(
+        children: [
+          Positioned(left: 0, child: ring(a, aFallbackKey)),
+          Positioned(left: 32, child: ring(b, bFallbackKey)),
+        ],
+      ),
+    );
+  }
+}
+
 /// 내 관상 등록 안내 — 등록 pill + "등록 전까지 잠김"을 알리는 펄싱 안내 한 줄.
 /// pill 탭 = 관상 등록 팝업(촬영 시트) 직행.
 class _RegisterMyFaceBanner extends ConsumerStatefulWidget {
@@ -1494,6 +1527,27 @@ class _Thumb extends StatelessWidget {
     );
   }
 
+  /// 키 하나를 로컬 캐시 → CDN 순으로 시도하고, 둘 다 실패하면 [next] 를 그린다.
+  Widget _forKey(String? key, Widget next) {
+    final cdn = ThumbnailPaths.cdnUrl(key);
+    final network = cdn == null
+        ? next
+        : ClipOval(
+            child: cdnThumbnail(url: cdn, size: size, fallback: next),
+          );
+    final file = ThumbnailPaths.cacheFileSync(key);
+    if (file == null) return network;
+    return ClipOval(
+      child: Image.file(
+        file,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => network,
+      ),
+    );
+  }
+
   /// thumbnail 없을 때 gender 기본 아바타. male/female 은 svg 실루엣,
   /// gender 미상이면 generic user 아이콘.
   Widget _genderFallback(double radius) {
@@ -1520,27 +1574,6 @@ class _Thumb extends StatelessWidget {
         asset,
         height: radius * 0.85,
         colorFilter: const ColorFilter.mode(AppTheme.textHint, BlendMode.srcIn),
-      ),
-    );
-  }
-
-  /// 키 하나를 로컬 캐시 → CDN 순으로 시도하고, 둘 다 실패하면 [next] 를 그린다.
-  Widget _forKey(String? key, Widget next) {
-    final cdn = ThumbnailPaths.cdnUrl(key);
-    final network = cdn == null
-        ? next
-        : ClipOval(
-            child: cdnThumbnail(url: cdn, size: size, fallback: next),
-          );
-    final file = ThumbnailPaths.cacheFileSync(key);
-    if (file == null) return network;
-    return ClipOval(
-      child: Image.file(
-        file,
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => network,
       ),
     );
   }
