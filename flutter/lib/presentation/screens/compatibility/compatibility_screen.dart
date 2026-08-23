@@ -37,6 +37,22 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
+/// 등록 **후** — 관상이 공짜라는 것부터 알린다. 궁합은 그 다음 이야기다.
+const List<String> _kCompatCreditsAfter = [
+  ..._kCompatIntro,
+  '관상은 얼마든지 무료로',
+  '볼 수 있습니다. 먼저 관상탭에서',
+  '다른 사람의 관상을 봐야지만',
+  '그들과 나와의 궁합을 볼 수 있어요.',
+];
+
+/// 내 관상 등록 **전** — 다음 한 걸음만 말한다.
+const List<String> _kCompatCreditsBefore = [
+  ..._kCompatIntro,
+  '우선 내 관상을 본 후에만',
+  '다른 사람과의 궁합을 볼 수 있어요.',
+];
+
 /// 빈 탭을 채우는 문구 — 위에서 뚝 떨어진 뒤 그 아래로 안내가 뜬다.
 /// 줄바꿈은 이 목록 그대로 유지된다 ([CreditsEmptyState]).
 ///
@@ -44,27 +60,10 @@ import 'package:top_snackbar_flutter/top_snack_bar.dart';
 /// 궁합을 남녀 사이로 좁혀 읽는 오해를 먼저 걷어낸다 — 벗·동료와도
 /// 보는 것이고, 맞다/안 맞다가 아니라 어느 면이 좋은지를 짚는다.
 const List<String> _kCompatIntro = [
-  '궁합은 오랜 세월 관상에 담겨',
-  '전해져 온 지혜를 바탕으로',
-  '두 사람이 서로 조화를 이루는',
-  '경우가 얼마나 많은지를 살펴보는',
-  '동양철학의 해석법입니다.\n',
-];
-
-/// 내 관상 등록 **전** — 다음 한 걸음만 말한다.
-const List<String> _kCompatCreditsBefore = [
-  ..._kCompatIntro,
-  '우선 내 관상을 본 다음',
-  '다른 사람과의 관상을 볼 수 있어요.',
-];
-
-/// 등록 **후** — 관상이 공짜라는 것부터 알린다. 궁합은 그 다음 이야기다.
-const List<String> _kCompatCreditsAfter = [
-  ..._kCompatIntro,
-  '관상은 얼마든지 무료로',
-  '볼 수 있습니다.',
-  '다른 사람의 관상을 보면',
-  '그들과 나와의 궁합도 볼 수 있어요.',
+  '관상학적 궁합은 두 사람간',
+  '관상의 조화가 통계적으로',
+  '얼마나 빈번히 관찰되는지를 살펴보고',
+  '풀이하는 전통적인 해석법입니다.\n',
 ];
 
 /// 궁합 탭 — 내 얼굴이 아닌 다른 인물 리스트. 기본 lock, 1 코인 해제.
@@ -369,7 +368,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
               tabIndex: 0,
               credits: _kCompatCreditsAfter,
               asset: 'assets/images/emotion-love.png',
-              message: '카메라나 앨범으로 상대방의 관상을 추가하세요.',
+              message: '우선 관상을 보셔야 합니다.',
             )
           : _emptyTab(
               tabIndex: 0,

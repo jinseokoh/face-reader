@@ -15,11 +15,12 @@ import '../../providers/team_provider.dart';
 import '../../providers/history_provider.dart';
 import '../../widgets/age_range_pill.dart';
 import '../../widgets/compact_snack_bar.dart';
-import '../../widgets/emotion_empty_state.dart';
 import '../../widgets/face_scan_pill.dart';
 import '../../widgets/login_bottom_sheet.dart';
 import '../../widgets/sort_selector.dart';
 import '../../widgets/source_badge.dart';
+import 'package:facely/presentation/providers/tab_provider.dart';
+import 'package:facely/presentation/widgets/credits_empty_state.dart';
 import '../team/team_band.dart';
 import '../team/team_create_page.dart';
 import '../team/team_detail_screen.dart';
@@ -27,6 +28,52 @@ import '../team/team_pin_dialog.dart';
 import '../team/team_reveal_screen.dart';
 
 /// 케미 탭 = Chemistry Team 방 목록 브라우저.
+/// 빈 탭을 채우는 문구 — 위에서 뚝 떨어진 뒤 그 아래로 안내가 뜬다.
+/// 줄바꿈은 이 목록 그대로 유지된다 ([CreditsEmptyState]).
+///
+/// 케미가 무엇인지 먼저 말하고(그룹 안에서 나와 가장 맞는 사람 찾기),
+/// 비공개·공개 두 갈래로 들어가는 길을 잇는다.
+const List<String> _kChemistryCredits = [
+  '케미는 그룹 내에서',
+  '나의 조화가 가장 잘맞는',
+  '사람이 누구인지를 궁합',
+  '점수표로 알려주는 기능입니다.\n',
+  '비공개 방을 만들고 지인들을',
+  '카카오톡으로 초대하거나',
+  '공개방을 만들어서 온라인으로',
+  '접속해 있는 사람들 중',
+  '그룹 케미 스코어가 높은 사람을',
+  '찾을 수도 있습니다.',
+];
+
+/// 빈 탭 — 관상·궁합과 같은 2단 연출. 문구가 위에서 떨어진 뒤 그 아래로
+/// 일러스트와 안내가 뜬다.
+///
+/// 연출은 그 탭이 실제로 보이는 순간 시작해야 한다. TabBarView 가 이웃 탭도
+/// 미리 만들어 두므로 케미 탭 선택만으로는 안 보이는 탭에서 혼자 떨어진다 —
+/// 서브탭까지 봐야 한다. 탭 전환에 다시 그려지도록 컨트롤러를 듣는다.
+Widget _chemistryEmpty({
+  required BuildContext context,
+  required int tabIndex,
+  required String asset,
+  required String message,
+}) {
+  final controller = DefaultTabController.of(context);
+  return AnimatedBuilder(
+    animation: controller,
+    builder: (_, _) => Consumer(
+      builder: (ctx, ref, _) => CreditsEmptyState(
+        lines: _kChemistryCredits,
+        asset: asset,
+        message: message,
+        active:
+            ref.watch(selectedTabProvider) == kChemistryTabIndex &&
+            controller.index == tabIndex,
+      ),
+    ),
+  );
+}
+
 /// 내부 2탭: 모집중(공개 그룹 발견·참가) / 내 그룹(진행·완료).
 class ChemistryScreen extends ConsumerStatefulWidget {
   const ChemistryScreen({super.key});
@@ -227,9 +274,7 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
     ref.invalidate(myTeamsProvider);
     ref.invalidate(publicTeamsProvider);
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => TeamDetailScreen(teamId: team.id),
-      ),
+      MaterialPageRoute(builder: (_) => TeamDetailScreen(teamId: team.id)),
     );
   }
 
@@ -505,10 +550,12 @@ class _MineTab extends ConsumerWidget {
             // ListView 안에서는 세로가 무한이라 중앙 정렬이 죽는다.
             return CustomScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
-              slivers: const [
+              slivers: [
                 SliverFillRemaining(
                   hasScrollBody: false,
-                  child: EmotionEmptyState(
+                  child: _chemistryEmpty(
+                    context: context,
+                    tabIndex: 1,
                     asset: 'assets/images/emotion-laugh.png',
                     message: '참가 중인 그룹이 없습니다',
                   ),
@@ -672,9 +719,7 @@ class _PublicCardState extends State<_PublicCard> {
       );
     }
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => TeamDetailScreen(teamId: team.id),
-      ),
+      MaterialPageRoute(builder: (_) => TeamDetailScreen(teamId: team.id)),
     );
   }
 }
@@ -719,10 +764,12 @@ class _PublicTab extends ConsumerWidget {
           if (list.isEmpty) {
             return CustomScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
-              slivers: const [
+              slivers: [
                 SliverFillRemaining(
                   hasScrollBody: false,
-                  child: EmotionEmptyState(
+                  child: _chemistryEmpty(
+                    context: context,
+                    tabIndex: 0,
                     asset: 'assets/images/emotion-surprise.png',
                     message: '모집 중인 공개 그룹이 없습니다',
                   ),
@@ -875,10 +922,7 @@ class _RosterAvatars extends ConsumerWidget {
     child: SvgPicture.asset(
       gender == 'male' ? 'assets/svgs/male.svg' : 'assets/svgs/female.svg',
       height: 11,
-      colorFilter: const ColorFilter.mode(
-        AppColors.textHint,
-        BlendMode.srcIn,
-      ),
+      colorFilter: const ColorFilter.mode(AppColors.textHint, BlendMode.srcIn),
     ),
   );
 
