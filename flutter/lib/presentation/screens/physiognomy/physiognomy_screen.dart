@@ -7,6 +7,7 @@ import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/providers/tab_provider.dart';
+import 'package:facely/presentation/widgets/cdn_thumbnail.dart';
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/presentation/widgets/credits_empty_state.dart';
 import 'package:facely/presentation/widgets/emotion_empty_state.dart';
@@ -15,7 +16,6 @@ import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
 import 'package:facely/presentation/widgets/physiognomy_info_dialog.dart';
 import 'package:facely/presentation/widgets/sort_selector.dart';
 import 'package:facely/presentation/widgets/source_badge.dart';
-import 'package:facely/presentation/widgets/cdn_thumbnail.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -23,23 +23,42 @@ import 'package:go_router/go_router.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
-
 /// 미등록 첫 화면의 크레딧 문구 — 빈 여백을 채운다.
 /// 줄바꿈은 이 목록 그대로 유지된다 ([CreditsEmptyState]).
 ///
-/// 관상이 무엇인지 처음 설명하고, 마지막에 등록을 청한다.
-const List<String> _kCreditsBeforeRegister = [
+/// 세 탭이 공유하는 앞부분. 뒤에 탭별 두 줄이 붙는다 — 크레딧이 그 탭에
+/// 무엇이 쌓이는지로 끝나야 빈 화면이 안내 역할을 한다.
+const List<String> _kCreditsIntro = [
   '관상은 미래의 운명을',
   '단정짓는 점술이 아니라,',
   '내 삶의 모습을 살피고',
   '그 안에 비친 나 자신을',
   '돌아보게 하는',
-  '오랜 지혜라 할 수 있소.\n',
-  '내 관상을 등록하고',
-  '그 해석으로부터',
-  '삶에 보탬이 될 영감을',
-  '얻게 되길 바라오.',
+  '오랜 지혜입니다.\n',
 ];
+
+const List<String> _kCreditsCamera = [
+  ..._kCreditsIntro,
+  '관상을 카메라로 등록하면',
+  '이곳에 저장됩니다.',
+];
+
+const List<String> _kCreditsAlbum = [
+  ..._kCreditsIntro,
+  '관상을 앨범으로 등록하면',
+  '이곳에 저장됩니다.',
+];
+
+const List<String> _kCreditsBookmark = [
+  ..._kCreditsIntro,
+  '공유받은 상대방의 관상 카드를',
+  '북마크하면 이곳에 저장됩니다.',
+];
+
+/// 크레딧 뒤 일러스트 아래 문구. 카메라·앨범은 내 관상 등록 전후로 가리키는
+/// 곳이 다르다 — 등록 전엔 나를, 등록 후엔 상대를 추가하라고 말한다.
+const String _kEmptyBeforeMyFace = '관상 추가 버튼을 누르면, 내 관상을 볼 수 있습니다.';
+const String _kEmptyAfterMyFace = '관상 추가 버튼을 누르면, 원하는 상대방 관상을 추가로 볼 수 있습니다.';
 
 // 화면-국지 팔레트 — DESIGN.md §2.4 (file-local 격리).
 // 본 화면은 AppColors 의 gold / goldDim / goldSoft / surface / border / textHint
@@ -532,7 +551,7 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
         // 식별을 맡는다. 헤더는 타이틀 + TabBar 만.
         title: const Text('관상'),
         actions: [
-          // 미등록 = 내 관상 등록 / 등록 후 = 상대방 관상 추가.
+          // 미등록 = 내 관상 보기 / 등록 후 = 관상 보기.
           const FaceScanPill(),
           IconButton(
             icon: const FaIcon(FontAwesomeIcons.circleInfo, size: 20),
@@ -542,79 +561,75 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
         // 궁합 탭과 동일 규칙 — 내부 탭은 내 관상 등록 후에만 나타난다.
         // 미등록 상태에선 탭 없이 단일 리스트 (카드별 SourceBadge 가
         // 소스를 전달). 탭 라벨엔 개수 노출 (스크롤 없이 존재 여부 인지).
-        bottom: hasMyFace
-            ? TabBar(
-                controller: tabController,
-                labelColor: AppColors.textPrimary,
-                unselectedLabelColor: AppColors.textHint,
-                indicatorColor: AppColors.textPrimary,
-                tabs: [
-                  Tab(
-                    text:
-                        '카메라 '
-                        '(${history.where((r) => r.source == AnalysisSource.camera).length})',
-                  ),
-                  Tab(
-                    text:
-                        '앨범 '
-                        '(${history.where((r) => r.source == AnalysisSource.album).length})',
-                  ),
-                  // 탭 이름은 '북마크' — 공유받은 카드 중 북마크로 담은
-                  // 것만 오는 보관함이라 동작·아이콘과 일치. 카드의
-                  // SourceBadge '공유받음' 은 출처 표기라 그대로.
-                  Tab(
-                    text:
-                        '북마크 '
-                        '(${history.where((r) => r.source == AnalysisSource.received).length})',
-                  ),
-                ],
-              )
-            : null,
-      ),
-      body: hasMyFace
-          ? TabBarView(
-              controller: tabController,
-              children: [
-                // 탭별 빈 상태 이미지 분리 — 케미 탭(laugh/shrug)과 같은
-                // 원칙: 나란한 탭이 같은 그림이면 지루하다.
-                _buildList(
-                  history,
-                  const [AnalysisSource.camera],
-                  hasMyFace,
-                  description: '카메라로 찍은 사진으로 본 관상입니다.',
-                  emptyAsset: 'assets/images/emotion-anger.png',
-                  emptyMessage: '상단의 `상대방 관상 추가` 버튼을 누르고 카메라로 촬영하기를 선택하세요.',
-                ),
-                _buildList(
-                  history,
-                  const [AnalysisSource.album],
-                  hasMyFace,
-                  description: '앨범 사진으로 본 관상입니다.',
-                  emptyAsset: 'assets/images/emotion-frown.png',
-                  emptyMessage: '상단의 `상대방 관상 추가` 버튼을 누르고 앨범으로 추가하기를 선택하세요.',
-                ),
-                // 공유받음 — 상시 노출 (0개 포함). 빈 상태가 "공유받기"
-                // 라는 기능의 존재를 학습시킨다 (구조 고정 원칙).
-                _buildList(
-                  history,
-                  const [AnalysisSource.received],
-                  hasMyFace,
-                  description: '공유받아 북마크한 관상입니다.',
-                  emptyAsset: 'assets/images/emotion-smile.png',
-                  emptyMessage: '공유받은 관상 카드를 북마크하면 이 곳에 저장됩니다.',
-                ),
-              ],
-            )
-          : _buildList(
-              history,
-              const [
-                AnalysisSource.camera,
-                AnalysisSource.album,
-                AnalysisSource.received,
-              ],
-              hasMyFace,
-              description: '지금까지 분석한 관상 전체입니다.',
+        // 탭 구조는 내 관상 등록 여부와 무관하게 고정 — 케미 탭과 같은 원칙.
+        // 등록 전후로 레이아웃이 통째로 바뀌면 사용자가 화면을 두 번 배우고,
+        // 미등록이어도 북마크는 담을 수 있어 "내용은 있는데 탭은 없는" 상태가
+        // 생긴다. 빈 탭은 감추는 대신 그 탭에 무엇이 쌓이는지 가르친다.
+        bottom: TabBar(
+          controller: tabController,
+          labelColor: AppColors.textPrimary,
+          unselectedLabelColor: AppColors.textHint,
+          indicatorColor: AppColors.textPrimary,
+          tabs: [
+            Tab(
+              text:
+                  '카메라 '
+                  '(${history.where((r) => r.source == AnalysisSource.camera).length})',
             ),
+            Tab(
+              text:
+                  '앨범 '
+                  '(${history.where((r) => r.source == AnalysisSource.album).length})',
+            ),
+            // 탭 이름은 '북마크' — 공유받은 카드 중 북마크로 담은
+            // 것만 오는 보관함이라 동작·아이콘과 일치. 카드의
+            // SourceBadge '공유받음' 은 출처 표기라 그대로.
+            Tab(
+              text:
+                  '북마크 '
+                  '(${history.where((r) => r.source == AnalysisSource.received).length})',
+            ),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: tabController,
+        children: [
+          // 탭별 빈 상태 이미지 분리 — 케미 탭(laugh/shrug)과 같은 원칙:
+          // 나란한 탭이 같은 그림이면 지루하다.
+          _buildList(
+            history,
+            const [AnalysisSource.camera],
+            tabIndex: 0,
+            credits: _kCreditsCamera,
+            description: '카메라로 찍은 사진으로 본 관상입니다.',
+            emptyAsset: 'assets/images/emotion-anger.png',
+            emptyMessage: _kEmptyAfterMyFace,
+            emptyMessageBefore: _kEmptyBeforeMyFace,
+          ),
+          _buildList(
+            history,
+            const [AnalysisSource.album],
+            tabIndex: 1,
+            credits: _kCreditsAlbum,
+            description: '앨범 사진으로 본 관상입니다.',
+            emptyAsset: 'assets/images/emotion-frown.png',
+            emptyMessage: _kEmptyAfterMyFace,
+            emptyMessageBefore: _kEmptyBeforeMyFace,
+          ),
+          // 공유받음 — 상시 노출 (0개 포함). 빈 상태가 "공유받기" 라는 기능의
+          // 존재를 학습시킨다 (구조 고정 원칙).
+          _buildList(
+            history,
+            const [AnalysisSource.received],
+            tabIndex: 2,
+            credits: _kCreditsBookmark,
+            description: '공유받아 북마크한 관상입니다.',
+            emptyAsset: 'assets/images/emotion-smile.png',
+            emptyMessage: '카카오톡으로 전달받은 궁합을 이 곳에 저장해 둘 수 있습니다.',
+          ),
+        ],
+      ),
     );
   }
 
@@ -635,14 +650,20 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
   /// 모든 source 가 비어있으면 단일 empty state.
   Widget _buildList(
     List<FaceReadingReport> history,
-    List<AnalysisSource> sources,
-    bool hasMyFace, {
+    List<AnalysisSource> sources, {
+    required int tabIndex,
+    required List<String> credits,
     required String description,
-    String emptyAsset = 'assets/images/emotion-frown.png',
-    // 기본값은 미등록 단일 리스트 전용 — 등록 후의 탭 세 개는 각자 자기
-    // 문구를 넘긴다 (등록을 마친 사람에게 등록하라고 할 수는 없다).
-    String emptyMessage = '아직 관상을 등록하지 않았구려!',
+    required String emptyAsset,
+    required String emptyMessage,
+
+    /// 내 관상 등록 **전**에 쓸 문구. null 이면 [emptyMessage] 를 그대로 쓴다
+    /// (북마크 탭처럼 등록 여부와 무관한 경우).
+    String? emptyMessageBefore,
   }) {
+    // 리스트 하단의 등록 유도 카드 조건. 세 탭이 같은 history 를 보므로 여기서
+    // 계산한다 — 호출부가 넘기면 세 곳이 같은 값을 되풀이할 뿐이다.
+    final hasMyFace = history.any((r) => r.isMyFace);
     final groups = <(AnalysisSource, List<(int, FaceReadingReport)>)>[];
     for (final s in sources) {
       final filtered = <(int, FaceReadingReport)>[];
@@ -680,20 +701,26 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
               // 떠오른다. 연출은 관상 탭이 실제로 열린 순간에 시작해야
               // 한다. 탭 셸이 IndexedStack 이라 이 화면은 앱을 켤 때 이미
               // 만들어져 있어, 만들어진 시점을 시작 신호로 쓸 수 없다.
-              child: hasMyFace
-                  ? EmotionEmptyState(
-                      asset: emptyAsset,
-                      message: emptyMessage,
-                    )
-                  : Consumer(
-                      builder: (ctx, ref, _) => CreditsEmptyState(
-                        lines: _kCreditsBeforeRegister,
-                        asset: emptyAsset,
-                        message: emptyMessage,
-                        active: ref.watch(selectedTabProvider) ==
-                            kPhysiognomyTabIndex,
-                      ),
-                    ),
+              // 빈 탭은 2단 연출 — 크레딧이 올라간 뒤 일러스트와 안내가 뜬다.
+              // 크레딧은 그 탭에 무엇이 쌓이는지로 끝나고, 뒤이어 뜨는 문구가
+              // 그걸 어떻게 채우는지 말한다.
+              //
+              // 연출은 그 탭이 실제로 보이는 순간 시작해야 한다. 탭 셸이
+              // IndexedStack 이고 TabBarView 도 이웃 탭을 미리 만들어 두므로
+              // 만들어진 시점은 시작 신호가 될 수 없다 — 관상 탭이 선택됐고
+              // 그 안에서 이 서브탭이 선택된 경우만 true 다.
+              child: Consumer(
+                builder: (ctx, ref, _) => CreditsEmptyState(
+                  lines: credits,
+                  asset: emptyAsset,
+                  message: hasMyFace
+                      ? emptyMessage
+                      : (emptyMessageBefore ?? emptyMessage),
+                  active:
+                      ref.watch(selectedTabProvider) == kPhysiognomyTabIndex &&
+                      ref.watch(historyTabProvider) == tabIndex,
+                ),
+              ),
             )
           else ...[
             for (var gi = 0; gi < groups.length; gi++)

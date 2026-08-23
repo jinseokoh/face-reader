@@ -28,7 +28,7 @@ Future<void> startMyFaceCapture(BuildContext context, WidgetRef ref) =>
 Future<void> startOtherFaceCapture(BuildContext context, WidgetRef ref) =>
     _startCapture(context, ref, asMyFace: false);
 
-/// [상대방 관상 추가]·[내 관상 등록] 진입 시트 — 카메라 / 앨범 / 닫기.
+/// [관상 보기]·[내 관상 보기] 진입 시트 — 카메라 / 앨범 / 닫기.
 /// 취소(바깥 탭·닫기)는 null.
 Future<_CaptureSource?> _showSourceSheet(BuildContext context) {
   return showModalBottomSheet<_CaptureSource>(

@@ -135,17 +135,16 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
       }
     }
 
-    // 내부 탭 노출 조건 = 내 관상 등록 여부 — 관상·케미 탭과 동일한 앱 공통
-    // 규칙. 상대 0명이어도 탭 구조(미확인→확인)를 먼저 보여주고, 다음 행동
-    // 안내는 미확인 탭의 빈 상태가 담당한다.
-    final showTabs = myFace != null;
+    // 내부 탭은 항상 보인다 — 내 관상 등록 여부와 무관하다. 관상·케미 탭과
+    // 같은 원칙(구조 고정): 등록 전후로 레이아웃이 바뀌면 사용자가 화면을 두 번
+    // 배운다. 상대 0명이어도 탭 구조(미확인→확인)를 먼저 보여주고, 다음 행동
+    // 안내는 각 탭의 빈 상태가 담당한다.
+
     final noPartners = others.isEmpty && unlockedList.isEmpty;
 
     // 최초 노출 기본 탭 = 개수가 더 많은 쪽. unlock 데이터가 async 라 로드
     // 완료(asData) 후 첫 build 에 판정해야 확인 개수를 오판하지 않는다.
-    if (showTabs &&
-        !_appliedInitialTab &&
-        compatibilityKeysAsync.asData != null) {
+    if (!_appliedInitialTab && compatibilityKeysAsync.asData != null) {
       _appliedInitialTab = true;
       if (unlockedList.length > lockedList.length) _tabController.index = 1;
     }
@@ -169,7 +168,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
           ],
         ),
         actions: [
-          // 미등록 = 내 관상 등록 / 등록 후 = 상대방 관상 추가 — 궁합의
+          // 미등록 = 내 관상 보기 / 등록 후 = 관상 보기 — 궁합의
           // 상대 리스트가 자라는 진입점을 이 화면 안에 둔다.
           const FaceScanPill(),
           IconButton(
@@ -178,28 +177,28 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
             onPressed: () => _showInfoDialog(context),
           ),
         ],
-        bottom: showTabs
-            ? TabBar(
-                controller: _tabController,
-                labelColor: AppColors.textPrimary,
-                unselectedLabelColor: AppColors.textHint,
-                indicatorColor: AppColors.textPrimary,
-                tabs: [
-                  Tab(text: '미확인 (${lockedList.length})'),
-                  Tab(text: '확인 (${unlockedList.length})'),
-                ],
-              )
-            : null,
+        bottom: TabBar(
+          controller: _tabController,
+          labelColor: AppColors.textPrimary,
+          unselectedLabelColor: AppColors.textHint,
+          indicatorColor: AppColors.textPrimary,
+          tabs: [
+            Tab(text: '미확인 (${lockedList.length})'),
+            Tab(text: '확인 (${unlockedList.length})'),
+          ],
+        ),
       ),
-      body: showTabs
-          ? TabBarView(
-              controller: _tabController,
-              children: [
-                _lockedTab(context, myFace, lockedList, noPartners),
-                _unlockedTab(context, myFace, unlockedList),
-              ],
-            )
-          : _guideBody(others),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          // 내 관상이 없으면 미확인 탭이 등록 안내를 맡는다 — 탭 구조는
+          // 그대로 두고 내용만 바뀐다.
+          myFace == null
+              ? _guideBody(others)
+              : _lockedTab(context, myFace, lockedList, noPartners),
+          _unlockedTab(context, myFace, unlockedList),
+        ],
+      ),
     );
   }
 
@@ -478,7 +477,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
   /// 결제 직후 항목 핀 고정.
   Widget _unlockedTab(
     BuildContext context,
-    FaceReadingReport myFace,
+    FaceReadingReport? myFace,
     List<CompatibilityPair> pairs,
   ) {
     if (pairs.isEmpty) {
@@ -488,7 +487,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
       );
     }
 
-    final myId = myFace.supabaseId?.toLowerCase();
+    final myId = myFace?.supabaseId?.toLowerCase();
     // 이름은 얼리지 않는다. 사진·점수는 **구매한 콘텐츠**라 결제 시점 그대로여야
     // 하지만, 별칭은 내가 붙인 **라벨**이다 — 연락처 이름을 바꾸면 통화기록에도
     // 새 이름이 나오는 게 맞다. 스냅샷의 alias 는 카드가 사라졌을 때 쓰는
@@ -513,7 +512,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
       FaceReadingReport snap,
     ) {
       if (id == myId) {
-        return (report: snap, name: '나', fallbackKey: myFace.thumbnailKey);
+        return (report: snap, name: '나', fallbackKey: myFace?.thumbnailKey);
       }
       return (
         report: snap,

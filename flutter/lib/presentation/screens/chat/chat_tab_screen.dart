@@ -25,7 +25,7 @@ class ChatTabScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 관상·궁합·케미 탭과 동일 규칙 — 미등록이면 [내 관상 등록] pill +
+    // 관상·궁합·케미 탭과 동일 규칙 — 미등록이면 [내 관상 보기] pill +
     // 안내 empty state, 본 화면은 등록 후에만.
     final hasMyFace = ref.watch(historyProvider).any((r) => r.isMyFace);
     final chats = ref.watch(openChatsProvider);
