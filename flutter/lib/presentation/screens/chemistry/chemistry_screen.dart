@@ -142,6 +142,13 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
   @override
   Widget build(BuildContext context) {
     final hasMyFace = ref.watch(historyProvider).any((r) => r.isMyFace);
+    // 탭 라벨의 개수 — 관상·궁합 내부 탭과 같은 '라벨 (n)' 포맷.
+    // 아직 안 받아온 동안엔 숫자를 붙이지 않는다. 0 은 "없다" 는 사실을
+    // 말하는데 그때는 없는 게 아니라 모르는 것이라, 잠깐 (0) 을 보여주면
+    // 빈 목록을 본 것으로 읽힌다. 내 그룹 개수는 아래 필터를 거치기 전
+    // 전체 수다 — 필터는 탭 안의 보기 방식이지 탭의 내용이 아니다.
+    final publicCount = ref.watch(publicTeamsProvider).value?.length;
+    final mineCount = ref.watch(myTeamsProvider).value?.length;
     return DefaultTabController(
       length: 2,
       child: Scaffold(
@@ -162,7 +169,7 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
           // 재료이지 목록을 보기 위한 통행세가 아니다. 참가·생성 시점의
           // my-face 게이트는 team_detail_screen 의 _join 과 여기 _create 가
           // 각각 처리한다 (그 자리에서 촬영을 띄운다).
-          bottom: const TabBar(
+          bottom: TabBar(
             labelColor: AppColors.textPrimary,
             unselectedLabelColor: AppColors.textHint,
             indicatorColor: AppColors.textPrimary,
@@ -171,8 +178,8 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
               // 장소가 아니라 상태어라 한국 앱 문법에 맞다 (2026-07-30
               // '공개 그룹'에서 재명명 — 내 그룹과 축이 겹쳐 보이던
               // 문제 해소. 개념어 '공개 그룹'은 본문 카피에 유지).
-              Tab(text: '모집중'),
-              Tab(text: '내 그룹'),
+              Tab(text: _tabLabel('모집중', publicCount)),
+              Tab(text: _tabLabel('내 그룹', mineCount)),
             ],
           ),
         ),
@@ -192,6 +199,11 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
       ),
     );
   }
+
+  /// 관상 `'카메라 (3)'` · 궁합 `'미확인 (2)'` 과 같은 포맷 (§0.0.2 같은 정보 =
+  /// 같은 포맷). 개수를 모르면 라벨만.
+  String _tabLabel(String label, int? count) =>
+      count == null ? label : '$label ($count)';
 
   Future<void> _create() async {
     // 로그인 게이트 — 비로그인 owner_id null 이면 RLS 거부. login_bottom_sheet 패턴.
