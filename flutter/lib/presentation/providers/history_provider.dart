@@ -12,6 +12,7 @@ import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/data/services/auth_service.dart';
 import 'package:facely/data/services/r2_uploader.dart';
 import 'package:facely/data/services/supabase_service.dart';
+import 'package:facely/data/services/team_service.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 
 /// debugPrint 의 rate-limit 을 피하려 raw `print` + `dev.log` 이중 출력.
@@ -382,9 +383,30 @@ class HistoryNotifier extends Notifier<List<FaceReadingReport>> {
     await _saveToHive();
   }
 
+  /// 내 관상이면 참가 중인 모집 중 방에서 **먼저 나간 뒤** 지운다.
+  ///
+  /// join_team 은 my-face 를 요구하는데 삭제 쪽이 로스터를 몰라서, 인원수만
+  /// 세지고 아바타는 (정보없음) 인 유령 슬롯이 생겼다 (2026-08-24). 순서가
+  /// 핵심이다 — 지우고 나서 나가면 중간 실패가 그 유령 슬롯을 그대로 만든다.
+  /// 이 순서면 최악이 "방은 나갔는데 관상은 남음" 이라 불변식은 버틴다.
+  ///
+  /// 방장인 모집 중 방이 있으면 [StateError] 로 거부한다 (leave_team 의
+  /// OWNER_CANNOT_LEAVE 와 같은 규칙). 화면이 먼저 걸러 주지만, 다이얼로그를
+  /// 띄운 사이에 방이 차거나 새로 참가했을 수 있어 여기서 다시 판정한다.
   Future<void> remove(int index) async {
     final report = state[index];
-    _log('remove index=$index supabaseId=${report.supabaseId}');
+    _log('remove index=$index supabaseId=${report.supabaseId} '
+        'isMyFace=${report.isMyFace}');
+    if (report.isMyFace) {
+      final plan = await TeamService.instance.fetchMyFaceDeletionPlan();
+      if (!plan.canDelete) {
+        throw StateError('OWNER_CANNOT_LEAVE');
+      }
+      for (final team in plan.teamsToLeave) {
+        await TeamService.instance.leaveTeam(team.id);
+        _log('left team ${team.id} before my-face delete');
+      }
+    }
     state = [...state]..removeAt(index);
     await _saveToHive();
     final uuid = report.supabaseId;

@@ -142,6 +142,17 @@ class TeamService {
   Future<void> leaveTeam(String teamId) =>
       _client.rpc('leave_team', params: {'p_team_id': teamId});
 
+  /// 내 관상 삭제가 참가 중인 방들에 대해 무엇을 해야 하는지 — 판정은
+  /// [planMyFaceDeletion] (순수 함수, test/my_face_deletion_test.dart).
+  /// 비로그인이면 참가한 방도 없으므로 빈 계획.
+  Future<MyFaceDeletionPlan> fetchMyFaceDeletionPlan() async {
+    final uid = myUid;
+    if (uid == null) {
+      return const MyFaceDeletionPlan(blockedBy: [], teamsToLeave: []);
+    }
+    return planMyFaceDeletion(myTeams: await fetchMyTeams(), myUid: uid);
+  }
+
   Future<void> submitResult(String teamId, Map<String, dynamic> payload) =>
       _client.rpc(
         'submit_team_result',

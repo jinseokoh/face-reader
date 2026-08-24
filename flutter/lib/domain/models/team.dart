@@ -204,6 +204,51 @@ class Team {
   bool get isRecruiting => status == TeamStatus.recruiting;
 }
 
+/// 내 관상 삭제가 참가 중인 방들에 대해 무엇을 해야 하는지 — [planMyFaceDeletion] 결과.
+class MyFaceDeletionPlan {
+  /// 삭제를 막는 방 — 내가 방장인 모집 중 방. 비어 있으면 삭제 가능.
+  final List<Team> blockedBy;
+
+  /// 관상을 지우기 전에 나가야 하는 방 — 남이 연 모집 중 방.
+  final List<Team> teamsToLeave;
+
+  const MyFaceDeletionPlan({
+    required this.blockedBy,
+    required this.teamsToLeave,
+  });
+
+  bool get canDelete => blockedBy.isEmpty;
+}
+
+/// 내 관상을 지우기 전 처리 판정.
+///
+/// join_team 은 my-face 없는 조인을 NO_MY_FACE 로 막지만, 조인한 뒤 관상을
+/// 지우는 쪽은 로스터를 몰랐다. 그래서 team_members 행만 남아 인원수는 세지고
+/// 아바타는 (정보없음) 으로 뜨는 유령 슬롯이 생겼다 (2026-08-24). 삭제 쪽에서
+/// 같은 불변식을 지킨다.
+///
+/// 대상은 **모집 중(recruiting) 방뿐**이다. revealing·completed 는
+/// result_payload 에 스냅샷이 동결돼 있어 로스터에서 빼면 이미 발표된 결과가
+/// 깨지고, expired 는 leave_team 이 어차피 거부한다.
+///
+/// 내가 방장인 모집 중 방이 있으면 삭제 자체를 막는다 — leave_team 의
+/// OWNER_CANNOT_LEAVE 와 같은 규칙이고, 관상 한 장 지우자고 남들이 모인 방을
+/// 날리지 않기 위함이다.
+MyFaceDeletionPlan planMyFaceDeletion({
+  required List<Team> myTeams,
+  required String myUid,
+}) {
+  final recruiting = myTeams.where((t) => t.isRecruiting);
+  final blockedBy = [for (final t in recruiting) if (t.ownerId == myUid) t];
+  return MyFaceDeletionPlan(
+    blockedBy: blockedBy,
+    // 막힌 이상 나가기는 한 건도 실행하지 않는다 — 부분 적용은 되돌릴 수 없다.
+    teamsToLeave: blockedBy.isNotEmpty
+        ? const []
+        : [for (final t in recruiting) t],
+  );
+}
+
 /// 서버 RPC 에러 계약 (Plan 1) — raise exception 메시지 문자열이 코드다.
 enum TeamJoinError {
   authRequired('AUTH_REQUIRED', '로그인이 필요합니다'),

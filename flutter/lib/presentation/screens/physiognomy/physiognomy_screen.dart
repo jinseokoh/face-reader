@@ -5,6 +5,8 @@ import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
+import 'package:facely/data/services/team_service.dart';
+import 'package:facely/domain/models/team.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/providers/tab_provider.dart';
 import 'package:facely/presentation/widgets/cdn_thumbnail.dart';
@@ -367,12 +369,36 @@ class _PhysiognomyItem extends ConsumerWidget {
     );
   }
 
-  void _confirmDelete(BuildContext context, WidgetRef ref) {
+  /// 내 관상은 케미 방 참가와 묶여 있다 — 지우면 참가 중인 모집 중 방에서도
+  /// 빠진다. 그 사실을 확인 전에 알리고, 방장이면 아예 막는다 (지우고 나서
+  /// 인원수만 남는 유령 슬롯 방지 — 2026-08-24).
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+    var plan = const MyFaceDeletionPlan(blockedBy: [], teamsToLeave: []);
+    if (report.isMyFace) {
+      try {
+        plan = await TeamService.instance.fetchMyFaceDeletionPlan();
+      } catch (_) {
+        if (!context.mounted) return;
+        showTopSnackBar(
+          Overlay.of(context),
+          CompactSnackBar.error(message: '잠시 후 다시 시도해 주세요'),
+        );
+        return;
+      }
+      if (!context.mounted) return;
+      if (!plan.canDelete) {
+        await _showOwnerBlocked(context, plan.blockedBy);
+        return;
+      }
+    }
+    if (!context.mounted) return;
+
     final demographic =
         '${report.ageGroup.labelKo} '
         '${report.gender.labelKo} '
         '${report.ethnicity.labelKo}';
-    showDialog<void>(
+    final leaving = plan.teamsToLeave.length;
+    await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
@@ -380,7 +406,13 @@ class _PhysiognomyItem extends ConsumerWidget {
           borderRadius: BorderRadius.circular(AppRadius.xl),
         ),
         title: Text('$demographic 기록을 삭제할까요?', style: AppText.modalTitle),
-        content: const Text('이 작업은 되돌릴 수 없습니다.', style: AppText.body),
+        content: Text(
+          leaving == 0
+              ? '이 작업은 되돌릴 수 없습니다.'
+              : '참가 중인 케미방 $leaving곳에서 나가집니다.\n'
+                    '이 작업은 되돌릴 수 없습니다.',
+          style: AppText.body,
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -390,9 +422,21 @@ class _PhysiognomyItem extends ConsumerWidget {
             ),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              ref.read(historyProvider.notifier).remove(index);
+              try {
+                await ref.read(historyProvider.notifier).remove(index);
+              } catch (_) {
+                // 다이얼로그를 띄운 사이 방이 차거나 새로 참가한 경우 —
+                // provider 가 다시 판정해 거부한다.
+                if (!context.mounted) return;
+                showTopSnackBar(
+                  Overlay.of(context),
+                  CompactSnackBar.error(message: '삭제하지 못했습니다'),
+                );
+                return;
+              }
+              if (!context.mounted) return;
               showTopSnackBar(
                 Overlay.of(context),
                 CompactSnackBar.success(message: '삭제되었습니다'),
@@ -401,6 +445,35 @@ class _PhysiognomyItem extends ConsumerWidget {
             child: Text(
               '삭제',
               style: AppText.body.copyWith(color: AppColors.danger),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 방장은 나갈 수 없다(leave_team 의 OWNER_CANNOT_LEAVE) — 관상 한 장 지우자고
+  /// 남들이 모인 방을 날릴 수는 없으니 삭제 쪽을 막고 방부터 정리하게 한다.
+  Future<void> _showOwnerBlocked(BuildContext context, List<Team> rooms) {
+    return showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+        ),
+        title: const Text('먼저 케미방을 정리해 주세요', style: AppText.modalTitle),
+        content: Text(
+          '내 관상으로 연 모집 중인 방이 있습니다.\n'
+          '${rooms.map((t) => t.title).join('\n')}',
+          style: AppText.body,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              '확인',
+              style: AppText.body.copyWith(color: AppColors.textHint),
             ),
           ),
         ],
