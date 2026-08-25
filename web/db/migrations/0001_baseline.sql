@@ -720,7 +720,7 @@ create index if not exists ad_images_active_sort_idx
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 방은 생성 즉시 서버에 존재한다 (로컬 우선/lazy sync 폐기). 참가자는 이름
 -- 선등록 없이 join_team RPC 로 셀프 조인. 시작 조건은 정원 충족 하나뿐 —
--- 모이면 시작, 48h 안에 안 모이면 expired (cron).
+-- 모이면 시작, 7일 안에 안 모이면 expired (cron).
 --
 -- chemistry_snapshot = 시작 트랜잭션이 동결한 {user_id: metrics body} — 엔진
 -- 입력. 시작 후 재촬영·metrics 변경이 결과에 영향을 못 주게 하는 치팅 방어.

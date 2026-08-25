@@ -30,7 +30,7 @@ export default {
       await cleanupStaleMetrics(env);
       await purgeExpiredTeams(env);
     } else {
-      // 매시 정각 — 48h 만료 + revealing 고아 안전망.
+      // 매시 정각 — 7일 만료 + revealing 고아 안전망.
       await expireStaleTeams(env);
       await completeOrphanReveals(env);
     }

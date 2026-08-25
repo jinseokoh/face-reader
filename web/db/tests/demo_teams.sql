@@ -126,13 +126,13 @@ begin
     (t4, v_seoyeon, 5, 'female', '강서연', false),
     (t4, v_sua,     6, 'female', '현수아', false);
 
-  -- ⑤ 인원 미달 종료 — 2/8, 48h 초과 expired.
+  -- ⑤ 인원 미달 종료 — 2/8, 모집 7일 초과 expired.
   insert into public.teams (id, owner_id, title, room_kind,
                             max_players, age_min, age_max, status,
                             created_at, closed_at)
   values (t5, v_yujin, '주말 새벽 등산', 'all',
           8, 20, 40, 'expired',
-          now() - interval '4 days', now() - interval '2 days');
+          now() - interval '9 days', now() - interval '2 days');
   insert into public.team_members (team_id, user_id, slot_no, gender, alias, is_owner)
   values
     (t5, v_yujin,   1, 'female', '김유진', true),

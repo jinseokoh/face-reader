@@ -639,7 +639,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
         const Expanded(
           child: EmotionEmptyState(
             asset: 'assets/images/emotion-sad.png',
-            message: '48시간 동안 정원 미달로 마감된 그룹입니다',
+            message: '7일 동안 정원 미달로 마감된 그룹입니다',
           ),
         ),
       ],

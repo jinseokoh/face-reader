@@ -2,7 +2,7 @@
  * Cron Triggers 잡 4종 — wrangler.jsonc `triggers.crons` 가 스케줄, 호출은
  * Cloudflare 플랫폼이 직접 (`workers/app.ts` 의 `scheduled` 핸들러).
  *
- *   매시    expireStaleTeams      — 모집 48h 초과 방 expired (시작은 cron 몫 아님).
+ *   매시    expireStaleTeams      — 모집 7일 초과 방 expired (시작은 cron 몫 아님).
  *   매시    completeOrphanReveals — revealing 24h 고아 방 completed 안전망.
  *   매일    cleanupStaleMetrics   — 90일 미활동 anon metrics 삭제.
  *   매일    purgeExpiredTeams     — 종료 후 30일 지난 teams 삭제 (멤버 cascade).
@@ -27,13 +27,13 @@ const daysAgo = (d: number) =>
   new Date(Date.now() - d * 24 * 3600_000).toISOString()
 
 /**
- * 48h 만료 — 시작 조건은 정원 충족 하나뿐이므로 cron 은 시작을 수행하지
- * 않는다. 모집 48h 안에 정원을 못 채운 방은 인원 무관 expired (모이면 굿,
+ * 7일 만료 — 시작 조건은 정원 충족 하나뿐이므로 cron 은 시작을 수행하지
+ * 않는다. 모집 7일 안에 정원을 못 채운 방은 인원 무관 expired (모이면 굿,
  * 안 모이면 꽝). closed_at 을 찍어 30일 purge 수명주기에 진입시킨다.
  */
 export async function expireStaleTeams(env: CronEnv): Promise<number> {
   const res = await fetch(
-    `${env.SUPABASE_URL}/rest/v1/teams?status=eq.recruiting&created_at=lt.${daysAgo(2)}&select=id`,
+    `${env.SUPABASE_URL}/rest/v1/teams?status=eq.recruiting&created_at=lt.${daysAgo(7)}&select=id`,
     {
       method: 'PATCH',
       headers: {

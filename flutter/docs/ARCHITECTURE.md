@@ -231,7 +231,7 @@ CDN 렌더는 `cdnThumbnail()` 공용 위젯 (디스크 캐시).
 | `GET /g/:id(/open)` | 케미: 초대장(+웹 티저 카메라) / 결과표 쇼케이스 / 종료 안내 |
 | `POST /api/r2/presign` | R2 presigned PUT (`temp/{uuid}`·`thumbnails/{owner}/{sha256}`) + /analyze HMAC 토큰. 썸네일 소유자는 서버가 요청 JWT 에서 읽는다(익명은 `scope`) — 남의 폴더에 못 쓴다. 이미 있는 객체면 409 |
 | `POST /api/account/delete` | 탈퇴 — R2 `thumbnails/{uid}/` 폴더 통째 삭제 + metrics hard delete + open teams 삭제 |
-| `scheduled` (Cron Triggers) | 매시: 48h 방치 방 expired + 24h revealing 고아 안전망 / 매일: 30일 teams·90일 anon metrics 정리(+ 그 행의 `thumbnails/anon-{id}/` 폴더) (`workers/cron.ts`) |
+| `scheduled` (Cron Triggers) | 매시: 7일 방치 방 expired + 24h revealing 고아 안전망 / 매일: 30일 teams·90일 anon metrics 정리(+ 그 행의 `thumbnails/anon-{id}/` 폴더) (`workers/cron.ts`) |
 | `.well-known/*` | iOS Universal Link · Android App Link |
 
 R2: `thumbnails/{owner}/{sha256}.jpg`(소유자별·영구, CDN `cdn.facely.kr`) · `temp/{uuid}.jpg`(1일 자동 삭제) ·

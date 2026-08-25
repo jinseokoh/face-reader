@@ -409,7 +409,7 @@ class _MineCard extends ConsumerWidget {
 enum _MineFilter {
   all('전체'),
   recruiting('모집중'),
-  // 미달 = 정원 못 채우고 48시간 타이머 소진(expired) / 종료 = 정원 다 차서
+  // 미달 = 정원 못 채우고 모집 7일 타이머 소진(expired) / 종료 = 정원 다 차서
   // 발표까지 간 방(revealing·completed). 결말이 정반대라 분리 (2026-07-30).
   expired('미달'),
   closed('종료');

@@ -24,7 +24,7 @@ const kTeamHeroSand = _kSand;
 /// 연령 pill + 조회수). 모집중(상세)·마감(결과판)·인원미달 어느 상태든
 /// 최상단에 동일하게 노출하는 공용 위젯.
 ///
-/// 마감 시각은 cron SSOT (모집 48h · closed_at) 기준 — 모집중이면 미래
+/// 마감 시각은 cron SSOT (모집 7일 · closed_at) 기준 — 모집중이면 미래
 /// (지금부터 13시간 후 마감), 종료면 과거(2시간 전 마감) 상대 표기.
 /// 마감은 살아있는 정보라 날짜 옆 괄호 설명문으로 병기하고, 박스 안
 /// 생성·마감 중복 표기는 두지 않는다 (2026-07-30).
@@ -63,7 +63,7 @@ class TeamStatHeader extends StatelessWidget {
         '${created.day.toString().padLeft(2, '0')}';
     final deadline =
         team.closedAt?.toLocal() ??
-        team.createdAt.add(const Duration(hours: 48));
+        team.createdAt.add(const Duration(days: 7));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
