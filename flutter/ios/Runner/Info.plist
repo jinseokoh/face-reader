@@ -54,6 +54,11 @@
 		</array>
 		<key>CFBundleVersion</key>
 		<string>$(FLUTTER_BUILD_NUMBER)</string>
+		<!-- HTTPS 외에 자체 암호화를 쓰지 않는다. 이 키가 없으면 빌드를 올릴
+		     때마다 App Store Connect 가 수출 규정 준수 정보를 묻고, 답하기
+		     전까지 그 빌드를 심사 제출에 붙일 수 없다. -->
+		<key>ITSAppUsesNonExemptEncryption</key>
+		<false/>
 		<!-- 카카오 SDK 가 카톡 설치 여부(canOpenURL)를 묻고, 카카오톡 공유/로그인
 		     으로 전환할 때 필요한 scheme 화이트리스트. 빠지면 iOS 가
 		     isKakaoTalkSharingAvailable() 에 무조건 false 를 돌려줘 공유 시트가
