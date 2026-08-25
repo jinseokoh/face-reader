@@ -1,181 +1,138 @@
--- 데모 케미 방 seed — Play Store 스크린샷용. Supabase SQL Editor 에서 전체 실행.
+-- demo_teams.sql — 심사·스크린샷용 케미 방 seed.
 --
--- 지워지는 것: teams 전 행 (FK cascade 로 team_members·team_matches·
---             team_messages 까지) + team_reports.
--- 안 건드리는 것: users · metrics · compatibilities · coins (요구사항).
+-- ⚠️ 실행하면 teams 의 모든 행이 사라진다. FK cascade 로 team_members·
+--    team_matches·team_messages 까지 함께 지워지고, team_reports 도 비운다.
+--    실사용자가 만든 방이 있으면 되돌릴 수 없다 — 실행 전 확인할 것.
+--    users·metrics·compatibilities·coins 는 건드리지 않는다.
 --
--- 만드는 방 6개:
---   ① 퇴근 후 러닝 크루   — 모집중 match 8인 (4/8, 마감 임박 ~22h)
---   ② 홍대 보드게임 소모임 — 모집중 all 6인 (2/6, 방장 = 리수하)
---   ③ 비공개 와인 모임     — 모집중 비밀방 match 6인 (PIN 7777)
---   ④ 금요일 저녁 미술관 동행 — revealing 6인. ⭐ 앱에서 열면 베스트 케미 =
---      홍청(67cc8011) × 리수하(3dbfa1dc) 88점 금슬화합 (엔진 실측 검증).
---      홍청 슬롯의 snapshot body 만 고득점 도너 기하(17c1dfec)로 동결 —
---      계정·metrics 는 무변경, 아바타는 라이브 my-face 라 실사진 유지.
---   ⑤ 주말 새벽 등산       — 인원 미달 종료 (expired)
---   ⑥ 성수동 카페 투어     — revealing all 6인. 열면 베스트 = 강도윤×방하늘
---      91점 천생연분 (리수하는 미선정 → 나가리 red 카드 데모).
+-- 이 파일은 손으로 쓴 fixture 가 아니라 **운영 DB 실황을 덤프한 것**이다.
+-- snapshot 과 payload 를 metrics 에서 다시 조립하지 않고 그대로 박아 넣는다 —
+-- 참조하던 metrics 행이 지워지면 조립식 fixture 는 조용히 빈 방을 만든다
+-- (실제로 그렇게 깨진 적이 있다). 덤프는 그 의존이 없다.
 --
--- ④·⑥은 payload 를 비워 둔다 — 앱에서 처음 여는 참가자(리수하 계정)가
--- 세리머니와 함께 계산·기록하고, 서버가 베스트 쌍 매칭 카드를 자동 생성한다.
-do $$
-declare
-  v_risuha uuid := '7ad873cd-fd27-4792-8913-be6ca36f97b5';  -- 리수하 (형)
-  v_hong   uuid := '09434d9c-7aa6-4e38-a687-369fedd6dc48';  -- 홍청 (부계정)
-  -- battle-dummy-1..9
-  v_junho   uuid := 'dddddddd-0000-0000-0000-000000000001'; -- 황준호 M
-  v_minseok uuid := 'dddddddd-0000-0000-0000-000000000002'; -- 최민석 M
-  v_seoyeon uuid := 'dddddddd-0000-0000-0000-000000000003'; -- 강서연 F
-  v_euneun  uuid := 'dddddddd-0000-0000-0000-000000000004'; -- 선우은 F
-  v_haneul  uuid := 'dddddddd-0000-0000-0000-000000000005'; -- 방하늘 F
-  v_doyun   uuid := 'dddddddd-0000-0000-0000-000000000006'; -- 강도윤 M
-  v_taeyang uuid := 'dddddddd-0000-0000-0000-000000000007'; -- 이태양 M
-  v_sua     uuid := 'dddddddd-0000-0000-0000-000000000008'; -- 현수아 F
-  v_yujin   uuid := 'dddddddd-0000-0000-0000-000000000009'; -- 김유진 F
+-- 시각은 전부 now() 기준 상대값이라 몇 달 뒤 재실행해도 데모가 늙지 않는다.
+-- 모집중 방은 생성 7일 뒤 cron 이 expired 로 닫는다 (workers/cron.ts).
 
-  -- my-face metric id (snapshot body 소스)
-  m_risuha  uuid := '3dbfa1dc-11ad-4660-b033-180fb9999796';
-  m_hong    uuid := '67cc8011-8838-40a4-86d0-094dcd1d3eec';
-  m_junho   uuid := 'ceb45848-21c2-4d4f-bc90-876d221284d6';
-  m_minseok uuid := '4ed03ac5-7419-4bde-bf9e-2bf80d038abd';
-  m_seoyeon uuid := '2e8ad47e-1b68-438a-9aeb-17d01e4e1659';
-  m_euneun  uuid := '17c1dfec-dfa4-4a42-8e7d-f026d85eefb0'; -- ④ 홍청 슬롯 도너 기하
-  m_haneul  uuid := 'd90c04f8-f7b1-4b9d-94a2-a2bcfd53539d';
-  m_doyun   uuid := '11223ada-5e96-425a-bfdd-4e8105618a51';
-  m_sua     uuid := '9c92d215-0863-43af-9c35-d8cf4afe1922';
+-- 만드는 방:
+--   천생연분 궁합이면 커피 한잔 같이해요. — match 6인 (6/6), completed
+--       베스트 = 홍청 × 김유진 83점 / 9쌍 전부 채점  ⭐ 데모 계정(홍청)이 당사자
+--   천생연분 궁합이면 전시회 한번 같이 가요. — match 8인 (8/8), completed
+--       베스트 = 리수하 × 방하늘 91점 / 16쌍 전부 채점
+--   우리회사 찐 케미가 누구냐 — all 8인 (8/8), completed
+--       베스트 = 홍청 × 강도윤 92점 / 28쌍 전부 채점  ⭐ 데모 계정(홍청)이 당사자
+--   케미, 그것이 알고 싶다 — all 8인 (3/8), recruiting
 
-  t1 uuid := 'aaaa1111-1111-1111-1111-111111111111';
-  t2 uuid := 'aaaa2222-2222-2222-2222-222222222222';
-  t3 uuid := 'aaaa3333-3333-3333-3333-333333333333';
-  t4 uuid := 'aaaa4444-4444-4444-4444-444444444444';
-  t5 uuid := 'aaaa5555-5555-5555-5555-555555555555';
-  t6 uuid := 'aaaa6666-6666-6666-6666-666666666666';
-begin
-  -- 케미 아이템 전체 리셋 — 방·참가·매칭·채팅(cascade) + 신고.
-  delete from public.teams;
-  delete from public.team_reports;
+begin;
 
-  -- ① 모집중 public match 8인 — 4/8, 마감 임박(생성 6d2h 전 → 잔여 ~22h).
-  insert into public.teams (id, owner_id, title, room_kind,
-                            max_players, age_min, age_max, status, created_at)
-  values (t1, v_junho, '퇴근 후 러닝 크루', 'match',
-          8, 20, 40, 'recruiting', now() - interval '6 days 2 hours');
-  insert into public.team_members (team_id, user_id, slot_no, gender, alias, is_owner)
-  values
-    (t1, v_junho,   1, 'male',   '황준호', true),
-    (t1, v_minseok, 2, 'male',   '최민석', false),
-    (t1, v_risuha,  3, 'female', '리수하', false),
-    (t1, v_yujin,   4, 'female', '김유진', false);
+delete from public.teams;
+delete from public.team_reports;
 
-  -- ② 모집중 public all 6인 — 2/6, 방장 = 리수하 (QR·초대 화면용).
-  insert into public.teams (id, owner_id, title, room_kind,
-                            max_players, age_min, age_max, status, created_at)
-  values (t2, v_risuha, '홍대 보드게임 소모임', 'all',
-          6, 20, 30, 'recruiting', now() - interval '2 hours');
-  insert into public.team_members (team_id, user_id, slot_no, gender, alias, is_owner)
-  values
-    (t2, v_risuha, 1, 'female', '리수하', true),
-    (t2, v_haneul, 2, 'female', '방하늘', false);
+-- ── 천생연분 궁합이면 커피 한잔 같이해요.
+insert into public.teams (id, owner_id, title, password, room_kind, max_players,
+                          age_min, age_max, status, views,
+                          started_at, closed_at, created_at, updated_at,
+                          chemistry_snapshot, result_payload) values (
+  '5eed0001-0000-4000-8000-000000000001', 'dddddddd-0000-0000-0000-000000000001', '천생연분 궁합이면 커피 한잔 같이해요.', null,
+  'match', 6, 30, 40, 'completed', 0,
+  now() - interval '15383 minutes', now() - interval '15383 minutes', now() - interval '11063 minutes', now() - interval '11053 minutes',
+  $j${"blocked":[],"chatted":[],"09434d9c-7aa6-4e38-a687-369fedd6dc48":{"gender":"male","source":"camera","metrics":{"chinAngle":171.53375431231902,"eyeAspect":0.23890842931370693,"browSpacing":0.19388500000156542,"gonialAngle":134.5215299885452,"midFaceRatio":0.2736678500726497,"foreheadWidth":0.8469484319261517,"cheekboneWidth":0.9218157048452483,"eyeCanthalTilt":-0.011836980610054226,"faceTaperRatio":0.8339619349384069,"lowerFaceRatio":0.45393308247757147,"philtrumLength":0.07810910998421054,"upperFaceRatio":0.27241358443471236,"browEyeDistance":0.1471713498884408,"eyeFissureRatio":0.19848287347467303,"faceAspectRatio":1.4519405267631247,"mouthWidthRatio":0.3358033661962254,"nasalWidthRatio":0.9053347385648276,"eyebrowCurvature":0.0378628876440575,"eyebrowThickness":0.03199062088486343,"lipFullnessRatio":0.12049590348280013,"mouthCornerAngle":-12.269329146949016,"nasalHeightRatio":0.23666873347105274,"intercanthalRatio":0.2682876487009636,"lowerFaceFullness":0.5428968970111282,"eyebrowTiltDirection":-0.031163706878146718,"upperVsLowerLipRatio":0.8758315517125885},"ageGroup":"30s","ethnicity":"eastAsian","faceShape":"oblong","timestamp":"2026-07-25T19:19:13.628234","thumbnailKey":"thumbnails/202608/3bde134a-dfac-47ed-abae-8fbf9adb5a31.png","schemaVersion":1,"faceShapeLabel":"Oblong","lateralMetrics":{"lowerLipEline":-0.013786794432581469,"upperLipEline":0.012099976085797543,"dorsalConvexity":0.014072483214776476,"facialConvexity":27.732226109080813,"nasolabialAngle":129.44414669438274,"mentolabialAngle":152.84571160261865,"nasofrontalAngle":163.78096194918496,"noseTipProjection":0.31691586706641184},"faceShapeConfidence":0.9950907947450413},"dddddddd-0000-0000-0000-000000000001":{"gender":"male","source":"album","metrics":{"chinAngle":169.7530859151175,"eyeAspect":0.3600938318256236,"browSpacing":0.17543206538362419,"gonialAngle":140.8813756594521,"midFaceRatio":0.30615936325250787,"foreheadWidth":0.8451202557149425,"cheekboneWidth":0.8977187757158849,"eyeCanthalTilt":3.734129852801733,"faceTaperRatio":0.798085211338901,"lowerFaceRatio":0.40810491791774794,"philtrumLength":0.09770254732798457,"upperFaceRatio":0.2893235666365435,"browEyeDistance":0.13444465205931355,"eyeFissureRatio":0.19585158970061628,"faceAspectRatio":1.235805117466694,"mouthWidthRatio":0.3074920679951643,"nasalWidthRatio":0.8946489292943053,"eyebrowCurvature":0.03877789192043486,"eyebrowThickness":0.03254196001670609,"lipFullnessRatio":0.10704501102273545,"mouthCornerAngle":-3.0788897843345446,"nasalHeightRatio":0.2776432347197778,"intercanthalRatio":0.23791406038691792,"lowerFaceFullness":0.5104658454477863,"eyebrowTiltDirection":-0.012630575831919488,"upperVsLowerLipRatio":0.720291371390609},"ageGroup":"30s","ethnicity":"eastAsian","faceShape":"oval","timestamp":"2026-07-29T01:41:55.308628","thumbnailKey":"thumbnails/202607/397e0e23-52cd-493d-ac65-9e75d8bc4f23.jpg","schemaVersion":1,"faceShapeLabel":"Oval","faceShapeConfidence":0.5299660224078532},"dddddddd-0000-0000-0000-000000000002":{"gender":"male","source":"camera","metrics":{"chinAngle":185.97027878537332,"eyeAspect":0.2303749446675365,"browSpacing":0.1978888905599156,"gonialAngle":145.27885868124315,"midFaceRatio":0.31881323020553526,"foreheadWidth":0.7269733973411926,"cheekboneWidth":0.9584234995292658,"eyeCanthalTilt":0.9717569646305396,"faceTaperRatio":0.9595142169048231,"lowerFaceRatio":0.43291687344203184,"philtrumLength":0.08118340060327445,"upperFaceRatio":0.24112415436013476,"browEyeDistance":0.146254640557781,"eyeFissureRatio":0.16391995700840128,"faceAspectRatio":1.6282844731939323,"mouthWidthRatio":0.44916251611142266,"nasalWidthRatio":0.9593666062720686,"eyebrowCurvature":0.033267283321869234,"eyebrowThickness":0.030260930857177196,"lipFullnessRatio":0.10787410955736118,"mouthCornerAngle":-2.5987948849857663,"nasalHeightRatio":0.30174163580639285,"intercanthalRatio":0.31523305049175043,"lowerFaceFullness":0.574842277036783,"eyebrowTiltDirection":-0.016386620234359026,"upperVsLowerLipRatio":0.5744554446143036},"ageGroup":"30s","isMyFace":false,"ethnicity":"eastAsian","faceShape":"oblong","timestamp":"2026-07-18T00:19:04.712201","thumbnailKey":"thumbnails/202608/1e10cde5-66e3-4a34-97d3-37c67a864d9a.png","schemaVersion":1,"thumbnailPath":null,"faceShapeLabel":"Oblong","lateralMetrics":{"lowerLipEline":-0.005256253050429466,"upperLipEline":0.004813488395685231,"dorsalConvexity":0.011695947582638526,"facialConvexity":18.44669192382977,"nasolabialAngle":167.21067324034343,"mentolabialAngle":141.6658564101376,"nasofrontalAngle":194.95639429079773,"noseTipProjection":0.2605966442616493},"faceShapeConfidence":0.9999940261407351},"dddddddd-0000-0000-0000-000000000003":{"gender":"female","source":"camera","metrics":{"chinAngle":163.96142519745567,"eyeAspect":0.3699621434707621,"browSpacing":0.200890897288586,"gonialAngle":126.76763905636682,"midFaceRatio":0.3424496878026603,"foreheadWidth":1.107560191690044,"cheekboneWidth":0.8146827824111839,"eyeCanthalTilt":7.340971929023876,"faceTaperRatio":0.6686290933584409,"lowerFaceRatio":0.31487791382991254,"philtrumLength":0.07541069800198326,"upperFaceRatio":0.2735691339168938,"browEyeDistance":0.1320787594405092,"eyeFissureRatio":0.26263572217847075,"faceAspectRatio":1.4073751571429438,"mouthWidthRatio":0.3483906923444989,"nasalWidthRatio":0.8970951417583034,"eyebrowCurvature":0.04388221293854343,"eyebrowThickness":0.03938152186853201,"lipFullnessRatio":0.12457528119031792,"mouthCornerAngle":6.414041515324981,"nasalHeightRatio":0.35564680214989175,"intercanthalRatio":0.2561152027198475,"lowerFaceFullness":0.4391252679891354,"eyebrowTiltDirection":0.01980190026056604,"upperVsLowerLipRatio":0.4753392151614955},"ageGroup":"30s","isMyFace":false,"ethnicity":"eastAsian","faceShape":"heart","timestamp":"2026-07-18T17:35:03.371729","thumbnailKey":"dummy/female/1.jpg","schemaVersion":1,"thumbnailPath":null,"faceShapeLabel":"Heart","faceShapeConfidence":0.7076640506673532},"dddddddd-0000-0000-0000-000000000008":{"gender":"female","source":"camera","metrics":{"chinAngle":157.37661324824708,"eyeAspect":0.4017317672729962,"browSpacing":0.21371263888162473,"gonialAngle":157.12044632158896,"midFaceRatio":0.3211853834811016,"foreheadWidth":0.7783239018726469,"cheekboneWidth":0.9527773470152737,"eyeCanthalTilt":6.391251444743081,"faceTaperRatio":0.6315510055210889,"lowerFaceRatio":0.3907466145951008,"philtrumLength":0.08035449990887678,"upperFaceRatio":0.28059832822416886,"browEyeDistance":0.15118075146778207,"eyeFissureRatio":0.18337242055353759,"faceAspectRatio":1.0700928035804387,"mouthWidthRatio":0.3656492583937061,"nasalWidthRatio":0.6587255814050239,"eyebrowCurvature":0.04740731181461799,"eyebrowThickness":0.04176671193280046,"lipFullnessRatio":0.12521232915970293,"mouthCornerAngle":5.9958710768328585,"nasalHeightRatio":0.2934943080870388,"intercanthalRatio":0.22687985916287798,"lowerFaceFullness":0.4369632264441633,"eyebrowTiltDirection":0.015264783897541651,"upperVsLowerLipRatio":0.4789761654756184},"ageGroup":"30s","isMyFace":false,"ethnicity":"eastAsian","faceShape":"heart","timestamp":"2026-07-18T17:35:03.371729","thumbnailKey":"thumbnails/202608/488c3477-1b5f-45b5-859e-66216ad4ef2e.png","schemaVersion":1,"thumbnailPath":null,"faceShapeLabel":"Heart","faceShapeConfidence":0.7076640506673532},"dddddddd-0000-0000-0000-000000000009":{"gender":"female","source":"camera","metrics":{"chinAngle":135.24203981197337,"eyeAspect":0.49129246249417885,"browSpacing":0.24460801964689335,"gonialAngle":149.39866629447414,"midFaceRatio":0.3258333636568878,"foreheadWidth":0.9796815979111396,"cheekboneWidth":1.0418857670791826,"eyeCanthalTilt":6.383393236058448,"faceTaperRatio":0.6037009911333243,"lowerFaceRatio":0.3066656037848724,"philtrumLength":0.09675407744232298,"upperFaceRatio":0.3867399582593572,"browEyeDistance":0.16246571732912923,"eyeFissureRatio":0.2237655526045274,"faceAspectRatio":1.1820256289514426,"mouthWidthRatio":0.32182189202130196,"nasalWidthRatio":0.753942571406195,"eyebrowCurvature":0.037636218532186856,"eyebrowThickness":0.04068540079792633,"lipFullnessRatio":0.1196894801441093,"mouthCornerAngle":4.936633821420044,"nasalHeightRatio":0.31559329305449507,"intercanthalRatio":0.2290787066961679,"lowerFaceFullness":0.4257052171147686,"eyebrowTiltDirection":0.02042022647530363,"upperVsLowerLipRatio":0.6877125539570129},"ageGroup":"30s","isMyFace":false,"ethnicity":"eastAsian","faceShape":"heart","timestamp":"2026-07-18T17:35:03.371729","thumbnailKey":"dummy/female/5.jpg","schemaVersion":1,"thumbnailPath":null,"faceShapeLabel":"Heart","faceShapeConfidence":0.7076640506673532}}$j$::jsonb,
+  $j${"pairs":[{"a":1,"b":6,"band":1,"score":83},{"a":2,"b":6,"band":1,"score":83},{"a":3,"b":6,"band":2,"score":81},{"a":1,"b":5,"band":2,"score":80},{"a":2,"b":5,"band":2,"score":79},{"a":1,"b":4,"band":2,"score":72},{"a":2,"b":4,"band":2,"score":64},{"a":3,"b":4,"band":3,"score":57},{"a":3,"b":5,"band":3,"score":54}],"players":[{"name":"홍청","slot":1,"gender":"male"},{"name":"황준호","slot":2,"gender":"male"},{"name":"최민석","slot":3,"gender":"male"},{"name":"강서연","slot":4,"gender":"female"},{"name":"현수아","slot":5,"gender":"female"},{"name":"김유진","slot":6,"gender":"female"}]}$j$::jsonb);
 
-  -- ③ 모집중 비밀방 match 6인 — PIN 7777, 1/6.
-  insert into public.teams (id, owner_id, title, room_kind, password,
-                            max_players, age_min, age_max, status, created_at)
-  values (t3, v_doyun, '비공개 와인 모임', 'match', '7777',
-          6, 30, 40, 'recruiting', now() - interval '30 minutes');
-  insert into public.team_members (team_id, user_id, slot_no, gender, alias, is_owner)
-  values (t3, v_doyun, 1, 'male', '강도윤', true);
+insert into public.team_members (team_id, user_id, slot_no, gender, alias, is_owner, joined_at) values
+  ('5eed0001-0000-4000-8000-000000000001', '09434d9c-7aa6-4e38-a687-369fedd6dc48', 1, 'male', '홍청', false, now() - interval '15623 minutes'),
+  ('5eed0001-0000-4000-8000-000000000001', 'dddddddd-0000-0000-0000-000000000001', 2, 'male', '황준호', true, now() - interval '15599 minutes'),
+  ('5eed0001-0000-4000-8000-000000000001', 'dddddddd-0000-0000-0000-000000000002', 3, 'male', '최민석', false, now() - interval '15575 minutes'),
+  ('5eed0001-0000-4000-8000-000000000001', 'dddddddd-0000-0000-0000-000000000003', 4, 'female', '강서연', false, now() - interval '15551 minutes'),
+  ('5eed0001-0000-4000-8000-000000000001', 'dddddddd-0000-0000-0000-000000000008', 5, 'female', '현수아', false, now() - interval '15527 minutes'),
+  ('5eed0001-0000-4000-8000-000000000001', 'dddddddd-0000-0000-0000-000000000009', 6, 'female', '김유진', false, now() - interval '15503 minutes');
 
-  -- ④ ⭐ revealing 6인 — 베스트 = 홍청×리수하 88점 금슬화합 (엔진 실측).
-  --   홍청 슬롯 body 는 도너 기하(m_euneun)에 성별·나이·홍청 실제 썸네일 패치.
-  --   강서연 슬롯 body 는 저점 기하(m_minseok)에 동일 방식 패치 — 순위 방해 제거.
-  --   나머지는 본인 my-face 그대로. body 는 전부 alias 제거(순수 계측 스냅샷).
-  insert into public.teams (id, owner_id, title, room_kind,
-                            max_players, age_min, age_max, status,
-                            started_at, created_at, chemistry_snapshot)
-  values (t4, v_junho, '금요일 저녁 미술관 동행', 'match',
-          6, 20, 40, 'revealing',
-          now() - interval '10 minutes', now() - interval '20 hours',
-          jsonb_build_object(
-            v_hong::text,
-              ((select body::jsonb from public.metrics where id = m_euneun) - 'alias')
-              || jsonb_build_object(
-                   'gender', 'male', 'ageGroup', '30s',
-                   'thumbnailKey',
-                   (select body::jsonb ->> 'thumbnailKey' from public.metrics where id = m_hong)),
-            v_doyun::text,
-              (select body::jsonb from public.metrics where id = m_doyun) - 'alias',
-            v_junho::text,
-              (select body::jsonb from public.metrics where id = m_junho) - 'alias',
-            v_risuha::text,
-              (select body::jsonb from public.metrics where id = m_risuha) - 'alias',
-            v_seoyeon::text,
-              ((select body::jsonb from public.metrics where id = m_minseok) - 'alias')
-              || jsonb_build_object(
-                   'gender', 'female', 'ageGroup', '30s',
-                   'thumbnailKey',
-                   (select body::jsonb ->> 'thumbnailKey' from public.metrics where id = m_seoyeon)),
-            v_sua::text,
-              (select body::jsonb from public.metrics where id = m_sua) - 'alias'
-          ) || jsonb_build_object('blocked', '[]'::jsonb, 'chatted', '[]'::jsonb));
-  insert into public.team_members (team_id, user_id, slot_no, gender, alias, is_owner)
-  values
-    (t4, v_hong,    1, 'male',   '홍청',   false),
-    (t4, v_doyun,   2, 'male',   '강도윤', false),
-    (t4, v_junho,   3, 'male',   '황준호', true),
-    (t4, v_risuha,  4, 'female', '리수하', false),
-    (t4, v_seoyeon, 5, 'female', '강서연', false),
-    (t4, v_sua,     6, 'female', '현수아', false);
+insert into public.team_matches (team_id, user_a, user_b, a_consent, b_consent, opened_at, a_left, b_left) values
+  ('5eed0001-0000-4000-8000-000000000001', '09434d9c-7aa6-4e38-a687-369fedd6dc48', 'dddddddd-0000-0000-0000-000000000009', true, true, now() - interval '15323 minutes', false, false);
 
-  -- ⑤ 인원 미달 종료 — 2/8, 모집 7일 초과 expired.
-  insert into public.teams (id, owner_id, title, room_kind,
-                            max_players, age_min, age_max, status,
-                            created_at, closed_at)
-  values (t5, v_yujin, '주말 새벽 등산', 'all',
-          8, 20, 40, 'expired',
-          now() - interval '9 days', now() - interval '2 days');
-  insert into public.team_members (team_id, user_id, slot_no, gender, alias, is_owner)
-  values
-    (t5, v_yujin,   1, 'female', '김유진', true),
-    (t5, v_minseok, 2, 'male',   '최민석', false);
+insert into public.team_messages (id, team_id, sender_id, body, created_at) values
+  ('1fec81b3-001e-47d3-ae99-f538b8d27d32', '5eed0001-0000-4000-8000-000000000001', 'dddddddd-0000-0000-0000-000000000009', '안녕하세요. 케미 결과 보고 신청했어요.', now() - interval '15263 minutes'),
+  ('d9520dfc-5db2-4f29-940c-e239e409787c', '5eed0001-0000-4000-8000-000000000001', '09434d9c-7aa6-4e38-a687-369fedd6dc48', '안녕하세요! 저도 결과 보고 놀랐습니다.', now() - interval '15239 minutes'),
+  ('3a03eb58-e4f0-410f-b382-4d79c1b246c6', '5eed0001-0000-4000-8000-000000000001', 'dddddddd-0000-0000-0000-000000000009', '커피 좋아하시면 이번 주말에 한잔 어떠세요?', now() - interval '15215 minutes'),
+  ('01f4c417-1974-46cf-9387-7e09036eda92', '5eed0001-0000-4000-8000-000000000001', '09434d9c-7aa6-4e38-a687-369fedd6dc48', '좋아요. 토요일 오후 괜찮으세요?', now() - interval '15191 minutes'),
+  ('ea70891c-0680-410f-bb21-ad28dc56c6ef', '5eed0001-0000-4000-8000-000000000001', 'dddddddd-0000-0000-0000-000000000009', '네 좋습니다. 생각보다 거품이 있네요.', now() - interval '15167 minutes');
 
-  -- ⑥ revealing all 6인 — 베스트 = 강도윤×방하늘 91점 천생연분 (엔진 실측,
-  --   전원 실제 my-face body). 리수하는 미선정 → 목록 red(나가리) 카드 데모.
-  insert into public.teams (id, owner_id, title, room_kind,
-                            max_players, age_min, age_max, status,
-                            started_at, created_at, chemistry_snapshot)
-  values (t6, v_doyun, '성수동 카페 투어', 'all',
-          6, 20, 40, 'revealing',
-          now() - interval '5 minutes', now() - interval '9 hours',
-          jsonb_build_object(
-            v_doyun::text,
-              (select body::jsonb from public.metrics where id = m_doyun) - 'alias',
-            v_haneul::text,
-              (select body::jsonb from public.metrics where id = m_haneul) - 'alias',
-            v_risuha::text,
-              (select body::jsonb from public.metrics where id = m_risuha) - 'alias',
-            v_euneun::text,
-              (select body::jsonb from public.metrics where id = m_euneun) - 'alias',
-            v_minseok::text,
-              (select body::jsonb from public.metrics where id = m_minseok) - 'alias',
-            v_junho::text,
-              (select body::jsonb from public.metrics where id = m_junho) - 'alias'
-          ) || jsonb_build_object('blocked', '[]'::jsonb, 'chatted', '[]'::jsonb));
-  insert into public.team_members (team_id, user_id, slot_no, gender, alias, is_owner)
-  values
-    (t6, v_doyun,   1, 'male',   '강도윤', true),
-    (t6, v_haneul,  2, 'female', '방하늘', false),
-    (t6, v_risuha,  3, 'female', '리수하', false),
-    (t6, v_euneun,  4, 'female', '선우은', false),
-    (t6, v_minseok, 5, 'male',   '최민석', false),
-    (t6, v_junho,   6, 'male',   '황준호', false);
+-- ── 천생연분 궁합이면 전시회 한번 같이 가요.
+insert into public.teams (id, owner_id, title, password, room_kind, max_players,
+                          age_min, age_max, status, views,
+                          started_at, closed_at, created_at, updated_at,
+                          chemistry_snapshot, result_payload) values (
+  '5eed0002-0000-4000-8000-000000000002', '7ad873cd-fd27-4792-8913-be6ca36f97b5', '천생연분 궁합이면 전시회 한번 같이 가요.', null,
+  'match', 8, 30, 40, 'completed', 0,
+  now() - interval '12623 minutes', now() - interval '12623 minutes', now() - interval '11063 minutes', now() - interval '11053 minutes',
+  $j${"blocked":[],"chatted":[],"09434d9c-7aa6-4e38-a687-369fedd6dc48":{"gender":"male","source":"camera","metrics":{"chinAngle":171.53375431231902,"eyeAspect":0.23890842931370693,"browSpacing":0.19388500000156542,"gonialAngle":134.5215299885452,"midFaceRatio":0.2736678500726497,"foreheadWidth":0.8469484319261517,"cheekboneWidth":0.9218157048452483,"eyeCanthalTilt":-0.011836980610054226,"faceTaperRatio":0.8339619349384069,"lowerFaceRatio":0.45393308247757147,"philtrumLength":0.07810910998421054,"upperFaceRatio":0.27241358443471236,"browEyeDistance":0.1471713498884408,"eyeFissureRatio":0.19848287347467303,"faceAspectRatio":1.4519405267631247,"mouthWidthRatio":0.3358033661962254,"nasalWidthRatio":0.9053347385648276,"eyebrowCurvature":0.0378628876440575,"eyebrowThickness":0.03199062088486343,"lipFullnessRatio":0.12049590348280013,"mouthCornerAngle":-12.269329146949016,"nasalHeightRatio":0.23666873347105274,"intercanthalRatio":0.2682876487009636,"lowerFaceFullness":0.5428968970111282,"eyebrowTiltDirection":-0.031163706878146718,"upperVsLowerLipRatio":0.8758315517125885},"ageGroup":"30s","ethnicity":"eastAsian","faceShape":"oblong","timestamp":"2026-07-25T19:19:13.628234","thumbnailKey":"thumbnails/202608/3bde134a-dfac-47ed-abae-8fbf9adb5a31.png","schemaVersion":1,"faceShapeLabel":"Oblong","lateralMetrics":{"lowerLipEline":-0.013786794432581469,"upperLipEline":0.012099976085797543,"dorsalConvexity":0.014072483214776476,"facialConvexity":27.732226109080813,"nasolabialAngle":129.44414669438274,"mentolabialAngle":152.84571160261865,"nasofrontalAngle":163.78096194918496,"noseTipProjection":0.31691586706641184},"faceShapeConfidence":0.9950907947450413},"65f5c32d-8065-4afc-bcd9-a93635caffe7":{"gender":"male","source":"album","metrics":{"chinAngle":172.06111312505223,"eyeAspect":0.1890593761971526,"browSpacing":0.20536412315842936,"gonialAngle":136.12101574779646,"midFaceRatio":0.290112673673799,"foreheadWidth":0.8781758434461826,"cheekboneWidth":0.9500673736521219,"eyeCanthalTilt":0.8789047348862606,"faceTaperRatio":0.8447365903688271,"lowerFaceRatio":0.4328053217316308,"philtrumLength":0.10842487542090613,"upperFaceRatio":0.2791581797355588,"browEyeDistance":0.15074580081835143,"eyeFissureRatio":0.20983429811005372,"faceAspectRatio":1.0671147973865722,"mouthWidthRatio":0.44229674716174827,"nasalWidthRatio":1.0362740263031878,"eyebrowCurvature":0.03751347589945185,"eyebrowThickness":0.0320708256402085,"lipFullnessRatio":0.10924388485643839,"mouthCornerAngle":-1.9768759079282188,"nasalHeightRatio":0.2577697823527709,"intercanthalRatio":0.29298261853169966,"lowerFaceFullness":0.5507212291324531,"eyebrowTiltDirection":-0.011835778857001749,"upperVsLowerLipRatio":0.7485925049435237},"ageGroup":"30s","ethnicity":"eastAsian","faceShape":"round","timestamp":"2026-07-28T16:39:34.151683","thumbnailKey":"thumbnails/202608/e6290030-77f5-4028-9931-6c0841d5f7da.png","schemaVersion":1,"faceShapeLabel":"Round","faceShapeConfidence":0.9996617223491117},"7ad873cd-fd27-4792-8913-be6ca36f97b5":{"gender":"male","source":"camera","metrics":{"chinAngle":166.91960439233551,"eyeAspect":0.31346700210061396,"browSpacing":0.20658226308361172,"gonialAngle":144.69635358841236,"midFaceRatio":0.3372148230851115,"foreheadWidth":0.8916343090072331,"cheekboneWidth":0.9359826583556603,"eyeCanthalTilt":3.542888379853209,"faceTaperRatio":0.7942259305077419,"lowerFaceRatio":0.35847408656898216,"philtrumLength":0.1008405233112433,"upperFaceRatio":0.3044116181556522,"browEyeDistance":0.13937239550454852,"eyeFissureRatio":0.20841840165193162,"faceAspectRatio":1.4109598251799866,"mouthWidthRatio":0.39539808363525564,"nasalWidthRatio":1.027505370489989,"eyebrowCurvature":0.03528014505868256,"eyebrowThickness":0.03272358790529022,"lipFullnessRatio":0.09325526080297623,"mouthCornerAngle":4.383475330231455,"nasalHeightRatio":0.3143996105312814,"intercanthalRatio":0.27843103802139596,"lowerFaceFullness":0.5125714832389674,"eyebrowTiltDirection":-0.011108782502472863,"upperVsLowerLipRatio":0.6041171660468144},"ageGroup":"40s","ethnicity":"eastAsian","faceShape":"oblong","timestamp":"2026-08-16T21:54:10.797772","thumbnailKey":"thumbnails/202608/d1171e27-d788-45ef-ac58-c2f8730185ab.png","schemaVersion":1,"faceShapeLabel":"Oblong","lateralMetrics":{"lowerLipEline":-0.021692347441697943,"upperLipEline":-0.007202185103974336,"dorsalConvexity":0.011801270791168852,"facialConvexity":25.46895227955241,"nasolabialAngle":133.09327972549488,"mentolabialAngle":154.26491128988536,"nasofrontalAngle":163.68528421034605,"noseTipProjection":0.31069347589471086},"faceShapeConfidence":0.37543848156929016},"dddddddd-0000-0000-0000-000000000003":{"gender":"female","source":"camera","metrics":{"chinAngle":163.96142519745567,"eyeAspect":0.3699621434707621,"browSpacing":0.200890897288586,"gonialAngle":126.76763905636682,"midFaceRatio":0.3424496878026603,"foreheadWidth":1.107560191690044,"cheekboneWidth":0.8146827824111839,"eyeCanthalTilt":7.340971929023876,"faceTaperRatio":0.6686290933584409,"lowerFaceRatio":0.31487791382991254,"philtrumLength":0.07541069800198326,"upperFaceRatio":0.2735691339168938,"browEyeDistance":0.1320787594405092,"eyeFissureRatio":0.26263572217847075,"faceAspectRatio":1.4073751571429438,"mouthWidthRatio":0.3483906923444989,"nasalWidthRatio":0.8970951417583034,"eyebrowCurvature":0.04388221293854343,"eyebrowThickness":0.03938152186853201,"lipFullnessRatio":0.12457528119031792,"mouthCornerAngle":6.414041515324981,"nasalHeightRatio":0.35564680214989175,"intercanthalRatio":0.2561152027198475,"lowerFaceFullness":0.4391252679891354,"eyebrowTiltDirection":0.01980190026056604,"upperVsLowerLipRatio":0.4753392151614955},"ageGroup":"30s","isMyFace":false,"ethnicity":"eastAsian","faceShape":"heart","timestamp":"2026-07-18T17:35:03.371729","thumbnailKey":"dummy/female/1.jpg","schemaVersion":1,"thumbnailPath":null,"faceShapeLabel":"Heart","faceShapeConfidence":0.7076640506673532},"dddddddd-0000-0000-0000-000000000004":{"gender":"female","source":"camera","metrics":{"chinAngle":152.83824125495107,"eyeAspect":0.4268166083452095,"browSpacing":0.22250360676653125,"gonialAngle":169.60574623640886,"midFaceRatio":0.2598658454439405,"foreheadWidth":0.9407819412751437,"cheekboneWidth":0.7831643551997435,"eyeCanthalTilt":7.03247204260154,"faceTaperRatio":0.6644412203126768,"lowerFaceRatio":0.4027109030122764,"philtrumLength":0.1013863081953779,"upperFaceRatio":0.36155063872360427,"browEyeDistance":0.13245618249811292,"eyeFissureRatio":0.26431229757957586,"faceAspectRatio":1.2427455893899688,"mouthWidthRatio":0.3117833940522085,"nasalWidthRatio":0.8229672996899082,"eyebrowCurvature":0.039683700649919,"eyebrowThickness":0.040549984276413244,"lipFullnessRatio":0.14536536570954395,"mouthCornerAngle":5.7818236265696035,"nasalHeightRatio":0.3407317523646854,"intercanthalRatio":0.2190690021781919,"lowerFaceFullness":0.5398531478711238,"eyebrowTiltDirection":0.01930693490076345,"upperVsLowerLipRatio":0.4749743992294954},"ageGroup":"30s","isMyFace":false,"ethnicity":"eastAsian","faceShape":"heart","timestamp":"2026-07-18T17:35:03.371729","thumbnailKey":"thumbnails/202608/758ebb90-ddd4-4fef-bd5f-167a4ef20070.png","schemaVersion":1,"thumbnailPath":null,"faceShapeLabel":"Heart","faceShapeConfidence":0.7076640506673532},"dddddddd-0000-0000-0000-000000000005":{"gender":"female","source":"camera","metrics":{"chinAngle":182.1465494142747,"eyeAspect":0.3361995033206268,"browSpacing":0.2429992966183192,"gonialAngle":127.66794211564739,"midFaceRatio":0.25991663041048346,"foreheadWidth":0.9282896519353356,"cheekboneWidth":0.8922661697773924,"eyeCanthalTilt":7.829204167488774,"faceTaperRatio":0.7447578266347256,"lowerFaceRatio":0.3552959175950408,"philtrumLength":0.07775282497912736,"upperFaceRatio":0.3079178410835001,"browEyeDistance":0.1672565267695953,"eyeFissureRatio":0.21012947665374038,"faceAspectRatio":1.0381605723604321,"mouthWidthRatio":0.26469960729484354,"nasalWidthRatio":0.7802098476568045,"eyebrowCurvature":0.0399839004494278,"eyebrowThickness":0.03032463407587662,"lipFullnessRatio":0.13527849033884162,"mouthCornerAngle":6.666888564106781,"nasalHeightRatio":0.28260682230988443,"intercanthalRatio":0.3087760550043385,"lowerFaceFullness":0.5595895048157217,"eyebrowTiltDirection":0.018271904464264167,"upperVsLowerLipRatio":0.6379757755997693},"ageGroup":"30s","isMyFace":false,"ethnicity":"eastAsian","faceShape":"heart","timestamp":"2026-07-18T17:35:03.371729","thumbnailKey":"thumbnails/202608/1eae94a3-0834-4533-88b5-34b9db4a0b6f.png","schemaVersion":1,"thumbnailPath":null,"faceShapeLabel":"Heart","faceShapeConfidence":0.7076640506673532},"dddddddd-0000-0000-0000-000000000006":{"gender":"male","source":"camera","metrics":{"chinAngle":151.34915716739403,"eyeAspect":0.18782937124491653,"browSpacing":0.20417046528697683,"gonialAngle":118.8827717885427,"midFaceRatio":0.3115101478709787,"foreheadWidth":0.7006654710892273,"cheekboneWidth":0.7986744633924778,"eyeCanthalTilt":1.2913015692466643,"faceTaperRatio":0.7415788371984045,"lowerFaceRatio":0.5034129789532219,"philtrumLength":0.10300218808015231,"upperFaceRatio":0.2808775507371988,"browEyeDistance":0.1378968865188188,"eyeFissureRatio":0.21927733585435566,"faceAspectRatio":1.329228582507107,"mouthWidthRatio":0.3013702550074409,"nasalWidthRatio":1.2363929896971115,"eyebrowCurvature":0.03718994177296613,"eyebrowThickness":0.036566485489542104,"lipFullnessRatio":0.09936476218328145,"mouthCornerAngle":-2.160416037725222,"nasalHeightRatio":0.23803620156492925,"intercanthalRatio":0.30157220283058706,"lowerFaceFullness":0.4951389214537642,"eyebrowTiltDirection":-0.014878133632020389,"upperVsLowerLipRatio":0.6282236706969255},"ageGroup":"30s","isMyFace":false,"ethnicity":"eastAsian","faceShape":"oblong","timestamp":"2026-07-18T00:19:04.712201","thumbnailKey":"thumbnails/202608/198ca8ac-31fe-4db9-a299-ba79fe488843.png","schemaVersion":1,"thumbnailPath":null,"faceShapeLabel":"Oblong","lateralMetrics":{"lowerLipEline":-0.0050179386038028545,"upperLipEline":0.005771631087253415,"dorsalConvexity":0.012360025295990652,"facialConvexity":14.79407549669792,"nasolabialAngle":153.89742492320815,"mentolabialAngle":153.5793512555888,"nasofrontalAngle":149.5662316684836,"noseTipProjection":0.30335433649095306},"faceShapeConfidence":0.9999940261407351},"dddddddd-0000-0000-0000-000000000008":{"gender":"female","source":"camera","metrics":{"chinAngle":157.37661324824708,"eyeAspect":0.4017317672729962,"browSpacing":0.21371263888162473,"gonialAngle":157.12044632158896,"midFaceRatio":0.3211853834811016,"foreheadWidth":0.7783239018726469,"cheekboneWidth":0.9527773470152737,"eyeCanthalTilt":6.391251444743081,"faceTaperRatio":0.6315510055210889,"lowerFaceRatio":0.3907466145951008,"philtrumLength":0.08035449990887678,"upperFaceRatio":0.28059832822416886,"browEyeDistance":0.15118075146778207,"eyeFissureRatio":0.18337242055353759,"faceAspectRatio":1.0700928035804387,"mouthWidthRatio":0.3656492583937061,"nasalWidthRatio":0.6587255814050239,"eyebrowCurvature":0.04740731181461799,"eyebrowThickness":0.04176671193280046,"lipFullnessRatio":0.12521232915970293,"mouthCornerAngle":5.9958710768328585,"nasalHeightRatio":0.2934943080870388,"intercanthalRatio":0.22687985916287798,"lowerFaceFullness":0.4369632264441633,"eyebrowTiltDirection":0.015264783897541651,"upperVsLowerLipRatio":0.4789761654756184},"ageGroup":"30s","isMyFace":false,"ethnicity":"eastAsian","faceShape":"heart","timestamp":"2026-07-18T17:35:03.371729","thumbnailKey":"thumbnails/202608/488c3477-1b5f-45b5-859e-66216ad4ef2e.png","schemaVersion":1,"thumbnailPath":null,"faceShapeLabel":"Heart","faceShapeConfidence":0.7076640506673532}}$j$::jsonb,
+  $j${"pairs":[{"a":2,"b":5,"band":0,"score":91},{"a":3,"b":5,"band":0,"score":91},{"a":2,"b":6,"band":0,"score":91},{"a":1,"b":5,"band":1,"score":88},{"a":3,"b":6,"band":1,"score":88},{"a":4,"b":7,"band":1,"score":88},{"a":3,"b":7,"band":1,"score":87},{"a":4,"b":5,"band":1,"score":86},{"a":2,"b":7,"band":1,"score":84},{"a":3,"b":8,"band":2,"score":81},{"a":1,"b":8,"band":2,"score":80},{"a":4,"b":6,"band":2,"score":80},{"a":1,"b":6,"band":2,"score":78},{"a":1,"b":7,"band":2,"score":72},{"a":2,"b":8,"band":3,"score":60},{"a":4,"b":8,"band":3,"score":54}],"players":[{"name":"홍청","slot":1,"gender":"male"},{"name":"리수하","slot":2,"gender":"male"},{"name":"강도윤","slot":3,"gender":"male"},{"name":"김학수","slot":4,"gender":"male"},{"name":"방하늘","slot":5,"gender":"female"},{"name":"선우은","slot":6,"gender":"female"},{"name":"강서연","slot":7,"gender":"female"},{"name":"현수아","slot":8,"gender":"female"}]}$j$::jsonb);
 
-  raise notice '데모 방 6개 생성 완료 — ④·⑥은 리수하 계정 앱에서 열면 발표됩니다';
-end $$;
+insert into public.team_members (team_id, user_id, slot_no, gender, alias, is_owner, joined_at) values
+  ('5eed0002-0000-4000-8000-000000000002', '09434d9c-7aa6-4e38-a687-369fedd6dc48', 1, 'male', '홍청', false, now() - interval '12863 minutes'),
+  ('5eed0002-0000-4000-8000-000000000002', '7ad873cd-fd27-4792-8913-be6ca36f97b5', 2, 'male', '리수하', true, now() - interval '12839 minutes'),
+  ('5eed0002-0000-4000-8000-000000000002', 'dddddddd-0000-0000-0000-000000000006', 3, 'male', '강도윤', false, now() - interval '12815 minutes'),
+  ('5eed0002-0000-4000-8000-000000000002', '65f5c32d-8065-4afc-bcd9-a93635caffe7', 4, 'male', '김학수', false, now() - interval '12791 minutes'),
+  ('5eed0002-0000-4000-8000-000000000002', 'dddddddd-0000-0000-0000-000000000005', 5, 'female', '방하늘', false, now() - interval '12767 minutes'),
+  ('5eed0002-0000-4000-8000-000000000002', 'dddddddd-0000-0000-0000-000000000004', 6, 'female', '선우은', false, now() - interval '12743 minutes'),
+  ('5eed0002-0000-4000-8000-000000000002', 'dddddddd-0000-0000-0000-000000000003', 7, 'female', '강서연', false, now() - interval '12719 minutes'),
+  ('5eed0002-0000-4000-8000-000000000002', 'dddddddd-0000-0000-0000-000000000008', 8, 'female', '현수아', false, now() - interval '12695 minutes');
 
--- 확인 — 6행: 상태·인원·snapshot 유무.
+insert into public.team_matches (team_id, user_a, user_b, a_consent, b_consent, opened_at, a_left, b_left) values
+  ('5eed0002-0000-4000-8000-000000000002', '7ad873cd-fd27-4792-8913-be6ca36f97b5', 'dddddddd-0000-0000-0000-000000000005', null, null, null, false, false);
+
+-- ── 우리회사 찐 케미가 누구냐
+insert into public.teams (id, owner_id, title, password, room_kind, max_players,
+                          age_min, age_max, status, views,
+                          started_at, closed_at, created_at, updated_at,
+                          chemistry_snapshot, result_payload) values (
+  '5eed0003-0000-4000-8000-000000000003', 'dddddddd-0000-0000-0000-000000000002', '우리회사 찐 케미가 누구냐', null,
+  'all', 8, 30, 40, 'completed', 0,
+  now() - interval '13936 minutes', now() - interval '13936 minutes', now() - interval '11056 minutes', now() - interval '11053 minutes',
+  $j${"blocked":[],"chatted":[],"09434d9c-7aa6-4e38-a687-369fedd6dc48":{"gender":"male","source":"album","metrics":{"chinAngle":167.1369984696697,"eyeAspect":0.33909517997557004,"browSpacing":0.213852665648767,"gonialAngle":143.716185964875,"midFaceRatio":0.3536258444926853,"foreheadWidth":0.9259219879774712,"cheekboneWidth":0.946838745408227,"eyeCanthalTilt":7.0548973320206665,"faceTaperRatio":0.7530147468585692,"lowerFaceRatio":0.27886273663310024,"philtrumLength":0.0912313466408098,"upperFaceRatio":0.36828419870783946,"browEyeDistance":0.15410190891934106,"eyeFissureRatio":0.21663827413924105,"faceAspectRatio":1.130861456282953,"mouthWidthRatio":0.3656920508857104,"nasalWidthRatio":0.9284617257646304,"eyebrowCurvature":0.04018341003795681,"eyebrowThickness":0.04051202602010371,"lipFullnessRatio":0.07398559492106607,"mouthCornerAngle":5.836630991595323,"nasalHeightRatio":0.33659788400453544,"intercanthalRatio":0.2802545288512845,"lowerFaceFullness":0.46842187712764505,"eyebrowTiltDirection":0.012506218855810849,"upperVsLowerLipRatio":0.6767606107828115},"ageGroup":"20s","ethnicity":"eastAsian","faceShape":"round","timestamp":"2026-07-29T00:23:57.470575","thumbnailKey":"thumbnails/202607/790b6324-970d-4050-9388-c69c19856a24.jpg","schemaVersion":1,"faceShapeLabel":"Round","faceShapeConfidence":0.9976913261768379},"dddddddd-0000-0000-0000-000000000001":{"gender":"male","source":"album","metrics":{"chinAngle":169.7530859151175,"eyeAspect":0.3600938318256236,"browSpacing":0.17543206538362419,"gonialAngle":140.8813756594521,"midFaceRatio":0.30615936325250787,"foreheadWidth":0.8451202557149425,"cheekboneWidth":0.8977187757158849,"eyeCanthalTilt":3.734129852801733,"faceTaperRatio":0.798085211338901,"lowerFaceRatio":0.40810491791774794,"philtrumLength":0.09770254732798457,"upperFaceRatio":0.2893235666365435,"browEyeDistance":0.13444465205931355,"eyeFissureRatio":0.19585158970061628,"faceAspectRatio":1.235805117466694,"mouthWidthRatio":0.3074920679951643,"nasalWidthRatio":0.8946489292943053,"eyebrowCurvature":0.03877789192043486,"eyebrowThickness":0.03254196001670609,"lipFullnessRatio":0.10704501102273545,"mouthCornerAngle":-3.0788897843345446,"nasalHeightRatio":0.2776432347197778,"intercanthalRatio":0.23791406038691792,"lowerFaceFullness":0.5104658454477863,"eyebrowTiltDirection":-0.012630575831919488,"upperVsLowerLipRatio":0.720291371390609},"ageGroup":"30s","ethnicity":"eastAsian","faceShape":"oval","timestamp":"2026-07-29T01:41:55.308628","thumbnailKey":"thumbnails/202607/397e0e23-52cd-493d-ac65-9e75d8bc4f23.jpg","schemaVersion":1,"faceShapeLabel":"Oval","faceShapeConfidence":0.5299660224078532},"dddddddd-0000-0000-0000-000000000002":{"gender":"male","source":"camera","metrics":{"chinAngle":185.97027878537332,"eyeAspect":0.2303749446675365,"browSpacing":0.1978888905599156,"gonialAngle":145.27885868124315,"midFaceRatio":0.31881323020553526,"foreheadWidth":0.7269733973411926,"cheekboneWidth":0.9584234995292658,"eyeCanthalTilt":0.9717569646305396,"faceTaperRatio":0.9595142169048231,"lowerFaceRatio":0.43291687344203184,"philtrumLength":0.08118340060327445,"upperFaceRatio":0.24112415436013476,"browEyeDistance":0.146254640557781,"eyeFissureRatio":0.16391995700840128,"faceAspectRatio":1.6282844731939323,"mouthWidthRatio":0.44916251611142266,"nasalWidthRatio":0.9593666062720686,"eyebrowCurvature":0.033267283321869234,"eyebrowThickness":0.030260930857177196,"lipFullnessRatio":0.10787410955736118,"mouthCornerAngle":-2.5987948849857663,"nasalHeightRatio":0.30174163580639285,"intercanthalRatio":0.31523305049175043,"lowerFaceFullness":0.574842277036783,"eyebrowTiltDirection":-0.016386620234359026,"upperVsLowerLipRatio":0.5744554446143036},"ageGroup":"30s","isMyFace":false,"ethnicity":"eastAsian","faceShape":"oblong","timestamp":"2026-07-18T00:19:04.712201","thumbnailKey":"thumbnails/202608/1e10cde5-66e3-4a34-97d3-37c67a864d9a.png","schemaVersion":1,"thumbnailPath":null,"faceShapeLabel":"Oblong","lateralMetrics":{"lowerLipEline":-0.005256253050429466,"upperLipEline":0.004813488395685231,"dorsalConvexity":0.011695947582638526,"facialConvexity":18.44669192382977,"nasolabialAngle":167.21067324034343,"mentolabialAngle":141.6658564101376,"nasofrontalAngle":194.95639429079773,"noseTipProjection":0.2605966442616493},"faceShapeConfidence":0.9999940261407351},"dddddddd-0000-0000-0000-000000000003":{"gender":"female","source":"camera","metrics":{"chinAngle":163.96142519745567,"eyeAspect":0.3699621434707621,"browSpacing":0.200890897288586,"gonialAngle":126.76763905636682,"midFaceRatio":0.3424496878026603,"foreheadWidth":1.107560191690044,"cheekboneWidth":0.8146827824111839,"eyeCanthalTilt":7.340971929023876,"faceTaperRatio":0.6686290933584409,"lowerFaceRatio":0.31487791382991254,"philtrumLength":0.07541069800198326,"upperFaceRatio":0.2735691339168938,"browEyeDistance":0.1320787594405092,"eyeFissureRatio":0.26263572217847075,"faceAspectRatio":1.4073751571429438,"mouthWidthRatio":0.3483906923444989,"nasalWidthRatio":0.8970951417583034,"eyebrowCurvature":0.04388221293854343,"eyebrowThickness":0.03938152186853201,"lipFullnessRatio":0.12457528119031792,"mouthCornerAngle":6.414041515324981,"nasalHeightRatio":0.35564680214989175,"intercanthalRatio":0.2561152027198475,"lowerFaceFullness":0.4391252679891354,"eyebrowTiltDirection":0.01980190026056604,"upperVsLowerLipRatio":0.4753392151614955},"ageGroup":"30s","isMyFace":false,"ethnicity":"eastAsian","faceShape":"heart","timestamp":"2026-07-18T17:35:03.371729","thumbnailKey":"dummy/female/1.jpg","schemaVersion":1,"thumbnailPath":null,"faceShapeLabel":"Heart","faceShapeConfidence":0.7076640506673532},"dddddddd-0000-0000-0000-000000000005":{"gender":"female","source":"camera","metrics":{"chinAngle":182.1465494142747,"eyeAspect":0.3361995033206268,"browSpacing":0.2429992966183192,"gonialAngle":127.66794211564739,"midFaceRatio":0.25991663041048346,"foreheadWidth":0.9282896519353356,"cheekboneWidth":0.8922661697773924,"eyeCanthalTilt":7.829204167488774,"faceTaperRatio":0.7447578266347256,"lowerFaceRatio":0.3552959175950408,"philtrumLength":0.07775282497912736,"upperFaceRatio":0.3079178410835001,"browEyeDistance":0.1672565267695953,"eyeFissureRatio":0.21012947665374038,"faceAspectRatio":1.0381605723604321,"mouthWidthRatio":0.26469960729484354,"nasalWidthRatio":0.7802098476568045,"eyebrowCurvature":0.0399839004494278,"eyebrowThickness":0.03032463407587662,"lipFullnessRatio":0.13527849033884162,"mouthCornerAngle":6.666888564106781,"nasalHeightRatio":0.28260682230988443,"intercanthalRatio":0.3087760550043385,"lowerFaceFullness":0.5595895048157217,"eyebrowTiltDirection":0.018271904464264167,"upperVsLowerLipRatio":0.6379757755997693},"ageGroup":"30s","isMyFace":false,"ethnicity":"eastAsian","faceShape":"heart","timestamp":"2026-07-18T17:35:03.371729","thumbnailKey":"thumbnails/202608/1eae94a3-0834-4533-88b5-34b9db4a0b6f.png","schemaVersion":1,"thumbnailPath":null,"faceShapeLabel":"Heart","faceShapeConfidence":0.7076640506673532},"dddddddd-0000-0000-0000-000000000006":{"gender":"male","source":"camera","metrics":{"chinAngle":151.34915716739403,"eyeAspect":0.18782937124491653,"browSpacing":0.20417046528697683,"gonialAngle":118.8827717885427,"midFaceRatio":0.3115101478709787,"foreheadWidth":0.7006654710892273,"cheekboneWidth":0.7986744633924778,"eyeCanthalTilt":1.2913015692466643,"faceTaperRatio":0.7415788371984045,"lowerFaceRatio":0.5034129789532219,"philtrumLength":0.10300218808015231,"upperFaceRatio":0.2808775507371988,"browEyeDistance":0.1378968865188188,"eyeFissureRatio":0.21927733585435566,"faceAspectRatio":1.329228582507107,"mouthWidthRatio":0.3013702550074409,"nasalWidthRatio":1.2363929896971115,"eyebrowCurvature":0.03718994177296613,"eyebrowThickness":0.036566485489542104,"lipFullnessRatio":0.09936476218328145,"mouthCornerAngle":-2.160416037725222,"nasalHeightRatio":0.23803620156492925,"intercanthalRatio":0.30157220283058706,"lowerFaceFullness":0.4951389214537642,"eyebrowTiltDirection":-0.014878133632020389,"upperVsLowerLipRatio":0.6282236706969255},"ageGroup":"30s","isMyFace":false,"ethnicity":"eastAsian","faceShape":"oblong","timestamp":"2026-07-18T00:19:04.712201","thumbnailKey":"thumbnails/202608/198ca8ac-31fe-4db9-a299-ba79fe488843.png","schemaVersion":1,"thumbnailPath":null,"faceShapeLabel":"Oblong","lateralMetrics":{"lowerLipEline":-0.0050179386038028545,"upperLipEline":0.005771631087253415,"dorsalConvexity":0.012360025295990652,"facialConvexity":14.79407549669792,"nasolabialAngle":153.89742492320815,"mentolabialAngle":153.5793512555888,"nasofrontalAngle":149.5662316684836,"noseTipProjection":0.30335433649095306},"faceShapeConfidence":0.9999940261407351},"dddddddd-0000-0000-0000-000000000008":{"gender":"female","source":"camera","metrics":{"chinAngle":157.37661324824708,"eyeAspect":0.4017317672729962,"browSpacing":0.21371263888162473,"gonialAngle":157.12044632158896,"midFaceRatio":0.3211853834811016,"foreheadWidth":0.7783239018726469,"cheekboneWidth":0.9527773470152737,"eyeCanthalTilt":6.391251444743081,"faceTaperRatio":0.6315510055210889,"lowerFaceRatio":0.3907466145951008,"philtrumLength":0.08035449990887678,"upperFaceRatio":0.28059832822416886,"browEyeDistance":0.15118075146778207,"eyeFissureRatio":0.18337242055353759,"faceAspectRatio":1.0700928035804387,"mouthWidthRatio":0.3656492583937061,"nasalWidthRatio":0.6587255814050239,"eyebrowCurvature":0.04740731181461799,"eyebrowThickness":0.04176671193280046,"lipFullnessRatio":0.12521232915970293,"mouthCornerAngle":5.9958710768328585,"nasalHeightRatio":0.2934943080870388,"intercanthalRatio":0.22687985916287798,"lowerFaceFullness":0.4369632264441633,"eyebrowTiltDirection":0.015264783897541651,"upperVsLowerLipRatio":0.4789761654756184},"ageGroup":"30s","isMyFace":false,"ethnicity":"eastAsian","faceShape":"heart","timestamp":"2026-07-18T17:35:03.371729","thumbnailKey":"thumbnails/202608/488c3477-1b5f-45b5-859e-66216ad4ef2e.png","schemaVersion":1,"thumbnailPath":null,"faceShapeLabel":"Heart","faceShapeConfidence":0.7076640506673532},"dddddddd-0000-0000-0000-000000000009":{"gender":"female","source":"camera","metrics":{"chinAngle":135.24203981197337,"eyeAspect":0.49129246249417885,"browSpacing":0.24460801964689335,"gonialAngle":149.39866629447414,"midFaceRatio":0.3258333636568878,"foreheadWidth":0.9796815979111396,"cheekboneWidth":1.0418857670791826,"eyeCanthalTilt":6.383393236058448,"faceTaperRatio":0.6037009911333243,"lowerFaceRatio":0.3066656037848724,"philtrumLength":0.09675407744232298,"upperFaceRatio":0.3867399582593572,"browEyeDistance":0.16246571732912923,"eyeFissureRatio":0.2237655526045274,"faceAspectRatio":1.1820256289514426,"mouthWidthRatio":0.32182189202130196,"nasalWidthRatio":0.753942571406195,"eyebrowCurvature":0.037636218532186856,"eyebrowThickness":0.04068540079792633,"lipFullnessRatio":0.1196894801441093,"mouthCornerAngle":4.936633821420044,"nasalHeightRatio":0.31559329305449507,"intercanthalRatio":0.2290787066961679,"lowerFaceFullness":0.4257052171147686,"eyebrowTiltDirection":0.02042022647530363,"upperVsLowerLipRatio":0.6877125539570129},"ageGroup":"30s","isMyFace":false,"ethnicity":"eastAsian","faceShape":"heart","timestamp":"2026-07-18T17:35:03.371729","thumbnailKey":"dummy/female/5.jpg","schemaVersion":1,"thumbnailPath":null,"faceShapeLabel":"Heart","faceShapeConfidence":0.7076640506673532}}$j$::jsonb,
+  $j${"pairs":[{"a":1,"b":4,"band":0,"score":92},{"a":5,"b":8,"band":0,"score":91},{"a":7,"b":8,"band":0,"score":91},{"a":4,"b":8,"band":0,"score":91},{"a":4,"b":7,"band":0,"score":91},{"a":1,"b":8,"band":1,"score":90},{"a":1,"b":3,"band":1,"score":90},{"a":3,"b":8,"band":1,"score":90},{"a":2,"b":8,"band":1,"score":89},{"a":1,"b":2,"band":1,"score":88},{"a":4,"b":5,"band":1,"score":87},{"a":1,"b":5,"band":1,"score":86},{"a":5,"b":7,"band":1,"score":84},{"a":3,"b":7,"band":1,"score":83},{"a":1,"b":7,"band":2,"score":81},{"a":4,"b":6,"band":2,"score":81},{"a":2,"b":7,"band":2,"score":81},{"a":6,"b":8,"band":2,"score":80},{"a":3,"b":6,"band":2,"score":79},{"a":3,"b":5,"band":2,"score":64},{"a":2,"b":5,"band":3,"score":57},{"a":5,"b":6,"band":3,"score":55},{"a":6,"b":7,"band":3,"score":55},{"a":2,"b":6,"band":3,"score":54},{"a":1,"b":6,"band":3,"score":51},{"a":3,"b":4,"band":3,"score":45},{"a":2,"b":4,"band":3,"score":41},{"a":2,"b":3,"band":3,"score":39}],"players":[{"name":"홍청","slot":1,"gender":"male"},{"name":"최민석","slot":2,"gender":"male"},{"name":"황준호","slot":3,"gender":"male"},{"name":"강도윤","slot":4,"gender":"male"},{"name":"강서연","slot":5,"gender":"female"},{"name":"현수아","slot":6,"gender":"female"},{"name":"김유진","slot":7,"gender":"female"},{"name":"방하늘","slot":8,"gender":"female"}]}$j$::jsonb);
+
+insert into public.team_members (team_id, user_id, slot_no, gender, alias, is_owner, joined_at) values
+  ('5eed0003-0000-4000-8000-000000000003', '09434d9c-7aa6-4e38-a687-369fedd6dc48', 1, 'male', '홍청', false, now() - interval '14176 minutes'),
+  ('5eed0003-0000-4000-8000-000000000003', 'dddddddd-0000-0000-0000-000000000002', 2, 'male', '최민석', true, now() - interval '14152 minutes'),
+  ('5eed0003-0000-4000-8000-000000000003', 'dddddddd-0000-0000-0000-000000000001', 3, 'male', '황준호', false, now() - interval '14128 minutes'),
+  ('5eed0003-0000-4000-8000-000000000003', 'dddddddd-0000-0000-0000-000000000006', 4, 'male', '강도윤', false, now() - interval '14104 minutes'),
+  ('5eed0003-0000-4000-8000-000000000003', 'dddddddd-0000-0000-0000-000000000003', 5, 'female', '강서연', false, now() - interval '14080 minutes'),
+  ('5eed0003-0000-4000-8000-000000000003', 'dddddddd-0000-0000-0000-000000000008', 6, 'female', '현수아', false, now() - interval '14056 minutes'),
+  ('5eed0003-0000-4000-8000-000000000003', 'dddddddd-0000-0000-0000-000000000009', 7, 'female', '김유진', false, now() - interval '14032 minutes'),
+  ('5eed0003-0000-4000-8000-000000000003', 'dddddddd-0000-0000-0000-000000000005', 8, 'female', '방하늘', false, now() - interval '14008 minutes');
+
+insert into public.team_matches (team_id, user_a, user_b, a_consent, b_consent, opened_at, a_left, b_left) values
+  ('5eed0003-0000-4000-8000-000000000003', '09434d9c-7aa6-4e38-a687-369fedd6dc48', 'dddddddd-0000-0000-0000-000000000006', true, true, now() - interval '13876 minutes', false, false);
+
+insert into public.team_messages (id, team_id, sender_id, body, created_at) values
+  ('db6d31f9-76f7-4ec2-9454-34c1594ae9ac', '5eed0003-0000-4000-8000-000000000003', 'dddddddd-0000-0000-0000-000000000006', '우리가 1등이라니 좀 웃기네요 ㅋㅋ', now() - interval '13816 minutes'),
+  ('c1b2a77c-6168-41cb-927f-194cc066bc6e', '5eed0003-0000-4000-8000-000000000003', '09434d9c-7aa6-4e38-a687-369fedd6dc48', '저도 결과 보고 한참 봤습니다.', now() - interval '13792 minutes'),
+  ('b16f1ce4-6c0c-4618-b768-83eec84b5213', '5eed0003-0000-4000-8000-000000000003', 'dddddddd-0000-0000-0000-000000000006', '점심 같이 하실래요? 3층 새로 생긴 데 가보려고요.', now() - interval '13768 minutes'),
+  ('769cf830-7983-408b-a87b-25e06048d51e', '5eed0003-0000-4000-8000-000000000003', '09434d9c-7aa6-4e38-a687-369fedd6dc48', '굿, 내일 12시에 맛있는거 먹자.', now() - interval '13744 minutes');
+
+-- ── 케미, 그것이 알고 싶다
+insert into public.teams (id, owner_id, title, password, room_kind, max_players,
+                          age_min, age_max, status, views,
+                          started_at, closed_at, created_at, updated_at,
+                          chemistry_snapshot, result_payload) values (
+  '3ca78f1c-95f8-4385-a5b5-49ec2d8ffb2a', '09434d9c-7aa6-4e38-a687-369fedd6dc48', '케미, 그것이 알고 싶다', null,
+  'all', 8, 30, 30, 'recruiting', 18,
+  null, null, now() - interval '1155 minutes', now() - interval '5 minutes',
+  null,
+  null);
+
+insert into public.team_members (team_id, user_id, slot_no, gender, alias, is_owner, joined_at) values
+  ('3ca78f1c-95f8-4385-a5b5-49ec2d8ffb2a', '09434d9c-7aa6-4e38-a687-369fedd6dc48', 1, 'male', '홍청', true, now() - interval '2595 minutes'),
+  ('3ca78f1c-95f8-4385-a5b5-49ec2d8ffb2a', '17f69102-b540-4bfd-8e62-cf98bc4564b1', 2, 'male', 'jinseokoh', false, now() - interval '2572 minutes'),
+  ('3ca78f1c-95f8-4385-a5b5-49ec2d8ffb2a', '7ad873cd-fd27-4792-8913-be6ca36f97b5', 3, 'male', '리수하', false, now() - interval '59 minutes');
+
+commit;
+
+-- 확인 — 방별 상태·인원·결과 유무. 기대: 아래 방 개수만큼, players 가 위 주석과 일치.
 select t.title, t.room_kind, t.status, t.max_players,
        (select count(*) from public.team_members tm where tm.team_id = t.id) as players,
        (t.chemistry_snapshot is not null) as snapshot,
-       (t.password is not null) as private
+       (t.result_payload    is not null) as payload,
+       (select count(*) from public.team_messages g where g.team_id = t.id) as messages
   from public.teams t
  order by t.created_at;
