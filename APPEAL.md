@@ -29,12 +29,21 @@ App Review Board 정식 appeal 문안.
 | | 상태 |
 | --- | --- |
 | 그룹 목록을 관상 없이 볼 수 있게 (`chemistry_screen.dart`) | ✅ 완료 |
+| 관상·궁합 탭도 게이트 제거 — 등록 전후로 화면 구조가 안 바뀐다 | ✅ 완료 |
+| 빈 화면이 그 탭의 역할을 직접 말한다 (케미 = "그룹에서 나와 가장 맞는 사람을 점수로") | ✅ 완료 |
 | 리뷰 노트에 데모 계정 + 사람이 들어있는 방 + 단계 | ⬜ **제출 전 필수** |
 
 전에는 케미 탭이 관상 미등록 상태에서 어깨 으쓱 그림과 *"내 관상을 등록하면 케미
 그룹에 참가할 수 있습니다"* 만 보여줬다. 앱이 심사관에게 **관상이 선행조건이라고
 직접 말하고 있었다.** 지금은 목록·상세·케미 개념이 전부 열려 있고, 관상은 **참가
 버튼을 눌렀을 때** 요구된다 (`team_detail_screen.dart::_join`).
+
+관상·궁합 탭도 같은 원칙으로 정리했다. 예전엔 미등록이면 탭 바를 감추고 등록
+안내 화면으로 통째로 갈아치웠는데, 지금은 **등록 여부와 무관하게 탭 구조가
+그대로**다. 그리고 각 빈 탭이 자기가 무엇을 담는 자리인지 직접 말한다 — 케미 탭은
+*"그룹 내에서 나와 조화가 가장 잘 맞는 사람이 누구인지 점수로 알려줍니다"* 로
+열린다. **심사관이 방에 들어가지 않아도 첫 화면에서 제품 정의를 읽는다.** 편지가
+아니라 화면이 이긴다면, 화면이 같은 말을 하게 만들어야 한다.
 
 ### 0.2 앱 이름 — 그대로 두고 편지에서 정면으로 설명한다
 
@@ -243,11 +252,21 @@ with applications that are complete as a single-user daily reading. This
 app is not complete as a single-user experience at all.
 
 We recognize the reviewer may not have reached the group flow. Until
-this build, the room list was gated behind registering one's own face,
-which meant a reviewer testing alone would have seen only the individual
-reading. That gate is removed in this submission, and we have included
-review notes with a demo account and a populated room so the group flow
-can be exercised directly.
+this build, a reviewer who had not registered a face was shown a
+registration prompt in place of the app's own screens, which meant
+testing alone surfaced only the individual reading.
+
+That is changed in this submission. The app no longer replaces its
+screens with a prompt. Every tab keeps its structure whether or not a
+face is registered, and each one states in plain language what it holds
+and what it is for. The chemistry tab opens by saying that it scores
+who, within a group, fits best with you — a reviewer reads the product's
+purpose on the first screen without registering anything or joining
+anything. The open-room list itself is fully browsable, with real rooms
+in it; a face is requested only at the moment one taps to join.
+
+We have also included review notes with a demo account and a populated
+room so the group flow can be exercised directly.
 
 WHAT WE ARE ASKING
 
