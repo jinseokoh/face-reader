@@ -19,9 +19,9 @@ const DELAY_BLUR_VARIANTS: Variants = {
 }
 
 /**
- * 오늘의 관상 그리드 필터 — 출시 전 테스트 스위치 (baseline §14 daily_faces).
+ * 오늘 등록된 관상 그리드 필터 — 출시 전 테스트 스위치 (baseline §14 daily_faces).
  *   todayOnly  — KST 오늘 분석(updated_at)만
- *   optedOnly  — 설정 > 오늘의 관상 공개 를 켠 사용자만
+ *   optedOnly  — 설정 > 오늘 등록된 관상 공개 를 켠 사용자만
  *   myFaceOnly — 내 관상(my-face) 행만
  * 오픈 시 나머지 두 값도 true 로.
  */
@@ -151,7 +151,7 @@ export default function Index({ loaderData }: Route.ComponentProps) {
 
       {cards.length > 0 && (
         <section className="daily-faces">
-          <h2 className="daily-faces-title">오늘의 관상</h2>
+          <h2 className="daily-faces-title">오늘 등록된 관상</h2>
           <p className="daily-faces-caption">
             <span className="daily-faces-bonus-pill">
               관상 노출을 허용하시면 보너스 3코인 지급합니다.

@@ -273,7 +273,7 @@ const DEMO_RAW_METRICS: Record<string, number> = {
   browSpacing: 0.18,
 };
 
-// ── 오늘의 관상 — 홈 그리드 (routes/_index.tsx) ──────────────────────────────
+// ── 오늘 등록된 관상 — 홈 그리드 (routes/_index.tsx) ──────────────────────────────
 
 export interface DailyFacesFilter {
   todayOnly: boolean;

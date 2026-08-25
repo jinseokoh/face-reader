@@ -171,13 +171,13 @@ class SettingsScreen extends ConsumerWidget {
               title: '회원 탈퇴',
               onTap: () => AccountDeletionDialog.show(context, ref),
             ),
-            // 오늘의 관상 공개는 v1 코퍼스에서만 노출한다 (app_config 의
+            // 오늘 등록된 관상 공개는 v1 코퍼스에서만 노출한다 (app_config 의
             // 플랫폼별 narrative_version 이 2 면 숨김). 회원 탈퇴 아래에 둔다.
             if (AppConfigService.instance.narrativeVersion ==
                 NarrativeVersion.v1)
               _menuItem(
                 icon: FontAwesomeIcons.calendarDay,
-                title: '오늘의 관상 공개',
+                title: '오늘 등록된 관상 공개',
                 trailingText: user.dailyFaceOptedIn ? '공개 중' : '비공개',
                 onTap: () => DailyFaceSheet.show(context),
               ),

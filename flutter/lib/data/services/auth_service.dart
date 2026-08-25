@@ -27,7 +27,7 @@ class AuthUser {
   /// 페이지에서 "카카오 계정으로 로그인됨" / "이메일로 로그인됨" 분기 표시.
   final String? provider;
 
-  /// 오늘의 관상 공개 opt-in (facely.kr 홈 그리드 노출) — users
+  /// 오늘 등록된 관상 공개 opt-in (facely.kr 홈 그리드 노출) — users
   /// .daily_face_opted_since 미러. null = 비공개, not null = 현재 연속 공개의
   /// 시작 시각 (연속 7일 유지 보너스 claim_daily_face_bonus RPC 판정 기준).
   /// 전환은 set_daily_face_opt_in RPC 만.
@@ -510,7 +510,7 @@ class AuthService {
     }
   }
 
-  /// 오늘의 관상 공개 전환 — set_daily_face_opt_in RPC (baseline §14).
+  /// 오늘 등록된 관상 공개 전환 — set_daily_face_opt_in RPC (baseline §14).
   /// 잠금 없음 — 언제든 전환 가능. 보너스는 선지급이 아니라 연속 7일 유지
   /// 달성 시 [claimDailyFaceBonus] 가 지급한다.
   Future<({bool ok, String? message})> setDailyFaceOptIn(bool optIn) async {

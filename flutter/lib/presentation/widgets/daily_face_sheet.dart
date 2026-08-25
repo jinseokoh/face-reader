@@ -9,9 +9,9 @@ import 'package:top_snackbar_flutter/top_snack_bar.dart';
 /// AppColors.success(2E7D32) 는 너무 진해 snackbar 와 톤이 어긋난다.
 const _kSwitchOn = Color(0xFF4CAF50);
 
-/// 설정 > 오늘의 관상 공개 — opt-in 전환 bottom sheet.
+/// 설정 > 오늘 등록된 관상 공개 — opt-in 전환 bottom sheet.
 ///
-/// 내 관상은 opt 여부와 무관하게 facely.kr "오늘의 관상"에 표시된다 —
+/// 내 관상은 opt 여부와 무관하게 facely.kr "오늘 등록된 관상"에 표시된다 —
 /// 공개를 켜면 원본 썸네일, 끄면 모자이크. 전환은 Switch 하나 (on 녹색 /
 /// off 무채색), 보너스(연속 7일 유지 시 3코인 · 최초 1회)는 테두리 박스로
 /// 강조. sheet 진입 시 claim RPC 로 달성분을 지급하고 수령 여부를 받아,
@@ -83,10 +83,10 @@ class _DailyFaceSheetState extends ConsumerState<DailyFaceSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(child: Text('오늘의 관상 공개', style: AppText.modalTitle)),
+            Center(child: Text('오늘 등록된 관상 공개', style: AppText.modalTitle)),
             const SizedBox(height: AppSpacing.xl),
             const Text(
-              '내 관상은 facely.kr 홈의 "오늘의 관상"에 썸네일과 나이대·성별·'
+              '내 관상은 facely.kr 홈의 "오늘 등록된 관상"에 썸네일과 나이대·성별·'
               '관상 유형으로 표시됩니다. 공개를 켜면 원본 썸네일로, 끄면 '
               '모자이크로 가려진 상태로 표시됩니다.',
               style: AppText.body,

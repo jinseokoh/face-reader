@@ -131,7 +131,7 @@ export function isShareKind(s: string): s is ShareKind {
   return s === "solo" || s === "compat";
 }
 
-// ── 오늘의 관상 — 홈 그리드 카드 (routes/_index.tsx) ─────────────────────────
+// ── 오늘 등록된 관상 — 홈 그리드 카드 (routes/_index.tsx) ─────────────────────────
 
 export interface DailyFaceCard {
   thumbUrl: string;
