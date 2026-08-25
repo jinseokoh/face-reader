@@ -12,7 +12,9 @@ App Review Board 정식 appeal 문안.
 | Submission ID | `e699a06d-897d-4775-ae4d-d613166e3d16` |
 | Apple ID | `6776864670` |
 | 1차 리젝 | 2026-06-07 · build 6 |
-| 2차 리젝 | 2026-08-12 · build 15 (**같은 Submission ID** → 새 심사가 아니라 템플릿 재확인) |
+| 2차 리젝 | 2026-08-12 · build 15 |
+| 3차 제출 | 2026-08-25 · **2.0.0 (18)** — 게이트 제거 + 2단계 리뷰 노트 |
+| Submission ID 주의 | ID 가 유지되는 것은 **ASC 제출 모델의 정상 동작**이다. 리젝된 제출이 열린 채 남고 거기에 항목을 갱신해 다시 넣는 구조라, 버전을 2.0.0 으로 올려도 새 ID 가 나지 않는다. 이걸 "애플이 대충 봤다"는 근거로 쓰면 안 된다 (2026-08-25 실측 확인) |
 | 제출 경로 | App Review Board appeal (Resolution Center 답장 아님) |
 | 출시 지역 | **대한민국 단독** — 편지의 ON DISTRIBUTION 논거 |
 | 앱 이름 | `관상은 과학이다` **변경 없음** — 편지에서 정면 설명 (§0.2) |
@@ -275,9 +277,10 @@ If the Board's determination is that this app falls within 4.3(b)
 regardless of the above, we would appreciate knowing which element is
 determinative — the physiognomy vocabulary itself, the app name, or
 something else. We would rather act on a specific criterion than
-resubmit on a guess. We have now submitted twice and received the same
-template both times, with the second review carrying the same Submission
-ID as the first.
+resubmit on a guess. We have now submitted three times and received the
+same template each time, most recently after removing the registration
+gate that we believe had kept the group flow out of the reviewer's
+reach.
 ```
 
 ---
@@ -417,12 +420,12 @@ FK cascade 로 사라진다 (team_members·team_matches·team_messages·team_rep
 
 | | |
 | --- | --- |
-| ✅ | 새 **버전 번호**로 빌드 (2.0.0+18) — 같은 버전에 빌드만 올리면 Submission ID 가 유지돼 템플릿 재확인만 돌아온다 |
-| ⬜ | App Store Connect 에 `2.0.0` 버전 레코드 생성 + 빌드 18 첨부 |
-| ⬜ | 스크린샷 교체 — 첫 3장을 그룹 케미로 (모집중 목록 → 매트릭스 → 랭킹된 페어) |
-| ⬜ | 리뷰 노트의 `<PW>` 기입 (§2) |
-| ⬜ | `web/db/tests/demo_teams.sql` 실행 — 방 6개·참가자 seed |
-| ⬜ | 출시 지역이 **대한민국 단독**으로 설정돼 있는지 확인 (편지 논거의 전제) |
+| ✅ | 새 **버전 번호**로 빌드·업로드 (2.0.0+18). Submission ID 는 그대로 유지된다 — 정상 동작이다 (§0 표 참조) |
+| ✅ | App Store Connect `2.0.0` + 빌드 18 첨부 · 2026-08-25 제출 완료 |
+| ✅ | 스크린샷 교체 (6.9" 1320×2868, 알파 제거) |
+| ✅ | 리뷰 노트 + 로그인 정보 (`chuckau@naver.com`) 기입 |
+| ✅ | 데모 데이터 — 운영 DB 에 이미 존재 (완료 방 3 + 모집중 1). 복구는 `web/db/tests/demo_teams.sql` |
+| ✅ | 대한민국 단독 배포 · 카테고리 소셜 네트워킹 · 한국 등급 15+ |
 | ✅ | 앱 이름 유지 + 편지에 ON THE APP NAME 문단 |
 | ✅ | 그룹 목록 게이트 제거 |
 | ✅ | 속성 라벨 정리 |
