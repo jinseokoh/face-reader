@@ -41,9 +41,9 @@ export async function loader({ context, params, request }: Route.LoaderArgs) {
     canonicalUrl: `${env.WEBAPP_BASE}/g/${params.id}`,
     // 링크 스크랩(카톡·문자 등) 미리보기 이미지 — /r/:id 와 동일하게 R2 CDN 서빙.
     ogImage: `${env.R2_CDN_BASE}/assets/og.png`,
-    // 웹 카카오 로그인·참여용 공개 config (anon key 는 공개키).
+    // 웹 카카오 로그인·참여용 공개 config (publishable key 는 공개키).
     supabaseUrl: env.SUPABASE_URL,
-    supabaseAnonKey: env.SUPABASE_ANON_KEY,
+    supabasePublishableKey: env.SUPABASE_PUBLISHABLE_KEY,
     cdnBase: env.R2_CDN_BASE,
   };
 }
@@ -101,7 +101,7 @@ export default function Group() {
           team={team}
           roster={data.roster}
           supabaseUrl={data.supabaseUrl}
-          supabaseAnonKey={data.supabaseAnonKey}
+          supabasePublishableKey={data.supabasePublishableKey}
           cdnBase={data.cdnBase}
           onActive={setWizardActive}
         />
@@ -408,7 +408,7 @@ function RevealFallback({
           return;
         }
         // 로그인 참가자면 정본 backfill (first-writer-wins, 실패 무해).
-        const sb = getSupabase(data.supabaseUrl, data.supabaseAnonKey);
+        const sb = getSupabase(data.supabaseUrl, data.supabasePublishableKey);
         const { data: session } = await sb.auth.getSession();
         if (session.session) {
           await submitTeamResult(sb, data.team.id, computed).catch(

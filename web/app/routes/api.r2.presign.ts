@@ -194,7 +194,7 @@ async function resolveOwner(
     return { ok: true, owner: parsed.scope };
   }
   const res = await fetch(`${env.SUPABASE_URL}/auth/v1/user`, {
-    headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: auth },
+    headers: { apikey: env.SUPABASE_PUBLISHABLE_KEY, Authorization: auth },
   });
   if (!res.ok) return { ok: false };
   const user = (await res.json()) as { id?: string };

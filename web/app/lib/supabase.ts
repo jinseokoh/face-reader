@@ -9,8 +9,8 @@ export async function fetchMetrics(env: Env, ids: string[]): Promise<MetricsRow[
     return ids.map(demoRow);
   }
 
-  if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) {
-    console.warn("[fetchMetrics] SUPABASE_* env 미설정 — SUPABASE_URL?", !!env.SUPABASE_URL, "ANON_KEY?", !!env.SUPABASE_ANON_KEY);
+  if (!env.SUPABASE_URL || !env.SUPABASE_PUBLISHABLE_KEY) {
+    console.warn("[fetchMetrics] SUPABASE_* env 미설정 — SUPABASE_URL?", !!env.SUPABASE_URL, "ANON_KEY?", !!env.SUPABASE_PUBLISHABLE_KEY);
     return [];
   }
 
@@ -20,8 +20,8 @@ export async function fetchMetrics(env: Env, ids: string[]): Promise<MetricsRow[
   console.log("[fetchMetrics] GET", url);
   const res = await fetch(url, {
     headers: {
-      apikey: env.SUPABASE_ANON_KEY,
-      authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
+      apikey: env.SUPABASE_PUBLISHABLE_KEY,
+      authorization: `Bearer ${env.SUPABASE_PUBLISHABLE_KEY}`,
     },
   });
   if (!res.ok) {
@@ -66,7 +66,7 @@ export async function fetchMetrics(env: Env, ids: string[]): Promise<MetricsRow[
  */
 export async function incrementMetricsViews(env: Env, id: string): Promise<void> {
   if (id.startsWith("00000000-0000-0000-0000-")) return; // demo id 는 skip
-  if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) return;
+  if (!env.SUPABASE_URL || !env.SUPABASE_PUBLISHABLE_KEY) return;
 
   try {
     const res = await fetch(
@@ -75,8 +75,8 @@ export async function incrementMetricsViews(env: Env, id: string): Promise<void>
         method: "POST",
         headers: {
           "content-type": "application/json",
-          apikey: env.SUPABASE_ANON_KEY,
-          authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
+          apikey: env.SUPABASE_PUBLISHABLE_KEY,
+          authorization: `Bearer ${env.SUPABASE_PUBLISHABLE_KEY}`,
         },
         body: JSON.stringify({ card_id: id }),
       },
@@ -127,10 +127,10 @@ export async function fetchTeamSSR(
   env: Env,
   id: string,
 ): Promise<TeamSSR | null> {
-  if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) return null;
+  if (!env.SUPABASE_URL || !env.SUPABASE_PUBLISHABLE_KEY) return null;
   const headers = {
-    apikey: env.SUPABASE_ANON_KEY,
-    authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
+    apikey: env.SUPABASE_PUBLISHABLE_KEY,
+    authorization: `Bearer ${env.SUPABASE_PUBLISHABLE_KEY}`,
   };
   const q = encodeURIComponent(id);
 
@@ -295,14 +295,14 @@ export interface DailyFaceRow {
  * false(블러) 로 처리.
  */
 export async function fetchDailyFaces(env: Env, f: DailyFacesFilter): Promise<DailyFaceRow[]> {
-  if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) return [];
+  if (!env.SUPABASE_URL || !env.SUPABASE_PUBLISHABLE_KEY) return [];
   try {
     const res = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/daily_faces`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        apikey: env.SUPABASE_ANON_KEY,
-        authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
+        apikey: env.SUPABASE_PUBLISHABLE_KEY,
+        authorization: `Bearer ${env.SUPABASE_PUBLISHABLE_KEY}`,
       },
       body: JSON.stringify({
         p_today_only: f.todayOnly,

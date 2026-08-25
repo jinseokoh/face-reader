@@ -110,14 +110,14 @@ export function JoinWizard({
   team,
   roster,
   supabaseUrl,
-  supabaseAnonKey,
+  supabasePublishableKey,
   cdnBase,
   onActive,
 }: {
   team: TeamSSR['team']
   roster: RosterEntry[]
   supabaseUrl: string
-  supabaseAnonKey: string
+  supabasePublishableKey: string
   /** R2 CDN base (cdn.facely.kr) — 내 관상 썸네일 아바타 렌더용. */
   cdnBase: string
   /** 위저드가 entry 를 벗어나면 true — 부모가 초대장 칩을 숨기는 데 쓴다. */
@@ -200,7 +200,7 @@ export function JoinWizard({
 
   function sb(): SupabaseClient {
     if (!sbRef.current) {
-      sbRef.current = getSupabase(supabaseUrl, supabaseAnonKey)
+      sbRef.current = getSupabase(supabaseUrl, supabasePublishableKey)
     }
     return sbRef.current
   }
@@ -229,7 +229,7 @@ export function JoinWizard({
     } catch {
       /* 손상된 저장값은 무시 */
     }
-    if (!supabaseUrl || !supabaseAnonKey) return
+    if (!supabaseUrl || !supabasePublishableKey) return
     // ⚠️ 순서 중요 — ?code= 는 createClient(detectSessionInUrl)가 세션으로
     // 교환한 뒤에 지워야 한다. 먼저 지우면 교환이 영영 안 일어난다.
     const cameFromLogin = new URL(window.location.href).searchParams.has('code')

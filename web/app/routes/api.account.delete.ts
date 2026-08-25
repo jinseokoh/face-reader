@@ -49,7 +49,7 @@ export async function action({ request, context }: Route.ActionArgs) {
 
   // 1) JWT → user_id
   const userRes = await fetch(`${env.SUPABASE_URL}/auth/v1/user`, {
-    headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: auth },
+    headers: { apikey: env.SUPABASE_PUBLISHABLE_KEY, Authorization: auth },
   })
   if (!userRes.ok) {
     return new Response('Invalid token', { status: 401 })

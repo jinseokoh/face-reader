@@ -313,7 +313,7 @@ Platform: iOS = NSCameraUsageDescription·GADApplicationIdentifier·`applinks:fa
 Android = CAMERA·autoVerify intent-filter(`/r/`·`/g/`)·AdMob meta-data·release 서명
 (`key.properties`)·R8 keep rules(TFLite).
 
-`.env`(gitignored): SUPABASE_URL/ANON_KEY · R2_WORKER_BASE · FACE_META_API_BASE ·
+`.env`(gitignored): SUPABASE_URL/PUBLISHABLE_KEY · R2_WORKER_BASE · FACE_META_API_BASE ·
 ADMOB_REWARDED_UNIT_ID_IOS/ANDROID · WEBAPP_BASE.
 
 모델 재학습: [`tools/face_shape_ml/README.md`](../../tools/face_shape_ml/README.md).

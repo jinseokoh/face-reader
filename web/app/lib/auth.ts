@@ -3,13 +3,13 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 /**
  * 브라우저 전용 Supabase 클라이언트 — 앱과 같은 프로젝트·같은 auth.users.
  * PKCE flow: 카카오 → 같은 /g/{id} 로 복귀, detectSessionInUrl 이 ?code= 교환.
- * anon key 는 공개키 (loader 가 내려줌).
+ * publishable key 는 공개키 (loader 가 내려줌).
  */
 let client: SupabaseClient | null = null;
 
-export function getSupabase(url: string, anonKey: string): SupabaseClient {
+export function getSupabase(url: string, publishableKey: string): SupabaseClient {
   if (!client) {
-    client = createClient(url, anonKey, {
+    client = createClient(url, publishableKey, {
       auth: { flowType: "pkce", detectSessionInUrl: true, persistSession: true },
     });
   }

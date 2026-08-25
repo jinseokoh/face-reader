@@ -717,7 +717,7 @@ DeepFace `/analyze` (`{age, gender, ethnicity}` enum name 정규화 반환) + �
 | `R2_ACCESS_KEY_ID`                            | secret | Worker R2 API token                                                                                                                             |
 | `R2_SECRET_ACCESS_KEY`                        | secret | Worker R2 API token                                                                                                                             |
 | `FACE_API_SECRET`                             | secret | HMAC (Python 과 동일 값). presign 발급 시 함께 줘서 `/analyze` 호출 인증                                                                        |
-| `SUPABASE_URL` / `SUPABASE_ANON_KEY`          | secret | metrics REST + `/auth/v1/user` JWT 검증용                                                                                                       |
+| `SUPABASE_URL` / `SUPABASE_PUBLISHABLE_KEY`   | secret | metrics REST + `/auth/v1/user` JWT 검증용                                                                                                       |
 | `SUPABASE_SERVICE_ROLE_KEY`                   | secret | `/api/account/delete` 전용 — `auth.users` admin DELETE + RLS bypass DELETE FROM metrics. **클라이언트 노출 절대 금지**                          |
 | `WEB3FORMS_ACCESS_KEY`                        | secret | `/contact` 폼의 access_key. 브라우저 HTML 에 노출되지만 web3forms 의 보안 모델 (spam filter / rate limit) 전제                                  |
 
@@ -763,7 +763,7 @@ pnpm wrangler secret put R2_ACCESS_KEY_ID
 pnpm wrangler secret put R2_SECRET_ACCESS_KEY
 pnpm wrangler secret put FACE_API_SECRET
 pnpm wrangler secret put SUPABASE_URL
-pnpm wrangler secret put SUPABASE_ANON_KEY
+pnpm wrangler secret put SUPABASE_PUBLISHABLE_KEY
 pnpm wrangler secret put SUPABASE_SERVICE_ROLE_KEY   # /api/account/delete 전용
 pnpm wrangler secret put WEB3FORMS_ACCESS_KEY        # /contact 폼
 pnpm cf-typegen      # Cloudflare.Env 타입 재생성
