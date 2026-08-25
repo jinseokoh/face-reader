@@ -31,7 +31,8 @@ App Review Board 정식 appeal 문안.
 | 그룹 목록을 관상 없이 볼 수 있게 (`chemistry_screen.dart`) | ✅ 완료 |
 | 관상·궁합 탭도 게이트 제거 — 등록 전후로 화면 구조가 안 바뀐다 | ✅ 완료 |
 | 빈 화면이 그 탭의 역할을 직접 말한다 (케미 = "그룹에서 나와 가장 맞는 사람을 점수로") | ✅ 완료 |
-| 리뷰 노트에 데모 계정 + 사람이 들어있는 방 + 단계 | ⬜ **제출 전 필수** |
+| 리뷰 노트 — 로그인 전/후 2단계 동선으로 재작성 | ✅ 완료 |
+| 데모 방 seed 실행 + `<PW>` 기입 | ⬜ **제출 전 필수** |
 
 전에는 케미 탭이 관상 미등록 상태에서 어깨 으쓱 그림과 *"내 관상을 등록하면 케미
 그룹에 참가할 수 있습니다"* 만 보여줬다. 앱이 심사관에게 **관상이 선행조건이라고
@@ -284,39 +285,76 @@ ID as the first.
 ## 2. 리뷰 노트 문안 (App Store Connect → App Review Information)
 
 ```text
-IMPORTANT — testing the core feature requires the group flow.
+IMPORTANT — the core feature of this app is group compatibility, not
+the individual face reading. Please follow both stages below. Stage 1
+requires no account and takes about thirty seconds.
 
-Testing alone will only show the individual face reading, which is the
-INPUT to this app, not its purpose. The product is group compatibility
-matching. Please use the demo account below to reach it.
 
-Demo account:  <ID>
+STAGE 1 — nothing is gated (no sign-in required)
+
+1. Launch the app. Do not sign in.
+
+2. Tap the "케미" (Chemistry) tab — the THIRD tab in the bottom bar.
+
+3. The "모집중" (Open rooms) list loads immediately. Two public rooms
+   are open:
+     "퇴근 후 러닝 크루"      — 4 of 8 joined
+     "홍대 보드게임 소모임"   — 2 of 6 joined
+   Tap either to see its roster and room detail.
+
+   No face registration and no account is required to reach any of
+   this. The tab states in plain language what the product does: it
+   scores who, within a group, fits best with you.
+
+
+STAGE 2 — the compatibility matrix (sign-in required)
+
+Demo account:  chuckau@naver.com
 Password:      <PW>
 
-Steps:
-1. Sign in with the demo account.
-2. Open the "케미" (Chemistry) tab — the second tab in the bottom bar.
-3. The "모집중" (Open rooms) list is browsable without registering a
-   face. Room "<ROOM NAME>" is pre-populated with N participants.
-4. Open that room. Scroll to the compatibility matrix — every pair of
-   participants is scored, and the top pairs are ranked.
-5. Tap any pair to see why they scored as they did.
-6. Reporting and blocking are available from the chat screen inside the
-   room (long-press a message / tap a participant).
+4. Sign in with the demo account (설정 tab → 로그인).
 
-There is no birth date, birth time, or horoscope anywhere in the app.
-Every number shown is computed on-device from the participant's own
-facial landmarks.
+5. Return to the "케미" tab and switch to the "내 그룹" (My groups)
+   sub-tab.
+
+6. Open the room "금요일 저녁 미술관 동행" ("Friday Evening Museum
+   Outing"). It holds 6 participants and is full.
+
+7. The room shows the pairwise compatibility matrix across all six
+   participants, with the pairs ranked. The demo account is in the
+   top-ranked pair, at 88 points.
+
+8. Tap any pair to see the per-attribute breakdown behind its score.
+
+9. Accepting the top pair opens a 1:1 chat. Reporting and blocking are
+   available there — long-press a message, or tap a participant.
+
+
+WHAT THE NUMBERS ARE
+
+Every score is computed on-device from each participant's own facial
+landmarks. Two rooms with different people produce different matrices;
+nothing is pre-written.
+
+There is no birth date, birth time, or birth place field anywhere in
+the app. There are no horoscopes, no daily fortunes, no lucky numbers,
+and no prediction of future events.
 
 Face processing runs on-device. Landmarks are converted to
 dimensionless ratios immediately; the app does not perform facial
-recognition and does not use the face to identify a person against any
-database.
+recognition and does not match a face against any database.
 
 The app is distributed in South Korea only and its interface is Korean.
 ```
 
-⬜ `<ID>` · `<PW>` · `<ROOM NAME>` · 참가자 N명 채우기 — **제출 전 필수**
+⬜ `<PW>` 채우기 · 데모 방 seed 실행(`web/db/tests/demo_teams.sql`) — **제출 전 필수**
+
+데모 계정은 `chuckau@naver.com`(홍청). 방·참가자는 seed 가 만든다 — 참가자 9명은
+실제 my-face 계측을 갖고 있어 매트릭스가 진짜 숫자로 나온다. 심사관이 여는 방
+④ `금요일 저녁 미술관 동행` 에 홍청이 베스트 쌍 당사자로 들어 있다.
+
+⚠️ seed 는 `delete from public.teams` 로 시작한다 — 실행 시점의 모든 방이
+FK cascade 로 사라진다 (team_members·team_matches·team_messages·team_reports).
 
 ---
 
@@ -379,9 +417,11 @@ The app is distributed in South Korea only and its interface is Korean.
 
 | | |
 | --- | --- |
-| ⬜ | 새 **버전 번호**로 제출 (2.0.0) — 같은 버전에 빌드만 올리면 Submission ID 가 유지돼 템플릿 재확인만 돌아온다 |
-| ⬜ | 리뷰 노트에 데모 계정·방·단계 기입 (§2) |
-| ⬜ | 데모 방에 참가자 N명 미리 채워두기 |
+| ✅ | 새 **버전 번호**로 빌드 (2.0.0+18) — 같은 버전에 빌드만 올리면 Submission ID 가 유지돼 템플릿 재확인만 돌아온다 |
+| ⬜ | App Store Connect 에 `2.0.0` 버전 레코드 생성 + 빌드 18 첨부 |
+| ⬜ | 스크린샷 교체 — 첫 3장을 그룹 케미로 (모집중 목록 → 매트릭스 → 랭킹된 페어) |
+| ⬜ | 리뷰 노트의 `<PW>` 기입 (§2) |
+| ⬜ | `web/db/tests/demo_teams.sql` 실행 — 방 6개·참가자 seed |
 | ⬜ | 출시 지역이 **대한민국 단독**으로 설정돼 있는지 확인 (편지 논거의 전제) |
 | ✅ | 앱 이름 유지 + 편지에 ON THE APP NAME 문단 |
 | ✅ | 그룹 목록 게이트 제거 |

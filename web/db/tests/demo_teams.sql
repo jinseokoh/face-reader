@@ -55,11 +55,11 @@ begin
   delete from public.teams;
   delete from public.team_reports;
 
-  -- ① 모집중 public match 8인 — 4/8, 마감 임박(생성 26h 전 → 잔여 ~22h).
+  -- ① 모집중 public match 8인 — 4/8, 마감 임박(생성 6d2h 전 → 잔여 ~22h).
   insert into public.teams (id, owner_id, title, room_kind,
                             max_players, age_min, age_max, status, created_at)
   values (t1, v_junho, '퇴근 후 러닝 크루', 'match',
-          8, 20, 40, 'recruiting', now() - interval '26 hours');
+          8, 20, 40, 'recruiting', now() - interval '6 days 2 hours');
   insert into public.team_members (team_id, user_id, slot_no, gender, alias, is_owner)
   values
     (t1, v_junho,   1, 'male',   '황준호', true),
