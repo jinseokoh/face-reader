@@ -411,7 +411,7 @@ Map<Attribute, AttributeEvidence> _buildAttributeEvidence(
   return out;
 }
 
-/// Flatten the 5 rule lists into List<RuleEvidence> with stage tags.
+/// Flatten the 5 rule lists into `List<RuleEvidence>` with stage tags.
 List<RuleEvidence> _buildRuleEvidence(AttributeBreakdown breakdown) {
   final out = <RuleEvidence>[];
   for (final r in breakdown.zoneRules) {

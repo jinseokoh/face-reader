@@ -58,7 +58,7 @@ void main() {
     for (final attr in Attribute.values) {
       final list = scores[attr]!..sort();
       final mean = list.reduce((a, b) => a + b) / list.length;
-      final p = (double pct) => list[((list.length - 1) * pct).round()];
+      double p(double pct) => list[((list.length - 1) * pct).round()];
       final under6 = list.where((s) => s < 6.0).length / list.length;
       final over95 = list.where((s) => s > 9.5).length / list.length;
       // ignore: avoid_print

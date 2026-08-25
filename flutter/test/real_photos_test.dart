@@ -180,7 +180,7 @@ void main() {
           .map((e) => '${_attrLabelKo[e.key]} ${e.value.toStringAsFixed(1)}')
           .join(', ');
       // ignore: avoid_print
-      print('$name');
+      print(name);
       // ignore: avoid_print
       print('  TOP    : $top3');
       // ignore: avoid_print
