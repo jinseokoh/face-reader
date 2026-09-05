@@ -62,7 +62,9 @@ box (`onboarding_never_again`) flag 를 남겨 노출을 끈다. 건너뛰기·�
   프레임 안정(이동 <0.005) · face width >25% · yaw class 일치(정면→frontal, 측면→threeQuarter).
   정면 캡처 시 DeepFace 백그라운드 analyze 시작 → 측면(3/4 yaw) 캡처 → `/capture/confirm`.
 - `AlbumCapturePage` — image_picker → **square-padding**(non-square 에서 MediaPipe landmark
-  distort 차단) → ML Kit bbox → FaceMesh → `/capture/confirm`.
+  distort 차단) → ML Kit bbox → FaceMesh → 정면·측면 preview 에 카메라와 같은
+  `FaceMetricOverlayPainter` (사진을 contain 으로 맞춘 화면 픽셀 상자 위에 그려 글자
+  크기가 카메라 화면과 같다) → `/capture/confirm`.
 - `InfoConfirmScreen` — DeepFace 추정 자동 prefill(사용자 수정 우선), 상대방 관상은
   optional 이름 입력(→ alias). [확인] → `analyzeFaceReading()` → 썸네일
   face-center 200 crop → `history.add` → `saveMetrics`(fire-and-forget). 시작한 탭에 잔류.

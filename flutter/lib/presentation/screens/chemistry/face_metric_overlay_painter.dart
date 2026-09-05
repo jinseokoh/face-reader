@@ -6,7 +6,7 @@ import 'package:facely/core/theme.dart';
 import 'package:facely/domain/services/face_metrics.dart';
 import 'package:facely/domain/services/face_metrics_lateral.dart';
 
-import 'face_mesh_painter.dart';
+import 'landmark_to_offset.dart';
 import 'metric_label_layout.dart';
 
 enum MetricOverlayPhase { frontal, lateral }

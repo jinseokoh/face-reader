@@ -10,7 +10,7 @@ import 'package:facely/data/services/face_metadata_client.dart';
 import 'package:facely/domain/models/capture_result.dart';
 import 'package:facely/domain/models/face_metadata.dart';
 import 'package:facely/domain/services/face_metrics_lateral.dart';
-import 'package:facely/presentation/screens/chemistry/face_mesh_painter.dart';
+import 'package:facely/presentation/screens/chemistry/face_metric_overlay_painter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -248,20 +248,29 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
     return Stack(
       fit: StackFit.expand,
       children: [
+        // 사진을 contain 으로 맞춘 화면 픽셀 크기의 상자 위에 오버레이를 그린다.
+        // FittedBox 로 사진 픽셀 공간을 축소하면 라벨 글자까지 함께 줄어들므로,
+        // 화면 크기를 직접 계산해 카메라 화면과 같은 글자 크기로 그린다.
         Center(
-          child: FittedBox(
-            fit: BoxFit.contain,
-            child: SizedBox(
-              width: photo.width.toDouble(),
-              height: photo.height.toDouble(),
+          child: LayoutBuilder(builder: (context, constraints) {
+            final scale = math.min(
+              constraints.maxWidth / photo.width,
+              constraints.maxHeight / photo.height,
+            );
+            return SizedBox(
+              width: photo.width * scale,
+              height: photo.height * scale,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
                   Image.memory(photo.pngBytes, fit: BoxFit.fill),
                   IgnorePointer(
                     child: CustomPaint(
-                      painter: FaceMeshPainter(
+                      painter: FaceMetricOverlayPainter(
                         result: photo.meshResult,
+                        phase: isLateralPhase
+                            ? MetricOverlayPhase.lateral
+                            : MetricOverlayPhase.frontal,
                         rotationCompensation: 0,
                         lensDirection: CameraLensDirection.back,
                         overlayColor: Colors.greenAccent,
@@ -270,8 +279,8 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
                   ),
                 ],
               ),
-            ),
-          ),
+            );
+          }),
         ),
         Positioned(
           top: 0,
