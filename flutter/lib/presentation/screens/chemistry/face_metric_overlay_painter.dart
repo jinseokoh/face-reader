@@ -73,9 +73,10 @@ class FaceMetricOverlayPainter extends CustomPainter {
       }
     }
 
+    final labeled = measures.where((m) => m.text != null).toList();
     final painters = <TextPainter>[];
     final specs = <MetricLabelSpec>[];
-    for (final m in measures) {
+    for (final m in labeled) {
       final tp = TextPainter(
         text: TextSpan(text: m.text, style: textStyle),
         textDirection: TextDirection.ltr,
@@ -99,16 +100,16 @@ class FaceMetricOverlayPainter extends CustomPainter {
       gap: AppSpacing.xs,
     );
 
-    for (var i = 0; i < measures.length; i++) {
+    for (var i = 0; i < labeled.length; i++) {
       final r = rects[i];
-      final color = measures[i].color ?? overlayColor;
+      final color = labeled[i].color ?? overlayColor;
       final leaderPaint = Paint()
         ..color = color.withValues(alpha: 0.6)
         ..strokeWidth = 1
         ..style = PaintingStyle.stroke;
       final isLeft = r.center.dx < faceCenterX;
       final from = Offset(isLeft ? r.right : r.left, r.center.dy);
-      canvas.drawLine(from, measures[i].anchor, leaderPaint);
+      canvas.drawLine(from, labeled[i].anchor, leaderPaint);
       canvas.drawRRect(
         RRect.fromRectAndRadius(r, const Radius.circular(AppRadius.sm)),
         pillPaint,
@@ -381,6 +382,12 @@ class FaceMetricOverlayPainter extends CustomPainter {
     Offset Function(int) p,
   ) {
     final l = LateralFaceMetrics(lms);
+    // 카메라를 향한 쪽 턱선 — yaw 부호로 어느 쪽 귀·턱각이 보이는지 정한다.
+    // 코끝이 subject 왼쪽 가장자리(454) 쪽으로 붙으면(yaw<0) 오른쪽 볼이 보인다.
+    final leftSideVisible = estimateYaw(lms) >= 0;
+    final ear = p(leftSideVisible ? LandmarkIndex.leftEar : LandmarkIndex.rightEar);
+    final gonion =
+        p(leftSideVisible ? LandmarkIndex.leftGonion : LandmarkIndex.rightGonion);
     final top = p(LandmarkIndex.foreheadTop);
     final nasion = p(LandmarkIndex.nasion);
     final rhinion = p(195);
@@ -395,6 +402,16 @@ class FaceMetricOverlayPainter extends CustomPainter {
     const detail = AppColors.info;
 
     return [
+      // 턱선 안내선 — 귀 밑→턱각→턱끝. 측면 계측값이 아니라 얼굴 윤곽을 잡아
+      // 주는 선이라 라벨이 없다.
+      _Measure(
+        null,
+        anchor: gonion,
+        color: shape,
+        paths: [
+          [ear, gonion, chin],
+        ],
+      ),
       _Measure(
         '비전두각 ${_deg(l.nasofrontalAngle)}',
         anchor: nasion,
@@ -481,7 +498,8 @@ class FaceMetricOverlayPainter extends CustomPainter {
 }
 
 class _Measure {
-  final String text;
+  /// null 이면 라벨 없는 안내선 — 선과 점만 그린다.
+  final String? text;
   final Offset anchor;
   final List<List<Offset>> paths;
 
