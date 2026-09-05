@@ -335,7 +335,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
                   ),
                   child: Text(
                     _angleStatusLabel!,
-                    style: AppText.appBarTitle.copyWith(
+                    style: AppText.modalTitle.copyWith(
                       color: _overlayColor == Colors.greenAccent
                           ? Colors.greenAccent
                           : Colors.redAccent,
