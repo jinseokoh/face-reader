@@ -240,7 +240,7 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
 
   Widget _buildPreview(_AlbumPhoto photo, {required bool isLateralPhase}) {
     final description = isLateralPhase
-        ? '버튼을 클릭하면, 측면 사진을 분석합니다.'
+        ? '측면 사진 분석한 결과입니다.'
         : '정면 사진 분석한 결과입니다.';
     final buttonLabel = isLateralPhase ? '측면 분석' : '정면 분석';
     final onConfirm = isLateralPhase ? _runAnalysis : _afterFrontalConfirm;
@@ -293,8 +293,7 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
             child: Text(
               description,
               style: AppText.body.copyWith(color: Colors.white, height: 1.4),
-              textAlign:
-                  isLateralPhase ? TextAlign.left : TextAlign.center,
+              textAlign: TextAlign.center,
             ),
           ),
         ),
