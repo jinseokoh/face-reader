@@ -261,7 +261,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
             color: Colors.black.withValues(alpha: 0.6),
             child: Text(
               _phase == _CapturePhase.frontal
-                  ? '카운트다운시 $_kCountdownSeconds초 동안 멈추세요.'
+                  ? '카운트다운시 $_kCountdownSeconds초 동안 멈춰 주세요.'
                   : '한쪽 귀가 안 보일 때까지 얼굴을 돌려주세요.',
               style: AppText.body.copyWith(color: Colors.white, height: 1.4),
               textAlign: _phase == _CapturePhase.frontal
