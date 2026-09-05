@@ -88,8 +88,8 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
   Timer? _countdownTimer;
 
   int? _countdownRemaining;
-  // 측면 단계에서 녹색이 잠깐 깨져 카운트다운이 멈췄을 때 남아 있던 숫자.
-  // 다시 녹색이 되면 3 이 아니라 이 숫자부터 이어서 센다. 정면은 항상 3부터.
+  // 녹색이 잠깐 깨져 카운트다운이 멈췄을 때 남아 있던 숫자. 다시 녹색이
+  // 되면 3 이 아니라 이 숫자부터 이어서 센다. 단계가 바뀌면 비운다.
   int? _pausedCountdown;
   // phase title 이 modal 로 떠 있는 동안에는 lateral camera 가 background 에서
   // 흐르고 있어도 yaw-driven auto-countdown 이 발동하면 안 된다.
@@ -472,9 +472,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
     _countdownTimer?.cancel();
     _countdownTimer = null;
     if (_countdownRemaining != null) {
-      if (_phase == _CapturePhase.lateral) {
-        _pausedCountdown = _countdownRemaining;
-      }
+      _pausedCountdown = _countdownRemaining;
       setState(() => _countdownRemaining = null);
     }
   }
@@ -625,6 +623,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
         _frontalImageHeight = lastResult?.imageHeight;
         _phase = _CapturePhase.lateral;
         _capturedFrames.clear();
+        _pausedCountdown = null;
       });
       // 측면 안내는 tap-to-proceed modal — 자동 dismiss 안 됨. 사용자가
       // "측면 시작" 누르기 전까지 background camera 의 auto-countdown 도 차단.
@@ -987,8 +986,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
 
   void _startCountdown() {
     _countdownTimer?.cancel();
-    final resumeFrom =
-        _phase == _CapturePhase.lateral ? _pausedCountdown : null;
+    final resumeFrom = _pausedCountdown;
     _pausedCountdown = null;
     setState(() => _countdownRemaining = resumeFrom ?? _kCountdownSeconds);
     // 1초 tick — 숫자가 [_kCountdownSeconds] 에서 1 까지 내려가고 그 다음
