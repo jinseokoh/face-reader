@@ -59,7 +59,7 @@ export async function action({ request, context }: Route.ActionArgs) {
   // 2) R2 썸네일 — 행보다 먼저. 행을 먼저 지우면 레거시 키를 알 방법이 없다.
   //    (소유자 폴더는 행과 무관하게 지울 수 있지만, 레거시 키는 body 에만 있다.)
   //    구매한 궁합에 들어간 **사본**은 구매자 폴더에 있으므로 여기서 안 지워진다
-  //    — `privacy.md:27` 의 "상대방의 데이터 삭제 여부와 무관하게 이용" 이 이
+  //    — `privacy.md` 제4조의 "상대방의 데이터 삭제 여부와 무관하게 이용" 이 이
   //    구조에서 그대로 성립한다.
   const r2 = readR2Cfg(env)
   if (r2) {

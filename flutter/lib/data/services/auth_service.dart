@@ -8,6 +8,7 @@ import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart' show closeInAppWebView;
 
 import 'package:facely/core/hive/hive_setup.dart';
 import 'package:facely/data/services/wallet_service.dart';
@@ -109,6 +110,9 @@ class AuthService {
   String? get accessToken => _client.auth.currentSession?.accessToken;
 
   StreamSubscription<AuthState>? _sub;
+  // iOS 는 Kakao 웹 로그인을 앱 안 브라우저(SFSafariViewController)로 띄운다.
+  // 딥링크로 세션이 돌아와도 시트는 스스로 안 닫히므로 세션 도착 시 닫는다.
+  bool _kakaoInAppBrowserOpen = false;
   final _profileChanged = StreamController<AuthUser?>.broadcast();
   final _signupBonusSkippedNotice = StreamController<void>.broadcast();
   // Per-session: 한 번 안내한 사용자 id 는 다시 띄우지 않는다.
@@ -134,6 +138,10 @@ class AuthService {
       if (session == null) {
         _setUser(null);
       } else {
+        if (_kakaoInAppBrowserOpen) {
+          _kakaoInAppBrowserOpen = false;
+          unawaited(closeInAppWebView());
+        }
         await _loadProfile();
       }
     });
@@ -194,17 +202,26 @@ class AuthService {
   /// Kakao OAuth via Supabase. Opens a browser/webview; the actual session
   /// arrives asynchronously through `onAuthStateChange` once the deep link
   /// redirects back. Returns true if the browser was opened successfully.
+  ///
+  /// iOS 는 App Review Guideline 4 (앱 밖 Safari 로그인 금지) 때문에 앱 안
+  /// 브라우저로 연다. Android 는 기존 외부 브라우저 동작 유지.
   Future<bool> loginWithKakao() async {
     debugPrint('[Auth] loginWithKakao: invoking signInWithOAuth (redirect=$_redirectUrl)');
+    final inApp = defaultTargetPlatform == TargetPlatform.iOS;
     try {
+      _kakaoInAppBrowserOpen = inApp;
       final launched = await _client.auth.signInWithOAuth(
         OAuthProvider.kakao,
         redirectTo: _redirectUrl,
-        authScreenLaunchMode: LaunchMode.externalApplication,
+        authScreenLaunchMode: inApp
+            ? LaunchMode.inAppBrowserView
+            : LaunchMode.externalApplication,
       );
-      debugPrint('[Auth] loginWithKakao: browser launched=$launched');
+      debugPrint('[Auth] loginWithKakao: browser launched=$launched inApp=$inApp');
+      if (!launched) _kakaoInAppBrowserOpen = false;
       return launched;
     } catch (e, st) {
+      _kakaoInAppBrowserOpen = false;
       debugPrint('[Auth] kakao oauth error: $e\n$st');
       return false;
     }
