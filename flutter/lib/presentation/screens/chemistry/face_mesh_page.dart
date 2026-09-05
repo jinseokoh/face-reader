@@ -315,10 +315,9 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
               ),
             ),
           ),
-        // 각도 상태 pill — 하단 중앙. 녹색(촬영 준비)이면 두 단계 모두
-        // "측정에 적합한 각도입니다", 측면에서 녹색이 아니면
-        // "측정이 불가한 각도입니다". 정면의 미준비 상태는 표시하지 않는다.
-        if (!_phaseTitleBlocking && _meshResult != null && _angleStatusLabel != null)
+        // 각도 상태 pill — 하단 중앙. 녹색(촬영 준비)이면
+        // "측정에 적합한 각도입니다", 아니면 "측정이 불가한 각도입니다".
+        if (!_phaseTitleBlocking && _meshResult != null)
           Positioned(
             left: 0,
             right: 0,
@@ -333,7 +332,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    _angleStatusLabel!,
+                    _angleStatusLabel,
                     style: AppText.modalTitle.copyWith(
                       color: _overlayColor == Colors.greenAccent
                           ? Colors.greenAccent
@@ -461,12 +460,10 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
     );
   }
 
-  /// 하단 각도 상태 pill 문구. null 이면 pill 을 띄우지 않는다.
-  String? get _angleStatusLabel {
-    if (_overlayColor == Colors.greenAccent) return '측정에 적합한 각도입니다';
-    if (_phase == _CapturePhase.lateral) return '측정이 불가한 각도입니다';
-    return null;
-  }
+  /// 하단 각도 상태 pill 문구 — 정면·측면 공통.
+  String get _angleStatusLabel => _overlayColor == Colors.greenAccent
+      ? '측정에 적합한 각도입니다'
+      : '측정이 불가한 각도입니다';
 
   void _cancelCountdown() {
     _countdownTimer?.cancel();
