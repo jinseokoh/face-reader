@@ -239,16 +239,19 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
   }
 
   Widget _buildPreview(_AlbumPhoto photo, {required bool isLateralPhase}) {
-    final description = isLateralPhase
-        ? '측면 사진 분석한 결과입니다.'
-        : '정면 사진 분석한 결과입니다.';
     final onConfirm = isLateralPhase ? _runAnalysis : _afterFrontalConfirm;
     // 측면 사진의 yaw 가 3/4·profile 이 아니면 측면 8개를 잴 수 없다. 막지는
-    // 않고, [결과 확인] 대신 [다른 사진 선택]·[측면 무시] 두 갈래를 준다.
+    // 않고, 문구를 바꾸고 [결과 확인] 대신 [다른 사진 선택]·[측면 무시] 두
+    // 갈래를 준다.
     final yawClass = classifyYaw(photo.yaw);
     final lateralUsable = !isLateralPhase ||
         yawClass == YawClass.threeQuarter ||
         yawClass == YawClass.profile;
+    final description = !isLateralPhase
+        ? '정면 사진 분석한 결과입니다.'
+        : lateralUsable
+            ? '측면 사진 분석한 결과입니다.'
+            : '측면 분석에 적합한 사진이 아닙니다.';
 
     return Stack(
       fit: StackFit.expand,
