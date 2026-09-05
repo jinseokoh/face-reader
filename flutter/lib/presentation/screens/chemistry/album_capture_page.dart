@@ -242,7 +242,7 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
     final description = isLateralPhase
         ? '측면 사진 분석한 결과입니다.'
         : '정면 사진 분석한 결과입니다.';
-    final buttonLabel = isLateralPhase ? '측면 분석' : '정면 분석';
+    final buttonLabel = isLateralPhase ? '측면 분석' : '결과 확인';
     final onConfirm = isLateralPhase ? _runAnalysis : _afterFrontalConfirm;
 
     return Stack(
@@ -300,12 +300,12 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
         Positioned(
           left: 20,
           right: 20,
-          bottom: MediaQuery.of(context).padding.bottom + 24,
+          bottom: MediaQuery.of(context).padding.bottom + 8,
           child: Center(
             child: SizedBox(
               width: 200,
               height: 52,
-              child: ElevatedButton.icon(
+              child: ElevatedButton(
                 onPressed: onConfirm,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white.withValues(alpha: 0.85),
@@ -314,8 +314,7 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                icon: const FaIcon(FontAwesomeIcons.camera, size: 18),
-                label: Text(
+                child: Text(
                   buttonLabel,
                   style: AppText.subTitle,
                 ),
