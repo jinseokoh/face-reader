@@ -300,7 +300,10 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
             color: Colors.black.withValues(alpha: 0.6),
             child: Text(
               description,
-              style: AppText.body.copyWith(color: Colors.white, height: 1.4),
+              style: AppText.body.copyWith(
+                color: lateralUsable ? Colors.white : Colors.redAccent,
+                height: 1.4,
+              ),
               textAlign: TextAlign.center,
             ),
           ),
