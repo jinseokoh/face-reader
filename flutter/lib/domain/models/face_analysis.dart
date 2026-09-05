@@ -59,10 +59,10 @@ FaceReadingReport analyzeFaceReading({
       'landmark10Correction=$kLandmark10Correction');
 
   // Step 2: Z-score with gender-specific reference
-  // Iterate metricInfoList (not measured.entries) — computeAll() now returns
-  // 28 metrics but referenceData only covers the 18 with population stats.
-  // New Phase 1 metrics (eyebrowLength, chinAngle, etc.) are consumed only
-  // by the ML face-shape classifier, which does its own standardization.
+  // Iterate metricInfoList (not measured.entries) — computeAll() returns
+  // 28 metrics but referenceData covers the 26 with population stats.
+  // The other two (eyebrowLength, noseBridgeRatio) are consumed only by
+  // the ML face-shape classifier, which does its own standardization.
   final refs = referenceData[ethnicity]![gender]!;
   final zScores = <String, double>{};
   for (final info in metricInfoList) {

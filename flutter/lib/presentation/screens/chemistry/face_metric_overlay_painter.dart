@@ -14,7 +14,8 @@ enum MetricOverlayPhase { frontal, lateral }
 /// 카메라 프리뷰 위에 실시간 계측 오버레이를 그린다.
 ///
 /// 메시 삼각형 대신, 엔진이 실제로 계산하는 계측값 전부 — 정면 28개
-/// ([FaceMetrics.computeAll]), 측면 8개 ([LateralFaceMetrics.computeAll]) — 의
+/// ([FaceMetrics.computeAll] = 관상 계측 26 + 얼굴형 분류기 전용 2), 측면 8개
+/// ([LateralFaceMetrics.computeAll]) — 의
 /// 선분을 긋고 프레임마다 값을 라벨로 띄운다. 선이 같은 자리에 겹치는 항목은
 /// 색으로 가른다: 촬영 준비 색(빨강/초록)은 큰 골격선, 금색은 폭·비율선,
 /// 파랑은 눈썹·눈·입술의 미세선. 지시선 색이 라벨과 선을 잇는다.
@@ -116,7 +117,9 @@ class FaceMetricOverlayPainter extends CustomPainter {
     }
   }
 
-  /// 정면 28개 — [FaceMetrics.computeAll] 의 키 순서와 같다.
+  /// 정면 28개 — [FaceMetrics.computeAll] 의 키 순서와 같다. 이 중 26개는
+  /// referenceData 로 z-score 가 되는 관상 계측, `눈썹 길이`·`콧대 경사` 2개는
+  /// 얼굴형 분류기 입력 전용이다.
   List<_Measure> _frontal(
     List<FaceMeshLandmark> lms,
     Offset Function(int) p,

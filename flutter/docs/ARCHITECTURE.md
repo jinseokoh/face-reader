@@ -53,8 +53,9 @@ box (`onboarding_never_again`) flag 를 남겨 노출을 끈다. 건너뛰기·�
 **캡처 파이프라인** (`screens/chemistry/` 폴더 — 관상·궁합·케미 공용):
 
 - `FaceMeshPage` — 카메라 preview + 실시간 계측 오버레이(`FaceMetricOverlayPainter`).
-  엔진 계측값 전부 — 정면 28개(`FaceMetrics.computeAll`)·측면 8개
-  (`LateralFaceMetrics.computeAll`) — 의 계측선을 긋고 프레임마다 값을 라벨로 띄운다.
+  엔진 계측값 전부 — 정면 28개(`FaceMetrics.computeAll` = 관상 계측 26 + 얼굴형 분류기
+  전용 `eyebrowLength`·`noseBridgeRatio` 2)·측면 8개(`LateralFaceMetrics.computeAll`) —
+  의 계측선을 긋고 프레임마다 값을 라벨로 띄운다.
   같은 자리에 겹치는 선은 색으로 가른다: 촬영 준비 색(빨강/초록)=골격선, `AppColors.gold`=
   폭·비율선, `AppColors.info`=눈썹·눈·입술 미세선. 라벨은 얼굴 위가 아니라 좌우 여백 열에
   세우고 같은 색 지시선으로 잇는다 (`layoutMetricLabels`, 겹침 없음). 녹색 조건 4: confidence ≥0.85 ·

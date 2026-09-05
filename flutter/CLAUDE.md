@@ -71,7 +71,7 @@
 cd /Users/chuck/Code/face/flutter
 flutter pub get
 flutter analyze          # 0 issues 기대
-flutter test             # 168 test 전부 green
+flutter test             # 전부 green (2026-09-05 기준 228 test)
 flutter run              # 실기 (camera/MediaPipe simulator 불가)
 ```
 
