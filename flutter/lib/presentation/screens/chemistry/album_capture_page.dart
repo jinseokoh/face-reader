@@ -303,18 +303,24 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
           ),
         ),
         Positioned(
-          left: 20,
-          right: 20,
+          left: 10,
+          right: 10,
           bottom: MediaQuery.of(context).padding.bottom + 8,
           child: Center(
             child: lateralUsable
-                ? _previewButton('결과 확인', onConfirm)
+                ? SizedBox(
+                    width: 200,
+                    child: _previewButton('결과 확인', onConfirm),
+                  )
                 : Row(
-                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      _previewButton('다른 사진 선택', _repickLateral),
+                      Expanded(
+                        child: _previewButton('다른 사진 선택', _repickLateral),
+                      ),
                       const SizedBox(width: 12),
-                      _previewButton('측면 무시', _skipLateral),
+                      Expanded(
+                        child: _previewButton('측면 무시', _skipLateral),
+                      ),
                     ],
                   ),
           ),
@@ -325,7 +331,6 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
 
   Widget _previewButton(String label, VoidCallback onPressed) {
     return SizedBox(
-      width: 160,
       height: 52,
       child: ElevatedButton(
         onPressed: onPressed,
