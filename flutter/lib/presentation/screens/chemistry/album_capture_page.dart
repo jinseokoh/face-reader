@@ -242,7 +242,6 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
     final description = isLateralPhase
         ? '측면 사진 분석한 결과입니다.'
         : '정면 사진 분석한 결과입니다.';
-    final buttonLabel = isLateralPhase ? '측면 분석' : '결과 확인';
     final onConfirm = isLateralPhase ? _runAnalysis : _afterFrontalConfirm;
 
     return Stack(
@@ -315,7 +314,7 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
                   ),
                 ),
                 child: Text(
-                  buttonLabel,
+                  '결과 확인',
                   style: AppText.subTitle,
                 ),
               ),
