@@ -241,12 +241,7 @@ class FaceMetrics {
     final nasalWidth = _dist(LandmarkIndex.rightAla, LandmarkIndex.leftAla);
     final icd = _dist(
         LandmarkIndex.rightEndocanthion, LandmarkIndex.leftEndocanthion);
-    final ratio = nasalWidth / icd;
-    // ignore: avoid_print
-    print('[NasalWidthDebug] alaWidth=${nasalWidth.toStringAsFixed(5)} '
-        'icd=${icd.toStringAsFixed(5)} ratio=${ratio.toStringAsFixed(4)} '
-        '(landmarks: rAla=98 lAla=327 rEndo=133 lEndo=362)');
-    return ratio;
+    return nasalWidth / icd;
   }
 
   /// #13 코 길이 (얼굴 높이 대비) — 콧대 길이 (nasion→noseTip)

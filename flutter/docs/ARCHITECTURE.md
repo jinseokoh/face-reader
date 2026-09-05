@@ -53,10 +53,11 @@ box (`onboarding_never_again`) flag 를 남겨 노출을 끈다. 건너뛰기·�
 **캡처 파이프라인** (`screens/chemistry/` 폴더 — 관상·궁합·케미 공용):
 
 - `FaceMeshPage` — 카메라 preview + 실시간 계측 오버레이(`FaceMetricOverlayPainter`).
-  정면 10개(얼굴 비율·삼정·턱 각·눈꼬리·눈 사이·코 길이·입 폭·인중)·측면 8개(비전두각·
-  콧대 굴곡·코 길이·비순각·안면 돌출·E라인 상하·순이각)의 계측선을 긋고 프레임마다 값을
-  라벨로 띄운다. 라벨은 얼굴 위가 아니라 좌우 여백 열에 세우고 지시선으로 잇는다
-  (`layoutMetricLabels`, 겹침 없음). 녹색 조건 4: confidence ≥0.85 ·
+  엔진 계측값 전부 — 정면 28개(`FaceMetrics.computeAll`)·측면 8개
+  (`LateralFaceMetrics.computeAll`) — 의 계측선을 긋고 프레임마다 값을 라벨로 띄운다.
+  같은 자리에 겹치는 선은 색으로 가른다: 촬영 준비 색(빨강/초록)=골격선, `AppColors.gold`=
+  폭·비율선, `AppColors.info`=눈썹·눈·입술 미세선. 라벨은 얼굴 위가 아니라 좌우 여백 열에
+  세우고 같은 색 지시선으로 잇는다 (`layoutMetricLabels`, 겹침 없음). 녹색 조건 4: confidence ≥0.85 ·
   프레임 안정(이동 <0.005) · face width >25% · yaw class 일치(정면→frontal, 측면→threeQuarter).
   정면 캡처 시 DeepFace 백그라운드 analyze 시작 → 측면(3/4 yaw) 캡처 → `/capture/confirm`.
 - `AlbumCapturePage` — image_picker → **square-padding**(non-square 에서 MediaPipe landmark
