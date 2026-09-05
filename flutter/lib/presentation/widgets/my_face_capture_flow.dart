@@ -93,15 +93,10 @@ Future<void> _startCapture(
         width: size.width,
         height: size.height,
       ),
-      builder: (_) => const FaceMeshPage(albumShortcut: true),
+      builder: (_) => const FaceMeshPage(),
     );
     if (!context.mounted || result == null) return;
-    // 카메라 화면 안 [앨범에서 선택] 숏컷 — 진입 시트의 앨범과 같은 경로.
-    if (result is FaceMeshAlbumRequest) {
-      capture = await _pickFromAlbum(context, ref, size);
-    } else if (result is CaptureResult) {
-      capture = result;
-    }
+    if (result is CaptureResult) capture = result;
   } else {
     capture = await _pickFromAlbum(context, ref, size);
   }

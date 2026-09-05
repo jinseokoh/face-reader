@@ -19,19 +19,8 @@ import 'package:path_provider/path_provider.dart';
 
 import 'face_metric_overlay_painter.dart';
 
-/// [FaceMeshPage] 가 앨범 전환 요청으로 닫혔음을 알리는 sentinel.
-/// 홈 [내 관상 만들기] 경로에서 카메라 좌하단 앨범 아이콘을 누르면 이 값으로
-/// pop 되고, 호출부가 AlbumCapturePage 모달로 이어간다.
-class FaceMeshAlbumRequest {
-  const FaceMeshAlbumRequest();
-}
-
 class FaceMeshPage extends ConsumerStatefulWidget {
-  /// true 면 정면 단계에서 좌하단 앨범 진입 아이콘 노출 (내 관상 만들기 경로).
-  /// 탭 시 [FaceMeshAlbumRequest] 로 pop — 선택 다이얼로그 없이 앨범으로 전환.
-  final bool albumShortcut;
-
-  const FaceMeshPage({super.key, this.albumShortcut = false});
+  const FaceMeshPage({super.key});
 
   @override
   ConsumerState<FaceMeshPage> createState() => _FaceMeshPageState();
@@ -40,7 +29,7 @@ class FaceMeshPage extends ConsumerStatefulWidget {
 /// 정면 auto-countdown — 녹색을 이만큼 유지하면 자동 촬영한다.
 /// 안내 문구([_FaceMeshPageState._phaseInstruction])도 이 값을 그대로 쓴다.
 /// 숫자를 두 곳에 따로 적으면 문구와 실제 동작이 어긋난다.
-const int _kCountdownSeconds = 2;
+const int _kCountdownSeconds = 3;
 
 enum _CapturePhase { frontal, lateral }
 
@@ -272,10 +261,12 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
             color: Colors.black.withValues(alpha: 0.6),
             child: Text(
               _phase == _CapturePhase.frontal
-                  ? '안면 계측 점선이 녹색으로 변해야 합니다.'
+                  ? '카운트다운시 $_kCountdownSeconds초 동안 멈추세요.'
                   : '한쪽 귀가 안 보일 때까지 얼굴을 돌려주세요.',
               style: AppText.body.copyWith(color: Colors.white, height: 1.4),
-              textAlign: TextAlign.left,
+              textAlign: _phase == _CapturePhase.frontal
+                  ? TextAlign.center
+                  : TextAlign.left,
             ),
           ),
         ),
@@ -438,46 +429,6 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
             ),
           ),
         ),
-        // 내 관상 만들기 경로 — 하단 중앙 [앨범에서 선택] pill. 보정해 둔
-        // 사진 등록 경로. 정면 안내 모달 위에도 보이도록 Stack 최상단에 두고,
-        // 측면 단계로 넘어가면 캡처 세션이 진행 중이므로 숨긴다.
-        if (widget.albumShortcut && _phase == _CapturePhase.frontal)
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 24,
-            child: Center(
-              child: Material(
-                color: Colors.black.withValues(alpha: 0.55),
-                borderRadius: BorderRadius.circular(999),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(999),
-                  onTap: () =>
-                      Navigator.of(context).pop(const FaceMeshAlbumRequest()),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const FaIcon(
-                          FontAwesomeIcons.image,
-                          color: Colors.white,
-                          size: 14,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '앨범에서 선택',
-                          style: AppText.subTitle
-                              .copyWith(color: Colors.white),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
       ],
     );
   }
