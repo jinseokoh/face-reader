@@ -17,7 +17,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:mediapipe_face_mesh/mediapipe_face_mesh.dart';
 import 'package:path_provider/path_provider.dart';
 
-import 'face_mesh_painter.dart';
+import 'face_metric_overlay_painter.dart';
 
 /// [FaceMeshPage] 가 앨범 전환 요청으로 닫혔음을 알리는 sentinel.
 /// 홈 [내 관상 만들기] 경로에서 카메라 좌하단 앨범 아이콘을 누르면 이 값으로
@@ -236,14 +236,18 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
                 fit: StackFit.expand,
                 children: [
                   CameraPreview(controller),
-                  // modal 안내 떠 있는 동안에는 mesh overlay 도 숨김 — 사용자에게
-                  // popup 내용에만 집중시킴.
+                  // 실시간 계측 오버레이 — 정면·측면 각각의 계측선과 값.
+                  // modal 안내 떠 있는 동안에는 숨김 — 사용자에게 popup 내용에만
+                  // 집중시킴.
                   if (_meshResult != null && !_phaseTitleBlocking)
                     Positioned.fill(
                       child: IgnorePointer(
                         child: CustomPaint(
-                          painter: FaceMeshPainter(
+                          painter: FaceMetricOverlayPainter(
                             result: _meshResult!,
+                            phase: _phase == _CapturePhase.frontal
+                                ? MetricOverlayPhase.frontal
+                                : MetricOverlayPhase.lateral,
                             rotationCompensation: _rotationCompensation,
                             lensDirection: _cameras[_cameraIndex].lensDirection,
                             overlayColor: _overlayColor,
