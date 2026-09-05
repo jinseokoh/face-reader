@@ -88,6 +88,9 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
   Timer? _countdownTimer;
 
   int? _countdownRemaining;
+  // 측면 단계에서 녹색이 잠깐 깨져 카운트다운이 멈췄을 때 남아 있던 숫자.
+  // 다시 녹색이 되면 3 이 아니라 이 숫자부터 이어서 센다. 정면은 항상 3부터.
+  int? _pausedCountdown;
   // phase title 이 modal 로 떠 있는 동안에는 lateral camera 가 background 에서
   // 흐르고 있어도 yaw-driven auto-countdown 이 발동하면 안 된다.
   bool get _phaseTitleBlocking =>
@@ -469,6 +472,9 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
     _countdownTimer?.cancel();
     _countdownTimer = null;
     if (_countdownRemaining != null) {
+      if (_phase == _CapturePhase.lateral) {
+        _pausedCountdown = _countdownRemaining;
+      }
       setState(() => _countdownRemaining = null);
     }
   }
@@ -981,7 +987,10 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
 
   void _startCountdown() {
     _countdownTimer?.cancel();
-    setState(() => _countdownRemaining = _kCountdownSeconds);
+    final resumeFrom =
+        _phase == _CapturePhase.lateral ? _pausedCountdown : null;
+    _pausedCountdown = null;
+    setState(() => _countdownRemaining = resumeFrom ?? _kCountdownSeconds);
     // 1초 tick — 숫자가 [_kCountdownSeconds] 에서 1 까지 내려가고 그 다음
     // tick 에 촬영하므로, 녹색을 실제로 유지해야 하는 시간이 그대로 초가 된다.
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
