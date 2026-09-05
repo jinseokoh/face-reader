@@ -243,6 +243,12 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
         ? '측면 사진 분석한 결과입니다.'
         : '정면 사진 분석한 결과입니다.';
     final onConfirm = isLateralPhase ? _runAnalysis : _afterFrontalConfirm;
+    // 측면 사진의 yaw 가 3/4·profile 이 아니면 측면 8개를 잴 수 없다. 막지는
+    // 않고, [결과 확인] 대신 [다른 사진 선택]·[측면 무시] 두 갈래를 준다.
+    final yawClass = classifyYaw(photo.yaw);
+    final lateralUsable = !isLateralPhase ||
+        yawClass == YawClass.threeQuarter ||
+        yawClass == YawClass.profile;
 
     return Stack(
       fit: StackFit.expand,
@@ -301,28 +307,66 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
           right: 20,
           bottom: MediaQuery.of(context).padding.bottom + 8,
           child: Center(
-            child: SizedBox(
-              width: 200,
-              height: 52,
-              child: ElevatedButton(
-                onPressed: onConfirm,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white.withValues(alpha: 0.85),
-                  foregroundColor: const Color(0xFF333333),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+            child: lateralUsable
+                ? _previewButton('결과 확인', onConfirm)
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _previewButton('다른 사진 선택', _repickLateral),
+                      const SizedBox(width: 12),
+                      _previewButton('측면 무시', _skipLateral),
+                    ],
                   ),
-                ),
-                child: Text(
-                  '결과 확인',
-                  style: AppText.subTitle,
-                ),
-              ),
-            ),
           ),
         ),
       ],
     );
+  }
+
+  Widget _previewButton(String label, VoidCallback onPressed) {
+    return SizedBox(
+      width: 160,
+      height: 52,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white.withValues(alpha: 0.85),
+          foregroundColor: const Color(0xFF333333),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        child: Text(label, style: AppText.subTitle),
+      ),
+    );
+  }
+
+  /// 각도가 안 맞는 측면 사진을 버리고 정면만으로 분석한다.
+  void _skipLateral() {
+    _lateral = null;
+    _runAnalysis();
+  }
+
+  /// 측면 사진을 다시 고른다. picker 를 취소하면 지금 preview 에 그대로 남는다.
+  Future<void> _repickLateral() async {
+    final pick = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024,
+      maxHeight: 1024,
+    );
+    if (!mounted || pick == null) return;
+    setState(() => _step = _AlbumStep.processingLateral);
+    try {
+      final photo = await _processAlbumPhoto(pick.path);
+      if (!mounted) return;
+      setState(() {
+        _lateral = photo;
+        _step = _AlbumStep.previewLateral;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.toString());
+    }
   }
 
   Future<void> _pickFrontal() async {
