@@ -250,7 +250,7 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
           );
         }),
         // 정면·측면 둘 다 auto-countdown 으로만 캡처 — button 없음.
-        // Instruction banner (on top of camera) — switches text in lateral phase.
+        // Instruction banner (on top of camera) — 정면·측면 같은 문구.
         // modal 안내 떠 있는 동안에는 함께 숨김 (popup 단독 노출).
         if (!_phaseTitleBlocking) Positioned(
           top: 0,
@@ -260,13 +260,9 @@ class _FaceMeshPageState extends ConsumerState<FaceMeshPage> with WidgetsBinding
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             color: Colors.black.withValues(alpha: 0.6),
             child: Text(
-              _phase == _CapturePhase.frontal
-                  ? '카운트다운시 $_kCountdownSeconds초 동안 멈춰 주세요.'
-                  : '한쪽 귀가 안 보일 때까지 얼굴을 돌려주세요.',
+              '카운트다운시 $_kCountdownSeconds초 동안 멈춰 주세요.',
               style: AppText.body.copyWith(color: Colors.white, height: 1.4),
-              textAlign: _phase == _CapturePhase.frontal
-                  ? TextAlign.center
-                  : TextAlign.left,
+              textAlign: TextAlign.center,
             ),
           ),
         ),
