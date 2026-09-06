@@ -314,10 +314,10 @@ class MeasureReportBody extends StatelessWidget {
                     children: [
                       SizedBox(
                         width: 22,
-                        child: Text('${i + 1}.', style: AppText.hint),
+                        child: Text('${i + 1}.', style: AppText.caption),
                       ),
                       Expanded(
-                        child: Text(references[i], style: AppText.hint),
+                        child: Text(references[i], style: AppText.caption),
                       ),
                     ],
                   ),
