@@ -334,6 +334,14 @@ class TeamService {
 
   /// 쌍 상세 unlock 용 — 해당 유저의 현재 my-face 리포트 (live resolve).
   Future<FaceReadingReport?> fetchLiveReport(String userId) async {
+    final id = await fetchMyFaceId(userId);
+    if (id == null) return null;
+    return _receive.fetchByUuid(id);
+  }
+
+  /// 참가자의 현재 내 얼굴 카드 id — 쌍 상세의 결제 키·공유 경로에 쓴다.
+  /// 카드 body 는 방 snapshot 이 들고 있으므로 id 만 묻는다.
+  Future<String?> fetchMyFaceId(String userId) async {
     final row = await _client
         .from('metrics')
         .select('id')
@@ -342,9 +350,7 @@ class TeamService {
         .order('updated_at', ascending: false)
         .limit(1)
         .maybeSingle();
-    final id = row?['id'] as String?;
-    if (id == null) return null;
-    return _receive.fetchByUuid(id);
+    return row?['id'] as String?;
   }
 
   /// 상세 페이지 라이브 — teams UPDATE(status 전이) + team_members INSERT/DELETE.

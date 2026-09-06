@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/gender.dart';
+import 'dart:convert';
+
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/services/compat/compat_label.dart';
 import 'package:face_engine/domain/services/compat/compat_pair_key.dart';
@@ -963,8 +965,24 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
     return '참가자';
   }
 
-  /// 쌍 상세 = 기존 궁합 unlock 흐름 (1🪙). 두 참가자의 현재 my-face 를
-  /// live resolve 해 기존 runCompatibilityUnlock → pushCompat 계약으로 넘긴다.
+  /// 쌍 상세 = 기존 궁합 unlock 흐름 (1🪙). 리포트 본문은 방 snapshot 의 body
+  /// (결과표와 같은 소스 — 시작 시점 동결)에서 만들고, 결제 키·공유 경로에 쓰는
+  /// 카드 id 만 서버에서 묻는다. snapshot 에 없는 참가자만 live 카드로 대신한다.
+  /// snapshot body + 서버 카드 id. 둘 중 하나라도 없으면 null.
+  Future<FaceReadingReport?> _snapshotReport(String uid) async {
+    final id = await _service.fetchMyFaceId(uid);
+    if (id == null) return null;
+    final body = _team?.chemistrySnapshot?[uid];
+    if (body is! Map) return _service.fetchLiveReport(uid);
+    try {
+      final report = FaceReadingReport.fromJsonString(jsonEncode(body));
+      report.supabaseId = id;
+      return report;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _openPair(int slotA, int slotB) async {
     String? uidOf(int slot) {
       for (final r in _roster) {
@@ -986,13 +1004,13 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
     // 내 쌍은 내 리포트를 my 로 — 기존 궁합 상세의 시점 규약.
     final firstUid = uidA == myUid ? uidA : (uidB == myUid ? uidB : uidA);
     final secondUid = firstUid == uidA ? uidB : uidA;
-    final my = await _service.fetchLiveReport(firstUid);
-    final album = await _service.fetchLiveReport(secondUid);
+    final my = await _snapshotReport(firstUid);
+    final album = await _snapshotReport(secondUid);
     if (!mounted) return;
     if (my == null || album == null) {
       showTopSnackBar(
         Overlay.of(context),
-        CompactSnackBar.error(message: '상세를 불러올 수 없습니다'),
+        CompactSnackBar.error(message: '참가자의 카드가 서버에 없어 상세를 볼 수 없습니다'),
       );
       return;
     }

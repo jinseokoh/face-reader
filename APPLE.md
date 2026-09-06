@@ -2338,7 +2338,7 @@ A~D에 해당하지 않는 기능이라면 임의로 추가하지 않는다.
 **스키마 2 적용 절차 (형이 직접).**
 1. Supabase SQL Editor 에서 `web/db/migrations/0009_metrics_landmarks.sql` 실행 (insert 정책의 landmarks 금지 해제).
 2. 스키마 1 행 정리: `delete from public.metrics where (body::jsonb ->> 'schemaVersion')::int < 2;` — 형 폰의 카드 포함 전부 사라진다. 케미 방 snapshot 도 스키마 1 이면 방이 안 열린다.
-3. 데모 seed 는 `regen_first_impression_seed.mjs --schema2` 로 재생성됨(인물마다 AAF 실측 얼굴 좌표, 계측·대칭 재계산). SQL Editor 에서 `demo_teams.sql` 실행 — teams 전체가 지워지고 다시 만들어진다. 데모 계정(홍청)의 내 카드는 앱에서 다시 찍는다.
+3. 데모 seed 는 `regen_first_impression_seed.mjs --schema2` 로 재생성됨(인물마다 AAF 실측 얼굴 좌표, 계측·대칭 재계산, 인물 8명의 내 얼굴 카드 행까지). SQL Editor 에서 `demo_teams.sql` 실행 — teams 전체가 지워지고 다시 만들어진다. 데모 계정(홍청)과 실계정 참가자의 내 카드는 앱에서 다시 찍는다. 쌍 상세는 snapshot body + 서버 카드 id 로 연다 (2026-09-06).
 4. web 빌드·배포 (`facely.kr/privacy.md` 제2조 확인) · Android 배포 시 `app_config.android_min_build` 상향.
 
 **남은 사양 항목.**

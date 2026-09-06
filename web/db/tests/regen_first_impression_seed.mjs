@@ -12,6 +12,7 @@
 //   userId 해시로 하나 골라 landmarks 로 넣고, 계측·대칭은 그 좌표에서 엔진
 //   (runMetrics/runSymmetry)으로 다시 계산한다 — body 안의 값이 서로 맞는다.
 //   thumbnailKey 는 그대로(사진은 인물 사진, 좌표는 AAF 얼굴 — 방 화면은 mesh 를 안 그린다).
+//   인물(dddddddd-…)의 내 얼굴 카드(metrics 행)도 같은 body 로 넣는다 — 쌍 상세용.
 //
 // 실행: cd web && pnpm build:shared && node db/tests/regen_first_impression_seed.mjs [--retitle] [--schema2]
 // 입력·출력 모두 db/tests/demo_teams.sql (제자리 갱신).
@@ -261,6 +262,41 @@ sql = sql.replace(
 );
 if (RETITLE) {
   for (const [from, to] of Object.entries(TITLES)) sql = sql.split(`-- ── ${from}`).join(`-- ── ${to}`);
+}
+
+// ── --schema2: 인물(dddddddd-…) metrics 행 ──
+// 쌍 상세는 참가자의 내 얼굴 카드 id 를 서버에서 묻는다. 인물은 실계정이 아니라
+// 다시 찍을 수 없으니 snapshot 과 같은 body 로 카드 행을 seed 가 직접 만든다
+// (id 고정, my-face 1행 규칙 유지). 실계정(데모 계정 포함)은 건드리지 않는다.
+if (SCHEMA2) {
+  const bodies = new Map();
+  for (const m of sql.matchAll(/\$j\$(\{"blocked"[\s\S]*?\})\$j\$::jsonb/g)) {
+    const snap = JSON.parse(m[1]);
+    for (const [uid, body] of Object.entries(snap)) {
+      if (uid === "blocked" || uid === "chatted" || !uid.startsWith("dddddddd-")) continue;
+      if (!bodies.has(uid)) bodies.set(uid, body);
+    }
+  }
+  const rows = [...bodies.entries()].map(([uid, body]) => {
+    const n = uid.slice(-2);
+    const id = `dddddddd-0000-4000-8000-1000000000${n}`;
+    return `delete from public.metrics where user_id = '${uid}' and is_my_face;\n` +
+      `insert into public.metrics (id, user_id, body, is_my_face) values\n` +
+      `  ('${id}', '${uid}', $b$${JSON.stringify(body)}$b$, true)\n` +
+      `  on conflict (id) do update set body = excluded.body, is_my_face = true, updated_at = now();`;
+  });
+  const block =
+    "-- ── 인물 metrics (schema 2) — 쌍 상세용 내 얼굴 카드, snapshot 과 같은 body ──\n" +
+    rows.join("\n") +
+    "\n-- ── /인물 metrics ──\n";
+  const blockRe = /-- ── 인물 metrics \(schema 2\)[\s\S]*?-- ── \/인물 metrics ──\n/;
+  if (blockRe.test(sql)) {
+    sql = sql.replace(blockRe, block);
+  } else {
+    // commit; 뒤에 확인용 select 가 붙어 있어 파일 끝이 아니라 첫 commit; 앞에 넣는다.
+    sql = sql.replace(/\ncommit;\n/, `\n${block}\ncommit;\n`);
+  }
+  console.log(`persona metrics rows: ${rows.length}`);
 }
 
 writeFileSync(path, sql);
