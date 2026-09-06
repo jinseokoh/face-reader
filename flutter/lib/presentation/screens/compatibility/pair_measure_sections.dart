@@ -184,21 +184,7 @@ class MeasurePairBody extends StatelessWidget {
         _Card(
           child: Column(
             children: [
-              // 칸 비율은 '대칭과 얼굴형' 카드(_twoColumn)와 같다 — 2 : 3 : 3.
-              Row(
-                children: [
-                  const Expanded(flex: 2, child: SizedBox()),
-                  for (final name in [myAlias, albumAlias])
-                    Expanded(
-                      flex: 3,
-                      child: Text(name,
-                          style: AppText.caption,
-                          textAlign: TextAlign.right,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis),
-                    ),
-                ],
-              ),
+              _namesHeader(myAlias, albumAlias),
               const SizedBox(height: AppSpacing.sm),
               for (final axis in pairAxes) ...[
                 Padding(
@@ -292,6 +278,8 @@ class MeasurePairBody extends StatelessWidget {
         _Card(
           child: Column(
             children: [
+              _namesHeader(myAlias, albumAlias),
+              const SizedBox(height: AppSpacing.sm),
               _twoColumn('얼굴 대칭', symA == null ? '—' : _top(symA),
                   symB == null ? '—' : _top(symB)),
               _twoColumn('얼굴형', my.faceShape.korean, album.faceShape.korean),
@@ -363,6 +351,22 @@ class MeasurePairBody extends StatelessWidget {
       ),
     );
   }
+
+  /// 두 사람 이름 헤더 — '두 사람의 첫인상'·'대칭과 얼굴형' 공용. 칸 비율 2 : 3 : 3.
+  Widget _namesHeader(String a, String b) => Row(
+        children: [
+          const Expanded(flex: 2, child: SizedBox()),
+          for (final name in [a, b])
+            Expanded(
+              flex: 3,
+              child: Text(name,
+                  style: AppText.caption,
+                  textAlign: TextAlign.right,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis),
+            ),
+        ],
+      );
 
   /// 값 칸은 줄바꿈하지 않는다 — "세로로 긴 얼굴형" 같은 긴 라벨은 폭이 모자라면
   /// 글자를 줄여 한 줄에 맞춘다.
