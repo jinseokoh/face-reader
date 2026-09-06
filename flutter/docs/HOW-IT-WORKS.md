@@ -313,6 +313,11 @@ AAF 좌표 원본: `tools/face_shape_ml/extract_aaf_landmarks.py` → `out/aaf_l
 **사진별 첫인상** (§56, `compatibility/photo_compare_screen.dart`): 비교 탭 앱바에서 카드 2~4장을 골라 4축 +
 얼굴 대칭을 사진 A/B/C/D 열로 나란히. 같은 사람인지는 사용자가 고른다.
 
+**분석 확신도** (§14·§29, `domain/services/analysis_confidence.dart`): 사진 상태 3단(높음·보통·낮음) — 좌표에서 본
+yaw(|(l−r)/(l+r)|, AAF p95 0.45 / 정면 한계 0.70) · 얼굴 폭/사진 폭(0.20) · 전체 대칭 z(2/3). 가장 나쁜 신호를 따른다.
+리포트 면책 카드와 공유 카드에 "분석 확신도". **첫인상 카드** (§55, 공유 카드): 매력 제외 3축을 5칸 막대
+(백분위 20% 단위, `segmentLevel`)로 — 매력은 본인 화면 전용(§81.2).
+
 **모델 버전** (§58·§59, `data/constants/model_version.dart`): geometry · impression · pair 세 문자열. 리포트
 `modelVersion` 과 첫인상 방 payload `modelVersion` 에 기록. 화면은 저장된 z 에 현재 분위표를 다시 적용하므로
 카드 버전 ≠ 현재 버전이면 리포트 "모델 버전" 카드가 알린다. 엔진에 난수 없음 → 같은 입력 = 같은 결과

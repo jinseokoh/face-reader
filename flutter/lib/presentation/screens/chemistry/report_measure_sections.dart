@@ -10,6 +10,7 @@ import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/data/enums/metric_type.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
+import 'package:face_engine/domain/services/analysis_confidence.dart';
 import 'package:face_engine/domain/services/first_impression.dart';
 import 'package:face_engine/domain/services/geometry_profile.dart';
 import 'package:face_engine/domain/services/landmark_normalize.dart';
@@ -67,11 +68,35 @@ class MeasureReportBody extends StatelessWidget {
         zByMetric: z, gender: report.gender, symmetry: report.symmetry);
     final faceMapAlignment =
         alignFaces(kAverageFace[report.gender]!, report.landmarks);
+    final confidence = analysisConfidence(
+        landmarks: report.landmarks,
+        gender: report.gender,
+        symmetry: report.symmetry);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _Card(child: Text(disclaimer, style: AppText.caption)),
+        _Card(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(disclaimer, style: AppText.caption),
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  Expanded(child: Text('분석 확신도', style: AppText.subTitle)),
+                  Text(confidence.labelKo, style: AppText.subTitle),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                '사진 상태(정면 각도·얼굴 크기·좌우 대칭)로 정합니다. 사람의 특성이 '
+                '아니라 이 사진이 분석에 얼마나 적합했는지를 뜻합니다.',
+                style: AppText.hint,
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: AppSpacing.xl),
         _title('당신의 첫인상 프로필'),
         const SizedBox(height: AppSpacing.md),
@@ -650,6 +675,33 @@ class _MetricRow extends StatelessWidget {
   }
 }
 
+/// 백분위 → 5칸 (1~5). 20% 단위, 상위 20% = 5칸.
+int segmentLevel(double percentile) => (percentile / 20).ceil().clamp(1, 5);
+
+/// 5칸 막대 (§55 첫인상 카드). 별 대신 채워진 칸 — 같은 5단 양자화.
+class _SegmentBar extends StatelessWidget {
+  final int level;
+  const _SegmentBar({required this.level});
+
+  @override
+  Widget build(BuildContext context) => Row(
+        children: [
+          for (var i = 0; i < 5; i++) ...[
+            Expanded(
+              child: Container(
+                height: 14,
+                decoration: BoxDecoration(
+                  color: i < level ? AppColors.gold : AppColors.shell,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
+              ),
+            ),
+            if (i < 4) const SizedBox(width: AppSpacing.xs),
+          ],
+        ],
+      );
+}
+
 class _Bar extends StatelessWidget {
   final double fraction;
   const _Bar({required this.fraction});
@@ -774,7 +826,12 @@ class MeasureShareCard extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            for (final axis in ImpressionAxis.values) ...[
+                            Text('당신은 이런 인상을 줍니다.',
+                                style: AppText.body.copyWith(fontSize: 22)),
+                            const SizedBox(height: AppSpacing.lg),
+                            // 첫인상 카드(§55) — 매력 축은 카드에 싣지 않는다
+                            // (본인 화면 전용, APPLE.md §81.2). 5칸 = 백분위 20% 단위.
+                            for (final axis in pairAxes) ...[
                               Row(
                                 children: [
                                   Expanded(
@@ -788,7 +845,7 @@ class MeasureShareCard extends StatelessWidget {
                                 ],
                               ),
                               const SizedBox(height: AppSpacing.sm),
-                              _Bar(fraction: profile[axis] / 100),
+                              _SegmentBar(level: segmentLevel(profile[axis])),
                               const SizedBox(height: AppSpacing.lg),
                             ],
                           ],
@@ -807,6 +864,11 @@ class MeasureShareCard extends StatelessWidget {
                       style: AppText.body.copyWith(fontSize: 24),
                     ),
                   const Spacer(),
+                  Text(
+                    '분석 확신도 ${analysisConfidence(landmarks: report.landmarks, gender: report.gender, symmetry: report.symmetry).labelKo} (사진 상태 기준)',
+                    style: AppText.body.copyWith(fontSize: 20),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
                   Text(MeasureReportBody.disclaimer,
                       style: AppText.hint.copyWith(fontSize: 16)),
                 ],

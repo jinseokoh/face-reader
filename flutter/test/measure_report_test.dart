@@ -43,6 +43,7 @@ void main() {
     expect(find.text('참고 자료'), findsOneWidget);
     expect(find.text('모델 버전'), findsOneWidget);
     expect(find.text(MeasureReportBody.disclaimer), findsOneWidget);
+    expect(find.text('분석 확신도'), findsOneWidget);
     // 서술 섹션은 없다.
     expect(find.text('관상 해석'), findsNothing);
     expect(find.text('관상 10대 속성'), findsNothing);
