@@ -75,10 +75,10 @@ void main() {
   }).toJS;
 
   // Chemistry Team — chemistry_snapshot 기반 배틀 집계 (rev2 §3 payload 계약).
-  // 입력: {"roomKind":"match"|"all","players":[{"slot":1,"name":"지은",
-  //   "gender":"female","body":{…metrics body…}}, …],
+  // 입력: {"roomKind":"match"|"all","mode":"physiognomy"|"first_impression",
+  //   "players":[{"slot":1,"name":"지은","gender":"female","body":{…metrics body…}}, …],
   //   "blocked":[[1,4],…],"chatted":[[2,5],…]} — roomKind 누락 시 'all',
-  //   blocked/chatted 누락 시 없음.
+  //   mode 누락 시 physiognomy, blocked/chatted 누락 시 없음.
   // 출력: {"players":[…],"pairs":[…]} — pairs 정렬 = 순위, best = bypass
   // 아닌 첫 쌍. roomKind=='match' 면 이성 쌍만 pairs 에 담긴다(matchOnly).
   // blocked 쌍(snapshot 동결 차단 관계)은 상한 60점 + bypass,
@@ -86,6 +86,8 @@ void main() {
   _setRunTeam = ((String teamJson) {
     final raw = jsonDecode(teamJson) as Map<String, dynamic>;
     final matchOnly = raw['roomKind'] == 'match';
+    final scoring =
+        TeamScoring.forMode(TeamChemistryMode.fromDb(raw['mode'] as String?));
     final players = [
       for (final p in raw['players'] as List)
         TeamPlayer(
@@ -105,6 +107,7 @@ void main() {
     };
     return jsonEncode(computeTeam(
       players,
+      scoring: scoring,
       matchOnly: matchOnly,
       blockedKeys: blockedKeys,
       chattedKeys: chattedKeys,

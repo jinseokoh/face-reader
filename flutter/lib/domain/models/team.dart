@@ -1,3 +1,4 @@
+import 'package:face_engine/domain/services/compat/team.dart' as engine;
 import 'dart:convert';
 
 import 'package:face_engine/domain/models/face_reading_report.dart';
@@ -377,6 +378,11 @@ enum TeamMode {
   /// teams.mode 컬럼 값.
   final String dbValue;
   final String labelKo;
+
+  engine.TeamChemistryMode get engineMode => switch (this) {
+        TeamMode.physiognomy => engine.TeamChemistryMode.physiognomy,
+        TeamMode.firstImpression => engine.TeamChemistryMode.firstImpression,
+      };
 }
 
 /// 컬럼 도입(0008) 전 행은 null → physiognomy.

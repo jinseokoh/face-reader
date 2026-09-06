@@ -13,6 +13,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
 import '../../../config/router.dart';
+import '../../../core/edition.dart';
 import '../../../core/storage/thumbnail_paths.dart';
 import '../../../core/theme.dart';
 import '../../../data/services/team_service.dart';
@@ -510,6 +511,8 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
             child: Text(
               band == null
                   ? '$score점'
+                  : _team?.mode == TeamMode.firstImpression
+                  ? '$score점'
                   : '${CompatLabel.values[band].korean} '
                         '(${CompatLabel.values[band].hanja})',
               style: AppText.appBarTitle.copyWith(color: Colors.white),
@@ -663,7 +666,10 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
             children: [
               BandDot(band, size: 10),
               const SizedBox(width: AppSpacing.xs),
-              Text(band.bandLabel, style: AppText.hint),
+              Text(
+                band.bandLabelFor(_team?.mode ?? TeamMode.physiognomy),
+                style: AppText.hint,
+              ),
             ],
           ),
       ],
@@ -701,8 +707,13 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
     if (snapshot != null) {
       final players = assembleTeamPlayers(roster: roster, snapshot: snapshot);
       if (players.length >= 2) {
+        // measure 에디션은 첫인상 채점기만 상수 분기로 넘겨 관상 채점기가
+        // 빌드에서 빠진다 (APPLE.md §81.6).
         computed = engine.computeTeam(
           players,
+          scoring: kMeasureEdition
+              ? engine.TeamScoring.firstImpression
+              : engine.TeamScoring.forMode(team.mode.engineMode),
           matchOnly: team.roomKind == TeamRoomKind.match,
           blockedKeys: blockedKeysFromSnapshot(snapshot),
           chattedKeys: chattedKeysFromSnapshot(snapshot),
@@ -890,7 +901,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
                 BandDot(band, size: 28, score: _scoreOf(_mySlot!, other)),
                 const SizedBox(width: AppSpacing.xs),
                 Text(
-                  band.bandLabel,
+                  band.bandLabelFor(_team?.mode ?? TeamMode.physiognomy),
                   style: AppText.caption.copyWith(color: band.bandColor),
                 ),
                 const SizedBox(width: AppSpacing.sm),

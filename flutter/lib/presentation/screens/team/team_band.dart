@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme.dart';
+import '../../../domain/models/team.dart';
 
 // 기존 케미 4밴드 색 승계 (신규 색상 도입 금지).
 const _kBandGreen = Color(0xFF2E7D32);
@@ -27,6 +28,19 @@ extension TeamBand on int {
     2 => '상부상조',
     _ => '형극난조',
   };
+
+  /// 첫인상 방은 AAF 무작위 쌍 분포의 사분위 — 성어 대신 상대 위치로 읽는다.
+  String get firstImpressionBandLabel => switch (this) {
+    0 => '상위 25%',
+    1 => '상위 50%',
+    2 => '상위 75%',
+    _ => '하위 25%',
+  };
+
+  /// 방의 계산 방식에 맞는 등급 표기.
+  String bandLabelFor(TeamMode mode) => mode == TeamMode.firstImpression
+      ? firstImpressionBandLabel
+      : bandLabel;
 }
 
 /// 밴드 색 점 — 앱 전역 단일 표기 (매트릭스·순위·범례·쌍 상세 시트 공용).

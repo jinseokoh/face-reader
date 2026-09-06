@@ -302,6 +302,8 @@ function TeamClosedNotice({ expired }: { expired: boolean }) {
 
 const BAND_EMOJI_BY_CODE = ["🟢", "🔵", "🟠", "🔴"] as const;
 const BAND_LABEL_BY_CODE = ["천생연분", "금슬화합", "상부상조", "형극난조"] as const;
+// 첫인상 방 — AAF 무작위 쌍 분포의 사분위 표기.
+const FI_BAND_LABEL_BY_CODE = ["상위 25%", "상위 50%", "상위 75%", "하위 25%"] as const;
 
 function TeamShowcase({
   title,
@@ -368,7 +370,14 @@ function TeamShowcase({
         </table>
       </div>
       <p className="showcase-legend">
-        {BAND_EMOJI_BY_CODE.map((e, i) => `${e} ${BAND_LABEL_BY_CODE[i]}`).join(
+        {BAND_EMOJI_BY_CODE.map(
+          (e, i) =>
+            `${e} ${
+              (payload.mode === "first_impression"
+                ? FI_BAND_LABEL_BY_CODE
+                : BAND_LABEL_BY_CODE)[i]
+            }`,
+        ).join(
           "  ",
         )}
       </p>
@@ -398,11 +407,9 @@ function RevealFallback({
           alias: r.alias,
           gender: r.gender,
         }));
-        const computed = computeTeamPayload(
-          roster,
+        const computed = computeTeamPayload(roster,
           data.team.chemistrySnapshot as Record<string, unknown>,
-          data.team.roomKind,
-        );
+          data.team.roomKind, data.team.mode);
         if (!computed) {
           if (!cancelled) setFailed(true);
           return;

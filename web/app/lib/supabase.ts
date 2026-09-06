@@ -100,6 +100,8 @@ export type TeamSSR = {
     ageMin: number | null;
     ageMax: number | null;
     roomKind: "all" | "match";
+    /** 케미 계산 방식 — 0008 이전 행은 physiognomy. */
+    mode: "physiognomy" | "first_impression";
     status: string;
     resultPayload: unknown | null;
     chemistrySnapshot: Record<string, unknown> | null;
@@ -136,7 +138,7 @@ export async function fetchTeamSSR(
 
   const teamRes = await fetch(
     `${env.SUPABASE_URL}/rest/v1/teams?id=eq.${q}` +
-      `&select=id,title,is_private,max_players,age_min,age_max,room_kind,status,result_payload,chemistry_snapshot`,
+      `&select=id,title,is_private,max_players,age_min,age_max,room_kind,mode,status,result_payload,chemistry_snapshot`,
     { headers },
   );
   if (!teamRes.ok) {
@@ -205,6 +207,7 @@ export async function fetchTeamSSR(
       ageMin: (t.age_min as number) ?? null,
       ageMax: (t.age_max as number) ?? null,
       roomKind: t.room_kind as "all" | "match",
+      mode: (t.mode as "physiognomy" | "first_impression") ?? "physiognomy",
       status: t.status as string,
       resultPayload: t.result_payload ?? null,
       chemistrySnapshot: (t.chemistry_snapshot as Record<string, unknown>) ?? null,

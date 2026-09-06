@@ -237,7 +237,18 @@ export type TeamPayload = {
   players: { slot: number; name: string; gender: string }[];
   // 정렬 = 순위, band 0~3. best = bypass(차단·기채팅) 아닌 첫 쌍
   // (별도 best 키 없음).
-  pairs: { a: number; b: number; band: number; score: number; bypass?: boolean }[];
+  /** 첫인상 방(mode 'first_impression')은 쌍마다 sim·harm·comp 가 붙고 score 는 0~300. */
+  mode?: "physiognomy" | "first_impression";
+  pairs: {
+    a: number;
+    b: number;
+    band: number;
+    score: number;
+    sim?: number;
+    harm?: number;
+    comp?: number;
+    bypass?: boolean;
+  }[];
 };
 
 /** 베스트 쌍 — 정렬(=순위)된 pairs 에서 bypass 아닌 첫 쌍. */
@@ -397,6 +408,7 @@ export function computeTeamPayload(
   roster: RosterEntry[],
   snapshot: Record<string, unknown>,
   roomKind: "all" | "match",
+  mode: "physiognomy" | "first_impression" = "physiognomy",
 ): TeamPayload | null {
   const players = roster
     .filter((r) => snapshot[r.userId])
@@ -411,7 +423,7 @@ export function computeTeamPayload(
   const chatted = Array.isArray(snapshot.chatted) ? snapshot.chatted : [];
   return JSON.parse(
     globalThis.runTeam(
-      JSON.stringify({ roomKind, players, blocked, chatted }),
+      JSON.stringify({ roomKind, mode, players, blocked, chatted }),
     ),
   ) as TeamPayload;
 }

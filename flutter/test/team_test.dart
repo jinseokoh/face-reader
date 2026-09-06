@@ -123,6 +123,7 @@ List<TeamPlayer> _players(int n, {int seed = 42}) {
 }
 
 void main() {
+  _firstImpressionTeamTests();
   test('쌍 수 = N(N-1)/2, 모든 쌍은 a < b 정규화', () {
     final result = computeTeam(_players(4));
     expect(result.pairs.length, 6);
@@ -148,7 +149,7 @@ void main() {
 
   test('tie-break 비교자 — total 동점이면 (a, b) 사전순, 공동 수상 없음', () {
     TeamPair pair(int a, int b, double total) =>
-        TeamPair(a: a, b: b, total: total, label: CompatLabel.mahapgaseong);
+        TeamPair(a: a, b: b, total: total, band: CompatLabel.mahapgaseong.index);
     // total 다르면 내림차순.
     expect(teamPairCompare(pair(1, 2, 90), pair(3, 4, 80)) < 0, isTrue);
     expect(teamPairCompare(pair(1, 2, 80), pair(3, 4, 90)) > 0, isTrue);
@@ -221,13 +222,13 @@ void main() {
     );
     expect(blockedPair.blocked, isTrue);
     expect(blockedPair.total, lessThanOrEqualTo(kTeamBlockCap));
-    expect(blockedPair.label, CompatLabel.hyeonggeuknanjo);
+    expect(blockedPair.band, CompatLabel.hyeonggeuknanjo.index);
     expect(teamPairKey(result.best.a, result.best.b), isNot(key));
 
     for (final p in result.pairs.where((p) => !p.blocked)) {
       final original = open.pairs.firstWhere((o) => o.a == p.a && o.b == p.b);
       expect(p.total, original.total);
-      expect(p.label, original.label);
+      expect(p.band, original.band);
     }
   });
 
@@ -247,7 +248,7 @@ void main() {
     expect(chattedPair.blocked, isFalse);
     expect(chattedPair.bypass, isTrue);
     expect(chattedPair.total, original.total);
-    expect(chattedPair.label, original.label);
+    expect(chattedPair.band, original.band);
     expect(teamPairKey(result.best.a, result.best.b), isNot(key));
 
     final payloadPairs = result.toPayload()['pairs'] as List;
@@ -264,7 +265,7 @@ void main() {
         a: 1,
         b: 2,
         total: 60,
-        label: CompatLabel.hyeonggeuknanjo,
+        band: 3,
         blocked: true,
       ),
     ];
@@ -281,5 +282,48 @@ void main() {
       result.pairs.any((p) => genderBySlot[p.a] == genderBySlot[p.b]),
       isTrue,
     );
+  });
+}
+
+// ── 첫인상 케미 방 (teams.mode = first_impression) ──
+void _firstImpressionTeamTests() {
+  test('첫인상 채점 — score 0~300, band 0~3, 쌍마다 sim·harm·comp, root mode', () {
+    final result = computeTeam(
+      _players(6),
+      scoring: TeamScoring.firstImpression,
+    );
+    expect(result.mode, TeamChemistryMode.firstImpression);
+    final payload = result.toPayload();
+    expect(payload['mode'], 'first_impression');
+    for (final p in (payload['pairs'] as List).cast<Map>()) {
+      expect(p.keys.toSet(), {'a', 'b', 'band', 'score', 'sim', 'harm', 'comp'});
+      expect(p['score'], inInclusiveRange(0, 300));
+      expect(p['band'], inInclusiveRange(0, 3));
+      final parts = (p['sim'] as int) + (p['harm'] as int) + (p['comp'] as int);
+      expect((p['score'] as int) - parts, inInclusiveRange(-2, 2));
+    }
+    for (int i = 1; i < result.pairs.length; i++) {
+      expect(result.pairs[i - 1].total >= result.pairs[i].total, isTrue);
+    }
+  });
+
+  test('첫인상 차단 — 상한은 p25 바로 아래(131.0), 등급은 최하(3)', () {
+    final players = _players(6);
+    final open = computeTeam(players, scoring: TeamScoring.firstImpression);
+    final key = teamPairKey(open.best.a, open.best.b);
+    final result = computeTeam(
+      players,
+      scoring: TeamScoring.firstImpression,
+      blockedKeys: {key},
+    );
+    final blockedPair = result.pairs.firstWhere((p) => teamPairKey(p.a, p.b) == key);
+    expect(blockedPair.total, lessThanOrEqualTo(kTeamBlockCapFirstImpression));
+    expect(blockedPair.band, 3);
+    expect(teamPairKey(result.best.a, result.best.b), isNot(key));
+  });
+
+  test('관상 payload 는 mode 키가 없다 (계약 불변)', () {
+    final payload = computeTeam(_players(4)).toPayload();
+    expect(payload.containsKey('mode'), isFalse);
   });
 }
