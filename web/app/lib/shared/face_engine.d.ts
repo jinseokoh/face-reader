@@ -16,6 +16,12 @@ declare global {
   // 현재 모델 버전 {geometry, impression, pair} JSON (§58).
   // eslint-disable-next-line no-var
   var modelVersions: () => string;
+  // measure 카드 공유 — 첫인상·프로필·특이점·대칭·확신도 JSON (관상 없음).
+  // eslint-disable-next-line no-var
+  var runMeasure: (metricsJson: string) => string;
+  // measure 두 카드 비교 — 케미 합·세 성분·닮은 정도·영역·두 사람 축.
+  // eslint-disable-next-line no-var
+  var runMeasurePair: (metricsJsonA: string, metricsJsonB: string) => string;
   // Chemistry Team — 입력 {"roomKind":"match"|"all","players":[{"slot","name","gender","body"}]},
   // 출력 result_payload. roomKind=="match" 면 이성 쌍만 계산(matchOnly).
   // eslint-disable-next-line no-var

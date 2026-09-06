@@ -17,6 +17,8 @@ export type WebCaptureBody = {
   modelVersion?: Record<string, string>;
   /** 정면 468 랜드마크 [x, y] — 등방 원본 좌표(y × 높이/폭), 소수 4자리. 앱과 같은 형식. */
   landmarks: number[][];
+  /** 카드 종류 — 방 mode 를 따른다 (first_impression → measure). */
+  kind: "measure" | "physiognomy";
   lateralMetrics: null;
   faceShape: "oval";
 };

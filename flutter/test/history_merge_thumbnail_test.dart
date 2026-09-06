@@ -43,6 +43,7 @@ FaceReadingReport _report({String? thumbnailKey}) {
     ageGroup: AgeGroup.thirties,
     metrics: metrics,
     landmarks: demoLandmarks(Gender.female),
+    kind: ReportKind.measure,
     nodeScores: const {},
     attributes: const {},
     rules: const [],

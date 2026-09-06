@@ -212,6 +212,10 @@ Flutter: app_links package 가 incoming uri 수신
 
 ### 3.4 view-on-web (받는 사람 앱 미설치)
 
+> 2026-09-06: `/r/{id}` 는 body.kind 로 갈린다 — measure 카드는 `runMeasure`(첫인상·프로필·특이점·확신도),
+> 두 카드 중 하나라도 measure 면 `runMeasurePair`(케미 합·세 성분·닮은 정도·영역·두 사람 축). 관상 서술·궁합 등급은
+> physiognomy 카드끼리일 때만. kind 가 없는 스키마 2 카드는 measure (`traits.ts::isMeasureRow`).
+
 ```
 GET https://facely.kr/r/{id}
    │ ({id} 를 SEP("~") 로 split → 1 또는 2 UUID)

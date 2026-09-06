@@ -598,6 +598,7 @@ export function JoinWizard({
           string
         >,
         landmarks: points.map((p) => [r4(p[0]), r4(p[1] * aspect)]),
+        kind: team.mode === 'first_impression' ? 'measure' : 'physiognomy',
         lateralMetrics: null,
         faceShape: 'oval',
       }

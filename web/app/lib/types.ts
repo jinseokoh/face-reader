@@ -17,6 +17,8 @@ export interface RawMetrics {
   /** 정면 468 랜드마크 [x, y] — 등방 원본 좌표, 소수 4자리. 스키마 2 필수. */
   landmarks: number[][];
   lateralLandmarks?: number[][];
+  /** 카드 종류 — 'measure'(첫인상·비교) | 'physiognomy'(관상·궁합). 없으면 measure. */
+  kind?: "measure" | "physiognomy";
 }
 
 export interface MetricsRow {
@@ -90,7 +92,35 @@ export interface CompatOutput {
   b: CompatPersonOutput;
 }
 
-export type ShareKind = "solo" | "compat";
+export type ShareKind = "solo" | "compat" | "measure" | "measurePair";
+
+/** runMeasure 출력 — measure 카드의 첫인상 리포트 (관상 없음). */
+export interface MeasureOutput {
+  genderKo: string;
+  ageGroupKo: string;
+  faceShapeKo: string;
+  axes: { key: string; labelKo: string; top: number }[];
+  cardAxes: { labelKo: string; level: number }[];
+  profile: { labelKo: string; score: number }[];
+  distinct: { labelKo: string; top: number }[];
+  symmetry: { labelKo: string; value: number }[];
+  confidenceKo: string;
+}
+
+/** runMeasurePair 출력 — measure 두 카드의 비교. */
+export interface MeasurePairOutput {
+  chemistry: number;
+  chemistryTop: number;
+  harmony: number;
+  complementarity: number;
+  similarity: number;
+  similarityTop: number;
+  impressionSimilarity: number;
+  regions: { key: string; labelKo: string; value: number; bandKo: string; similar: boolean }[];
+  axes: { labelKo: string; aTop: number; bTop: number }[];
+  a: { genderKo: string; ageGroupKo: string; faceShapeKo: string };
+  b: { genderKo: string; ageGroupKo: string; faceShapeKo: string };
+}
 
 export interface RenderedShare {
   type: ShareKind;
@@ -115,4 +145,7 @@ export interface RenderedShare {
   /// (`/assets/female.png` / `/assets/male.png`) 로 fallback.
   compatAThumbUrl?: string;
   compatBThumbUrl?: string;
+  /// measure 카드 — 첫인상 리포트. solo/compat 과 동시에 있지 않다.
+  measure?: MeasureOutput;
+  measurePair?: MeasurePairOutput;
 }

@@ -3,6 +3,8 @@ import "./shared/face_engine.js";
 import type {
   CompatOutput,
   EngineOutput,
+  MeasureOutput,
+  MeasurePairOutput,
   MetricsRow,
   RawMetrics,
   RenderedShare,
@@ -128,7 +130,64 @@ export function renderCompat(a: MetricsRow, b: MetricsRow, ctx: RenderInput): Re
 }
 
 export function isShareKind(s: string): s is ShareKind {
-  return s === "solo" || s === "compat";
+  return s === "solo" || s === "compat" || s === "measure" || s === "measurePair";
+}
+
+// ── measure 카드 (첫인상·비교) — 관상·궁합과 섞지 않는다 ───────────────────────
+
+/** 카드 종류. 스키마 2 초기 카드는 kind 가 없어도 measure (앱 ReportKind.parse 와 같은 규칙). */
+export function isMeasureRow(row: MetricsRow): boolean {
+  return (row.raw as unknown as { kind?: string }).kind !== "physiognomy";
+}
+
+function runMeasureFor(row: MetricsRow): MeasureOutput {
+  ensureLoaded();
+  return JSON.parse(globalThis.runMeasure(JSON.stringify(row.raw))) as MeasureOutput;
+}
+
+function runMeasurePairFor(a: MetricsRow, b: MetricsRow): MeasurePairOutput {
+  ensureLoaded();
+  return JSON.parse(
+    globalThis.runMeasurePair(JSON.stringify(a.raw), JSON.stringify(b.raw)),
+  ) as MeasurePairOutput;
+}
+
+export function renderMeasureSolo(row: MetricsRow, ctx: RenderInput): RenderedShare {
+  const m = runMeasureFor(row);
+  const best = [...m.axes].filter((a) => a.key !== "attractive").sort((x, y) => x.top - y.top)[0];
+  return {
+    type: "measure",
+    shortId: ctx.shortId,
+    ogTitle: best ? `${best.labelKo} 상위 ${best.top}% — 첫인상 측정` : "첫인상 측정",
+    ogDescription: `${m.ageGroupKo} ${m.genderKo} · 얼굴 계측으로 본 첫인상 프로필`,
+    ogImage: ogImageFor(row, ctx),
+    canonicalUrl: `${ctx.appLinkBase}${ctx.shortId}`,
+    appLinkBase: ctx.appLinkBase,
+    appOpenUrl: ctx.appOpenUrl,
+    appStoreUrl: ctx.appStoreUrl,
+    playStoreUrl: ctx.playStoreUrl,
+    measure: m,
+    soloThumbUrl: soloThumbUrlFor(row, ctx),
+  };
+}
+
+export function renderMeasurePair(a: MetricsRow, b: MetricsRow, ctx: RenderInput): RenderedShare {
+  const p = runMeasurePairFor(a, b);
+  return {
+    type: "measurePair",
+    shortId: ctx.shortId,
+    ogTitle: `케미 ${p.chemistry}/300 · 닮은 정도 ${p.similarity} — 두 얼굴 비교`,
+    ogDescription: `조화도 ${p.harmony} · 보완도 ${p.complementarity} · 닮은 정도 ${p.similarity}`,
+    ogImage: ogImageFor(a, ctx),
+    canonicalUrl: `${ctx.appLinkBase}${ctx.shortId}`,
+    appLinkBase: ctx.appLinkBase,
+    appOpenUrl: ctx.appOpenUrl,
+    appStoreUrl: ctx.appStoreUrl,
+    playStoreUrl: ctx.playStoreUrl,
+    measurePair: p,
+    compatAThumbUrl: compatThumbUrlFor(a, ctx),
+    compatBThumbUrl: compatThumbUrlFor(b, ctx),
+  };
 }
 
 // ── 오늘 등록된 관상 — 홈 그리드 카드 (routes/_index.tsx) ─────────────────────────

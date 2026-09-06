@@ -35,6 +35,7 @@ import 'package:face_engine/domain/services/compat/compat_label.dart';
 import 'package:face_engine/domain/services/compat/five_element.dart';
 import 'package:face_engine/domain/services/compat/modern_vocab.dart';
 import 'package:face_engine/domain/services/face_metrics_web.dart';
+import 'package:face_engine/domain/services/measure_share.dart';
 import 'package:face_engine/domain/services/symmetry_metrics.dart';
 
 @JS('runEngine')
@@ -55,6 +56,14 @@ external set _setRunSymmetry(JSFunction fn);
 /// 현재 모델 버전 {geometry, impression, pair} JSON (§58) — 웹 body 에 기록.
 @JS('modelVersions')
 external set _setModelVersions(JSFunction fn);
+
+/// measure 카드 공유 페이지 — 첫인상 4축·프로필·특이점·대칭·확신도 (관상 없음).
+@JS('runMeasure')
+external set _setRunMeasure(JSFunction fn);
+
+/// measure 두 카드 비교 페이지 — 케미 합·세 성분·닮은 정도·영역 문구·두 사람 축.
+@JS('runMeasurePair')
+external set _setRunMeasurePair(JSFunction fn);
 
 void main() {
   _setRunEngine = ((String metricsJson) {
@@ -94,6 +103,17 @@ void main() {
   }).toJS;
 
   _setModelVersions = (() => jsonEncode(currentModelVersions())).toJS;
+
+  _setRunMeasure = ((String metricsJson) {
+    final report = FaceReadingReport.fromJsonString(metricsJson);
+    return jsonEncode(composeMeasureOutput(report));
+  }).toJS;
+
+  _setRunMeasurePair = ((String metricsJsonA, String metricsJsonB) {
+    final a = FaceReadingReport.fromJsonString(metricsJsonA);
+    final b = FaceReadingReport.fromJsonString(metricsJsonB);
+    return jsonEncode(composeMeasurePairOutput(a, b));
+  }).toJS;
 
   // Chemistry Team — chemistry_snapshot 기반 배틀 집계 (rev2 §3 payload 계약).
   // 입력: {"roomKind":"match"|"all","mode":"physiognomy"|"first_impression",

@@ -598,7 +598,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
         pair: p,
         first: first,
         second: second,
-        score: kMeasureEdition
+        score: showMeasurePair(first.report, second.report)
             ? analyzePairReports(first.report, second.report).chemistry
             : analyzeCompatibilityFromReports(
                 my: first.report,
@@ -730,7 +730,8 @@ class _CompatListCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // measure 에디션은 관상 궁합 엔진을 부르지 않는다.
-    final CompatibilityReport? r = kMeasureEdition
+    final measure = showMeasurePair(a, b);
+    final CompatibilityReport? r = measure
         ? null
         : analyzeCompatibilityFromReports(my: a, album: b).report;
     final labelColor = r == null ? AppColors.textHint : _labelColor(r.label);
@@ -786,7 +787,7 @@ class _CompatListCard extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: AppSpacing.sm),
-                            if (kMeasureEdition)
+                            if (measure)
                               MeasurePairSummary(a: a, b: b)
                             else ...[
                               Container(
@@ -821,7 +822,7 @@ class _CompatListCard extends StatelessWidget {
                           ],
                         ),
                       ),
-                      if (!kMeasureEdition) ...[
+                      if (!measure) ...[
                       const SizedBox(width: 8),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
@@ -848,7 +849,7 @@ class _CompatListCard extends StatelessWidget {
                   const SizedBox(height: 14),
                   Container(height: 1, color: AppTheme.border),
                   const SizedBox(height: AppSpacing.md),
-                  if (!kMeasureEdition) ...[
+                  if (!measure) ...[
                     Text(
                       '${r!.myElement.displayKorean} × ${r.albumElement.displayKorean}  ·  ${_relationKindKo(r.elementRelation.kind)}',
                       style: AppText.hint.copyWith(

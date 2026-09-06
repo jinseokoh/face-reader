@@ -189,6 +189,21 @@ class AttributeEvidence {
 /// 자유롭게 진화. 외부 사용자 install base 생긴 후에 비로소 bump.
 const int kReportSchemaVersion = 2;
 
+/// 카드 종류 (APPLE.md §81.6·§81.9). 만든 쪽이 정하고 어디서 열든 그대로 간다 —
+/// measure 카드는 관상 서술을, physiognomy 카드는 첫인상 리포트를 절대 섞지 않는다.
+/// iOS(measure 에디션)는 종류와 무관하게 관상 화면을 그리지 않는다.
+enum ReportKind {
+  /// 첫인상·비교 (iOS, 첫인상 케미 방의 웹 참여)
+  measure,
+
+  /// 관상·궁합 (Android, 관상 케미 방의 웹 참여)
+  physiognomy;
+
+  static ReportKind parse(Object? raw) => raw == physiognomy.name
+      ? physiognomy
+      : measure; // 스키마 2 초기(2026-09-06) 카드는 전부 iOS·첫인상 seed → measure
+}
+
 /// fromJsonString 의 각 rehydrate 단계를 trace — parse 실패 시 마지막 로그의
 /// 다음 단계가 범인. `print` 는 rate-limit 없어 반드시 찍힘.
 void _trace(String step) {
@@ -236,6 +251,11 @@ class FaceReadingReport {
   /// 측면 468 랜드마크 (같은 형식). null = 측면 미수행.
   final List<List<double>>? lateralLandmarks;
 
+  /// 카드 종류 — 화면·웹 공유가 이 값으로 갈린다.
+  final ReportKind kind;
+
+  bool get isMeasure => kind == ReportKind.measure;
+
   /// 14-node tree snapshot (root + 3 zones + 10 leaves).
   final Map<String, NodeEvidence> nodeScores;
 
@@ -277,6 +297,7 @@ class FaceReadingReport {
     this.modelVersion,
     required this.landmarks,
     this.lateralLandmarks,
+    required this.kind,
     required this.nodeScores,
     required this.attributes,
     required this.rules,
@@ -317,6 +338,7 @@ class FaceReadingReport {
         if (modelVersion != null) 'modelVersion': modelVersion,
         'landmarks': landmarks,
         if (lateralLandmarks != null) 'lateralLandmarks': lateralLandmarks,
+        'kind': kind.name,
         if (faceShapeLabel != null) 'faceShapeLabel': faceShapeLabel,
         if (faceShapeConfidence != null)
           'faceShapeConfidence': faceShapeConfidence,
@@ -356,6 +378,7 @@ class FaceReadingReport {
         if (modelVersion != null) 'modelVersion': modelVersion,
         'landmarks': landmarks,
         if (lateralLandmarks != null) 'lateralLandmarks': lateralLandmarks,
+        'kind': kind.name,
         // lateralFlags 는 lateral z + 현재 metricScore 임계로 load 시 재계산.
         if (faceShapeLabel != null) 'faceShapeLabel': faceShapeLabel,
         if (faceShapeConfidence != null)
@@ -409,6 +432,7 @@ class FaceReadingReport {
           'FaceReadingReport landmarks missing or not 468 (schema $kReportSchemaVersion)');
     }
     final lateralLandmarks = _parseLandmarks(j['lateralLandmarks']);
+    final kind = ReportKind.parse(j['kind']);
     final faceShapeLabel = j['faceShapeLabel'] as String?;
     final faceShapeConfidence = (j['faceShapeConfidence'] as num?)?.toDouble();
     _trace('faceShapeLabel=$faceShapeLabel conf=$faceShapeConfidence '
@@ -540,6 +564,7 @@ class FaceReadingReport {
       modelVersion: modelVersion,
       landmarks: landmarks,
       lateralLandmarks: lateralLandmarks,
+      kind: kind,
       nodeScores: nodeScores,
       attributes: attributes,
       rules: rules,

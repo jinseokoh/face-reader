@@ -948,7 +948,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
               const SizedBox(height: 16),
               // measure 에디션(iOS v1)은 서술 없는 백분위 리포트 — 관상 섹션
               // (archetype·속성·해석·노드)을 그리지 않는다.
-              if (kMeasureEdition)
+              if (showMeasureView(report))
                 MeasureReportBody(report: report)
               else ...[
                 _buildArchetypeCard(),
@@ -970,7 +970,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
               top: 0,
               child: RepaintBoundary(
                 key: _shareCardKey,
-                child: kMeasureEdition
+                child: showMeasureView(report)
                     ? MeasureShareCard(report: report)
                     : _ShareCardComposite(report: report),
               ),

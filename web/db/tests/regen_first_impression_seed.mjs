@@ -81,6 +81,7 @@ function toSchema2(userId, body, offset = 0) {
     symmetry,
     modelVersion: JSON.parse(globalThis.modelVersions()),
     landmarks,
+    kind: "measure",
   };
 }
 const TITLES = {

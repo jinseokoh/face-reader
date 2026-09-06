@@ -3,13 +3,13 @@ import { ShareCard } from "../components/ShareCard";
 import { CTA } from "../components/CTA";
 import { parsePairId } from "../lib/share-id";
 import { fetchMetrics, incrementMetricsViews } from "../lib/supabase";
-import { renderCompat, renderSolo } from "../lib/traits";
+import { isMeasureRow, renderCompat, renderMeasurePair, renderMeasureSolo, renderSolo } from "../lib/traits";
 
 /**
  * `GET /r/:id` — 관상·궁합 통합 SSR route.
  *
- *   /r/{uuid}            → 관상 (metrics 1행 fetch + runEngine)
- *   /r/{uuidA}~{uuidB}   → 궁합 (metrics 2행 fetch + runCompat)
+ *   /r/{uuid}            → 관상 (runEngine) 또는 첫인상 (runMeasure) — body.kind 로
+ *   /r/{uuidA}~{uuidB}   → 궁합 (runCompat) 또는 비교 (runMeasurePair) — 하나라도 measure 면 비교
  *
  * 시간 기반 만료 없음. fetch 마다 `increment_metrics_views` RPC 로 views++
  * → updated_at 자동 갱신 (HOW-IT-WORKS §5.2). dormant 3개월 정체 시 daily cron
@@ -55,9 +55,14 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
     playStoreUrl: env.PLAY_STORE_URL,
     cdnBase: env.R2_CDN_BASE,
   };
-  return ids.length === 2
-    ? renderCompat(rows[0], rows[1], ctx)
-    : renderSolo(rows[0], ctx);
+  // 카드 종류로 갈린다 — measure(첫인상·비교) 와 physiognomy(관상·궁합)는 섞지 않는다.
+  // 두 카드 중 하나라도 measure 면 비교 페이지.
+  if (ids.length === 2) {
+    return isMeasureRow(rows[0]) || isMeasureRow(rows[1])
+      ? renderMeasurePair(rows[0], rows[1], ctx)
+      : renderCompat(rows[0], rows[1], ctx);
+  }
+  return isMeasureRow(rows[0]) ? renderMeasureSolo(rows[0], ctx) : renderSolo(rows[0], ctx);
 }
 
 export function meta({ data }: Route.MetaArgs) {
