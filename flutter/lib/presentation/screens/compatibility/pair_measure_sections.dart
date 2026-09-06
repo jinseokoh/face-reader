@@ -109,8 +109,8 @@ class MeasurePairBody extends StatelessWidget {
         const SizedBox(height: AppSpacing.xs),
         Text(
           '사진 속 위치·크기·기울기는 빼고 두 얼굴의 모양만 남겨 겹친 모습입니다. '
-          '닮은 부분으로 분류된 영역은 진하게, 두 얼굴이 벌어진 자리는 벌어진 만큼 '
-          '큰 점으로 표시합니다.',
+          '닮은 부분으로 분류된 영역은 진하게 그리고, 두 얼굴의 같은 점이 벌어진 '
+          '자리는 두 점을 잇는 선으로 표시합니다. 선이 길고 진할수록 그 자리가 다릅니다.',
           style: AppText.hint,
         ),
         const SizedBox(height: AppSpacing.md),

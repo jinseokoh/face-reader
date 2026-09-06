@@ -18,7 +18,7 @@ class LandmarkMeshPainter extends CustomPainter {
   final Set<String> highlight;
   final List<List<int>> metricPaths;
 
-  /// true 면 [a] 와 [b] 가 벌어진 점을 거리에 비례한 점으로 표시 (차이 지도).
+  /// true 면 [a] 와 [b] 의 같은 점이 벌어진 자리를 두 점을 잇는 선으로 표시 (차이 지도).
   final bool showPointDiff;
   final Color colorA;
   final Color colorB;
@@ -88,6 +88,46 @@ class LandmarkMeshPainter extends CustomPainter {
         canvas.drawCircle(o, 2.6, dot);
       }
       canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final bg = background;
+    if (bg != null) {
+      _drawFace(canvas, size, bg, colorBackground);
+      _drawMetricPaths(canvas, size, bg, colorBackground);
+    }
+    _drawFace(canvas, size, a, colorA);
+    _drawMetricPaths(canvas, size, a, colorA);
+    final other = b;
+    if (other != null) {
+      _drawFace(canvas, size, other, colorB);
+      if (showPointDiff) _drawPointDiff(canvas, size, a, other);
+    }
+  }
+
+  /// 차이 지도 — 같은 번호의 두 점이 벌어졌으면 [a] 의 점에서 [b] 의 점까지
+  /// 선을 긋는다. 한쪽 끝은 [colorA] 윤곽 위, 다른 끝은 [colorB] 윤곽 위라
+  /// 누구에서 누구로 얼마나 벌어졌는지가 보인다. 0.05 이하는 긋지 않고 0.25
+  /// 에서 가장 진하게 — 무작위 두 사람의 중앙 RMS 거리(0.11)를 가운데 둔 눈금.
+  void _drawPointDiff(
+      Canvas canvas, Size size, List<List<double>> p, List<List<double>> q) {
+    const lo = 0.05, hi = 0.25;
+    for (var i = 0; i < p.length; i++) {
+      final dx = p[i][0] - q[i][0];
+      final dy = p[i][1] - q[i][1];
+      final d = math.sqrt(dx * dx + dy * dy);
+      if (d <= lo) continue;
+      final t = ((d - lo) / (hi - lo)).clamp(0.0, 1.0);
+      canvas.drawLine(
+        _map(p[i], size),
+        _map(q[i], size),
+        Paint()
+          ..color = AppColors.textPrimary.withValues(alpha: 0.2 + 0.6 * t)
+          ..strokeWidth = 1 + 1.5 * t
+          ..strokeCap = StrokeCap.round,
+      );
     }
   }
 
