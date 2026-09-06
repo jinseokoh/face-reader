@@ -88,8 +88,8 @@ class MeasurePairBody extends StatelessWidget {
         _title('두 얼굴 겹쳐 보기'),
         const SizedBox(height: AppSpacing.xs),
         Text(
-          '두 얼굴에서 위치·크기·기울기를 빼고 겹친 모습입니다. 닮은 부분으로 '
-          '분류된 영역을 진하게 표시합니다.',
+          '두 얼굴에서 위치·크기·기울기를 빼고 Procrustes 정렬로 겹친 모습입니다. '
+          '닮은 부분으로 분류된 영역을 진하게 표시합니다.',
           style: AppText.hint,
         ),
         const SizedBox(height: AppSpacing.md),

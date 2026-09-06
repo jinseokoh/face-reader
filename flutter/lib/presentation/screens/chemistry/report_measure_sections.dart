@@ -65,6 +65,8 @@ class MeasureReportBody extends StatelessWidget {
     final quant = metricQuantiles[report.gender]!;
     final profileScores = computeGeometryProfile(
         zByMetric: z, gender: report.gender, symmetry: report.symmetry);
+    final faceMapAlignment =
+        alignFaces(kAverageFace[report.gender]!, report.landmarks);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -125,8 +127,8 @@ class MeasureReportBody extends StatelessWidget {
         const SizedBox(height: AppSpacing.xs),
         Text(
           '위치·크기·기울기를 뺀 내 얼굴을 기준 집단(동아시아 얼굴 11,800장, 같은 성별) '
-          '평균 얼굴 위에 겹쳤습니다. 평균에서 가장 먼 3개 계측의 측정선을 두 얼굴에 '
-          '같이 그어, 어디가 얼마나 다른지 보입니다.',
+          '평균 얼굴에 Procrustes 정렬해 겹쳤습니다. 평균에서 가장 먼 3개 계측의 '
+          '측정선을 두 얼굴에 같이 그어, 어디가 얼마나 다른지 보입니다.',
           style: AppText.hint,
         ),
         const SizedBox(height: AppSpacing.md),
@@ -137,8 +139,9 @@ class MeasureReportBody extends StatelessWidget {
                 aspectRatio: 1,
                 child: CustomPaint(
                   painter: LandmarkMeshPainter(
-                    a: normalizeLandmarks(report.landmarks),
-                    background: kAverageFace[report.gender]!,
+                    // 평균 얼굴에 내 얼굴을 Procrustes 정렬 (§5) — 두 얼굴 겹쳐 보기와 같은 식.
+                    a: faceMapAlignment.bAligned,
+                    background: faceMapAlignment.a,
                     metricPaths: [
                       for (final id in _rankByAbsZ(z, descending: true).take(3))
                         ...?metricLandmarkPaths[id],
