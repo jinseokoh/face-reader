@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:facely/core/edition.dart';
 import 'package:facely/data/services/app_config_service.dart';
 import 'package:facely/presentation/widgets/onboarding_intro.dart';
 
@@ -36,6 +37,8 @@ Future<void> _openIntro(WidgetTester tester) async {
 }
 
 void main() {
+  // 온보딩 v1/v2 코퍼스 변형은 full 에디션 전용 — measure 는 자체 페이지 세트.
+  if (kMeasureEdition) return;
   tearDown(() => AppConfigService.instance.debugResetNarrativeVersion());
 
   testWidgets('확정 전(=v2 기본값) — onboarding1.png', (tester) async {

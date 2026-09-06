@@ -13,6 +13,7 @@ import 'package:face_engine/domain/services/compat/modern_vocab.dart';
 import 'package:facely/config/router.dart';
 import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
+import 'package:facely/core/edition_copy.dart';
 import 'package:facely/data/services/analytics_service.dart';
 import 'package:facely/data/services/compatibility_service.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
@@ -38,17 +39,13 @@ import 'package:timeago/timeago.dart' as timeago;
 /// 등록 **후** — 관상이 공짜라는 것부터 알린다. 궁합은 그 다음 이야기다.
 const List<String> _kCompatCreditsAfter = [
   ..._kCompatIntro,
-  '관상은 얼마든지 무료로',
-  '볼 수 있습니다. 먼저 관상탭에서',
-  '다른 사람의 관상을 봐야지만',
-  '그들과 나와의 궁합을 볼 수 있어요.',
+  ...EditionCopy.pairCreditsAfterTail,
 ];
 
 /// 내 관상 등록 **전** — 다음 한 걸음만 말한다.
 const List<String> _kCompatCreditsBefore = [
   ..._kCompatIntro,
-  '우선 내 관상을 본 후에만',
-  '다른 사람과의 궁합을 볼 수 있어요.',
+  ...EditionCopy.pairCreditsBeforeTail,
 ];
 
 /// 빈 탭을 채우는 문구 — 위에서 뚝 떨어진 뒤 그 아래로 안내가 뜬다.
@@ -57,12 +54,7 @@ const List<String> _kCompatCreditsBefore = [
 /// 궁합이 무엇인지 처음 설명하고, 마지막에 내 관상 등록을 청한다.
 /// 궁합을 남녀 사이로 좁혀 읽는 오해를 먼저 걷어낸다 — 벗·동료와도
 /// 보는 것이고, 맞다/안 맞다가 아니라 어느 면이 좋은지를 짚는다.
-const List<String> _kCompatIntro = [
-  '관상학적 궁합은 두 사람간',
-  '관상의 조화가 통계적으로',
-  '얼마나 빈번히 관찰되는지를 살펴보고',
-  '풀이하는 전통적인 해석법입니다.\n',
-];
+const List<String> _kCompatIntro = EditionCopy.pairIntro;
 
 /// 궁합 탭 — 내 얼굴이 아닌 다른 인물 리스트. 기본 lock, 1 코인 해제.
 /// 두 섹션 (미확인 → 확인) 으로 분리, 각 섹션은 자체 정렬 selector 보유.
@@ -149,7 +141,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('궁합'),
+            const Text(EditionCopy.pairTitle),
             if (auth != null) ...[
               const SizedBox(width: AppSpacing.md),
               CoinChip(
@@ -321,7 +313,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
         builder: (ctx, ref, _) => CreditsEmptyState(
           lines: _kCompatCreditsBefore,
           asset: 'assets/images/emotion-sad.png',
-          message: '궁합을 보려면 내 관상 등록이 필요합니다.',
+          message: EditionCopy.pairNeedMyFace,
           active: ref.watch(selectedTabProvider) == kCompatibilityTabIndex,
         ),
       );

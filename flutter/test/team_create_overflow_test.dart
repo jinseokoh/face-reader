@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:face_engine/domain/models/face_reading_report.dart';
+import 'package:facely/core/edition.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/screens/team/team_create_page.dart';
 
@@ -72,10 +73,12 @@ Future<void> _openCustomTitleWithKeyboard(
   // ① 방 유형 + 케미 계산 방식(full 에디션) → 다음.
   await tester.tap(find.text('전체 케미 매칭그룹'));
   await tester.pump();
-  await tester.ensureVisible(find.text('첫인상 케미'));
-  await tester.pumpAndSettle();
-  await tester.tap(find.text('첫인상 케미'));
-  await tester.pump();
+  if (!kMeasureEdition) {
+    await tester.ensureVisible(find.text('첫인상 케미'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('첫인상 케미'));
+    await tester.pump();
+  }
   await tester.ensureVisible(find.text('다음'));
   await tester.pumpAndSettle();
   await tester.tap(find.text('다음'));

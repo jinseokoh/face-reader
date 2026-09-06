@@ -1,3 +1,4 @@
+import 'package:facely/core/edition_copy.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/widgets/my_face_capture_flow.dart';
@@ -33,7 +34,7 @@ class FaceScanPill extends ConsumerWidget {
             borderRadius: BorderRadius.circular(999),
           ),
           child: Text(
-            hasMyFace ? '관상 보기' : '내 관상 보기',
+            hasMyFace ? EditionCopy.scanOther : EditionCopy.scanMine,
             style: AppText.caption.copyWith(
               fontWeight: FontWeight.w700,
               color: AppColors.textPrimary,

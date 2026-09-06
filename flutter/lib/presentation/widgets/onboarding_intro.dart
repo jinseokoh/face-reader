@@ -1,5 +1,6 @@
 import 'package:concentric_transition/concentric_transition.dart';
 import 'package:facely/core/theme.dart';
+import 'package:facely/core/edition.dart';
 import 'package:facely/data/services/app_config_service.dart';
 import 'package:facely/domain/services/life_question_narrative.dart';
 import 'package:facely/presentation/widgets/primary_button.dart';
@@ -24,7 +25,40 @@ const _kPageColors = [
   AppColors.background,
 ];
 
-const _kPages = [
+/// measure 에디션(iOS v1) 온보딩 — 관상·궁합이라는 말과 도사 삽화가 없다.
+/// 제목은 탭 이름과 같은 단어(측정·비교·케미 → 첫인상·비교·케미, APPLE.md §81.5).
+/// 이미지 onboarding_m1~4 는 실제 화면 캡처 합성으로 교체 예정(APPLE.md §2.4 A안).
+const _kPagesMeasure = [
+  _OnboardingPageData(
+    asset: 'assets/images/onboarding_m1.png',
+    title: '얼굴을 재서\n우리 그룹 케미를 봅니다',
+    body: '468개 점으로 얼굴을 재고\n그룹 안 모든 쌍의 케미를 점수로 보여드립니다.',
+    warm: true,
+  ),
+  _OnboardingPageData(
+    asset: 'assets/images/onboarding_m2.png',
+    title: '첫인상',
+    chips: ['무료'],
+    body: '28개 계측값과 한국인 11,800명 대비 위치,\n그리고 첫인상 4축 지표를 보여드립니다.',
+    warm: false,
+  ),
+  _OnboardingPageData(
+    asset: 'assets/images/onboarding_m3.png',
+    title: '비교',
+    chips: ['1코인'],
+    body: '두 얼굴의 계측값을 나란히 놓고\n닮은 정도·조화도·보완도를 계산합니다.',
+    warm: true,
+  ),
+  _OnboardingPageData(
+    asset: 'assets/images/onboarding_m4.png',
+    title: '케미',
+    chips: ['무료'],
+    body: '케미 그룹은 누구나 만들거나 참여할 수 있고\n참가자들의 그룹 케미 결과표를 보여드립니다.',
+    warm: false,
+  ),
+];
+
+const _kPagesFull = [
   _OnboardingPageData(
     asset: 'assets/images/onboarding1.png',
     assetV1: 'assets/images/onboarding0.png',
@@ -59,6 +93,9 @@ const _kPages = [
     warm: false,
   ),
 ];
+
+/// 에디션별 온보딩 페이지 — const 분기라 안 쓰는 쪽은 빌드에서 빠진다.
+const _kPages = kMeasureEdition ? _kPagesMeasure : _kPagesFull;
 /// 동심원 버튼 반지름 + 세로 위치 (화면 높이 비율). 원 중심은
 /// verticalPosition * H + radius — 0.75 를 넘기면 하단 시스템 내비와 겹친다.
 /// 본문은 [_kContentBottomInset] 만큼 하단을 비워 버튼 존과 분리한다.

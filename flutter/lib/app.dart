@@ -1,3 +1,4 @@
+import 'package:facely/core/edition_copy.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -260,11 +261,11 @@ class _MainAppState extends ConsumerState<MainApp> {
         items: [
           const BottomNavigationBarItem(
             icon: FaIcon(FontAwesomeIcons.person, size: 22),
-            label: '관상',
+            label: EditionCopy.tabFace,
           ),
           const BottomNavigationBarItem(
             icon: FaIcon(FontAwesomeIcons.peoplePulling, size: 22),
-            label: '궁합',
+            label: EditionCopy.tabPair,
           ),
           const BottomNavigationBarItem(
             icon: FaIcon(FontAwesomeIcons.peopleGroup, size: 22),
