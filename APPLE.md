@@ -2352,7 +2352,8 @@ A~D에 해당하지 않는 기능이라면 임의로 추가하지 않는다.
 - [ ] 데모 방 seed(`web/db/tests/demo_teams.sql`)를 `mode='first_impression'` 로 다시 만들기 — 지금 seed 는 관상 방이라 iOS 데모 계정 화면에 방이 안 보인다
 - [ ] 웹 공유 페이지: iOS 에서 만든 카드가 `/r/{id}`(관상 서술 SSR)·궁합 공유로 열린다. §4 결정(유지)대로 두되, 리뷰 노트에 링크를 넣지 않는다. 추후 measure 카드용 SSR 분기는 별도 절
 - [ ] 스토어 메타데이터: 부제·설명·키워드·스크린샷 5장(1장 = 계측 오버레이) · 카테고리 라이프스타일 · 리뷰 노트 · Resolution Center 답변(4.3(b) 컨셉 변경 · Guideline 4 수정 · 2.1 처리방침 제2조 인용)
-- [ ] web 빌드·배포 → `facely.kr/privacy.md` 제2조 확인 · App Store Connect 개인정보 라벨
+- [x] web 빌드·배포 → `facely.kr/privacy.md` 제2조 확인 (2026-09-06, 버전 65cbbdbb — 얼굴 특징점 좌표·첫인상 지표·영문 요약 반영)
+- [ ] App Store Connect 개인정보 라벨 — 제2조와 맞춘다 (얼굴 특징점 좌표·계측값·썸네일·추정 범주)
 - [ ] Android 배포 시 `app_config.android_min_build` 상향 (구버전이 첫인상 방에 관상 payload 쓰는 것 차단 — 서버 check 가 이미 막지만 화면 혼선 방지)
 
 **iOS 에서도 아직 남아 있는 관상 흔적 (허용 범위).**
