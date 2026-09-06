@@ -372,19 +372,24 @@ class MeasurePairBody extends StatelessWidget {
     );
   }
 
+  /// 값 칸은 줄바꿈하지 않는다 — "세로로 긴 얼굴형" 같은 긴 라벨은 폭이 모자라면
+  /// 글자를 줄여 한 줄에 맞춘다.
   Widget _twoColumn(String label, String a, String b) => Padding(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
         child: Row(
           children: [
-            Expanded(child: Text(label, style: AppText.body)),
-            SizedBox(
-              width: 72,
-              child: Text(a, style: AppText.body, textAlign: TextAlign.right),
-            ),
-            SizedBox(
-              width: 72,
-              child: Text(b, style: AppText.body, textAlign: TextAlign.right),
-            ),
+            Expanded(flex: 2, child: Text(label, style: AppText.body)),
+            for (final v in [a, b])
+              Expanded(
+                flex: 3,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(v, style: AppText.body, maxLines: 1, softWrap: false),
+                  ),
+                ),
+              ),
           ],
         ),
       );
