@@ -129,6 +129,8 @@ const Map<String, List<String>> geometryRegions = {
     'lowerFaceFullness',
     'foreheadWidth',
     'cheekboneWidth',
+    'faceArea',
+    'outlineCurvature',
   ],
   'eyes': [
     'intercanthalRatio',
@@ -136,6 +138,7 @@ const Map<String, List<String>> geometryRegions = {
     'eyeCanthalTilt',
     'eyeAspect',
     'browSpacing',
+    'eyeSizeBalance',
   ],
   'brows': [
     'eyebrowThickness',
@@ -143,7 +146,7 @@ const Map<String, List<String>> geometryRegions = {
     'eyebrowTiltDirection',
     'eyebrowCurvature',
   ],
-  'nose': ['nasalWidthRatio', 'nasalHeightRatio', 'midFaceRatio'],
+  'nose': ['nasalWidthRatio', 'nasalHeightRatio', 'midFaceRatio', 'noseAxisTilt'],
   'mouth': [
     'mouthWidthRatio',
     'mouthCornerAngle',

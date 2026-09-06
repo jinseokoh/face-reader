@@ -52,7 +52,8 @@ void main() {
   test('§75 회귀 — geometry $kGeometryModelVersion 고정값', () {
     final m = FaceMetrics(_landmarks()).computeAll();
     final s = computeSymmetry(_face());
-    expect(m['faceAspectRatio'], closeTo(1.2921179590458014, 1e-9));
+    // geometry 1.1.0 — computeAll 이 랜드마크 10 보정(×1.05)을 포함한다.
+    expect(m['faceAspectRatio'], closeTo(1.2921179590458014 * 1.05, 1e-9));
     expect(m['mouthCornerAngle'], closeTo(-4.354416762560152, 1e-9));
     expect(m['eyeAspect'], closeTo(1.4165584161327898, 1e-9));
     expect(s['symOverall'], closeTo(1.698136894608505, 1e-9));
@@ -67,7 +68,7 @@ void main() {
     final stamped = FaceReadingReport.fromJsonString(
       r.toBodyJson().replaceFirst(
           '"schemaVersion"',
-          '"modelVersion":{"geometry":"1.0.0","impression":"1.0.0","pair":"1.0.0"},'
+          '"modelVersion":{"geometry":"1.1.0","impression":"1.1.0","pair":"1.1.0"},'
           '"schemaVersion"'),
     );
     expect(stamped.modelVersion, equals(currentModelVersions()));
@@ -79,7 +80,7 @@ void main() {
     final pts = demoLandmarks(Gender.female);
     final lms = [for (final p in pts) FaceMeshLandmark(x: p[0], y: p[1], z: 0)];
     final m = FaceMetrics(lms).computeAll();
-    expect(m.length, 28);
+    expect(m.length, 32);
     final sym = computeSymmetry(pts);
     expect(sym['symOverall'], inInclusiveRange(0, 0.2));
     final z = {for (final id in ids) id: 0.0};

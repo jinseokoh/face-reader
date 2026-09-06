@@ -204,9 +204,78 @@ class WebFaceMetrics {
     return bridge / full;
   }
 
+
+  // ── §6 추가 계측 (2026-09-06, geometry 1.1.0) ──
+  // 윤곽·눈 다각형은 MediaPipe 표준 윤곽 인덱스 (landmark_normalize.dart 와 같다).
+  static const List<int> _faceOval = [
+    10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379,
+    378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127,
+    162, 21, 54, 103, 67, 109,
+  ];
+  static const List<int> _rightEyeContour = [
+    33, 7, 163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246,
+  ];
+  static const List<int> _leftEyeContour = [
+    263, 249, 390, 373, 374, 380, 381, 382, 362, 398, 384, 385, 386, 387, 388,
+    466,
+  ];
+
+  /// 다각형 면적 (신발끈 공식, 절댓값).
+  double _polygonArea(List<int> idx) {
+    var s = 0.0;
+    for (var i = 0; i < idx.length; i++) {
+      final a = idx[i], b = idx[(i + 1) % idx.length];
+      s += _x(a) * _y(b) - _x(b) * _y(a);
+    }
+    return s.abs() / 2;
+  }
+
+  double _polygonPerimeter(List<int> idx) {
+    var s = 0.0;
+    for (var i = 0; i < idx.length; i++) {
+      s += _dist(idx[i], idx[(i + 1) % idx.length]);
+    }
+    return s;
+  }
+
+  /// 얼굴 면적 — 윤곽 다각형 면적 / 얼굴 폭². 크기·해상도에 불변.
+  double get faceArea {
+    final w = faceWidth;
+    return w == 0 ? 0.0 : _polygonArea(_faceOval) / (w * w);
+  }
+
+  /// 윤곽 곡률 — 등주비 4πA/P². 원이면 1, 길쭉하거나 각지면 작아진다.
+  double get outlineCurvature {
+    final p = _polygonPerimeter(_faceOval);
+    return p == 0 ? 0.0 : 4 * pi * _polygonArea(_faceOval) / (p * p);
+  }
+
+  /// 양 눈 크기 균형 — 왼눈 면적 / (왼눈 + 오른눈 면적), 사진 기준 좌우.
+  /// 0.5 면 같다. 비율(왼/오른)은 작은 눈에서 폭발해 0~1 로 묶었다.
+  double get eyeSizeBalance {
+    final l = _polygonArea(_leftEyeContour);
+    final r = _polygonArea(_rightEyeContour);
+    return l + r == 0 ? 0.5 : l / (l + r);
+  }
+
+  /// 코 중심축 기울기 — nasion→코끝 벡터와 nasion→턱 중심선의 부호 있는 각(°).
+  /// + 는 코끝이 사진의 왼쪽(랜드마크 좌측, 피사체 우측)으로 치우침.
+  double get noseAxisTilt {
+    final ax = _x(_L.noseTip) - _x(_L.nasion);
+    final ay = _y(_L.noseTip) - _y(_L.nasion);
+    final bx = _x(_L.chin) - _x(_L.nasion);
+    final by = _y(_L.chin) - _y(_L.nasion);
+    return atan2(ax * by - ay * bx, ax * bx + ay * by) * 180 / pi;
+  }
+
+  /// Landmark 10(foreheadTop)이 실제 헤어라인보다 아래라 얼굴 세로/가로 비율을
+  /// 5% 늘려 잡는다. 앱·웹·AAF 추출(extract_landmarks.py LM10_CORRECTION) 이
+  /// 전부 이 값을 쓴다 — reference 가 이 보정을 포함한 값이라 빠지면 −0.77σ 치우친다.
+  static const double kLandmark10Correction = 1.05;
+
   Map<String, double> computeAll() {
     return {
-      'faceAspectRatio': faceAspectRatio,
+      'faceAspectRatio': faceAspectRatio * kLandmark10Correction,
       'upperFaceRatio': upperFaceRatio,
       'midFaceRatio': midFaceRatio,
       'lowerFaceRatio': lowerFaceRatio,
@@ -234,6 +303,11 @@ class WebFaceMetrics {
       'foreheadWidth': foreheadWidth,
       'cheekboneWidth': cheekboneWidth,
       'noseBridgeRatio': noseBridgeRatio,
+      // §6 추가 (geometry 1.1.0)
+      'faceArea': faceArea,
+      'outlineCurvature': outlineCurvature,
+      'eyeSizeBalance': eyeSizeBalance,
+      'noseAxisTilt': noseAxisTilt,
     };
   }
 }

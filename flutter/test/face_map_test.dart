@@ -27,7 +27,7 @@ void main() {
     }
   });
 
-  test('측정선 표 — referenceData 26 계측 전부, 인덱스는 468 안', () {
+  test('측정선 표 — referenceData 계측 전부, 인덱스는 468 안', () {
     final ids = metricInfoList.map((m) => m.id).toSet();
     expect(metricLandmarkPaths.keys.toSet(), ids);
     for (final e in metricLandmarkPaths.entries) {

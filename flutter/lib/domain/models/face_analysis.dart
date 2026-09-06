@@ -49,17 +49,15 @@ FaceReadingReport analyzeFaceReading({
   final faceMetrics = FaceMetrics(landmarks, aspect: aspectCorrection);
   final measured = faceMetrics.computeAll();
 
-  // Landmark 10 (foreheadTop) sits below actual hairline
-  //   → Adjust this single value to fine-tune face shape classification
-  const kLandmark10Correction = 1.05; // > 1.0 = 더 길게 보정
-  final faceAspectRaw = measured['faceAspectRatio']!; // pre-correction
-  measured['faceAspectRatio'] = faceAspectRaw * kLandmark10Correction;
+  // Landmark 10 보정(×1.05)은 FaceMetrics.computeAll 안에서 한다 — 웹 포트·
+  // AAF 보정 생성기와 같은 값을 보기 위해 (2026-09-06 이전엔 여기서 곱했다).
+  final faceAspectRaw = measured['faceAspectRatio']! / FaceMetrics.kLandmark10Correction;
 
   debugPrint('[Analysis] faceAspectRatio raw=${measured['faceAspectRatio']?.toStringAsFixed(4)} '
       'faceH=${faceMetrics.faceHeight.toStringAsFixed(4)} '
       'faceW=${faceMetrics.faceWidth.toStringAsFixed(4)} '
       'aspectCorrection=${aspectCorrection.toStringAsFixed(4)} '
-      'landmark10Correction=$kLandmark10Correction');
+      'landmark10Correction=${FaceMetrics.kLandmark10Correction}');
 
   // Step 2: Z-score with gender-specific reference
   // Iterate metricInfoList (not measured.entries) — computeAll() returns
@@ -85,7 +83,7 @@ FaceReadingReport analyzeFaceReading({
       'source=${source.name} gender=${gender.name} ethnicity=${ethnicity.name} '
       'age=${ageGroup.name} imgW=$imageWidth imgH=$imageHeight '
       'aspectCorr=${aspectCorrection.toStringAsFixed(4)} '
-      'lm10Corr=$kLandmark10Correction');
+      'lm10Corr=${FaceMetrics.kLandmark10Correction}');
   debugPrint('[CALIB] sid=$sid base faceH=${faceMetrics.faceHeight.toStringAsFixed(5)} '
       'faceW=${faceMetrics.faceWidth.toStringAsFixed(5)} '
       'faceAspectRaw=${faceAspectRaw.toStringAsFixed(5)} '

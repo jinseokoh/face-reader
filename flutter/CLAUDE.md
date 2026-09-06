@@ -2,7 +2,7 @@
 
 **최종 업데이트**: 2026-07-30
 
-관상 분석 Flutter 앱. MediaPipe Face Mesh 468 landmarks → 26 frontal + 8 lateral metric → 14-node tree → 10 attribute → archetype → 8 인생 질문 본문. 궁합은 별도 엔진(五行·十二宮·五官·三停·陰陽 기반).
+관상 분석 Flutter 앱. MediaPipe Face Mesh 468 landmarks → 30 frontal(관상 트리는 26) + 8 lateral metric → 14-node tree → 10 attribute → archetype → 8 인생 질문 본문. 궁합은 별도 엔진(五行·十二宮·五官·三停·陰陽 기반).
 
 > **용어 규칙** — 1차 기능의 한국어 공식 명칭은 **`케미 그룹`**(2026-07-19 "케미 매칭"에서
 > 재개칭, `케미` 단독 표기는 2026-07-16 폐기). 방/모임 단위는 `그룹`(공개 그룹·내 그룹·그룹 만들기 —
@@ -55,7 +55,7 @@
 
 | 문서 | 역할 |
 |---|---|
-| [`docs/HOW-IT-WORKS.md`](docs/HOW-IT-WORKS.md) | 엔진 기술 구현 — `face_engine` 패키지 위치 · 26+8 metric · 14 node · 10 attribute · 5-stage pipeline · normalize · Hive capture-only · 궁합 5 frame · narrative · face shape classifier |
+| [`docs/HOW-IT-WORKS.md`](docs/HOW-IT-WORKS.md) | 엔진 기술 구현 — `face_engine` 패키지 위치 · 30+8 metric · 14 node · 10 attribute · 5-stage pipeline · normalize · Hive capture-only · 궁합 5 frame · narrative · face shape classifier |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | 화면·패키지 구조 — shared/face_engine 분리 · 5-tab IndexedStack · Riverpod 패턴 · 데이터 흐름 · 코인/궁합 경제 · 외부 인프라 (R2/Supabase/DeepFace/AdMob/카카오) · 빌드 |
 | [`docs/DESIGN.md`](docs/DESIGN.md) | 디자인 토큰 SSOT — AppColors · AppText · AppSpacing · AppRadius · 컴포넌트 레시피 |
 
@@ -71,7 +71,7 @@
 cd /Users/chuck/Code/face/flutter
 flutter pub get
 flutter analyze          # 0 issues 기대
-flutter test             # 전부 green (2026-09-06 기준 288 test)
+flutter test             # 전부 green (2026-09-06 기준 290 test)
 flutter run --release    # 실기 — iOS 면 measure, Android 면 full 이 자동 (camera/MediaPipe simulator 불가)
 flutter build ipa        # iOS 제출 빌드 — define 불필요
 ```

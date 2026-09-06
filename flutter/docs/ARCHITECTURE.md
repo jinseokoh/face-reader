@@ -119,7 +119,7 @@ face/
 
 **shared/lib** — 순수 Dart (platform-free 불변식, `dart compile js` 통과 필수):
 `face_engine.dart`(JS export: runEngine/runCompat/runMetrics/runTeam) · `data/constants/`
-(face_reference_data = 26+8 mean/sd SSOT, archetype_catchphrase, compat_hashtags,
+(face_reference_data = 30+8 mean/sd SSOT, archetype_catchphrase, compat_hashtags,
 ethnicity_factors) · `data/enums/` · `domain/models/`(face_reading_report,
 physiognomy_tree) · `domain/services/`(metric_score, physiognomy_scoring,
 attribute_derivation, attribute_normalize, score_calibration, archetype,

@@ -55,8 +55,8 @@ const double kTeamBlockCap = 60.0;
 /// 첫인상 케미 등급 경계 — AAF 11,800장 무작위 쌍 20,000개의 케미 합
 /// (조화도+보완도+닮은 정도(Procrustes)) 분포에서 p75 / p50 / p25. 위에서부터 band 0~3.
 /// 재생성: flutter test test/procrustes_calibration_test.dart. 차단 상한은 p25 바로 아래.
-const List<double> kFirstImpressionBandCuts = [170.3, 152.4, 134.4];
-const double kTeamBlockCapFirstImpression = 134.3;
+const List<double> kFirstImpressionBandCuts = [167.2, 148.7, 130.5];
+const double kTeamBlockCapFirstImpression = 130.4;
 
 /// 무방향 쌍의 정규화 키 — blocked·chatted 집합·조회 공용.
 String teamPairKey(int a, int b) => a < b ? '$a-$b' : '$b-$a';

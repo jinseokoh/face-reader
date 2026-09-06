@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/gender.dart';
+import 'package:face_engine/data/constants/procrustes_reference.dart';
 import 'package:face_engine/domain/services/first_impression.dart';
 import 'package:facely/domain/services/pair_score.dart';
 import 'package:facely/presentation/screens/compatibility/pair_measure_sections.dart';
@@ -74,7 +75,7 @@ void main() {
   test('무작위 쌍 백분위 — 중앙값 50, 같은 얼굴은 100 근처', () {
     expect(pairSimilarityPercentile(50), closeTo(50, 1));
     expect(pairSimilarityPercentile(100), 100);
-    expect(chemistryPercentile(152.4), closeTo(50, 1));
+    expect(chemistryPercentile(kChemistryQuantiles[10]), closeTo(50, 1));
     expect(chemistryPercentile(0), 0);
   });
 

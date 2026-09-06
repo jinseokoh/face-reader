@@ -27,7 +27,7 @@ import '../../widgets/metric_landmark_paths.dart';
 ///
 /// 서술이 없다. 숫자와 그 숫자가 동아시아 얼굴 11,800장 안에서 어디쯤인지만 말한다.
 /// 순서: 고정 안내 → 첫인상 4축(근거 계측 3개씩) → 특이점 Top 3 / 평균 근접 3
-/// → 정면 계측 26 표 → 측면 8 표 → 얼굴형 → 참고 자료.
+/// → 정면 계측 표 → 측면 8 표 → 얼굴형 → 참고 자료.
 class MeasureReportBody extends StatelessWidget {
   final FaceReadingReport report;
 
@@ -209,7 +209,7 @@ class MeasureReportBody extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.xl),
-        _title('정면 계측 26'),
+        _title('정면 계측 ${metricInfoList.length}'),
         const SizedBox(height: AppSpacing.md),
         _Card(
           child: Column(

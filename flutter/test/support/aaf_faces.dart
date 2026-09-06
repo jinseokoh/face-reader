@@ -18,6 +18,10 @@ import 'package:face_engine/data/constants/symmetry_reference.dart';
 import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
+import 'package:facely/domain/services/face_metrics.dart';
+import 'package:mediapipe_face_mesh/mediapipe_face_mesh.dart';
+
+import 'aaf_landmarks.dart';
 
 const aafCsvPath =
     '/Users/chuck/Code/face/tools/face_shape_ml/out/aaf_per_face_shaped.csv';
@@ -62,11 +66,27 @@ List<AafFace> loadAafFaces() {
     final refs = referenceData[Ethnicity.eastAsian]![gender]!;
 
     final z = <String, double>{};
+    Map<String, double>? computed;
     for (final info in metricInfoList) {
       final col = header.indexOf(info.id);
       final ref = refs[info.id]!;
-      z[info.id] = (double.parse(cells[col]) - ref.mean) / ref.sd;
+      final double raw;
+      if (col >= 0) {
+        raw = double.parse(cells[col]);
+      } else {
+        // CSV 에 없는 계측(§6 추가분)은 같은 얼굴의 저장 좌표에서 계산한다.
+        computed ??= _findComputed([
+          for (final id in _keyIds) double.parse(cells[header.indexOf(id)]),
+        ]);
+        if (computed == null) {
+          _unmatched++;
+          break;
+        }
+        raw = computed[info.id]!;
+      }
+      z[info.id] = (double.parse((raw).toString()) - ref.mean) / ref.sd;
     }
+    if (z.length != metricInfoList.length) continue;
     final sref = symmetryReference[gender]!['symOverall']!;
     final symZ = (double.parse(cells[symi]) - sref.mean) / sref.sd;
     faces.add(AafFace(
@@ -75,4 +95,70 @@ List<AafFace> loadAafFaces() {
 
   _cache = faces;
   return faces;
+}
+
+/// CSV 행 ↔ 좌표(f32) 행 대응. 두 파일의 행 순서가 달라서(얼굴형 라벨 단계에서
+/// 섞임) 계측값으로 잇는다. 저장 좌표는 소수 4자리라 계측이 1e-4 수준으로
+/// 흔들리므로 정확 키가 아니라 상대 오차 1e-3 안의 후보를 찾는다.
+/// 후보 검색은 (얼굴 비율, 입 폭) 을 0.05 칸으로 묶은 버킷과 그 이웃.
+const List<String> _keyIds = [
+  'faceAspectRatio', 'mouthWidthRatio', 'gonialAngle',
+  'nasalWidthRatio', 'eyeAspect', 'intercanthalRatio',
+];
+
+int _unmatched = 0;
+
+/// 좌표에서 못 이은 CSV 행 수 — 0 이어야 한다 (aaf_faces_join_test).
+int get aafUnmatchedRows => _unmatched;
+
+Map<String, List<Map<String, double>>>? _bucketCache;
+
+String _bucket(double a, double b) =>
+    '${(a / 0.05).floor()}|${(b / 0.05).floor()}';
+
+Map<String, List<Map<String, double>>> _buckets() {
+  final cached = _bucketCache;
+  if (cached != null) return cached;
+  final out = <String, List<Map<String, double>>>{};
+  for (final f in loadAafLandmarks()) {
+    final m = FaceMetrics(
+      [for (final p in f.points) FaceMeshLandmark(x: p[0], y: p[1], z: 0)],
+    ).computeAll();
+    out.putIfAbsent(_bucket(m['faceAspectRatio']!, m['mouthWidthRatio']!), () => [])
+        .add(m);
+  }
+  _bucketCache = out;
+  return out;
+}
+
+Map<String, double>? _findComputed(List<double> target) {
+  final buckets = _buckets();
+  final ia = (target[0] / 0.05).floor();
+  final ib = (target[1] / 0.05).floor();
+  Map<String, double>? best;
+  var bestDist = double.infinity;
+  for (var da = -1; da <= 1; da++) {
+    for (var db = -1; db <= 1; db++) {
+      for (final m in buckets['${ia + da}|${ib + db}'] ?? const []) {
+        // 계측마다 상대 오차 — 작은 거리의 비율(눈 세로비 등)은 좌표 반올림에
+        // 더 흔들리므로 1% 까지 허용하고, 그 안에서 가장 가까운 후보를 고른다.
+        var dist = 0.0;
+        var ok = true;
+        for (var i = 0; i < _keyIds.length; i++) {
+          final rel = (m[_keyIds[i]]! - target[i]).abs() /
+              (target[i].abs() + 1e-3);
+          if (rel > 1e-2) {
+            ok = false;
+            break;
+          }
+          dist += rel;
+        }
+        if (ok && dist < bestDist) {
+          bestDist = dist;
+          best = m;
+        }
+      }
+    }
+  }
+  return best;
 }

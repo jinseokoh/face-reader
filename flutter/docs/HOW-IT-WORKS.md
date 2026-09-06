@@ -7,7 +7,7 @@
 
 ```
 MediaPipe Face Mesh (468 landmarks · 정면 + 3/4 측면)
-  → FaceMetrics.computeAll() 26 frontal + LateralFaceMetrics 8 (옵션)
+  → FaceMetrics.computeAll() 32 frontal(reference 30 + classifier 전용 2) + LateralFaceMetrics 8 (옵션)
   → z-score vs (ethnicity × gender) reference + 50+ age 보정
   → Track 1: TFLite 28-feat 얼굴형 분류 (oval/oblong/round/square/heart)
     Track 2: 14-node tree + 5-stage pipeline → 10 attribute raw
@@ -81,6 +81,14 @@ z = (측정값 − μ) / σ. 좌표 기준 `faceWidth = dist(234,454)`, `faceHei
 | 24 | `eyebrowTiltDirection` 눈썹 기울기 | (머리y−꼬리y)/faceHeight (부호) | shape | 0.002/0.014 | 올라감 | 내려감 → 관능·감성 | sensuality·emotionality (Z-EBT) |
 | 25 | `upperVsLowerLipRatio` 윗/아랫입술 | 윗입술두께/아랫입술두께 | ratio | 0.597/0.110 | 윗입술 두꺼움 | 아랫입술 두꺼움 | mouth node |
 | 26 | `browSpacing` 미간 너비 | dist(55,285)/faceWidth | ratio | 0.193/0.012 | 미간 넓음 → 관대·재물·매력 | 좁음 → 예민 | wealth·leadership·attractiveness (P-09·P-MJ vs P-09B) |
+| 27 | `faceArea` 얼굴 면적 | 윤곽 다각형(36점) 면적 / faceWidth² | ratio | 0.966/0.053 | 폭 대비 면적 큼 | 작음 | §6 추가(2026-09-06) — 첫인상·프로필·비교만, 관상 트리 미사용 |
+| 28 | `outlineCurvature` 윤곽 곡률 | 4πA/P² (등주비, 원=1) | ratio | 0.958/0.014 | 둥근 윤곽 | 길거나 각짐 | 〃 |
+| 29 | `eyeSizeBalance` 양 눈 크기 균형 | 왼눈 면적/(왼+오른) | ratio | 0.499/0.037 | 왼눈 큼 | 오른눈 큼 | 〃 |
+| 30 | `noseAxisTilt` 코 중심축 기울기 | ∠(nasion→코끝, nasion→턱) 부호 있는 각 | 각° | −0.23/5.05 | 코끝 왼쪽 | 코끝 오른쪽 | 〃 |
+
+27~30 은 좌표에서 계산하며 저장 전 카드는 로드 때 `landmarks` 로 다시 만든다(`fromJsonString`). AAF reference 는
+`test/new_metrics_calibration_test.dart` 로 생성. 랜드마크 10 보정(×1.05)은 2026-09-06 부터 `computeAll` 안에서 한다 —
+웹 `runMetrics` 가 이 보정을 빠뜨려 웹 참여 카드의 얼굴 비율이 −0.77σ 치우쳐 있던 것을 같이 고쳤다.
 
 `computeAll()` 의 `eyebrowLength`·`noseBridgeRatio` 는 분류기 전용 (referenceData 미사용).
 
@@ -280,7 +288,7 @@ total = clamp(50 + (rawTotal - 50) × 1.4, 5, 99)
 | 층 | 파일 (shared/) | 내용 |
 |---|---|---|
 | 1 학술 보고 관계 | `data/constants/impression_evidence.dart` | 축 4개 × 논문이 보고한 특징의 부호·비중(주 1.0/보조 0.5)·출처(OT08·TD13·SU13·SU18·VE14·RH06) |
-| 2 재구성 feature | `domain/services/impression_features.dart` | 그 특징을 26 계측 z 로 재정의. `averageness` = −mean\|z\|, `symmetry` = −z(symOverall) |
+| 2 재구성 feature | `domain/services/impression_features.dart` | 그 특징을 30 계측 z 로 재정의. `averageness` = −mean\|z\|(30개), `symmetry` = −z(symOverall) |
 | 3 제품 지표 | `domain/services/first_impression.dart` | 축 원점수 = Σ(부호×비중×feature z) → AAF 11,800 실측 분위표(`impression_quantiles.dart`, 성별 21-point)로 백분위 0~100 |
 
 축 4개: 신뢰감 있는 · 친근한 · 주도적인 · 매력적인 인상. **매력은 본인 화면 전용** — 두 얼굴·케미에 쓰지 않는다.
@@ -299,7 +307,7 @@ mean|z| → 성별 21-point 분위표(`geometry_profile_quantiles.dart`, AAF 실
 **정규화·Procrustes** (§5, `domain/services/landmark_normalize.dart`): 저장 좌표 → 무게중심 0 · RMS 1 · 눈꼬리(33→263) 수평.
 두 얼굴은 정규화 뒤 [b]를 [a]에 최소제곱 회전으로 맞춘다(`alignFaces`, 영역 RMS 거리 제공). 정규화 좌표는 저장하지
 않는다. `landmarkRegions`/`landmarkContours` 는 MediaPipe 표준 윤곽 인덱스. 화면: 리포트 "얼굴 지도"(§55) = 성별 평균 얼굴(`average_face.dart`, AAF 정규화 좌표 평균, 회색) 위에 내 얼굴을
-겹치고 특이점 3개 계측의 측정선(`widgets/metric_landmark_paths.dart`, 26 계측 → 인덱스 경로)을 양쪽에 그린다 ·
+겹치고 특이점 3개 계측의 측정선(`widgets/metric_landmark_paths.dart`, 30 계측 → 인덱스 경로)을 양쪽에 그린다 ·
 비교 "두 얼굴 겹쳐 보기"(§24, 닮은 영역 강조) — `widgets/landmark_mesh_painter.dart`.
 **닮은 정도 = Procrustes 거리** (`computeGeometrySimilarity(landmarksA, landmarksB)`): 정렬 뒤 RMS 거리를
 `100·exp(−ln2·d/median)` 로, median 은 AAF 무작위 쌍 20,000개의 영역별 중앙 거리(`procrustes_reference.dart`,
@@ -338,8 +346,8 @@ yaw(|(l−r)/(l+r)|, AAF p95 0.45 / 정면 한계 0.70) · 얼굴 폭/사진 폭
 매우 유사 · 유사 · 차이가 있음 · 차이가 큼. 비교 화면은 닮은 부분/다른 부분으로 나눠 보여준다.
 
 **케미 방 mode** (`teams.mode`, 0008): `physiognomy` = §7 궁합 엔진 total(0~100)+4단 등급 ·
-`first_impression` = 위 케미 점수, 등급은 AAF 무작위 쌍 사분위(p75/p50/p25 = 170.3/152.4/134.4, Procrustes 닮은 정도 기준),
-차단 상한 134.3. `computeTeam(scoring: TeamScoring.forMode(mode))`. measure 에디션(iOS)은
+`first_impression` = 위 케미 점수, 등급은 AAF 무작위 쌍 사분위(p75/p50/p25 = 167.2/148.7/130.5, Procrustes 닮은 정도 · 30 계측 기준),
+차단 상한 130.4. `computeTeam(scoring: TeamScoring.forMode(mode))`. measure 에디션(iOS)은
 `TeamScoring.firstImpression` 만 쓴다 (에디션은 플랫폼 런타임 판정, `core/edition.dart`).
 분위표 재생성: `flutter test test/impression_calibration_test.dart`.
 

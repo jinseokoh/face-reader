@@ -11,9 +11,9 @@
 /// - pair       : 닮은 정도 거리 식·상수, 유사도·조화·보완·케미 합, 사분위 경계
 library;
 
-const String kGeometryModelVersion = '1.0.0';
-const String kImpressionModelVersion = '1.0.0';
-const String kPairModelVersion = '1.0.0';
+const String kGeometryModelVersion = '1.1.0'; // §6 계측 4개 · 보정 위치 · 대칭
+const String kImpressionModelVersion = '1.1.0'; // averageness 30 계측 · 분위표
+const String kPairModelVersion = '1.1.0'; // 케미 등급 경계 재보정
 
 /// 저장용 — 리포트 `modelVersion`, 케미 방 payload `modelVersion`.
 Map<String, String> currentModelVersions() => const {

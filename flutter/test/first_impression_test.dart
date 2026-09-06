@@ -29,7 +29,7 @@ void main() {
       }
     });
 
-    test('2층의 계측은 전부 referenceData 가 있는 26개 안에 있다', () {
+    test('2층의 계측은 전부 referenceData 가 있는 계측 안에 있다', () {
       for (final s in impressionFeatureSpecs) {
         expect(ids, contains(s.metric), reason: s.id);
       }
@@ -147,7 +147,7 @@ void main() {
       expect(pairAxes, isNot(contains(ImpressionAxis.attractive)));
     });
 
-    test('영역 분할은 26개 계측을 정확히 한 번씩 덮는다', () {
+    test('영역 분할은 reference 계측 전부를 정확히 한 번씩 덮는다', () {
       final all = geometryRegions.values.expand((e) => e).toList();
       expect(all.toSet().length, all.length);
       expect(all.toSet(), ids.toSet());

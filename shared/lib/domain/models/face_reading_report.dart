@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:developer' as dev;
 
+import 'package:face_engine/domain/services/symmetry_metrics.dart';
+import 'package:face_engine/domain/services/face_metrics_web.dart';
 import 'package:face_engine/data/constants/face_reference_data.dart';
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/attribute.dart';
@@ -414,12 +416,6 @@ class FaceReadingReport {
         : _extractRawMap(j['lateralMetrics']);
     _trace('rawLateral: ${rawLateral?.length ?? "null"} '
         '${rawLateral?.keys.toList() ?? ""}');
-    final symmetry = j['symmetry'] == null
-        ? null
-        : {
-            for (final e in (j['symmetry'] as Map).entries)
-              e.key as String: (e.value as num).toDouble(),
-          };
     final modelVersion = j['modelVersion'] == null
         ? null
         : {
@@ -433,6 +429,13 @@ class FaceReadingReport {
     }
     final lateralLandmarks = _parseLandmarks(j['lateralLandmarks']);
     final kind = ReportKind.parse(j['kind']);
+    // 대칭도 저장이 없으면 좌표에서. (스키마 2 는 항상 좌표가 있다.)
+    final symmetry = j['symmetry'] == null
+        ? computeSymmetry(landmarks)
+        : {
+            for (final e in (j['symmetry'] as Map).entries)
+              e.key as String: (e.value as num).toDouble(),
+          };
     final faceShapeLabel = j['faceShapeLabel'] as String?;
     final faceShapeConfidence = (j['faceShapeConfidence'] as num?)?.toDouble();
     _trace('faceShapeLabel=$faceShapeLabel conf=$faceShapeConfidence '
@@ -450,6 +453,15 @@ class FaceReadingReport {
         '[gender]?=${referenceData[ethnicity]?[gender] != null}');
     final frontalRefs = referenceData[ethnicity]![gender]!;
     _trace('frontalRefs ${frontalRefs.length} keys=${frontalRefs.keys.toList()}');
+    // 저장 뒤에 추가된 계측(§6 등)은 저장 좌표에서 다시 계산한다 — 좌표를 저장하는
+    // 이유. 저장된 raw 가 있는 계측은 그대로 둔다(같은 식이라 값도 같다).
+    if (metricInfoList.any((m) => !rawMetrics.containsKey(m.id))) {
+      final recomputed = WebFaceMetrics(landmarks).computeAll();
+      for (final e in recomputed.entries) {
+        rawMetrics.putIfAbsent(e.key, () => e.value);
+      }
+      _trace('recomputed missing metrics from landmarks');
+    }
     final metrics = <String, MetricResult>{};
     final zAdjustedMap = <String, double>{};
     for (final info in metricInfoList) {

@@ -85,8 +85,11 @@ Map<Attribute, double> _rawScores(_Face f) {
   final refs = referenceData[_ethnicity]![f.gender]!;
   final z = <String, double>{};
   for (final info in metricInfoList) {
+    // §6 추가 계측(2026-09-06)은 CSV 에 없고 관상 트리도 쓰지 않는다.
+    final raw = f.metrics[info.id];
+    if (raw == null) continue;
     final ref = refs[info.id]!;
-    z[info.id] = (f.metrics[info.id]! - ref.mean) / ref.sd;
+    z[info.id] = (raw - ref.mean) / ref.sd;
   }
   return deriveAttributeScores(
     tree: scoreTree(z),
