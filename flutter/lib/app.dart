@@ -259,12 +259,12 @@ class _MainAppState extends ConsumerState<MainApp> {
         type: BottomNavigationBarType.fixed,
         elevation: 8,
         items: [
-          const BottomNavigationBarItem(
-            icon: FaIcon(FontAwesomeIcons.person, size: 22),
+          BottomNavigationBarItem(
+            icon: const FaIcon(FontAwesomeIcons.person, size: 22),
             label: EditionCopy.tabFace,
           ),
-          const BottomNavigationBarItem(
-            icon: FaIcon(FontAwesomeIcons.peoplePulling, size: 22),
+          BottomNavigationBarItem(
+            icon: const FaIcon(FontAwesomeIcons.peoplePulling, size: 22),
             label: EditionCopy.tabPair,
           ),
           const BottomNavigationBarItem(

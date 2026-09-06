@@ -101,7 +101,7 @@ class _CompatibilityDetailScreenState
               ? Navigator.of(context).pop()
               : context.go('/main'),
         ),
-        title: const Text(EditionCopy.pairDetailTitle),
+        title: Text(EditionCopy.pairDetailTitle),
         actions: [
           IconButton(
             icon: _isSharing
@@ -142,7 +142,7 @@ class _CompatibilityDetailScreenState
               ),
               const SizedBox(height: AppSpacing.sm),
               // measure 에디션(iOS v1)은 등급·오행·서술 없는 두 얼굴 비교 —
-              // const 분기라 관상 궁합 섹션이 빌드에서 빠진다.
+              // 플랫폼 판정(kMeasureEdition)으로 관상 궁합 섹션을 그리지 않는다.
               if (kMeasureEdition)
                 MeasurePairBody(my: widget.my, album: widget.album)
               else ...[

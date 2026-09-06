@@ -65,7 +65,7 @@ class _ConfirmDialog extends StatefulWidget {
 class _ConfirmDialogState extends State<_ConfirmDialog> {
   bool _agreed = false;
 
-  static const _items = <String>[
+  static final _items = <String>[
     '남은 코인 전부 소실',
     '코인 사용기록 전부 삭제',
     EditionCopy.deleteItemFace,

@@ -448,7 +448,7 @@ class _InfoConfirmScreenState extends ConsumerState<InfoConfirmScreen> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.xl),
       ),
-      content: const Text(EditionCopy.myFaceRegistered, style: AppText.body),
+      content: Text(EditionCopy.myFaceRegistered, style: AppText.body),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(ctx),

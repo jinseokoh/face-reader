@@ -317,10 +317,8 @@ cd web && pnpm build:shared       # 엔진 JS 산출물 (-O1)
 cd flutter && flutter pub get
 flutter analyze                     # 기준선 7건 (경미)
 flutter test                        # 전부 green
-flutter run                         # Android 실기 — camera/MediaPipe simulator 불가
-flutter run --dart-define=FACELY_EDITION=measure          # iOS 실기 (필수 define)
-flutter build ipa --dart-define=FACELY_EDITION=measure    # iOS 제출 빌드
-flutter test --dart-define=FACELY_EDITION=measure         # measure 에디션 테스트
+flutter run --release               # 실기 — 에디션은 플랫폼 자동(iOS measure / Android full)
+flutter test --dart-define=FACELY_EDITION=measure         # measure 에디션 테스트 (호스트는 기본 full)
 ```
 
 Platform: iOS = NSCameraUsageDescription·GADApplicationIdentifier·`applinks:facely.kr` /

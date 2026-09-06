@@ -504,8 +504,7 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage>
             _selectedTitle = null;
           }),
         ),
-        // 케미 계산 방식 — full 에디션만 고른다. measure 에디션은 첫인상 고정이라
-        // 이 블록이 빌드에서 빠진다.
+        // 케미 계산 방식 — full 에디션만 고른다. measure 에디션은 첫인상 고정.
         if (!kMeasureEdition) ...[
           const SizedBox(height: AppSpacing.xxl),
           Text('케미를 어떻게 계산할까요?', style: AppText.display),

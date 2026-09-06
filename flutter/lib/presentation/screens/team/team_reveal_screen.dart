@@ -744,8 +744,7 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
     if (snapshot != null) {
       final players = assembleTeamPlayers(roster: roster, snapshot: snapshot);
       if (players.length >= 2) {
-        // measure 에디션은 첫인상 채점기만 상수 분기로 넘겨 관상 채점기가
-        // 빌드에서 빠진다 (APPLE.md §81.6).
+        // measure 에디션은 첫인상 채점기만 쓴다 (APPLE.md §81.6).
         computed = engine.computeTeam(
           players,
           scoring: kMeasureEdition

@@ -91,8 +91,9 @@ const _kPagesFull = [
   ),
 ];
 
-/// 에디션별 온보딩 페이지 — const 분기라 안 쓰는 쪽은 빌드에서 빠진다.
-const _kPages = kMeasureEdition ? _kPagesMeasure : _kPagesFull;
+/// 에디션별 온보딩 페이지 (플랫폼 판정).
+List<_OnboardingPageData> get _kPages =>
+    kMeasureEdition ? _kPagesMeasure : _kPagesFull;
 /// 동심원 버튼 반지름 + 세로 위치 (화면 높이 비율). 원 중심은
 /// verticalPosition * H + radius — 0.75 를 넘기면 하단 시스템 내비와 겹친다.
 /// 본문은 [_kContentBottomInset] 만큼 하단을 비워 버튼 존과 분리한다.

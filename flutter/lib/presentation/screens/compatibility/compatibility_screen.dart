@@ -40,13 +40,13 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 /// 등록 **후** — 관상이 공짜라는 것부터 알린다. 궁합은 그 다음 이야기다.
-const List<String> _kCompatCreditsAfter = [
+List<String> get _kCompatCreditsAfter => [
   ..._kCompatIntro,
   ...EditionCopy.pairCreditsAfterTail,
 ];
 
 /// 내 관상 등록 **전** — 다음 한 걸음만 말한다.
-const List<String> _kCompatCreditsBefore = [
+List<String> get _kCompatCreditsBefore => [
   ..._kCompatIntro,
   ...EditionCopy.pairCreditsBeforeTail,
 ];
@@ -57,7 +57,7 @@ const List<String> _kCompatCreditsBefore = [
 /// 궁합이 무엇인지 처음 설명하고, 마지막에 내 관상 등록을 청한다.
 /// 궁합을 남녀 사이로 좁혀 읽는 오해를 먼저 걷어낸다 — 벗·동료와도
 /// 보는 것이고, 맞다/안 맞다가 아니라 어느 면이 좋은지를 짚는다.
-const List<String> _kCompatIntro = EditionCopy.pairIntro;
+List<String> get _kCompatIntro => EditionCopy.pairIntro;
 
 /// 궁합 탭 — 내 얼굴이 아닌 다른 인물 리스트. 기본 lock, 1 코인 해제.
 /// 두 섹션 (미확인 → 확인) 으로 분리, 각 섹션은 자체 정렬 selector 보유.
@@ -144,7 +144,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(EditionCopy.pairTitle),
+            Text(EditionCopy.pairTitle),
             if (auth != null) ...[
               const SizedBox(width: AppSpacing.md),
               CoinChip(
@@ -215,7 +215,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(EditionCopy.pairDeleteTitle, style: AppText.modalTitle),
+        title: Text(EditionCopy.pairDeleteTitle, style: AppText.modalTitle),
         content: Text(
           EditionCopy.pairDeleteBody,
           style: AppText.body.copyWith(height: 1.5),
@@ -358,7 +358,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.xl),
       ),
-      content: const Text(EditionCopy.pairDoneMessage, style: AppText.body),
+      content: Text(EditionCopy.pairDoneMessage, style: AppText.body),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(ctx),
@@ -717,7 +717,7 @@ class _CompatListCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // measure 에디션은 관상 궁합 엔진을 부르지 않는다 (const 분기 → 빌드 제외).
+    // measure 에디션은 관상 궁합 엔진을 부르지 않는다.
     final CompatibilityReport? r = kMeasureEdition
         ? null
         : analyzeCompatibilityFromReports(my: a, album: b).report;

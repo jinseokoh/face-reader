@@ -47,7 +47,7 @@ class ChatScreen extends ConsumerWidget {
       body: Stack(
         children: [
           !hasMyFace
-              ? const EmotionEmptyState(
+              ? EmotionEmptyState(
                   asset: 'assets/images/emotion-yawn.png',
                   message: EditionCopy.chatNeedsMyFace,
                 )

@@ -216,7 +216,7 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
           borderRadius: BorderRadius.circular(AppRadius.xl),
         ),
         title: const Text('그룹 만들기 사용불가', style: AppText.modalTitle),
-        content: const Text(EditionCopy.teamAgeGateBody, style: AppText.body),
+        content: Text(EditionCopy.teamAgeGateBody, style: AppText.body),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -236,7 +236,7 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
           borderRadius: BorderRadius.circular(AppRadius.xl),
         ),
         title: const Text('케미 그룹', style: AppText.modalTitle),
-        content: const SingleChildScrollView(
+        content: SingleChildScrollView(
           child: Text(EditionCopy.teamInfoBody, style: AppText.body),
         ),
         actions: [

@@ -29,17 +29,17 @@ import 'package:go_router/go_router.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
-const List<String> _kCreditsAlbum = [
+List<String> get _kCreditsAlbum => [
   ..._kCreditsIntro,
   ...EditionCopy.faceCreditsAlbumTail,
 ];
 
-const List<String> _kCreditsBookmark = [
+List<String> get _kCreditsBookmark => [
   ..._kCreditsIntro,
   ...EditionCopy.faceCreditsBookmarkTail,
 ];
 
-const List<String> _kCreditsCamera = [
+List<String> get _kCreditsCamera => [
   ..._kCreditsIntro,
   ...EditionCopy.faceCreditsCameraTail,
 ];
@@ -49,12 +49,12 @@ const List<String> _kCreditsCamera = [
 ///
 /// 세 탭이 공유하는 앞부분. 뒤에 탭별 두 줄이 붙는다 — 크레딧이 그 탭에
 /// 무엇이 쌓이는지로 끝나야 빈 화면이 안내 역할을 한다.
-const List<String> _kCreditsIntro = EditionCopy.faceCreditsIntro;
+List<String> get _kCreditsIntro => EditionCopy.faceCreditsIntro;
 
-const String _kEmptyAfterMyFace = EditionCopy.faceEmptyAfter;
+String get _kEmptyAfterMyFace => EditionCopy.faceEmptyAfter;
 /// 크레딧 뒤 일러스트 아래 문구. 카메라·앨범은 내 관상 등록 전후로 가리키는
 /// 곳이 다르다 — 등록 전엔 나를, 등록 후엔 상대를 추가하라고 말한다.
-const String _kEmptyBeforeMyFace = EditionCopy.faceEmptyBefore;
+String get _kEmptyBeforeMyFace => EditionCopy.faceEmptyBefore;
 
 // 화면-국지 팔레트 — DESIGN.md §2.4 (file-local 격리).
 // 본 화면은 AppColors 의 gold / goldDim / goldSoft / surface / border / textHint
@@ -259,7 +259,7 @@ class _PhysiognomyItem extends ConsumerWidget {
               // (고정 row 덮어쓰기 — 서버 row·케미 슬롯·공유 링크 유지).
               itemBuilder: (ctx) => [
                 if (isMyFace)
-                  const PopupMenuItem<String>(
+                  PopupMenuItem<String>(
                     value: 'recapture',
                     child: Text(EditionCopy.myFaceRecapture, style: AppText.body),
                   ),
@@ -285,7 +285,7 @@ class _PhysiognomyItem extends ConsumerWidget {
   /// Archetype 시각 검증용 뱃지 — primary / secondary / specialArchetype.
   /// 사용자가 "쏠림현상 있는지" 눈으로 바로 판단할 수 있도록 list item 에 직접 노출.
   Widget _buildArchetypeBadges() {
-    // measure 에디션 — 관상 유형 대신 첫인상 최고 축 한 칩 (const 분기).
+    // measure 에디션 — 관상 유형 대신 첫인상 최고 축 한 칩.
     if (kMeasureEdition) return _buildImpressionBadge();
     final primary = report.archetype.primaryLabel;
     final secondary = report.archetype.secondaryLabel;
@@ -647,7 +647,7 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
         // 내 관상 프로필 슬롯 제거 (2026-06-12) — 등록 상태는 AppBar
         // pill 라벨이 전달하고, 리스트 카드의 gold '내 관상' 배지가
         // 식별을 맡는다. 헤더는 타이틀 + TabBar 만.
-        title: const Text(EditionCopy.faceTitle),
+        title: Text(EditionCopy.faceTitle),
         actions: [
           // 미등록 = 내 관상 보기 / 등록 후 = 관상 보기.
           const FaceScanPill(),
@@ -944,7 +944,7 @@ class _ProfileHintCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const EmotionEmptyState(
+    return EmotionEmptyState(
       asset: 'assets/images/emotion-sad.png',
       message: EditionCopy.myFaceNeeded,
     );

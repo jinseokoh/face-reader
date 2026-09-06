@@ -2264,7 +2264,7 @@ A~D에 해당하지 않는 기능이라면 임의로 추가하지 않는다.
 - **Android**: 방 만들 때 둘 중 선택. "첫인상 케미 / 관상 케미".
 - **iOS v1**: 선택 없이 `first_impression` 으로만 생성. **`physiognomy` 방은 iOS v1 에서 보이지 않는다** — 목록·상세·참여·매트릭스 전부. 따라서 iOS 빌드에는 관상 쌍 엔진도, "관상" 문자열도 들어가지 않는다. Android 가 만든 관상 방의 초대 링크를 iOS 에서 열면 "이 방은 iOS 에서 볼 수 없습니다" 안내만.
 - **첫인상 방 매트릭스 값 = 케미 점수 = 조화도 + 보완도 + 닮은 정도 (세 성분의 합, 0~300).** 셀을 누르면 세 성분이 모두 보인다. 베스트 쌍은 이 값의 최댓값. "궁합" 이라는 단어는 쓰지 않는다.
-- 두 모드의 쌍 엔진은 모두 `shared/` 에 두어 웹 참가(JoinWizard)·Android·iOS 가 같은 코드를 쓴다. iOS 빌드는 컴파일 상수로 `physiognomy` 경로가 빠진다.
+- 두 모드의 쌍 엔진은 모두 `shared/` 에 두어 웹 참가(JoinWizard)·Android·iOS 가 같은 코드를 쓴다. iOS 는 `first_impression` 채점기만 쓴다.
 - 데모 방(`web/db/tests/demo_teams.sql`)은 전부 `first_impression` 으로 다시 만든다.
 
 ## 81.5 이름 (확정)
@@ -2275,11 +2275,11 @@ A~D에 해당하지 않는 기능이라면 임의로 추가하지 않는다.
 | 앱바 제목 | 그대로 | 첫인상 분석 · 두 얼굴 비교 · 케미 |
 | 방 모드 표시 | 첫인상 케미 / 관상 케미 | (첫인상 방만 있으므로 표시 없음) |
 
-## 81.6 빌드 구분
+## 81.6 빌드 구분 (2026-09-06 B안으로 변경)
 
-- `--dart-define=FACELY_EDITION=measure`(iOS) / `full`(Android) 를 `const String.fromEnvironment` 로 읽는 컴파일 상수. 관상 서술·관상 쌍 엔진·physiognomy 방 경로는 `const` 분기 뒤에 두어 iOS release 빌드에서 tree-shake 로 사라진다.
-- 원격 설정(`app_config.ios_narrative_version`)이나 런타임 플래그로 숨기지 않는다(가이드라인 2.3.1). measure 에디션에는 그 설정을 읽는 코드 자체가 없다.
-- 제출 전 검사: iOS 빌드 바이너리에 관상 문자열이 없는지 `strings` 로 0 확인.
+- 에디션은 **플랫폼 런타임 판정** (`lib/core/edition.dart`): iOS = `measure`, Android = `full`. `flutter run --release` / `flutter build ipa` 에 플래그가 필요 없다. `--dart-define=FACELY_EDITION=measure|full` 은 테스트·디버깅용 우선값.
+- 따라서 관상 서술·관상 쌍 엔진·physiognomy 방 코드는 iOS 바이너리 안에 **남는다**. 화면에서 그 경로로 갈 수 없을 뿐이다. 이 값을 바꾸는 원격 설정·런타임 플래그는 없다 — 플랫폼과 컴파일 플래그뿐 (가이드라인 2.3.1 의 "숨겨진 스위치" 에 해당하지 않음). measure 에디션은 `app_config.ios_narrative_version` 을 읽지 않는다.
+- A안(컴파일 상수 + tree-shake, `strings` 검사 0)은 형이 "플래그 없이 `flutter run --release` 만 쓰겠다"고 해서 폐기. 다시 A로 가려면 `edition.dart` 의 `final` 을 `const` 로 되돌리고 EditionCopy getter 를 const 로 바꾸면 된다.
 
 ## 81.7 이 절이 §1~§80 을 덮어쓰는 곳
 
@@ -2303,7 +2303,7 @@ A~D에 해당하지 않는 기능이라면 임의로 추가하지 않는다.
 ## 81.9 전통 관상·궁합 해석은 지우지 않는다 (2026-09-06)
 
 - 관상 서술 엔진(`life_question_narrative.dart`, `report_assembler.dart`, `physiognomy_scoring.dart`, 14-node tree, archetype), 궁합 5-frame 엔진(`shared/domain/services/compat/`), 관상 narrative 데이터·테스트는 **삭제·축소하지 않는다.** Android 가 계속 쓰고, iOS 는 추후 별도 대책과 함께 다시 붙인다.
-- iOS v1 에서의 부재는 **컴파일 상수 분기(81.6)로 빌드에서 빠지는 것**이지 코드베이스에서 없어지는 것이 아니다. §71·§72 의 "재설계" 항목은 첫인상·두 얼굴 경로를 **새로 추가**하는 것이고 관상 경로를 대체하는 것이 아니다.
+- iOS v1 에서의 부재는 **화면 경로를 쓰지 않는 것(81.6, 플랫폼 판정)**이지 코드베이스에서 없어지는 것이 아니다. §71·§72 의 "재설계" 항목은 첫인상·두 얼굴 경로를 **새로 추가**하는 것이고 관상 경로를 대체하는 것이 아니다.
 - 관상·궁합 경로의 iOS 대응 대책은 추후 이 문서에 별도 절로 추가한다.
 
 ## 81.10 진행 상황 (2026-09-06)
@@ -2321,7 +2321,7 @@ A~D에 해당하지 않는 기능이라면 임의로 추가하지 않는다.
 | 메타 | 리스트 배지·케미 참가자 메타 = 첫인상 최고 축 · iOS define 가드 · 빌드 명령 문서 | `2330e662` |
 | 온보딩 이미지 | `onboarding{n}-ios/android.png` 8장, 선택 규칙 한 줄 | `f4272e35` |
 
-빌드: iOS 는 `flutter build ipa --dart-define=FACELY_EDITION=measure`. 테스트는 두 에디션 모두 251 green.
+빌드: `flutter run --release` / `flutter build ipa` (플래그 없음, 플랫폼 자동). 테스트는 두 에디션 모두 251 green.
 
 **남은 것 — 제출 전.**
 
@@ -2330,7 +2330,6 @@ A~D에 해당하지 않는 기능이라면 임의로 추가하지 않는다.
 - [ ] 웹 공유 페이지: iOS 에서 만든 카드가 `/r/{id}`(관상 서술 SSR)·궁합 공유로 열린다. §4 결정(유지)대로 두되, 리뷰 노트에 링크를 넣지 않는다. 추후 measure 카드용 SSR 분기는 별도 절
 - [ ] 스토어 메타데이터: 부제·설명·키워드·스크린샷 5장(1장 = 계측 오버레이) · 카테고리 라이프스타일 · 리뷰 노트 · Resolution Center 답변(4.3(b) 컨셉 변경 · Guideline 4 수정 · 2.1 처리방침 제2조 인용)
 - [ ] web 빌드·배포 → `facely.kr/privacy.md` 제2조 확인 · App Store Connect 개인정보 라벨
-- [ ] iOS release 빌드에서 관상 문자열 0 확인 (`strings` 검사)
 - [ ] Android 배포 시 `app_config.android_min_build` 상향 (구버전이 첫인상 방에 관상 payload 쓰는 것 차단 — 서버 check 가 이미 막지만 화면 혼선 방지)
 
 **iOS 에서도 아직 남아 있는 관상 흔적 (허용 범위).**

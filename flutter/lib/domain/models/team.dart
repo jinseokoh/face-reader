@@ -263,7 +263,7 @@ enum TeamJoinError {
   notFound('NOT_FOUND', '존재하지 않는 방입니다'),
   notRecruiting('NOT_RECRUITING', '모집이 끝난 방입니다'),
   badPassword('BAD_PASSWORD', '비밀번호가 일치하지 않습니다'),
-  noMyFace('NO_MY_FACE', EditionCopy.noMyFaceError),
+  noMyFace('NO_MY_FACE', '내 관상 등록이 필요합니다'),
   ageNotAllowed('AGE_NOT_ALLOWED', '이 방의 연령대에 해당하지 않습니다'),
   // GENDER_FULL 이 'FULL' 을 부분 문자열로 포함하므로 mapTeamError 의 순차
   // contains 매칭에서 full 보다 먼저 검사되도록 앞에 둔다.
@@ -280,8 +280,12 @@ enum TeamJoinError {
   unknown('UNKNOWN', '잠시 후 다시 시도해 주세요');
 
   final String code;
-  final String labelKo;
-  const TeamJoinError(this.code, this.labelKo);
+  final String _labelKo;
+  const TeamJoinError(this.code, this._labelKo);
+
+  /// 화면 문구 — noMyFace 만 에디션별(관상/얼굴 측정).
+  String get labelKo =>
+      this == TeamJoinError.noMyFace ? EditionCopy.noMyFaceError : _labelKo;
 }
 
 /// 매칭 성사 — submit_team_result 가 best 쌍을 확정해 생성, respond_match

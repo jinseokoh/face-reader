@@ -18,7 +18,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
-const _txDescriptionLabels = {
+final _txDescriptionLabels = {
   'compat-unlock': EditionCopy.ledgerCompatUnlock,
 };
 

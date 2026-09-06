@@ -292,7 +292,7 @@ total = clamp(50 + (rawTotal - 50) × 1.4, 5, 99)
 **케미 방 mode** (`teams.mode`, 0008): `physiognomy` = §7 궁합 엔진 total(0~100)+4단 등급 ·
 `first_impression` = 위 케미 점수, 등급은 AAF 무작위 쌍 사분위(p75/p50/p25 = 165.8/148.0/131.1),
 차단 상한 131.0. `computeTeam(scoring: TeamScoring.forMode(mode))`. measure 에디션(iOS)은
-`TeamScoring.firstImpression` 을 상수 분기로 넘겨 관상 채점기가 빌드에서 빠진다.
+`TeamScoring.firstImpression` 만 쓴다 (에디션은 플랫폼 런타임 판정, `core/edition.dart`).
 분위표 재생성: `flutter test test/impression_calibration_test.dart`.
 
 ## 8. 서술 엔진 (life_question_narrative)

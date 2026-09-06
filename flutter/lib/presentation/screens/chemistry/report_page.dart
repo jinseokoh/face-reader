@@ -946,8 +946,8 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             children: [
               _buildHeader(),
               const SizedBox(height: 16),
-              // measure 에디션(iOS v1)은 서술 없는 백분위 리포트 — const 분기라
-              // 관상 섹션(archetype·속성·해석·노드)이 빌드에서 빠진다.
+              // measure 에디션(iOS v1)은 서술 없는 백분위 리포트 — 관상 섹션
+              // (archetype·속성·해석·노드)을 그리지 않는다.
               if (kMeasureEdition)
                 MeasureReportBody(report: report)
               else ...[
