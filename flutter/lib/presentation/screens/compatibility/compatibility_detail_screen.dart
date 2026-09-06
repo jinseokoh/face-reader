@@ -16,8 +16,12 @@ import 'package:face_engine/domain/services/compat/compat_pipeline.dart';
 import 'package:face_engine/domain/services/compat/compat_sub_display.dart';
 import 'package:face_engine/domain/services/compat/five_element.dart';
 import 'package:face_engine/domain/services/compat/modern_vocab.dart';
+import 'package:facely/core/edition.dart';
+import 'package:facely/core/edition_copy.dart';
 import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
+import 'package:facely/domain/services/pair_score.dart';
+import 'package:facely/presentation/screens/compatibility/pair_measure_sections.dart';
 import 'package:facely/domain/services/share/share_publisher.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
@@ -97,7 +101,7 @@ class _CompatibilityDetailScreenState
               ? Navigator.of(context).pop()
               : context.go('/main'),
         ),
-        title: const Text('궁합 풀이'),
+        title: const Text(EditionCopy.pairDetailTitle),
         actions: [
           IconButton(
             icon: _isSharing
@@ -137,15 +141,21 @@ class _CompatibilityDetailScreenState
                 style: AppText.caption.copyWith(color: AppColors.textHint),
               ),
               const SizedBox(height: AppSpacing.sm),
-              _TotalHeader(
-                my: widget.my,
-                album: widget.album,
-                report: _bundle.report,
-              ),
-              const SizedBox(height: 16),
-              _SubScorePanel(report: _bundle.report),
-              const SizedBox(height: 20),
-              _NarrativeSections(narrative: _bundle.narrative),
+              // measure 에디션(iOS v1)은 등급·오행·서술 없는 두 얼굴 비교 —
+              // const 분기라 관상 궁합 섹션이 빌드에서 빠진다.
+              if (kMeasureEdition)
+                MeasurePairBody(my: widget.my, album: widget.album)
+              else ...[
+                _TotalHeader(
+                  my: widget.my,
+                  album: widget.album,
+                  report: _bundle.report,
+                ),
+                const SizedBox(height: 16),
+                _SubScorePanel(report: _bundle.report),
+                const SizedBox(height: 20),
+                _NarrativeSections(narrative: _bundle.narrative),
+              ],
             ],
           ),
           // 카카오 공유용 합성 카드 — 화면 밖 mount 후 RepaintBoundary 로 캡처.
@@ -154,11 +164,13 @@ class _CompatibilityDetailScreenState
             top: 0,
             child: RepaintBoundary(
               key: _shareCardKey,
-              child: _CompatShareCardComposite(
-                my: widget.my,
-                album: widget.album,
-                report: _bundle.report,
-              ),
+              child: kMeasureEdition
+                  ? MeasurePairShareCard(my: widget.my, album: widget.album)
+                  : _CompatShareCardComposite(
+                      my: widget.my,
+                      album: widget.album,
+                      report: _bundle.report,
+                    ),
             ),
           ),
         ],
@@ -189,15 +201,21 @@ class _CompatibilityDetailScreenState
     setState(() => _isSharing = true);
     try {
       final pngBytes = await _captureShareCardBytes();
-      final r = _bundle.report;
       final myAlias = widget.my.alias ?? '나';
       final albumAlias = widget.album.alias ?? '상대';
-      final desc =
-          '$myAlias × $albumAlias — ${r.label.korean} ${r.total.toStringAsFixed(0)}/100';
+      final String desc;
+      if (kMeasureEdition) {
+        final p = analyzePairReports(widget.my, widget.album);
+        desc = '$myAlias × $albumAlias — 케미 ${p.chemistry.round()}/300';
+      } else {
+        final r = _bundle.report;
+        desc =
+            '$myAlias × $albumAlias — ${r.label.korean} ${r.total.toStringAsFixed(0)}/100';
+      }
       await SharePublisher.instance.publishCompatViaKakao(
         my: widget.my,
         album: widget.album,
-        title: '궁합도 과학이다',
+        title: EditionCopy.pairShareTitle,
         description: desc,
         compositeCardPng: pngBytes,
       );

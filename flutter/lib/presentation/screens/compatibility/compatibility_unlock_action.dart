@@ -1,3 +1,5 @@
+import 'package:facely/core/edition.dart';
+import 'package:facely/domain/services/pair_score.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/data/services/thumbnail_copier.dart';
 import 'package:face_engine/domain/services/compat/compat_adapter.dart';
@@ -128,7 +130,10 @@ Future<bool> runCompatibilityUnlock(
   if (!context.mounted) return false;
   final payLoader = showBlockingLoader(context);
   try {
-    final preBundle = analyzeCompatibilityFromReports(my: my, album: album);
+    // 기록용 총점 — measure 에디션은 케미 합(0~300), full 은 궁합 total(0~100).
+    final preTotal = kMeasureEdition
+        ? analyzePairReports(my, album).chemistry
+        : analyzeCompatibilityFromReports(my: my, album: album).report.total;
     // 쌍 정규화(a<b)에 맞춰 body·alias 도 같은 순서로 정렬.
     final myIsA = my.supabaseId?.toLowerCase() == pairIds[0];
     final aReport = myIsA ? my : album;
@@ -155,7 +160,7 @@ Future<bool> runCompatibilityUnlock(
         bBody: bBody,
         aAlias: aliasOf(aReport),
         bAlias: aliasOf(bReport),
-        totalScore: preBundle.report.total,
+        totalScore: preTotal,
       );
     } catch (e, st) {
       debugPrint('[Compatibility] unlock failed: $e\n$st');

@@ -10,11 +10,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/gender.dart';
-import 'package:face_engine/domain/models/face_reading_report.dart';
-import 'package:face_engine/domain/services/archetype.dart';
 import 'package:face_engine/domain/services/compat/team.dart';
 import 'package:face_engine/domain/services/compat/compat_label.dart';
-import 'package:face_engine/domain/services/physiognomy_scoring.dart';
 import 'support/fake_report.dart';
 
 List<TeamPlayer> _players(int n, {int seed = 42}) {

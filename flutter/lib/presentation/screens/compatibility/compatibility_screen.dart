@@ -12,8 +12,11 @@ import 'package:face_engine/domain/services/compat/five_element.dart';
 import 'package:face_engine/domain/services/compat/modern_vocab.dart';
 import 'package:facely/config/router.dart';
 import 'package:facely/core/storage/thumbnail_paths.dart';
-import 'package:facely/core/theme.dart';
+import 'package:facely/core/edition.dart';
 import 'package:facely/core/edition_copy.dart';
+import 'package:facely/core/theme.dart';
+import 'package:facely/domain/services/pair_score.dart';
+import 'package:facely/presentation/screens/compatibility/pair_measure_sections.dart';
 import 'package:facely/data/services/analytics_service.dart';
 import 'package:facely/data/services/compatibility_service.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
@@ -212,7 +215,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('궁합 삭제', style: AppText.modalTitle),
+        title: const Text(EditionCopy.pairDeleteTitle, style: AppText.modalTitle),
         content: Text(
           '이 궁합을 목록에서 삭제할까요?\n사용한 코인은 환불되지 않습니다.',
           style: AppText.body.copyWith(height: 1.5),
@@ -355,7 +358,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.xl),
       ),
-      content: const Text('궁합 풀이가 완성되었습니다.', style: AppText.body),
+      content: const Text(EditionCopy.pairDoneMessage, style: AppText.body),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(ctx),
@@ -380,13 +383,13 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
               tabIndex: 0,
               credits: _kCompatCreditsAfter,
               asset: 'assets/images/emotion-namaste.png',
-              message: '우선 관상을 보셔야 합니다.',
+              message: EditionCopy.pairNeedFaceFirst,
             )
           : _emptyTab(
               tabIndex: 0,
               credits: _kCompatCreditsAfter,
               asset: 'assets/images/emotion-happy.png',
-              message: '미확인 궁합이 없습니다.',
+              message: EditionCopy.pairEmptyLocked,
             );
     }
 
@@ -460,6 +463,10 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
   }
 
   void _showInfoDialog(BuildContext context) {
+    if (kMeasureEdition) {
+      showMeasurePairInfoDialog(context);
+      return;
+    }
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -527,7 +534,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
         tabIndex: 1,
         credits: myFace == null ? _kCompatCreditsBefore : _kCompatCreditsAfter,
         asset: 'assets/images/emotion-namaste.png',
-        message: '아직 확인한 궁합이 없습니다.',
+        message: EditionCopy.pairEmptyUnlocked,
       );
     }
 
@@ -579,10 +586,12 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
         pair: p,
         first: first,
         second: second,
-        score: analyzeCompatibilityFromReports(
-          my: first.report,
-          album: second.report,
-        ).report.total,
+        score: kMeasureEdition
+            ? analyzePairReports(first.report, second.report).chemistry
+            : analyzeCompatibilityFromReports(
+                my: first.report,
+                album: second.report,
+              ).report.total,
       );
     }).toList();
 
@@ -708,9 +717,11 @@ class _CompatListCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bundle = analyzeCompatibilityFromReports(my: a, album: b);
-    final r = bundle.report;
-    final labelColor = _labelColor(r.label);
+    // measure 에디션은 관상 궁합 엔진을 부르지 않는다 (const 분기 → 빌드 제외).
+    final CompatibilityReport? r = kMeasureEdition
+        ? null
+        : analyzeCompatibilityFromReports(my: a, album: b).report;
+    final labelColor = r == null ? AppColors.textHint : _labelColor(r.label);
     String demo(FaceReadingReport x) =>
         '${x.ageGroup.labelKo} ${x.gender.labelKo}';
 
@@ -763,43 +774,48 @@ class _CompatListCard extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: AppSpacing.sm),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: labelColor.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _GradeStepper(label: r.label),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${r.label.korean} (${r.label.hanja})',
-                                    style: AppText.caption.copyWith(
-                                      color: labelColor,
-                                      letterSpacing: 1,
-                                      height: 1.2,
+                            if (kMeasureEdition)
+                              MeasurePairSummary(a: a, b: b)
+                            else ...[
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: labelColor.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _GradeStepper(label: r!.label),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${r.label.korean} (${r.label.hanja})',
+                                      style: AppText.caption.copyWith(
+                                        color: labelColor,
+                                        letterSpacing: 1,
+                                        height: 1.2,
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(r.label.modernKo, style: AppText.hint),
+                              const SizedBox(height: 4),
+                              Text(r.label.modernKo, style: AppText.hint),
+                            ],
                           ],
                         ),
                       ),
+                      if (!kMeasureEdition) ...[
                       const SizedBox(width: 8),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            r.total.toStringAsFixed(0),
+                            r!.total.toStringAsFixed(0),
                             // 데이터 numeral — 토큰 anchor + 명시적 크기 유지.
                             style: AppText.sectionTitle.copyWith(
                               fontSize: 28,
@@ -814,21 +830,24 @@ class _CompatListCard extends StatelessWidget {
                           ),
                         ],
                       ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 14),
                   Container(height: 1, color: AppTheme.border),
                   const SizedBox(height: AppSpacing.md),
-                  Text(
-                    '${r.myElement.displayKorean} × ${r.albumElement.displayKorean}  ·  ${_relationKindKo(r.elementRelation.kind)}',
-                    style: AppText.hint.copyWith(
-                      color: AppColors.accent,
-                      letterSpacing: 1,
+                  if (!kMeasureEdition) ...[
+                    Text(
+                      '${r!.myElement.displayKorean} × ${r.albumElement.displayKorean}  ·  ${_relationKindKo(r.elementRelation.kind)}',
+                      style: AppText.hint.copyWith(
+                        color: AppColors.accent,
+                        letterSpacing: 1,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  _MiniBars(report: r),
-                  const SizedBox(height: AppSpacing.sm),
+                    const SizedBox(height: 10),
+                    _MiniBars(report: r),
+                    const SizedBox(height: AppSpacing.sm),
+                  ],
                   Text(
                     timeago.format(createdAt, locale: 'ko'),
                     style: AppText.hint,

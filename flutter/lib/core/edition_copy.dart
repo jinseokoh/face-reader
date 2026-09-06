@@ -89,4 +89,16 @@ abstract final class EditionCopy {
   static const String pairNeedMyFace = kMeasureEdition
       ? '비교하려면 내 얼굴 측정이 필요합니다.'
       : '궁합을 보려면 내 관상 등록이 필요합니다.';
+  static const String pairDeleteTitle = kMeasureEdition ? '비교 삭제' : '궁합 삭제';
+  static const String pairDoneMessage = kMeasureEdition
+      ? '두 얼굴 비교가 완성되었습니다.'
+      : '궁합 풀이가 완성되었습니다.';
+  static const String pairNeedFaceFirst =
+      kMeasureEdition ? '우선 얼굴을 재야 합니다.' : '우선 관상을 보셔야 합니다.';
+  static const String pairEmptyLocked =
+      kMeasureEdition ? '미확인 비교가 없습니다.' : '미확인 궁합이 없습니다.';
+  static const String pairEmptyUnlocked =
+      kMeasureEdition ? '아직 확인한 비교가 없습니다.' : '아직 확인한 궁합이 없습니다.';
+  static const String pairDetailTitle = kMeasureEdition ? '두 얼굴 비교' : '궁합 풀이';
+  static const String pairShareTitle = kMeasureEdition ? '두 얼굴 비교' : '궁합도 과학이다';
 }

@@ -44,6 +44,9 @@ Future<void> openTeamPairDetail(
   int? score,
   String? myName,
   String? albumName,
+  TeamMode mode = TeamMode.physiognomy,
+  /// 첫인상 방의 세 성분(sim·harm·comp) — payload 에서 그대로. 관상 방은 null.
+  Map<String, int>? components,
 }) async {
   // 기존 결제 이력 선검사 — unlock 흐름과 동일한 무방향 쌍 키. 이미 본
   // 사이에게 결제 유도 UI 를 보여주지 않는다 (재결제는 어차피 안 된다).
@@ -110,9 +113,35 @@ Future<void> openTeamPairDetail(
                 children: [
                   BandDot(band, size: 28, score: score),
                   const SizedBox(width: AppSpacing.xs),
-                  Text(band.bandLabel, style: AppText.body),
+                  Text(band.bandLabelFor(mode), style: AppText.body),
                 ],
               ),
+              // 첫인상 방 — 케미 합의 세 성분. 셀을 눌렀을 때 전부 보인다 (§81.4).
+              if (components != null) ...[
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    for (final e in const [
+                      ('harm', '조화도'),
+                      ('comp', '보완도'),
+                      ('sim', '닮은 정도'),
+                    ])
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.md),
+                        child: Column(
+                          children: [
+                            Text('${components[e.$1] ?? '-'}',
+                                style: AppText.subTitle),
+                            const SizedBox(height: 2),
+                            Text(e.$2, style: AppText.hint),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ],
               const SizedBox(height: AppSpacing.xl),
               // 두 인물 — 큰 아바타 + 이름 + 나이·성별.
               Row(
@@ -154,8 +183,12 @@ Future<void> openTeamPairDetail(
                     Expanded(
                       child: Text(
                         alreadyUnlocked
-                            ? '두 사람의 궁합을 본 적이 있습니다.'
-                            : '상세 풀이는 1코인 지불 후 확인가능합니다.',
+                            ? (mode == TeamMode.firstImpression
+                                ? '두 사람의 비교를 본 적이 있습니다.'
+                                : '두 사람의 궁합을 본 적이 있습니다.')
+                            : (mode == TeamMode.firstImpression
+                                ? '상세 비교는 1코인 지불 후 확인가능합니다.'
+                                : '상세 풀이는 1코인 지불 후 확인가능합니다.'),
                         style: AppText.caption.copyWith(
                           color: AppColors.textSecondary,
                         ),
@@ -166,7 +199,9 @@ Future<void> openTeamPairDetail(
               ),
               const SizedBox(height: AppSpacing.lg),
               PrimaryButton(
-                label: alreadyUnlocked ? '궁합 풀이 보기' : '1코인으로 풀이 보기',
+                label: mode == TeamMode.firstImpression
+                    ? (alreadyUnlocked ? '두 얼굴 비교 보기' : '1코인으로 비교 보기')
+                    : (alreadyUnlocked ? '궁합 풀이 보기' : '1코인으로 풀이 보기'),
                 onPressed: () => Navigator.pop(ctx, true),
               ),
               if (!alreadyUnlocked) ...[
@@ -973,6 +1008,8 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
       score: _scoreOf(slotA, slotB),
       myName: _nameOf(firstUid == uidA ? slotA : slotB),
       albumName: _nameOf(firstUid == uidA ? slotB : slotA),
+      mode: _team?.mode ?? TeamMode.physiognomy,
+      components: _componentsOf(slotA, slotB),
     );
   }
 
@@ -1002,6 +1039,23 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
   }
 
   int? _scoreOf(int a, int b) => _scores[a < b ? '$a-$b' : '$b-$a'];
+
+  /// 첫인상 방 payload 의 쌍별 세 성분. 관상 방(키 없음)은 null.
+  Map<String, int>? _componentsOf(int a, int b) {
+    final lo = a < b ? a : b;
+    final hi = a < b ? b : a;
+    for (final p in _pairs) {
+      if (p['a'] == lo && p['b'] == hi) {
+        if (p['sim'] == null) return null;
+        return {
+          'sim': (p['sim'] as num).toInt(),
+          'harm': (p['harm'] as num).toInt(),
+          'comp': (p['comp'] as num).toInt(),
+        };
+      }
+    }
+    return null;
+  }
 
   /// 슬롯 아바타 — 썸네일 → 성별 기본 아이콘 → 사람 아이콘.
   /// 참가자 전원 사진 공개가 계약이다 (조인 동의 문구와 동일).
