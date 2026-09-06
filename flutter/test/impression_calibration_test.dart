@@ -1,4 +1,5 @@
-// 첫인상 4축 분위표와 닮은 정도 거리 상수를 **AAF 11,800장 실측**으로 생성한다.
+// 첫인상 4축 분위표·계측 분위표·닮은 정도 거리 상수를 **AAF 11,800장 실측**으로 생성한다.
+// 입력: test/support/aaf_faces.dart (26 계측 z + 대칭 symOverall z).
 //
 // 축의 정의(어떤 계측이 어느 부호·비중으로 들어가는가)는 문헌
 // (`impression_evidence.dart`)에서 오고, 백분위는 이 실측 분포에서 온다.
@@ -46,7 +47,8 @@ void main() {
       for (final f in faces) {
         if (f.gender != gender) continue;
         n++;
-        final feats = buildImpressionFeatures(f.z, referenceMetricIds: ids);
+        final feats = buildImpressionFeatures(f.z,
+            referenceMetricIds: ids, symmetryZ: f.symZ);
         final raw = computeImpressionRaw(feats);
         for (final a in ImpressionAxis.values) {
           byAxis[a]!.add(raw[a]!);

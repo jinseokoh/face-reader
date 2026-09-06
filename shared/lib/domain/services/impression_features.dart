@@ -50,6 +50,10 @@ const List<FeatureSpec> impressionFeatureSpecs = [
 /// 값 = −(|z| 의 평균). 평균에 가까울수록 크다.
 const String averagenessFeatureId = 'averageness';
 
+/// `symmetry` — 얼굴 전체 비대칭도(symOverall) z 의 부호 반전. 대칭일수록 크다.
+/// 대칭 계측이 없는 카드(도입 전)는 이 feature 가 빠지고 축 식은 남은 항으로 간다.
+const String symmetryFeatureId = 'symmetry';
+
 /// metric z-map → feature z-map.
 ///
 /// [zByMetric] 에 없는 계측은 건너뛴다 (부분 입력 허용). `averageness` 는
@@ -57,8 +61,10 @@ const String averagenessFeatureId = 'averageness';
 Map<String, double> buildImpressionFeatures(
   Map<String, double> zByMetric, {
   required Iterable<String> referenceMetricIds,
+  double? symmetryZ,
 }) {
   final out = <String, double>{};
+  if (symmetryZ != null) out[symmetryFeatureId] = -symmetryZ;
   for (final spec in impressionFeatureSpecs) {
     final z = zByMetric[spec.metric];
     if (z == null) continue;

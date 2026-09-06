@@ -13,7 +13,9 @@ Map<String, double> zMapOf(FaceReadingReport r) =>
 
 FirstImpressionProfile impressionOf(FaceReadingReport r) =>
     computeFirstImpression(zMapOf(r),
-        gender: r.gender, referenceMetricIds: _referenceIds);
+        gender: r.gender,
+        referenceMetricIds: _referenceIds,
+        symmetryZ: symmetryOverallZ(r.symmetry, r.gender));
 
 PairAnalysis analyzePairReports(FaceReadingReport a, FaceReadingReport b) {
   final zA = zMapOf(a);

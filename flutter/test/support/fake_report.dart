@@ -4,6 +4,7 @@
 import 'dart:math';
 
 import 'package:face_engine/data/constants/face_reference_data.dart';
+import 'package:face_engine/data/constants/symmetry_reference.dart';
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/attribute.dart';
 import 'package:face_engine/data/enums/ethnicity.dart';
@@ -95,6 +96,11 @@ FaceReadingReport fakeReport(
     archetype: classifyArchetype(flat, gender, shape: FaceShape.oval),
     faceShape: FaceShape.oval,
     faceShapeConfidence: 0.5,
+    // 대칭 6 — 성별 reference 평균 근처의 비대칭도 (0 = 완전 대칭).
+    symmetry: {
+      for (final e in symmetryReference[gender]!.entries)
+        e.key: (e.value.mean * (0.5 + rng.nextDouble())).clamp(0.0, 1.0),
+    },
   );
 }
 

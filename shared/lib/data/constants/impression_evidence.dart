@@ -101,6 +101,14 @@ const List<EvidenceLink> impressionEvidence = [
     reported: '내려가지 않은 눈꼬리',
     sources: ['TD13'],
   ),
+  EvidenceLink(
+    axis: ImpressionAxis.trust,
+    feature: 'symmetry',
+    sign: 1,
+    tier: EvidenceTier.secondary,
+    reported: '좌우 대칭 — 매력·신뢰 평가와 함께 움직이는 특징',
+    sources: ['RH06', 'TD13'],
+  ),
 
   // ── 친근한 인상 (approachability) ──
   EvidenceLink(
@@ -201,6 +209,14 @@ const List<EvidenceLink> impressionEvidence = [
     sign: 1,
     tier: EvidenceTier.primary,
     reported: '평균에 가까운 얼굴이 더 매력적으로 평가된다',
+    sources: ['RH06'],
+  ),
+  EvidenceLink(
+    axis: ImpressionAxis.attractive,
+    feature: 'symmetry',
+    sign: 1,
+    tier: EvidenceTier.primary,
+    reported: '좌우 대칭이 높을수록 매력적으로 평가된다',
     sources: ['RH06'],
   ),
   EvidenceLink(

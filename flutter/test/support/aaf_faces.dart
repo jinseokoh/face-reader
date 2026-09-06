@@ -8,10 +8,13 @@
 // 원본 CSV 생성:
 //   tools/face_shape_ml/extract_aaf.py      (등방 좌표 실측)
 //   scratchpad/label_shapes.py              (프로덕션 tflite 로 얼굴형 라벨)
+//   tools/face_shape_ml/extract_aaf_symmetry.py → aaf_per_face_sym.csv 의
+//   대칭 6 컬럼을 28 계측 tuple 로 join (2026-09-06, symEyes…symOverall).
 
 import 'dart:io';
 
 import 'package:face_engine/data/constants/face_reference_data.dart';
+import 'package:face_engine/data/constants/symmetry_reference.dart';
 import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
@@ -24,7 +27,10 @@ class AafFace {
   final Gender gender;
   final FaceShape shape;
   final Map<String, double> z;
-  const AafFace(this.gender, this.shape, this.z);
+
+  /// 얼굴 전체 비대칭도 symOverall 의 z (symmetryReference 기준).
+  final double symZ;
+  const AafFace(this.gender, this.shape, this.z, this.symZ);
 }
 
 const _shapeByName = {
@@ -46,6 +52,7 @@ List<AafFace> loadAafFaces() {
   final header = lines.first.split(',');
   final gi = header.indexOf('gender');
   final si = header.indexOf('shape');
+  final symi = header.indexOf('symOverall');
 
   final faces = <AafFace>[];
   for (final line in lines.skip(1)) {
@@ -60,8 +67,10 @@ List<AafFace> loadAafFaces() {
       final ref = refs[info.id]!;
       z[info.id] = (double.parse(cells[col]) - ref.mean) / ref.sd;
     }
-    faces.add(
-        AafFace(gender, _shapeByName[cells[si]] ?? FaceShape.unknown, z));
+    final sref = symmetryReference[gender]!['symOverall']!;
+    final symZ = (double.parse(cells[symi]) - sref.mean) / sref.sd;
+    faces.add(AafFace(
+        gender, _shapeByName[cells[si]] ?? FaceShape.unknown, z, symZ));
   }
 
   _cache = faces;

@@ -280,12 +280,18 @@ total = clamp(50 + (rawTotal - 50) × 1.4, 5, 99)
 | 층 | 파일 (shared/) | 내용 |
 |---|---|---|
 | 1 학술 보고 관계 | `data/constants/impression_evidence.dart` | 축 4개 × 논문이 보고한 특징의 부호·비중(주 1.0/보조 0.5)·출처(OT08·TD13·SU13·SU18·VE14·RH06) |
-| 2 재구성 feature | `domain/services/impression_features.dart` | 그 특징을 26 계측 z 로 재정의. `averageness` = −mean\|z\| |
+| 2 재구성 feature | `domain/services/impression_features.dart` | 그 특징을 26 계측 z 로 재정의. `averageness` = −mean\|z\|, `symmetry` = −z(symOverall) |
 | 3 제품 지표 | `domain/services/first_impression.dart` | 축 원점수 = Σ(부호×비중×feature z) → AAF 11,800 실측 분위표(`impression_quantiles.dart`, 성별 21-point)로 백분위 0~100 |
 
 축 4개: 신뢰감 있는 · 친근한 · 주도적인 · 매력적인 인상. **매력은 본인 화면 전용** — 두 얼굴·케미에 쓰지 않는다.
 
-두 얼굴 (`analyzePair`): 닮은 정도 = z 벡터 RMS 거리를 `exp(−ln2·d/1.3041)`(무작위 쌍 중앙 거리 = 50점)로,
+**좌우 대칭** (`domain/services/symmetry_metrics.dart`): nasion(168)→chin(152) 중심선에 좌우 짝 랜드마크를
+거울 대칭시킨 거리/얼굴 폭 → 눈·눈썹·코·입·윤곽 5영역 + 전체(평균). 0 = 완전 대칭. 성별 reference(mean/sd/21-point,
+`symmetry_reference.dart`, AAF 11,800 실측 — `tools/face_shape_ml/extract_aaf_symmetry.py` 와 1:1)로 z·백분위.
+리포트 `symmetry` 필드에 raw 저장(카드마다 재계산 없음). 신뢰(보조)·매력(주) 축에 feature 로 들어간다.
+재생성: `flutter test test/symmetry_calibration_test.dart`.
+
+두 얼굴 (`analyzePair`): 닮은 정도 = z 벡터 RMS 거리를 `exp(−ln2·d/1.3113)`(무작위 쌍 중앙 거리 = 50점)로,
 영역별(outline·eyes·brows·nose·mouth·jaw) 동일 식 · 첫인상 유사도 = 100 − mean\|Δ\| · 조화도 = mean(max(A,B))
 (가설 지표) · 보완도 = mean\|Δ\| (매력 제외 3축). **케미 점수 = 조화도 + 보완도 + 닮은 정도 (0~300).**
 

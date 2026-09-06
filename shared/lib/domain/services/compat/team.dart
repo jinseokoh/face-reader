@@ -139,9 +139,13 @@ TeamPairScore _firstImpressionPairScore(
   final zA = _zMap(a);
   final zB = _zMap(b);
   final pa = computeFirstImpression(zA,
-      gender: a.gender, referenceMetricIds: _referenceIds);
+      gender: a.gender,
+      referenceMetricIds: _referenceIds,
+      symmetryZ: symmetryOverallZ(a.symmetry, a.gender));
   final pb = computeFirstImpression(zB,
-      gender: b.gender, referenceMetricIds: _referenceIds);
+      gender: b.gender,
+      referenceMetricIds: _referenceIds,
+      symmetryZ: symmetryOverallZ(b.symmetry, b.gender));
   final pair = analyzePair(
     zA: zA,
     profileA: pa,

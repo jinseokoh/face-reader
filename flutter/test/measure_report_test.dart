@@ -32,6 +32,8 @@ void main() {
     expect(find.text('매력적인 인상'), findsOneWidget);
     expect(find.text('내 얼굴의 특이점'), findsOneWidget);
     expect(find.text('정면 계측 26'), findsOneWidget);
+    expect(find.text('좌우 대칭'), findsOneWidget);
+    expect(find.text('얼굴 대칭'), findsOneWidget);
     expect(find.text('얼굴형'), findsOneWidget);
     expect(find.text('참고 자료'), findsOneWidget);
     expect(find.text(MeasureReportBody.disclaimer), findsOneWidget);

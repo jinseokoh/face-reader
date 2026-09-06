@@ -580,6 +580,9 @@ export function JoinWizard({
       const metrics = JSON.parse(
         globalThis.runMetrics(JSON.stringify(points), aspect),
       ) as Record<string, number>
+      const symmetry = JSON.parse(
+        globalThis.runSymmetry(JSON.stringify(points), aspect),
+      ) as Record<string, number>
       body = {
         schemaVersion: 1,
         ethnicity,
@@ -588,6 +591,7 @@ export function JoinWizard({
         timestamp: new Date().toISOString(),
         source: 'camera',
         metrics,
+        symmetry,
         lateralMetrics: null,
         faceShape: 'oval',
       }

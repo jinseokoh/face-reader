@@ -16,6 +16,7 @@ import 'dart:math';
 
 import 'package:face_engine/data/constants/impression_evidence.dart';
 import 'package:face_engine/data/constants/impression_quantiles.dart';
+import 'package:face_engine/data/constants/symmetry_reference.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/services/impression_features.dart';
 
@@ -70,14 +71,23 @@ class FirstImpressionProfile {
   double operator [](ImpressionAxis a) => percentile[a]!;
 }
 
-/// metric z-map → 첫인상 프로필.
+/// 얼굴 전체 비대칭도(symOverall raw) → 성별 reference 로 z. 대칭 계측이 없으면 null.
+double? symmetryOverallZ(Map<String, double>? symmetry, Gender gender) {
+  final raw = symmetry?['symOverall'];
+  if (raw == null) return null;
+  final ref = symmetryReference[gender]!['symOverall']!;
+  return (raw - ref.mean) / ref.sd;
+}
+
+/// metric z-map → 첫인상 프로필. [symmetryZ] 는 [symmetryOverallZ] 값(없으면 생략).
 FirstImpressionProfile computeFirstImpression(
   Map<String, double> zByMetric, {
   required Gender gender,
   required Iterable<String> referenceMetricIds,
+  double? symmetryZ,
 }) {
   final features = buildImpressionFeatures(zByMetric,
-      referenceMetricIds: referenceMetricIds);
+      referenceMetricIds: referenceMetricIds, symmetryZ: symmetryZ);
   final raw = computeImpressionRaw(features);
   final table = impressionQuantiles[gender]!;
   final pct = <ImpressionAxis, double>{

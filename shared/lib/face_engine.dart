@@ -34,6 +34,7 @@ import 'package:face_engine/domain/services/compat/compat_label.dart';
 import 'package:face_engine/domain/services/compat/five_element.dart';
 import 'package:face_engine/domain/services/compat/modern_vocab.dart';
 import 'package:face_engine/domain/services/face_metrics_web.dart';
+import 'package:face_engine/domain/services/symmetry_metrics.dart';
 
 @JS('runEngine')
 external set _setRunEngine(JSFunction fn);
@@ -46,6 +47,9 @@ external set _setRunMetrics(JSFunction fn);
 
 @JS('runTeam')
 external set _setRunTeam(JSFunction fn);
+
+@JS('runSymmetry')
+external set _setRunSymmetry(JSFunction fn);
 
 void main() {
   _setRunEngine = ((String metricsJson) {
@@ -72,6 +76,16 @@ void main() {
       for (final p in raw) [(p[0] as num).toDouble(), (p[1] as num).toDouble()],
     ];
     return jsonEncode(WebFaceMetrics(pts, aspect: aspect).computeAll());
+  }).toJS;
+
+  // 좌우 대칭 6개 — runMetrics 와 같은 입력(landmarks JSON, aspect).
+  // 앱의 analyzeFaceReading 이 body 에 싣는 `symmetry` 와 같은 식.
+  _setRunSymmetry = ((String landmarksJson, double aspect) {
+    final raw = jsonDecode(landmarksJson) as List;
+    final pts = [
+      for (final p in raw) [(p[0] as num).toDouble(), (p[1] as num).toDouble()],
+    ];
+    return jsonEncode(computeSymmetry(pts, aspect: aspect));
   }).toJS;
 
   // Chemistry Team — chemistry_snapshot 기반 배틀 집계 (rev2 §3 payload 계약).

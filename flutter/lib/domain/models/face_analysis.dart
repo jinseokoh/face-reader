@@ -17,6 +17,7 @@ import 'package:facely/domain/services/face_metrics.dart';
 import 'package:facely/domain/services/face_metrics_lateral.dart';
 import 'package:face_engine/domain/services/metric_score.dart';
 import 'package:face_engine/domain/services/physiognomy_scoring.dart';
+import 'package:face_engine/domain/services/symmetry_metrics.dart';
 
 /// Full face-reading pipeline (see docs/architecture/OVERVIEW.md §4)
 ///
@@ -331,6 +332,10 @@ FaceReadingReport analyzeFaceReading({
     faceShape: faceShape,
     lateralMetrics: lateralMetricResults,
     lateralFlags: lateralFlags,
+    symmetry: computeSymmetry(
+      [for (final lm in landmarks) [lm.x, lm.y]],
+      aspect: aspectCorrection,
+    ),
   );
 }
 

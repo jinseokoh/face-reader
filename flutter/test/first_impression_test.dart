@@ -19,6 +19,7 @@ void main() {
       final defined = {
         for (final s in impressionFeatureSpecs) s.id,
         averagenessFeatureId,
+        symmetryFeatureId,
       };
       for (final link in impressionEvidence) {
         expect(defined, contains(link.feature),
@@ -78,7 +79,7 @@ void main() {
         };
         for (final f in faces.where((f) => f.gender == g)) {
           final p = computeFirstImpression(f.z,
-              gender: g, referenceMetricIds: ids);
+              gender: g, referenceMetricIds: ids, symmetryZ: f.symZ);
           for (final a in ImpressionAxis.values) {
             byAxis[a]!.add(p[a]);
           }

@@ -11,6 +11,8 @@ export type WebCaptureBody = {
   source: "camera";
   thumbnailKey?: string;
   metrics: Record<string, number>;
+  /** 좌우 대칭 6개 (symmetry_metrics.dart). 앱 body 와 같은 키. */
+  symmetry?: Record<string, number>;
   lateralMetrics: null;
   faceShape: "oval";
 };

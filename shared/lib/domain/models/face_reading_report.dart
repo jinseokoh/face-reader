@@ -221,6 +221,10 @@ class FaceReadingReport {
   /// Lateral binary flags (aquilineNose, snubNose, …). null = 측면 미수행.
   final Map<String, bool>? lateralFlags;
 
+  /// 좌우 대칭 계측 raw (symmetryIds, 비대칭도 — 0 이 완전 대칭). null = 대칭
+  /// 계측 도입 전 카드. z·백분위는 현재 reference 로 화면에서 계산한다.
+  final Map<String, double>? symmetry;
+
   /// 14-node tree snapshot (root + 3 zones + 10 leaves).
   final Map<String, NodeEvidence> nodeScores;
 
@@ -258,6 +262,7 @@ class FaceReadingReport {
     required this.metrics,
     this.lateralMetrics,
     this.lateralFlags,
+    this.symmetry,
     required this.nodeScores,
     required this.attributes,
     required this.rules,
@@ -294,6 +299,7 @@ class FaceReadingReport {
           'lateralMetrics': {
             for (final e in lateralMetrics!.entries) e.key: e.value.rawValue,
           },
+        if (symmetry != null) 'symmetry': symmetry,
         if (faceShapeLabel != null) 'faceShapeLabel': faceShapeLabel,
         if (faceShapeConfidence != null)
           'faceShapeConfidence': faceShapeConfidence,
@@ -329,6 +335,7 @@ class FaceReadingReport {
           'lateralMetrics': {
             for (final e in lateralMetrics!.entries) e.key: e.value.rawValue,
           },
+        if (symmetry != null) 'symmetry': symmetry,
         // lateralFlags 는 lateral z + 현재 metricScore 임계로 load 시 재계산.
         if (faceShapeLabel != null) 'faceShapeLabel': faceShapeLabel,
         if (faceShapeConfidence != null)
@@ -364,6 +371,12 @@ class FaceReadingReport {
         : _extractRawMap(j['lateralMetrics']);
     _trace('rawLateral: ${rawLateral?.length ?? "null"} '
         '${rawLateral?.keys.toList() ?? ""}');
+    final symmetry = j['symmetry'] == null
+        ? null
+        : {
+            for (final e in (j['symmetry'] as Map).entries)
+              e.key as String: (e.value as num).toDouble(),
+          };
     final faceShapeLabel = j['faceShapeLabel'] as String?;
     final faceShapeConfidence = (j['faceShapeConfidence'] as num?)?.toDouble();
     _trace('faceShapeLabel=$faceShapeLabel conf=$faceShapeConfidence '
@@ -491,6 +504,7 @@ class FaceReadingReport {
       metrics: metrics,
       lateralMetrics: lateralMetrics,
       lateralFlags: lateralFlags,
+      symmetry: symmetry,
       nodeScores: nodeScores,
       attributes: attributes,
       rules: rules,

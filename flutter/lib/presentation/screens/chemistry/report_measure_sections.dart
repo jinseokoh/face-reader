@@ -3,11 +3,13 @@ import 'dart:math' as math;
 import 'package:face_engine/data/constants/face_reference_data.dart';
 import 'package:face_engine/data/constants/impression_evidence.dart';
 import 'package:face_engine/data/constants/metric_quantiles.dart';
+import 'package:face_engine/data/constants/symmetry_reference.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/metric_type.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/services/first_impression.dart';
 import 'package:face_engine/domain/services/impression_features.dart';
+import 'package:face_engine/domain/services/symmetry_metrics.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/storage/thumbnail_paths.dart';
@@ -48,9 +50,11 @@ class MeasureReportBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final z = _z;
+    final symZ = symmetryOverallZ(report.symmetry, report.gender);
     final profile = computeFirstImpression(z,
-        gender: report.gender, referenceMetricIds: _ids);
-    final features = buildImpressionFeatures(z, referenceMetricIds: _ids);
+        gender: report.gender, referenceMetricIds: _ids, symmetryZ: symZ);
+    final features =
+        buildImpressionFeatures(z, referenceMetricIds: _ids, symmetryZ: symZ);
     final quant = metricQuantiles[report.gender]!;
 
     return Column(
@@ -105,6 +109,34 @@ class MeasureReportBody extends StatelessWidget {
             ],
           ),
         ),
+        if (report.symmetry != null) ...[
+          const SizedBox(height: AppSpacing.xl),
+          _title('좌우 대칭'),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            '값은 좌우 짝 랜드마크의 어긋남을 얼굴 폭으로 나눈 것입니다. '
+            '0%가 완전 대칭이고, 상위 N%는 대칭이 높은 쪽이 상위입니다.',
+            style: AppText.hint,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _Card(
+            child: Column(
+              children: [
+                for (final id in symmetryIds)
+                  if (report.symmetry![id] != null)
+                    _MetricRow(
+                      name: symmetryNameKo[id]!,
+                      value:
+                          '${(report.symmetry![id]! * 100).toStringAsFixed(1)}%',
+                      percentile: 100 -
+                          percentileFromQuantiles(report.symmetry![id]!,
+                              symmetryReference[report.gender]![id]!.quantiles),
+                      z: -_symmetryZ(id),
+                    ),
+              ],
+            ),
+          ),
+        ],
         if (report.lateralMetrics != null) ...[
           const SizedBox(height: AppSpacing.xl),
           _title('측면 계측 8'),
@@ -180,6 +212,12 @@ class MeasureReportBody extends StatelessWidget {
     );
   }
 
+  /// 대칭 계측의 z (비대칭도 기준 — 양수가 더 비대칭).
+  double _symmetryZ(String id) {
+    final ref = symmetryReference[report.gender]![id]!;
+    return (report.symmetry![id]! - ref.mean) / ref.sd;
+  }
+
   Widget _title(String text) => Text(
         text,
         style: AppText.modalTitle.copyWith(fontWeight: FontWeight.w700),
@@ -221,9 +259,11 @@ class MeasureReportBody extends StatelessWidget {
       final spec = impressionFeatureSpecs
           .where((s) => s.id == link.feature)
           .firstOrNull;
-      final name = spec == null
-          ? '평균과의 거리'
-          : metricInfoList.firstWhere((m) => m.id == spec.metric).nameKo;
+      final name = spec != null
+          ? metricInfoList.firstWhere((m) => m.id == spec.metric).nameKo
+          : link.feature == symmetryFeatureId
+              ? '얼굴 대칭'
+              : '평균과의 거리';
       rows.add(_Evidence(name: name, contribution: c));
     }
     rows.sort((a, b) => b.contribution.abs().compareTo(a.contribution.abs()));
@@ -436,8 +476,10 @@ class MeasureShareCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final ids = [for (final m in metricInfoList) m.id];
     final z = {for (final e in report.metrics.entries) e.key: e.value.zScore};
-    final profile =
-        computeFirstImpression(z, gender: report.gender, referenceMetricIds: ids);
+    final profile = computeFirstImpression(z,
+        gender: report.gender,
+        referenceMetricIds: ids,
+        symmetryZ: symmetryOverallZ(report.symmetry, report.gender));
     final quant = metricQuantiles[report.gender]!;
     final top = [for (final id in ids) if (z[id] != null) id]
       ..sort((a, b) => z[b]!.abs().compareTo(z[a]!.abs()));
