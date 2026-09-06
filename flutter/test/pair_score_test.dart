@@ -59,7 +59,7 @@ void main() {
     expect(find.text('두 얼굴 겹쳐 보기'), findsOneWidget);
     expect(find.text('같이 튀는 곳과 반대로 튀는 곳'), findsOneWidget);
     expect(find.text('대칭과 얼굴형'), findsOneWidget);
-    expect(find.text('조화도에서 각 인상을 채우는 쪽'), findsOneWidget);
+    expect(find.text('조화도에서 리드하는 쪽'), findsOneWidget);
     expect(find.textContaining('무작위로 만난 두 사람과 비교하면'), findsOneWidget);
     // §25 — 영역 6개 전부 닮은/다른 부분 중 한쪽에 문구와 함께 나온다.
     final phrases = [

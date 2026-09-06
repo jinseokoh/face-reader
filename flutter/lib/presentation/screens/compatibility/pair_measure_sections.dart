@@ -234,10 +234,10 @@ class MeasurePairBody extends StatelessWidget {
                 ),
               ],
               const Divider(height: AppSpacing.xl),
-              Text('조화도에서 각 인상을 채우는 쪽', style: AppText.subTitle),
+              Text('조화도에서 리드하는 쪽', style: AppText.subTitle),
               const SizedBox(height: AppSpacing.xs),
               Text(
-                '조화도는 축마다 두 사람 중 높은 쪽을 취해 평균합니다. 그 높은 쪽이 누구인지입니다.',
+                '조화도는 축마다 두 사람 중 높은 쪽을 취해 평균합니다. 축마다 리드하는 쪽입니다.',
                 style: AppText.hint,
               ),
               const SizedBox(height: AppSpacing.sm),
