@@ -10,6 +10,7 @@ import 'package:facely/data/services/face_metadata_client.dart';
 import 'package:facely/domain/models/capture_result.dart';
 import 'package:facely/domain/models/face_metadata.dart';
 import 'package:facely/domain/services/face_metrics_lateral.dart';
+import 'package:facely/domain/services/photo_quality.dart';
 import 'package:facely/presentation/screens/chemistry/face_metric_overlay_painter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,7 +32,12 @@ import 'package:mediapipe_face_mesh/mediapipe_face_mesh.dart';
 /// step 진행:
 ///   ready          — picker 호출 전·중 (자동으로 frontal picker 즉시 호출)
 ///   processing*    — mesh 추론 중 로딩
+///   selectFace     — 얼굴이 여럿이면 분석할 얼굴을 고른다 (§61)
 ///   preview*       — 선택된 사진 + mesh overlay + [분석] 버튼
+///
+/// 품질 검사(§60, `photo_quality.dart`): 얼굴 없음·너무 작음·너무 어두움은
+/// 점수를 만들지 않고 문구만 보여준다. 정면 사진의 각도가 정면이 아니면
+/// 측면과 같은 방식으로 [다른 사진 선택] 만 준다.
 ///
 /// 사용자가 frontal preview 의 [정면 분석] 누르면 lateral 첨부 dialog →
 /// 측면 picker → preview → [측면 분석] → [CaptureResult] 반환 후 pop.
@@ -50,9 +56,13 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
   Future<FaceMetadata?>? _metadataFuture;
   String? _error;
 
+  /// 여러 얼굴 선택 대기 (§61).
+  _FaceChoice? _choice;
+
   bool get _isLateralPhase =>
       _step == _AlbumStep.processingLateral ||
-      _step == _AlbumStep.previewLateral;
+      _step == _AlbumStep.previewLateral ||
+      (_step == _AlbumStep.selectFace && (_choice?.lateral ?? false));
 
   @override
   Widget build(BuildContext context) {
@@ -231,11 +241,83 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
         return const Center(
           child: CircularProgressIndicator(color: Colors.white),
         );
+      case _AlbumStep.selectFace:
+        return _buildFaceChoice(_choice!);
       case _AlbumStep.previewFrontal:
         return _buildPreview(_frontal!, isLateralPhase: false);
       case _AlbumStep.previewLateral:
         return _buildPreview(_lateral!, isLateralPhase: true);
     }
+  }
+
+  /// 얼굴이 여럿인 사진 — 번호 상자를 눌러 분석할 얼굴을 고른다 (§61).
+  Widget _buildFaceChoice(_FaceChoice c) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Center(
+          child: LayoutBuilder(builder: (context, constraints) {
+            final scale = math.min(
+              constraints.maxWidth / c.width,
+              constraints.maxHeight / c.height,
+            );
+            return SizedBox(
+              width: c.width * scale,
+              height: c.height * scale,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.file(File(c.path), fit: BoxFit.fill),
+                  for (var i = 0; i < c.faces.length; i++)
+                    Positioned(
+                      left: c.faces[i].boundingBox.left * scale,
+                      top: c.faces[i].boundingBox.top * scale,
+                      width: c.faces[i].boundingBox.width * scale,
+                      height: c.faces[i].boundingBox.height * scale,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => _continueWithFace(
+                          c.path,
+                          c.faces[i],
+                          lateral: c.lateral,
+                          faceCount: c.faces.length,
+                        ),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                          alignment: Alignment.topLeft,
+                          child: Container(
+                            color: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            child: Text('얼굴 ${i + 1}', style: AppText.caption),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          }),
+        ),
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            color: Colors.black.withValues(alpha: 0.6),
+            child: Text(
+              '얼굴이 ${c.faces.length}명 있습니다.\n분석할 얼굴을 눌러 주세요.',
+              style: AppText.body.copyWith(color: Colors.white, height: 1.4),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildPreview(_AlbumPhoto photo, {required bool isLateralPhase}) {
@@ -244,14 +326,13 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
     // 않고, 문구를 바꾸고 [결과 확인] 대신 [다른 사진 선택]·[측면 무시] 두
     // 갈래를 준다.
     final yawClass = classifyYaw(photo.yaw);
-    final lateralUsable = !isLateralPhase ||
-        yawClass == YawClass.threeQuarter ||
-        yawClass == YawClass.profile;
-    final description = !isLateralPhase
-        ? '정면 사진 분석한 결과입니다.'
-        : lateralUsable
-            ? '측면 사진 분석한 결과입니다.'
-            : '측면 분석에 적합한 사진이 아닙니다.';
+    final usable = isLateralPhase
+        ? yawClass == YawClass.threeQuarter || yawClass == YawClass.profile
+        : yawClass == YawClass.frontal;
+    final lateralUsable = usable;
+    final description = isLateralPhase
+        ? (usable ? '측면 사진 분석한 결과입니다.' : '측면 분석에 적합한 사진이 아닙니다.')
+        : (usable ? '정면 사진 분석한 결과입니다.' : '정면 분석에 적합한 사진이 아닙니다.');
 
     return Stack(
       fit: StackFit.expand,
@@ -318,17 +399,23 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
                     width: 200,
                     child: _previewButton('결과 확인', onConfirm),
                   )
-                : Row(
-                    children: [
-                      Expanded(
-                        child: _previewButton('다른 사진 선택', _repickLateral),
+                : isLateralPhase
+                    ? Row(
+                        children: [
+                          Expanded(
+                            child:
+                                _previewButton('다른 사진 선택', _repickLateral),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _previewButton('측면 무시', _skipLateral),
+                          ),
+                        ],
+                      )
+                    : SizedBox(
+                        width: 200,
+                        child: _previewButton('다른 사진 선택', _repickFrontal),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _previewButton('측면 무시', _skipLateral),
-                      ),
-                    ],
-                  ),
           ),
         ),
       ],
@@ -366,18 +453,18 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
       maxHeight: 1024,
     );
     if (!mounted || pick == null) return;
-    setState(() => _step = _AlbumStep.processingLateral);
-    try {
-      final photo = await _processAlbumPhoto(pick.path);
-      if (!mounted) return;
-      setState(() {
-        _lateral = photo;
-        _step = _AlbumStep.previewLateral;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _error = e.toString());
-    }
+    await _startPhoto(pick.path, lateral: true);
+  }
+
+  /// 각도가 정면이 아닌 정면 사진을 다시 고른다. 취소하면 preview 에 남는다.
+  Future<void> _repickFrontal() async {
+    final pick = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024,
+      maxHeight: 1024,
+    );
+    if (!mounted || pick == null) return;
+    await _startPhoto(pick.path, lateral: false);
   }
 
   Future<void> _pickFrontal() async {
@@ -392,20 +479,7 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
       Navigator.of(context).pop();
       return;
     }
-    setState(() => _step = _AlbumStep.processingFrontal);
-    try {
-      final photo = await _processAlbumPhoto(pick.path);
-      // DeepFace background kickoff — preview·측면 picker 시간 동안 병렬 진행.
-      _metadataFuture = _analyzeMetadata(File(pick.path));
-      if (!mounted) return;
-      setState(() {
-        _frontal = photo;
-        _step = _AlbumStep.previewFrontal;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _error = e.toString());
-    }
+    await _startPhoto(pick.path, lateral: false);
   }
 
   Future<void> _pickLateral() async {
@@ -420,23 +494,74 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
       _runAnalysis();
       return;
     }
-    setState(() => _step = _AlbumStep.processingLateral);
+    await _startPhoto(pick.path, lateral: true);
+  }
+
+  /// Exception 의 "Exception: " 접두를 떼고 문구만.
+  static String _messageOf(Object e) =>
+      e.toString().replaceFirst(RegExp(r'^Exception: '), '');
+
+  /// 얼굴 검출 → 하나면 바로 진행, 여럿이면 선택 화면 (§61).
+  Future<void> _startPhoto(String path, {required bool lateral}) async {
+    setState(() => _step =
+        lateral ? _AlbumStep.processingLateral : _AlbumStep.processingFrontal);
     try {
-      final photo = await _processAlbumPhoto(pick.path);
-      if (!mounted) return;
-      setState(() {
-        _lateral = photo;
-        _step = _AlbumStep.previewLateral;
-      });
+      final (faces, w, h) = await _detectFaces(path);
+      if (faces.length > 1) {
+        if (!mounted) return;
+        setState(() {
+          _choice = _FaceChoice(
+              path: path, faces: faces, width: w, height: h, lateral: lateral);
+          _step = _AlbumStep.selectFace;
+        });
+        return;
+      }
+      await _continueWithFace(path, faces.first, lateral: lateral, faceCount: 1);
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error = e.toString());
+      setState(() => _error = _messageOf(e));
     }
   }
 
-  /// ML Kit FaceDetector → MediaPipe FaceMesh → yaw 계산 까지 한 사진을
-  /// 분석 입력으로 변환. chemistry_screen 의 이전 _processAlbumPhoto 와 동일 로직.
-  Future<_AlbumPhoto> _processAlbumPhoto(String path) async {
+  /// 고른 얼굴로 mesh·품질 검사 → preview. 정면이면 성별·연령 추정도 띄운다
+  /// (여러 얼굴 사진은 고른 얼굴만 잘라 보낸다).
+  Future<void> _continueWithFace(
+    String path,
+    Face face, {
+    required bool lateral,
+    required int faceCount,
+  }) async {
+    setState(() {
+      _choice = null;
+      _step =
+          lateral ? _AlbumStep.processingLateral : _AlbumStep.processingFrontal;
+    });
+    try {
+      final photo = await _processAlbumPhoto(path, face);
+      if (!lateral) {
+        // DeepFace background kickoff — preview·측면 picker 시간 동안 병렬 진행.
+        final input =
+            faceCount > 1 ? await _cropForMetadata(path, face) : File(path);
+        _metadataFuture = _analyzeMetadata(input);
+      }
+      if (!mounted) return;
+      setState(() {
+        if (lateral) {
+          _lateral = photo;
+          _step = _AlbumStep.previewLateral;
+        } else {
+          _frontal = photo;
+          _step = _AlbumStep.previewFrontal;
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = _messageOf(e));
+    }
+  }
+
+  /// ML Kit 얼굴 검출 + 사진 크기. 얼굴이 없으면 throw.
+  Future<(List<Face>, int, int)> _detectFaces(String path) async {
     final inputImage = InputImage.fromFilePath(path);
     final faceDetector = FaceDetector(
       options: FaceDetectorOptions(
@@ -453,7 +578,47 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
     if (faces.isEmpty) {
       throw Exception('얼굴을 찾을 수 없습니다.\n다른 사진을 선택해 주세요.');
     }
+    final bytes = await File(path).readAsBytes();
+    final codec = await ui.instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    final w = frame.image.width;
+    final h = frame.image.height;
+    frame.image.dispose();
+    return (faces, w, h);
+  }
 
+  /// 고른 얼굴 주변(1.6배)만 잘라 임시 PNG 로 — 성별·연령 추정 입력.
+  Future<File> _cropForMetadata(String path, Face face) async {
+    final bytes = await File(path).readAsBytes();
+    final codec = await ui.instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    final image = frame.image;
+    try {
+      final r = expandedCropRect(face.boundingBox, image.width, image.height);
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder);
+      canvas.drawImageRect(
+          image, r, Rect.fromLTWH(0, 0, r.width, r.height), Paint());
+      final cropped = await recorder
+          .endRecording()
+          .toImage(r.width.round(), r.height.round());
+      try {
+        final png = await cropped.toByteData(format: ui.ImageByteFormat.png);
+        if (png == null) throw Exception('이미지 인코딩 실패');
+        final file = File(
+            '${Directory.systemTemp.path}/facely_face_${DateTime.now().microsecondsSinceEpoch}.png');
+        await file.writeAsBytes(png.buffer.asUint8List());
+        return file;
+      } finally {
+        cropped.dispose();
+      }
+    } finally {
+      image.dispose();
+    }
+  }
+
+  /// 고른 얼굴 상자 → MediaPipe FaceMesh → 품질 검사(§60) → yaw 계산.
+  Future<_AlbumPhoto> _processAlbumPhoto(String path, Face face) async {
     final bytes = await File(path).readAsBytes();
     final codec = await ui.instantiateImageCodec(bytes);
     final frame = await codec.getNextFrame();
@@ -503,7 +668,7 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
 
       final imgW = squareImage.width.toDouble();
       final imgH = squareImage.height.toDouble();
-      final bbox = faces.first.boundingBox;
+      final bbox = face.boundingBox;
       final shifted = Rect.fromLTRB(
         bbox.left + padOffsetX,
         bbox.top + padOffsetY,
@@ -516,6 +681,15 @@ class _AlbumCapturePageState extends ConsumerState<AlbumCapturePage> {
         shifted.right.clamp(0.0, imgW),
         shifted.bottom.clamp(0.0, imgH),
       );
+      // §60 — 얼굴 크기·밝기. 통과 못 하면 점수를 만들지 않는다.
+      final issue = photoQualityIssue(
+        face: clamped,
+        imageW: origW,
+        imageH: origH,
+        meanLuma: meanLumaInRect(
+            rgba, squareImage.width, squareImage.height, clamped),
+      );
+      if (issue != null) throw Exception(issue);
       final box = FaceMeshBox.fromLTWH(
         left: clamped.left,
         top: clamped.top,
@@ -607,9 +781,26 @@ class _AlbumPhoto {
   });
 }
 
+/// 여러 얼굴 선택 대기 상태 (§61).
+class _FaceChoice {
+  final String path;
+  final List<Face> faces;
+  final int width;
+  final int height;
+  final bool lateral;
+  const _FaceChoice({
+    required this.path,
+    required this.faces,
+    required this.width,
+    required this.height,
+    required this.lateral,
+  });
+}
+
 enum _AlbumStep {
   ready,
   processingFrontal,
+  selectFace,
   previewFrontal,
   processingLateral,
   previewLateral,

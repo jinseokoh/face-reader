@@ -357,3 +357,8 @@ flutter test test/archetype_fairness_test.dart test/score_distribution_test.dart
 
 주요 상수: `kLandmark10Correction = 1.05`(이마 끝점) · `kReportSchemaVersion = 1` ·
 앨범은 square-padding 후 MediaPipe (non-square distortion 차단).
+
+앨범 품질 검사(§60, `domain/services/photo_quality.dart`): 얼굴 없음 · 얼굴 짧은 변 < 사진 짧은 변의 12% ·
+얼굴 상자 평균 밝기 < 40 이면 점수를 만들지 않고 문구만. 정면 사진의 yaw 가 정면이 아니면 [다른 사진 선택] 만.
+흐림 판정은 보정 데이터가 없어 v1 에서 뺐다. 여러 얼굴(§61): ML Kit 상자를 번호로 그려 고르게 하고, 고른 얼굴만
+MediaPipe 에 넘기며 성별·연령 추정에는 그 얼굴 주변 1.6배 crop 을 보낸다.
