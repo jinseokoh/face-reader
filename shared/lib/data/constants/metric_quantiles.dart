@@ -1,6 +1,6 @@
 /// 정면 계측 26개 z-score 의 21-point 분위표 (p0, p5, …, p100) — 성별.
 ///
-/// AAF 11,800장 실측. 리포트의 "한국인 상위 N%" 표기와 특이점 Top 3 에 쓴다.
+/// AAF 11,800장 실측. 리포트의 "상위 N%" 표기와 특이점 Top 3 에 쓴다.
 /// 재생성: flutter test test/impression_calibration_test.dart
 library;
 

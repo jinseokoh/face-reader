@@ -134,7 +134,7 @@ class MeasureFaceInfoDialog extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '얼굴의 468개 점을 찾아 28개 계측값을 잽니다. 값마다 한국인 11,800명 '
+              '얼굴의 468개 점을 찾아 28개 계측값을 잽니다. 값마다 동아시아 얼굴 11,800장 '
               '실측 분포 안에서 어디쯤인지(상위 N%)를 보여줍니다.',
               style: AppText.body,
             ),

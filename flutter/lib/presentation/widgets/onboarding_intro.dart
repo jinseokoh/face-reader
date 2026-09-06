@@ -43,7 +43,7 @@ const _kPagesMeasure = [
   _OnboardingPageData(
     title: '첫인상',
     chips: ['무료'],
-    body: '28개 계측값과 한국인 11,800명 대비 위치,\n그리고 첫인상 4축 지표를 보여드립니다.',
+    body: '28개 계측값과 동아시아 11,800장 대비 위치,\n그리고 첫인상 4축 지표를 보여드립니다.',
     warm: false,
   ),
   _OnboardingPageData(

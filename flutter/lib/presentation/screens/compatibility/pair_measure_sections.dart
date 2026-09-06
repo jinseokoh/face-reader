@@ -489,7 +489,7 @@ Future<void> showMeasurePairInfoDialog(BuildContext context) => showDialog<void>
               Text('닮은 정도', style: AppText.sectionTitle),
               SizedBox(height: AppSpacing.xs),
               Text(
-                '26개 계측값 벡터의 거리를 0~100으로 바꾼 값입니다. 한국인 11,800명에서 '
+                '26개 계측값 벡터의 거리를 0~100으로 바꾼 값입니다. 동아시아 얼굴 11,800장에서 '
                 '무작위로 고른 두 사람의 중앙값이 50점입니다. 윤곽·눈·눈썹·코·입·턱선 '
                 '영역별로도 같은 식으로 계산합니다.',
                 style: AppText.body,
