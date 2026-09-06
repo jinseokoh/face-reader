@@ -40,6 +40,17 @@ class MeasurePairBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pair = analyzePairReports(my, album);
+    // §25 — 닮은 부분(내림차순) / 다른 부분(오름차순).
+    final regions = pair.similarity.byRegion.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final similarRegions = [
+      for (final e in regions)
+        if (similarityBandOf(e.key, e.value).isSimilar) e,
+    ];
+    final differentRegions = [
+      for (final e in regions.reversed)
+        if (!similarityBandOf(e.key, e.value).isSimilar) e,
+    ];
     final pa = impressionOf(my);
     final pb = impressionOf(album);
     final myAlias = my.alias ?? '나';
@@ -71,12 +82,39 @@ class MeasurePairBody extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.xl),
         _title('영역별 닮은 정도'),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          '문구의 경계는 동아시아 얼굴 11,800장에서 무작위로 고른 두 사람의 '
+          '닮은 정도 분포(상위 25%·50%·75%)입니다.',
+          style: AppText.hint,
+        ),
         const SizedBox(height: AppSpacing.md),
         _Card(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (final e in pair.similarity.byRegion.entries)
-                _ScoreRow(label: regionKo[e.key] ?? e.key, value: e.value),
+              if (similarRegions.isNotEmpty) ...[
+                Text('닮은 부분', style: AppText.subTitle),
+                const SizedBox(height: AppSpacing.sm),
+                for (final e in similarRegions)
+                  _ScoreRow(
+                    label: regionKo[e.key] ?? e.key,
+                    value: e.value,
+                    note: similarityBandOf(e.key, e.value).labelKo,
+                  ),
+              ],
+              if (similarRegions.isNotEmpty && differentRegions.isNotEmpty)
+                const SizedBox(height: AppSpacing.lg),
+              if (differentRegions.isNotEmpty) ...[
+                Text('다른 부분', style: AppText.subTitle),
+                const SizedBox(height: AppSpacing.sm),
+                for (final e in differentRegions)
+                  _ScoreRow(
+                    label: regionKo[e.key] ?? e.key,
+                    value: e.value,
+                    note: similarityBandOf(e.key, e.value).labelKo,
+                  ),
+              ],
             ],
           ),
         ),

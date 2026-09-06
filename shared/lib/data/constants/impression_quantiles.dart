@@ -9,7 +9,19 @@ import 'package:face_engine/data/enums/gender.dart';
 
 /// 무작위 쌍의 z-거리 중앙값 — 이 거리가 닮은 정도 50점이 된다.
 /// AAF 성별 무관 무작위 쌍 20,000개, seed 7.
-const double kGeometryDistanceMedian = 1.3113;
+const double kGeometryDistanceMedian = 1.3041;
+
+/// 영역별 닮은 정도의 무작위 쌍 사분위 [p75, p50, p25] — §25 문구(매우 유사·유사·
+/// 차이가 있음·차이가 큼)의 경계. 같은 20,000쌍.
+const Map<String, List<double>> kRegionSimilarityQuartiles = {
+  'overall': [56.6, 50.2, 43.4],
+  'outline': [62.9, 52.8, 42.5],
+  'eyes': [61.8, 52.1, 42.4],
+  'brows': [62.8, 52.6, 42.4],
+  'nose': [67.6, 54.7, 42.1],
+  'mouth': [61.9, 52.3, 42.2],
+  'jaw': [66.9, 54.8, 42.2],
+};
 
 const Map<Gender, Map<ImpressionAxis, List<double>>> impressionQuantiles = {
   Gender.male: {  // n=5361

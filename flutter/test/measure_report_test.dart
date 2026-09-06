@@ -30,10 +30,13 @@ void main() {
     expect(find.text('첫인상'), findsOneWidget);
     expect(find.text('신뢰감 있는 인상'), findsOneWidget);
     expect(find.text('매력적인 인상'), findsOneWidget);
+    expect(find.text('얼굴 기하학 프로필'), findsOneWidget);
+    expect(find.text('턱선'), findsOneWidget);
+    expect(find.textContaining('이(가)'), findsWidgets); // §13 특징 문장
     expect(find.text('내 얼굴의 특이점'), findsOneWidget);
     expect(find.text('정면 계측 26'), findsOneWidget);
     expect(find.text('좌우 대칭'), findsOneWidget);
-    expect(find.text('얼굴 대칭'), findsOneWidget);
+    expect(find.text('얼굴 대칭'), findsNWidgets(2)); // 프로필 행 + 대칭 섹션 행
     expect(find.text('얼굴형'), findsOneWidget);
     expect(find.text('참고 자료'), findsOneWidget);
     expect(find.text(MeasureReportBody.disclaimer), findsOneWidget);

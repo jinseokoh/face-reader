@@ -8,6 +8,7 @@ import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/metric_type.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/services/first_impression.dart';
+import 'package:face_engine/domain/services/geometry_profile.dart';
 import 'package:face_engine/domain/services/impression_features.dart';
 import 'package:face_engine/domain/services/symmetry_metrics.dart';
 import 'package:flutter/material.dart';
@@ -56,6 +57,8 @@ class MeasureReportBody extends StatelessWidget {
     final features =
         buildImpressionFeatures(z, referenceMetricIds: _ids, symmetryZ: symZ);
     final quant = metricQuantiles[report.gender]!;
+    final profileScores = computeGeometryProfile(
+        zByMetric: z, gender: report.gender, symmetry: report.symmetry);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -73,6 +76,28 @@ class MeasureReportBody extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
         ],
         const SizedBox(height: AppSpacing.sm),
+        _title('얼굴 기하학 프로필'),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          '영역마다 기준 집단(동아시아 얼굴 11,800장) 평균에 가까운 정도입니다. '
+          '100에 가까울수록 평균에 가깝고, 대칭은 높을수록 대칭입니다. '
+          '평균에서 먼 것은 드문 형태이지 나쁜 것이 아닙니다.',
+          style: AppText.hint,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        _Card(
+          child: Column(
+            children: [
+              for (final id in geometryProfileIds)
+                if (profileScores[id] != null)
+                  _ProfileRow(
+                    name: geometryProfileNameKo[id]!,
+                    score: profileScores[id]!,
+                  ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xl),
         _title('내 얼굴의 특이점'),
         const SizedBox(height: AppSpacing.md),
         _Card(
@@ -259,12 +284,23 @@ class MeasureReportBody extends StatelessWidget {
       final spec = impressionFeatureSpecs
           .where((s) => s.id == link.feature)
           .firstOrNull;
-      final name = spec != null
-          ? metricInfoList.firstWhere((m) => m.id == spec.metric).nameKo
-          : link.feature == symmetryFeatureId
-              ? '얼굴 대칭'
-              : '평균과의 거리';
-      rows.add(_Evidence(name: name, contribution: c));
+      // 특징의 물리적 방향 — 계측 z 기준(feature 부호를 되돌린다).
+      final String name;
+      final double metricZ;
+      if (spec != null) {
+        name = metricInfoList.firstWhere((m) => m.id == spec.metric).nameKo;
+        metricZ = f * spec.sign;
+      } else if (link.feature == symmetryFeatureId) {
+        name = '얼굴 대칭';
+        metricZ = f;
+      } else {
+        name = '평균과의 거리';
+        metricZ = -f;
+      }
+      rows.add(_Evidence(
+        feature: _featurePhrase(name, metricZ),
+        contribution: c,
+      ));
     }
     rows.sort((a, b) => b.contribution.abs().compareTo(a.contribution.abs()));
     return rows.take(3).toList();
@@ -272,9 +308,17 @@ class MeasureReportBody extends StatelessWidget {
 }
 
 class _Evidence {
-  final String name;
+  /// "눈 세로/가로 비율이 높은 편" 같은 특징 문장 (§13).
+  final String feature;
   final double contribution;
-  const _Evidence({required this.name, required this.contribution});
+  const _Evidence({required this.feature, required this.contribution});
+}
+
+/// 계측 z → "높은 편 / 낮은 편 / 기준 범위" 문장. ±0.5σ 를 경계로 쓴다.
+String _featurePhrase(String name, double z) {
+  if (z >= 0.5) return '$name이(가) 높은 편';
+  if (z <= -0.5) return '$name이(가) 낮은 편';
+  return '$name이(가) 기준 범위에 위치';
 }
 
 String _topLabel(double percentile) {
@@ -348,14 +392,58 @@ class _AxisRow extends StatelessWidget {
           Text('주요 관련 특징', style: AppText.hint),
           const SizedBox(height: AppSpacing.xs),
           for (final e in evidence)
-            Text(
-              '${e.name} — ${e.contribution >= 0 ? '이 인상을 높이는 방향' : '이 인상을 낮추는 방향'}',
-              style: AppText.caption,
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+              child: Row(
+                children: [
+                  Expanded(child: Text(e.feature, style: AppText.caption)),
+                  const SizedBox(width: AppSpacing.md),
+                  Text(
+                    e.contribution >= 0 ? '이 인상을 높이는 방향' : '이 인상을 낮추는 방향',
+                    style: AppText.caption,
+                  ),
+                ],
+              ),
             ),
+          Text(
+            '위 특징은 이 점수의 계산에 실제로 쓰인 항목이며, 공개 학술연구에서 '
+            '해당 인상과 통계적으로 연결된 것으로 보고된 방향을 따릅니다.',
+            style: AppText.hint,
+          ),
         ],
       ),
     );
   }
+}
+
+/// 기하학 프로필 한 줄 — 이름 · 막대 · 점수 · 상위 N% (§7·§8).
+class _ProfileRow extends StatelessWidget {
+  final String name;
+  final double score;
+  const _ProfileRow({required this.name, required this.score});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+        child: Row(
+          children: [
+            Expanded(child: Text(name, style: AppText.body)),
+            SizedBox(width: 120, child: _Bar(fraction: score / 100)),
+            const SizedBox(width: AppSpacing.md),
+            SizedBox(
+              width: 36,
+              child: Text(score.round().toString(),
+                  style: AppText.body, textAlign: TextAlign.right),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            SizedBox(
+              width: 64,
+              child: Text(_topLabel(score),
+                  style: AppText.caption, textAlign: TextAlign.right),
+            ),
+          ],
+        ),
+      );
 }
 
 /// 계측 한 줄 — 이름 · 값 · 상위 N% · 평균(가운데) 기준 편차 막대.

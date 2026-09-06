@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/gender.dart';
+import 'package:face_engine/domain/services/first_impression.dart';
 import 'package:facely/domain/services/pair_score.dart';
 import 'package:facely/presentation/screens/compatibility/pair_measure_sections.dart';
 
@@ -54,6 +55,11 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('케미 점수의 세 성분'), findsOneWidget);
     expect(find.text('영역별 닮은 정도'), findsOneWidget);
+    // §25 — 영역 6개 전부 닮은/다른 부분 중 한쪽에 문구와 함께 나온다.
+    final phrases = [
+      for (final b in SimilarityBand.values) find.text(b.labelKo).evaluate().length,
+    ];
+    expect(phrases.fold<int>(0, (a, b) => a + b), 6);
     expect(find.text('두 사람의 첫인상'), findsOneWidget);
     expect(find.text('가설 지표'), findsOneWidget);
     expect(find.text(MeasurePairBody.disclaimer), findsOneWidget);

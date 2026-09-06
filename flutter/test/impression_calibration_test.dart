@@ -16,6 +16,7 @@ import 'package:face_engine/data/constants/face_reference_data.dart';
 import 'package:face_engine/data/constants/impression_evidence.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/services/first_impression.dart';
+import 'package:face_engine/domain/services/geometry_profile.dart';
 import 'package:face_engine/domain/services/impression_features.dart';
 
 import 'support/aaf_faces.dart';
@@ -80,9 +81,27 @@ void main() {
       buf.writeln('  },');
     }
 
-    // 닮은 정도 — 성별 안 무작위 쌍 20,000개의 거리 중앙값.
+    // 기하학 프로필(§7) — 영역별 mean|z| 의 성별 21-point 분위.
+    buf.writeln('// ── geometry profile quantiles (geometry_profile_quantiles.dart) ──');
+    for (final gender in Gender.values) {
+      buf.writeln('  Gender.${gender.name}: {');
+      for (final e in geometryRegions.entries) {
+        final s = [
+          for (final f in faces)
+            if (f.gender == gender) regionMeanAbsZ(f.z, e.value)!,
+        ]..sort();
+        buf.writeln("    '${e.key}': ${_fmt(_quantiles21(s))},");
+      }
+      buf.writeln('  },');
+    }
+
+    // 닮은 정도 — 무작위 쌍 20,000개의 거리 중앙값, 영역별 닮은 정도 사분위(§25 문구).
     final rng = Random(7);
     final dists = <double>[];
+    final simByRegion = <String, List<double>>{
+      'overall': <double>[],
+      for (final r in geometryRegions.keys) r: <double>[],
+    };
     for (var i = 0; i < 20000; i++) {
       final a = faces[rng.nextInt(faces.length)];
       var b = faces[rng.nextInt(faces.length)];
@@ -90,11 +109,23 @@ void main() {
         b = faces[rng.nextInt(faces.length)];
       }
       dists.add(geometryDistance(a.z, b.z, ids));
+      final sim = computeGeometrySimilarity(a.z, b.z, ids);
+      simByRegion['overall']!.add(sim.overall);
+      for (final e in sim.byRegion.entries) {
+        simByRegion[e.key]!.add(e.value);
+      }
     }
     dists.sort();
     final median = dists[dists.length ~/ 2];
     buf.writeln('// geometry distance median (random pairs, n=20000): '
         '${median.toStringAsFixed(4)}');
+    buf.writeln('// ── region similarity quartiles [p75, p50, p25] (impression_quantiles.dart) ──');
+    for (final e in simByRegion.entries) {
+      final s = e.value..sort();
+      double q(double p) => s[((s.length - 1) * p).round()];
+      buf.writeln("  '${e.key}': [${q(0.75).toStringAsFixed(1)}, "
+          "${q(0.5).toStringAsFixed(1)}, ${q(0.25).toStringAsFixed(1)}],");
+    }
 
     // ignore: avoid_print
     print(buf.toString());

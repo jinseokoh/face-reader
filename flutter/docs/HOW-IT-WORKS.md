@@ -291,9 +291,16 @@ total = clamp(50 + (rawTotal - 50) × 1.4, 5, 99)
 리포트 `symmetry` 필드에 raw 저장(카드마다 재계산 없음). 신뢰(보조)·매력(주) 축에 feature 로 들어간다.
 재생성: `flutter test test/symmetry_calibration_test.dart`.
 
-두 얼굴 (`analyzePair`): 닮은 정도 = z 벡터 RMS 거리를 `exp(−ln2·d/1.3113)`(무작위 쌍 중앙 거리 = 50점)로,
+**기하학 프로필** (§7, `domain/services/geometry_profile.dart`): 영역(`geometryRegions` 6개) 원점수 = 그 영역 계측
+mean|z| → 성별 21-point 분위표(`geometry_profile_quantiles.dart`, AAF 실측)로 백분위 → 점수 = 100 − 백분위
+(평균에 가까울수록 높음) + `symmetry`(전체 대칭, 높을수록 대칭). 리포트 "얼굴 기하학 프로필" 섹션.
+첫인상 축 근거는 §13 문장형 — "{계측}이(가) 높은/낮은 편(±0.5σ)/기준 범위" + 높이는/낮추는 방향.
+
+두 얼굴 (`analyzePair`): 닮은 정도 = z 벡터 RMS 거리를 `exp(−ln2·d/1.3041)`(무작위 쌍 중앙 거리 = 50점)로,
 영역별(outline·eyes·brows·nose·mouth·jaw) 동일 식 · 첫인상 유사도 = 100 − mean\|Δ\| · 조화도 = mean(max(A,B))
 (가설 지표) · 보완도 = mean\|Δ\| (매력 제외 3축). **케미 점수 = 조화도 + 보완도 + 닮은 정도 (0~300).**
+영역 닮은 정도 문구(§25, `SimilarityBand`): 무작위 쌍 사분위 `kRegionSimilarityQuartiles` [p75,p50,p25] 기준
+매우 유사 · 유사 · 차이가 있음 · 차이가 큼. 비교 화면은 닮은 부분/다른 부분으로 나눠 보여준다.
 
 **케미 방 mode** (`teams.mode`, 0008): `physiognomy` = §7 궁합 엔진 total(0~100)+4단 등급 ·
 `first_impression` = 위 케미 점수, 등급은 AAF 무작위 쌍 사분위(p75/p50/p25 = 165.8/148.0/131.1),

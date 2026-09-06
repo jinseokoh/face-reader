@@ -157,6 +157,29 @@ double geometryDistance(
 double similarityFromDistance(double d) =>
     100 * exp(-ln2 * d / kGeometryDistanceMedian);
 
+/// 닮은 정도 → 문구 (§25). 경계는 AAF 무작위 쌍의 사분위
+/// (`kRegionSimilarityQuartiles`): p75 이상 매우 유사 · p50 이상 유사 ·
+/// p25 이상 차이가 있음 · 그 아래 차이가 큼.
+enum SimilarityBand {
+  verySimilar('매우 유사'),
+  similar('유사'),
+  different('차이가 있음'),
+  veryDifferent('차이가 큼');
+
+  const SimilarityBand(this.labelKo);
+  final String labelKo;
+
+  bool get isSimilar => this == verySimilar || this == similar;
+}
+
+SimilarityBand similarityBandOf(String region, double value) {
+  final q = kRegionSimilarityQuartiles[region]!;
+  if (value >= q[0]) return SimilarityBand.verySimilar;
+  if (value >= q[1]) return SimilarityBand.similar;
+  if (value >= q[2]) return SimilarityBand.different;
+  return SimilarityBand.veryDifferent;
+}
+
 /// 닮은 정도 — 전체와 영역별.
 class GeometrySimilarity {
   final double overall;
