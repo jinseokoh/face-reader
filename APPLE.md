@@ -2305,3 +2305,35 @@ A~D에 해당하지 않는 기능이라면 임의로 추가하지 않는다.
 - 관상 서술 엔진(`life_question_narrative.dart`, `report_assembler.dart`, `physiognomy_scoring.dart`, 14-node tree, archetype), 궁합 5-frame 엔진(`shared/domain/services/compat/`), 관상 narrative 데이터·테스트는 **삭제·축소하지 않는다.** Android 가 계속 쓰고, iOS 는 추후 별도 대책과 함께 다시 붙인다.
 - iOS v1 에서의 부재는 **컴파일 상수 분기(81.6)로 빌드에서 빠지는 것**이지 코드베이스에서 없어지는 것이 아니다. §71·§72 의 "재설계" 항목은 첫인상·두 얼굴 경로를 **새로 추가**하는 것이고 관상 경로를 대체하는 것이 아니다.
 - 관상·궁합 경로의 iOS 대응 대책은 추후 이 문서에 별도 절로 추가한다.
+
+## 81.10 진행 상황 (2026-09-06)
+
+**끝난 것 — 전부 main 에 푸시됨.**
+
+| 단계 | 내용 | 커밋 |
+| --- | --- | --- |
+| 엔진 | 첫인상 세 층(문헌 관계 → 재구성 feature → 4축 백분위) · 두 얼굴 4지표 · 케미 합 · AAF 분위표(축 4 + 계측 26) | `4ba93a0c` |
+| DB | `teams.mode` 0008 (적용 완료) · payload·mode 일치 check | `af68f77d` `14d0f44a` |
+| 케미 엔진 | `TeamScoring` 관상/첫인상 분기 · 사분위 등급 · 웹 runTeam mode | `e6d0494b` |
+| iOS 문구 | 탭 첫인상·비교·케미 · 앱바 · 빈 화면 · pill · 온보딩 4장 문구 · 관상·궁합 단어 0 | `7412abe4` `3f05acfe` |
+| 리포트 | MeasureReportBody(백분위·희귀도) + MeasureShareCard | `1c402fc6` |
+| 비교 | MeasurePairBody · 목록 카드 요약 · 해제 기록 · (i) 안내 · 케미 쌍 시트 세 성분 | `98bdfcb4` |
+| 메타 | 리스트 배지·케미 참가자 메타 = 첫인상 최고 축 · iOS define 가드 · 빌드 명령 문서 | `2330e662` |
+| 온보딩 이미지 | `onboarding{n}-ios/android.png` 8장, 선택 규칙 한 줄 | `f4272e35` |
+
+빌드: iOS 는 `flutter build ipa --dart-define=FACELY_EDITION=measure`. 테스트는 두 에디션 모두 251 green.
+
+**남은 것 — 제출 전.**
+
+- [ ] 실기기(iPhone, 카카오톡 미설치): 인앱 로그인 시트, 오버레이 라벨 열, 첫인상 리포트·비교·케미 화면 한 바퀴
+- [ ] 데모 방 seed(`web/db/tests/demo_teams.sql`)를 `mode='first_impression'` 로 다시 만들기 — 지금 seed 는 관상 방이라 iOS 데모 계정 화면에 방이 안 보인다
+- [ ] 웹 공유 페이지: iOS 에서 만든 카드가 `/r/{id}`(관상 서술 SSR)·궁합 공유로 열린다. §4 결정(유지)대로 두되, 리뷰 노트에 링크를 넣지 않는다. 추후 measure 카드용 SSR 분기는 별도 절
+- [ ] 스토어 메타데이터: 부제·설명·키워드·스크린샷 5장(1장 = 계측 오버레이) · 카테고리 라이프스타일 · 리뷰 노트 · Resolution Center 답변(4.3(b) 컨셉 변경 · Guideline 4 수정 · 2.1 처리방침 제2조 인용)
+- [ ] web 빌드·배포 → `facely.kr/privacy.md` 제2조 확인 · App Store Connect 개인정보 라벨
+- [ ] iOS release 빌드에서 관상 문자열 0 확인 (`strings` 검사)
+- [ ] Android 배포 시 `app_config.android_min_build` 상향 (구버전이 첫인상 방에 관상 payload 쓰는 것 차단 — 서버 check 가 이미 막지만 화면 혼선 방지)
+
+**iOS 에서도 아직 남아 있는 관상 흔적 (허용 범위).**
+- 앱 이름 "관상은 과학이다" — 전략상 유지.
+- emotion-* 마스코트(사진 찍는 점술가 캐릭터) — 빈 화면·앱 정보에 쓰인다. 도사·족자는 아니지만 교체 후보. 이미지 자산이라 형 결정.
+- 카카오 초대 문구의 앱 이름.
