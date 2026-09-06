@@ -30,7 +30,7 @@ class MeasureReportBody extends StatelessWidget {
   const MeasureReportBody({super.key, required this.report});
 
   static const String disclaimer =
-      '첫인상 지표는 공개 학술연구를 기반으로 계산한 추정치이며, 한국인 평가자를 '
+      '첫인상 지표는 공개 학술연구를 기반으로 계산한 추정치이며, 한국인만을 '
       '대상으로 학습·검증된 모델이 아닙니다. 실제 성격·능력이 아니라 얼굴 형태가 '
       '기준 집단 안에서 갖는 상대 위치입니다.';
 
