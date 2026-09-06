@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:facely/core/edition.dart';
 import 'package:facely/core/edition_copy.dart';
 import 'dart:async';
 
@@ -27,6 +29,12 @@ import 'package:timeago/timeago.dart' as timeago;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // iOS 는 반드시 measure 에디션으로 빌드한다 (APPLE.md §81.6) —
+  // `--dart-define=FACELY_EDITION=measure` 를 빠뜨린 iOS 빌드를 디버그에서 잡는다.
+  assert(
+    !Platform.isIOS || kMeasureEdition,
+    'iOS 빌드는 --dart-define=FACELY_EDITION=measure 가 필요합니다',
+  );
   // DSN 을 읽기 위해 dotenv 먼저 로드. DSN 미설정이면 Sentry 는 no-op.
   await dotenv.load(fileName: '.env');
   // 순수 Dart `sentry` — 네이티브 Kotlin 모듈 없어 build 충돌 없음.

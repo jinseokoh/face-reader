@@ -6,6 +6,8 @@ import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/core/edition.dart';
+import 'package:facely/domain/services/pair_score.dart';
+import 'package:face_engine/data/constants/impression_evidence.dart';
 import 'package:facely/core/edition_copy.dart';
 import 'package:facely/data/services/team_service.dart';
 import 'package:facely/domain/models/team.dart';
@@ -283,6 +285,8 @@ class _PhysiognomyItem extends ConsumerWidget {
   /// Archetype 시각 검증용 뱃지 — primary / secondary / specialArchetype.
   /// 사용자가 "쏠림현상 있는지" 눈으로 바로 판단할 수 있도록 list item 에 직접 노출.
   Widget _buildArchetypeBadges() {
+    // measure 에디션 — 관상 유형 대신 첫인상 최고 축 한 칩 (const 분기).
+    if (kMeasureEdition) return _buildImpressionBadge();
     final primary = report.archetype.primaryLabel;
     final secondary = report.archetype.secondaryLabel;
     final special = report.archetype.specialArchetype;
@@ -327,6 +331,35 @@ class _PhysiognomyItem extends ConsumerWidget {
         if (special != null)
           chip(special, bg: Colors.indigo.shade50, fg: Colors.indigo.shade700),
       ],
+    );
+  }
+
+  /// 첫인상 4축 중 백분위가 가장 높은 축 — "신뢰감 있는 인상 상위 12%".
+  Widget _buildImpressionBadge() {
+    final profile = impressionOf(report);
+    final best = ImpressionAxis.values
+        .reduce((a, b) => profile[a] >= profile[b] ? a : b);
+    final top = (100 - profile[best]).round().clamp(1, 99);
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.textPrimary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+        ),
+        child: Text(
+          '${best.labelKo} 상위 $top%',
+          style: AppText.hint.copyWith(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      ),
     );
   }
 

@@ -72,8 +72,15 @@ cd /Users/chuck/Code/face/flutter
 flutter pub get
 flutter analyze          # 0 issues 기대
 flutter test             # 전부 green (2026-09-05 기준 228 test)
-flutter run              # 실기 (camera/MediaPipe simulator 불가)
+flutter run              # Android 실기 (camera/MediaPipe simulator 불가)
+flutter run --dart-define=FACELY_EDITION=measure   # iOS 실기 — 필수
+flutter build ipa --dart-define=FACELY_EDITION=measure   # iOS 제출 빌드 — 필수
 ```
+
+**에디션**: `FACELY_EDITION` 컴파일 상수 (`lib/core/edition.dart`). Android = `full`(기본),
+iOS = `measure`(관상·궁합 경로가 빌드에서 빠짐, APPLE.md §81.6). iOS 빌드에 define 을
+빠뜨리면 디버그 assert 가 잡는다. 테스트는 두 에디션 모두 돌린다:
+`flutter test` + `flutter test --dart-define=FACELY_EDITION=measure`.
 
 실측 재보정 (weight matrix/rule/reference 수정 후):
 ```bash

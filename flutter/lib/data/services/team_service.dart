@@ -9,6 +9,8 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/edition.dart';
+import '../../domain/services/pair_score.dart';
+import 'package:face_engine/data/constants/impression_evidence.dart';
 import '../../core/storage/thumbnail_paths.dart';
 import '../../domain/models/team.dart';
 import '../../domain/services/share/share_receive_service.dart';
@@ -300,9 +302,18 @@ class TeamService {
           ageGender = '${report.ageGroup.labelKo} ${report.gender.labelKo}';
           ethnicity = report.ethnicity.labelKo;
           faceShape = report.faceShape.korean;
-          archetype =
-              '${report.archetype.primaryLabel} · '
-              '${report.archetype.secondaryLabel} 기질';
+          // 참가자 메타 한 줄 — measure 에디션은 관상 유형 대신 첫인상 최고 축.
+          if (kMeasureEdition) {
+            final profile = impressionOf(report);
+            final best = ImpressionAxis.values
+                .reduce((a, b) => profile[a] >= profile[b] ? a : b);
+            final top = (100 - profile[best]).round().clamp(1, 99);
+            archetype = '${best.labelKo} 상위 $top%';
+          } else {
+            archetype =
+                '${report.archetype.primaryLabel} · '
+                '${report.archetype.secondaryLabel} 기질';
+          }
         } catch (_) {
           /* 엔진 재계산 실패 — meta 만 생략 */
         }
