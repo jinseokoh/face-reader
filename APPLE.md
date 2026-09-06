@@ -2320,7 +2320,7 @@ A~D에 해당하지 않는 기능이라면 임의로 추가하지 않는다.
 | 비교 | MeasurePairBody · 목록 카드 요약 · 해제 기록 · (i) 안내 · 케미 쌍 시트 세 성분 | `98bdfcb4` |
 | 메타 | 리스트 배지·케미 참가자 메타 = 첫인상 최고 축 · iOS define 가드 · 빌드 명령 문서 | `2330e662` |
 | 온보딩 이미지 | `onboarding{n}-ios/android.png` 8장, 선택 규칙 한 줄 | `f4272e35` |
-| 대칭 (§6.1) | 좌우 대칭 6 계측 · AAF reference · 리포트 섹션 · 신뢰/매력 축 feature · 분위표 재생성 | (아래) |
+| 대칭 (§6.1) | 좌우 대칭 6 계측 · AAF reference · 리포트 섹션 · 신뢰/매력 축 feature · 분위표 재생성 | `57108c6a` |
 
 빌드: `flutter run --release` / `flutter build ipa` (플래그 없음, 플랫폼 자동). 테스트는 두 에디션 모두 256 green.
 
