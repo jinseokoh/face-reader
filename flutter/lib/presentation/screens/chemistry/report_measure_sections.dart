@@ -66,10 +66,27 @@ class MeasureReportBody extends StatelessWidget {
       children: [
         _Card(child: Text(disclaimer, style: AppText.caption)),
         const SizedBox(height: AppSpacing.xl),
-        _title('첫인상'),
+        _title('당신의 첫인상 프로필'),
+        const SizedBox(height: AppSpacing.md),
+        _Card(
+          child: Column(
+            children: [
+              for (final axis in ImpressionAxis.values)
+                _AxisRow(axis: axis, percentile: profile[axis]),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        _title('왜 이런 결과가 나왔을까요?'),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          '아래 특징은 각 점수의 계산에 실제로 쓰인 항목이며, 공개 학술연구에서 '
+          '해당 인상과 통계적으로 연결된 것으로 보고된 방향을 따릅니다.',
+          style: AppText.hint,
+        ),
         const SizedBox(height: AppSpacing.md),
         for (final axis in ImpressionAxis.values) ...[
-          _AxisRow(
+          _WhyCard(
             axis: axis,
             percentile: profile[axis],
             evidence: _topEvidence(axis, features),
@@ -418,13 +435,40 @@ class _Card extends StatelessWidget {
       );
 }
 
-/// 첫인상 축 한 줄 — 이름 · 상위 N% · 백분위 막대 · 근거 계측 3개.
+/// 첫인상 축 한 줄 — 이름 · 상위 N% · 백분위 막대 (§54 4단계).
 class _AxisRow extends StatelessWidget {
+  final ImpressionAxis axis;
+  final double percentile;
+
+  const _AxisRow({required this.axis, required this.percentile});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+      child: Row(
+        children: [
+          Expanded(child: Text(axis.labelKo, style: AppText.body)),
+          SizedBox(width: 120, child: _Bar(fraction: percentile / 100)),
+          const SizedBox(width: AppSpacing.md),
+          SizedBox(
+            width: 64,
+            child: Text(_topLabel(percentile),
+                style: AppText.body, textAlign: TextAlign.right),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 축 하나의 근거 카드 — "{특징 문장} / 높이는·낮추는 방향" (§13, §54 5단계).
+class _WhyCard extends StatelessWidget {
   final ImpressionAxis axis;
   final double percentile;
   final List<_Evidence> evidence;
 
-  const _AxisRow({
+  const _WhyCard({
     required this.axis,
     required this.percentile,
     required this.evidence,
@@ -443,8 +487,6 @@ class _AxisRow extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          _Bar(fraction: percentile / 100),
-          const SizedBox(height: AppSpacing.md),
           Text('주요 관련 특징', style: AppText.hint),
           const SizedBox(height: AppSpacing.xs),
           for (final e in evidence)
@@ -461,11 +503,6 @@ class _AxisRow extends StatelessWidget {
                 ],
               ),
             ),
-          Text(
-            '위 특징은 이 점수의 계산에 실제로 쓰인 항목이며, 공개 학술연구에서 '
-            '해당 인상과 통계적으로 연결된 것으로 보고된 방향을 따릅니다.',
-            style: AppText.hint,
-          ),
         ],
       ),
     );

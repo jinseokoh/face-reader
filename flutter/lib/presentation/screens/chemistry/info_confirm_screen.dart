@@ -1,3 +1,4 @@
+import 'package:facely/core/edition.dart';
 import 'package:facely/core/edition_copy.dart';
 import 'dart:async';
 import 'dart:io';
@@ -9,6 +10,8 @@ import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
+import 'package:facely/presentation/screens/chemistry/report_page.dart';
+import 'package:facely/presentation/widgets/analysis_stage_overlay.dart';
 import 'package:facely/presentation/widgets/picker_row.dart';
 import 'package:facely/presentation/widgets/primary_button.dart';
 import 'package:facely/data/services/auth_service.dart';
@@ -114,7 +117,9 @@ class _InfoConfirmScreenState extends ConsumerState<InfoConfirmScreen> {
         centerTitle: true,
       ),
       body: SafeArea(
-        child: Padding(
+        child: Stack(
+          children: [
+            Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -226,6 +231,11 @@ class _InfoConfirmScreenState extends ConsumerState<InfoConfirmScreen> {
             ],
           ),
         ),
+            // measure — 분석 중에는 §54 1~3단계 문구가 화면을 덮는다.
+            if (_isAnalyzing && kMeasureEdition)
+              const Positioned.fill(child: AnalysisStageOverlay()),
+          ],
+        ),
       ),
     );
   }
@@ -297,6 +307,11 @@ class _InfoConfirmScreenState extends ConsumerState<InfoConfirmScreen> {
   /// (uploadImage 경로), 웹 OG preview 만 logo.png 로 fallback.
   Future<void> _runFullAnalysis() async {
     setState(() => _isAnalyzing = true);
+    // §54 — measure 는 단계 문구 3개를 다 보여준 뒤에 결과로 간다.
+    final stagesShown = kMeasureEdition
+        ? Future<void>.delayed(
+            kAnalysisStageStep * kMeasureAnalysisStages.length)
+        : Future<void>.value();
     try {
       if (_inferring && widget.metadataFuture != null) {
         try {
@@ -420,6 +435,26 @@ class _InfoConfirmScreenState extends ConsumerState<InfoConfirmScreen> {
       ref
           .read(historyTabProvider.notifier)
           .selectTab(c.source == AnalysisSource.camera ? 0 : 1);
+
+      if (kMeasureEdition) {
+        // §54 4·5단계 — 정보 확인을 닫고 바로 리포트(첫인상 프로필 → 왜 이런
+        // 결과)를 연다. 등록 안내 대화상자는 리포트가 대신한다.
+        await stagesShown;
+        if (!mounted) return;
+        if (widget.asMyFace) {
+          ref
+              .read(selectedTabProvider.notifier)
+              .selectTab(kPhysiognomyTabIndex);
+        }
+        final nav = Navigator.of(context);
+        nav.pop();
+        nav.push(
+          MaterialPageRoute<void>(
+            builder: (_) => ReportPage(report: report),
+          ),
+        );
+        return;
+      }
 
       if (widget.asMyFace) {
         // 내 관상 등록은 앱의 첫 관문이다. 카메라가 닫히고 아무 말 없이 원래

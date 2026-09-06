@@ -296,6 +296,12 @@ mean|z| → 성별 21-point 분위표(`geometry_profile_quantiles.dart`, AAF 실
 (평균에 가까울수록 높음) + `symmetry`(전체 대칭, 높을수록 대칭). 리포트 "얼굴 기하학 프로필" 섹션.
 첫인상 축 근거는 §13 문장형 — "{계측}이(가) 높은/낮은 편(±0.5σ)/기준 범위" + 높이는/낮추는 방향.
 
+**결과 공개 5단계** (§54, measure): 정보 확인의 [확인] 뒤 `AnalysisStageOverlay` 가 얼굴 측정 중 → 얼굴 기하학
+분석 → 첫인상 분석(각 0.8초 최소)을 덮어 보여주고, 정보 확인을 닫으며 바로 `ReportPage` 를 연다(등록 대화상자
+없음). 리포트 본문은 "당신의 첫인상 프로필"(4축 표) → "왜 이런 결과가 나왔을까요?"(축별 근거 카드) 순.
+**사진별 첫인상** (§56, `compatibility/photo_compare_screen.dart`): 비교 탭 앱바에서 카드 2~4장을 골라 4축 +
+얼굴 대칭을 사진 A/B/C/D 열로 나란히. 같은 사람인지는 사용자가 고른다.
+
 **모델 버전** (§58·§59, `data/constants/model_version.dart`): geometry · impression · pair 세 문자열. 리포트
 `modelVersion` 과 첫인상 방 payload `modelVersion` 에 기록. 화면은 저장된 z 에 현재 분위표를 다시 적용하므로
 카드 버전 ≠ 현재 버전이면 리포트 "모델 버전" 카드가 알린다. 엔진에 난수 없음 → 같은 입력 = 같은 결과
