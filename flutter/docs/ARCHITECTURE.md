@@ -38,7 +38,9 @@ pill (`face_scan_pill`, 등록 후엔 [상대방 관상 추가]로 전환).
 
 **온보딩 인트로** (`onboarding_intro.dart`): MainApp 첫 프레임 뒤 — 4페이지
 (관상[관상풀이 무료] / 궁합[궁합해석 1코인] / 케미[그룹케미 결과표 무료] /
-시작은 내 관상부터, 일러스트 onboarding1~3 + banner-start). 전환은
+시작은 내 관상부터). 이미지는 `onboarding{n}-ios.png` / `onboarding{n}-android.png`
+4장 — 페이지 번호 + 플랫폼으로만 정해지고 코퍼스 버전과 무관(`onboardingAssetPath`).
+measure 에디션은 자체 4장 문구(`_kPagesMeasure`). 전환은
 `concentric_transition` 동심원 리플 — 하단 원판(지름 64, 다음 페이지 배경색 +
 화살표) 탭/스와이프로 진행, 페이지 배경은 cream/white/shell/white 교대(+동색
 sentinel 로 마지막 장 원판 은닉), warm 페이지는 darkBrown+warmBrown 짝. 상단

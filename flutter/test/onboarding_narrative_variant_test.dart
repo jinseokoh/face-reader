@@ -1,7 +1,9 @@
-// 온보딩 첫 장 — 원격 코퍼스 버전에 따라 제목과 이미지가 갈린다.
-// v1 확정이면 onboarding0.png, 그 외(v2·확정 전)는 onboarding1.png.
+// 온보딩 — 이미지는 페이지 번호 + 플랫폼(onboarding{n}-ios/android.png)으로만
+// 정해지고, 첫 장 제목만 원격 코퍼스 버전(v1/v2)을 따른다.
 //
 // 실행: flutter test test/onboarding_narrative_variant_test.dart
+
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -37,31 +39,33 @@ Future<void> _openIntro(WidgetTester tester) async {
 }
 
 void main() {
-  // 온보딩 v1/v2 코퍼스 변형은 full 에디션 전용 — measure 는 자체 페이지 세트.
-  if (kMeasureEdition) return;
+  final suffix = Platform.isIOS ? 'ios' : 'android';
   tearDown(() => AppConfigService.instance.debugResetNarrativeVersion());
 
-  testWidgets('확정 전(=v2 기본값) — onboarding1.png', (tester) async {
-    await _openIntro(tester);
-    expect(_assets(tester), contains('assets/images/onboarding1.png'));
-    expect(_assets(tester), isNot(contains('assets/images/onboarding0.png')));
+  test('이미지 경로는 페이지 번호 + 플랫폼', () {
+    expect(onboardingAssetPath(1), 'assets/images/onboarding1-$suffix.png');
+    expect(onboardingAssetPath(4), 'assets/images/onboarding4-$suffix.png');
   });
 
-  testWidgets('v1 확정 — onboarding0.png', (tester) async {
+  testWidgets('첫 장 이미지 — 확정 전(v2 기본값)에도 플랫폼 파일', (tester) async {
+    await _openIntro(tester);
+    expect(_assets(tester), contains('assets/images/onboarding1-$suffix.png'));
+  });
+
+  testWidgets('첫 장 이미지 — v1 확정이어도 같은 플랫폼 파일', (tester) async {
     AppConfigService.instance.debugApplyNarrativeVersion(
       {'android_narrative_version': 1, 'ios_narrative_version': 1},
     );
     await _openIntro(tester);
-    expect(_assets(tester), contains('assets/images/onboarding0.png'));
-    expect(_assets(tester), isNot(contains('assets/images/onboarding1.png')));
+    expect(_assets(tester), contains('assets/images/onboarding1-$suffix.png'));
   });
 
-  testWidgets('v2 확정 — onboarding1.png', (tester) async {
+  testWidgets('v1 확정이면 full 에디션 첫 장 제목이 v1 문구', (tester) async {
+    if (kMeasureEdition) return;
     AppConfigService.instance.debugApplyNarrativeVersion(
-      {'android_narrative_version': 2, 'ios_narrative_version': 2},
+      {'android_narrative_version': 1, 'ios_narrative_version': 1},
     );
     await _openIntro(tester);
-    expect(_assets(tester), contains('assets/images/onboarding1.png'));
-    expect(_assets(tester), isNot(contains('assets/images/onboarding0.png')));
+    expect(find.textContaining('얼굴 특징을 측정하여'), findsOneWidget);
   });
 }

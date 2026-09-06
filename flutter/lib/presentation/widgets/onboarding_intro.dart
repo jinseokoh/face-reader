@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:concentric_transition/concentric_transition.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/core/edition.dart';
@@ -25,32 +27,32 @@ const _kPageColors = [
   AppColors.background,
 ];
 
+/// 온보딩 이미지 — 플랫폼별 4장. `onboarding{n}-ios.png` / `onboarding{n}-android.png`.
+/// 코퍼스 버전(v1/v2)과 무관하다 — 이미지 선택 규칙은 이 한 줄뿐이다.
+String onboardingAssetPath(int page) =>
+    'assets/images/onboarding$page-${Platform.isIOS ? 'ios' : 'android'}.png';
+
 /// measure 에디션(iOS v1) 온보딩 — 관상·궁합이라는 말과 도사 삽화가 없다.
 /// 제목은 탭 이름과 같은 단어(측정·비교·케미 → 첫인상·비교·케미, APPLE.md §81.5).
-/// 이미지 onboarding_m1~4 는 실제 화면 캡처 합성으로 교체 예정(APPLE.md §2.4 A안).
 const _kPagesMeasure = [
   _OnboardingPageData(
-    asset: 'assets/images/onboarding_m1.png',
     title: '얼굴을 재서\n우리 그룹 케미를 봅니다',
     body: '468개 점으로 얼굴을 재고\n그룹 안 모든 쌍의 케미를 점수로 보여드립니다.',
     warm: true,
   ),
   _OnboardingPageData(
-    asset: 'assets/images/onboarding_m2.png',
     title: '첫인상',
     chips: ['무료'],
     body: '28개 계측값과 한국인 11,800명 대비 위치,\n그리고 첫인상 4축 지표를 보여드립니다.',
     warm: false,
   ),
   _OnboardingPageData(
-    asset: 'assets/images/onboarding_m3.png',
     title: '비교',
     chips: ['1코인'],
     body: '두 얼굴의 계측값을 나란히 놓고\n닮은 정도·조화도·보완도를 계산합니다.',
     warm: true,
   ),
   _OnboardingPageData(
-    asset: 'assets/images/onboarding_m4.png',
     title: '케미',
     chips: ['무료'],
     body: '케미 그룹은 누구나 만들거나 참여할 수 있고\n참가자들의 그룹 케미 결과표를 보여드립니다.',
@@ -60,15 +62,12 @@ const _kPagesMeasure = [
 
 const _kPagesFull = [
   _OnboardingPageData(
-    asset: 'assets/images/onboarding1.png',
-    assetV1: 'assets/images/onboarding0.png',
     title: '관상으로 풀어보는\n친구 만들기',
     titleV1: '얼굴 특징을 측정하여\n그 의미를 해석해 드립니다.',
     body: '우리 그룹의 케미를 한눈에 보고\n새로운 대화의 계기를 만들어보세요.',
     warm: true,
   ),
   _OnboardingPageData(
-    asset: 'assets/images/onboarding2.png',
     title: '관상',
     // chip 은 가격만 말한다. 무엇이 무료인지는 제목과 본문이 이미 말하고
     // 있어, chip 에 "관상풀이"·"케미 그룹" 을 또 넣으면 같은 말이 겹친다.
@@ -77,7 +76,6 @@ const _kPagesFull = [
     warm: false,
   ),
   _OnboardingPageData(
-    asset: 'assets/images/onboarding3.png',
     title: '궁합',
     // "유료" 대신 "1코인" — 가입 보너스가 3코인이라 세 번은 볼 수 있다는
     // 뜻이 된다. "유료" 는 그 정보를 지우고 결제 벽처럼 읽힌다.
@@ -86,7 +84,6 @@ const _kPagesFull = [
     warm: true,
   ),
   _OnboardingPageData(
-    asset: 'assets/images/onboarding4.png',
     title: '케미',
     chips: ['무료'],
     body: '케미 그룹은 누구나 만들거나 참여할 수 있고\n참가자들의 그룹 케미 결과표를 보여드립니다.',
@@ -107,8 +104,7 @@ const double _kRevealVerticalPosition = 0.75;
 const double _kTopBarHeight = 48;
 
 /// 온보딩 안내 — 전체 흐름 → 관상 → 궁합 → 케미 4페이지 인트로.
-/// 이미지는 `onboarding1.png` ~ `onboarding4.png` 를 순서대로 쓰되, 코퍼스가
-/// v1 로 확정된 경우 첫 장만 `onboarding0.png` 로 갈린다 ([_OnboardingPageData.resolvedAsset]).
+/// 이미지는 [onboardingAssetPath] — 페이지 번호 + 플랫폼으로만 정해진다.
 /// `warm` 은 [_kPageColors] 의 짝을 따른다 — index 짝수(cream·shell)가 true,
 /// 홀수(흰 배경)가 false. **페이지를 재배열하면 이 교대를 다시 맞출 것.**
 /// MainApp 이 첫 프레임 뒤에 호출한다.
@@ -241,7 +237,10 @@ class _OnboardingIntroState extends State<_OnboardingIntro>
               nextButtonBuilder: (_) => _page == _kPages.length - 1
                   ? const SizedBox.shrink()
                   : const _RevealButtonIcon(),
-              itemBuilder: (index) => _OnboardingPage(data: _kPages[index]),
+              itemBuilder: (index) => _OnboardingPage(
+                data: _kPages[index],
+                asset: onboardingAssetPath(index + 1),
+              ),
             ),
           ),
           // 원판 흡수 cover — 패키지 버튼과 동일 좌표 (verticalPosition * H,
@@ -396,8 +395,9 @@ class _OnboardingPage extends StatelessWidget {
   static const double _imageHInset = AppSpacing.lg;
 
   final _OnboardingPageData data;
+  final String asset;
 
-  const _OnboardingPage({required this.data});
+  const _OnboardingPage({required this.data, required this.asset});
 
   @override
   Widget build(BuildContext context) {
@@ -425,7 +425,7 @@ class _OnboardingPage extends StatelessWidget {
                   const EdgeInsets.symmetric(horizontal: _imageHInset),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(AppRadius.xl),
-                child: Image.asset(data.resolvedAsset, fit: BoxFit.contain),
+                child: Image.asset(asset, fit: BoxFit.contain),
               ),
             ),
           ),
@@ -478,10 +478,6 @@ class _OnboardingPageData {
   static bool get _isV1 =>
       AppConfigService.instance.narrativeVersion == NarrativeVersion.v1;
 
-  final String asset;
-  /// v1 코퍼스일 때 [asset] 대신 쓰는 이미지. null 이면 버전과 무관하게 [asset].
-  final String? assetV1;
-
   final String title;
   /// v1 코퍼스일 때 [title] 대신 쓰는 제목. null 이면 버전과 무관하게 [title].
   /// v1 은 관상 자체를 앞세우는 서술이라 첫 장 제목도 그쪽에 맞춘다.
@@ -495,17 +491,12 @@ class _OnboardingPageData {
   final bool warm;
 
   const _OnboardingPageData({
-    required this.asset,
-    this.assetV1,
     required this.title,
     this.titleV1,
     this.chips = const [],
     required this.body,
     required this.warm,
   });
-
-  /// [resolvedTitle] 과 같은 규칙으로 고른 이미지.
-  String get resolvedAsset => _isV1 ? (assetV1 ?? asset) : asset;
 
   /// 원격 설정(`app_config.{ios,android}_narrative_version`)이 정한 코퍼스
   /// 버전에 맞는 제목. v1 제목은 v1 이라고 확인됐을 때만 쓴다 —
