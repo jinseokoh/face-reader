@@ -151,9 +151,9 @@ class MeasureReportBody extends StatelessWidget {
         _title('얼굴 지도'),
         const SizedBox(height: AppSpacing.xs),
         Text(
-          '위치·크기·기울기를 뺀 내 얼굴을 기준 집단(동아시아 얼굴 11,800장, 같은 성별) '
-          '평균 얼굴에 Procrustes 정렬해 겹쳤습니다. 평균에서 가장 먼 3개 계측의 '
-          '측정선을 두 얼굴에 같이 그어, 어디가 얼마나 다른지 보입니다.',
+          '사진 속 위치·크기·기울기는 빼고 얼굴 모양만 남겨, 기준 집단(동아시아 얼굴 '
+          '11,800장, 같은 성별)의 평균 얼굴 위에 겹쳤습니다. 평균에서 가장 먼 3개 '
+          '계측의 측정선을 두 얼굴에 같이 그어, 어디가 얼마나 다른지 보입니다.',
           style: AppText.hint,
         ),
         const SizedBox(height: AppSpacing.md),

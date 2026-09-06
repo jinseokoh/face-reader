@@ -88,7 +88,7 @@ class MeasurePairBody extends StatelessWidget {
         _title('두 얼굴 겹쳐 보기'),
         const SizedBox(height: AppSpacing.xs),
         Text(
-          '두 얼굴에서 위치·크기·기울기를 빼고 Procrustes 정렬로 겹친 모습입니다. '
+          '사진 속 위치·크기·기울기는 빼고 두 얼굴의 모양만 남겨 겹친 모습입니다. '
           '닮은 부분으로 분류된 영역을 진하게 표시합니다.',
           style: AppText.hint,
         ),
@@ -585,9 +585,12 @@ Future<void> showMeasurePairInfoDialog(BuildContext context) => showDialog<void>
               Text('닮은 정도', style: AppText.sectionTitle),
               SizedBox(height: AppSpacing.xs),
               Text(
-                '26개 계측값 벡터의 거리를 0~100으로 바꾼 값입니다. 동아시아 얼굴 11,800장에서 '
-                '무작위로 고른 두 사람의 중앙값이 50점입니다. 윤곽·눈·눈썹·코·입·턱선 '
-                '영역별로도 같은 식으로 계산합니다.',
+                '두 얼굴의 468개 특징점에서 사진 속 위치·크기·기울기를 빼고 모양만 남겨 '
+                '겹친 뒤, 점들이 서로 얼마나 벌어져 있는지를 0~100으로 바꾼 값입니다. '
+                '동아시아 얼굴 11,800장에서 무작위로 고른 두 사람의 중앙값이 50점입니다. '
+                '윤곽·눈·눈썹·코·입·턱선 영역별로도 같은 식으로 계산합니다.\n\n'
+                '겹치는 방법은 프로크루스테스 정렬(Procrustes analysis)입니다. 두 형태의 '
+                '위치·크기·회전을 맞춘 뒤 남는 차이만 재는, 형태 비교의 표준 방법입니다.',
                 style: AppText.body,
               ),
               SizedBox(height: AppSpacing.lg),

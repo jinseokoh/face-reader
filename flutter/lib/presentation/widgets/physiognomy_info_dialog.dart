@@ -150,6 +150,16 @@ class MeasureFaceInfoDialog extends StatelessWidget {
               style: AppText.body,
             ),
             SizedBox(height: 18),
+            Text('얼굴 지도', style: AppText.sectionTitle),
+            SizedBox(height: 10),
+            Text(
+              '내 얼굴의 468개 특징점에서 사진 속 위치·크기·기울기를 빼고 모양만 남겨 '
+              '같은 성별의 평균 얼굴 위에 겹친 그림입니다. 겹치는 방법은 프로크루스테스 '
+              '정렬(Procrustes analysis)로, 두 형태의 위치·크기·회전을 맞춘 뒤 남는 '
+              '차이만 재는 형태 비교의 표준 방법입니다.',
+              style: AppText.body,
+            ),
+            SizedBox(height: 18),
             Text('카메라 · 앨범 · 북마크', style: AppText.sectionTitle),
             SizedBox(height: 10),
             Text(
