@@ -21,8 +21,11 @@ exception when duplicate_object then null; end $$;
 create index if not exists idx_teams_recruiting_mode
   on public.teams (mode, created_at desc) where status = 'recruiting';
 
--- 3) public_teams 뷰 — mode 노출. (security_invoker 유지)
-create or replace view public.public_teams with (security_invoker = on) as
+-- 3) public_teams 뷰 — mode 노출. 0001 과 같이 drop→create (create or replace 는
+--    컬럼을 끝에만 붙일 수 있다). select 권한은 0001 의 default privileges 가
+--    새 뷰에도 붙고, 쓰기 revoke 는 뷰가 새로 생기므로 다시 건다.
+drop view if exists public.public_teams;
+create view public.public_teams with (security_invoker = on) as
   select t.id, t.title, t.room_kind, t.mode, t.is_private, t.max_players,
          t.age_min, t.age_max, t.created_at,
          (select count(*)::int from public.team_members tm where tm.team_id = t.id)
@@ -30,6 +33,21 @@ create or replace view public.public_teams with (security_invoker = on) as
     from public.teams t
    where t.status = 'recruiting'
      and not public.is_blocked_with_me(t.owner_id);
+revoke insert, update, delete on public.public_teams from anon, authenticated;
+
+-- 3b) 결과 payload 와 방 방식의 일치 — 구버전 클라이언트(mode 를 모르는 Android)가
+--     첫인상 방에 관상 payload 를 쓰는 것을 서버가 거부한다. 첫인상 payload 는
+--     root 에 "mode":"first_impression" 을 싣고, 관상 payload 는 mode 키가 없다.
+--     기존 행은 전부 physiognomy + mode 키 없음이라 그대로 통과한다.
+do $$ begin
+  alter table public.teams
+    add constraint teams_payload_mode_check
+    check (
+      result_payload is null
+      or (mode = 'physiognomy' and not (result_payload ? 'mode'))
+      or (mode = 'first_impression' and result_payload->>'mode' = 'first_impression')
+    );
+exception when duplicate_object then null; end $$;
 
 -- 4) column grant — SELECT/INSERT 에 mode 추가 (기존 목록은 0001 §11-4 와 동일).
 grant select (mode) on public.teams to anon, authenticated;
