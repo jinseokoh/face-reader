@@ -60,6 +60,24 @@ void main() {
       buf.writeln('  },');
     }
 
+    // 계측 26개의 성별 21-point 분위 — 리포트의 "한국인 상위 N%" 표기용.
+    buf.writeln('// ── metric quantiles (metric_quantiles.dart) ──');
+    for (final gender in Gender.values) {
+      final byId = <String, List<double>>{for (final id in ids) id: <double>[]};
+      for (final f in faces) {
+        if (f.gender != gender) continue;
+        for (final id in ids) {
+          byId[id]!.add(f.z[id]!);
+        }
+      }
+      buf.writeln('  Gender.${gender.name}: {');
+      for (final id in ids) {
+        final s = byId[id]!..sort();
+        buf.writeln("    '$id': ${_fmt(_quantiles21(s))},");
+      }
+      buf.writeln('  },');
+    }
+
     // 닮은 정도 — 성별 안 무작위 쌍 20,000개의 거리 중앙값.
     final rng = Random(7);
     final dists = <double>[];

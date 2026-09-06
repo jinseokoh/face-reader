@@ -13,6 +13,8 @@ import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/models/physiognomy_tree.dart';
 import 'package:face_engine/domain/services/yin_yang.dart';
 import 'package:go_router/go_router.dart';
+import 'package:facely/core/edition.dart';
+import 'package:facely/core/edition_copy.dart';
 import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/data/constants/metric_text_blocks.dart';
@@ -30,6 +32,8 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
+
+import 'report_measure_sections.dart';
 import 'package:facely/data/services/app_config_service.dart';
 
 const _nodeLabels = <String, String>{
@@ -907,7 +911,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
               ? Navigator.of(context).pop()
               : context.go('/main'),
         ),
-        title: Text(isReceived ? '공유받은 카드' : '관상 분석'),
+        title: Text(isReceived ? '공유받은 카드' : EditionCopy.faceTitle),
         actions: isReceived
             ? [_ReceivedBookmarkAction(report: report)]
             : [
@@ -942,13 +946,19 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             children: [
               _buildHeader(),
               const SizedBox(height: 16),
-              _buildArchetypeCard(),
-              const SizedBox(height: 20),
-              _buildAttributeSection(),
-              const SizedBox(height: 20),
-              _buildReadingSection(),
-              const SizedBox(height: 20),
-              _buildNodeScoreSection(),
+              // measure 에디션(iOS v1)은 서술 없는 백분위 리포트 — const 분기라
+              // 관상 섹션(archetype·속성·해석·노드)이 빌드에서 빠진다.
+              if (kMeasureEdition)
+                MeasureReportBody(report: report)
+              else ...[
+                _buildArchetypeCard(),
+                const SizedBox(height: 20),
+                _buildAttributeSection(),
+                const SizedBox(height: 20),
+                _buildReadingSection(),
+                const SizedBox(height: 20),
+                _buildNodeScoreSection(),
+              ],
             ],
           ),
           // 카카오 공유용 합성 카드 — 화면 밖에 항상 mount 해두고, 사용자가
@@ -960,7 +970,9 @@ class _ReportPageState extends ConsumerState<ReportPage> {
               top: 0,
               child: RepaintBoundary(
                 key: _shareCardKey,
-                child: _ShareCardComposite(report: report),
+                child: kMeasureEdition
+                    ? MeasureShareCard(report: report)
+                    : _ShareCardComposite(report: report),
               ),
             ),
         ],
