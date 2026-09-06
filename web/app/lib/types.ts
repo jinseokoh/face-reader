@@ -17,8 +17,6 @@ export interface RawMetrics {
   /** 정면 468 랜드마크 [x, y] — 등방 원본 좌표, 소수 4자리. 스키마 2 필수. */
   landmarks: number[][];
   lateralLandmarks?: number[][];
-  /** 카드 종류 — 'measure'(첫인상·비교) | 'physiognomy'(관상·궁합). 없으면 measure. */
-  kind?: "measure" | "physiognomy";
 }
 
 export interface MetricsRow {

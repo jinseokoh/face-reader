@@ -73,7 +73,8 @@ function toSchema2(userId, body, offset = 0) {
   const pts = JSON.stringify(landmarks);
   const metrics = JSON.parse(globalThis.runMetrics(pts, 1));
   const symmetry = JSON.parse(globalThis.runSymmetry(pts, 1));
-  const { lateralMetrics: _lm, thumbnailPath: _tp, isMyFace: _my, ...rest } = body;
+  // kind 는 넣었다 뺀 필드(카드는 종류가 없다) — 옛 seed 에 남아 있으면 지운다.
+  const { lateralMetrics: _lm, thumbnailPath: _tp, isMyFace: _my, kind: _kind, ...rest } = body;
   return {
     ...rest,
     schemaVersion: 2,
@@ -81,7 +82,6 @@ function toSchema2(userId, body, offset = 0) {
     symmetry,
     modelVersion: JSON.parse(globalThis.modelVersions()),
     landmarks,
-    kind: "measure",
   };
 }
 const TITLES = {

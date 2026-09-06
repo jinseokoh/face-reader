@@ -36,7 +36,6 @@ void main() {
       source: AnalysisSource.album,
       supabaseId: 'test-uuid',
       landmarks: demoLandmarks(Gender.female),
-      kind: ReportKind.measure,
       metrics: metrics,
       nodeScores: const {},
       attributes: const {},

@@ -90,7 +90,6 @@ FaceReadingReport fakeReport(
     source: AnalysisSource.album,
     metrics: metrics,
     landmarks: demoLandmarks(gender),
-    kind: ReportKind.measure,
     lateralMetrics: null,
     lateralFlags: const {},
     nodeScores: nodeScores,

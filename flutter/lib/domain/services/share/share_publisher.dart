@@ -1,3 +1,4 @@
+import 'package:facely/core/edition.dart';
 import 'dart:io';
 import 'dart:ui' show Rect;
 
@@ -37,6 +38,10 @@ class SharePublisher {
   Future<bool> isKakaoTalkInstalled() =>
       ShareClient.instance.isKakaoTalkSharingAvailable();
 
+  /// 공유 링크 경로 — iOS(measure)는 `/s/`(첫인상·비교), Android 는 `/r/`(관상·궁합).
+  /// 카드 데이터는 같고 웹이 이 경로로 어느 페이지를 그릴지 정한다.
+  String get _seg => kMeasureEdition ? 's' : 'r';
+
   Future<void> publishCompat({
     required FaceReadingReport my,
     required FaceReadingReport album,
@@ -46,7 +51,7 @@ class SharePublisher {
     final albumId = await _ensureSupabaseId(album);
     await _shareFile(
       pngBytes: pngBytes,
-      url: '$_hostBase/r/$myId$pairSep$albumId',
+      url: '$_hostBase/$_seg/$myId$pairSep$albumId',
       tag: 'compat',
     );
   }
@@ -68,7 +73,7 @@ class SharePublisher {
   }) async {
     final myId = await _ensureSupabaseId(my);
     final albumId = await _ensureSupabaseId(album);
-    final webUrl = '$_hostBase/r/$myId$pairSep$albumId';
+    final webUrl = '$_hostBase/$_seg/$myId$pairSep$albumId';
 
     final upload =
         await ShareClient.instance.uploadImage(byteData: compositeCardPng);
@@ -92,7 +97,7 @@ class SharePublisher {
     final uuid = await _ensureSupabaseId(report);
     await _shareFile(
       pngBytes: pngBytes,
-      url: '$_hostBase/r/$uuid',
+      url: '$_hostBase/$_seg/$uuid',
       tag: 'solo',
     );
   }
@@ -113,7 +118,7 @@ class SharePublisher {
     required Uint8List compositeCardPng,
   }) async {
     final uuid = await _ensureSupabaseId(report);
-    final webUrl = '$_hostBase/r/$uuid';
+    final webUrl = '$_hostBase/$_seg/$uuid';
 
     // 1) PNG bytes → Kakao 의 image CDN (kakao_flutter_sdk_share 2.0 의
     // byteData 직접 업로드 — 임시 파일 안 거침).

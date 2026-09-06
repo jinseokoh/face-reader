@@ -143,7 +143,7 @@ class _CompatibilityDetailScreenState
               const SizedBox(height: AppSpacing.sm),
               // measure 에디션(iOS v1)은 등급·오행·서술 없는 두 얼굴 비교 —
               // 플랫폼 판정(kMeasureEdition)으로 관상 궁합 섹션을 그리지 않는다.
-              if (showMeasurePair(widget.my, widget.album))
+              if (kMeasureEdition)
                 MeasurePairBody(my: widget.my, album: widget.album)
               else ...[
                 _TotalHeader(
@@ -164,7 +164,7 @@ class _CompatibilityDetailScreenState
             top: 0,
             child: RepaintBoundary(
               key: _shareCardKey,
-              child: showMeasurePair(widget.my, widget.album)
+              child: kMeasureEdition
                   ? MeasurePairShareCard(my: widget.my, album: widget.album)
                   : _CompatShareCardComposite(
                       my: widget.my,
@@ -204,7 +204,7 @@ class _CompatibilityDetailScreenState
       final myAlias = widget.my.alias ?? '나';
       final albumAlias = widget.album.alias ?? '상대';
       final String desc;
-      if (showMeasurePair(widget.my, widget.album)) {
+      if (kMeasureEdition) {
         final p = analyzePairReports(widget.my, widget.album);
         desc = '$myAlias × $albumAlias — 케미 ${p.chemistry.round()}/300';
       } else {

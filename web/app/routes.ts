@@ -8,6 +8,8 @@ export default [
   route("/contact", "./routes/contact.tsx"),
   route("/r/:id", "./routes/share.tsx"),
   route("/r/:id/open", "./routes/r.$id.open.tsx"),
+  route("/s/:id", "./routes/s.$id.tsx"),
+  route("/s/:id/open", "./routes/s.$id.open.tsx"),
   route("/g/:id", "./routes/g.$id.tsx"),
   route("/g/:id/open", "./routes/g.$id.open.tsx"),
   route("/api/r2/presign", "./routes/api.r2.presign.ts"),

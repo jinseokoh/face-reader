@@ -7,6 +7,7 @@
         ],
         "components": [
           { "/": "/r/*", "comment": "share host — /r/{id} readable preview + /r/{id}/open app bridge" },
+          { "/": "/s/*", "comment": "first-impression share (iOS) — /s/{id}, /s/{a}~{b} + /open bridge" },
           { "/": "/g/*", "comment": "team chemistry group invite — /g/{teamId} join (P3)" }
         ]
       }

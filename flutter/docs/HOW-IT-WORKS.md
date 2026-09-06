@@ -240,7 +240,7 @@ raw → globalPct = _rawToPercentile(raw, attr, gender)   ← 21-point quantile 
 | alias | body | **column** | 소유자 지정 이름 (내 관상은 nickname 파이프라인) |
 | isMyFace | body | **column `is_my_face`** | 본인 얼굴 플래그 |
 | views / createdAt / updatedAt | ✗ | **column** | 조회수·publish·활동 (updatedAt = 90일 정리 기준) |
-| schemaVersion(=2) · kind · demographics · timestamp · source · thumbnailKey · metrics · lateralMetrics · symmetry · modelVersion · landmarks · lateralLandmarks · faceShape* | body | body | 분석 payload (z/score 는 load 시 재계산). symmetry = 대칭 6 raw, modelVersion = {geometry, impression, pair} (§58). landmarks = 정면 468×[x,y] 등방 원본 좌표 소수 4자리(스키마 2 필수, 없으면 폐기), lateralLandmarks = 측면(선택). 계측이 늘거나 바뀌면 여기서 다시 계산한다. thumbnailKey = `thumbnails/{owner}/{sha256}.jpg` — 첫 칸이 소유자(탈퇴 시 폴더째 삭제), 로컬 캐시 파일명은 뒤 칸에서 파생 |
+| schemaVersion(=2) · demographics · timestamp · source · thumbnailKey · metrics · lateralMetrics · symmetry · modelVersion · landmarks · lateralLandmarks · faceShape* | body | body | 분석 payload (z/score 는 load 시 재계산). symmetry = 대칭 6 raw, modelVersion = {geometry, impression, pair} (§58). landmarks = 정면 468×[x,y] 등방 원본 좌표 소수 4자리(스키마 2 필수, 없으면 폐기), lateralLandmarks = 측면(선택). 계측이 늘거나 바뀌면 여기서 다시 계산한다. thumbnailKey = `thumbnails/{owner}/{sha256}.jpg` — 첫 칸이 소유자(탈퇴 시 폴더째 삭제), 로컬 캐시 파일명은 뒤 칸에서 파생 |
 
 재계산 흐름 (`fromJsonString()`): raw→z(현재 reference)→age 보정 → lateralFlags →
 scoreTree → deriveAttributeScoresDetailed → normalizeAllScores → classifyArchetype.
@@ -315,10 +315,10 @@ overall 0.1105 · 윤곽 0.197 · 눈 0.059 · 눈썹 0.090 · 코 0.106 · 입 
 AAF 좌표 원본: `tools/face_shape_ml/extract_aaf_landmarks.py` → `out/aaf_landmarks.f32` (11,800×936 float32).
 재생성: `flutter test test/procrustes_calibration_test.dart` (케미 등급 경계도 함께).
 
-**카드 종류** (`ReportKind` measure|physiognomy, body `kind`): 만든 쪽이 정한다 — iOS 는 measure, Android 는 physiognomy,
-웹 참여는 방 mode. 화면은 `showMeasureView(r)` / `showMeasurePair(a, b)` (`core/edition.dart`) 로 갈린다: 카드가 measure 면
-첫인상 리포트·비교, 두 카드 중 하나라도 measure 면 비교, iOS(measure 에디션)는 종류와 무관하게 관상을 그리지 않는다.
-웹 `/r/{id}` 도 같은 규칙(`isMeasureRow` → `runMeasure`/`runMeasurePair`). kind 가 없는 스키마 2 카드는 measure.
+**공유 링크 경로**: 카드(얼굴 기록)는 종류가 없다 — 스키마 2 는 관상·첫인상 둘 다 계산할 수 있는 한 데이터다.
+어느 화면으로 그릴지는 보는 쪽이 정한다: 앱은 에디션(`kMeasureEdition`), 케미 방은 mode, 웹은 링크 경로.
+iOS(measure)가 만드는 공유 링크는 `/s/{id}`·`/s/{a}~{b}` (첫인상·비교, `runMeasure`/`runMeasurePair`), Android 는 `/r/…`
+(관상·궁합). 딥링크는 두 경로 다 받고 앱 안에서는 에디션이 화면을 정한다 (`share_publisher.dart::_seg`, AASA·매니페스트 `/s/*`).
 
 **결과 공개 5단계** (§54, measure): 정보 확인의 [확인] 뒤 `AnalysisStageOverlay` 가 얼굴 측정 중 → 얼굴 기하학
 분석 → 첫인상 분석(각 0.8초 최소)을 덮어 보여주고, 정보 확인을 닫으며 바로 `ReportPage` 를 연다(등록 대화상자

@@ -24,7 +24,7 @@ export function OpenBridge({
   playStoreUrl,
   webappBase,
 }: {
-  seg: 'r' | 'g'
+  seg: 'r' | 's' | 'g'
   id: string
   appStoreUrl: string
   playStoreUrl: string

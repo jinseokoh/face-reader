@@ -93,8 +93,9 @@ class DeepLinkService {
     // 2-seg `/r/{id}` (readable preview) or 3-seg `/r/{id}/open` (CTA bridge).
     // 둘 다 같은 SoloShareLink/CompatShareLink emit — Flutter 입장에서 동일
     // 라우팅. open sub-path 는 Safari same-URL guard 회피용 web 측 trick 일
-    // 뿐 native handler 에선 구분 의미 없음.
-    if (segs[0] != 'r') return;
+    // 뿐 native handler 에선 구분 의미 없음. `/s/` 는 iOS 가 만든 첫인상·비교
+    // 링크 — 카드 데이터는 같고 앱 안에서는 에디션이 화면을 정한다.
+    if (segs[0] != 'r' && segs[0] != 's') return;
     if (segs.length == 3 && segs[2] != 'open') return;
     if (segs.length != 2 && segs.length != 3) return;
 
@@ -103,7 +104,7 @@ class DeepLinkService {
     if (parts.isEmpty || parts.length > 2) return;
     for (final p in parts) {
       if (!_uuidRe.hasMatch(p)) {
-        debugPrint('[DeepLink] malformed uuid in /r/$id');
+        debugPrint('[DeepLink] malformed uuid in /${segs[0]}/$id');
         return;
       }
     }

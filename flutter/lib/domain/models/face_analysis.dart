@@ -34,7 +34,6 @@ FaceReadingReport analyzeFaceReading({
   required AnalysisSource source,
   required int imageWidth,
   required int imageHeight,
-  required ReportKind kind,
   List<FaceMeshLandmark>? lateralLandmarks,
 }) {
   final isOver50 = ageGroup.isOver50;
@@ -337,7 +336,6 @@ FaceReadingReport analyzeFaceReading({
       aspect: aspectCorrection,
     ),
     modelVersion: currentModelVersions(),
-    kind: kind,
     landmarks: _storedLandmarks(landmarks, aspectCorrection),
     lateralLandmarks: lateralLandmarks == null
         ? null

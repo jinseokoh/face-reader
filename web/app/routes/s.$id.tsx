@@ -1,21 +1,14 @@
-import type { Route } from "./+types/share";
+import type { Route } from "./+types/s.$id";
 import { ShareCard } from "../components/ShareCard";
 import { CTA } from "../components/CTA";
 import { loadShare } from "../lib/share-loader";
 
 /**
- * `GET /r/:id` — 관상·궁합 통합 SSR route.
- *
- *   /r/{uuid}            → 관상 (runEngine)
- *   /r/{uuidA}~{uuidB}   → 궁합 (runCompat)
- * 첫인상·비교는 `/s/…` (s.$id.tsx) — 같은 카드, 링크 경로가 페이지를 정한다.
- *
- * 시간 기반 만료 없음. fetch 마다 `increment_metrics_views` RPC 로 views++
- * → updated_at 자동 갱신 (HOW-IT-WORKS §5.2). dormant 3개월 정체 시 daily cron
- * 이 정리.
+ * `GET /s/:id` — 첫인상(runMeasure)·비교(runMeasurePair) SSR. iOS(measure 에디션)가
+ * 만드는 공유 링크. 카드 데이터는 `/r/:id` 와 같고 페이지만 다르다 — 관상 문구 없음.
  */
 export async function loader(args: Route.LoaderArgs) {
-  return loadShare(args, { measure: false });
+  return loadShare(args, { measure: true });
 }
 
 export function meta({ data }: Route.MetaArgs) {
@@ -23,7 +16,6 @@ export function meta({ data }: Route.MetaArgs) {
   return [
     { title: data.ogTitle },
     { name: "description", content: data.ogDescription },
-    // PII (얼굴 thumbnail) 가 og:image 로 노출되므로 검색엔진 indexing 차단 (§12.4).
     { name: "robots", content: "noindex,nofollow" },
     { property: "og:type", content: "website" },
     { property: "og:title", content: data.ogTitle },
@@ -36,7 +28,7 @@ export function meta({ data }: Route.MetaArgs) {
   ];
 }
 
-export default function Share({ loaderData }: Route.ComponentProps) {
+export default function ShareMeasure({ loaderData }: Route.ComponentProps) {
   return (
     <main className="share">
       <ShareCard data={loaderData} />

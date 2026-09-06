@@ -101,7 +101,6 @@ FaceReadingReport _buildReport({
     source: AnalysisSource.album,
     metrics: const {},
     landmarks: demoLandmarks(gender),
-    kind: ReportKind.physiognomy,
     nodeScores: nodeScores,
     attributes: attributes,
     rules: rules,

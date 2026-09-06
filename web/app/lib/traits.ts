@@ -135,10 +135,6 @@ export function isShareKind(s: string): s is ShareKind {
 
 // ── measure 카드 (첫인상·비교) — 관상·궁합과 섞지 않는다 ───────────────────────
 
-/** 카드 종류. 스키마 2 초기 카드는 kind 가 없어도 measure (앱 ReportKind.parse 와 같은 규칙). */
-export function isMeasureRow(row: MetricsRow): boolean {
-  return (row.raw as unknown as { kind?: string }).kind !== "physiognomy";
-}
 
 function runMeasureFor(row: MetricsRow): MeasureOutput {
   ensureLoaded();

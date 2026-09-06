@@ -82,7 +82,6 @@ FaceReadingReport _fakeReport(Random rng) {
     source: AnalysisSource.album,
     metrics: metrics,
     landmarks: demoLandmarks(Gender.female),
-    kind: ReportKind.measure,
     lateralMetrics: null,
     lateralFlags: const {},
     nodeScores: nodeScores,

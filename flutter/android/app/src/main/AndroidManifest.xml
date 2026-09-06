@@ -58,6 +58,10 @@
                 <data
                     android:scheme="https"
                     android:host="facely.kr"
+                    android:pathPrefix="/s/"/>
+                <data
+                    android:scheme="https"
+                    android:host="facely.kr"
                     android:pathPrefix="/g/"/>
             </intent-filter>
             <!-- 카카오 메시지 '참여하기' 앱 직접 실행(executionParams) 수신 —

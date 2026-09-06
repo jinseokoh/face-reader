@@ -335,8 +335,6 @@ class _InfoConfirmScreenState extends ConsumerState<InfoConfirmScreen> {
         source: c.source,
         imageWidth: c.imageWidth,
         imageHeight: c.imageHeight,
-        // 카드 종류는 만든 에디션이 정한다 — iOS 는 measure, Android 는 physiognomy.
-        kind: kMeasureEdition ? ReportKind.measure : ReportKind.physiognomy,
         lateralLandmarks: c.lateralLandmarks,
       );
 
