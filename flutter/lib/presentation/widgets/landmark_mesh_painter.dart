@@ -27,7 +27,7 @@ class LandmarkMeshPainter extends CustomPainter {
     this.metricPaths = const [],
     this.colorA = AppColors.gold,
     this.colorB = AppColors.info,
-    this.colorBackground = AppColors.textHint,
+    this.colorBackground = AppColors.textPrimary,
   });
 
   /// 정규화 좌표는 대략 ±2.2 안에 든다 — 그 범위를 상자에 맞춘다.

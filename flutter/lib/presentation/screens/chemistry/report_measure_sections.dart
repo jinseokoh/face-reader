@@ -181,7 +181,7 @@ class MeasureReportBody extends StatelessWidget {
                   const _LegendDot(color: AppColors.gold, label: '내 얼굴'),
                   const SizedBox(width: AppSpacing.xl),
                   _LegendDot(
-                    color: AppColors.textHint,
+                    color: AppColors.textPrimary,
                     label: report.gender == Gender.male ? '남성 평균' : '여성 평균',
                   ),
                 ],
