@@ -298,8 +298,9 @@ mean|z| → 성별 21-point 분위표(`geometry_profile_quantiles.dart`, AAF 실
 
 **정규화·Procrustes** (§5, `domain/services/landmark_normalize.dart`): 저장 좌표 → 무게중심 0 · RMS 1 · 눈꼬리(33→263) 수평.
 두 얼굴은 정규화 뒤 [b]를 [a]에 최소제곱 회전으로 맞춘다(`alignFaces`, 영역 RMS 거리 제공). 정규화 좌표는 저장하지
-않는다. `landmarkRegions`/`landmarkContours` 는 MediaPipe 표준 윤곽 인덱스. 화면: 리포트 "얼굴 지도"(§55, 특이점
-3개 영역 강조) · 비교 "두 얼굴 겹쳐 보기"(§24, 닮은 영역 강조) — `widgets/landmark_mesh_painter.dart`.
+않는다. `landmarkRegions`/`landmarkContours` 는 MediaPipe 표준 윤곽 인덱스. 화면: 리포트 "얼굴 지도"(§55) = 성별 평균 얼굴(`average_face.dart`, AAF 정규화 좌표 평균, 회색) 위에 내 얼굴을
+겹치고 특이점 3개 계측의 측정선(`widgets/metric_landmark_paths.dart`, 26 계측 → 인덱스 경로)을 양쪽에 그린다 ·
+비교 "두 얼굴 겹쳐 보기"(§24, 닮은 영역 강조) — `widgets/landmark_mesh_painter.dart`.
 **닮은 정도 = Procrustes 거리** (`computeGeometrySimilarity(landmarksA, landmarksB)`): 정렬 뒤 RMS 거리를
 `100·exp(−ln2·d/median)` 로, median 은 AAF 무작위 쌍 20,000개의 영역별 중앙 거리(`procrustes_reference.dart`,
 overall 0.1105 · 윤곽 0.197 · 눈 0.059 · 눈썹 0.090 · 코 0.106 · 입 0.100 · 턱선 0.213). §25 문구 사분위도 같은 파일.

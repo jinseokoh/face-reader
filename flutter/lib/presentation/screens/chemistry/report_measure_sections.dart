@@ -2,10 +2,12 @@ import 'dart:math' as math;
 
 import 'package:face_engine/data/constants/face_reference_data.dart';
 import 'package:face_engine/data/constants/impression_evidence.dart';
+import 'package:face_engine/data/constants/average_face.dart';
 import 'package:face_engine/data/constants/metric_quantiles.dart';
 import 'package:face_engine/data/constants/model_version.dart';
 import 'package:face_engine/data/constants/symmetry_reference.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
+import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/data/enums/metric_type.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/services/first_impression.dart';
@@ -18,6 +20,7 @@ import 'package:flutter/material.dart';
 import '../../../core/storage/thumbnail_paths.dart';
 import '../../../core/theme.dart';
 import '../../widgets/landmark_mesh_painter.dart';
+import '../../widgets/metric_landmark_paths.dart';
 
 /// measure 에디션(iOS v1) 리포트 본문 — APPLE.md §2.2.1 백분위·희귀도 리포트.
 ///
@@ -121,20 +124,41 @@ class MeasureReportBody extends StatelessWidget {
         _title('얼굴 지도'),
         const SizedBox(height: AppSpacing.xs),
         Text(
-          '위치·크기·기울기를 뺀 내 얼굴의 형태입니다. 평균에서 가장 먼 3개 계측이 '
-          '속한 영역을 진하게 표시합니다.',
+          '위치·크기·기울기를 뺀 내 얼굴을 기준 집단(동아시아 얼굴 11,800장, 같은 성별) '
+          '평균 얼굴 위에 겹쳤습니다. 평균에서 가장 먼 3개 계측의 측정선을 두 얼굴에 '
+          '같이 그어, 어디가 얼마나 다른지 보입니다.',
           style: AppText.hint,
         ),
         const SizedBox(height: AppSpacing.md),
         _Card(
-          child: AspectRatio(
-            aspectRatio: 1,
-            child: CustomPaint(
-              painter: LandmarkMeshPainter(
-                a: normalizeLandmarks(report.landmarks),
-                highlight: _regionsOf(_rankByAbsZ(z, descending: true).take(3)),
+          child: Column(
+            children: [
+              AspectRatio(
+                aspectRatio: 1,
+                child: CustomPaint(
+                  painter: LandmarkMeshPainter(
+                    a: normalizeLandmarks(report.landmarks),
+                    background: kAverageFace[report.gender]!,
+                    metricPaths: [
+                      for (final id in _rankByAbsZ(z, descending: true).take(3))
+                        ...?metricLandmarkPaths[id],
+                    ],
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const _LegendDot(color: AppColors.gold, label: '내 얼굴'),
+                  const SizedBox(width: AppSpacing.xl),
+                  _LegendDot(
+                    color: AppColors.textHint,
+                    label: report.gender == Gender.male ? '남성 평균' : '여성 평균',
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
         const SizedBox(height: AppSpacing.xl),
@@ -358,13 +382,6 @@ class MeasureReportBody extends StatelessWidget {
     );
   }
 
-  /// 계측 id → 속한 영역 (`geometryRegions`). 얼굴 지도 강조용.
-  Set<String> _regionsOf(Iterable<String> metricIds) => {
-        for (final id in metricIds)
-          for (final e in geometryRegions.entries)
-            if (e.value.contains(id)) e.key,
-      };
-
   /// |z| 순 정렬된 계측 id.
   Iterable<String> _rankByAbsZ(Map<String, double> z, {required bool descending}) {
     final ids = [for (final id in _ids) if (z[id] != null) id];
@@ -445,6 +462,26 @@ double _erf(double x) {
   final y = 1 -
       (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * math.exp(-ax * ax);
   return sign * y;
+}
+
+class _LegendDot extends StatelessWidget {
+  final Color color;
+  final String label;
+  const _LegendDot({required this.color, required this.label});
+
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Text(label, style: AppText.caption),
+        ],
+      );
 }
 
 class _Card extends StatelessWidget {
