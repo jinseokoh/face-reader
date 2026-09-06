@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/data/constants/procrustes_reference.dart';
+import 'package:face_engine/data/constants/impression_evidence.dart';
 import 'package:face_engine/domain/services/first_impression.dart';
 import 'package:facely/domain/services/pair_score.dart';
 import 'package:facely/presentation/screens/compatibility/pair_measure_sections.dart';
@@ -59,6 +60,8 @@ void main() {
     expect(find.text('두 얼굴 겹쳐 보기'), findsOneWidget);
     expect(find.text('같이 튀는 곳과 반대로 튀는 곳'), findsOneWidget);
     expect(find.text('대칭과 얼굴형'), findsOneWidget);
+    expect(find.textContaining('얼굴형은'), findsOneWidget);
+    expect(find.textContaining('관련 첫인상'), findsWidgets);
     expect(find.text('조화도에서 리드하는 쪽'), findsOneWidget);
     expect(find.textContaining('무작위로 만난 두 사람과 비교하면'), findsOneWidget);
     // §25 — 영역 6개 전부 닮은/다른 부분 중 한쪽에 문구와 함께 나온다.
@@ -91,5 +94,12 @@ void main() {
     for (final id in same) {
       expect(zA[id]! > 0, zB[id]! > 0);
     }
+  });
+
+  test('계측 → 첫인상 축 — 입꼬리 각은 신뢰·친근, 얼굴 면적은 어느 축에도 없음', () {
+    expect(axesForMetric('mouthCornerAngle'),
+        containsAll([ImpressionAxis.trust, ImpressionAxis.approach]));
+    expect(axesForMetric('mouthCornerAngle'), isNot(contains(ImpressionAxis.attractive)));
+    expect(axesForMetric('faceArea'), isEmpty);
   });
 }

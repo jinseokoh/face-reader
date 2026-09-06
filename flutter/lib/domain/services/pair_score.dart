@@ -86,3 +86,21 @@ String featureNameKo(String feature) {
   if (feature == symmetryFeatureId) return '얼굴 대칭';
   return '평균과의 거리';
 }
+
+/// 계측이 들어가는 첫인상 축 (2층 feature 표 → 1층 근거 표). 매력 축 제외.
+/// 어느 축에도 안 들어가면 빈 목록 — 화면은 "첫인상 축에는 직접 들어가지 않음".
+List<ImpressionAxis> axesForMetric(String metricId) {
+  final features = {
+    for (final s in impressionFeatureSpecs)
+      if (s.metric == metricId) s.id,
+  };
+  final out = <ImpressionAxis>[];
+  for (final link in impressionEvidence) {
+    if (features.contains(link.feature) &&
+        link.axis != ImpressionAxis.attractive &&
+        !out.contains(link.axis)) {
+      out.add(link.axis);
+    }
+  }
+  return out;
+}

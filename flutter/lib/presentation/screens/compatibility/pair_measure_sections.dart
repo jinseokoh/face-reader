@@ -4,6 +4,7 @@ import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/data/constants/impression_evidence.dart';
+import 'package:face_engine/data/constants/metric_quantiles.dart';
 import 'package:face_engine/domain/services/first_impression.dart';
 import 'package:face_engine/domain/services/geometry_profile.dart';
 import 'package:face_engine/domain/services/landmark_normalize.dart';
@@ -269,6 +270,12 @@ class MeasurePairBody extends StatelessWidget {
                     '$myAlias ${zMapOf(my)[id]! > 0 ? '높은' : '낮은'} 편, '
                     '$albumAlias ${zMapOf(album)[id]! > 0 ? '높은' : '낮은'} 편',
                   ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                _deviationSentence(sameDev.toList(), oppDev.toList(), myAlias,
+                    albumAlias),
+                style: AppText.caption,
+              ),
             ],
           ),
         ),
@@ -283,6 +290,12 @@ class MeasurePairBody extends StatelessWidget {
               _twoColumn('얼굴 대칭', symA == null ? '—' : _top(symA),
                   symB == null ? '—' : _top(symB)),
               _twoColumn('얼굴형', my.faceShape.korean, album.faceShape.korean),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                '${_symmetrySentence(symA, symB, myAlias, albumAlias)} '
+                '${_faceShapeSentence(pair, myAlias, albumAlias)}',
+                style: AppText.caption,
+              ),
             ],
           ),
         ),
@@ -296,12 +309,19 @@ class MeasurePairBody extends StatelessWidget {
               Text('가장 닮은 3개', style: AppText.subTitle),
               const SizedBox(height: AppSpacing.sm),
               for (final id in rankMetricsByDifference(my, album, mostSimilar: true).take(3))
-                _metricLine(id),
+                _metricLine(id, myAlias, albumAlias),
               const SizedBox(height: AppSpacing.lg),
               Text('가장 다른 3개', style: AppText.subTitle),
               const SizedBox(height: AppSpacing.sm),
               for (final id in rankMetricsByDifference(my, album, mostSimilar: false).take(3))
-                _metricLine(id),
+                _metricLine(id, myAlias, albumAlias),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                '닮은 3개는 두 사람의 기준 집단 위치가 가장 가까운 계측, 다른 3개는 가장 '
+                '먼 계측입니다. 각 계측 아래에 그 계측이 들어가는 첫인상 축을 적었습니다. '
+                '다른 계측이 어느 축에 들어가면 그 축의 첫인상 차이로 이어집니다.',
+                style: AppText.hint,
+              ),
             ],
           ),
         ),
@@ -342,14 +362,79 @@ class MeasurePairBody extends StatelessWidget {
   Widget _devLine(String id, String phrase) {
     final info = metricInfoList.firstWhere((m) => m.id == id);
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-      child: Row(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(child: Text(info.nameKo, style: AppText.body)),
-          Text(phrase, style: AppText.caption),
+          Row(
+            children: [
+              Expanded(child: Text(info.nameKo, style: AppText.body)),
+              Text(phrase, style: AppText.caption),
+            ],
+          ),
+          Text(_axesLabel(id), style: AppText.hint),
         ],
       ),
     );
+  }
+
+  /// 계측이 들어가는 첫인상 축 — 없으면 그렇다고 적는다.
+  String _axesLabel(String id) {
+    final axes = axesForMetric(id);
+    if (axes.isEmpty) return '첫인상 축에는 직접 들어가지 않는 계측';
+    return '관련 첫인상: ${axes.map((a) => a.labelKo).join(', ')}';
+  }
+
+  /// 같이/반대로 튀는 곳의 뜻 — 개수와 축 관여로만 말한다.
+  String _deviationSentence(
+      List<String> same, List<String> opp, String nameA, String nameB) {
+    if (same.isEmpty && opp.isEmpty) {
+      return '두 사람 모두 평균에서 1σ 이상 벗어난 계측이 겹치지 않습니다. 튀는 자리가 '
+          '서로 다른 얼굴입니다.';
+    }
+    final parts = <String>[];
+    if (same.isNotEmpty) {
+      final axes = {for (final id in same) ...axesForMetric(id)};
+      parts.add('같은 방향으로 튀는 계측 ${same.length}개는 두 사람이 공통으로 가진 특징이라 '
+          '닮은 정도를 올리는 쪽입니다'
+          '${axes.isEmpty ? '.' : ', 첫인상에서는 ${axes.map((a) => a.labelKo).join(', ')}에 같은 방향으로 작용합니다.'}');
+    }
+    if (opp.isNotEmpty) {
+      final axes = {for (final id in opp) ...axesForMetric(id)};
+      parts.add('반대로 튀는 계측 ${opp.length}개는 두 사람이 서로 다른 쪽으로 가진 특징이라 '
+          '보완도에 기여합니다'
+          '${axes.isEmpty ? '.' : ', 첫인상에서는 ${axes.map((a) => a.labelKo).join(', ')}에서 $nameA 쪽과 $nameB 쪽이 갈립니다.'}');
+    }
+    return parts.join(' ');
+  }
+
+  /// 대칭 해석 — 두 사람의 위치와 차이. 대칭은 매력·신뢰감 축의 feature 다.
+  String _symmetrySentence(
+      double? symA, double? symB, String nameA, String nameB) {
+    if (symA == null || symB == null) return '';
+    final diff = (symA - symB).abs();
+    final both = symA >= 75 && symB >= 75;
+    if (diff < 10) {
+      return both
+          ? '두 사람 모두 얼굴 대칭이 높은 편이고 수준도 비슷합니다.'
+          : '두 사람의 얼굴 대칭 수준이 비슷합니다.';
+    }
+    final higher = symA > symB ? nameA : nameB;
+    return '$higher 쪽이 얼굴 대칭이 더 높습니다. 대칭은 매력적인 인상과 신뢰감 있는 인상 '
+        '축에 들어가는 특징입니다.';
+  }
+
+  /// 얼굴형 해석 — 같은지 다른지와 윤곽 영역 닮은 정도로 말한다.
+  String _faceShapeSentence(PairAnalysis pair, String nameA, String nameB) {
+    final same = my.faceShape == album.faceShape;
+    final outline = pair.similarity.byRegion['outline'];
+    final tail = outline == null
+        ? ''
+        : ' 윤곽 영역의 닮은 정도는 ${outline.round()}'
+            '(${similarityBandOf('outline', outline).labelKo})입니다.';
+    return same
+        ? '얼굴형은 둘 다 ${my.faceShape.korean}으로 같습니다.$tail'
+        : '얼굴형은 $nameA ${my.faceShape.korean}, $nameB ${album.faceShape.korean}으로 다릅니다.$tail';
   }
 
   /// 두 사람 이름 헤더 — '두 사람의 첫인상'·'대칭과 얼굴형' 공용. 칸 비율 2 : 3 : 3.
@@ -390,11 +475,26 @@ class MeasurePairBody extends StatelessWidget {
         ),
       );
 
-  Widget _metricLine(String id) {
+  Widget _metricLine(String id, String nameA, String nameB) {
     final info = metricInfoList.firstWhere((m) => m.id == id);
+    final quantA = metricQuantiles[my.gender]![id]!;
+    final quantB = metricQuantiles[album.gender]![id]!;
+    final topA = _top(percentileFromQuantiles(zMapOf(my)[id]!, quantA));
+    final topB = _top(percentileFromQuantiles(zMapOf(album)[id]!, quantB));
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-      child: Text(info.nameKo, style: AppText.body),
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text(info.nameKo, style: AppText.body)),
+              Text('$nameA $topA, $nameB $topB', style: AppText.caption),
+            ],
+          ),
+          Text(_axesLabel(id), style: AppText.hint),
+        ],
+      ),
     );
   }
 }

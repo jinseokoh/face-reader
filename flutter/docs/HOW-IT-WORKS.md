@@ -341,7 +341,8 @@ yaw(|(l−r)/(l+r)|, AAF p95 0.45 / 정면 한계 0.70) · 얼굴 폭/사진 폭
 비교 상세(measure)는 그 위에 여섯 가지를 더 보인다: 무작위 쌍 대비 닮은 정도·케미 합 상위 N%
 (`kPairSimilarityQuantiles`·`kChemistryQuantiles`, 21-point) · 겹친 그림의 점별 차이(`showPointDiff`) · 축별 차이 문장과
 차이를 만든 feature 2개(`axisContributions`) · 조화도에서 축을 채우는 쪽 · 둘 다 |z|≥1 인 계측의 같은/반대 방향
-(`sharedDeviations`) · 대칭 상위 N% 와 얼굴형 나란히.
+(`sharedDeviations`) · 대칭 상위 N% 와 얼굴형 나란히. 세 섹션의 해석은 근거 두 가지로만 쓴다 — 계측이 들어가는 첫인상 축
+(`axesForMetric`: 2층 feature 표 → 1층 근거 표, 매력 제외)과 두 사람 값의 위치·차이. 관계 판정 문장은 없다.
 영역 닮은 정도 문구(§25, `SimilarityBand`): 무작위 쌍 사분위 `kRegionSimilarityQuartiles` [p75,p50,p25] 기준
 매우 유사 · 유사 · 차이가 있음 · 차이가 큼. 비교 화면은 닮은 부분/다른 부분으로 나눠 보여준다.
 
