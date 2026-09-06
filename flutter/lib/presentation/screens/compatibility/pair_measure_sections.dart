@@ -306,15 +306,17 @@ class MeasurePairBody extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              _namesHeader(myAlias, albumAlias),
+              const SizedBox(height: AppSpacing.sm),
               Text('가장 닮은 3개', style: AppText.subTitle),
               const SizedBox(height: AppSpacing.sm),
               for (final id in rankMetricsByDifference(my, album, mostSimilar: true).take(3))
-                _metricLine(id, myAlias, albumAlias),
+                _metricLine(id),
               const SizedBox(height: AppSpacing.lg),
               Text('가장 다른 3개', style: AppText.subTitle),
               const SizedBox(height: AppSpacing.sm),
               for (final id in rankMetricsByDifference(my, album, mostSimilar: false).take(3))
-                _metricLine(id, myAlias, albumAlias),
+                _metricLine(id),
               const SizedBox(height: AppSpacing.md),
               Text(
                 '닮은 3개는 두 사람의 기준 집단 위치가 가장 가까운 계측, 다른 3개는 가장 '
@@ -475,7 +477,8 @@ class MeasurePairBody extends StatelessWidget {
         ),
       );
 
-  Widget _metricLine(String id, String nameA, String nameB) {
+  /// 계측 한 줄 — 이름 · 두 사람 상위 N% (이름 헤더 아래 2 : 3 : 3 칸) · 관련 축.
+  Widget _metricLine(String id) {
     final info = metricInfoList.firstWhere((m) => m.id == id);
     final quantA = metricQuantiles[my.gender]![id]!;
     final quantB = metricQuantiles[album.gender]![id]!;
@@ -486,12 +489,7 @@ class MeasurePairBody extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(child: Text(info.nameKo, style: AppText.body)),
-              Text('$nameA $topA, $nameB $topB', style: AppText.caption),
-            ],
-          ),
+          _twoColumn(info.nameKo, topA, topB),
           Text(_axesLabel(id), style: AppText.hint),
         ],
       ),
