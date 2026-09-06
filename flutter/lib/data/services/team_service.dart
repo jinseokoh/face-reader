@@ -8,6 +8,7 @@ import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/edition.dart';
 import '../../core/storage/thumbnail_paths.dart';
 import '../../domain/models/team.dart';
 import '../../domain/services/share/share_receive_service.dart';
@@ -70,7 +71,7 @@ class TeamService {
   // (select=*) 가 42501 로 실패한다 — grant 된 컬럼만 명시.
   static const _teamCols =
       'id, owner_id, title, is_private, max_players, age_min, age_max, '
-      'room_kind, status, started_at, closed_at, '
+      'room_kind, mode, status, started_at, closed_at, '
       'chemistry_snapshot, result_payload, views, created_at';
 
   String? get myUid => _client.auth.currentUser?.id;
@@ -84,6 +85,7 @@ class TeamService {
     int? ageMin,
     int? ageMax,
     required TeamRoomKind roomKind,
+    required TeamMode mode,
   }) async {
     final row = await _client
         .from('teams')
@@ -96,6 +98,7 @@ class TeamService {
           'age_min': ?ageMin,
           'age_max': ?ageMax,
           'room_kind': roomKind.name,
+          'mode': mode.dbValue,
         })
         .select(_teamCols)
         .single();
@@ -168,13 +171,20 @@ class TeamService {
     params: {'p_team_id': teamId},
   );
 
+  /// measure 에디션(iOS)은 physiognomy 방을 어디서도 보지 않는다 — 초대
+  /// 링크로 들어와도 "없는 방" 과 같이 처리한다 (APPLE.md §81.4).
+  static bool _visibleInEdition(TeamMode mode) =>
+      !kMeasureEdition || mode == TeamMode.firstImpression;
+
   Future<Team?> fetchTeam(String teamId) async {
     final row = await _client
         .from('teams')
         .select(_teamCols)
         .eq('id', teamId)
         .maybeSingle();
-    return row == null ? null : Team.fromRow(row);
+    if (row == null) return null;
+    final team = Team.fromRow(row);
+    return _visibleInEdition(team.mode) ? team : null;
   }
 
   Future<List<TeamRosterEntry>> fetchRoster(String teamId) async {
@@ -187,11 +197,12 @@ class TeamService {
   }
 
   Future<List<PublicTeam>> fetchPublicTeams() async {
-    final rows = await _client
-        .from('public_teams')
-        .select()
-        .order('created_at', ascending: false)
-        .limit(50);
+    var query = _client.from('public_teams').select();
+    if (kMeasureEdition) {
+      query = query.eq('mode', TeamMode.firstImpression.dbValue);
+    }
+    final rows =
+        await query.order('created_at', ascending: false).limit(50);
     return [for (final r in rows) PublicTeam.fromRow(r)];
   }
 
@@ -204,11 +215,11 @@ class TeamService {
         .eq('user_id', uid);
     final ids = [for (final r in memberRows) r['team_id'] as String];
     if (ids.isEmpty) return const [];
-    final rows = await _client
-        .from('teams')
-        .select(_teamCols)
-        .inFilter('id', ids)
-        .order('created_at', ascending: false);
+    var teamQuery = _client.from('teams').select(_teamCols).inFilter('id', ids);
+    if (kMeasureEdition) {
+      teamQuery = teamQuery.eq('mode', TeamMode.firstImpression.dbValue);
+    }
+    final rows = await teamQuery.order('created_at', ascending: false);
     // 방별 현재 인원 — 카드 정원 표기용 (공개 목록 view 의 player_count 대응).
     final memberAll = await _client
         .from('team_members')

@@ -92,6 +92,7 @@ FaceReadingReport _fakeReport(Random rng) {
 }
 
 void main() {
+  _modeTests();
   test('Team.fromRow — teams row 파싱 (snake_case, nullable 전부)', () {
     final team = Team.fromRow({
       'id': 'b1',
@@ -296,5 +297,32 @@ void main() {
       snapshot: {'u1': bodyA},
     );
     expect(partial.length, 1);
+  });
+}
+
+// ── teams.mode (0008) ──
+void _modeTests() {
+  test('mode 파싱 — 0008 이전 행(null)은 physiognomy, 값이 있으면 그대로', () {
+    expect(teamModeFrom(null), TeamMode.physiognomy);
+    expect(teamModeFrom('physiognomy'), TeamMode.physiognomy);
+    expect(teamModeFrom('first_impression'), TeamMode.firstImpression);
+    expect(TeamMode.firstImpression.dbValue, 'first_impression');
+  });
+
+  test('PublicTeam.fromRow 는 mode 를 읽고, 없으면 physiognomy', () {
+    final base = {
+      'id': 't1',
+      'title': '방',
+      'max_players': 8,
+      'age_min': 20,
+      'age_max': 30,
+      'room_kind': 'all',
+      'is_private': false,
+      'created_at': '2026-09-06T00:00:00Z',
+      'player_count': 3,
+    };
+    expect(PublicTeam.fromRow(base).mode, TeamMode.physiognomy);
+    expect(PublicTeam.fromRow({...base, 'mode': 'first_impression'}).mode,
+        TeamMode.firstImpression);
   });
 }

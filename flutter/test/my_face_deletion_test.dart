@@ -26,6 +26,7 @@ Team _team({
   ageMin: null,
   ageMax: null,
   roomKind: TeamRoomKind.all,
+  mode: TeamMode.physiognomy,
   status: status,
   startedAt: null,
   closedAt: null,

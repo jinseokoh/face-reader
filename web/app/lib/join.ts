@@ -254,6 +254,8 @@ export type TeamRow = {
   ageMin: number | null;
   ageMax: number | null;
   roomKind: "all" | "match";
+  /** 케미 계산 방식 — 0008 이전 행은 physiognomy. */
+  mode: "physiognomy" | "first_impression";
   status: TeamStatus;
   chemistrySnapshot: Record<string, unknown> | null;
   resultPayload: TeamPayload | null;
@@ -269,7 +271,7 @@ export type RosterEntry = {
 };
 
 const TEAM_COLS =
-  "id, owner_id, title, is_private, max_players, age_min, age_max, room_kind, status, chemistry_snapshot, result_payload";
+  "id, owner_id, title, is_private, max_players, age_min, age_max, room_kind, mode, status, chemistry_snapshot, result_payload";
 
 function rowToTeam(r: Record<string, unknown>): TeamRow {
   return {
@@ -281,6 +283,7 @@ function rowToTeam(r: Record<string, unknown>): TeamRow {
     ageMin: (r.age_min as number) ?? null,
     ageMax: (r.age_max as number) ?? null,
     roomKind: r.room_kind as "all" | "match",
+    mode: (r.mode as "physiognomy" | "first_impression") ?? "physiognomy",
     status: r.status as TeamStatus,
     chemistrySnapshot:
       (r.chemistry_snapshot as Record<string, unknown>) ?? null,

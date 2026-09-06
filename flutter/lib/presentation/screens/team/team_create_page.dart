@@ -1,3 +1,4 @@
+import 'package:facely/core/edition.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/data/services/team_service.dart';
 import 'package:facely/domain/models/team.dart';
@@ -56,6 +57,8 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage>
   late final AnimationController _listAnim;
 
   TeamRoomKind? _roomKind;
+  // 케미 계산 방식 — measure 에디션(iOS)은 첫인상 고정, full(Android)은 ① 에서 선택.
+  TeamMode? _mode = kMeasureEdition ? TeamMode.firstImpression : null;
   TeamTitleCategory? _categorySel;
   String? _selectedTitle;
   int _maxPlayers = 8;
@@ -73,7 +76,7 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage>
   }
 
   bool get _stepValid => switch (_step) {
-    _Step.roomKind => _roomKind != null,
+    _Step.roomKind => _roomKind != null && _mode != null,
     _Step.title => _selectedTitle != null,
     _Step.count => true,
     _Step.age => true,
@@ -408,6 +411,7 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage>
         ageMin: _ageMin,
         ageMax: _ageMax,
         roomKind: _roomKind!,
+        mode: _mode!,
       );
       await service.joinTeam(team.id);
       if (mounted) Navigator.of(context).pop(team);
@@ -499,6 +503,26 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage>
             _selectedTitle = null;
           }),
         ),
+        // 케미 계산 방식 — full 에디션만 고른다. measure 에디션은 첫인상 고정이라
+        // 이 블록이 빌드에서 빠진다.
+        if (!kMeasureEdition) ...[
+          const SizedBox(height: AppSpacing.xxl),
+          Text('케미를 어떻게 계산할까요?', style: AppText.display),
+          const SizedBox(height: AppSpacing.xxl),
+          _choiceTile(
+            selected: _mode == TeamMode.firstImpression,
+            title: TeamMode.firstImpression.labelKo,
+            caption: '얼굴 계측값과 첫인상 프로필로 닮은 정도·조화도·보완도를 계산합니다',
+            onTap: () => setState(() => _mode = TeamMode.firstImpression),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _choiceTile(
+            selected: _mode == TeamMode.physiognomy,
+            title: TeamMode.physiognomy.labelKo,
+            caption: '전통 관상학의 궁합 방식으로 케미를 계산합니다',
+            onTap: () => setState(() => _mode = TeamMode.physiognomy),
+          ),
+        ],
       ],
     );
   }

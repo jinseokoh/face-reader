@@ -100,6 +100,7 @@ class PublicTeam {
   final int? ageMin;
   final int? ageMax;
   final TeamRoomKind roomKind;
+  final TeamMode mode;
 
   /// 서버 teams.is_private 파생 컬럼(password is not null) — password 는
   /// column grant 로 봉인돼 클라이언트가 읽을 수 없으므로, 비밀번호 존재
@@ -116,6 +117,7 @@ class PublicTeam {
     required this.ageMin,
     required this.ageMax,
     required this.roomKind,
+    required this.mode,
     required this.isPrivate,
     required this.createdAt,
     required this.playerCount,
@@ -128,6 +130,7 @@ class PublicTeam {
     ageMin: (row['age_min'] as num?)?.toInt(),
     ageMax: (row['age_max'] as num?)?.toInt(),
     roomKind: teamRoomKindFrom(row['room_kind'] as String),
+    mode: teamModeFrom(row['mode'] as String?),
     isPrivate: row['is_private'] as bool? ?? false,
     createdAt: DateTime.parse(row['created_at'] as String),
     playerCount: (row['player_count'] as num).toInt(),
@@ -145,6 +148,7 @@ class Team {
   final int? ageMin;
   final int? ageMax;
   final TeamRoomKind roomKind;
+  final TeamMode mode;
   final TeamStatus status;
   final DateTime? startedAt;
   final DateTime? closedAt;
@@ -165,6 +169,7 @@ class Team {
     required this.ageMin,
     required this.ageMax,
     required this.roomKind,
+    required this.mode,
     required this.status,
     required this.startedAt,
     required this.closedAt,
@@ -185,6 +190,7 @@ class Team {
         ageMin: (row['age_min'] as num?)?.toInt(),
         ageMax: (row['age_max'] as num?)?.toInt(),
         roomKind: teamRoomKindFrom(row['room_kind'] as String),
+        mode: teamModeFrom(row['mode'] as String?),
         status: teamStatusFrom(row['status'] as String),
         startedAt: row['started_at'] == null
             ? null
@@ -358,6 +364,26 @@ class TeamMessage {
 
 /// 방 유형 — 'all'(전체 케미) / 'match'(이성 케미).
 enum TeamRoomKind { all, match }
+
+/// 케미 계산 방식 — 'physiognomy'(전통 관상 쌍 엔진) / 'first_impression'
+/// (문헌 기반 첫인상 쌍 엔진). Android 는 생성 시 선택, iOS(measure 에디션)는
+/// first_impression 만 만들고 physiognomy 방은 보지 않는다 (APPLE.md §81.4).
+enum TeamMode {
+  physiognomy('physiognomy', '관상 케미'),
+  firstImpression('first_impression', '첫인상 케미');
+
+  const TeamMode(this.dbValue, this.labelKo);
+
+  /// teams.mode 컬럼 값.
+  final String dbValue;
+  final String labelKo;
+}
+
+/// 컬럼 도입(0008) 전 행은 null → physiognomy.
+TeamMode teamModeFrom(String? raw) => TeamMode.values.firstWhere(
+      (m) => m.dbValue == raw,
+      orElse: () => TeamMode.physiognomy,
+    );
 
 class TeamRosterEntry {
   final String teamId;
