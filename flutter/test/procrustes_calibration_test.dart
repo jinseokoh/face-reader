@@ -102,6 +102,15 @@ void main() {
     }
     chem.sort();
     final p25 = _q(chem, 0.25);
+    // 4) 21-point 분위 — "무작위 두 사람 중 상위 N%" 표기용 (닮은 정도 overall · 케미 합).
+    List<double> q21(List<double> sorted) =>
+        [for (var k = 0; k <= 20; k++) _q(sorted, k / 20)];
+    final simAll = [for (final d in dist['overall']!) sim(d, 'overall')]..sort();
+    buf.writeln('// ── procrustes_reference.dart (21-point) ──');
+    buf.writeln('const List<double> kPairSimilarityQuantiles = '
+        '[${q21(simAll).map((v) => v.toStringAsFixed(1)).join(', ')}];');
+    buf.writeln('const List<double> kChemistryQuantiles = '
+        '[${q21(chem).map((v) => v.toStringAsFixed(1)).join(', ')}];');
     buf.writeln('// ── team.dart ──');
     buf.writeln('const List<double> kFirstImpressionBandCuts = '
         '[${_q(chem, 0.75).toStringAsFixed(1)}, ${_q(chem, 0.5).toStringAsFixed(1)}, ${p25.toStringAsFixed(1)}];');

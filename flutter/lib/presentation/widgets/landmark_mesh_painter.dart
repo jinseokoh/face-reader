@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:face_engine/domain/services/landmark_normalize.dart';
 import 'package:flutter/material.dart';
 
@@ -15,6 +17,9 @@ class LandmarkMeshPainter extends CustomPainter {
   final List<List<double>>? background;
   final Set<String> highlight;
   final List<List<int>> metricPaths;
+
+  /// true 면 [a] 와 [b] 가 벌어진 점을 거리에 비례한 점으로 표시 (차이 지도).
+  final bool showPointDiff;
   final Color colorA;
   final Color colorB;
   final Color colorBackground;
@@ -25,6 +30,7 @@ class LandmarkMeshPainter extends CustomPainter {
     this.background,
     this.highlight = const {},
     this.metricPaths = const [],
+    this.showPointDiff = false,
     this.colorA = AppColors.gold,
     this.colorB = AppColors.info,
     this.colorBackground = AppColors.textPrimary,
@@ -95,11 +101,36 @@ class LandmarkMeshPainter extends CustomPainter {
     _drawFace(canvas, size, a, colorA);
     _drawMetricPaths(canvas, size, a, colorA);
     final other = b;
-    if (other != null) _drawFace(canvas, size, other, colorB);
+    if (other != null) {
+      _drawFace(canvas, size, other, colorB);
+      if (showPointDiff) _drawPointDiff(canvas, size, a, other);
+    }
   }
+
+  /// 점별 거리(정규화 단위)를 점 크기·진하기로. 0.05 이하는 그리지 않고 0.25
+  /// 에서 최대 — 무작위 두 사람의 중앙 RMS 거리(0.11)를 가운데에 둔 눈금.
+  void _drawPointDiff(
+      Canvas canvas, Size size, List<List<double>> p, List<List<double>> q) {
+    const lo = 0.05, hi = 0.25;
+    for (var i = 0; i < p.length; i++) {
+      final dx = p[i][0] - q[i][0];
+      final dy = p[i][1] - q[i][1];
+      final d = math.sqrt(dx * dx + dy * dy);
+      if (d <= lo) continue;
+      final t = ((d - lo) / (hi - lo)).clamp(0.0, 1.0);
+      final mid = _map([(p[i][0] + q[i][0]) / 2, (p[i][1] + q[i][1]) / 2], size);
+      canvas.drawCircle(
+        mid,
+        2 + 4 * t,
+        Paint()..color = AppColors.textPrimary.withValues(alpha: 0.25 + 0.55 * t),
+      );
+    }
+  }
+
 
   @override
   bool shouldRepaint(LandmarkMeshPainter old) =>
+      old.showPointDiff != showPointDiff ||
       old.a != a ||
       old.b != b ||
       old.background != background ||

@@ -48,6 +48,25 @@ Map<ImpressionAxis, double> computeImpressionRaw(Map<String, double> features) {
   return out;
 }
 
+/// 축마다 feature 별 기여(부호 × 비중 × feature z) — "왜 이런 결과" 와 두 사람의
+/// 축 차이를 만든 계측을 고를 때 쓴다. feature 가 없으면 그 항은 빠진다.
+Map<ImpressionAxis, Map<String, double>> axisContributions(
+    Map<String, double> features) {
+  final out = <ImpressionAxis, Map<String, double>>{
+    for (final a in ImpressionAxis.values) a: <String, double>{},
+  };
+  for (final link in impressionEvidence) {
+    final f = features[link.feature];
+    if (f == null) continue;
+    final w = link.tier == EvidenceTier.primary
+        ? _kPrimaryWeight
+        : _kSecondaryWeight;
+    out[link.axis]![link.feature] =
+        (out[link.axis]![link.feature] ?? 0) + link.sign * w * f;
+  }
+  return out;
+}
+
 /// 21-point 분위표(p0, p5, …, p100)로 원점수 → 백분위 0~100. 선형 보간.
 double percentileFromQuantiles(double raw, List<double> q) {
   if (raw <= q.first) return 0;
@@ -139,6 +158,14 @@ const Map<String, List<String>> geometryRegions = {
 /// 지수 감쇠(`kProcrustesDistanceMedian`, 실측 상수).
 double similarityFromDistance(double d, String region) =>
     100 * exp(-ln2 * d / kProcrustesDistanceMedian[region]!);
+
+/// 이 쌍의 닮은 정도가 무작위 두 사람 사이에서 갖는 백분위 (높을수록 더 닮음).
+double pairSimilarityPercentile(double similarity) =>
+    percentileFromQuantiles(similarity, kPairSimilarityQuantiles);
+
+/// 이 쌍의 케미 합이 무작위 두 사람 사이에서 갖는 백분위.
+double chemistryPercentile(double chemistry) =>
+    percentileFromQuantiles(chemistry, kChemistryQuantiles);
 
 /// 닮은 정도 → 문구 (§25). 경계는 AAF 무작위 쌍의 사분위
 /// (`kRegionSimilarityQuartiles`): p75 이상 매우 유사 · p50 이상 유사 ·

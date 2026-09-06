@@ -325,6 +325,10 @@ yaw(|(l−r)/(l+r)|, AAF p95 0.45 / 정면 한계 0.70) · 얼굴 폭/사진 폭
 
 두 얼굴 (`analyzePair`): 닮은 정도 = 저장 좌표의 Procrustes 거리(위) — 영역별(outline·eyes·brows·nose·mouth·jaw) 동일 식 · 첫인상 유사도 = 100 − mean\|Δ\| · 조화도 = mean(max(A,B))
 (가설 지표) · 보완도 = mean\|Δ\| (매력 제외 3축). **케미 점수 = 조화도 + 보완도 + 닮은 정도 (0~300).**
+비교 상세(measure)는 그 위에 여섯 가지를 더 보인다: 무작위 쌍 대비 닮은 정도·케미 합 상위 N%
+(`kPairSimilarityQuantiles`·`kChemistryQuantiles`, 21-point) · 겹친 그림의 점별 차이(`showPointDiff`) · 축별 차이 문장과
+차이를 만든 feature 2개(`axisContributions`) · 조화도에서 축을 채우는 쪽 · 둘 다 |z|≥1 인 계측의 같은/반대 방향
+(`sharedDeviations`) · 대칭 상위 N% 와 얼굴형 나란히.
 영역 닮은 정도 문구(§25, `SimilarityBand`): 무작위 쌍 사분위 `kRegionSimilarityQuartiles` [p75,p50,p25] 기준
 매우 유사 · 유사 · 차이가 있음 · 차이가 큼. 비교 화면은 닮은 부분/다른 부분으로 나눠 보여준다.
 

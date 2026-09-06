@@ -56,6 +56,10 @@ void main() {
     expect(find.text('케미 점수의 세 성분'), findsOneWidget);
     expect(find.text('영역별 닮은 정도'), findsOneWidget);
     expect(find.text('두 얼굴 겹쳐 보기'), findsOneWidget);
+    expect(find.text('같이 튀는 곳과 반대로 튀는 곳'), findsOneWidget);
+    expect(find.text('대칭과 얼굴형'), findsOneWidget);
+    expect(find.text('조화도에서 각 인상을 채우는 쪽'), findsOneWidget);
+    expect(find.textContaining('무작위로 만난 두 사람과 비교하면'), findsOneWidget);
     // §25 — 영역 6개 전부 닮은/다른 부분 중 한쪽에 문구와 함께 나온다.
     final phrases = [
       for (final b in SimilarityBand.values) find.text(b.labelKo).evaluate().length,
@@ -65,5 +69,26 @@ void main() {
     expect(find.text('가설 지표'), findsOneWidget);
     expect(find.text(MeasurePairBody.disclaimer), findsOneWidget);
     expect(find.textContaining('천생연분'), findsNothing);
+  });
+
+  test('무작위 쌍 백분위 — 중앙값 50, 같은 얼굴은 100 근처', () {
+    expect(pairSimilarityPercentile(50), closeTo(50, 1));
+    expect(pairSimilarityPercentile(100), 100);
+    expect(chemistryPercentile(152.4), closeTo(50, 1));
+    expect(chemistryPercentile(0), 0);
+  });
+
+  test('같이/반대로 튀는 곳 — 서로 겹치지 않고 |z| ≥ 1 만', () {
+    final same = sharedDeviations(a, b, sameDirection: true);
+    final opp = sharedDeviations(a, b, sameDirection: false);
+    expect(same.toSet().intersection(opp.toSet()), isEmpty);
+    final zA = zMapOf(a), zB = zMapOf(b);
+    for (final id in [...same, ...opp]) {
+      expect(zA[id]!.abs(), greaterThanOrEqualTo(1));
+      expect(zB[id]!.abs(), greaterThanOrEqualTo(1));
+    }
+    for (final id in same) {
+      expect(zA[id]! > 0, zB[id]! > 0);
+    }
   });
 }

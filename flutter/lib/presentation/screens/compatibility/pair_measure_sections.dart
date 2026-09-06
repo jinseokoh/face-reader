@@ -3,7 +3,9 @@ import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
+import 'package:face_engine/data/constants/impression_evidence.dart';
 import 'package:face_engine/domain/services/first_impression.dart';
+import 'package:face_engine/domain/services/geometry_profile.dart';
 import 'package:face_engine/domain/services/landmark_normalize.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -57,6 +59,16 @@ class MeasurePairBody extends StatelessWidget {
     final aligned = alignFaces(my.landmarks, album.landmarks);
     final pa = impressionOf(my);
     final pb = impressionOf(album);
+    final ca = axisContributionsOf(my);
+    final cb = axisContributionsOf(album);
+    final sameDev = sharedDeviations(my, album, sameDirection: true).take(3);
+    final oppDev = sharedDeviations(my, album, sameDirection: false).take(3);
+    final symA = computeGeometryProfile(
+        zByMetric: zMapOf(my), gender: my.gender, symmetry: my.symmetry)['symmetry'];
+    final symB = computeGeometryProfile(
+        zByMetric: zMapOf(album),
+        gender: album.gender,
+        symmetry: album.symmetry)['symmetry'];
     final myAlias = my.alias ?? '나';
     final albumAlias = album.alias ?? '상대';
 
@@ -81,6 +93,14 @@ class MeasurePairBody extends StatelessWidget {
               _ScoreRow(label: '닮은 정도', value: pair.similarity.overall),
               const Divider(height: AppSpacing.xl),
               _ScoreRow(label: '첫인상 유사도', value: pair.impressionSimilarity),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                '무작위로 만난 두 사람과 비교하면 닮은 정도는 상위 '
+                '${_topPct(pairSimilarityPercentile(pair.similarity.overall))}, '
+                '케미 점수는 상위 ${_topPct(chemistryPercentile(pair.chemistry))}입니다. '
+                '기준은 동아시아 얼굴 11,800장에서 무작위로 고른 두 사람 2만 쌍입니다.',
+                style: AppText.caption,
+              ),
             ],
           ),
         ),
@@ -89,7 +109,8 @@ class MeasurePairBody extends StatelessWidget {
         const SizedBox(height: AppSpacing.xs),
         Text(
           '사진 속 위치·크기·기울기는 빼고 두 얼굴의 모양만 남겨 겹친 모습입니다. '
-          '닮은 부분으로 분류된 영역을 진하게 표시합니다.',
+          '닮은 부분으로 분류된 영역은 진하게, 두 얼굴이 벌어진 자리는 벌어진 만큼 '
+          '큰 점으로 표시합니다.',
           style: AppText.hint,
         ),
         const SizedBox(height: AppSpacing.md),
@@ -103,6 +124,7 @@ class MeasurePairBody extends StatelessWidget {
                     a: aligned.a,
                     b: aligned.bAligned,
                     highlight: {for (final e in similarRegions) e.key},
+                    showPointDiff: true,
                   ),
                 ),
               ),
@@ -184,7 +206,7 @@ class MeasurePairBody extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: AppSpacing.sm),
-              for (final axis in pairAxes)
+              for (final axis in pairAxes) ...[
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
                   child: Row(
@@ -203,6 +225,84 @@ class MeasurePairBody extends StatelessWidget {
                     ],
                   ),
                 ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                  child: Text(
+                    _axisDiffSentence(axis, pa, pb, ca, cb, myAlias, albumAlias),
+                    style: AppText.caption,
+                  ),
+                ),
+              ],
+              const Divider(height: AppSpacing.xl),
+              Text('조화도에서 각 인상을 채우는 쪽', style: AppText.subTitle),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                '조화도는 축마다 두 사람 중 높은 쪽을 취해 평균합니다. 그 높은 쪽이 누구인지입니다.',
+                style: AppText.hint,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              for (final axis in pairAxes)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                  child: Row(
+                    children: [
+                      Expanded(child: Text(axis.labelKo, style: AppText.body)),
+                      Text(
+                        (pa[axis] - pb[axis]).abs() < 1
+                            ? '둘이 같음'
+                            : (pa[axis] > pb[axis] ? myAlias : albumAlias),
+                        style: AppText.body,
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        _title('같이 튀는 곳과 반대로 튀는 곳'),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          '두 사람 모두 기준 집단 평균에서 1σ 이상 떨어진 계측입니다. 같은 방향이면 '
+          '둘의 공통된 특징, 반대 방향이면 서로 다른 특징입니다.',
+          style: AppText.hint,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        _Card(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('같이 튀는 곳', style: AppText.subTitle),
+              const SizedBox(height: AppSpacing.sm),
+              if (sameDev.isEmpty)
+                Text('없음', style: AppText.body)
+              else
+                for (final id in sameDev)
+                  _devLine(id, '둘 다 ${zMapOf(my)[id]! > 0 ? '높은' : '낮은'} 편'),
+              const SizedBox(height: AppSpacing.lg),
+              Text('반대로 튀는 곳', style: AppText.subTitle),
+              const SizedBox(height: AppSpacing.sm),
+              if (oppDev.isEmpty)
+                Text('없음', style: AppText.body)
+              else
+                for (final id in oppDev)
+                  _devLine(
+                    id,
+                    '$myAlias ${zMapOf(my)[id]! > 0 ? '높은' : '낮은'} 편, '
+                    '$albumAlias ${zMapOf(album)[id]! > 0 ? '높은' : '낮은'} 편',
+                  ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        _title('대칭과 얼굴형'),
+        const SizedBox(height: AppSpacing.md),
+        _Card(
+          child: Column(
+            children: [
+              _twoColumn('얼굴 대칭', symA == null ? '—' : _top(symA),
+                  symB == null ? '—' : _top(symB)),
+              _twoColumn('얼굴형', my.faceShape.korean, album.faceShape.korean),
             ],
           ),
         ),
@@ -236,6 +336,59 @@ class MeasurePairBody extends StatelessWidget {
         style: AppText.modalTitle.copyWith(fontWeight: FontWeight.w700),
       );
 
+  /// 축 하나의 두 사람 차이 문장 (§13 식) — 백분위 차 5 미만이면 비슷함.
+  String _axisDiffSentence(
+    ImpressionAxis axis,
+    FirstImpressionProfile pa,
+    FirstImpressionProfile pb,
+    Map<ImpressionAxis, Map<String, double>> ca,
+    Map<ImpressionAxis, Map<String, double>> cb,
+    String nameA,
+    String nameB,
+  ) {
+    final diff = pa[axis] - pb[axis];
+    if (diff.abs() < 5) return '두 사람이 비슷합니다.';
+    final strong = diff > 0 ? nameA : nameB;
+    final weak = diff > 0 ? nameB : nameA;
+    // 차이를 가장 크게 만든 feature 2개 — 기여 차이 순.
+    final keys = {...ca[axis]!.keys, ...cb[axis]!.keys}.toList()
+      ..sort((x, y) => ((ca[axis]![y] ?? 0) - (cb[axis]![y] ?? 0))
+          .abs()
+          .compareTo(((ca[axis]![x] ?? 0) - (cb[axis]![x] ?? 0)).abs()));
+    final drivers = keys.take(2).map(featureNameKo).join(', ');
+    return '$strong 쪽이 $weak 쪽보다 이 인상이 강합니다. 차이를 만든 계측: $drivers.';
+  }
+
+  Widget _devLine(String id, String phrase) {
+    final info = metricInfoList.firstWhere((m) => m.id == id);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+      child: Row(
+        children: [
+          Expanded(child: Text(info.nameKo, style: AppText.body)),
+          Text(phrase, style: AppText.caption),
+        ],
+      ),
+    );
+  }
+
+  Widget _twoColumn(String label, String a, String b) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+        child: Row(
+          children: [
+            Expanded(child: Text(label, style: AppText.body)),
+            SizedBox(
+              width: 72,
+              child: Text(a, style: AppText.body, textAlign: TextAlign.right),
+            ),
+            SizedBox(
+              width: 72,
+              child: Text(b, style: AppText.body, textAlign: TextAlign.right),
+            ),
+          ],
+        ),
+      );
+
   Widget _metricLine(String id) {
     final info = metricInfoList.firstWhere((m) => m.id == id);
     return Padding(
@@ -247,6 +400,9 @@ class MeasurePairBody extends StatelessWidget {
 
 String _top(double percentile) =>
     '상위 ${(100 - percentile).round().clamp(1, 99)}%';
+
+String _topPct(double percentile) =>
+    '${(100 - percentile).round().clamp(1, 99)}%';
 
 class _Card extends StatelessWidget {
   final Widget child;
