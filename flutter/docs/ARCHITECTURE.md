@@ -200,7 +200,8 @@ metrics 소멸·방 purge 와 무관하게 복원. 지갑·궁합 목록은 a/b 
 참가자 전원의 현재 my-face body 를 `teams.chemistry_snapshot` 에 동결하며 상태를
 `revealing` 으로 전이한다(시작 후 재촬영이 결과에 영향을 못 주는 치팅 방어). 각
 클라이언트는 그 snapshot 으로 `computeTeam`(shared/`compat/team.dart` — match 방은
-`matchOnly` 로 이성 쌍만 계산) 을 로컬 계산해 3-2-1 카운트다운 → 🏆 베스트 카드를
+`matchOnly` 로 이성 쌍만 계산, 채점기는 `teams.mode` 로 관상/첫인상 분기 — HOW-IT-WORKS §7b.
+measure 에디션(iOS)은 첫인상 방만 만들고 보며 관상 채점기는 빌드에 없다) 을 로컬 계산해 3-2-1 카운트다운 → 🏆 베스트 카드를
 그리고, 최초 도달 클라이언트가 `submit_team_result` 로 `result_payload` 를 1회
 기록한다(first-writer-wins — 입력이 snapshot 으로 동결돼 있어 후착은 무해). 같은
 트랜잭션이 베스트 쌍의 slot→user 를 resolve 해 `team_matches` 에 upsert — 베스트

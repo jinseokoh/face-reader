@@ -272,6 +272,29 @@ total = clamp(50 + (rawTotal - 50) × 1.4, 5, 99)
 - capture-only: Hive 저장은 `myReportId`·`albumReportId`·`evaluatedAt` 뿐 — 본문은 재계산.
 - 상세 rule 카탈로그의 SSOT 는 코드: `compat_pipeline.dart` + `palace_rules.dart`.
 
+## 7b. 첫인상 엔진 (문헌 기반 계산 모델) — APPLE.md §81
+
+학습하지 않는다. 공개 학술연구의 "특징 → 인상" 방향만 쓰고 원 논문 계수는 옮기지 않는다.
+세 층으로 나뉘며 코드 위치가 곧 층이다.
+
+| 층 | 파일 (shared/) | 내용 |
+|---|---|---|
+| 1 학술 보고 관계 | `data/constants/impression_evidence.dart` | 축 4개 × 논문이 보고한 특징의 부호·비중(주 1.0/보조 0.5)·출처(OT08·TD13·SU13·SU18·VE14·RH06) |
+| 2 재구성 feature | `domain/services/impression_features.dart` | 그 특징을 26 계측 z 로 재정의. `averageness` = −mean\|z\| |
+| 3 제품 지표 | `domain/services/first_impression.dart` | 축 원점수 = Σ(부호×비중×feature z) → AAF 11,800 실측 분위표(`impression_quantiles.dart`, 성별 21-point)로 백분위 0~100 |
+
+축 4개: 신뢰감 있는 · 친근한 · 주도적인 · 매력적인 인상. **매력은 본인 화면 전용** — 두 얼굴·케미에 쓰지 않는다.
+
+두 얼굴 (`analyzePair`): 닮은 정도 = z 벡터 RMS 거리를 `exp(−ln2·d/1.3041)`(무작위 쌍 중앙 거리 = 50점)로,
+영역별(outline·eyes·brows·nose·mouth·jaw) 동일 식 · 첫인상 유사도 = 100 − mean\|Δ\| · 조화도 = mean(max(A,B))
+(가설 지표) · 보완도 = mean\|Δ\| (매력 제외 3축). **케미 점수 = 조화도 + 보완도 + 닮은 정도 (0~300).**
+
+**케미 방 mode** (`teams.mode`, 0008): `physiognomy` = §7 궁합 엔진 total(0~100)+4단 등급 ·
+`first_impression` = 위 케미 점수, 등급은 AAF 무작위 쌍 사분위(p75/p50/p25 = 165.8/148.0/131.1),
+차단 상한 131.0. `computeTeam(scoring: TeamScoring.forMode(mode))`. measure 에디션(iOS)은
+`TeamScoring.firstImpression` 을 상수 분기로 넘겨 관상 채점기가 빌드에서 빠진다.
+분위표 재생성: `flutter test test/impression_calibration_test.dart`.
+
 ## 8. 서술 엔진 (life_question_narrative)
 
 8 인생 질문 섹션: 재능 · 재물운 · 대인관계 · 연애운(남/여 pool) · 바람기(20+, 남/여) ·
