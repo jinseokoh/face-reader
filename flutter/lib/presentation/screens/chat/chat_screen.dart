@@ -1,3 +1,4 @@
+import 'package:facely/core/edition_copy.dart';
 import 'dart:math' as math;
 
 import 'package:face_engine/domain/models/face_reading_report.dart';
@@ -48,7 +49,7 @@ class ChatScreen extends ConsumerWidget {
           !hasMyFace
               ? const EmotionEmptyState(
                   asset: 'assets/images/emotion-yawn.png',
-                  message: '채팅에 참여하려면 내 관상을 보세요.',
+                  message: EditionCopy.chatNeedsMyFace,
                 )
               : RefreshIndicator(
                   onRefresh: () {

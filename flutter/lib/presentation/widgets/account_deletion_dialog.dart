@@ -1,3 +1,4 @@
+import 'package:facely/core/edition_copy.dart';
 import 'package:facely/presentation/widgets/blocking_loader.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
@@ -67,8 +68,8 @@ class _ConfirmDialogState extends State<_ConfirmDialog> {
   static const _items = <String>[
     '남은 코인 전부 소실',
     '코인 사용기록 전부 삭제',
-    '저장된 관상 기록 전부 삭제',
-    '저장된 궁합 기록 전부 삭제',
+    EditionCopy.deleteItemFace,
+    EditionCopy.deleteItemPair,
     '얼굴 썸네일 전부 삭제',
     '재가입 시 보너스 코인 지급 없음',
   ];

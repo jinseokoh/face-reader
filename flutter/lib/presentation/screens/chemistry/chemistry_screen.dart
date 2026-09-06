@@ -1,3 +1,4 @@
+import 'package:facely/core/edition_copy.dart';
 import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -215,11 +216,7 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
           borderRadius: BorderRadius.circular(AppRadius.xl),
         ),
         title: const Text('그룹 만들기 사용불가', style: AppText.modalTitle),
-        content: const Text(
-          '케미 그룹 만들기는 20세 이상부터 사용할 수 있습니다. '
-          '내 관상 분석의 나이대가 10대로 확인되어 지금은 만들 수 없습니다.',
-          style: AppText.body,
-        ),
+        content: const Text(EditionCopy.teamAgeGateBody, style: AppText.body),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -240,22 +237,7 @@ class _ChemistryScreenState extends ConsumerState<ChemistryScreen> {
         ),
         title: const Text('케미 그룹', style: AppText.modalTitle),
         content: const SingleChildScrollView(
-          child: Text(
-            '6 ~ 12명 정원의 그룹을 만들어 온라인에서 만나는 '
-            '다양한 사람들과의 서로 관상학적 케미가 좋은지 확인하는 기능입니다.\n\n'
-            '케미 그룹은 누구나 만들 수 있고 그룹에 참여 정원이 다 차면 '
-            '그 즉시 그룹내 참여자들간 관상으로 따져본 케미 결과표가 자동으로 발표됩니다.\n\n'
-            '해당 그룹내에서 최고의 케미를 보인 베스트 매칭 한 쌍에게는 1:1 채팅 '
-            '기회가 주어집니다. 물론, '
-            '두 사람 모두 채팅을 원하는 경우에만 채팅방이 열리고, 한쪽이라도 '
-            '거부하면 열리지 않습니다. 결과 발표이후 한 달이 지난 뒤에는 자동으로 삭제됩니다.\n\n'
-            '공개 그룹은 언제든 참가할 수 있고, '
-            '그룹 만들기 기능을 통해 원하는 그룹을 직접 만들 수도 있습니다. '
-            '지인들끼리만 모이고 싶다면 그룹을 만들때 비밀번호를 설정하세요.\n\n'
-            '공유하기 기능을 이용하면 카카오톡 등 원하는 채널을 통해 내가 만든 그룹에 초대할 수 '
-            '있습니다.',
-            style: AppText.body,
-          ),
+          child: Text(EditionCopy.teamInfoBody, style: AppText.body),
         ),
         actions: [
           TextButton(

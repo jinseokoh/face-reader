@@ -1,3 +1,4 @@
+import 'package:facely/core/edition_copy.dart';
 import 'dart:async';
 
 import 'package:facely/config/router.dart';
@@ -168,7 +169,7 @@ class _BootSplash extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Text(
-                '관상으로 풀어보는 친구 만들기',
+                EditionCopy.splashTagline,
                 style: AppText.body.copyWith(
                   color: AppTheme.textSecondary,
                   height: 1.5,

@@ -1,3 +1,4 @@
+import 'package:facely/core/edition_copy.dart';
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
@@ -45,7 +46,7 @@ class MyFaceHeader extends StatelessWidget {
     final titleText = isSet
         ? '${mf.ageGroup.labelKo} ${mf.gender.labelKo} '
               '${mf.ethnicity.labelKo}'
-        : '내 관상이 필요합니다.';
+        : EditionCopy.myFaceNeeded;
     final captionText = isSet ? (mf.alias ?? mf.faceShape.korean) : unsetCaption;
     final content = Container(
       decoration: const BoxDecoration(
@@ -75,7 +76,7 @@ class MyFaceHeader extends StatelessWidget {
                       ),
                       const SizedBox(width: AppSpacing.xs),
                       Text(
-                        '내 관상',
+                        EditionCopy.myFaceBadge,
                         style: AppText.caption.copyWith(
                           fontWeight: FontWeight.w600,
                           color: AppColors.gold,

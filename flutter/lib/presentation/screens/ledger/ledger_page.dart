@@ -1,3 +1,4 @@
+import 'package:facely/core/edition_copy.dart';
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
@@ -18,7 +19,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 const _txDescriptionLabels = {
-  'compat-unlock': '궁합 보기',
+  'compat-unlock': EditionCopy.ledgerCompatUnlock,
 };
 
 String _describeTx(CoinTransaction tx) {

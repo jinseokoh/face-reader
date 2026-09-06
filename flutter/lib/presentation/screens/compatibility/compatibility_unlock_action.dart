@@ -1,4 +1,5 @@
 import 'package:facely/core/edition.dart';
+import 'package:facely/core/edition_copy.dart';
 import 'package:facely/domain/services/pair_score.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/data/services/thumbnail_copier.dart';
@@ -234,7 +235,7 @@ Future<bool?> _showConfirmDialog(BuildContext context) {
             const SpinningNumberWheel(size: 200),
             const SizedBox(height: 16),
             Text(
-              '궁합 보기',
+              EditionCopy.pairUnlockTitle,
               style: AppText.modalTitle.copyWith(
                 color: const Color(0xFF1F1F1F),
                 fontSize: 22,
@@ -244,7 +245,7 @@ Future<bool?> _showConfirmDialog(BuildContext context) {
             ),
             const SizedBox(height: 12),
             Text(
-              '궁합을 보려면 1코인이 필요합니다.\n궁합을 보시겠습니까?',
+              EditionCopy.pairUnlockBody,
               style: AppText.body.copyWith(
                 color: AppColors.accent,
                 height: 1.5,
@@ -289,7 +290,7 @@ Future<bool?> _showConfirmDialog(BuildContext context) {
                         ),
                       ),
                       child: Text(
-                        '궁합보기',
+                        EditionCopy.pairUnlockButton,
                         style: AppText.subTitle.copyWith(color: Colors.white),
                       ),
                     ),

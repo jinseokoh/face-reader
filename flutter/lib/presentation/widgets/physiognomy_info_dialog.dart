@@ -117,3 +117,64 @@ class _QuoteBlock extends StatelessWidget {
     );
   }
 }
+
+/// measure 에디션(iOS v1) 첫인상 탭 (i) 안내 — 관상 단어 없이 측정·첫인상만.
+class MeasureFaceInfoDialog extends StatelessWidget {
+  const MeasureFaceInfoDialog({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Text('첫인상 분석에 대하여', style: AppText.modalTitle),
+      content: const SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '얼굴의 468개 점을 찾아 28개 계측값을 잽니다. 값마다 한국인 11,800명 '
+              '실측 분포 안에서 어디쯤인지(상위 N%)를 보여줍니다.',
+              style: AppText.body,
+            ),
+            SizedBox(height: 18),
+            Text('첫인상 지표', style: AppText.sectionTitle),
+            SizedBox(height: 10),
+            Text(
+              '신뢰감·친근함·주도성·매력 네 가지 인상 축입니다. 얼굴의 어떤 특징이 어떤 '
+              '인상과 연결되는지에 관한 공개 학술연구를 근거로, 계측값에서 축 점수를 '
+              '계산해 같은 실측 분포로 백분위를 냅니다. 원 논문의 모델을 재현한 것이 '
+              '아니며, 한국인 평가자를 대상으로 학습·검증된 모델이 아닙니다. 실제 '
+              '성격·능력이 아니라 얼굴 형태의 상대 위치입니다.',
+              style: AppText.body,
+            ),
+            SizedBox(height: 18),
+            Text('카메라 · 앨범 · 북마크', style: AppText.sectionTitle),
+            SizedBox(height: 10),
+            Text(
+              '카메라로 찍거나 앨범 사진으로 잰 얼굴이 각 탭에 쌓입니다. 다른 사람이 '
+              'facely.kr 주소로 공유한 카드를 북마크하면 북마크 탭에 쌓입니다.',
+              style: AppText.body,
+            ),
+            SizedBox(height: 18),
+            Text('사진 처리', style: AppText.sectionTitle),
+            SizedBox(height: 10),
+            Text(
+              '얼굴 계측은 전부 기기 안에서 수행됩니다. 성별·연령대 추정을 위한 축소본은 '
+              '분석 직후 삭제됩니다. 비교·케미 그룹에서 결과의 주인을 구분하기 위한 '
+              '200×200픽셀 저해상도 얼굴 썸네일 1장만 저장하며, 회원 탈퇴 시 즉시 삭제됩니다.',
+              style: AppText.body,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('닫기', style: AppText.subTitle),
+        ),
+      ],
+    );
+  }
+}

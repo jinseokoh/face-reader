@@ -562,7 +562,9 @@ class _TeamRevealScreenState extends ConsumerState<TeamRevealScreen> {
                 // 인물 열의 메타 라인(인구통계·유형)과 100% 동일 속성 —
                 // caption + sand.
                 Text(
-                  '상세 궁합 풀이 보기',
+                  _team?.mode == TeamMode.firstImpression
+                      ? '상세 비교 보기'
+                      : '상세 궁합 풀이 보기',
                   style: AppText.caption.copyWith(color: kTeamHeroSand),
                 ),
                 const SizedBox(width: AppSpacing.xs),

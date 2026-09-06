@@ -162,7 +162,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
           const FaceScanPill(),
           IconButton(
             icon: const FaIcon(FontAwesomeIcons.circleInfo, size: 20),
-            tooltip: '궁합 분석에 대하여',
+            tooltip: EditionCopy.pairInfoTooltip,
             onPressed: () => _showInfoDialog(context),
           ),
         ],
@@ -217,7 +217,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text(EditionCopy.pairDeleteTitle, style: AppText.modalTitle),
         content: Text(
-          '이 궁합을 목록에서 삭제할까요?\n사용한 코인은 환불되지 않습니다.',
+          EditionCopy.pairDeleteBody,
           style: AppText.body.copyWith(height: 1.5),
         ),
         actions: [
@@ -419,7 +419,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
             values: _LockedSort.values,
             labelOf: (v) => v.label,
             onChanged: (v) => setState(() => _lockedSort = v),
-            description: '아직 풀이를 확인하지 않은 궁합입니다.',
+            description: EditionCopy.pairLockedDesc,
           ),
         ),
         Expanded(
@@ -635,7 +635,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
               _unlockedSort = v;
               ref.read(recentUnlockFocusProvider.notifier).clear();
             }),
-            description: '풀이를 확인한 궁합입니다.',
+            description: EditionCopy.pairUnlockedDesc,
           ),
         ),
         Expanded(
@@ -944,7 +944,7 @@ class _CompatLockedCard extends ConsumerWidget {
 
     // 잔액(N코인 보유)은 AppBar 의 _CoinChip 이 single source of truth.
     // 카드마다 반복하지 않음 — 시각 노이즈 제거.
-    final cta = isLoggedIn ? '1코인으로 궁합 보기' : '카카오 로그인하고 3 코인 받기';
+    final cta = isLoggedIn ? EditionCopy.pairUnlockCta : '카카오 로그인하고 3 코인 받기';
 
     final card = Container(
       padding: const EdgeInsets.all(16),
@@ -1451,7 +1451,7 @@ class _RegisterMyFaceBannerState extends ConsumerState<_RegisterMyFaceBanner>
                   children: [
                     Flexible(
                       child: Text(
-                        '나의 관상을 등록하면 궁합을 볼 수 있습니다.',
+                        EditionCopy.pairLockedNudge,
                         textAlign: TextAlign.center,
                         style: AppText.caption.copyWith(
                           color: AppColors.textPrimary,
@@ -1483,7 +1483,7 @@ class _RegisterMyFaceBannerState extends ConsumerState<_RegisterMyFaceBanner>
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
             child: Text(
-              '나의 관상이 등록되기 전까지는 궁합이 잠겨있게 됩니다.',
+              EditionCopy.pairLockedUntil,
               textAlign: TextAlign.center,
               // nudge 배너 caption("앨범 사진이나 …")과 동일 토큰.
               style: AppText.caption.copyWith(color: AppColors.textHint),

@@ -5,6 +5,7 @@ import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
+import 'package:facely/core/edition.dart';
 import 'package:facely/core/edition_copy.dart';
 import 'package:facely/data/services/team_service.dart';
 import 'package:facely/domain/models/team.dart';
@@ -166,7 +167,7 @@ class _PhysiognomyItem extends ConsumerWidget {
                                         ),
                                       ),
                                       child: Text(
-                                        '내 관상',
+                                        EditionCopy.myFaceBadge,
                                         style: AppText.hint.copyWith(
                                           fontWeight: FontWeight.w600,
                                           color: AppColors.gold,
@@ -258,7 +259,7 @@ class _PhysiognomyItem extends ConsumerWidget {
                 if (isMyFace)
                   const PopupMenuItem<String>(
                     value: 'recapture',
-                    child: Text('내 관상 다시 찍기', style: AppText.body),
+                    child: Text(EditionCopy.myFaceRecapture, style: AppText.body),
                   ),
                 const PopupMenuItem<String>(
                   value: 'rename',
@@ -455,7 +456,7 @@ class _PhysiognomyItem extends ConsumerWidget {
         ),
         title: const Text('먼저 케미방을 정리해 주세요', style: AppText.modalTitle),
         content: Text(
-          '내 관상으로 연 모집 중인 방이 있습니다.\n'
+          '${EditionCopy.myFaceOpenRoomsBody}'
           '${rooms.map((t) => t.title).join('\n')}',
           style: AppText.body,
         ),
@@ -690,7 +691,7 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
             credits: _kCreditsBookmark,
             description: EditionCopy.faceBookmarkDesc,
             emptyAsset: 'assets/images/emotion-photo.png',
-            emptyMessage: '전달받은 궁합은 이 곳에 북마크해 둘 수 있어요.',
+            emptyMessage: EditionCopy.bookmarkEmpty,
           ),
         ],
       ),
@@ -877,7 +878,9 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
   void _showInfoDialog(BuildContext context) {
     showDialog<void>(
       context: context,
-      builder: (ctx) => const PhysiognomyInfoDialog(),
+      builder: (ctx) => kMeasureEdition
+          ? const MeasureFaceInfoDialog()
+          : const PhysiognomyInfoDialog(),
     );
   }
 
@@ -910,7 +913,7 @@ class _ProfileHintCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return const EmotionEmptyState(
       asset: 'assets/images/emotion-sad.png',
-      message: '내 관상 등록이 필요합니다.',
+      message: EditionCopy.myFaceNeeded,
     );
   }
 }

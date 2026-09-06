@@ -1,3 +1,4 @@
+import 'package:facely/core/edition_copy.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
@@ -447,7 +448,7 @@ class _InfoConfirmScreenState extends ConsumerState<InfoConfirmScreen> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.xl),
       ),
-      content: const Text('관상을 성공적으로 등록했습니다.', style: AppText.body),
+      content: const Text(EditionCopy.myFaceRegistered, style: AppText.body),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(ctx),

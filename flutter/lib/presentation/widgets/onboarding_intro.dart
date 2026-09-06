@@ -476,6 +476,7 @@ class _OnboardingPage extends StatelessWidget {
 
 class _OnboardingPageData {
   static bool get _isV1 =>
+      !kMeasureEdition &&
       AppConfigService.instance.narrativeVersion == NarrativeVersion.v1;
 
   final String title;

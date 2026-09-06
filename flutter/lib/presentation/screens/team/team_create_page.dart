@@ -1,3 +1,4 @@
+import 'package:facely/core/edition_copy.dart';
 import 'package:facely/core/edition.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/data/services/team_service.dart';
@@ -396,7 +397,7 @@ class _TeamCreatePageState extends ConsumerState<_TeamCreatePage>
       if (mounted) {
         showTopSnackBar(
           Overlay.of(context),
-          CompactSnackBar.error(message: '내 관상 서버 등록에 실패했습니다'),
+          CompactSnackBar.error(message: EditionCopy.myFaceServerFail),
         );
         setState(() => _busy = false);
       }

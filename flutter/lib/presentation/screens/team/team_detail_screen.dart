@@ -1,3 +1,4 @@
+import 'package:facely/core/edition_copy.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -653,7 +654,7 @@ class _TeamDetailScreenState extends ConsumerState<TeamDetailScreen> {
       if (mounted) {
         showTopSnackBar(
           Overlay.of(context),
-          CompactSnackBar.error(message: '내 관상 서버 등록에 실패했습니다'),
+          CompactSnackBar.error(message: EditionCopy.myFaceServerFail),
         );
         setState(() => _busy = false);
       }

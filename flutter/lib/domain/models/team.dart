@@ -1,3 +1,4 @@
+import 'package:facely/core/edition_copy.dart';
 import 'package:face_engine/domain/services/compat/team.dart' as engine;
 import 'dart:convert';
 
@@ -262,7 +263,7 @@ enum TeamJoinError {
   notFound('NOT_FOUND', '존재하지 않는 방입니다'),
   notRecruiting('NOT_RECRUITING', '모집이 끝난 방입니다'),
   badPassword('BAD_PASSWORD', '비밀번호가 일치하지 않습니다'),
-  noMyFace('NO_MY_FACE', '내 관상 등록이 필요합니다'),
+  noMyFace('NO_MY_FACE', EditionCopy.noMyFaceError),
   ageNotAllowed('AGE_NOT_ALLOWED', '이 방의 연령대에 해당하지 않습니다'),
   // GENDER_FULL 이 'FULL' 을 부분 문자열로 포함하므로 mapTeamError 의 순차
   // contains 매칭에서 full 보다 먼저 검사되도록 앞에 둔다.
