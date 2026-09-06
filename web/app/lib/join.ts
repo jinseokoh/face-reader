@@ -13,6 +13,8 @@ export type WebCaptureBody = {
   metrics: Record<string, number>;
   /** 좌우 대칭 6개 (symmetry_metrics.dart). 앱 body 와 같은 키. */
   symmetry?: Record<string, number>;
+  /** 계산에 쓴 모델 버전 {geometry, impression, pair} (§58). */
+  modelVersion?: Record<string, string>;
   lateralMetrics: null;
   faceShape: "oval";
 };
@@ -241,6 +243,8 @@ export type TeamPayload = {
   // (별도 best 키 없음).
   /** 첫인상 방(mode 'first_impression')은 쌍마다 sim·harm·comp 가 붙고 score 는 0~300. */
   mode?: "physiognomy" | "first_impression";
+  /** 첫인상 방만 — {impression, pair} 모델 버전 (§58). */
+  modelVersion?: Record<string, string>;
   pairs: {
     a: number;
     b: number;

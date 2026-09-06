@@ -592,6 +592,10 @@ export function JoinWizard({
         source: 'camera',
         metrics,
         symmetry,
+        modelVersion: JSON.parse(globalThis.modelVersions()) as Record<
+          string,
+          string
+        >,
         lateralMetrics: null,
         faceShape: 'oval',
       }

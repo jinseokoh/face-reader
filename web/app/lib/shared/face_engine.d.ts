@@ -13,6 +13,9 @@ declare global {
   // 좌우 대칭 6개 — runMetrics 와 같은 입력, {symEyes,…,symOverall} JSON.
   // eslint-disable-next-line no-var
   var runSymmetry: (landmarksJson: string, aspect: number) => string;
+  // 현재 모델 버전 {geometry, impression, pair} JSON (§58).
+  // eslint-disable-next-line no-var
+  var modelVersions: () => string;
   // Chemistry Team — 입력 {"roomKind":"match"|"all","players":[{"slot","name","gender","body"}]},
   // 출력 result_payload. roomKind=="match" 면 이성 쌍만 계산(matchOnly).
   // eslint-disable-next-line no-var

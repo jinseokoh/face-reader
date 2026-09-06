@@ -22,6 +22,7 @@ import 'dart:js_interop';
 
 import 'package:face_engine/data/constants/archetype_catchphrase.dart';
 import 'package:face_engine/data/constants/compat_hashtags.dart';
+import 'package:face_engine/data/constants/model_version.dart';
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/attribute.dart';
 import 'package:face_engine/data/enums/ethnicity.dart';
@@ -50,6 +51,10 @@ external set _setRunTeam(JSFunction fn);
 
 @JS('runSymmetry')
 external set _setRunSymmetry(JSFunction fn);
+
+/// 현재 모델 버전 {geometry, impression, pair} JSON (§58) — 웹 body 에 기록.
+@JS('modelVersions')
+external set _setModelVersions(JSFunction fn);
 
 void main() {
   _setRunEngine = ((String metricsJson) {
@@ -87,6 +92,8 @@ void main() {
     ];
     return jsonEncode(computeSymmetry(pts, aspect: aspect));
   }).toJS;
+
+  _setModelVersions = (() => jsonEncode(currentModelVersions())).toJS;
 
   // Chemistry Team — chemistry_snapshot 기반 배틀 집계 (rev2 §3 payload 계약).
   // 입력: {"roomKind":"match"|"all","mode":"physiognomy"|"first_impression",

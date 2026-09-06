@@ -225,6 +225,9 @@ class FaceReadingReport {
   /// 계측 도입 전 카드. z·백분위는 현재 reference 로 화면에서 계산한다.
   final Map<String, double>? symmetry;
 
+  /// 계산에 쓴 모델 버전 {geometry, impression, pair} (§58). null = 기록 전 카드.
+  final Map<String, String>? modelVersion;
+
   /// 14-node tree snapshot (root + 3 zones + 10 leaves).
   final Map<String, NodeEvidence> nodeScores;
 
@@ -263,6 +266,7 @@ class FaceReadingReport {
     this.lateralMetrics,
     this.lateralFlags,
     this.symmetry,
+    this.modelVersion,
     required this.nodeScores,
     required this.attributes,
     required this.rules,
@@ -300,6 +304,7 @@ class FaceReadingReport {
             for (final e in lateralMetrics!.entries) e.key: e.value.rawValue,
           },
         if (symmetry != null) 'symmetry': symmetry,
+        if (modelVersion != null) 'modelVersion': modelVersion,
         if (faceShapeLabel != null) 'faceShapeLabel': faceShapeLabel,
         if (faceShapeConfidence != null)
           'faceShapeConfidence': faceShapeConfidence,
@@ -336,6 +341,7 @@ class FaceReadingReport {
             for (final e in lateralMetrics!.entries) e.key: e.value.rawValue,
           },
         if (symmetry != null) 'symmetry': symmetry,
+        if (modelVersion != null) 'modelVersion': modelVersion,
         // lateralFlags 는 lateral z + 현재 metricScore 임계로 load 시 재계산.
         if (faceShapeLabel != null) 'faceShapeLabel': faceShapeLabel,
         if (faceShapeConfidence != null)
@@ -376,6 +382,12 @@ class FaceReadingReport {
         : {
             for (final e in (j['symmetry'] as Map).entries)
               e.key as String: (e.value as num).toDouble(),
+          };
+    final modelVersion = j['modelVersion'] == null
+        ? null
+        : {
+            for (final e in (j['modelVersion'] as Map).entries)
+              e.key as String: e.value as String,
           };
     final faceShapeLabel = j['faceShapeLabel'] as String?;
     final faceShapeConfidence = (j['faceShapeConfidence'] as num?)?.toDouble();
@@ -505,6 +517,7 @@ class FaceReadingReport {
       lateralMetrics: lateralMetrics,
       lateralFlags: lateralFlags,
       symmetry: symmetry,
+      modelVersion: modelVersion,
       nodeScores: nodeScores,
       attributes: attributes,
       rules: rules,

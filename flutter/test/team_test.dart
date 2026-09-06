@@ -8,6 +8,7 @@ import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:face_engine/data/constants/model_version.dart';
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/services/compat/team.dart';
@@ -204,6 +205,12 @@ void _firstImpressionTeamTests() {
     expect(result.mode, TeamChemistryMode.firstImpression);
     final payload = result.toPayload();
     expect(payload['mode'], 'first_impression');
+    expect(payload['modelVersion'], {
+      'impression': kImpressionModelVersion,
+      'pair': kPairModelVersion,
+    });
+    expect(computeTeam(_players(4)).toPayload().containsKey('modelVersion'),
+        isFalse);
     for (final p in (payload['pairs'] as List).cast<Map>()) {
       expect(p.keys.toSet(), {'a', 'b', 'band', 'score', 'sim', 'harm', 'comp'});
       expect(p['score'], inInclusiveRange(0, 300));

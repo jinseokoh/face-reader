@@ -71,7 +71,7 @@
 cd /Users/chuck/Code/face/flutter
 flutter pub get
 flutter analyze          # 0 issues 기대
-flutter test             # 전부 green (2026-09-06 기준 261 test)
+flutter test             # 전부 green (2026-09-06 기준 264 test)
 flutter run --release    # 실기 — iOS 면 measure, Android 면 full 이 자동 (camera/MediaPipe simulator 불가)
 flutter build ipa        # iOS 제출 빌드 — define 불필요
 ```

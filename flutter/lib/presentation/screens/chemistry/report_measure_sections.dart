@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:face_engine/data/constants/face_reference_data.dart';
 import 'package:face_engine/data/constants/impression_evidence.dart';
 import 'package:face_engine/data/constants/metric_quantiles.dart';
+import 'package:face_engine/data/constants/model_version.dart';
 import 'package:face_engine/data/constants/symmetry_reference.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/metric_type.dart';
@@ -233,8 +234,63 @@ class MeasureReportBody extends StatelessWidget {
             ],
           ),
         ),
+        const SizedBox(height: AppSpacing.xl),
+        _title('모델 버전'),
+        const SizedBox(height: AppSpacing.md),
+        _Card(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final e in _modelVersionRows)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                  child: Row(
+                    children: [
+                      Expanded(child: Text(e.key, style: AppText.caption)),
+                      Text(e.value, style: AppText.caption),
+                    ],
+                  ),
+                ),
+              if (_isStaleModel) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  '이 카드는 위 버전으로 계측되었습니다. 화면의 백분위와 첫인상은 '
+                  '현재 모델(${currentModelVersions().values.join(' / ')}) 기준으로 '
+                  '다시 계산한 값이라 계측 당시와 다를 수 있습니다.',
+                  style: AppText.hint,
+                ),
+              ],
+            ],
+          ),
+        ),
       ],
     );
+  }
+
+  static const Map<String, String> _modelVersionLabelKo = {
+    'geometry': '기하학 (계측·대칭·프로필)',
+    'impression': '첫인상 (4축)',
+    'pair': '두 얼굴 (닮은 정도·케미)',
+  };
+
+  /// 카드에 기록된 버전. 기록 전 카드는 현재 버전을 보여주되 "기록 없음" 을 붙인다.
+  List<MapEntry<String, String>> get _modelVersionRows {
+    final stored = report.modelVersion;
+    final current = currentModelVersions();
+    return [
+      for (final e in current.entries)
+        MapEntry(
+          _modelVersionLabelKo[e.key]!,
+          stored == null ? '${e.value} (기록 없음)' : stored[e.key] ?? '—',
+        ),
+    ];
+  }
+
+  bool get _isStaleModel {
+    final stored = report.modelVersion;
+    if (stored == null) return false;
+    final current = currentModelVersions();
+    return current.entries.any((e) => stored[e.key] != e.value);
   }
 
   /// 대칭 계측의 z (비대칭도 기준 — 양수가 더 비대칭).

@@ -1,3 +1,4 @@
+import 'package:face_engine/data/constants/model_version.dart';
 import 'package:face_engine/data/constants/face_reference_data.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/services/compat/compat_adapter.dart';
@@ -231,7 +232,13 @@ class TeamResult {
   /// best 키는 없다 — best = bypass 아닌 첫 쌍 (차단·기채팅 쌍만 bypass: true).
   /// 첫인상 방은 root 에 mode 와 쌍마다 sim·harm·comp 가 붙는다.
   Map<String, dynamic> toPayload() => {
-        if (mode != TeamChemistryMode.physiognomy) 'mode': mode.dbValue,
+        if (mode != TeamChemistryMode.physiognomy) ...{
+          'mode': mode.dbValue,
+          'modelVersion': {
+            'impression': kImpressionModelVersion,
+            'pair': kPairModelVersion,
+          },
+        },
         'players': [
           for (final p in players)
             {'slot': p.slot, 'name': p.name, 'gender': p.gender},

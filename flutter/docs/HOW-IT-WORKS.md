@@ -232,7 +232,7 @@ raw → globalPct = _rawToPercentile(raw, attr, gender)   ← 21-point quantile 
 | alias | body | **column** | 소유자 지정 이름 (내 관상은 nickname 파이프라인) |
 | isMyFace | body | **column `is_my_face`** | 본인 얼굴 플래그 |
 | views / createdAt / updatedAt | ✗ | **column** | 조회수·publish·활동 (updatedAt = 90일 정리 기준) |
-| schemaVersion · demographics · timestamp · source · thumbnailKey · metrics · lateralMetrics · faceShape* | body | body | 분석 payload (z/score 는 load 시 재계산). thumbnailKey = `thumbnails/{owner}/{sha256}.jpg` — 첫 칸이 소유자(탈퇴 시 폴더째 삭제), 로컬 캐시 파일명은 뒤 칸에서 파생 |
+| schemaVersion · demographics · timestamp · source · thumbnailKey · metrics · lateralMetrics · symmetry · modelVersion · faceShape* | body | body | 분석 payload (z/score 는 load 시 재계산). symmetry = 대칭 6 raw, modelVersion = {geometry, impression, pair} (§58, `model_version.dart`). thumbnailKey = `thumbnails/{owner}/{sha256}.jpg` — 첫 칸이 소유자(탈퇴 시 폴더째 삭제), 로컬 캐시 파일명은 뒤 칸에서 파생 |
 
 재계산 흐름 (`fromJsonString()`): raw→z(현재 reference)→age 보정 → lateralFlags →
 scoreTree → deriveAttributeScoresDetailed → normalizeAllScores → classifyArchetype.
@@ -295,6 +295,11 @@ total = clamp(50 + (rawTotal - 50) × 1.4, 5, 99)
 mean|z| → 성별 21-point 분위표(`geometry_profile_quantiles.dart`, AAF 실측)로 백분위 → 점수 = 100 − 백분위
 (평균에 가까울수록 높음) + `symmetry`(전체 대칭, 높을수록 대칭). 리포트 "얼굴 기하학 프로필" 섹션.
 첫인상 축 근거는 §13 문장형 — "{계측}이(가) 높은/낮은 편(±0.5σ)/기준 범위" + 높이는/낮추는 방향.
+
+**모델 버전** (§58·§59, `data/constants/model_version.dart`): geometry · impression · pair 세 문자열. 리포트
+`modelVersion` 과 첫인상 방 payload `modelVersion` 에 기록. 화면은 저장된 z 에 현재 분위표를 다시 적용하므로
+카드 버전 ≠ 현재 버전이면 리포트 "모델 버전" 카드가 알린다. 엔진에 난수 없음 → 같은 입력 = 같은 결과
+(`test/model_version_test.dart` 의 고정값 회귀가 지킨다. 계측 식·reference 를 바꾸면 geometry 버전을 올린다).
 
 두 얼굴 (`analyzePair`): 닮은 정도 = z 벡터 RMS 거리를 `exp(−ln2·d/1.3041)`(무작위 쌍 중앙 거리 = 50점)로,
 영역별(outline·eyes·brows·nose·mouth·jaw) 동일 식 · 첫인상 유사도 = 100 − mean\|Δ\| · 조화도 = mean(max(A,B))

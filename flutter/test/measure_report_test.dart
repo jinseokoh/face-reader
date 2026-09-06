@@ -39,6 +39,7 @@ void main() {
     expect(find.text('얼굴 대칭'), findsNWidgets(2)); // 프로필 행 + 대칭 섹션 행
     expect(find.text('얼굴형'), findsOneWidget);
     expect(find.text('참고 자료'), findsOneWidget);
+    expect(find.text('모델 버전'), findsOneWidget);
     expect(find.text(MeasureReportBody.disclaimer), findsOneWidget);
     // 서술 섹션은 없다.
     expect(find.text('관상 해석'), findsNothing);
