@@ -300,7 +300,11 @@ mean|z| → 성별 21-point 분위표(`geometry_profile_quantiles.dart`, AAF 실
 두 얼굴은 정규화 뒤 [b]를 [a]에 최소제곱 회전으로 맞춘다(`alignFaces`, 영역 RMS 거리 제공). 정규화 좌표는 저장하지
 않는다. `landmarkRegions`/`landmarkContours` 는 MediaPipe 표준 윤곽 인덱스. 화면: 리포트 "얼굴 지도"(§55, 특이점
 3개 영역 강조) · 비교 "두 얼굴 겹쳐 보기"(§24, 닮은 영역 강조) — `widgets/landmark_mesh_painter.dart`.
-닮은 정도 점수는 그대로 z 거리(AAF 보정)다. Procrustes 거리로 바꾸려면 AAF 좌표 재추출·재보정이 필요하다.
+**닮은 정도 = Procrustes 거리** (`computeGeometrySimilarity(landmarksA, landmarksB)`): 정렬 뒤 RMS 거리를
+`100·exp(−ln2·d/median)` 로, median 은 AAF 무작위 쌍 20,000개의 영역별 중앙 거리(`procrustes_reference.dart`,
+overall 0.1105 · 윤곽 0.197 · 눈 0.059 · 눈썹 0.090 · 코 0.106 · 입 0.100 · 턱선 0.213). §25 문구 사분위도 같은 파일.
+AAF 좌표 원본: `tools/face_shape_ml/extract_aaf_landmarks.py` → `out/aaf_landmarks.f32` (11,800×936 float32).
+재생성: `flutter test test/procrustes_calibration_test.dart` (케미 등급 경계도 함께).
 
 **결과 공개 5단계** (§54, measure): 정보 확인의 [확인] 뒤 `AnalysisStageOverlay` 가 얼굴 측정 중 → 얼굴 기하학
 분석 → 첫인상 분석(각 0.8초 최소)을 덮어 보여주고, 정보 확인을 닫으며 바로 `ReportPage` 를 연다(등록 대화상자
@@ -313,15 +317,14 @@ mean|z| → 성별 21-point 분위표(`geometry_profile_quantiles.dart`, AAF 실
 카드 버전 ≠ 현재 버전이면 리포트 "모델 버전" 카드가 알린다. 엔진에 난수 없음 → 같은 입력 = 같은 결과
 (`test/model_version_test.dart` 의 고정값 회귀가 지킨다. 계측 식·reference 를 바꾸면 geometry 버전을 올린다).
 
-두 얼굴 (`analyzePair`): 닮은 정도 = z 벡터 RMS 거리를 `exp(−ln2·d/1.3041)`(무작위 쌍 중앙 거리 = 50점)로,
-영역별(outline·eyes·brows·nose·mouth·jaw) 동일 식 · 첫인상 유사도 = 100 − mean\|Δ\| · 조화도 = mean(max(A,B))
+두 얼굴 (`analyzePair`): 닮은 정도 = 저장 좌표의 Procrustes 거리(위) — 영역별(outline·eyes·brows·nose·mouth·jaw) 동일 식 · 첫인상 유사도 = 100 − mean\|Δ\| · 조화도 = mean(max(A,B))
 (가설 지표) · 보완도 = mean\|Δ\| (매력 제외 3축). **케미 점수 = 조화도 + 보완도 + 닮은 정도 (0~300).**
 영역 닮은 정도 문구(§25, `SimilarityBand`): 무작위 쌍 사분위 `kRegionSimilarityQuartiles` [p75,p50,p25] 기준
 매우 유사 · 유사 · 차이가 있음 · 차이가 큼. 비교 화면은 닮은 부분/다른 부분으로 나눠 보여준다.
 
 **케미 방 mode** (`teams.mode`, 0008): `physiognomy` = §7 궁합 엔진 total(0~100)+4단 등급 ·
-`first_impression` = 위 케미 점수, 등급은 AAF 무작위 쌍 사분위(p75/p50/p25 = 165.8/148.0/131.1),
-차단 상한 131.0. `computeTeam(scoring: TeamScoring.forMode(mode))`. measure 에디션(iOS)은
+`first_impression` = 위 케미 점수, 등급은 AAF 무작위 쌍 사분위(p75/p50/p25 = 170.3/152.4/134.4, Procrustes 닮은 정도 기준),
+차단 상한 134.3. `computeTeam(scoring: TeamScoring.forMode(mode))`. measure 에디션(iOS)은
 `TeamScoring.firstImpression` 만 쓴다 (에디션은 플랫폼 런타임 판정, `core/edition.dart`).
 분위표 재생성: `flutter test test/impression_calibration_test.dart`.
 

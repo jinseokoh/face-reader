@@ -1,4 +1,5 @@
-// 첫인상 4축 분위표·계측 분위표·닮은 정도 거리 상수를 **AAF 11,800장 실측**으로 생성한다.
+// 첫인상 4축 분위표·계측 분위표·기하학 프로필 분위표를 **AAF 11,800장 실측**으로 생성한다.
+// (닮은 정도·케미 등급 경계는 procrustes_calibration_test.dart)
 // 입력: test/support/aaf_faces.dart (26 계측 z + 대칭 symOverall z).
 //
 // 축의 정의(어떤 계측이 어느 부호·비중으로 들어가는가)는 문헌
@@ -7,8 +8,6 @@
 // 실행:
 //   flutter test test/impression_calibration_test.dart --plain-name 'generate'
 // 출력 블록을 shared/lib/data/constants/impression_quantiles.dart 에 붙여넣는다.
-
-import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 
@@ -33,7 +32,7 @@ String _fmt(List<double> q) =>
     '[${q.map((v) => v.toStringAsFixed(3)).join(', ')}]';
 
 void main() {
-  test('generate impression quantiles + geometry distance median', () {
+  test('generate impression quantiles', () {
     final faces = loadAafFaces();
     final ids = metricInfoList.map((m) => m.id).toList();
 
@@ -93,38 +92,6 @@ void main() {
         buf.writeln("    '${e.key}': ${_fmt(_quantiles21(s))},");
       }
       buf.writeln('  },');
-    }
-
-    // 닮은 정도 — 무작위 쌍 20,000개의 거리 중앙값, 영역별 닮은 정도 사분위(§25 문구).
-    final rng = Random(7);
-    final dists = <double>[];
-    final simByRegion = <String, List<double>>{
-      'overall': <double>[],
-      for (final r in geometryRegions.keys) r: <double>[],
-    };
-    for (var i = 0; i < 20000; i++) {
-      final a = faces[rng.nextInt(faces.length)];
-      var b = faces[rng.nextInt(faces.length)];
-      while (identical(a, b)) {
-        b = faces[rng.nextInt(faces.length)];
-      }
-      dists.add(geometryDistance(a.z, b.z, ids));
-      final sim = computeGeometrySimilarity(a.z, b.z, ids);
-      simByRegion['overall']!.add(sim.overall);
-      for (final e in sim.byRegion.entries) {
-        simByRegion[e.key]!.add(e.value);
-      }
-    }
-    dists.sort();
-    final median = dists[dists.length ~/ 2];
-    buf.writeln('// geometry distance median (random pairs, n=20000): '
-        '${median.toStringAsFixed(4)}');
-    buf.writeln('// ── region similarity quartiles [p75, p50, p25] (impression_quantiles.dart) ──');
-    for (final e in simByRegion.entries) {
-      final s = e.value..sort();
-      double q(double p) => s[((s.length - 1) * p).round()];
-      buf.writeln("  '${e.key}': [${q(0.75).toStringAsFixed(1)}, "
-          "${q(0.5).toStringAsFixed(1)}, ${q(0.25).toStringAsFixed(1)}],");
     }
 
     // ignore: avoid_print

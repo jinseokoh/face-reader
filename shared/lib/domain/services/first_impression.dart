@@ -16,9 +16,11 @@ import 'dart:math';
 
 import 'package:face_engine/data/constants/impression_evidence.dart';
 import 'package:face_engine/data/constants/impression_quantiles.dart';
+import 'package:face_engine/data/constants/procrustes_reference.dart';
 import 'package:face_engine/data/constants/symmetry_reference.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/services/impression_features.dart';
+import 'package:face_engine/domain/services/landmark_normalize.dart';
 
 const double _kPrimaryWeight = 1.0;
 const double _kSecondaryWeight = 0.5;
@@ -99,7 +101,8 @@ FirstImpressionProfile computeFirstImpression(
 
 // ─────────────────────────── 두 얼굴 ───────────────────────────
 
-/// 닮은 정도의 영역 분할 — 계측 id 그룹. 부분 점수와 전체 점수가 같은 식.
+/// 계측의 영역 분할 — 기하학 프로필(§7)과 얼굴 지도 강조에 쓴다. 키는
+/// `landmarkRegions` 와 같다.
 const Map<String, List<String>> geometryRegions = {
   'outline': [
     'faceAspectRatio',
@@ -132,30 +135,10 @@ const Map<String, List<String>> geometryRegions = {
   'jaw': ['gonialAngle', 'chinAngle', 'lowerFaceRatio', 'upperFaceRatio'],
 };
 
-/// z 벡터의 RMS 거리. 두 얼굴에 모두 있는 계측만 센다.
-double geometryDistance(
-  Map<String, double> zA,
-  Map<String, double> zB,
-  Iterable<String> ids,
-) {
-  var sum = 0.0;
-  var n = 0;
-  for (final id in ids) {
-    final a = zA[id];
-    final b = zB[id];
-    if (a == null || b == null) continue;
-    final d = a - b;
-    sum += d * d;
-    n++;
-  }
-  if (n == 0) return 0;
-  return sqrt(sum / n);
-}
-
-/// 거리 → 0~100 닮은 정도. AAF 무작위 쌍의 중앙 거리가 50점이 되도록
-/// 지수 감쇠(`kGeometryDistanceMedian`, 실측 상수).
-double similarityFromDistance(double d) =>
-    100 * exp(-ln2 * d / kGeometryDistanceMedian);
+/// 거리 → 0~100 닮은 정도. AAF 무작위 쌍의 중앙 거리가 50점이 되도록 영역마다
+/// 지수 감쇠(`kProcrustesDistanceMedian`, 실측 상수).
+double similarityFromDistance(double d, String region) =>
+    100 * exp(-ln2 * d / kProcrustesDistanceMedian[region]!);
 
 /// 닮은 정도 → 문구 (§25). 경계는 AAF 무작위 쌍의 사분위
 /// (`kRegionSimilarityQuartiles`): p75 이상 매우 유사 · p50 이상 유사 ·
@@ -188,18 +171,20 @@ class GeometrySimilarity {
   const GeometrySimilarity({required this.overall, required this.byRegion});
 }
 
+/// 두 얼굴의 저장 좌표(468×[x,y]) → 정규화·Procrustes 정렬(§5) → 영역별 RMS
+/// 거리 → 닮은 정도. 영역은 `landmarkRegions`(윤곽·눈·눈썹·코·입·턱선).
 GeometrySimilarity computeGeometrySimilarity(
-  Map<String, double> zA,
-  Map<String, double> zB,
-  Iterable<String> referenceMetricIds,
+  List<List<double>> landmarksA,
+  List<List<double>> landmarksB,
 ) {
-  final overall =
-      similarityFromDistance(geometryDistance(zA, zB, referenceMetricIds));
-  final byRegion = <String, double>{
-    for (final e in geometryRegions.entries)
-      e.key: similarityFromDistance(geometryDistance(zA, zB, e.value)),
-  };
-  return GeometrySimilarity(overall: overall, byRegion: byRegion);
+  final aligned = alignFaces(landmarksA, landmarksB);
+  return GeometrySimilarity(
+    overall: similarityFromDistance(aligned.distance, 'overall'),
+    byRegion: {
+      for (final r in landmarkRegions.keys)
+        r: similarityFromDistance(aligned.regionDistance(r), r),
+    },
+  );
 }
 
 /// 첫인상 유사도 — 매력 제외 3축 백분위 차이의 평균을 100 에서 뺀 값.
@@ -252,14 +237,13 @@ class PairAnalysis {
 }
 
 PairAnalysis analyzePair({
-  required Map<String, double> zA,
+  required List<List<double>> landmarksA,
   required FirstImpressionProfile profileA,
-  required Map<String, double> zB,
+  required List<List<double>> landmarksB,
   required FirstImpressionProfile profileB,
-  required Iterable<String> referenceMetricIds,
 }) {
   return PairAnalysis(
-    similarity: computeGeometrySimilarity(zA, zB, referenceMetricIds),
+    similarity: computeGeometrySimilarity(landmarksA, landmarksB),
     impressionSimilarity: impressionSimilarity(profileA, profileB),
     harmony: harmony(profileA, profileB),
     complementarity: complementarity(profileA, profileB),

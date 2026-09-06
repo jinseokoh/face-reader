@@ -223,7 +223,7 @@ void _firstImpressionTeamTests() {
     }
   });
 
-  test('첫인상 차단 — 상한은 p25 바로 아래(131.0), 등급은 최하(3)', () {
+  test('첫인상 차단 — 상한은 p25 바로 아래(kTeamBlockCapFirstImpression), 등급은 최하(3)', () {
     final players = _players(6);
     final open = computeTeam(players, scoring: TeamScoring.firstImpression);
     final key = teamPairKey(open.best.a, open.best.b);

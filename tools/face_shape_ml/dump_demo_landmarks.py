@@ -10,7 +10,7 @@ import numpy as np
 from mediapipe.tasks import python as mp_python
 from mediapipe.tasks.python import vision as mp_vision
 
-from extract_aaf import IMG_DIR, OUT, YAW_MAX, PITCH_MAX, gender_of, yaw_pitch_from_matrix
+from extract_aaf import IMG_DIR, OUT, YAW_MAX, PITCH_MAX, FNAME_RE, gender_of, yaw_pitch_from_matrix
 from extract_landmarks import MODEL_PATH
 
 
@@ -26,6 +26,9 @@ def main():
         g = gender_of(f.stem)
         if g is None or g in out:
             continue
+        age = int(FNAME_RE.match(f.stem).group(2))
+        if not 25 <= age <= 35:  # 성인 얼굴만 — 데모 카드·픽스처
+            continue
         img = cv2.imread(str(f))
         if img is None:
             continue
@@ -38,7 +41,7 @@ def main():
             continue
         aspect = h / w
         out[g] = [[round(p.x, 4), round(p.y * aspect, 4)] for p in res.face_landmarks[0][:468]]  # tasks API 는 478(홍채 10 포함) — 앱은 468
-        print(f"{g}: {f.name} {w}x{h} yaw={yaw:.1f} pitch={pitch:.1f}")
+        print(f"{g}: {f.name} age={age} {w}x{h} yaw={yaw:.1f} pitch={pitch:.1f}")
         if len(out) == 2:
             break
     (OUT / "demo_landmarks.json").write_text(json.dumps(out))

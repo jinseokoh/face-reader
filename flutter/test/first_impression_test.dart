@@ -10,6 +10,8 @@ import 'package:face_engine/domain/services/first_impression.dart';
 import 'package:face_engine/domain/services/impression_features.dart';
 
 import 'support/aaf_faces.dart';
+import 'support/aaf_landmarks.dart';
+import 'support/demo_landmarks.dart';
 
 void main() {
   final ids = metricInfoList.map((m) => m.id).toList();
@@ -96,11 +98,12 @@ void main() {
       });
     }
 
-    test('무작위 쌍의 닮은 정도 중앙값이 50 근처', () {
+    test('무작위 쌍의 닮은 정도 중앙값이 50 근처 (Procrustes, AAF 좌표)', () {
+      final lms = loadAafLandmarks();
       final sims = <double>[];
-      for (var i = 0; i + 1 < faces.length && i < 4000; i += 2) {
-        sims.add(
-            computeGeometrySimilarity(faces[i].z, faces[i + 1].z, ids).overall);
+      for (var i = 0; i + 1 < lms.length && i < 4000; i += 2) {
+        sims.add(computeGeometrySimilarity(lms[i].points, lms[i + 1].points)
+            .overall);
       }
       sims.sort();
       expect(sims[sims.length ~/ 2], closeTo(50, 4));
@@ -113,10 +116,12 @@ void main() {
     final b = faces[1];
     final pa = computeFirstImpression(a.z, gender: a.gender, referenceMetricIds: ids);
     final pb = computeFirstImpression(b.z, gender: b.gender, referenceMetricIds: ids);
+    final lmA = demoLandmarks(Gender.male);
+    final lmB = demoLandmarks(Gender.female);
 
     test('같은 얼굴: 닮음 100 · 유사도 100 · 보완 0 · 조화 = 축 평균', () {
       final r = analyzePair(
-          zA: a.z, profileA: pa, zB: a.z, profileB: pa, referenceMetricIds: ids);
+          landmarksA: lmA, profileA: pa, landmarksB: lmA, profileB: pa);
       expect(r.similarity.overall, closeTo(100, 1e-9));
       for (final v in r.similarity.byRegion.values) {
         expect(v, closeTo(100, 1e-9));
@@ -131,7 +136,7 @@ void main() {
 
     test('다른 얼굴: 범위와 합 관계, 매력 축은 두 얼굴 지표에 안 들어간다', () {
       final r = analyzePair(
-          zA: a.z, profileA: pa, zB: b.z, profileB: pb, referenceMetricIds: ids);
+          landmarksA: lmA, profileA: pa, landmarksB: lmB, profileB: pb);
       expect(r.similarity.overall, inInclusiveRange(0, 100));
       expect(r.impressionSimilarity, inInclusiveRange(0, 100));
       expect(r.harmony, inInclusiveRange(0, 100));

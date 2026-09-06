@@ -53,10 +53,10 @@ enum TeamChemistryMode {
 const double kTeamBlockCap = 60.0;
 
 /// 첫인상 케미 등급 경계 — AAF 11,800장 무작위 쌍 20,000개의 케미 합
-/// (조화도+보완도+닮은 정도) 분포에서 p75 / p50 / p25. 위에서부터 band 0~3.
-/// 재생성: 무작위 쌍 분위(seed 11). 차단 상한은 p25 바로 아래 — 최하 등급 확정.
-const List<double> kFirstImpressionBandCuts = [165.8, 148.0, 131.1];
-const double kTeamBlockCapFirstImpression = 131.0;
+/// (조화도+보완도+닮은 정도(Procrustes)) 분포에서 p75 / p50 / p25. 위에서부터 band 0~3.
+/// 재생성: flutter test test/procrustes_calibration_test.dart. 차단 상한은 p25 바로 아래.
+const List<double> kFirstImpressionBandCuts = [170.3, 152.4, 134.4];
+const double kTeamBlockCapFirstImpression = 134.3;
 
 /// 무방향 쌍의 정규화 키 — blocked·chatted 집합·조회 공용.
 String teamPairKey(int a, int b) => a < b ? '$a-$b' : '$b-$a';
@@ -148,11 +148,10 @@ TeamPairScore _firstImpressionPairScore(
       referenceMetricIds: _referenceIds,
       symmetryZ: symmetryOverallZ(b.symmetry, b.gender));
   final pair = analyzePair(
-    zA: zA,
+    landmarksA: a.landmarks,
     profileA: pa,
-    zB: zB,
+    landmarksB: b.landmarks,
     profileB: pb,
-    referenceMetricIds: _referenceIds,
   );
   return TeamPairScore(
     total: pair.chemistry,
