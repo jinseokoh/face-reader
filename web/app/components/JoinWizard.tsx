@@ -583,8 +583,9 @@ export function JoinWizard({
       const symmetry = JSON.parse(
         globalThis.runSymmetry(JSON.stringify(points), aspect),
       ) as Record<string, number>
+      const r4 = (v: number) => Math.round(v * 10000) / 10000
       body = {
-        schemaVersion: 1,
+        schemaVersion: 2,
         ethnicity,
         gender,
         ageGroup: age,
@@ -596,6 +597,7 @@ export function JoinWizard({
           string,
           string
         >,
+        landmarks: points.map((p) => [r4(p[0]), r4(p[1] * aspect)]),
         lateralMetrics: null,
         faceShape: 'oval',
       }

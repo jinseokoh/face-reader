@@ -232,7 +232,7 @@ raw → globalPct = _rawToPercentile(raw, attr, gender)   ← 21-point quantile 
 | alias | body | **column** | 소유자 지정 이름 (내 관상은 nickname 파이프라인) |
 | isMyFace | body | **column `is_my_face`** | 본인 얼굴 플래그 |
 | views / createdAt / updatedAt | ✗ | **column** | 조회수·publish·활동 (updatedAt = 90일 정리 기준) |
-| schemaVersion · demographics · timestamp · source · thumbnailKey · metrics · lateralMetrics · symmetry · modelVersion · faceShape* | body | body | 분석 payload (z/score 는 load 시 재계산). symmetry = 대칭 6 raw, modelVersion = {geometry, impression, pair} (§58, `model_version.dart`). thumbnailKey = `thumbnails/{owner}/{sha256}.jpg` — 첫 칸이 소유자(탈퇴 시 폴더째 삭제), 로컬 캐시 파일명은 뒤 칸에서 파생 |
+| schemaVersion(=2) · demographics · timestamp · source · thumbnailKey · metrics · lateralMetrics · symmetry · modelVersion · landmarks · lateralLandmarks · faceShape* | body | body | 분석 payload (z/score 는 load 시 재계산). symmetry = 대칭 6 raw, modelVersion = {geometry, impression, pair} (§58). landmarks = 정면 468×[x,y] 등방 원본 좌표 소수 4자리(스키마 2 필수, 없으면 폐기), lateralLandmarks = 측면(선택). 계측이 늘거나 바뀌면 여기서 다시 계산한다. thumbnailKey = `thumbnails/{owner}/{sha256}.jpg` — 첫 칸이 소유자(탈퇴 시 폴더째 삭제), 로컬 캐시 파일명은 뒤 칸에서 파생 |
 
 재계산 흐름 (`fromJsonString()`): raw→z(현재 reference)→age 보정 → lateralFlags →
 scoreTree → deriveAttributeScoresDetailed → normalizeAllScores → classifyArchetype.
@@ -295,6 +295,12 @@ total = clamp(50 + (rawTotal - 50) × 1.4, 5, 99)
 mean|z| → 성별 21-point 분위표(`geometry_profile_quantiles.dart`, AAF 실측)로 백분위 → 점수 = 100 − 백분위
 (평균에 가까울수록 높음) + `symmetry`(전체 대칭, 높을수록 대칭). 리포트 "얼굴 기하학 프로필" 섹션.
 첫인상 축 근거는 §13 문장형 — "{계측}이(가) 높은/낮은 편(±0.5σ)/기준 범위" + 높이는/낮추는 방향.
+
+**정규화·Procrustes** (§5, `domain/services/landmark_normalize.dart`): 저장 좌표 → 무게중심 0 · RMS 1 · 눈꼬리(33→263) 수평.
+두 얼굴은 정규화 뒤 [b]를 [a]에 최소제곱 회전으로 맞춘다(`alignFaces`, 영역 RMS 거리 제공). 정규화 좌표는 저장하지
+않는다. `landmarkRegions`/`landmarkContours` 는 MediaPipe 표준 윤곽 인덱스. 화면: 리포트 "얼굴 지도"(§55, 특이점
+3개 영역 강조) · 비교 "두 얼굴 겹쳐 보기"(§24, 닮은 영역 강조) — `widgets/landmark_mesh_painter.dart`.
+닮은 정도 점수는 그대로 z 거리(AAF 보정)다. Procrustes 거리로 바꾸려면 AAF 좌표 재추출·재보정이 필요하다.
 
 **결과 공개 5단계** (§54, measure): 정보 확인의 [확인] 뒤 `AnalysisStageOverlay` 가 얼굴 측정 중 → 얼굴 기하학
 분석 → 첫인상 분석(각 0.8초 최소)을 덮어 보여주고, 정보 확인을 닫으며 바로 `ReportPage` 를 연다(등록 대화상자

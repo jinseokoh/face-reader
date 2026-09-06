@@ -11,6 +11,7 @@ import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/services/archetype.dart';
 import 'package:face_engine/data/enums/attribute.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'support/demo_landmarks.dart';
 
 void main() {
   test('slim-capture round-trip: 3 generations parse OK', () {
@@ -34,6 +35,7 @@ void main() {
       timestamp: DateTime(2026, 4, 19),
       source: AnalysisSource.album,
       supabaseId: 'test-uuid',
+      landmarks: demoLandmarks(Gender.female),
       metrics: metrics,
       nodeScores: const {},
       attributes: const {},

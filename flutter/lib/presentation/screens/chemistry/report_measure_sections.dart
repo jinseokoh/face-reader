@@ -10,12 +10,14 @@ import 'package:face_engine/data/enums/metric_type.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/services/first_impression.dart';
 import 'package:face_engine/domain/services/geometry_profile.dart';
+import 'package:face_engine/domain/services/landmark_normalize.dart';
 import 'package:face_engine/domain/services/impression_features.dart';
 import 'package:face_engine/domain/services/symmetry_metrics.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/storage/thumbnail_paths.dart';
 import '../../../core/theme.dart';
+import '../../widgets/landmark_mesh_painter.dart';
 
 /// measure 에디션(iOS v1) 리포트 본문 — APPLE.md §2.2.1 백분위·희귀도 리포트.
 ///
@@ -113,6 +115,26 @@ class MeasureReportBody extends StatelessWidget {
                     score: profileScores[id]!,
                   ),
             ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        _title('얼굴 지도'),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          '위치·크기·기울기를 뺀 내 얼굴의 형태입니다. 평균에서 가장 먼 3개 계측이 '
+          '속한 영역을 진하게 표시합니다.',
+          style: AppText.hint,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        _Card(
+          child: AspectRatio(
+            aspectRatio: 1,
+            child: CustomPaint(
+              painter: LandmarkMeshPainter(
+                a: normalizeLandmarks(report.landmarks),
+                highlight: _regionsOf(_rankByAbsZ(z, descending: true).take(3)),
+              ),
+            ),
           ),
         ),
         const SizedBox(height: AppSpacing.xl),
@@ -335,6 +357,13 @@ class MeasureReportBody extends StatelessWidget {
       ),
     );
   }
+
+  /// 계측 id → 속한 영역 (`geometryRegions`). 얼굴 지도 강조용.
+  Set<String> _regionsOf(Iterable<String> metricIds) => {
+        for (final id in metricIds)
+          for (final e in geometryRegions.entries)
+            if (e.value.contains(id)) e.key,
+      };
 
   /// |z| 순 정렬된 계측 id.
   Iterable<String> _rankByAbsZ(Map<String, double> z, {required bool descending}) {

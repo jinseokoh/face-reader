@@ -18,6 +18,7 @@ import 'package:face_engine/domain/services/archetype.dart';
 import 'package:face_engine/domain/services/physiognomy_scoring.dart';
 import 'package:facely/domain/models/team.dart';
 import 'package:facely/domain/services/mc_fixtures.dart';
+import 'support/demo_landmarks.dart';
 
 double _normal(Random rng) {
   double u1, u2;
@@ -80,6 +81,7 @@ FaceReadingReport _fakeReport(Random rng) {
     timestamp: DateTime(2026, 7, 16),
     source: AnalysisSource.album,
     metrics: metrics,
+    landmarks: demoLandmarks(Gender.female),
     lateralMetrics: null,
     lateralFlags: const {},
     nodeScores: nodeScores,

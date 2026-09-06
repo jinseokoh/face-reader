@@ -55,6 +55,7 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('케미 점수의 세 성분'), findsOneWidget);
     expect(find.text('영역별 닮은 정도'), findsOneWidget);
+    expect(find.text('두 얼굴 겹쳐 보기'), findsOneWidget);
     // §25 — 영역 6개 전부 닮은/다른 부분 중 한쪽에 문구와 함께 나온다.
     final phrases = [
       for (final b in SimilarityBand.values) find.text(b.labelKo).evaluate().length,

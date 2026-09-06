@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 /** 웹 캡처 body — 앱 FaceReadingReport.toBodyJson() 과 동일 키 계약. */
 export type WebCaptureBody = {
-  schemaVersion: 1;
+  schemaVersion: 2;
   /** Ethnicity enum name — 정보 확인에서 사용자가 선택 (default eastAsian). */
   ethnicity: string;
   gender: string;
@@ -15,6 +15,8 @@ export type WebCaptureBody = {
   symmetry?: Record<string, number>;
   /** 계산에 쓴 모델 버전 {geometry, impression, pair} (§58). */
   modelVersion?: Record<string, string>;
+  /** 정면 468 랜드마크 [x, y] — 등방 원본 좌표(y × 높이/폭), 소수 4자리. 앱과 같은 형식. */
+  landmarks: number[][];
   lateralMetrics: null;
   faceShape: "oval";
 };

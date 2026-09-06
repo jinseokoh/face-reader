@@ -10,6 +10,13 @@ export interface RawMetrics {
   lateralMetrics?: Record<string, number>;
   faceShapeLabel?: string;
   faceShape: string;
+  /** 좌우 대칭 6개 (symmetry_metrics.dart). */
+  symmetry?: Record<string, number>;
+  /** 계산에 쓴 모델 버전 {geometry, impression, pair} (§58). */
+  modelVersion?: Record<string, string>;
+  /** 정면 468 랜드마크 [x, y] — 등방 원본 좌표, 소수 4자리. 스키마 2 필수. */
+  landmarks: number[][];
+  lateralLandmarks?: number[][];
 }
 
 export interface MetricsRow {

@@ -4,11 +4,13 @@ import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/domain/models/face_reading_report.dart';
 import 'package:face_engine/domain/services/first_impression.dart';
+import 'package:face_engine/domain/services/landmark_normalize.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/storage/thumbnail_paths.dart';
 import '../../../core/theme.dart';
+import '../../widgets/landmark_mesh_painter.dart';
 import '../../../domain/services/pair_score.dart';
 import '../../widgets/detail_avatar.dart';
 import '../../widgets/source_badge.dart';
@@ -51,6 +53,8 @@ class MeasurePairBody extends StatelessWidget {
       for (final e in regions.reversed)
         if (!similarityBandOf(e.key, e.value).isSimilar) e,
     ];
+    // §24 — 정규화 + Procrustes 정렬 (저장된 원본 좌표에서 계산).
+    final aligned = alignFaces(my.landmarks, album.landmarks);
     final pa = impressionOf(my);
     final pb = impressionOf(album);
     final myAlias = my.alias ?? '나';
@@ -77,6 +81,40 @@ class MeasurePairBody extends StatelessWidget {
               _ScoreRow(label: '닮은 정도', value: pair.similarity.overall),
               const Divider(height: AppSpacing.xl),
               _ScoreRow(label: '첫인상 유사도', value: pair.impressionSimilarity),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        _title('두 얼굴 겹쳐 보기'),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          '두 얼굴에서 위치·크기·기울기를 빼고 겹친 모습입니다. 닮은 부분으로 '
+          '분류된 영역을 진하게 표시합니다.',
+          style: AppText.hint,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        _Card(
+          child: Column(
+            children: [
+              AspectRatio(
+                aspectRatio: 1,
+                child: CustomPaint(
+                  painter: LandmarkMeshPainter(
+                    a: aligned.a,
+                    b: aligned.bAligned,
+                    highlight: {for (final e in similarRegions) e.key},
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _LegendDot(color: AppColors.gold, label: myAlias),
+                  const SizedBox(width: AppSpacing.xl),
+                  _LegendDot(color: AppColors.info, label: albumAlias),
+                ],
+              ),
             ],
           ),
         ),
@@ -224,6 +262,26 @@ class _Card extends StatelessWidget {
           border: Border.all(color: AppColors.shell),
         ),
         child: child,
+      );
+}
+
+class _LegendDot extends StatelessWidget {
+  final Color color;
+  final String label;
+  const _LegendDot({required this.color, required this.label});
+
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Text(label, style: AppText.caption),
+        ],
       );
 }
 

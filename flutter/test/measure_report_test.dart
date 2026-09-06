@@ -32,6 +32,7 @@ void main() {
     expect(find.text('신뢰감 있는 인상'), findsNWidgets(2)); // 프로필 행 + 근거 카드
     expect(find.text('매력적인 인상'), findsNWidgets(2));
     expect(find.text('얼굴 기하학 프로필'), findsOneWidget);
+    expect(find.text('얼굴 지도'), findsOneWidget);
     expect(find.text('턱선'), findsOneWidget);
     expect(find.textContaining('이(가)'), findsWidgets); // §13 특징 문장
     expect(find.text('내 얼굴의 특이점'), findsOneWidget);

@@ -6,7 +6,7 @@
 
 | 구분 | 항목                                                                              |
 | ---- | --------------------------------------------------------------------------------- |
-| 필수 | 얼굴 사진, 안면 계측값 (얼굴 랜드마크 기반 수치), 사진 기반 추정 성별·연령대·인종 |
+| 필수 | 얼굴 사진, 얼굴 특징점 좌표 (랜드마크 468점), 안면 계측값 (좌표에서 계산한 수치), 사진 기반 추정 성별·연령대·인종 |
 | 선택 | 닉네임, 이메일 (계정 연동 시), 결제 정보 (인앱 결제 시), 채팅 메시지 (매칭 채팅 이용 시) |
 | 자동 | 기기 식별자, 광고 식별자, OS 버전, 앱 사용 로그, IP 주소                          |
 
@@ -17,7 +17,8 @@
 ### 2.1 수집하는 얼굴 데이터
 
 - **얼굴 사진**: 카메라로 촬영하거나 앨범에서 선택한 정면 사진
-- **안면 계측값**: 이용자 기기 안에서 얼굴 랜드마크(468점)를 검출한 뒤 계산한 비율·각도·좌우 대칭 정도 등의 수치. 랜드마크 좌표 자체는 저장하지 않습니다.
+- **얼굴 특징점 좌표**: 이용자 기기 안에서 검출한 얼굴 랜드마크 468점의 위치 좌표. 사진 자체가 아니라 눈·코·입·윤곽의 위치를 나타내는 숫자이며, 계측값을 다시 계산하고 두 얼굴을 겹쳐 비교하는 데 씁니다.
+- **안면 계측값**: 위 좌표에서 계산한 비율·각도·좌우 대칭 정도 등의 수치.
 - **사진 기반 추정 범주**: 사진에서 추정한 성별·연령대·인종의 범주값
 - **첫인상 지표**: 안면 계측값에서 공개 학술연구의 관계식으로 계산한 파생값(신뢰감·친근함·주도성·매력적인 인상의 상대 위치). 사진이나 좌표가 아니라 계측값에서 계산된 숫자이며, 분석 기록에 함께 저장됩니다.
 - **얼굴 썸네일**: 결과 구분과 기록 확인을 위한 200×200 저해상도 얼굴 이미지 1장
@@ -35,8 +36,8 @@
 - 랜드마크 검출과 계측값 계산은 이용자 기기 안에서 이루어집니다.
 - 성별·연령대·인종 추정을 위해 축소본(긴 변 720px)이 서비스 운영자가 운영하는 분석 서버로 전송되며, 추정이 끝나면 즉시 삭제됩니다. 전송 과정에서 Cloudflare R2 임시 저장소를 거치며, 미처리 파일도 1일 내 자동 삭제됩니다.
 - 원본 사진은 서버에 저장하지 않습니다.
-- 분석 기록을 저장하면 안면 계측값·추정 범주는 Supabase 데이터베이스에, 얼굴 썸네일은 Cloudflare R2에 저장됩니다. 썸네일은 추측할 수 없는 주소로만 접근되며 검색엔진 색인을 차단합니다. Supabase·Cloudflare는 해외 사업자로 서버가 국외에 위치할 수 있습니다.
-- 이용자 기기 안에는 안면 계측값과 썸네일이 저장되며, 이용자가 기록을 삭제하거나 앱을 삭제하면 사라집니다.
+- 분석 기록을 저장하면 얼굴 특징점 좌표·안면 계측값·추정 범주는 Supabase 데이터베이스에, 얼굴 썸네일은 Cloudflare R2에 저장됩니다. 썸네일은 추측할 수 없는 주소로만 접근되며 검색엔진 색인을 차단합니다. Supabase·Cloudflare는 해외 사업자로 서버가 국외에 위치할 수 있습니다.
+- 이용자 기기 안에는 얼굴 특징점 좌표·안면 계측값과 썸네일이 저장되며, 이용자가 기록을 삭제하거나 앱을 삭제하면 사라집니다.
 
 ### 2.4 제3자 제공 및 다른 이용자에게의 공개
 
@@ -47,16 +48,16 @@
 ### 2.5 보유 기간과 삭제
 
 - **얼굴 사진 원본·분석용 축소본**: 추정 완료 즉시 삭제, 미처리 파일은 1일 내 자동 삭제
-- **안면 계측값·추정 범주·첫인상 지표·얼굴 썸네일**: 회원 탈퇴 시 삭제. 비로그인 기록은 90일 미활동 시 자동 삭제
+- **얼굴 특징점 좌표·안면 계측값·추정 범주·첫인상 지표·얼굴 썸네일**: 회원 탈퇴 시 삭제. 비로그인 기록은 90일 미활동 시 자동 삭제
 - **케미 그룹의 얼굴 데이터**: 그룹 종료 후 30일이 지나면 자동 삭제
 - **다른 이용자가 코인으로 해제한 궁합 결과에 포함된 썸네일 사본**: 그 구매자의 콘텐츠로 남으며, 그 구매자가 탈퇴할 때 삭제
 - 이용자는 앱의 설정 화면에서 회원 탈퇴로 얼굴 데이터를 포함한 모든 데이터를 즉시 삭제할 수 있으며, [/contact](/contact) 페이지에서도 삭제를 요청할 수 있습니다.
 
 ### 2.6 Face Data (English summary of this section)
 
-- **Collected**: a front-facing photo (camera or album); facial measurements (ratios and angles computed on the device from 468 face landmarks; landmark coordinates themselves are not stored); estimated gender, age group and ethnicity categories; first-impression indicators (numbers derived from the measurements using relationships reported in published research — relative positions for trustworthy, approachable, dominant and attractive impressions — stored with the record); one 200×200 low-resolution face thumbnail.
+- **Collected**: a front-facing photo (camera or album); the positions of 468 face landmarks detected on the device (numbers describing where the eyes, nose, mouth and outline are — not the photo itself); facial measurements (ratios, angles and symmetry computed from those landmarks); estimated gender, age group and ethnicity categories; first-impression indicators (numbers derived from the measurements using relationships reported in published research — relative positions for trustworthy, approachable, dominant and attractive impressions — stored with the record); one 200×200 low-resolution face thumbnail.
 - **Use**: generating the user's own face-reading result, computing compatibility between two people, and computing pairwise compatibility within a chemistry group; computing first-impression indicators, comparing two faces (similarity, harmony, complementarity) and first-impression chemistry within a group; telling results apart in history, share cards and group rooms. The app does not perform facial recognition or identification, does not match faces against any database, does not access Face ID or other biometric authentication data, and does not use face data for advertising, profiling, training datasets, or sale. First-impression indicators describe where a face shape sits within a reference population; they do not assess the user's actual personality, ability or disposition and do not track behavior.
-- **Processing and storage**: landmark detection and measurement run on the device. A downscaled copy (720px long side) is sent to a server operated by the service provider to estimate gender, age group and ethnicity, and is deleted immediately after estimation (unprocessed files are auto-deleted within 1 day). Original photos are not stored on any server. When a record is saved, measurements and estimated categories are stored in a Supabase database and the thumbnail in Cloudflare R2, behind an unguessable URL with search-engine indexing blocked. Supabase and Cloudflare are non-Korean providers and may store data outside Korea.
+- **Processing and storage**: landmark detection and measurement run on the device. A downscaled copy (720px long side) is sent to a server operated by the service provider to estimate gender, age group and ethnicity, and is deleted immediately after estimation (unprocessed files are auto-deleted within 1 day). Original photos are not stored on any server. When a record is saved, landmark coordinates, measurements and estimated categories are stored in a Supabase database and the thumbnail in Cloudflare R2, behind an unguessable URL with search-engine indexing blocked. Supabase and Cloudflare are non-Korean providers and may store data outside Korea.
 - **Sharing**: face data is not sold or provided to third parties. Processors listed in Section 6 store or transmit data on our behalf only. Thumbnails and results become visible to other users only through the user's own actions: recipients of a share link, members of a chemistry group the user joined, and a user who unlocked a compatibility result with the user's photo. Joining a group asks for confirmation of photo visibility beforehand.
 - **Retention and deletion**: originals and analysis copies are deleted immediately after estimation; measurements, categories, first-impression indicators and thumbnails are deleted on account deletion, and records made without an account are auto-deleted after 90 days of inactivity; chemistry group data is auto-deleted 30 days after the group ends; a thumbnail copy inside a compatibility result another user paid to unlock remains as that buyer's content until the buyer deletes their account. Users can delete their account and all data in the app's Settings screen, or request deletion at [/contact](/contact).
 
@@ -128,4 +129,4 @@
 - 2026-05-25 — 최초 제정
 - 2026-07-29 — 보유 기간 구체화 (비로그인 90일 자동 삭제, 케미 그룹 30일 자동 삭제), 수집 항목(안면 계측값·광고 식별자·채팅 메시지) 및 수탁자(Google AdMob·Kakao) 현행화, 가입 연령 만 18세 이상으로 상향
 - 2026-09-05 — 얼굴 데이터의 처리 조항(제2조) 신설: 수집 항목·처리 위치·다른 이용자에게의 공개·보유 기간·삭제 방법을 한 곳에 명시, 영문 요약 추가
-- 2026-09-06 — 얼굴 데이터 조항에 첫인상 지표(계측값에서 계산한 파생값) 항목·목적·보유 기간을 추가하고, 프로파일링이 아님을 명시. 안면 계측값에 좌우 대칭 정도를 포함
+- 2026-09-06 — 얼굴 데이터 조항에 첫인상 지표(계측값에서 계산한 파생값) 항목·목적·보유 기간을 추가하고, 프로파일링이 아님을 명시. 안면 계측값에 좌우 대칭 정도를 포함. 얼굴 특징점 좌표(468점)를 수집 항목에 추가하고 저장 위치·보유 기간에 반영 (이전 문구 "랜드마크 좌표 자체는 저장하지 않습니다" 삭제)

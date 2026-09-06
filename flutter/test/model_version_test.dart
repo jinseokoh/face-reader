@@ -18,6 +18,7 @@ import 'package:face_engine/domain/services/first_impression.dart';
 import 'package:face_engine/domain/services/symmetry_metrics.dart';
 import 'package:facely/domain/services/face_metrics.dart';
 
+import 'support/demo_landmarks.dart';
 import 'support/fake_report.dart';
 
 /// 결정적 합성 얼굴 468점 (face_metrics_isotropy_test 와 같은 식).
@@ -72,5 +73,26 @@ void main() {
     expect(stamped.modelVersion, equals(currentModelVersions()));
     expect(FaceReadingReport.fromJsonString(stamped.toJsonString()).modelVersion,
         equals(currentModelVersions()));
+  });
+
+  test('§75 통합 — 저장 좌표 → 계측 → 대칭 → 첫인상 → 리포트 왕복', () {
+    final pts = demoLandmarks(Gender.female);
+    final lms = [for (final p in pts) FaceMeshLandmark(x: p[0], y: p[1], z: 0)];
+    final m = FaceMetrics(lms).computeAll();
+    expect(m.length, 28);
+    final sym = computeSymmetry(pts);
+    expect(sym['symOverall'], inInclusiveRange(0, 0.2));
+    final z = {for (final id in ids) id: 0.0};
+    final p = computeFirstImpression(z,
+        gender: Gender.female,
+        referenceMetricIds: ids,
+        symmetryZ: symmetryOverallZ(sym, Gender.female));
+    for (final a in p.percentile.values) {
+      expect(a, inInclusiveRange(0, 100));
+    }
+    final r = fakeReport(Random(9), gender: Gender.female, age: AgeGroup.values[1]);
+    final back = FaceReadingReport.fromJsonString(r.toBodyJson());
+    expect(back.landmarks.length, 468);
+    expect(back.landmarks[152], r.landmarks[152]);
   });
 }

@@ -62,7 +62,7 @@
 
 - **OG meta 는 SSR 강제** — 카톡 크롤러는 JS 실행 안 함. 메타 데이터는 `route.meta` export 에만.
 - **Worker 가 R2 객체를 read/write 하지 않음** — presign 발급만 (`/api/r2/presign`).
-- **시스템 안 PII 의 실질 보관소는 R2 `thumbnails/{owner}/` 한 곳** (200² 얼굴 = PII). unguessable-URL access control. Supabase 행은 비-PII (정규화 카테고리·rawValue·thumbnailKey 포인터). 즉 "Supabase 엔 PII 없음" 은 사실이지만 **시스템 전체에 PII 없음 ≠ 사실** — §12 Privacy 참조. landmark 좌표·alias·사용자 이름·생년월일은 어떤 store 에도 안 들어감.
+- **시스템 안 PII 의 실질 보관소는 R2 `thumbnails/{owner}/` 한 곳** (200² 얼굴 = PII). unguessable-URL access control. Supabase 행은 비-PII (정규화 카테고리·rawValue·thumbnailKey 포인터). 즉 "Supabase 엔 PII 없음" 은 사실이지만 **시스템 전체에 PII 없음 ≠ 사실** — §12 Privacy 참조. alias·사용자 이름·생년월일은 어떤 store 에도 안 들어감. landmark 좌표(468×[x,y], 등방 원본 좌표)는 2026-09-06 스키마 2 부터 body 에 저장한다 — 계측 재계산·두 얼굴 중첩(§5·§24)용. 처리방침 제2조에 명시.
 - **해석 엔진은 `shared/` 한 곳** — Flutter 와 Worker SSR 이 같은 Dart 코드를 컴파일된 JS 로 공유. 룰 변경 시 양쪽 동시 반영.
 - **공유·재계산·OG 모두 `metrics` 테이블의 `body` 한 곳을 SSOT 로 사용.** 별도 `share_card` 같은 행 단위 압축 metadata 테이블 도입 금지.
 - **1 capture = 1 trace uuid, 1 image = 1 owned object.** Flutter 가 analyze 시점에 v4 한 번 발급 → 그 uuid 가 `temp/{uuid}.jpg` → `metrics.id` → `https://facely.kr/r/{uuid}` 까지 그대로 흐름 (단일 trace id 로 incident response·log grep 한 번에 끝, publish 단계에서 새 uuid 발급 금지). 썸네일 객체만 `thumbnails/{owner}/{sha256}.jpg` 로 분리된다 — 뒤 칸이 내용 주소라 재업로드가 멱등하고 다른 사진은 다른 URL 이라 캐시 무효화가 필요 없다.
@@ -534,7 +534,7 @@ $$ language sql;
 
 **저장 금지 (절대 body 에 안 들어감)**:
 
-- 사용자 이름·생년월일·landmark 좌표 (정규화된 rawValue 만; 좌표 X)
+- 사용자 이름·생년월일 (landmark 좌표는 스키마 2 부터 body 에 저장 — 처리방침 제2조)
 - archetype / 점수 / 친밀 챕터 본문 / 갈등 시나리오 본문 — engine 매 load 재계산 (web/CLAUDE.md §5)
 - **관계형 메타**: `kind`, `partnerUuid`, `pairedWith`, `compat*` 등 — 1인 측정 데이터 외 금지. 페어링은 URL 이 표현 (결제 궁합 스냅샷은 `compatibilities` 테이블이 별도 보존).
 
@@ -781,7 +781,7 @@ pnpm cf-typegen      # Cloudflare.Env 타입 재생성
 - Worker 가 Supabase 에 write — **금지** (단 예외: `/api/account/delete` 만 service_role 로 metrics 삭제 + auth.users admin DELETE). 평상시 분석/공유 흐름에 `/api/share` 같은 publish endpoint 도입 X — Flutter ↔ Supabase 직통.
 - Worker 와 Flutter 사이에 body payload 왕복 — **금지** (큰 데이터 두 번 흐름). UUID 만 흐른다.
 - Python `/analyze` 가 `{age, gender, ethnicity}` 정규화 enum name 외의 것(점수·archetype·해석 등) 반환 — **금지**. age decade 라벨링·관상 해석은 소비자(Flutter)/engine 책임.
-- `body` 에 얼굴 원본 이미지·landmark 좌표·alias·사용자 이름·생년월일 저장 — **금지** (thumbnailKey 포인터만 허용; RLS check 로 강제).
+- `body` 에 얼굴 원본 이미지·alias·사용자 이름·생년월일 저장 — **금지** (RLS check 로 강제). landmark 좌표는 스키마 2 부터 허용(0009 에서 check 해제).
 - 별도 `share_card` 테이블 생성 — **금지**. 공유 payload 는 기존 `metrics` 한 테이블로.
 - archetype·점수·rule 결과를 DB 에 저장 — **금지**. 매 load 시 shared engine 재계산.
 - React 쪽 룰 재구현 — **금지**. `shared/` 한 곳만.
@@ -801,7 +801,7 @@ pnpm cf-typegen      # Cloudflare.Env 타입 재생성
 | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | -------------------------------------------- | --------------------------------------------------------------------------- |
 | 720² 분석용 이미지                                                                                              | PII (얼굴)                                           | R2 `temp/`                                   | Python 즉시 DELETE + 1일 lifecycle. 노출 창 짧음.                           |
 | **200² thumbnail**                                                                                              | **PII (얼굴, 식별 가능)**                            | R2 `thumbnails/` (cdn.facely.kr public read) | UUID-as-unguessable-URL access control. 90일 미활동 수동 정리 (§12.2). |
-| body (rawValue·demographic 카테고리·thumbnailKey·schemaVersion·source·timestamp·faceShape) | 비-PII                                               | Supabase `metrics`                           | 정규화된 값만. landmark 좌표·이름·생년월일·deepface raw 0.                  |
+| body (rawValue·landmarks·symmetry·modelVersion·demographic 카테고리·thumbnailKey·schemaVersion·source·timestamp·faceShape) | 얼굴 특징점 좌표 포함 (처리방침 제2조) | Supabase `metrics`                           | 이름·생년월일·deepface raw 0. landmark 좌표는 사진이 아니라 위치 숫자.                  |
 | `metrics.id` (UUID)                                                                                             | 준-PII (PII 인 thumbnail 을 가리키는 capability key) | Supabase + URL                               | UUID v4 (122 bit) — guess 사실상 불가.                                      |
 
 법적 frame:

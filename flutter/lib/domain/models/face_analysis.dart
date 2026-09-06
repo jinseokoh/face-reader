@@ -338,6 +338,10 @@ FaceReadingReport analyzeFaceReading({
       aspect: aspectCorrection,
     ),
     modelVersion: currentModelVersions(),
+    landmarks: _storedLandmarks(landmarks, aspectCorrection),
+    lateralLandmarks: lateralLandmarks == null
+        ? null
+        : _storedLandmarks(lateralLandmarks, aspectCorrection),
   );
 }
 
@@ -455,4 +459,11 @@ List<FaceMeshLandmark> averageLandmarks(List<List<FaceMeshLandmark>> samples) {
     }
     return FaceMeshLandmark(x: sumX / n, y: sumY / n, z: sumZ / n);
   });
+}
+
+/// 저장용 랜드마크 — 등방 좌표(x, y × 높이/폭) 소수 4자리 (§26·§27).
+List<List<double>> _storedLandmarks(
+    List<FaceMeshLandmark> lms, double aspect) {
+  double r4(double v) => (v * 10000).roundToDouble() / 10000;
+  return [for (final lm in lms) [r4(lm.x), r4(lm.y * aspect)]];
 }

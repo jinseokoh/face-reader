@@ -20,6 +20,7 @@ import 'package:face_engine/domain/services/compat/compat_adapter.dart';
 import 'package:face_engine/domain/services/compat/intimacy.dart';
 import 'package:facely/domain/services/mc_fixtures.dart';
 import 'package:face_engine/domain/services/physiognomy_scoring.dart';
+import '../support/demo_landmarks.dart';
 
 double _normal(Random rng) {
   double u1, u2;
@@ -131,6 +132,7 @@ FaceReadingReport _fakeReport(
     timestamp: DateTime.now(),
     source: AnalysisSource.album,
     metrics: metrics,
+    landmarks: demoLandmarks(gender),
     lateralMetrics: lateralMetrics,
     lateralFlags: lateralFlags,
     nodeScores: nodeScores,
@@ -224,6 +226,7 @@ void main() {
       timestamp: r.timestamp,
       source: r.source,
       metrics: r.metrics,
+      landmarks: r.landmarks,
       lateralMetrics: r.lateralMetrics,
       lateralFlags: r.lateralFlags,
       nodeScores: r.nodeScores,

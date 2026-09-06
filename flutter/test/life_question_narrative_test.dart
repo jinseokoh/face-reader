@@ -13,6 +13,7 @@ import 'package:face_engine/domain/services/attribute_normalize.dart';
 import 'package:facely/domain/services/life_question_narrative.dart';
 import 'package:face_engine/domain/services/physiognomy_scoring.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'support/demo_landmarks.dart';
 
 void _walkNodes(NodeScore ns, Map<String, NodeEvidence> out) {
   out[ns.nodeId] = NodeEvidence(
@@ -99,6 +100,7 @@ FaceReadingReport _buildReport({
     timestamp: DateTime(2026, 4, 18),
     source: AnalysisSource.album,
     metrics: const {},
+    landmarks: demoLandmarks(gender),
     nodeScores: nodeScores,
     attributes: attributes,
     rules: rules,

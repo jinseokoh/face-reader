@@ -187,7 +187,7 @@ class AttributeEvidence {
 
 /// Hive capture 스키마 버전. 배포 전 1 고정 — capture 포맷이 바뀌어도 1 안에서
 /// 자유롭게 진화. 외부 사용자 install base 생긴 후에 비로소 bump.
-const int kReportSchemaVersion = 1;
+const int kReportSchemaVersion = 2;
 
 /// fromJsonString 의 각 rehydrate 단계를 trace — parse 실패 시 마지막 로그의
 /// 다음 단계가 범인. `print` 는 rate-limit 없어 반드시 찍힘.
@@ -228,6 +228,14 @@ class FaceReadingReport {
   /// 계산에 쓴 모델 버전 {geometry, impression, pair} (§58). null = 기록 전 카드.
   final Map<String, String>? modelVersion;
 
+  /// 정면 468 랜드마크 — 등방 원본 좌표 [x, y] (x 는 폭 기준, y 는 높이 기준값 ×
+  /// 높이/폭), 소수 4자리. 스키마 2 부터 필수. 계측·대칭·정규화(§5)는 여기서
+  /// 다시 만들 수 있다 — 계측이 늘거나 바뀌어도 다시 찍을 필요가 없다.
+  final List<List<double>> landmarks;
+
+  /// 측면 468 랜드마크 (같은 형식). null = 측면 미수행.
+  final List<List<double>>? lateralLandmarks;
+
   /// 14-node tree snapshot (root + 3 zones + 10 leaves).
   final Map<String, NodeEvidence> nodeScores;
 
@@ -267,6 +275,8 @@ class FaceReadingReport {
     this.lateralFlags,
     this.symmetry,
     this.modelVersion,
+    required this.landmarks,
+    this.lateralLandmarks,
     required this.nodeScores,
     required this.attributes,
     required this.rules,
@@ -305,6 +315,8 @@ class FaceReadingReport {
           },
         if (symmetry != null) 'symmetry': symmetry,
         if (modelVersion != null) 'modelVersion': modelVersion,
+        'landmarks': landmarks,
+        if (lateralLandmarks != null) 'lateralLandmarks': lateralLandmarks,
         if (faceShapeLabel != null) 'faceShapeLabel': faceShapeLabel,
         if (faceShapeConfidence != null)
           'faceShapeConfidence': faceShapeConfidence,
@@ -342,6 +354,8 @@ class FaceReadingReport {
           },
         if (symmetry != null) 'symmetry': symmetry,
         if (modelVersion != null) 'modelVersion': modelVersion,
+        'landmarks': landmarks,
+        if (lateralLandmarks != null) 'lateralLandmarks': lateralLandmarks,
         // lateralFlags 는 lateral z + 현재 metricScore 임계로 load 시 재계산.
         if (faceShapeLabel != null) 'faceShapeLabel': faceShapeLabel,
         if (faceShapeConfidence != null)
@@ -389,6 +403,12 @@ class FaceReadingReport {
             for (final e in (j['modelVersion'] as Map).entries)
               e.key as String: e.value as String,
           };
+    final landmarks = _parseLandmarks(j['landmarks']);
+    if (landmarks == null || landmarks.length != 468) {
+      throw FormatException(
+          'FaceReadingReport landmarks missing or not 468 (schema $kReportSchemaVersion)');
+    }
+    final lateralLandmarks = _parseLandmarks(j['lateralLandmarks']);
     final faceShapeLabel = j['faceShapeLabel'] as String?;
     final faceShapeConfidence = (j['faceShapeConfidence'] as num?)?.toDouble();
     _trace('faceShapeLabel=$faceShapeLabel conf=$faceShapeConfidence '
@@ -518,6 +538,8 @@ class FaceReadingReport {
       lateralFlags: lateralFlags,
       symmetry: symmetry,
       modelVersion: modelVersion,
+      landmarks: landmarks,
+      lateralLandmarks: lateralLandmarks,
       nodeScores: nodeScores,
       attributes: attributes,
       rules: rules,
@@ -648,4 +670,13 @@ List<RuleEvidence> _rehydrateRuleEvidence(AttributeBreakdown breakdown) {
     out.add(RuleEvidence(id: r.id, stage: 'lateral', effects: r.effects));
   }
   return out;
+}
+
+/// [[x, y], …] JSON → 좌표. null 이거나 형식이 아니면 null.
+List<List<double>>? _parseLandmarks(Object? raw) {
+  if (raw is! List) return null;
+  return [
+    for (final p in raw)
+      [(p[0] as num).toDouble(), (p[1] as num).toDouble()],
+  ];
 }

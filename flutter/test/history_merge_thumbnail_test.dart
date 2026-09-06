@@ -22,6 +22,7 @@ import 'package:face_engine/domain/services/archetype.dart';
 import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/data/services/supabase_service.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'support/demo_landmarks.dart';
 
 FaceReadingReport _report({String? thumbnailKey}) {
   final refs = referenceData[Ethnicity.eastAsian]![Gender.female]!;
@@ -41,6 +42,7 @@ FaceReadingReport _report({String? thumbnailKey}) {
     gender: Gender.female,
     ageGroup: AgeGroup.thirties,
     metrics: metrics,
+    landmarks: demoLandmarks(Gender.female),
     nodeScores: const {},
     attributes: const {},
     rules: const [],

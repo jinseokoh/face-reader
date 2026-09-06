@@ -1,4 +1,5 @@
 import type { MetricsRow, RawMetrics } from "./types";
+import { DEMO_LANDMARKS_FEMALE, DEMO_LANDMARKS_MALE } from "./demo_landmarks";
 
 const SELECT = "id,body";
 
@@ -233,13 +234,14 @@ function demoRow(id: string): MetricsRow {
   return {
     id,
     raw: {
-      schemaVersion: 1,
+      schemaVersion: 2,
       ethnicity: "eastAsian",
       gender: isB ? "male" : "female",
       ageGroup: "thirties",
       timestamp: "2026-04-27T00:00:00.000Z",
       source: "album",
       metrics: DEMO_RAW_METRICS,
+      landmarks: isB ? DEMO_LANDMARKS_MALE : DEMO_LANDMARKS_FEMALE,
       faceShape: isB ? "oblong" : "oval",
     } as unknown as RawMetrics,
   };
