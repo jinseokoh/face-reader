@@ -17,7 +17,6 @@ import 'package:facely/core/edition_copy.dart';
 import 'package:facely/core/theme.dart';
 import 'package:facely/domain/services/pair_score.dart';
 import 'package:facely/presentation/screens/compatibility/pair_measure_sections.dart';
-import 'package:facely/presentation/screens/compatibility/photo_compare_screen.dart';
 import 'package:facely/data/services/analytics_service.dart';
 import 'package:facely/data/services/compatibility_service.dart';
 import 'package:facely/presentation/providers/auth_provider.dart';
@@ -161,17 +160,6 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
           // 미등록 = 내 관상 보기 / 등록 후 = 관상 보기 — 궁합의
           // 상대 리스트가 자라는 진입점을 이 화면 안에 둔다.
           const FaceScanPill(),
-          // measure — 같은 사람 사진 여러 장의 첫인상 비교 (§56).
-          if (kMeasureEdition)
-            IconButton(
-              icon: const FaIcon(FontAwesomeIcons.images, size: 20),
-              tooltip: '사진별 첫인상',
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const PhotoCompareScreen(),
-                ),
-              ),
-            ),
           IconButton(
             icon: const FaIcon(FontAwesomeIcons.circleInfo, size: 20),
             tooltip: EditionCopy.pairInfoTooltip,
