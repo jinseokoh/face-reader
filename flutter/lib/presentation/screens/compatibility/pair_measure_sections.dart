@@ -18,7 +18,7 @@ import '../../../domain/services/pair_score.dart';
 import '../../widgets/detail_avatar.dart';
 import '../../widgets/source_badge.dart';
 
-/// measure 에디션 두 얼굴 비교 본문 — APPLE.md §81.3.
+/// measure 에디션 얼굴 비교 본문 — APPLE.md §81.3.
 ///
 /// 궁합 등급·오행·서술이 없다. 케미 합(0~300)과 그 세 성분, 첫인상 유사도,
 /// 영역별 닮은 정도, 두 사람의 첫인상 3축 나란히, 가장 닮은/다른 계측 3개.
@@ -29,7 +29,7 @@ class MeasurePairBody extends StatelessWidget {
   const MeasurePairBody({super.key, required this.my, required this.album});
 
   static const String disclaimer =
-      '두 얼굴 비교는 얼굴 형태와 첫인상 프로필의 관계를 계산한 결과이며, 실제 '
+      '얼굴 비교는 얼굴 형태와 첫인상 프로필의 관계를 계산한 결과이며, 실제 '
       '연애·결혼·인간관계의 성공 여부를 예측하지 않습니다. 조화도는 제품 정의 '
       '지표로 학술 검증을 거치지 않았습니다.';
 
@@ -753,7 +753,7 @@ class MeasurePairShareCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('두 얼굴 비교', style: AppText.display.copyWith(fontSize: 40)),
+                  Text('얼굴 비교', style: AppText.display.copyWith(fontSize: 40)),
                   const SizedBox(height: AppSpacing.huge),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -825,7 +825,7 @@ Future<void> showMeasurePairInfoDialog(BuildContext context) => showDialog<void>
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.xl)),
-        title: const Text('두 얼굴 비교에 대하여', style: AppText.modalTitle),
+        title: const Text('얼굴 비교에 대하여', style: AppText.modalTitle),
         content: const SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

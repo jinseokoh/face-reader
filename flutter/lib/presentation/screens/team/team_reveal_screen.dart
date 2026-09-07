@@ -202,7 +202,7 @@ Future<void> openTeamPairDetail(
               const SizedBox(height: AppSpacing.lg),
               PrimaryButton(
                 label: mode == TeamMode.firstImpression
-                    ? (alreadyUnlocked ? '두 얼굴 비교 보기' : '1코인으로 비교 보기')
+                    ? (alreadyUnlocked ? '얼굴 비교 보기' : '1코인으로 비교 보기')
                     : (alreadyUnlocked ? '궁합 풀이 보기' : '1코인으로 풀이 보기'),
                 onPressed: () => Navigator.pop(ctx, true),
               ),

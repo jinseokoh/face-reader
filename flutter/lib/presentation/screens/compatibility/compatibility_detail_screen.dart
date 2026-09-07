@@ -141,7 +141,7 @@ class _CompatibilityDetailScreenState
                 style: AppText.caption.copyWith(color: AppColors.textHint),
               ),
               const SizedBox(height: AppSpacing.sm),
-              // measure 에디션(iOS v1)은 등급·오행·서술 없는 두 얼굴 비교 —
+              // measure 에디션(iOS v1)은 등급·오행·서술 없는 얼굴 비교 —
               // 플랫폼 판정(kMeasureEdition)으로 관상 궁합 섹션을 그리지 않는다.
               if (kMeasureEdition)
                 MeasurePairBody(my: widget.my, album: widget.album)

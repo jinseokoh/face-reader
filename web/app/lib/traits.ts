@@ -172,7 +172,7 @@ export function renderMeasurePair(a: MetricsRow, b: MetricsRow, ctx: RenderInput
   return {
     type: "measurePair",
     shortId: ctx.shortId,
-    ogTitle: `케미 ${p.chemistry}/300 · 닮은 정도 ${p.similarity} — 두 얼굴 비교`,
+    ogTitle: `케미 ${p.chemistry}/300 · 닮은 정도 ${p.similarity} — 얼굴 비교`,
     ogDescription: `조화도 ${p.harmony} · 보완도 ${p.complementarity} · 닮은 정도 ${p.similarity}`,
     ogImage: ogImageFor(a, ctx),
     canonicalUrl: `${ctx.appLinkBase}${ctx.shortId}`,

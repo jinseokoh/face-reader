@@ -10,7 +10,7 @@ abstract final class EditionCopy {
   static String get tabFace => kMeasureEdition ? '첫인상' : '관상';
   static String get tabPair => kMeasureEdition ? '비교' : '궁합';
   static String get faceTitle => kMeasureEdition ? '첫인상 분석' : '관상';
-  static String get pairTitle => kMeasureEdition ? '두 얼굴 비교' : '궁합';
+  static String get pairTitle => kMeasureEdition ? '얼굴 비교' : '궁합';
 
   // ── 촬영 pill ──
   static String get scanMine => kMeasureEdition ? '내 얼굴 측정' : '내 관상 보기';
@@ -23,7 +23,7 @@ abstract final class EditionCopy {
           '28개 계측값과 평균 대비 위치를',
           '보여줍니다.',
           '그 계측값으로 첫인상 지표와',
-          '두 얼굴 비교, 케미를 계산합니다.\n',
+          '얼굴 비교, 케미를 계산합니다.\n',
         ]
       : [
           '관상은 미래의 운명을',
@@ -91,7 +91,7 @@ abstract final class EditionCopy {
       : '궁합을 보려면 내 관상 등록이 필요합니다.';
   static String get pairDeleteTitle => kMeasureEdition ? '비교 삭제' : '궁합 삭제';
   static String get pairDoneMessage => kMeasureEdition
-      ? '두 얼굴 비교가 완성되었습니다.'
+      ? '얼굴 비교가 완성되었습니다.'
       : '궁합 풀이가 완성되었습니다.';
   static String get pairNeedFaceFirst =>
       kMeasureEdition ? '우선 얼굴을 재야 합니다.' : '우선 관상을 보셔야 합니다.';
@@ -99,10 +99,10 @@ abstract final class EditionCopy {
       kMeasureEdition ? '미확인 비교가 없습니다.' : '미확인 궁합이 없습니다.';
   static String get pairEmptyUnlocked =>
       kMeasureEdition ? '아직 확인한 비교가 없습니다.' : '아직 확인한 궁합이 없습니다.';
-  static String get pairDetailTitle => kMeasureEdition ? '두 얼굴 비교' : '궁합 풀이';
-  static String get pairShareTitle => kMeasureEdition ? '두 얼굴 비교' : '궁합도 과학이다';
+  static String get pairDetailTitle => kMeasureEdition ? '얼굴 비교' : '궁합 풀이';
+  static String get pairShareTitle => kMeasureEdition ? '얼굴 비교' : '궁합도 과학이다';
   static String get pairInfoTooltip =>
-      kMeasureEdition ? '두 얼굴 비교에 대하여' : '궁합 분석에 대하여';
+      kMeasureEdition ? '얼굴 비교에 대하여' : '궁합 분석에 대하여';
   static String get pairDeleteBody => kMeasureEdition
       ? '이 비교를 목록에서 삭제할까요?\n사용한 코인은 환불되지 않습니다.'
       : '이 궁합을 목록에서 삭제할까요?\n사용한 코인은 환불되지 않습니다.';

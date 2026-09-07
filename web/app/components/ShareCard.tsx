@@ -242,7 +242,7 @@ function MeasurePairCard({
   const different = pair.regions.filter((r) => !r.similar)
   return (
     <article className="hero hero--compat">
-      <p className="hero-eyebrow">두 얼굴 비교</p>
+      <p className="hero-eyebrow">얼굴 비교</p>
       <h1 className="compat-title">케미 {pair.chemistry} / 300</h1>
       <p className="compat-tagline">
         조화도 {pair.harmony} · 보완도 {pair.complementarity} · 닮은 정도 {pair.similarity}
