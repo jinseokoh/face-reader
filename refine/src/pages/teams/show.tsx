@@ -14,11 +14,13 @@ import { useParams } from "react-router";
 import { Link } from "react-router";
 import { UserLink } from "../../components/user-link";
 import type { AppUser, MetricEntry, Team, TeamMember } from "../../types";
-import { metricThumbUrl } from "../../types";
+import { metricThumbUrl, TEAM_MODE_LABEL } from "../../types";
+import { FI_BAND_LABEL } from "../metrics/MeasureCard";
 
 const { Text, Title } = Typography;
 
-/** result_payload band 코드(0~3) — 앱 BattleBand 와 동일 라벨·색. */
+/** result_payload band 코드(0~3) — 앱 team_band.dart 와 동일 라벨·색.
+ *  관상 방은 성어, 첫인상 방은 AAF 무작위 쌍 분포의 사분위 (FI_BAND_LABEL). */
 const BAND_LABEL = ["천생연분", "금슬화합", "상부상조", "형극난조"];
 const BAND_HANJA = ["天生緣分", "琴瑟和合", "相扶相助", "荊棘難調"];
 const BAND_COLOR = ["#2E7D32", "#1565C0", "#EF6C00", "#D32F2F"];
@@ -108,6 +110,14 @@ export const TeamShow = () => {
     ]),
   );
   const nameBySlot = new Map(players.map((p) => [p.slot, p.name]));
+  const isFirstImpression = team?.mode === "first_impression";
+  const bandLabel = (band: number) =>
+    isFirstImpression ? FI_BAND_LABEL[band] : BAND_LABEL[band];
+  /** 첫인상 쌍의 성분 한 줄 — 조화도·보완도·닮은 정도 (payload harm/comp/sim). */
+  const extrasLine = (p: { sim?: number; harm?: number; comp?: number }) =>
+    p.harm == null && p.comp == null && p.sim == null
+      ? null
+      : `조화도 ${p.harm ?? "-"} · 보완도 ${p.comp ?? "-"} · 닮은 정도 ${p.sim ?? "-"}`;
 
   return (
     <Show isLoading={teamQuery.isLoading} title="케미 그룹">
@@ -131,6 +141,18 @@ export const TeamShow = () => {
             </Descriptions.Item>
             <Descriptions.Item label="유형">
               {team.room_kind === "match" ? "이성 케미" : "전체 케미"}
+            </Descriptions.Item>
+            <Descriptions.Item label="방식">
+              <Space size={4}>
+                <Tag color={isFirstImpression ? "geekblue" : "default"}>
+                  {TEAM_MODE_LABEL[team.mode] ?? team.mode}
+                </Tag>
+                {payload?.modelVersion && (
+                  <Text type="secondary" style={{ fontSize: 11 }}>
+                    모델 impression {payload.modelVersion.impression} · pair {payload.modelVersion.pair}
+                  </Text>
+                )}
+              </Space>
             </Descriptions.Item>
             <Descriptions.Item label="비밀번호">
               {team.password ? (
@@ -298,15 +320,22 @@ export const TeamShow = () => {
                   <div style={{ marginTop: 12 }}>
                     {band != null ? (
                       <Text strong style={{ color: BAND_COLOR[band] }}>
-                        {BAND_LABEL[band]} ({BAND_HANJA[band]})
+                        {isFirstImpression
+                          ? bandLabel(band)
+                          : `${BAND_LABEL[band]} (${BAND_HANJA[band]})`}
                       </Text>
                     ) : null}
                     {best.score != null && (
                       <Text strong style={{ marginLeft: band != null ? 8 : 0 }}>
-                        {best.score}점
+                        {best.score}점{isFirstImpression ? " / 300" : ""}
                       </Text>
                     )}
                   </div>
+                  {extrasLine(best) && (
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      {extrasLine(best)}
+                    </Text>
+                  )}
                 </div>
               );
             })()}
@@ -344,7 +373,11 @@ export const TeamShow = () => {
                         // 앱 BandDot(28px + 원 안 흰색 점수)과 동일 표기.
                         return (
                           <td key={col.slot} style={bodyCell}>
-                            <Tooltip title={BAND_LABEL[pair.band] ?? pair.band}>
+                            <Tooltip
+                              title={[bandLabel(pair.band) ?? pair.band, extrasLine(pair)]
+                                .filter(Boolean)
+                                .join(" — ")}
+                            >
                               <span
                                 style={{
                                   display: "inline-flex",

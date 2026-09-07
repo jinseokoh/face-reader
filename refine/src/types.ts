@@ -37,6 +37,10 @@ export type MetricEntry = {
 };
 
 export type Demographics = {
+  /** 리포트 스키마 — 현재 2 (좌표 저장). 1 은 현재 엔진이 못 읽는다 (0009). */
+  schemaVersion?: number;
+  /** 계산 당시 모델 버전 {geometry, impression, pair} (APPLE.md §58). 구버전 body 는 없음. */
+  modelVersion?: Record<string, string>;
   source?: string;
   gender?: string;
   ethnicity?: string;
@@ -50,7 +54,16 @@ export function parseDemographics(body: string | null | undefined): Demographics
   if (!body) return {};
   try {
     const j = JSON.parse(body);
-    return { source: j.source, gender: j.gender, ethnicity: j.ethnicity, ageGroup: j.ageGroup, faceShapeLabel: j.faceShapeLabel, faceShapeConfidence: j.faceShapeConfidence };
+    return {
+      schemaVersion: typeof j.schemaVersion === "number" ? j.schemaVersion : undefined,
+      modelVersion: j.modelVersion ?? undefined,
+      source: j.source,
+      gender: j.gender,
+      ethnicity: j.ethnicity,
+      ageGroup: j.ageGroup,
+      faceShapeLabel: j.faceShapeLabel,
+      faceShapeConfidence: j.faceShapeConfidence,
+    };
   } catch {
     return {};
   }
@@ -84,6 +97,8 @@ export type Team = {
   age_min: number | null;
   age_max: number | null;
   room_kind: "all" | "match";
+  /** 계산 방식 (0008) — physiognomy(관상, Android) / first_impression(첫인상, iOS·Android). */
+  mode: TeamMode;
   status: "recruiting" | "revealing" | "completed" | "expired";
   started_at: string | null;
   closed_at: string | null;
@@ -92,11 +107,30 @@ export type Team = {
   updated_at: string;
 };
 
-/** 발표 시 앱이 올린 결과표 — a/b 는 slot 번호, band = 0~3, 점수는 best 만. */
+export type TeamMode = "physiognomy" | "first_impression";
+export const TEAM_MODE_LABEL: Record<TeamMode, string> = {
+  physiognomy: "관상",
+  first_impression: "첫인상",
+};
+
+/** 발표 시 앱이 올린 결과표 — a/b 는 slot 번호, band = 0~3.
+ *  첫인상 방은 root 에 mode·modelVersion, 쌍마다 sim·harm·comp(닮은 정도·조화도·보완도)가 붙는다.
+ *  관상 payload 는 mode 키가 없다 (0008 teams_payload_mode_check). */
 export type TeamResultPayload = {
+  mode?: "first_impression";
+  modelVersion?: { impression: string; pair: string };
   players: { slot: number; name: string; gender: string }[];
   // 정렬 = 순위. best = bypass(차단·기채팅) 아닌 첫 쌍 (별도 best 키 없음).
-  pairs: { a: number; b: number; band: number; score?: number; bypass?: boolean }[];
+  pairs: {
+    a: number;
+    b: number;
+    band: number;
+    score?: number;
+    sim?: number;
+    harm?: number;
+    comp?: number;
+    bypass?: boolean;
+  }[];
 };
 
 export type TeamMember = {
@@ -144,7 +178,8 @@ export type Compatibility = {
   /** 결제 시점 두 이름 스냅샷 — 앱 fallback + admin 표시용. */
   a_alias: string | null;
   b_alias: string | null;
-  /** 해제 시점 궁합 총점(0~100) — admin 정렬·필터용. */
+  /** 해제 시점 총점 — Android(관상 궁합) 0~100, iOS(얼굴 비교 케미 합) 0~300.
+   *  mode 컬럼이 없어 100 초과만 확실히 iOS 로 구분된다. */
   total_score: number | null;
   created_at: string;
 };

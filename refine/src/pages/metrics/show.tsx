@@ -4,8 +4,15 @@ import { Alert, Descriptions, Space, Tag, Typography } from "antd";
 import { useMemo } from "react";
 import type { MetricEntry } from "../../types";
 import { metricThumbKey, metricThumbUrl, parseDemographics } from "../../types";
-import { runEngine, type EngineOutput } from "../../lib/share-engine";
+import {
+  currentModelVersions,
+  runEngine,
+  runMeasure,
+  type EngineOutput,
+  type MeasureOutput,
+} from "../../lib/share-engine";
 import { SoloHeroCard } from "./HeroCard";
+import { SoloMeasureCard } from "./MeasureCard";
 import { AvatarUploader } from "./AvatarUploader";
 
 const { Text } = Typography;
@@ -17,14 +24,19 @@ export const MetricShow = () => {
   const { query } = useShow<MetricEntry>();
   const row = query?.data?.data;
 
-  const result = useMemo<{ eng?: EngineOutput; error?: string }>(() => {
+  // 같은 body 로 관상(Android)과 첫인상(iOS·Android) 둘 다 계산한다 — 카드에
+  // 종류가 없고 링크 경로가 종류를 정하므로 (/r = 관상, /s = 첫인상) 콘솔은 둘 다 본다.
+  const result = useMemo<{ eng?: EngineOutput; measure?: MeasureOutput; error?: string }>(() => {
     if (!row?.body) return {};
     try {
-      return { eng: runEngine(row.body) };
+      return { eng: runEngine(row.body), measure: runMeasure(row.body) };
     } catch (e) {
       return { error: e instanceof Error ? e.message : String(e) };
     }
   }, [row?.body]);
+  const demo = parseDemographics(row?.body);
+  const staleSchema = (demo.schemaVersion ?? 1) < 2;
+  const current = currentModelVersions();
 
   return (
     <Show isLoading={query.isLoading} title="관상 해석">
@@ -78,11 +90,62 @@ export const MetricShow = () => {
               })()}
             </Descriptions.Item>
             <Descriptions.Item label="조회수">{row.views}</Descriptions.Item>
+            <Descriptions.Item label="확신도">
+              {result.measure?.confidenceKo ?? <Text type="secondary">-</Text>}
+            </Descriptions.Item>
+            <Descriptions.Item label="스키마">
+              {staleSchema ? (
+                <Tag color="red">스키마 {demo.schemaVersion ?? 1} (좌표 없음)</Tag>
+              ) : (
+                <Tag>스키마 {demo.schemaVersion}</Tag>
+              )}
+            </Descriptions.Item>
+            <Descriptions.Item label="모델 버전">
+              {demo.modelVersion ? (
+                <Space size={4} wrap>
+                  {(["geometry", "impression", "pair"] as const).map((k) => (
+                    <Tag
+                      key={k}
+                      color={demo.modelVersion?.[k] === current[k] ? "default" : "orange"}
+                    >
+                      {k} {demo.modelVersion?.[k] ?? "-"}
+                    </Tag>
+                  ))}
+                </Space>
+              ) : (
+                <Text type="secondary">기록 없음 (현재 {current.geometry})</Text>
+              )}
+            </Descriptions.Item>
+            <Descriptions.Item label="공유 링크" span={2}>
+              <Space direction="vertical" size={2}>
+                <Text code copyable={{ text: `https://facely.kr/r/${row.id}` }} style={{ fontSize: 12 }}>
+                  https://facely.kr/r/{row.id}
+                </Text>
+                <Text type="secondary" style={{ fontSize: 11 }}>
+                  관상 (Android)
+                </Text>
+                <Text code copyable={{ text: `https://facely.kr/s/${row.id}` }} style={{ fontSize: 12 }}>
+                  https://facely.kr/s/{row.id}
+                </Text>
+                <Text type="secondary" style={{ fontSize: 11 }}>
+                  첫인상 (iOS)
+                </Text>
+              </Space>
+            </Descriptions.Item>
             <Descriptions.Item label="created_at">{row.created_at}</Descriptions.Item>
             <Descriptions.Item label="updated_at">{row.updated_at}</Descriptions.Item>
           </Descriptions>
 
-          {result.error && (
+          {staleSchema && (
+            <Alert
+              type="warning"
+              showIcon
+              message="구버전 리포트 (스키마 1)"
+              description="랜드마크 좌표가 없어 현재 엔진(스키마 2)이 읽지 못합니다. 앱·웹도 같은 이유로 이 카드를 열지 못합니다 — 리스트의 '스키마 1 행 정리' 로 지울 수 있습니다 (0009)."
+            />
+          )}
+
+          {result.error && !staleSchema && (
             <Alert
               type="error"
               showIcon
@@ -93,6 +156,10 @@ export const MetricShow = () => {
                 </Text>
               }
             />
+          )}
+
+          {result.measure && (
+            <SoloMeasureCard m={result.measure} thumbUrl={metricThumbUrl(row.body)} />
           )}
 
           {result.eng && (

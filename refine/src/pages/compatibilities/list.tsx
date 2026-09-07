@@ -16,6 +16,8 @@ import {
 import { UserLink } from "../../components/user-link";
 import { adminClient } from "../../providers/data";
 import type { AppUser, Compatibility } from "../../types";
+import { firstImpressionBand } from "../../lib/share-engine";
+import { FI_BAND_LABEL } from "../metrics/MeasureCard";
 
 const { Text } = Typography;
 
@@ -32,6 +34,13 @@ function scoreLabel(s: number): string {
   if (s >= 81.5) return "금슬화합";
   if (s >= 61.5) return "상부상조";
   return "형극난조";
+}
+
+/** total_score 는 Android(관상 궁합 0~100)와 iOS(얼굴 비교 케미 합 0~300)가
+ *  한 컬럼을 쓴다. mode 컬럼이 없어 100 초과만 iOS 로 확정할 수 있다 —
+ *  100 이하 케미 합(하위권)은 관상으로 잘못 읽힐 수 있다. */
+function isMeasureScore(s: number): boolean {
+  return s > 100;
 }
 
 export const CompatibilityList = () => {
@@ -110,8 +119,18 @@ export const CompatibilityList = () => {
           render={(v: number | null) => {
             if (v == null) return <Text type="secondary">-</Text>;
             const s = Number(v);
+            if (isMeasureScore(s)) {
+              const band = firstImpressionBand(s);
+              return (
+                <Tooltip title={`얼굴 비교 (iOS) 케미 합 — ${FI_BAND_LABEL[band]}`}>
+                  <Tag color={band <= 1 ? "geekblue" : "default"}>
+                    {Math.round(s)}/300 · {FI_BAND_LABEL[band]}
+                  </Tag>
+                </Tooltip>
+              );
+            }
             return (
-              <Tooltip title={scoreLabel(s)}>
+              <Tooltip title={`궁합 (Android) — ${scoreLabel(s)}`}>
                 <Tag color={scoreColor(s)}>{s.toFixed(1)}</Tag>
               </Tooltip>
             );

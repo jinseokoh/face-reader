@@ -15,6 +15,7 @@ import {
 } from 'antd'
 import { UserLink } from '../../components/user-link'
 import type { AppUser, CoinEntry, MetricEntry } from '../../types'
+import { parseDemographics } from '../../types'
 
 const { Title, Text } = Typography
 
@@ -65,6 +66,10 @@ export const DashboardPage = () => {
 
   const newMetrics7 = metrics.filter(
     (m) => new Date(m.created_at).getTime() >= cutoff7,
+  ).length
+  // 스키마 1(좌표 없음) 잔여 — 현재 엔진이 못 읽는 행. 0009 가 삭제를 운영자 몫으로 남겼다.
+  const staleMetrics = metrics.filter(
+    (m) => (parseDemographics(m.body).schemaVersion ?? 1) < 2,
   ).length
 
   const totalPurchased = coins
@@ -120,6 +125,7 @@ export const DashboardPage = () => {
             />
             <Text type="secondary" style={{ fontSize: 12 }}>
               7일 +{newMetrics7}
+              {staleMetrics > 0 && ` · 스키마 1 잔여 ${staleMetrics}`}
             </Text>
           </Card>
         </Col>

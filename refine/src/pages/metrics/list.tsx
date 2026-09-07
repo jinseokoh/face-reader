@@ -13,11 +13,19 @@ import {
   Switch,
   Table,
   Tag,
+  Tooltip,
   Typography,
   message,
 } from "antd";
 import { useMemo, useState } from "react";
-import { runEngine, type EngineOutput } from "../../lib/share-engine";
+import {
+  currentModelVersions,
+  runEngine,
+  runMeasure,
+  topAxis,
+  type EngineOutput,
+  type MeasureOutput,
+} from "../../lib/share-engine";
 import { adminClient } from "../../providers/data";
 import type { AppUser, MetricEntry } from "../../types";
 import { metricThumbUrl, parseDemographics } from "../../types";
@@ -90,6 +98,15 @@ const AVATAR_BORDER_DEFAULT = "#E0E0E0";
 const GENDER_LABEL: Record<string, string> = {
   male: "남",
   female: "여",
+};
+
+const headerButtonStyle: React.CSSProperties = {
+  cursor: "pointer",
+  padding: "4px 12px",
+  border: "1px solid #d9d9d9",
+  borderRadius: 6,
+  background: "#fff",
+  fontSize: 13,
 };
 
 export const MetricList = () => {
@@ -244,10 +261,14 @@ export const MetricList = () => {
     invalidate({ resource: "metrics", invalidates: ["list"] });
   };
 
-  /** 행별 엔진 파생(유형·기질) — body 재계산, 실패 행은 null.
+  /** 행별 엔진 파생 — 관상(유형·기질, Android)과 첫인상(4축, iOS·Android)을
+   *  같은 body 로 재계산. 스키마 1 등 못 읽는 행은 null.
    *  dart2js rehydrate 디버그 로그는 계산 동안만 침묵. */
   const engineByRow = useMemo(() => {
-    const map = new Map<string, EngineOutput | null>();
+    const map = new Map<
+      string,
+      { eng: EngineOutput; measure: MeasureOutput } | null
+    >();
     const orig = console.log;
     console.log = (...a: unknown[]) => {
       if (typeof a[0] === "string" && a[0].startsWith("[Report.rehydrate]"))
@@ -261,7 +282,7 @@ export const MetricList = () => {
           continue;
         }
         try {
-          map.set(m.id, runEngine(m.body));
+          map.set(m.id, { eng: runEngine(m.body), measure: runMeasure(m.body) });
         } catch {
           map.set(m.id, null);
         }
@@ -297,23 +318,59 @@ export const MetricList = () => {
     });
   };
 
+  /** 스키마 1(좌표 없음) 행 삭제 — 0009 가 운영자 몫으로 남긴 DELETE.
+   *  body 가 text 컬럼이라 서버 필터로 못 거르고, 전 행을 읽어 클라이언트에서
+   *  schemaVersion < 2 를 고른 뒤 id 로 지운다. */
+  const handleSchemaCleanup = async () => {
+    const { data, error } = await adminClient
+      .from("metrics")
+      .select("id, body");
+    if (error) {
+      message.error(`조회 실패: ${error.message}`);
+      return;
+    }
+    const stale = (data ?? [])
+      .filter((r) => (parseDemographics(r.body).schemaVersion ?? 0) < 2)
+      .map((r) => r.id);
+    if (stale.length === 0) {
+      message.info("스키마 1 행이 없습니다");
+      return;
+    }
+    Modal.confirm({
+      title: `스키마 1 metrics ${stale.length}건 삭제`,
+      content:
+        "좌표가 없는 구버전 리포트 행이 사라집니다 — 앱·웹·콘솔 어디서도 더 읽지 못하는 행입니다. " +
+        "케미 방 snapshot 이 이 body 를 품고 있으면 그 방의 결과 계산은 계속 실패합니다. 되돌릴 수 없습니다.",
+      okText: "삭제",
+      okButtonProps: { danger: true },
+      cancelText: "취소",
+      onOk: async () => {
+        const { error: delErr } = await adminClient
+          .from("metrics")
+          .delete()
+          .in("id", stale);
+        if (delErr) {
+          message.error(`삭제 실패: ${delErr.message}`);
+          return;
+        }
+        message.success(`${stale.length}건 삭제됨`);
+        invalidate({ resource: "metrics", invalidates: ["list"] });
+      },
+    });
+  };
+
+  const current = currentModelVersions();
+
   return (
     <List
       title="관상 리스트"
       headerButtons={({ defaultButtons }) => (
         <>
           {defaultButtons}
-          <button
-            onClick={handleCleanup}
-            style={{
-              cursor: "pointer",
-              padding: "4px 12px",
-              border: "1px solid #d9d9d9",
-              borderRadius: 6,
-              background: "#fff",
-              fontSize: 13,
-            }}
-          >
+          <button onClick={handleSchemaCleanup} style={headerButtonStyle}>
+            스키마 1 행 정리
+          </button>
+          <button onClick={handleCleanup} style={headerButtonStyle}>
             90일+ 미활동 정리
           </button>
         </>
@@ -438,10 +495,25 @@ export const MetricList = () => {
           )}
         />
         <Table.Column<MetricEntry>
+          title="첫인상"
+          dataIndex="id"
+          render={(_: unknown, record: MetricEntry) => {
+            // 앱 리스트 배지와 같은 규칙 — 매력 제외 최고 축 (상위 N% 가 가장 작은 축).
+            const best = topAxis(engineByRow.get(record.id)?.measure);
+            return best ? (
+              <Text>
+                {best.labelKo} 상위 {best.top}%
+              </Text>
+            ) : (
+              <Text type="secondary">-</Text>
+            );
+          }}
+        />
+        <Table.Column<MetricEntry>
           title="유형"
           dataIndex="id"
           render={(_: unknown, record: MetricEntry) => {
-            const v = engineByRow.get(record.id)?.primaryLabel;
+            const v = engineByRow.get(record.id)?.eng.primaryLabel;
             return v ? <Text>{v}</Text> : <Text type="secondary">-</Text>;
           }}
         />
@@ -449,8 +521,36 @@ export const MetricList = () => {
           title="기질"
           dataIndex="id"
           render={(_: unknown, record: MetricEntry) => {
-            const v = engineByRow.get(record.id)?.secondaryLabel;
+            const v = engineByRow.get(record.id)?.eng.secondaryLabel;
             return v ? <Text>{v} 기질</Text> : <Text type="secondary">-</Text>;
+          }}
+        />
+        <Table.Column<MetricEntry>
+          title="버전"
+          dataIndex="body"
+          render={(_: unknown, record: MetricEntry) => {
+            const d = parseDemographics(record.body);
+            const schema = d.schemaVersion ?? 1;
+            if (schema < 2)
+              return (
+                <Tooltip title="좌표가 없는 구버전 리포트 — 현재 엔진이 읽지 못한다 (0009)">
+                  <Tag color="red">스키마 {schema}</Tag>
+                </Tooltip>
+              );
+            const geo = d.modelVersion?.geometry;
+            return (
+              <Tooltip
+                title={
+                  d.modelVersion
+                    ? `geometry ${d.modelVersion.geometry} · impression ${d.modelVersion.impression} · pair ${d.modelVersion.pair}`
+                    : "modelVersion 없음 (버전 기록 이전 body)"
+                }
+              >
+                <Tag color={geo === current.geometry ? "default" : "orange"}>
+                  {geo ? `모델 ${geo}` : "모델 -"}
+                </Tag>
+              </Tooltip>
+            );
           }}
         />
         <Table.Column<MetricEntry>
@@ -510,7 +610,7 @@ export const MetricList = () => {
               <ShowButton hideText size="small" recordItemId={id} />
               <Popconfirm
                 title="관상 삭제"
-                description={`'${record.alias ?? `${id.slice(0, 8)}…`}' 의 metrics row 와 R2 썸네일을 삭제합니다. 되돌릴 수 없습니다.`}
+                description={`'${record.alias ?? `${id.slice(0, 8)}…`}' 의 metrics row 를 삭제합니다 (썸네일은 계정에 묶여 남는다). 되돌릴 수 없습니다.`}
                 okText="Yes"
                 cancelText="No"
                 okButtonProps={{ danger: true }}

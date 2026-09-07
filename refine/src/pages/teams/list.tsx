@@ -11,6 +11,7 @@ import { Avatar, Space, Table, Tag, Typography } from "antd";
 import { Link } from "react-router";
 import { UserLink } from "../../components/user-link";
 import type { AppUser, Team, TeamMember } from "../../types";
+import { TEAM_MODE_LABEL } from "../../types";
 
 const { Text } = Typography;
 
@@ -98,6 +99,19 @@ export const TeamList = () => {
               </Space>
             );
           }}
+        />
+        <Table.Column<Team>
+          title="방식"
+          dataIndex="mode"
+          filters={[
+            { text: "관상", value: "physiognomy" },
+            { text: "첫인상", value: "first_impression" },
+          ]}
+          render={(m: Team["mode"]) => (
+            <Tag color={m === "first_impression" ? "geekblue" : "default"}>
+              {TEAM_MODE_LABEL[m] ?? m}
+            </Tag>
+          )}
         />
         <Table.Column<Team>
           title="비밀"

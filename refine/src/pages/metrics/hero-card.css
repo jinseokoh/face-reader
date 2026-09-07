@@ -270,3 +270,70 @@
   line-height: 1.5;
   color: rgba(255, 255, 255, 0.85);
 }
+
+/* ── measure(첫인상) 카드 — iOS 카드 수치. 색·타이포는 hero 와 공유. ── */
+.hero--measure {
+  background: linear-gradient(135deg, #1f2a33 0%, #3a4a58 100%);
+}
+
+.hero-grid-4 {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.hero-grid-2 {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.hero-section-label {
+  margin: 16px 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #e7d3b8;
+}
+
+.measure-levels {
+  display: flex;
+  gap: 3px;
+}
+
+.measure-level {
+  flex: 1;
+  height: 6px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.measure-level--on {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.measure-table {
+  width: 100%;
+  margin-top: 6px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.measure-table td {
+  padding: 5px 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.measure-table td:last-child {
+  text-align: right;
+  color: #e7d3b8;
+  font-weight: 600;
+}
+
+.measure-table td.measure-dim {
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 500;
+}
