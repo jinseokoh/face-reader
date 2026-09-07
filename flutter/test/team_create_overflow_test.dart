@@ -74,9 +74,9 @@ Future<void> _openCustomTitleWithKeyboard(
   await tester.tap(find.text('전체 케미 매칭그룹'));
   await tester.pump();
   if (!kMeasureEdition) {
-    await tester.ensureVisible(find.text('첫인상 케미'));
+    await tester.ensureVisible(find.text('첫인상'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('첫인상 케미'));
+    await tester.tap(find.text('첫인상'));
     await tester.pump();
   }
   await tester.ensureVisible(find.text('다음'));

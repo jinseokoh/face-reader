@@ -872,7 +872,7 @@ class _TeamCardBody extends StatelessWidget {
   final String ageLabel;
   final TeamRoomKind roomKind;
 
-  /// 방의 채점 방식 — 관상 케미 / 첫인상 케미. 관상 모드에서는 두 종류가 한
+  /// 방의 채점 방식 — 관상 / 첫인상. 관상 모드에서는 두 종류가 한
   /// 목록에 섞이므로 pill 로 구분한다 (2026-09-07).
   final TeamMode mode;
   final int maxPlayers;

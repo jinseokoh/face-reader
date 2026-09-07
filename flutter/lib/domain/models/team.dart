@@ -375,8 +375,8 @@ enum TeamRoomKind { all, match }
 /// (문헌 기반 첫인상 쌍 엔진). Android 는 생성 시 선택, iOS(measure 에디션)는
 /// first_impression 만 만들고 physiognomy 방은 보지 않는다 (APPLE.md §81.4).
 enum TeamMode {
-  physiognomy('physiognomy', '관상 케미'),
-  firstImpression('first_impression', '첫인상 케미');
+  physiognomy('physiognomy', '관상'),
+  firstImpression('first_impression', '첫인상');
 
   const TeamMode(this.dbValue, this.labelKo);
 
