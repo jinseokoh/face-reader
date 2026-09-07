@@ -368,6 +368,7 @@ class _MineCard extends ConsumerWidget {
                 title: team.title,
                 ageLabel: team.ageRangeLabel,
                 roomKind: team.roomKind,
+                mode: team.mode,
                 maxPlayers: team.maxPlayers,
                 isPrivate: !team.isPublic,
                 teamId: team.id,
@@ -588,6 +589,7 @@ class _PublicCardState extends State<_PublicCard> {
           title: team.title,
           ageLabel: team.ageRangeLabel,
           roomKind: team.roomKind,
+          mode: team.mode,
           maxPlayers: team.maxPlayers,
           isPrivate: team.isPrivate,
           teamId: team.id,
@@ -869,6 +871,10 @@ class _TeamCardBody extends StatelessWidget {
   final String title;
   final String ageLabel;
   final TeamRoomKind roomKind;
+
+  /// 방의 채점 방식 — 관상 케미 / 첫인상 케미. 관상 모드에서는 두 종류가 한
+  /// 목록에 섞이므로 pill 로 구분한다 (2026-09-07).
+  final TeamMode mode;
   final int maxPlayers;
   final bool isPrivate;
 
@@ -889,6 +895,7 @@ class _TeamCardBody extends StatelessWidget {
     required this.title,
     required this.ageLabel,
     required this.roomKind,
+    required this.mode,
     required this.maxPlayers,
     required this.isPrivate,
     required this.teamId,
@@ -928,6 +935,8 @@ class _TeamCardBody extends StatelessWidget {
             ),
             const SizedBox(width: AppSpacing.sm),
             AgeRangePill(label: ageLabel),
+            const SizedBox(width: AppSpacing.sm),
+            AgeRangePill(label: mode.labelKo, dim: dimKind),
           ],
         ),
         // 아바타 줄은 위 pill 줄과 붙으면 답답해서 sm(8px)으로 벌린다.

@@ -2,6 +2,7 @@ import 'package:facely/core/edition_copy.dart';
 import 'dart:async';
 
 import 'package:facely/config/router.dart';
+import 'package:facely/core/edition.dart';
 import 'package:facely/core/hive/hive_setup.dart';
 import 'package:facely/core/storage/thumbnail_paths.dart';
 import 'package:facely/core/theme.dart';
@@ -71,6 +72,7 @@ Future<void> _bootstrap() async {
     ),
   );
   await initHive();
+  loadEditionPreference(); // Android 의 관상/첫인상 선택 — 화면이 뜨기 전에
   // 원격 설정(app_config) — 응답 없이는 온보딩 문구·이미지가 fallback 으로
   // 나가므로 부팅 대기 시간에 미리 띄워 남은 init 과 겹쳐 돌린다. 응답의
   // Hive 캐시 기록이 걸려 있어 initHive 뒤에서 시작한다. 결과 소비는

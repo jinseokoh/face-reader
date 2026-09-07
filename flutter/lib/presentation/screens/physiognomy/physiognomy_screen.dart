@@ -13,6 +13,7 @@ import 'package:facely/data/services/team_service.dart';
 import 'package:facely/domain/models/team.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/providers/tab_provider.dart';
+import 'package:facely/presentation/widgets/edition_switch_title.dart';
 import 'package:facely/presentation/widgets/cdn_thumbnail.dart';
 import 'package:facely/presentation/widgets/compact_snack_bar.dart';
 import 'package:facely/presentation/widgets/credits_empty_state.dart';
@@ -647,7 +648,7 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
         // 내 관상 프로필 슬롯 제거 (2026-06-12) — 등록 상태는 AppBar
         // pill 라벨이 전달하고, 리스트 카드의 gold '내 관상' 배지가
         // 식별을 맡는다. 헤더는 타이틀 + TabBar 만.
-        title: Text(EditionCopy.faceTitle),
+        title: const EditionSwitchTitle(),
         actions: [
           // 미등록 = 내 관상 보기 / 등록 후 = 관상 보기.
           const FaceScanPill(),

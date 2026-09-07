@@ -13,6 +13,7 @@ import 'package:facely/data/services/app_config_service.dart';
 import 'package:facely/data/services/auth_service.dart';
 import 'package:facely/data/services/deep_link_service.dart';
 import 'package:facely/domain/models/team.dart';
+import 'package:facely/presentation/providers/edition_provider.dart';
 import 'package:facely/presentation/providers/team_provider.dart';
 import 'package:facely/presentation/providers/history_provider.dart';
 import 'package:facely/presentation/providers/tab_provider.dart';
@@ -216,6 +217,9 @@ class _MainAppState extends ConsumerState<MainApp> {
   @override
   Widget build(BuildContext context) {
     final selectedIndex = ref.watch(selectedTabProvider);
+    // 관상/첫인상 모드 — 바뀌면 탭 셸 전체를 새로 만든다 (탭 이름·화면·문구가
+    // 전부 kMeasureEdition 을 읽으므로 key 로 통째로 갈아 끼운다).
+    final measureMode = ref.watch(editionModeProvider);
     // 안읽음 뱃지·새 메시지 밴드 — 로드 전/실패 시엔 없는 것으로 취급.
     final chats =
         ref.watch(openChatsProvider).asData?.value ?? const <OpenChat>[];
@@ -226,6 +230,7 @@ class _MainAppState extends ConsumerState<MainApp> {
         children: [
           Expanded(
             child: IndexedStack(
+              key: ValueKey('tabs-${measureMode ? 'measure' : 'full'}'),
               index: selectedIndex,
               children: [
                 // IndexedStack 은 보이지 않는 탭도 전부 build 한다. TickerMode

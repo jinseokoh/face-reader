@@ -71,14 +71,17 @@
 cd /Users/chuck/Code/face/flutter
 flutter pub get
 flutter analyze          # 0 issues 기대
-flutter test             # 전부 green (2026-09-06 기준 288 test)
+flutter test             # 전부 green (2026-09-07 기준 289 test)
 flutter run --release    # 실기 — iOS 면 measure, Android 면 full 이 자동 (camera/MediaPipe simulator 불가)
 flutter build ipa        # iOS 제출 빌드 — define 불필요
 ```
 
-**에디션** (`lib/core/edition.dart`): `kMeasureEdition` 은 **플랫폼 런타임 판정** —
-iOS = `measure`(관상·궁합 화면 경로를 쓰지 않음), Android = `full`. `--dart-define=
-FACELY_EDITION=measure|full` 을 주면 그 값이 우선(테스트·디버깅). 원격 스위치 없음.
+**에디션 = 분석 모드** (`lib/core/edition.dart`): `kMeasureEdition` 은 getter —
+iOS = `measure`(관상·궁합 화면 경로를 쓰지 않음) 고정, Android = 기본 `full` 이고 관상 탭 앱바의
+"관상 | 첫인상" 스위치(`EditionSwitchTitle`, 확인 팝업)로 바꾼다. 선택은 Hive prefs `edition_mode` 에
+저장, 바뀌면 `editionModeProvider` 로 탭 셸 전체가 다시 그려진다. `--dart-define=
+FACELY_EDITION=measure|full` 을 주면 그 값으로 고정(테스트·디버깅, 스위치 숨김). 원격 스위치 없음.
+케미 목록 카드에는 방 종류 pill(관상 케미 / 첫인상 케미)이 붙는다.
 테스트는 두 에디션 모두: `flutter test` + `flutter test --dart-define=FACELY_EDITION=measure`.
 
 실측 재보정 (weight matrix/rule/reference 수정 후):
