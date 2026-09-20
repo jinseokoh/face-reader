@@ -102,3 +102,7 @@ AAF 층화 샘플 1,972장(연령대×성별 120장). 실제 나이는 파일명
 실행: `.venv-agebench`(python 3.10, torch·transformers 4.51·timm 0.8.13.dev0·insightface).
 MiVOLO 는 `pip install git+…MiVOLO` 가 빌드 실패라 clone 한 리포를 `PYTHONPATH` 로 잡는다.
 입력은 AAF 정렬 크롭(309×398)이라 앱의 720px 셀피보다 불리한 조건. CPU 0.4s/장.
+
+**크롭 여유 비율** (`eval_mivolo_crop_margin.py`, 성인 286장, InsightFace 박스 → 정사각 384):
+margin 0.0 / 0.1 / 0.2 / 0.3 / 0.4 의 MAE 가 5.62 / 5.79 / 5.68 / 5.65 / 5.56 — 전부 오차 범위 안.
+MiVOLO 는 박스 여유에 둔감하다. 서버 `CROP_MARGIN` 과 앱·웹 크롭 규격은 **0.2** 로 고정.

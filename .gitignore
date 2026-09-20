@@ -196,3 +196,4 @@ notes.local.md
 
 # DeepFace 나이 평가용 venv (eval_deepface_age.py)
 tools/face_shape_ml/.venv-deepface/
+tools/face_shape_ml/.venv-agebench/
