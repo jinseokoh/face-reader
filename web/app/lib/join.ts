@@ -19,6 +19,10 @@ export type WebCaptureBody = {
   landmarks: number[][];
   lateralMetrics: null;
   faceShape: "oval";
+  /** 서버 나이 추정 정수 (MiVOLO v2) — "AI 가 본 나이" 재료. 추정 실패면 없음. */
+  aiAge?: number;
+  /** aiAge 를 낸 모델 ("mivolo_v2"). */
+  ageModel?: string;
 };
 
 /**
@@ -119,43 +123,30 @@ function ageToGroup(age: number): string {
  * 일반 실패(`failed`)와 구분한다 — 확인 화면이 서로 다른 안내를 띄운다.
  */
 export type DemographicsEstimate =
-  | { status: "ok"; gender: string; ageGroup: string; ethnicity: string }
+  | {
+      status: "ok";
+      gender: string;
+      ageGroup: string;
+      ethnicity: string;
+      age: number;
+      ageModel: string;
+    }
   | { status: "busy" }
   | { status: "failed" };
 
 /**
- * DeepFace 추정 — 앱과 동일 경로: 캡처 프레임을 R2 temp/ 에 presign PUT 후
- * Worker 프록시(/api/analyze)로 python 을 호출한다 (python 이 temp 즉시 삭제).
- * 성공하지 못하면 확인 페이지가 수동 선택 fallback 으로 동작.
+ * 나이·성별·인종 추정 — 앱과 같은 문: 384px 얼굴 크롭을 Worker /api/analyze 에
+ * multipart 로 올리면 Worker 가 HMAC 을 붙여 python 에 중계한다. R2 temp/ 와
+ * presign 은 거치지 않는다. 성공하지 못하면 확인 페이지가 수동 선택 fallback.
  */
 export async function estimateDemographics(
-  frame: Blob,
+  faceCrop: Blob,
 ): Promise<DemographicsEstimate> {
   try {
-    const uuid = crypto.randomUUID();
-    const pres = await fetch("/api/r2/presign", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ prefix: "temp", uuid }),
-    });
-    if (!pres.ok) return { status: "failed" };
-    const { uploadUrl, key, token } = (await pres.json()) as {
-      uploadUrl: string;
-      key: string;
-      token?: string;
-    };
-    if (!token) return { status: "failed" };
-    const put = await fetch(uploadUrl, {
-      method: "PUT",
-      headers: { "content-type": "image/jpeg" },
-      body: frame,
-    });
-    if (!put.ok) return { status: "failed" };
-    const res = await fetch("/api/analyze", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ key, token }),
-    });
+    const form = new FormData();
+    form.set("image", faceCrop, "face.jpg");
+    form.set("face_crop", "1");
+    const res = await fetch("/api/analyze", { method: "POST", body: form });
     // 503 = 홈서버 동시 처리 상한 초과. 고장이 아니라 설계된 거절.
     if (res.status === 503) return { status: "busy" };
     if (!res.ok) return { status: "failed" };
@@ -163,6 +154,7 @@ export async function estimateDemographics(
       age: number;
       gender: string;
       ethnicity: string;
+      ageModel?: string;
     };
     if (!out.gender || !out.ethnicity || typeof out.age !== "number") {
       return { status: "failed" };
@@ -172,6 +164,8 @@ export async function estimateDemographics(
       gender: out.gender,
       ageGroup: ageToGroup(out.age),
       ethnicity: out.ethnicity,
+      age: out.age,
+      ageModel: out.ageModel ?? "",
     };
   } catch {
     return { status: "failed" };

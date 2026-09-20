@@ -1,4 +1,5 @@
 import { AwsClient } from "aws4fetch";
+import { issueFaceToken } from "../lib/face-token.server";
 import type { Route } from "./+types/api.r2.presign";
 
 /**
@@ -81,7 +82,7 @@ export async function action({ request, context }: Route.ActionArgs) {
   // /analyze 인증 토큰은 temp/ 객체에만 의미 있음.
   let token: string | undefined;
   if (parsed.prefix === "temp") {
-    token = await issueFaceToken(cfg, key);
+    token = await issueFaceToken(cfg.faceSecret, cfg.ttlSec, key);
   }
 
   return Response.json({
@@ -275,38 +276,3 @@ async function signPut(cfg: Cfg, key: string): Promise<string> {
   return signed.url;
 }
 
-// ─── HMAC token for /analyze ─────────────────────────────────────────────
-
-async function issueFaceToken(cfg: Cfg, key: string): Promise<string> {
-  const deadlineMs = Date.now() + cfg.ttlSec * 1000;
-  const ts = new Uint8Array(8);
-  // big-endian 64-bit unsigned write.
-  const v = BigInt(deadlineMs);
-  for (let i = 7; i >= 0; i--) ts[i] = Number((v >> BigInt((7 - i) * 8)) & 0xffn);
-
-  const keyBytes = new TextEncoder().encode(key);
-  const message = new Uint8Array(ts.length + keyBytes.length);
-  message.set(ts, 0);
-  message.set(keyBytes, ts.length);
-
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(cfg.faceSecret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const macBuf = await crypto.subtle.sign("HMAC", cryptoKey, message);
-  const mac = new Uint8Array(macBuf);
-
-  const out = new Uint8Array(ts.length + mac.length);
-  out.set(ts, 0);
-  out.set(mac, ts.length);
-  return base64UrlEncode(out);
-}
-
-function base64UrlEncode(bytes: Uint8Array): string {
-  let s = "";
-  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
-  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}

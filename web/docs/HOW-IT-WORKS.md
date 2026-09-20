@@ -23,14 +23,13 @@
 │                                                                     │
 │  사진 촬영/앨범                                                       │
 │   │                                                                 │
-│   ├─(A) DeepFace 분석 파이프라인 → age/gender/race                    │
-│   │    Flutter ──720 PUT──► R2 temp/{uuid}.jpg                       │
-│   │    Flutter ──POST /analyze──► Python                             │
+│   ├─(A) 나이·성별·인종 추정 → age/gender/ethnicity/ageModel           │
+│   │    Flutter ──384 얼굴 크롭 multipart──► Worker /api/analyze       │
+│   │      Worker ── HMAC 발급 ──► Python /analyze (multipart 중계)     │
 │   │      ├─ HMAC verify                                              │
-│   │      ├─ DeepFace.analyze                                         │
-│   │      ├─ R2 DELETE temp/{uuid}.jpg (즉시 삭제)                     │
+│   │      ├─ MiVOLO v2(나이·성별) ∥ DeepFace race(인종)                │
 │   │      └─ JSON 응답                                                │
-│   │    [안전망] R2 lifecycle: temp/ 1일 자동 만료                     │
+│   │    [옛 앱] 720 PUT R2 temp/ → {image_url} 경로도 당분간 유지       │
 │   │                                                                 │
 │   ├─(B) 로컬 face mesh + 엔진 → 리포트(archetype 등)                  │
 │   │                                                                 │
@@ -106,27 +105,25 @@
 > Supabase 로그 grep 한 번이면 끝.
 
 ```
-Flutter                              Worker                          Python
+Flutter / 웹                         Worker                          Python
   │                                                                    │
-  │ 1. POST /api/r2/presign {prefix:"temp",uuid,...}                   │
+  │ 1. POST /api/analyze  multipart {image: 384px 얼굴 크롭, face_crop:1}
   ├──────────────────────────────────► .                               │
-  │                                    │ aws4fetch SigV4               │
+  │                                    │ key = upload/{uuid}           │
   │                                    │ HMAC(secret, ts+key)          │
+  │                                    │ 2. POST /analyze multipart    │
+  │                                    │    X-Face-Token, X-Face-Key   │
+  │                                    ├──────────────────────────────►
+  │                                    │                               │ HMAC verify
+  │                                    │                               │ MiVOLO v2 ∥ DeepFace race
+  │                                    │ ◄─────────────────────────────┤
   │ ◄──────────────────────────────────┤                               │
-  │ {uploadUrl, publicUrl, key, token}                                 │
-  │                                                                    │
-  │ 2. PUT 720px JPG → R2 temp/{uuid}.jpg (presigned URL 직통)         │
-  │                                                                    │
-  │ 3. POST /analyze {image_url:publicUrl}                              │
-  │    headers: X-Face-Token, X-Face-Key                                │
-  ├────────────────────────────────────────────────────────────────────►
-  │                                                                    │ HMAC verify
-  │                                                                    │ download → DeepFace
-  │                                                                    │ R2 DELETE temp/{uuid}.jpg
-  │                                                                    │ (R2 credential: 별도 DELETE-only 토큰)
-  │ ◄────────────────────────────────────────────────────────────────┤
-  │ {age:28, gender:"male", ethnicity:"eastAsian"}                      │
+  │ {age:28, gender:"male", ethnicity:"eastAsian", ageModel:"mivolo_v2"}│
 ```
+
+왕복이 1번이다 (예전: presign → R2 PUT → /analyze → python 의 R2 재다운로드, 4번).
+크롭 규격(384px, 박스 사방 여유 0.2)은 서버 `CROP_MARGIN` 과 같다 — tools/face_shape_ml/README.md ③.
+옛 앱의 `{image_url}` + R2 temp/ 경로는 python 이 당분간 함께 받는다 (스토어 앱 갱신 후 제거).
 
 한 줄 요약: **`key` = "bucket 안 어디에 있는지"** (S3/R2 저장소 객체식별자를 나타내는 universal 컨벤션), **`token` = "그 key 를 분석하러 갈 수 있는 5분짜리 통행증"** (Python `/analyze` 인증 한 용도).
 
@@ -580,10 +577,11 @@ create policy "metrics_owner_delete" on metrics for delete
 
 ## 6. 인증·보안
 
-### 6.1 HMAC token (Worker ↔ Python ↔ Flutter)
+### 6.1 HMAC token (Worker ↔ Python)
 
-- Cloudflare Worker 가 presign 응답에 `token` 함께 발행: `base64url(deadline_ms_8B || HMAC_SHA256(FACE_API_SECRET, deadline_ms || key))`
-- Flutter 가 `/analyze` 요청에 `X-Face-Token` + `X-Face-Key` 헤더로 전달
+- Cloudflare Worker 가 발행: `base64url(deadline_ms_8B || HMAC_SHA256(FACE_API_SECRET, deadline_ms || key))` (`app/lib/face-token.server.ts`)
+  - `/api/analyze` 중계: 요청마다 `key = upload/{uuid}` 로 만들어 워커가 직접 python 에 붙인다 — 클라이언트는 토큰을 보지 않는다
+  - `/api/r2/presign` (옛 앱): `key = temp/{uuid}.jpg` 토큰을 응답에 실어 앱이 `/analyze` 에 전달
 - Python 이 동일 secret 으로 검증 (deadline 비교 + HMAC compare_digest)
 - TTL 기본 5분 — presign URL 유효시간과 일치
 - 같은 secret 을 `Worker.FACE_API_SECRET` + `Python.FACE_API_SECRET` 환경변수에 동일 값으로 주입

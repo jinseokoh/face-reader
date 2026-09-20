@@ -43,6 +43,9 @@ const NO_FACE_TIMEOUT_MS = 20_000
 const DEMO_KEY = 'facely:demographic'
 // 얼굴이 잡히면 3초 카운트다운 (3 → 2 → 1) 후 자동 찰칵.
 const COUNTDOWN_MS = 3_000
+// 추정용 얼굴 크롭 규격 — 서버 CROP_MARGIN(0.2)·MiVOLO 입력(384)과 동일. 앱도 같은 값.
+const FACE_CROP_PX = 384
+const FACE_CROP_MARGIN = 0.2
 // 로비 라이브 갱신 — Realtime 이 끊겨도 최신을 놓치지 않게 보조 폴링.
 const LOBBY_POLL_MS = 15_000
 
@@ -553,22 +556,45 @@ export function JoinWizard({
     return new Promise((r) => c.toBlob(r, 'image/jpeg', 0.8))
   }
 
-  /** DeepFace 추정용 원본 프레임 (비미러, 전체 해상도 JPEG). */
-  function frameToFull(video: HTMLVideoElement): Promise<Blob | null> {
-    if (!video.videoWidth || !video.videoHeight) return Promise.resolve(null)
+  /**
+   * 나이·성별·인종 추정용 얼굴 크롭 (비미러). 랜드마크 박스를 사방 FACE_CROP_MARGIN
+   * 만큼 넓혀 긴 변 기준 정사각으로 잘라 FACE_CROP_PX 로 줄인다 — 서버
+   * CROP_MARGIN·MiVOLO 입력 규격과 같다 (python/README.md). 프레임 밖은 검정.
+   */
+  function frameToFaceCrop(
+    video: HTMLVideoElement,
+    points: number[][],
+  ): Promise<Blob | null> {
+    const W = video.videoWidth
+    const H = video.videoHeight
+    if (!W || !H || points.length === 0) return Promise.resolve(null)
+    let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity
+    for (const p of points) {
+      const x = p[0] * W
+      const y = p[1] * H
+      if (x < x1) x1 = x
+      if (x > x2) x2 = x
+      if (y < y1) y1 = y
+      if (y > y2) y2 = y
+    }
+    const side = Math.max(x2 - x1, y2 - y1) * (1 + 2 * FACE_CROP_MARGIN)
+    const sx = (x1 + x2) / 2 - side / 2
+    const sy = (y1 + y2) / 2 - side / 2
     const c = document.createElement('canvas')
-    c.width = video.videoWidth
-    c.height = video.videoHeight
+    c.width = FACE_CROP_PX
+    c.height = FACE_CROP_PX
     const ctx = c.getContext('2d')
     if (!ctx) return Promise.resolve(null)
-    ctx.drawImage(video, 0, 0)
+    ctx.fillStyle = '#000'
+    ctx.fillRect(0, 0, FACE_CROP_PX, FACE_CROP_PX)
+    ctx.drawImage(video, sx, sy, side, side, 0, 0, FACE_CROP_PX, FACE_CROP_PX)
     return new Promise((r) => c.toBlob(r, 'image/jpeg', 0.85))
   }
 
   async function capture(points: number[][]) {
     const video = videoRef.current
     const thumb = video ? await frameToThumb(video) : null
-    const frame = video ? await frameToFull(video) : null
+    const faceCrop = video ? await frameToFaceCrop(video, points) : null
     // MediaPipe 좌표는 x=폭, y=높이로 각각 정규화된다. 각도·세로÷가로 비율이
     // 프레임 종횡비에 왜곡되므로 실제 비율을 넘긴다. stopCamera() 이후에는
     // videoWidth 가 0 이 되므로 반드시 그 전에 읽는다.
@@ -610,13 +636,18 @@ export function JoinWizard({
     // 앱과 동일: 촬영 → DeepFace 추정 → 정보 확인(prefill) → 저장.
     setAliasName((cur) => cur || nickname)
     setStage('confirm')
-    if (frame) {
+    if (faceCrop) {
       setEstimating(true)
       setEstimateStatus(null)
-      void estimateDemographics(frame)
+      void estimateDemographics(faceCrop)
         .then((est) => {
           setEstimateStatus(est.status)
           if (est.status !== 'ok') return
+          // 서버 나이 정수는 body 에 남긴다 — "AI 가 본 나이" 재료 (연령대 선택과 별개).
+          if (bodyRef.current) {
+            bodyRef.current.aiAge = est.age
+            if (est.ageModel) bodyRef.current.ageModel = est.ageModel
+          }
           if (GENDERS.some((g) => g.v === est.gender)) setGender(est.gender)
           if (AGES.some((a) => a.v === est.ageGroup)) setAge(est.ageGroup)
           if (ETHNICITIES.some((e) => e.v === est.ethnicity)) {
