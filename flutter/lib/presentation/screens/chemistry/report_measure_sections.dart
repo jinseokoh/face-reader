@@ -34,9 +34,10 @@ class MeasureReportBody extends StatelessWidget {
   const MeasureReportBody({super.key, required this.report});
 
   static const String disclaimer =
-      '첫인상 지표는 공개 학술연구를 기반으로 계산한 추정치이며, 한국인만을 '
-      '대상으로 학습·검증된 모델이 아닙니다. 실제 성격·능력이 아니라 얼굴 형태가 '
-      '기준 집단 안에서 갖는 상대 위치입니다.';
+      '첫인상 지표는 공개 학술연구를 기반으로 계산한 추정치입니다. '
+      '동북아시아인(한국,일본,중국) 사진을 대상으로 학습한 모델입니다. 다른 '
+      '인종의 경우, 정확도가 떨어질 수 있습니다. 실제 성격·능력이 아니라 얼굴 '
+      '형태가 기준 집단 안에서 갖는 상대 위치입니다.';
 
   static const List<String> references = [
     'Oosterhof & Todorov (2008) PNAS — 얼굴 평가의 두 축(신뢰감·지배력)',
