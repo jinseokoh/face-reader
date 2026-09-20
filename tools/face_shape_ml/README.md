@@ -85,3 +85,20 @@ $VENV tools/face_shape_ml/extract_niten_reference.py              # full (~5000�
 
 **공통 검증**: `cd flutter && flutter test test/calibration_test.dart` (quantile 재생성)
 → `archetype_fairness_test`·`score_distribution_test` green.
+
+## ③ 나이 추정 모델 비교 (AI 가 본 나이 후보, 2026-09-20)
+
+AAF 층화 샘플 1,972장(연령대×성별 120장). 실제 나이는 파일명. 스크립트
+`eval_deepface_age.py`(앱 서버와 같은 DeepFace 설정) · `eval_age_models.py`(후보 3종).
+성인 20~59 기준. 결과 CSV 는 `out/aaf_deepface_age.csv`, `out/aaf_age_{model}.csv` (gitignore).
+
+| 모델 | MAE | ±5세 | ±10세 | 연령대(10년) 적중 | 성별 | 비고 |
+|---|---|---|---|---|---|---|
+| DeepFace 0.0.93 (현재 서버) | 9.8 | 34% | 61% | 33% | 84% | 50대 −18, 60대 −26, 70대 −33 — 전부 27~44 로 뭉갬 |
+| FairFace ViT (nateraw/vit-age-classifier) | 9.1 | 43% | 65% | 39% | – | 10년 구간 분류, 구간 중앙값 사용 |
+| InsightFace buffalo_l genderage | 9.2 | 38% | 66% | 34% | 94% | 편향 +1, 중앙값은 맞으나 분산 큼 |
+| **MiVOLO v2 (iitolstykh/mivolo_v2)** | **6.1** | **54%** | **83%** | **49%** | **99%** | 실제→예측 중앙값 20→24 30→29 40→39 50→50 60→61 70→74 |
+
+실행: `.venv-agebench`(python 3.10, torch·transformers 4.51·timm 0.8.13.dev0·insightface).
+MiVOLO 는 `pip install git+…MiVOLO` 가 빌드 실패라 clone 한 리포를 `PYTHONPATH` 로 잡는다.
+입력은 AAF 정렬 크롭(309×398)이라 앱의 720px 셀피보다 불리한 조건. CPU 0.4s/장.
