@@ -35,6 +35,9 @@ FaceReadingReport analyzeFaceReading({
   required int imageWidth,
   required int imageHeight,
   List<FaceMeshLandmark>? lateralLandmarks,
+  /// 서버 나이 추정 정수·모델 (FaceMetadata). null = 추정 실패.
+  int? aiAge,
+  String? ageModel,
 }) {
   final isOver50 = ageGroup.isOver50;
 
@@ -336,6 +339,8 @@ FaceReadingReport analyzeFaceReading({
       aspect: aspectCorrection,
     ),
     modelVersion: currentModelVersions(),
+    aiAge: aiAge,
+    ageModel: aiAge == null ? null : ageModel,
     landmarks: _storedLandmarks(landmarks, aspectCorrection),
     lateralLandmarks: lateralLandmarks == null
         ? null

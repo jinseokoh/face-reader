@@ -134,7 +134,7 @@ age_adjustment, yin_yang, compat/).
 ├── main.dart / app.dart            # entry · MainApp(IndexedStack + 딥링크 dedup)
 ├── config/router.dart              # GoRouter: /main · /main/ledger · /r/:id(/open) · /g/:id · /capture/confirm
 ├── core/                           # theme(토큰 SSOT) · hive_setup · thumbnail_paths(소유자키→캐시파일·CDN URL)
-├── data/services/                  # face_shape_classifier(TFLite) · face_metadata_client(R2+DeepFace)
+├── data/services/                  # face_shape_classifier(TFLite) · face_metadata_client(워커 /api/analyze 업로드)
 │                                   # · image_resizer · r2_uploader · supabase_service · auth_service
 │                                   # · team_service · wallet/coin/free_coin · admob · compatibility
 │                                   # · deep_link_service · analytics · app_config(강제 업그레이드)
@@ -289,7 +289,10 @@ owner, 상태 전이는 RPC 전용. `team_members` public read, 쓰기는 전부
 
 ### DeepFace (`python/`) · AdMob · 인증
 
-- `POST /analyze {image_url}` (R2 temp presigned) → `{age, gender, ethnicity}` —
+- 앱은 384px 얼굴 크롭을 워커 `POST /api/analyze` 에 multipart 로 올린다 (왕복 1번, HMAC 은 워커가 붙임).
+  python 응답 `{age, gender, ethnicity, ageModel}` — age·gender 는 MiVOLO v2, ethnicity 는 DeepFace race.
+  `age` 정수는 body `aiAge` 로 남는다 ("AI 가 본 나이" 재료), 연령대 prefill 은 종전대로.
+- (옛 앱) `POST /analyze {image_url}` (R2 temp presigned) → `{age, gender, ethnicity}` —
   `face_metadata_client.dart` 가 매 분석마다 사용 (이전 값 기억 안 함).
 - 광고 체계 (2026-07-30 기준):
   - **보상 광고 = custom 우선 + AdMob 폴백** (`purchase_sheet._watchAd`).

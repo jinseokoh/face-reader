@@ -336,6 +336,9 @@ class _InfoConfirmScreenState extends ConsumerState<InfoConfirmScreen> {
         imageWidth: c.imageWidth,
         imageHeight: c.imageHeight,
         lateralLandmarks: c.lateralLandmarks,
+        // 서버 나이 정수는 연령대 선택과 별개로 body 에 남긴다 ("AI 가 본 나이").
+        aiAge: _inferred?.age,
+        ageModel: _inferred?.ageModel,
       );
 
       // metadata.uuid 가 있으면 그걸 supabaseId 로 그대로 사용 (R2 thumbnailKey 의

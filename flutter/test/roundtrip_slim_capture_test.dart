@@ -2,6 +2,8 @@
 // 첫 load → 재serialize → 다시 load 가 동일한 결과를 내야 한다. pull-to-refresh
 // 를 여러 번 해도 분석기록이 사라지지 않음을 보증.
 
+import 'dart:convert';
+
 import 'package:face_engine/data/constants/face_reference_data.dart';
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/ethnicity.dart';
@@ -35,6 +37,8 @@ void main() {
       timestamp: DateTime(2026, 4, 19),
       source: AnalysisSource.album,
       supabaseId: 'test-uuid',
+      aiAge: 34,
+      ageModel: 'mivolo_v2',
       landmarks: demoLandmarks(Gender.female),
       metrics: metrics,
       nodeScores: const {},
@@ -63,5 +67,9 @@ void main() {
 
     expect(gen3.supabaseId, 'test-uuid');
     expect(gen3.faceShape, FaceShape.oval);
+    // 서버 나이 추정은 capture 필드 — 세 세대를 거쳐도 그대로 (body 에도 실린다).
+    expect(gen3.aiAge, 34);
+    expect(gen3.ageModel, 'mivolo_v2');
+    expect(jsonDecode(gen3.toBodyJson())['aiAge'], 34);
   });
 }

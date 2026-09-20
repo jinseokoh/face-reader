@@ -231,6 +231,13 @@ class FaceReadingReport {
   /// 계산에 쓴 모델 버전 {geometry, impression, pair} (§58). null = 기록 전 카드.
   final Map<String, String>? modelVersion;
 
+  /// 서버가 사진에서 추정한 나이 정수 (python /analyze, MiVOLO v2) — 사용자가
+  /// 고른 [ageGroup] 과 별개인 "AI 가 본 나이" 재료. null = 추정 실패·기록 전 카드.
+  final int? aiAge;
+
+  /// [aiAge] 를 낸 모델 ("mivolo_v2"). null = aiAge 없음·기록 전.
+  final String? ageModel;
+
   /// 정면 468 랜드마크 — 등방 원본 좌표 [x, y] (x 는 폭 기준, y 는 높이 기준값 ×
   /// 높이/폭), 소수 4자리. 스키마 2 부터 필수. 계측·대칭·정규화(§5)는 여기서
   /// 다시 만들 수 있다 — 계측이 늘거나 바뀌어도 다시 찍을 필요가 없다.
@@ -278,6 +285,8 @@ class FaceReadingReport {
     this.lateralFlags,
     this.symmetry,
     this.modelVersion,
+    this.aiAge,
+    this.ageModel,
     required this.landmarks,
     this.lateralLandmarks,
     required this.nodeScores,
@@ -318,6 +327,8 @@ class FaceReadingReport {
           },
         if (symmetry != null) 'symmetry': symmetry,
         if (modelVersion != null) 'modelVersion': modelVersion,
+        if (aiAge != null) 'aiAge': aiAge,
+        if (ageModel != null) 'ageModel': ageModel,
         'landmarks': landmarks,
         if (lateralLandmarks != null) 'lateralLandmarks': lateralLandmarks,
         if (faceShapeLabel != null) 'faceShapeLabel': faceShapeLabel,
@@ -357,6 +368,8 @@ class FaceReadingReport {
           },
         if (symmetry != null) 'symmetry': symmetry,
         if (modelVersion != null) 'modelVersion': modelVersion,
+        if (aiAge != null) 'aiAge': aiAge,
+        if (ageModel != null) 'ageModel': ageModel,
         'landmarks': landmarks,
         if (lateralLandmarks != null) 'lateralLandmarks': lateralLandmarks,
         // lateralFlags 는 lateral z + 현재 metricScore 임계로 load 시 재계산.
@@ -551,6 +564,8 @@ class FaceReadingReport {
       lateralFlags: lateralFlags,
       symmetry: symmetry,
       modelVersion: modelVersion,
+      aiAge: (j['aiAge'] as num?)?.toInt(),
+      ageModel: j['ageModel'] as String?,
       landmarks: landmarks,
       lateralLandmarks: lateralLandmarks,
       nodeScores: nodeScores,

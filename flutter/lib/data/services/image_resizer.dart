@@ -7,9 +7,10 @@ import 'package:flutter/painting.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
-/// Native HW-accelerated image resize. Used for two outputs of the analyze
+/// Native HW-accelerated image resize. Used for the outputs of the analyze
 /// pipeline:
-///   * 720px wide   — uploaded to R2 temp/, sent to Python /analyze
+///   * 384×384 sq   — ML Kit 박스 기준 얼굴 크롭, 워커 /api/analyze 업로드
+///                    ([faceCenterSquareCropDetected]; 미검출이면 720px 전체)
 ///   * 200×200 sq   — face-centered crop, uploaded to R2 thumbnails/ after
 ///                    analyze success
 ///
@@ -76,6 +77,39 @@ class ImageResizer {
     int outSize = 200,
     double padding = 0.25,
     int quality = _kJpegQuality,
+  }) async =>
+      (await _faceCrop(bytes,
+              mlKitInput: mlKitInput,
+              outSize: outSize,
+              padding: padding,
+              quality: quality))
+          .jpg;
+
+  /// [faceCenterSquareCropFromBytes] 와 같은 crop 이되, ML Kit 가 얼굴을 못
+  /// 찾으면 **null** 을 돌려준다 — 중앙 crop 을 얼굴로 믿게 하지 않는다.
+  /// 추정 업로드(FaceMetadataClient)가 "크롭이면 검출 생략" 이라 검출 여부가
+  /// 계약의 일부다.
+  static Future<Uint8List?> faceCenterSquareCropDetected(
+    Uint8List bytes, {
+    required String mlKitPath,
+    int outSize = 384,
+    double padding = 0.2,
+    int quality = _kJpegQuality,
+  }) async {
+    final r = await _faceCrop(bytes,
+        mlKitInput: InputImage.fromFilePath(mlKitPath),
+        outSize: outSize,
+        padding: padding,
+        quality: quality);
+    return r.faceFound ? r.jpg : null;
+  }
+
+  static Future<({Uint8List jpg, bool faceFound})> _faceCrop(
+    Uint8List bytes, {
+    InputImage? mlKitInput,
+    required int outSize,
+    required double padding,
+    required int quality,
   }) async {
     // 1) bbox 검출 — 실패해도 throw 안 함, fallback 으로 image-center 사용.
     Rect? faceBox;
@@ -160,6 +194,6 @@ class ImageResizer {
       format: CompressFormat.jpeg,
       keepExif: false,
     );
-    return Uint8List.fromList(jpg);
+    return (jpg: Uint8List.fromList(jpg), faceFound: faceBox != null);
   }
 }

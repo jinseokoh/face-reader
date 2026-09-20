@@ -2,7 +2,8 @@ import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/ethnicity.dart';
 import 'package:face_engine/data/enums/gender.dart';
 
-/// Result of the DeepFace age/gender/ethnicity inference pipeline.
+/// Result of the python /analyze age/gender/ethnicity inference (age·gender =
+/// MiVOLO v2, ethnicity = DeepFace race).
 ///
 /// `uuid` is the **single capture id** generated once at analyze time and
 /// reused across the entire face lifecycle:
@@ -28,12 +29,15 @@ class FaceMetadata {
   // "middleEastern" — Python /analyze 응답에서 Flutter Ethnicity enum name 으로
   // 정규화된 값. 그대로 `Ethnicity.values.byName(...)` 로 매핑 가능.
   final String ethnicity;
+  /// `age` 를 낸 모델 — "mivolo_v2". 옛 서버 응답엔 없어 null.
+  final String? ageModel;
 
   const FaceMetadata({
     required this.uuid,
     required this.age,
     required this.gender,
     required this.ethnicity,
+    this.ageModel,
   });
 
   /// Python `/analyze` 응답엔 uuid 가 없다 (서버는 모름). 호출자가 client-side
@@ -47,6 +51,7 @@ class FaceMetadata {
         age: (j['age'] as num).toInt(),
         gender: j['gender'] as String,
         ethnicity: j['ethnicity'] as String,
+        ageModel: j['ageModel'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -54,6 +59,7 @@ class FaceMetadata {
         'age': age,
         'gender': gender,
         'ethnicity': ethnicity,
+        if (ageModel != null) 'ageModel': ageModel,
       };
 
   /// DeepFace `gender` 문자열을 [Gender] enum 으로. 알 수 없으면 null.
