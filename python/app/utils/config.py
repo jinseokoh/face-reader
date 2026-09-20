@@ -26,8 +26,18 @@ class Settings(BaseSettings):
         "image/webp",
     )
 
-    # DeepFace
+    # 업로드 본문 상한 (multipart image). 384px 얼굴 크롭은 20~35KB 다.
+    max_upload_mb: int = 1
+
+    # DeepFace — 인종 + (전체 사진일 때) 얼굴 검출
     detector_backend: str = "opencv"
+
+    # MiVOLO v2 — 나이·성별. HF 리비전 고정 (원격 코드가 함께 온다).
+    mivolo_model_id: str = "iitolstykh/mivolo_v2"
+    mivolo_revision: str = "53393526c220e34cdd7b722b36d22b6f9e5f4241"
+    # 전체 사진에서 검출 박스를 사방 이 비율만큼 넓혀 정사각 크롭 → MiVOLO.
+    # 앱·웹이 보내는 크롭 규격과 같아야 한다 (tools/face_shape_ml/eval_mivolo_crop_margin.py 로 정함).
+    crop_margin: float = 0.2
 
     # 백프레셔 — 추론 1건이 이미 8코어 중 6개를 점유해서(실측 ~630% CPU) 동시
     # 실행은 총 처리량을 못 올리고 대기시간만 선형으로 늘린다: 동시 16 이면

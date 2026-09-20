@@ -1,11 +1,13 @@
 fastapi==0.115.0
 uvicorn[standard]==0.30.6
+# multipart/form-data 파싱 (얼굴 크롭 업로드)
+python-multipart==0.0.12
 httpx==0.27.2
 pydantic==2.9.2
 pydantic-settings==2.5.2
 python-json-logger==2.0.7
 # DeepFace pulls in tensorflow-cpu, opencv-python-headless, mtcnn, retina-face, etc.
-# CPU-only stack — no GPU wheels.
+# CPU-only stack — no GPU wheels. 인종(race) 헤드 + 전체 사진일 때 얼굴 검출에만 쓴다.
 deepface==0.0.93
 tensorflow-cpu==2.16.2
 # TF 2.16+ 에서 내장 tf.keras 가 Keras 3 로 교체됨. DeepFace/retinaface 는
@@ -14,3 +16,17 @@ tensorflow-cpu==2.16.2
 tf-keras==2.16.0
 opencv-python-headless==4.10.0.84
 numpy==1.26.4
+# MiVOLO v2 (나이·성별) — torch CPU 휠. 기본 PyPI 의 torch 는 CUDA 의존을 끌고 와
+# 이미지가 수 GB 커지므로 반드시 +cpu 인덱스에서 받는다.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.5.1+cpu
+torchvision==0.20.1+cpu
+transformers==4.51.0
+# transformers 가 원격 코드 모델을 올릴 때 accelerate 의 init_empty_weights 를 쓴다 (모델 카드 지정 버전).
+accelerate==1.8.1
+huggingface_hub==0.30.2
+# vendor/mivolo 가 timm.models._helpers.remap_checkpoint 에 묶여 있다 — 이 pre-release 고정.
+timm==0.8.13.dev0
+safetensors==0.5.3
+# vendor/mivolo/data/misc.py 가 import 한다 (추적 함수용, 추론엔 미사용).
+scipy==1.14.1

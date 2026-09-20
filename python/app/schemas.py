@@ -9,6 +9,7 @@ class AnalyzeRequest(BaseModel):
 
 
 class AnalyzeResponse(BaseModel):
+    # MiVOLO v2 정수(반올림).
     age: int
     # "male" | "female" — Flutter Gender enum name.
     gender: str
@@ -16,6 +17,8 @@ class AnalyzeResponse(BaseModel):
     #   "eastAsian" | "caucasian" | "african" |
     #   "southeastAsian" | "hispanic" | "middleEastern"
     ethnicity: str
+    # 나이·성별을 낸 모델 — "mivolo_v2". 카드에 남겨 어느 식의 값인지 추적한다.
+    ageModel: str
 
 
 class ErrorResponse(BaseModel):

@@ -26,16 +26,26 @@ docker compose up -d --build           # 코드 변경 후 재빌드+재기동
 
 ### `POST /analyze`
 
-```json
-요청: { "image_url": "https://.../face.jpg" }
-성공: { "age": 28, "gender": "male", "ethnicity": "eastAsian" }
+두 입력 형태. 인증은 둘 다 `X-Face-Token` + `X-Face-Key` (Cloudflare Worker 가 발급, §HMAC).
+
+```
+① multipart/form-data (앱·웹, Worker /api/analyze 가 중계)
+   image=<JPEG/PNG/WebP bytes>  face_crop=1        ← 384px 정사각 얼굴 크롭이면 1 (검출 생략)
+② application/json (옛 앱 계약 — 스토어 앱이 전부 갱신되면 제거)
+   { "image_url": "https://.../temp/{uuid}.jpg" }  ← 720px 전체 사진, 분석 뒤 R2 temp 즉시 DELETE
+
+성공: { "age": 28, "gender": "male", "ethnicity": "eastAsian", "ageModel": "mivolo_v2" }
 ```
 
-- `age` 정수(반올림) · `gender`/`ethnicity` 는 Flutter SSOT enum name 으로 정규화.
+- `age`·`gender` 는 **MiVOLO v2** (tools/face_shape_ml/README.md ③ — AAF 성인 MAE 6.1세, 성별 99%).
+  `ethnicity` 는 DeepFace race 헤드. 두 모델은 스레드 둘로 동시에 돈다.
+- 전체 사진(②·`face_crop=0`)은 DeepFace opencv 검출 박스를 `CROP_MARGIN` 만큼 넓힌
+  정사각 크롭을 MiVOLO 에 넣는다. 앱·웹이 보내는 크롭도 같은 규격이어야 한다.
+- `ageModel` 은 카드에 남긴다 — 어느 식이 낸 나이인지 추적 (APPLE.md §58 원칙).
+- `gender`/`ethnicity` 는 Flutter SSOT enum name 으로 정규화.
 
-| DeepFace 원본 | 응답 |
+| DeepFace race 원본 | 응답 |
 |---|---|
-| `Man` / `Woman` | `male` / `female` |
 | `asian` | `eastAsian` |
 | `white` | `caucasian` |
 | `black` | `african` |
@@ -47,7 +57,8 @@ docker compose up -d --build           # 코드 변경 후 재빌드+재기동
 
 | HTTP | error | 의미 |
 |---|---|---|
-| 400 | `download_failed` | URL 오류·비이미지 타입·파일 과대 (upload 측 Content-Type 은 image/* 필수) |
+| 400 | `download_failed` / `bad_request` | URL 오류·비이미지 타입·파일 과대 (upload 측 Content-Type 은 image/* 필수) / multipart `image` 누락·JSON 오류 |
+| 413 | `upload_too_large` | multipart 본문이 `MAX_UPLOAD_MB` 초과 |
 | 422 | `no_face_detected` | 얼굴 미검출 |
 | 502 | `download_failed` | 원격(R2) 비정상 응답/네트워크 실패 |
 | 503 | `busy` | 동시 처리 상한 초과 — 대기 없이 즉시 거절. `Retry-After` 초 동봉 |
@@ -62,7 +73,10 @@ docker compose up -d --build           # 코드 변경 후 재빌드+재기동
 | `HOST` / `PORT` | `0.0.0.0` / `8000` | 바인딩 |
 | `DOWNLOAD_TIMEOUT_SEC` | `15` | 이미지 다운로드 타임아웃 |
 | `MAX_DOWNLOAD_MB` | `10` | 최대 이미지 크기 |
-| `DETECTOR_BACKEND` | `opencv` | opencv/ssd/mtcnn/retinaface |
+| `MAX_UPLOAD_MB` | `1` | multipart 업로드 상한 (384px 크롭은 20~35KB) |
+| `DETECTOR_BACKEND` | `opencv` | opencv/ssd/mtcnn/retinaface — 인종 + 전체 사진 검출 |
+| `MIVOLO_MODEL_ID` / `MIVOLO_REVISION` | `iitolstykh/mivolo_v2` / 고정 커밋 | HF hub 모델·리비전 (원격 코드 포함, `HF_HOME` 캐시) |
+| `CROP_MARGIN` | `0.2` | 검출 박스를 사방 넓히는 비율 (앱·웹 크롭 규격과 동일) |
 | `MAX_CONCURRENT_ANALYSES` | `4` | 동시 처리 상한. 초과 요청은 503 `busy` |
 | `BUSY_RETRY_AFTER_SEC` | `5` | 503 응답의 `Retry-After` 값 |
 | `LOG_LEVEL` | `INFO` | 로깅 레벨 |
@@ -81,6 +95,9 @@ docker compose up -d --build           # 코드 변경 후 재빌드+재기동
 **천장은 ~0.75 req/s (분당 45건)** 이고 CPU 바운드다. 컨테이너를 늘려도 같은
 CPU 를 쪼갤 뿐이라 처리량은 그대로 — 더 필요하면 모델 경량화나 별도 하드웨어.
 `MAX_CONCURRENT_ANALYSES` 는 이 사실 위에서 "느린 성공보다 빠른 실패"를 택한 값.
+
+MiVOLO 는 `vendor/mivolo` (Apache 2.0, `vendor/mivolo/NOTICE.md`) + torch CPU 휠. 처리량 표는 DeepFace 단독
+시절 값이라 MiVOLO 교체 후 다시 잰다 (`ab`/`hey` 로 동시성 1·4).
 
 주의: TF 2.16+ Keras 3 비호환 → `tf-keras==2.16.0` pin + `TF_USE_LEGACY_KERAS=1`
 (requirements.txt·Dockerfile 에 반영됨). 메모리 ~3GB 점유 (2026-08-07 `docker stats` 실측) — 4GB+ 인스턴스 권장.

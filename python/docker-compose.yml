@@ -15,6 +15,7 @@ services:
       - MAX_DOWNLOAD_MB=10
       - DOWNLOAD_TIMEOUT_SEC=15
       - DETECTOR_BACKEND=opencv
+      - MAX_UPLOAD_MB=1
       # HMAC shared secret — 반드시 Cloudflare Worker FACE_API_SECRET 와 동일.
       # 운영에선 .env 또는 docker secret 로 주입 (이 파일에 직접 박지 말 것).
       - FACE_API_SECRET=${FACE_API_SECRET}
@@ -24,9 +25,10 @@ services:
       - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
       - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
     volumes:
-      # DeepFace 가중치(약 1.6GB)를 컨테이너 밖에 둔다. 컨테이너 레이어에 두면
-      # `docker compose up` 이 컨테이너를 recreate 할 때마다 통째로 다시
-      # 받는다 — 실측 3분간 502 였다. DEEPFACE_HOME 은 Dockerfile 이 정한다.
+      # DeepFace 가중치(약 1.6GB)와 MiVOLO(HF_HOME=/app/.deepface/hf, 약 120MB)를
+      # 컨테이너 밖에 둔다. 컨테이너 레이어에 두면 `docker compose up` 이
+      # 컨테이너를 recreate 할 때마다 통째로 다시 받는다 — 실측 3분간 502 였다.
+      # DEEPFACE_HOME·HF_HOME 은 Dockerfile 이 정한다.
       - face-meta-models:/app/.deepface
     healthcheck:
       test: ['CMD', 'curl', '-fsS', 'http://localhost:8000/health']

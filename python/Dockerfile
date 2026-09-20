@@ -6,6 +6,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     # DeepFace caches downloaded weights here. Pre-create it so we can warm
     # the image at build time without polluting /root.
     DEEPFACE_HOME=/app/.deepface \
+    # MiVOLO 가중치·원격 코드(HF hub) 캐시 — DeepFace 와 같은 볼륨 아래.
+    HF_HOME=/app/.deepface/hf \
+    # HF 원격 코드 modeling_mivolo.py 가 `mivolo.model.…` 을 import 한다 (vendor/NOTICE.md).
+    PYTHONPATH=/app/vendor \
     # tensorflow-cpu noise reduction (suppress info + warning + error stubs).
     TF_CPP_MIN_LOG_LEVEL=3 \
     # TF 2.16+ moved to Keras 3. DeepFace/retinaface still need Keras 2 API.
@@ -32,6 +36,7 @@ COPY requirements.txt ./
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
 COPY app ./app
+COPY vendor ./vendor
 
 RUN mkdir -p "$DEEPFACE_HOME"
 

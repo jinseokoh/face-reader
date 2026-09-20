@@ -4,7 +4,7 @@ Wires up:
   * JSON structured logging
   * Startup model warm-up
   * Global exception middleware → consistent ErrorResponse shape
-  * httpx-streamed download → DeepFace inference
+  * multipart 업로드(얼굴 크롭) 또는 image_url 다운로드 → MiVOLO + DeepFace 추론
 """
 from __future__ import annotations
 
@@ -13,11 +13,12 @@ from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.responses import JSONResponse
+from pydantic import ValidationError
 
 from app.schemas import AnalyzeRequest, AnalyzeResponse, ErrorResponse
 from app.services.deleter import delete_temp_object
 from app.services.downloader import DownloadError, cleanup, download_image
-from app.services.inference import NoFaceError, analyze_image, warm_up
+from app.services.inference import NoFaceError, analyze_image, decode_image, warm_up
 from app.utils.auth import verify_face_token
 from app.utils.config import get_settings
 from app.utils.logging_config import configure_logging
@@ -45,10 +46,11 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Face Metadata Inference",
     description=(
-        "CPU-only DeepFace service. POST an image URL, get back age / gender "
-        "/ ethnicity. Images are streamed from the supplied URL — never uploaded."
+        "CPU-only face metadata service. POST a face crop (multipart) or an "
+        "image URL, get back age / gender / ethnicity. Age·gender = MiVOLO v2, "
+        "ethnicity = DeepFace race head."
     ),
-    version="0.1.0",
+    version="0.2.0",
     lifespan=lifespan,
 )
 
@@ -83,6 +85,7 @@ _inflight = 0
     responses={
         400: {"model": ErrorResponse},
         401: {"model": ErrorResponse},
+        413: {"model": ErrorResponse},
         422: {"model": ErrorResponse},
         502: {"model": ErrorResponse},
         503: {"model": ErrorResponse},
@@ -90,14 +93,17 @@ _inflight = 0
     tags=["inference"],
 )
 async def analyze(
-    req: AnalyzeRequest,
+    request: Request,
     key: str = Depends(verify_face_token),
 ) -> AnalyzeResponse:
-    """Analyze + immediately DELETE temp/{uuid}.jpg from R2.
+    """두 입력 형태를 받는다. 인증은 둘 다 X-Face-Token/X-Face-Key (워커가 발급).
 
-    `key` is the verified R2 object key from `X-Face-Key` (e.g.
-    "temp/abc.jpg"). After successful analysis (or no-face) we fire-and-forget
-    the DELETE — failure is logged only, with the 1-day R2 lifecycle as safety net.
+    * multipart/form-data — `image`(JPEG/PNG/WebP bytes), `face_crop`("1"|"0",
+      기본 "1"). 워커가 앱·웹의 업로드를 그대로 중계한다. key 는 워커가 정한
+      요청 id (`upload/{uuid}`) 라 R2 정리가 없다.
+    * application/json — `{image_url}` (옛 앱 계약). key 는 R2 temp 키이고
+      분석 뒤 즉시 DELETE 한다 (1일 lifecycle 이 백업). 스토어의 옛 앱이 전부
+      갱신되면 이 경로를 지운다.
 
     동시 처리 상한(`MAX_CONCURRENT_ANALYSES`)을 넘으면 대기시키지 않고 503 을
     돌려준다 — 호출자가 재시도 시점을 정할 수 있게 `Retry-After` 동봉.
@@ -119,12 +125,62 @@ async def analyze(
         )
     _inflight += 1
     try:
-        return await _analyze(req, key)
+        ctype = request.headers.get("content-type", "")
+        if ctype.startswith("multipart/form-data"):
+            return await _analyze_upload(request, key)
+        return await _analyze_url(request, key)
     finally:
         _inflight -= 1
 
 
-async def _analyze(req: AnalyzeRequest, key: str) -> AnalyzeResponse:
+async def _analyze_upload(request: Request, key: str) -> AnalyzeResponse:
+    settings = get_settings()
+    max_bytes = settings.max_upload_mb * 1024 * 1024
+    declared = request.headers.get("content-length")
+    if declared and declared.isdigit() and int(declared) > max_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail={"error": "upload_too_large", "detail": f"max {settings.max_upload_mb}MB"},
+        )
+    form = await request.form()
+    upload = form.get("image")
+    if upload is None or not hasattr(upload, "read"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "bad_request", "detail": "multipart field 'image' required"},
+        )
+    data = await upload.read()
+    if len(data) > max_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail={"error": "upload_too_large", "detail": f"max {settings.max_upload_mb}MB"},
+        )
+    face_crop = str(form.get("face_crop", "1")).strip().lower() not in ("0", "false", "no")
+    logger.info("analyze upload", extra={"key": key, "bytes": len(data), "face_crop": face_crop})
+    try:
+        img = decode_image(data)
+        result = await analyze_image(img, face_crop=face_crop)
+    except NoFaceError as exc:
+        logger.info("no face detected", extra={"key": key, "reason": str(exc)})
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error": "no_face_detected",
+                "detail": "No face could be detected in the supplied image.",
+            },
+        )
+    logger.info("analyze ok", extra={"key": key, **result})
+    return AnalyzeResponse(**result)
+
+
+async def _analyze_url(request: Request, key: str) -> AnalyzeResponse:
+    try:
+        req = AnalyzeRequest.model_validate(await request.json())
+    except (ValueError, ValidationError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "bad_request", "detail": f"invalid JSON body: {exc}"},
+        )
     url = str(req.image_url)
     logger.info("analyze request", extra={"image_url": url, "key": key})
 
@@ -141,7 +197,10 @@ async def _analyze(req: AnalyzeRequest, key: str) -> AnalyzeResponse:
         )
 
     try:
-        result = await analyze_image(image.path)
+        with open(image.path, "rb") as fh:
+            img = decode_image(fh.read())
+        # 옛 앱은 720px 전체 사진을 보낸다 — 검출부터.
+        result = await analyze_image(img, face_crop=False)
     except NoFaceError as exc:
         logger.info("no face detected", extra={"image_url": url, "reason": str(exc)})
         # 분석 실패해도 R2 객체는 정리. lifecycle 룰이 백업이긴 하나 즉시 삭제 선호.
