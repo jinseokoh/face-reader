@@ -721,6 +721,20 @@ textarea.form-input {
   font-weight: 500;
 }
 
+/* 긴 라벨(첫인상 카드) — 라벨을 윗줄에, 본문을 아랫줄에. 44px 칸에 안 들어간다. */
+.hero-line--stack {
+  grid-template-columns: 1fr;
+  gap: 2px;
+}
+
+/* 카드 하단 면책 문구 — 라벨 없는 한 단락. */
+.hero-note {
+  margin: 14px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.6);
+}
+
 .hero-chips {
   margin: 14px 0 0;
   padding: 0;
@@ -757,6 +771,11 @@ textarea.form-input {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
+}
+
+/* 첫인상 4축 — 3칸 격자에 넣으면 넷째가 홀로 남는다. 2×2 로. */
+.hero-top3--four {
+  grid-template-columns: repeat(2, 1fr);
 }
 
 .hero-rank {

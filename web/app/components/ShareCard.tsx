@@ -169,10 +169,10 @@ function CompatSide({
   )
 }
 
-function HeroLine({ label, line }: { label: string; line: string }) {
+function HeroLine({ label, line, stack }: { label: string; line: string; stack?: boolean }) {
   if (!line) return null
   return (
-    <p className="hero-line">
+    <p className={stack ? 'hero-line hero-line--stack' : 'hero-line'}>
       <span className="hero-line-label">{label}</span>
       <span className="hero-line-text">{line}</span>
     </p>
@@ -200,7 +200,7 @@ function MeasureCard({ m, thumbUrl }: { m: MeasureOutput; thumbUrl?: string }) {
           <p className="hero-side-demo">{m.faceShapeKo}</p>
         </div>
       </div>
-      <div className="hero-top3">
+      <div className="hero-top3 hero-top3--four">
         {m.axes.map((a) => (
           <div key={a.key} className="hero-rank">
             <p className="hero-rank-label">{a.labelKo}</p>
@@ -213,17 +213,17 @@ function MeasureCard({ m, thumbUrl }: { m: MeasureOutput; thumbUrl?: string }) {
       </div>
       <div className="hero-lines">
         <HeroLine
+          stack
           label="얼굴 기하학 프로필"
           line={m.profile.map((p) => `${p.labelKo} ${p.score}`).join(' · ')}
         />
         <HeroLine
+          stack
           label="평균에서 가장 먼 3개"
           line={m.distinct.map((d) => `${d.labelKo} 상위 ${d.top}%`).join(' · ')}
         />
       </div>
-      <p className="hero-line">
-        <span className="hero-line-text">{MEASURE_DISCLAIMER}</span>
-      </p>
+      <p className="hero-note">{MEASURE_DISCLAIMER}</p>
     </article>
   )
 }
@@ -264,25 +264,27 @@ function MeasurePairCard({
       </div>
       <div className="hero-lines">
         <HeroLine
+          stack
           label="무작위 두 사람 대비"
           line={`닮은 정도 상위 ${pair.similarityTop}% · 케미 점수 상위 ${pair.chemistryTop}%`}
         />
         <HeroLine
+          stack
           label="닮은 부분"
           line={similar.map((r) => `${r.labelKo} ${r.bandKo}`).join(' · ') || '없음'}
         />
         <HeroLine
+          stack
           label="다른 부분"
           line={different.map((r) => `${r.labelKo} ${r.bandKo}`).join(' · ') || '없음'}
         />
         <HeroLine
+          stack
           label="두 사람의 첫인상"
           line={pair.axes.map((a) => `${a.labelKo} 상위 ${a.aTop}% 대 ${a.bTop}%`).join(' · ')}
         />
       </div>
-      <p className="hero-line">
-        <span className="hero-line-text">{MEASURE_DISCLAIMER}</span>
-      </p>
+      <p className="hero-note">{MEASURE_DISCLAIMER}</p>
     </article>
   )
 }
