@@ -48,6 +48,45 @@ JavaScript 안에 평문으로 들어 있다. service_role 은 RLS 를 전부 �
 
 ---
 
+## 나이 추정 옛 경로 제거 (MiVOLO 직접 업로드 전환 뒤처리)
+
+**현재 상태 (2026-09-21).** 앱·웹은 384px 얼굴 크롭을 워커 `/api/analyze` 에 multipart 로
+올린다 (왕복 1번). 그런데 스토어에 나간 Android 앱은 옛 경로를 쓴다 —
+presign(`prefix: temp`) → R2 `temp/{uuid}.jpg` PUT → python `/analyze {image_url}` →
+python 이 R2 에서 재다운로드 후 DELETE. python 은 두 계약을 모두 받는다.
+
+**왜 지금 안 하나.** 옛 앱이 살아 있다. 지우면 그 앱의 촬영이 추정 실패(수동 선택
+fallback)로 떨어진다. 죽지는 않지만 연령대·성별 prefill 이 사라진다.
+
+**언제 하나.** 새 앱(커밋 b7764daa 이후 빌드)이 스토어에 올라가고, 콘솔 시스템 메뉴의
+`android_min_build` 를 그 빌드 번호로 올려 옛 앱을 강제 업그레이드시킨 뒤. 그 후
+python 로그에서 `"analyze request"` (image_url 경로) 줄이 일주일간 0 이면 실행.
+
+**지울 것.** 한 PR 로.
+
+| 위치 | 대상 |
+|---|---|
+| `python/app/main.py` | `_analyze_url`, JSON 분기, `AnalyzeRequest` 파싱 |
+| `python/app/schemas.py` | `AnalyzeRequest` |
+| `python/app/services/downloader.py` · `deleter.py` | 파일째 (URL 다운로드·R2 DELETE) |
+| `python/app/utils/config.py` | `download_timeout_sec`, `max_download_mb`, `allowed_content_types`, `r2_*` 4개 |
+| `python/docker-compose.yml` · `.env` | `MAX_DOWNLOAD_MB`, `DOWNLOAD_TIMEOUT_SEC`, `R2_*` 4개 (DELETE 전용 R2 토큰은 Cloudflare 에서 폐기) |
+| `python/README.md` | ② `image_url` 계약, 400/502 `download_failed` 행 |
+| `web/app/routes/api.r2.presign.ts` | `prefix: "temp"` 분기와 응답의 `token` (issueFaceToken 호출 — `/api/analyze` 쪽은 유지) |
+| `web/app/lib/join.ts` | 없음 (이미 새 경로). `ageToGroup` 은 유지 |
+| `web/docs/HOW-IT-WORKS.md` | `temp/{uuid}.jpg` 언급 전부, §6.1 의 presign 토큰 줄, R2 lifecycle 표의 `temp-expire-1d` 행 |
+| Cloudflare R2 대시보드 | lifecycle rule `temp-expire-1d` (수동) |
+| `flutter/lib/data/services/r2_uploader.dart` | `PresignedUpload.token` 필드와 temp 주석 |
+| `flutter/lib/domain/models/face_metadata.dart` | 주석의 `temp/{uuid}.jpg` 줄 |
+| `flutter/.env` | `FACE_META_API_BASE` (이미 미사용) |
+| `flutter/docs/ARCHITECTURE.md` | `POST /analyze {image_url}` (옛 앱) 줄, R2 `temp/` 언급 |
+
+**같이 하면 좋은 것 (선택).** python 의 DeepFace `race` 헤드를 FairFace 계열 작은
+분류기로 바꾸면 tensorflow 두 벌(약 800MB)이 이미지에서 빠진다. 별도 측정 필요 —
+tools/face_shape_ml/README.md ③ 하네스에 인종 라벨을 붙여 재면 된다.
+
+---
+
 ## 운영 메모
 
 - `face_engine.js` 와 `shared/.dart_tool` 은 gitignore 된 생성물이다. CI 는
