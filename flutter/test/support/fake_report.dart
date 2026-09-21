@@ -29,6 +29,7 @@ FaceReadingReport fakeReport(
   Random rng, {
   required Gender gender,
   required AgeGroup age,
+  int? aiAge,
 }) {
   final t = faceTemplates[rng.nextInt(faceTemplates.length)];
   final frontalZ = <String, double>{};
@@ -86,6 +87,8 @@ FaceReadingReport fakeReport(
     ethnicity: Ethnicity.eastAsian,
     gender: gender,
     ageGroup: age,
+    aiAge: aiAge,
+    ageModel: aiAge == null ? null : 'mivolo_v2',
     timestamp: DateTime(2026, 7, 16),
     source: AnalysisSource.album,
     metrics: metrics,

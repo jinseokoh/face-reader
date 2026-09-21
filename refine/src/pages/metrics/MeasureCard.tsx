@@ -26,6 +26,11 @@ export function SoloMeasureCard({
           <p className="hero-subtitle">
             {m.ageGroupKo} {m.genderKo} · {m.faceShapeKo} · 확신도 {m.confidenceKo}
           </p>
+          {m.aiAge != null && (
+            <p className="hero-subtitle">
+              AI 추정 나이 {m.aiAge}세 ±{m.aiAgeMargin}
+            </p>
+          )}
         </header>
         <img className="hero-portrait" src={thumbUrl ?? portraitFor(m.genderKo)} alt="" />
       </div>

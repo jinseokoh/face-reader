@@ -198,6 +198,11 @@ function MeasureCard({ m, thumbUrl }: { m: MeasureOutput; thumbUrl?: string }) {
             {m.ageGroupKo} {m.genderKo}
           </p>
           <p className="hero-side-demo">{m.faceShapeKo}</p>
+          {m.aiAge != null && (
+            <p className="hero-side-demo">
+              AI 추정 나이 {m.aiAge}세 ±{m.aiAgeMargin}
+            </p>
+          )}
         </div>
       </div>
       <div className="hero-top3 hero-top3--four">

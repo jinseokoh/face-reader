@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/gender.dart';
+import 'package:face_engine/domain/services/measure_share.dart';
 import 'package:facely/presentation/screens/chemistry/report_measure_sections.dart';
 
 import 'support/fake_report.dart';
@@ -17,7 +18,8 @@ void main() {
     tester.view.physicalSize = const Size(1080, 4000);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
-    final report = fakeReport(Random(3), gender: Gender.female, age: AgeGroup.values[1]);
+    final report = fakeReport(Random(3),
+        gender: Gender.female, age: AgeGroup.values[1], aiAge: 27);
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -44,8 +46,38 @@ void main() {
     expect(find.text('모델 버전'), findsOneWidget);
     expect(find.text(MeasureReportBody.disclaimer), findsOneWidget);
     expect(find.text('분석 확신도'), findsOneWidget);
+    // AI 추정 나이 — MiVOLO 정수 + ±6 (shared kAiAgeMarginYears).
+    expect(find.text('AI 추정 나이'), findsOneWidget);
+    expect(find.text('27세 ±6'), findsOneWidget);
     // 서술 섹션은 없다.
     expect(find.text('관상 해석'), findsNothing);
     expect(find.text('관상 10대 속성'), findsNothing);
+  });
+
+  testWidgets('aiAge 없는 카드는 AI 추정 나이 섹션을 그리지 않는다', (tester) async {
+    tester.view.physicalSize = const Size(1080, 4000);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+    final report =
+        fakeReport(Random(3), gender: Gender.female, age: AgeGroup.values[1]);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(child: MeasureReportBody(report: report)),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('AI 추정 나이'), findsNothing);
+  });
+
+  test('공유 출력(runMeasure)에 aiAge·aiAgeMargin 이 실린다', () {
+    final with27 = composeMeasureOutput(
+        fakeReport(Random(3), gender: Gender.male, age: AgeGroup.values[2], aiAge: 27));
+    expect(with27['aiAge'], 27);
+    expect(with27['aiAgeMargin'], kAiAgeMarginYears);
+    final none = composeMeasureOutput(
+        fakeReport(Random(3), gender: Gender.male, age: AgeGroup.values[2]));
+    expect(none.containsKey('aiAge'), isFalse);
   });
 }

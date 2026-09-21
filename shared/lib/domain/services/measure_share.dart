@@ -30,6 +30,10 @@ FirstImpressionProfile _profileOf(FaceReadingReport r) => computeFirstImpression
 
 int _top(double percentile) => (100 - percentile).round().clamp(1, 99);
 
+/// AI 추정 나이(MiVOLO v2)의 표시 오차 — AAF 동아시아 성인 실측 MAE 6.1세
+/// (tools/face_shape_ml/README.md ③). 화면은 "N세 ±6" 으로 쓴다.
+const int kAiAgeMarginYears = 6;
+
 Map<String, dynamic> composeMeasureOutput(FaceReadingReport r) {
   final z = _zOf(r);
   final profile = _profileOf(r);
@@ -42,6 +46,9 @@ Map<String, dynamic> composeMeasureOutput(FaceReadingReport r) {
     'genderKo': r.gender.labelKo,
     'ageGroupKo': r.ageGroup.labelKo,
     'faceShapeKo': r.faceShape.korean,
+    // 사진으로 추정한 나이 (MiVOLO v2). 추정 전 카드는 키 자체가 없다.
+    if (r.aiAge != null) 'aiAge': r.aiAge,
+    'aiAgeMargin': kAiAgeMarginYears,
     'axes': [
       for (final a in ImpressionAxis.values)
         {'key': a.name, 'labelKo': a.labelKo, 'top': _top(profile[a])},

@@ -6,6 +6,7 @@ import 'package:face_engine/data/constants/average_face.dart';
 import 'package:face_engine/data/constants/metric_quantiles.dart';
 import 'package:face_engine/data/constants/model_version.dart';
 import 'package:face_engine/data/constants/symmetry_reference.dart';
+import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/data/enums/metric_type.dart';
@@ -15,6 +16,8 @@ import 'package:face_engine/domain/services/first_impression.dart';
 import 'package:face_engine/domain/services/geometry_profile.dart';
 import 'package:face_engine/domain/services/landmark_normalize.dart';
 import 'package:face_engine/domain/services/impression_features.dart';
+import 'package:face_engine/domain/services/measure_share.dart'
+    show kAiAgeMarginYears;
 import 'package:face_engine/domain/services/symmetry_metrics.dart';
 import 'package:flutter/material.dart';
 
@@ -98,6 +101,33 @@ class MeasureReportBody extends StatelessWidget {
             ],
           ),
         ),
+        if (report.aiAge != null) ...[
+          const SizedBox(height: AppSpacing.xl),
+          _title('AI 추정 나이'),
+          const SizedBox(height: AppSpacing.md),
+          _Card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                        child: Text('사진으로 본 나이', style: AppText.subTitle)),
+                    Text(aiAgeLabel(report.aiAge!), style: AppText.subTitle),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'MiVOLO v2 모델이 정면 사진 한 장으로 추정한 나이입니다. 동아시아 '
+                  '성인 사진 실측에서 평균 오차가 $kAiAgeMarginYears세라 '
+                  '±$kAiAgeMarginYears세 범위로 봅니다. 입력한 연령대'
+                  '(${report.ageGroup.labelKo})와는 별개의 값입니다.',
+                  style: AppText.hint,
+                ),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: AppSpacing.xl),
         _title('당신의 첫인상 프로필'),
         const SizedBox(height: AppSpacing.md),
@@ -468,6 +498,9 @@ String _featurePhrase(String name, double z) {
   if (z <= -0.5) return '$name이(가) 낮은 편';
   return '$name이(가) 기준 범위에 위치';
 }
+
+/// "27세 ±6" — 화면·공유 이미지가 같은 표기를 쓴다.
+String aiAgeLabel(int age) => '$age세 ±$kAiAgeMarginYears';
 
 String _topLabel(double percentile) {
   // 백분위 p → "상위 N%" (p 가 높을수록 상위). 1~99 로 클램프.
@@ -878,6 +911,11 @@ class MeasureShareCard extends StatelessWidget {
                       style: AppText.body.copyWith(fontSize: 24),
                     ),
                   const Spacer(),
+                  if (report.aiAge != null)
+                    Text(
+                      'AI 추정 나이 ${aiAgeLabel(report.aiAge!)}',
+                      style: AppText.body.copyWith(fontSize: 20),
+                    ),
                   Text(
                     '분석 확신도 ${analysisConfidence(landmarks: report.landmarks, gender: report.gender, symmetry: report.symmetry).labelKo} (사진 상태 기준)',
                     style: AppText.body.copyWith(fontSize: 20),

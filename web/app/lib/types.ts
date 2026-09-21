@@ -103,6 +103,10 @@ export interface MeasureOutput {
   distinct: { labelKo: string; top: number }[];
   symmetry: { labelKo: string; value: number }[];
   confidenceKo: string;
+  /** 사진으로 추정한 나이 (MiVOLO v2). 추정 전 카드는 없다. */
+  aiAge?: number;
+  /** aiAge 표시 오차 (±N세) — shared kAiAgeMarginYears. */
+  aiAgeMargin: number;
 }
 
 /** runMeasurePair 출력 — measure 두 카드의 비교. */
