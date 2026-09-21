@@ -75,7 +75,7 @@ docker compose up -d --build           # 코드 변경 후 재빌드+재기동
 | `MAX_DOWNLOAD_MB` | `10` | 최대 이미지 크기 |
 | `MAX_UPLOAD_MB` | `1` | multipart 업로드 상한 (384px 크롭은 20~35KB) |
 | `DETECTOR_BACKEND` | `opencv` | opencv/ssd/mtcnn/retinaface — 인종 + 전체 사진 검출 |
-| `MIVOLO_MODEL_ID` / `MIVOLO_REVISION` | `iitolstykh/mivolo_v2` / 고정 커밋 | HF hub 모델·리비전 (원격 코드 포함, `HF_HOME` 캐시) |
+| `MIVOLO_MODEL_ID` / `MIVOLO_REVISION` | `iitolstykh/mivolo_v2` / 고정 커밋 | HF hub 모델·리비전. 가중치·원격 코드는 **빌드 때 이미지에 굽는다** (Dockerfile RUN, `HF_HUB_OFFLINE=1`). 리비전을 바꾸면 Dockerfile 의 snapshot_download 도 같이 |
 | `CROP_MARGIN` | `0.2` | 검출 박스를 사방 넓히는 비율 (앱·웹 크롭 규격과 동일) |
 | `MAX_CONCURRENT_ANALYSES` | `4` | 동시 처리 상한. 초과 요청은 503 `busy` |
 | `BUSY_RETRY_AFTER_SEC` | `5` | 503 응답의 `Retry-After` 값 |

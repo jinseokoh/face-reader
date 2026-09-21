@@ -25,10 +25,10 @@ services:
       - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
       - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
     volumes:
-      # DeepFace 가중치(약 1.6GB)와 MiVOLO(HF_HOME=/app/.deepface/hf, 약 120MB)를
-      # 컨테이너 밖에 둔다. 컨테이너 레이어에 두면 `docker compose up` 이
-      # 컨테이너를 recreate 할 때마다 통째로 다시 받는다 — 실측 3분간 502 였다.
-      # DEEPFACE_HOME·HF_HOME 은 Dockerfile 이 정한다.
+      # DeepFace 가중치(약 1.6GB)를 컨테이너 밖에 둔다. 컨테이너 레이어에 두면
+      # `docker compose up` 이 컨테이너를 recreate 할 때마다 통째로 다시
+      # 받는다 — 실측 3분간 502 였다. DEEPFACE_HOME 은 Dockerfile 이 정한다.
+      # MiVOLO 가중치는 볼륨이 아니라 이미지에 구워져 있다 (Dockerfile RUN).
       - face-meta-models:/app/.deepface
     healthcheck:
       test: ['CMD', 'curl', '-fsS', 'http://localhost:8000/health']
