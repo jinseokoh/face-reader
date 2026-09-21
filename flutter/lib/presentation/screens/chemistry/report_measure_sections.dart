@@ -541,10 +541,13 @@ class _AxisRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+      // 라벨 2 : 막대 3 (pair 화면의 계측 표와 같은 비율). 라벨은 한 줄 — 폭이
+      // 모자라면 줄바꿈이 아니라 축소 (pair_measure_sections 와 같은 규칙).
       child: Row(
         children: [
-          Expanded(child: Text(axis.labelKo, style: AppText.body)),
-          SizedBox(width: 120, child: _Bar(fraction: percentile / 100)),
+          Expanded(flex: 2, child: _oneLine(axis.labelKo)),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(flex: 3, child: _Bar(fraction: percentile / 100)),
           const SizedBox(width: AppSpacing.md),
           SizedBox(
             width: 64,
@@ -613,10 +616,13 @@ class _ProfileRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+        // _AxisRow 와 같은 2:3 비율·같은 토큰. 한 줄의 두 값(점수·상위 N%)은
+        // 같은 크기(body) — 한 줄 안에서 글자 크기가 오르내리지 않는다.
         child: Row(
           children: [
-            Expanded(child: Text(name, style: AppText.body)),
-            SizedBox(width: 120, child: _Bar(fraction: score / 100)),
+            Expanded(flex: 2, child: _oneLine(name)),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(flex: 3, child: _Bar(fraction: score / 100)),
             const SizedBox(width: AppSpacing.md),
             SizedBox(
               width: 36,
@@ -627,7 +633,7 @@ class _ProfileRow extends StatelessWidget {
             SizedBox(
               width: 64,
               child: Text(_topLabel(score),
-                  style: AppText.caption, textAlign: TextAlign.right),
+                  style: AppText.body, textAlign: TextAlign.right),
             ),
           ],
         ),
@@ -702,6 +708,13 @@ class _SegmentBar extends StatelessWidget {
         ],
       );
 }
+
+/// 행 라벨 한 줄 고정 — 폭이 모자라면 줄바꿈 대신 축소, 왼쪽 정렬.
+Widget _oneLine(String text) => FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: Text(text, style: AppText.body, maxLines: 1, softWrap: false),
+    );
 
 class _Bar extends StatelessWidget {
   final double fraction;
