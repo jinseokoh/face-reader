@@ -37,7 +37,7 @@ String onboardingAssetPath(int page) =>
 const _kPagesMeasure = [
   _OnboardingPageData(
     title: '얼굴을 재서\n우리 그룹 케미를 봅니다',
-    body: '468개 점으로 얼굴을 재고\n그룹 안 모든 쌍의 케미를 점수로 보여드립니다.',
+    body: '얼굴을 기하학적으로 측정하여 첫인상과\n닮은정도, 조화도, 보완도로 케미점수를 측정합니다.',
     warm: true,
   ),
   _OnboardingPageData(
