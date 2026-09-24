@@ -172,5 +172,5 @@ abstract final class EditionCopy {
 
   // ── 스플래시 ──
   static String get splashTagline =>
-      kMeasureEdition ? '얼굴을 재서 우리 그룹 케미를 봅니다' : '관상으로 풀어보는 친구 만들기';
+      kMeasureEdition ? '얼굴의 구조적 특징을 수치화하여 계측합니다' : '관상으로 풀어보는 친구 만들기';
 }
