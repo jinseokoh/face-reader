@@ -36,7 +36,7 @@ String onboardingAssetPath(int page) =>
 /// 제목은 탭 이름과 같은 단어(측정·비교·케미 → 첫인상·비교·케미, APPLE.md §81.5).
 const _kPagesMeasure = [
   _OnboardingPageData(
-    title: '얼굴을 재서\n우리 그룹 케미를 봅니다',
+    title: '얼굴의 구조적 특징을\n수치화하여 계측합니다',
     body: '얼굴을 기하학적으로 측정하여 첫인상과\n닮은정도, 조화도, 보완도로 케미점수를 측정합니다.',
     warm: true,
   ),
