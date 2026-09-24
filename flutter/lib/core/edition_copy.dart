@@ -18,14 +18,14 @@ abstract final class EditionCopy {
       kMeasureEdition ? '저장된 비교 기록 전부 삭제' : '저장된 궁합 기록 전부 삭제';
 
   static String get faceAlbumDesc => kMeasureEdition
-      ? '앨범 사진으로 잰 얼굴입니다.'
+      ? '앨범 사진으로 측정한 얼굴입니다.'
       : '앨범 사진으로 본 관상입니다.';
   static String get faceBookmarkDesc => kMeasureEdition
       ? '공유받아 북마크한 측정 카드입니다.'
       : '공유받아 북마크한 관상입니다.';
 
   static String get faceCameraDesc => kMeasureEdition
-      ? '카메라로 찍은 사진으로 잰 얼굴입니다.'
+      ? '카메라로 찍은 사진으로 측정한 얼굴입니다.'
       : '카메라로 찍은 사진으로 본 관상입니다.';
   static List<String> get faceCreditsAlbumTail => kMeasureEdition
       ? ['앨범 사진으로 얼굴을 측정하면', '이곳에 저장됩니다.']
@@ -69,7 +69,7 @@ abstract final class EditionCopy {
       ? '내 얼굴 측정으로 연 모집 중인 방이 있습니다.\n'
       : '내 관상으로 연 모집 중인 방이 있습니다.\n';
   static String get myFaceRecapture =>
-      kMeasureEdition ? '내 얼굴 다시 재기' : '내 관상 다시 찍기';
+      kMeasureEdition ? '내 얼굴 다시 측정' : '내 관상 다시 찍기';
   static String get myFaceRegistered =>
       kMeasureEdition ? '얼굴 측정을 등록했습니다.' : '관상을 성공적으로 등록했습니다.';
   static String get myFaceServerFail => kMeasureEdition
