@@ -86,7 +86,7 @@ const _kPagesFull = [
   _OnboardingPageData(
     title: '케미',
     chips: ['무료'],
-    body: '케미 그룹은 누구나 만들거나 참여할 수 있고\n참가자들의 그룹 케미 결과표를 보여드립니다.',
+    body: '케미 그룹은 누구나 만들거나 참여할 수 있고\n참가자들의 그룹 케미 비교표를 보여드립니다.',
     warm: false,
   ),
 ];
