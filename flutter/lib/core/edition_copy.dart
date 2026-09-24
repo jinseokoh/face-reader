@@ -43,7 +43,7 @@ abstract final class EditionCopy {
       ? ['공유받은 상대방의 측정 카드를', '북마크하면 이곳에 저장됩니다.']
       : ['공유받은 상대방의 관상 카드를', '북마크하면 이곳에 저장됩니다.'];
   static String get faceEmptyBefore =>
-      kMeasureEdition ? '내 얼굴부터 재 보세요.' : '내 관상부터 확인해 보세요.';
+      kMeasureEdition ? '내 얼굴부터 측정해 보세요.' : '내 관상부터 확인해 보세요.';
   static String get faceEmptyAfter => kMeasureEdition
       ? '계속해서 다른 사람의 얼굴도 잴 수 있어요.'
       : '계속해서 다른 사람의 관상도 볼 수 있어요.';
