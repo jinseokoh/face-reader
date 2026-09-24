@@ -34,10 +34,10 @@ abstract final class EditionCopy {
           '오랜 지혜입니다.\n',
         ];
   static List<String> get faceCreditsCameraTail => kMeasureEdition
-      ? ['카메라로 얼굴을 재면', '이곳에 저장됩니다.']
+      ? ['카메라로 얼굴을 측정하면', '이곳에 저장됩니다.']
       : ['관상을 카메라로 등록하면', '이곳에 저장됩니다.'];
   static List<String> get faceCreditsAlbumTail => kMeasureEdition
-      ? ['앨범 사진으로 얼굴을 재면', '이곳에 저장됩니다.']
+      ? ['앨범 사진으로 얼굴을 측정하면', '이곳에 저장됩니다.']
       : ['관상을 앨범으로 등록하면', '이곳에 저장됩니다.'];
   static List<String> get faceCreditsBookmarkTail => kMeasureEdition
       ? ['공유받은 상대방의 측정 카드를', '북마크하면 이곳에 저장됩니다.']
@@ -74,7 +74,7 @@ abstract final class EditionCopy {
       ? [
           '얼굴 측정은 얼마든지 무료입니다.',
           '먼저 첫인상 탭에서 다른 사람의',
-          '얼굴을 재야 그 사람과',
+          '얼굴을 측정해야 그 사람과',
           '나를 비교할 수 있어요.',
         ]
       : [
@@ -84,7 +84,7 @@ abstract final class EditionCopy {
           '그들과 나와의 궁합을 볼 수 있어요.',
         ];
   static List<String> get pairCreditsBeforeTail => kMeasureEdition
-      ? ['우선 내 얼굴을 잰 후에만', '다른 사람과 비교할 수 있어요.']
+      ? ['우선 내 얼굴을 측정한 후에만', '다른 사람과 비교할 수 있어요.']
       : ['우선 내 관상을 본 후에만', '다른 사람과의 궁합을 볼 수 있어요.'];
   static String get pairNeedMyFace => kMeasureEdition
       ? '비교하려면 내 얼굴 측정이 필요합니다.'
@@ -94,7 +94,7 @@ abstract final class EditionCopy {
       ? '얼굴 비교가 완성되었습니다.'
       : '궁합 풀이가 완성되었습니다.';
   static String get pairNeedFaceFirst =>
-      kMeasureEdition ? '우선 얼굴을 재야 합니다.' : '우선 관상을 보셔야 합니다.';
+      kMeasureEdition ? '우선 얼굴을 측정해야 합니다.' : '우선 관상을 보셔야 합니다.';
   static String get pairEmptyLocked =>
       kMeasureEdition ? '미확인 비교가 없습니다.' : '미확인 궁합이 없습니다.';
   static String get pairEmptyUnlocked =>
@@ -119,7 +119,7 @@ abstract final class EditionCopy {
       : '궁합을 보려면 1코인이 필요합니다.\n궁합을 보시겠습니까?';
   static String get pairUnlockButton => kMeasureEdition ? '비교 보기' : '궁합보기';
   static String get pairLockedNudge => kMeasureEdition
-      ? '내 얼굴을 재면 비교할 수 있습니다.'
+      ? '내 얼굴을 측정하면 비교할 수 있습니다.'
       : '나의 관상을 등록하면 궁합을 볼 수 있습니다.';
   static String get pairLockedUntil => kMeasureEdition
       ? '내 얼굴이 등록되기 전까지는 비교가 잠겨있게 됩니다.'
@@ -138,7 +138,7 @@ abstract final class EditionCopy {
   static String get noMyFaceError =>
       kMeasureEdition ? '내 얼굴 측정이 필요합니다' : '내 관상 등록이 필요합니다';
   static String get chatNeedsMyFace => kMeasureEdition
-      ? '채팅에 참여하려면 내 얼굴을 재세요.'
+      ? '채팅에 참여하려면 내 얼굴을 측정하세요.'
       : '채팅에 참여하려면 내 관상을 보세요.';
 
   // ── 케미 ──
