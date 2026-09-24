@@ -6,7 +6,6 @@ import 'package:face_engine/data/constants/average_face.dart';
 import 'package:face_engine/data/constants/metric_quantiles.dart';
 import 'package:face_engine/data/constants/model_version.dart';
 import 'package:face_engine/data/constants/symmetry_reference.dart';
-import 'package:face_engine/data/enums/age_group.dart';
 import 'package:face_engine/data/enums/face_shape.dart';
 import 'package:face_engine/data/enums/gender.dart';
 import 'package:face_engine/data/enums/metric_type.dart';
@@ -120,8 +119,7 @@ class MeasureReportBody extends StatelessWidget {
                 Text(
                   'MiVOLO v2 모델이 정면 사진 한 장으로 추정한 나이입니다. 동아시아 '
                   '성인 사진 실측에서 평균 오차가 $kAiAgeMarginYears세라 '
-                  '±$kAiAgeMarginYears세 범위로 봅니다. 입력한 연령대'
-                  '(${report.ageGroup.labelKo})와는 별개의 값입니다.',
+                  '±$kAiAgeMarginYears세 범위로 봅니다.',
                   style: AppText.hint,
                 ),
               ],
