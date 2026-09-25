@@ -21,7 +21,7 @@ abstract final class EditionCopy {
       ? '앨범 사진으로 측정한 얼굴입니다.'
       : '앨범 사진으로 본 관상입니다.';
   static String get faceBookmarkDesc => kMeasureEdition
-      ? '공유받아 북마크한 측정 카드입니다.'
+      ? '공유받아 북마크한 첫인상 카드입니다.'
       : '공유받아 북마크한 관상입니다.';
 
   static String get faceCameraDesc => kMeasureEdition
@@ -31,7 +31,7 @@ abstract final class EditionCopy {
       ? ['앨범 사진으로 얼굴을 측정하면', '이곳에 저장됩니다.']
       : ['관상을 앨범으로 등록하면', '이곳에 저장됩니다.'];
   static List<String> get faceCreditsBookmarkTail => kMeasureEdition
-      ? ['공유받은 상대방의 측정 카드를', '북마크하면 이곳에 저장됩니다.']
+      ? ['공유받은 상대방의 첫인상 카드를', '북마크하면 이곳에 저장됩니다.']
       : ['공유받은 상대방의 관상 카드를', '북마크하면 이곳에 저장됩니다.'];
   static List<String> get faceCreditsCameraTail => kMeasureEdition
       ? ['카메라로 얼굴을 측정하면', '이곳에 저장됩니다.']
