@@ -47,7 +47,7 @@ const _kPagesMeasure = [
     warm: false,
   ),
   _OnboardingPageData(
-    title: '비교',
+    title: '얼굴 비교',
     chips: ['1코인'],
     body: '두 얼굴의 계측값을 나란히 놓고\n닮은 정도·조화도·보완도를 계산합니다.',
     warm: true,
