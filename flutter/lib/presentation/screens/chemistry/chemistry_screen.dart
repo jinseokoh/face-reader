@@ -29,23 +29,27 @@ import '../team/team_pin_dialog.dart';
 import '../team/team_reveal_screen.dart';
 
 /// 내 그룹 탭 — 내가 방을 여는 길. 공짜라는 것부터 말한다.
-const List<String> _kChemistryCreditsMine = [
-  ..._kChemistryIntro,
-  '케미 그룹은 무료로',
-  '만들 수 있습니다.',
-  '내 그룹을 만들고',
-  '사람들을 초대해 보세요.',
-];
+const CreditsLines _kChemistryCreditsMine = (
+  intro: _kChemistryIntro,
+  tail: [
+    '케미 그룹은 무료로',
+    '만들 수 있습니다.',
+    '내 그룹을 만들고',
+    '사람들을 초대해 보세요.',
+  ],
+);
 
 /// 모집중 탭 — 방을 찾아 들어가는 길.
-const List<String> _kChemistryCreditsPublic = [
-  ..._kChemistryIntro,
-  '비공개 그룹을 만들고',
-  '지인들을 초대하거나',
-  '공개 그룹을 만들어서 방문자 중',
-  '케미 스코어가 높은 사람을',
-  '찾을 수도 있습니다.',
-];
+const CreditsLines _kChemistryCreditsPublic = (
+  intro: _kChemistryIntro,
+  tail: [
+    '비공개 그룹을 만들고',
+    '지인들을 초대하거나',
+    '공개 그룹을 만들어서 방문자 중',
+    '케미 스코어가 높은 사람을',
+    '찾을 수도 있습니다.',
+  ],
+);
 
 /// 케미 탭 = Chemistry Team 방 목록 브라우저.
 /// 빈 탭을 채우는 문구 — 위에서 뚝 떨어진 뒤 그 아래로 안내가 뜬다.
@@ -68,7 +72,7 @@ const List<String> _kChemistryIntro = [
 Widget _chemistryEmpty({
   required BuildContext context,
   required int tabIndex,
-  required List<String> credits,
+  required CreditsLines credits,
   required String asset,
   required String message,
 }) {

@@ -17,8 +17,10 @@ import 'package:flutter/material.dart';
 /// 만들어 두므로, 만들어진 시점은 시작 신호가 될 수 없다. 다른 탭에 갔다
 /// 돌아와도 다시 재생하지 않는다.
 ///
-/// 글자는 [AppText.displaySubtitle] (SongMyung) 고정 — 장식 문구라 본문
-/// 토큰과 섞이지 않는다.
+/// 글자는 두 단이다. 앞부분(설명, [CreditsLines.intro])은 [AppText.displaySubtitle]
+/// (SongMyung) — 장식 문구. 뒷부분(이 탭에서 할 일, [CreditsLines.tail])은
+/// [AppText.body] (고딕) — 글꼴이 바뀌어 "여기부터는 안내"라고 눈으로 읽힌다.
+/// 두 단은 한 블록으로 같이 떨어진다.
 
 /// 떨어지는 시간.
 const Duration _kDropDuration = Duration(milliseconds: 500);
@@ -33,6 +35,11 @@ const double _kDropFrom = -1.6;
 /// 한 줄씩 읽히는 문구라 본문보다 성기게 벌린다.
 const double _kLineHeight = 1.5 * 1.2;
 
+/// 빈 탭 문구 — 설명([intro], SongMyung)과 안내([tail], 고딕). 줄바꿈은 각
+/// 목록 그대로 유지된다. [intro] 의 마지막 줄이 '\n' 으로 끝나면 두 단 사이가
+/// 한 줄 빈다.
+typedef CreditsLines = ({List<String> intro, List<String> tail});
+
 class CreditsEmptyState extends StatefulWidget {
   const CreditsEmptyState({
     super.key,
@@ -46,8 +53,8 @@ class CreditsEmptyState extends StatefulWidget {
   /// 순간에 연출이 시작된다.
   final bool active;
 
-  /// 떨어질 문구. 줄바꿈은 이 목록 그대로 유지된다.
-  final List<String> lines;
+  /// 떨어질 문구 — 설명과 안내.
+  final CreditsLines lines;
 
   /// [EmotionEmptyState] 로 넘길 일러스트와 한 줄 문구.
   final String asset;
@@ -125,10 +132,21 @@ class _CreditsEmptyStateState extends State<CreditsEmptyState>
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
           child: SlideTransition(
             position: _slide,
-            child: Text(
-              widget.lines.join('\n'),
-              style: AppText.displaySubtitle.copyWith(height: _kLineHeight),
-              textAlign: TextAlign.center,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  widget.lines.intro.join('\n'),
+                  style:
+                      AppText.displaySubtitle.copyWith(height: _kLineHeight),
+                  textAlign: TextAlign.center,
+                ),
+                Text(
+                  widget.lines.tail.join('\n'),
+                  style: AppText.body,
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ),
           ),
         ),

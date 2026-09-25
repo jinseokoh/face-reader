@@ -30,20 +30,14 @@ import 'package:go_router/go_router.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
-List<String> get _kCreditsAlbum => [
-  ..._kCreditsIntro,
-  ...EditionCopy.faceCreditsAlbumTail,
-];
+CreditsLines get _kCreditsAlbum =>
+    (intro: _kCreditsIntro, tail: EditionCopy.faceCreditsAlbumTail);
 
-List<String> get _kCreditsBookmark => [
-  ..._kCreditsIntro,
-  ...EditionCopy.faceCreditsBookmarkTail,
-];
+CreditsLines get _kCreditsBookmark =>
+    (intro: _kCreditsIntro, tail: EditionCopy.faceCreditsBookmarkTail);
 
-List<String> get _kCreditsCamera => [
-  ..._kCreditsIntro,
-  ...EditionCopy.faceCreditsCameraTail,
-];
+CreditsLines get _kCreditsCamera =>
+    (intro: _kCreditsIntro, tail: EditionCopy.faceCreditsCameraTail);
 
 /// 미등록 첫 화면의 크레딧 문구 — 빈 여백을 채운다.
 /// 줄바꿈은 이 목록 그대로 유지된다 ([CreditsEmptyState]).
@@ -751,7 +745,7 @@ class _PhysiognomyScreenState extends ConsumerState<PhysiognomyScreen>
     List<FaceReadingReport> history,
     List<AnalysisSource> sources, {
     required int tabIndex,
-    required List<String> credits,
+    required CreditsLines credits,
     required String description,
     required String emptyAsset,
     required String emptyMessage,

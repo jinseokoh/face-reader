@@ -40,16 +40,12 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 /// 등록 **후** — 관상이 공짜라는 것부터 알린다. 궁합은 그 다음 이야기다.
-List<String> get _kCompatCreditsAfter => [
-  ..._kCompatIntro,
-  ...EditionCopy.pairCreditsAfterTail,
-];
+CreditsLines get _kCompatCreditsAfter =>
+    (intro: _kCompatIntro, tail: EditionCopy.pairCreditsAfterTail);
 
 /// 내 관상 등록 **전** — 다음 한 걸음만 말한다.
-List<String> get _kCompatCreditsBefore => [
-  ..._kCompatIntro,
-  ...EditionCopy.pairCreditsBeforeTail,
-];
+CreditsLines get _kCompatCreditsBefore =>
+    (intro: _kCompatIntro, tail: EditionCopy.pairCreditsBeforeTail);
 
 /// 빈 탭을 채우는 문구 — 위에서 뚝 떨어진 뒤 그 아래로 안내가 뜬다.
 /// 줄바꿈은 이 목록 그대로 유지된다 ([CreditsEmptyState]).
@@ -274,7 +270,7 @@ class _CompatibilityScreenState extends ConsumerState<CompatibilityScreen>
   /// 서브탭까지 봐야 한다. 탭 전환에 다시 그려지도록 컨트롤러를 듣는다.
   Widget _emptyTab({
     required int tabIndex,
-    required List<String> credits,
+    required CreditsLines credits,
     required String asset,
     required String message,
   }) {

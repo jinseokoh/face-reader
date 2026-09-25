@@ -16,6 +16,7 @@ const _lines = [
   '돌아보게 하는',
   '오랜 지혜입니다.',
 ];
+const _tail = ['관상을 카메라로 등록하면', '이곳에 저장됩니다.'];
 const _message = '관상 추가 버튼을 누르면, 내 관상을 볼 수 있습니다.';
 const _height = 560.0;
 const _width = 360.0;
@@ -32,7 +33,7 @@ Future<void> _settleAll(WidgetTester tester) async {
 }
 
 Widget _subjectWith({bool active = true}) => CreditsEmptyState(
-  lines: _lines,
+  lines: (intro: _lines, tail: _tail),
   asset: 'assets/images/emotion-frown.png',
   message: _message,
   active: active,
@@ -113,7 +114,12 @@ void main() {
   testWidgets('위에서 떨어져 제자리에 멈춘다', (tester) async {
     await _pump(tester);
     final start = _textCenter(tester);
-    final blockHeight = tester.getSize(_text).height;
+    // 떨어지는 블록 = 설명(SongMyung) + 안내(고딕) 두 단 전체.
+    final blockHeight = tester
+        .getSize(
+          find.ancestor(of: _text, matching: find.byType(SlideTransition)).first,
+        )
+        .height;
 
     await tester.pump(_afterDrop);
     final rest = _textCenter(tester);
@@ -151,6 +157,7 @@ void main() {
     await _settleAll(tester);
     expect(_text, findsOneWidget);
     expect(find.text(_message), findsOneWidget);
+    expect(find.text(_tail.join('\n')), findsOneWidget);
   });
 
   testWidgets('기기 "애니메이션 제거" 설정에도 지속시간이 줄지 않는다', (tester) async {
