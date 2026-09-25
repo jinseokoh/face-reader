@@ -1,7 +1,7 @@
-import 'package:facely/core/edition_copy.dart';
 import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:facely/core/edition_copy.dart';
 import 'package:facely/presentation/providers/tab_provider.dart';
 import 'package:facely/presentation/widgets/credits_empty_state.dart';
 import 'package:flutter/material.dart';
@@ -43,11 +43,11 @@ const CreditsLines _kChemistryCreditsMine = (
 const CreditsLines _kChemistryCreditsPublic = (
   intro: _kChemistryIntro,
   tail: [
-    '비공개 그룹을 만들고',
+    '비공개 그룹을 만들어서',
     '지인들을 초대하거나',
-    '공개 그룹을 만들어서 방문자 중',
+    '공개 그룹을 만들어서 참가자 중',
     '케미 스코어가 높은 사람을',
-    '찾을 수도 있습니다.',
+    '찾을 수 있습니다.',
   ],
 );
 
