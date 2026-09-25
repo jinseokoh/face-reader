@@ -2358,8 +2358,9 @@ A~D에 해당하지 않는 기능이라면 임의로 추가하지 않는다.
 - [x] 실기기(iPhone, 카카오톡 미설치): 인앱 로그인 시트, 오버레이 라벨 열, 첫인상 리포트·비교·케미 화면 한 바퀴 (2026-09-06 완료)
 - [x] 데모 방 seed — first_impression 방 · 스키마 2 · 인물 카드 행까지 재생성, 운영 적용 (2026-09-06)
 - [x] 웹 공유 페이지: iOS 링크 `/s/…` 는 첫인상·비교 SSR, `/r/…` 는 관상·궁합 (2026-09-06, 배포 144b3ae6 — AASA `/s/*` 포함)
-- [ ] 스토어 메타데이터: 부제·설명·키워드·스크린샷 5장(1장 = 계측 오버레이) · 카테고리 라이프스타일 · 리뷰 노트 · Resolution Center 답변(4.3(b) 컨셉 변경 · Guideline 4 수정 · 2.1 처리방침 제2조 인용)
+- [ ] 스토어 메타데이터: 부제·설명·키워드·스크린샷 5장(1장 = 계측 오버레이) · 카테고리 라이프스타일 · 리뷰 노트 (형이 직접). Resolution Center 답변 초안은 §81.11 (2026-09-25)
 - [x] web 빌드·배포 → `facely.kr/privacy.md` 제2조 확인 (2026-09-06, 버전 65cbbdbb — 얼굴 특징점 좌표·첫인상 지표·영문 요약 반영)
+- [x] 처리방침 제2조를 MiVOLO 파이프라인에 맞춤 — 384×384 얼굴 크롭·facely.kr 경유 직접 전송·즉시 폐기, 추정 나이(정수) 항목, 관상·궁합 → 얼굴 분석·얼굴 비교. 약관·iOS 권한 문구 동기 (2026-09-25, 5020c5ea)
 - [ ] App Store Connect 개인정보 라벨 — 제2조와 맞춘다 (얼굴 특징점 좌표·계측값·썸네일·추정 범주)
 - [ ] Android 배포 시 `app_config.android_min_build` 상향 (구버전이 첫인상 방에 관상 payload 쓰는 것 차단 — 서버 check 가 이미 막지만 화면 혼선 방지)
 
@@ -2367,3 +2368,80 @@ A~D에 해당하지 않는 기능이라면 임의로 추가하지 않는다.
 - 앱 이름 "관상은 과학이다" — 전략상 유지.
 - emotion-* 마스코트(점술가 캐릭터) — 앱의 마스코트다. **바꾸지 않는다** (2026-09-06 확정). 빈 화면·앱 정보에 그대로 쓴다.
 - 카카오 초대 문구의 앱 이름.
+
+## 81.11 Resolution Center 답변 초안 (2026-09-25, 빌드 19)
+
+2026-09-03 반려(제출 e699a06d, 빌드 18) 세 항목에 대한 답변. App Store Connect 의 해당 메시지에 회신으로 붙여넣는다. 인용문은 `facely.kr/privacy` 2026-09-25 판과 같다.
+
+```text
+Thank you for the detailed review. Version 2.0.0 (19) addresses all three items. Details below.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Guideline 4.3(b) — app concept
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Build 19 is a different product from build 18. On iOS the app no longer contains any face-reading (physiognomy), fortune-telling, compatibility or zodiac content. Every screen was rebuilt around facial measurement:
+
+• Face measurement: MediaPipe detects 468 landmarks on the device; the app computes 28 geometric measurements (ratios and angles) and shows each value with a live measurement overlay.
+• First impression report: each measurement is placed within a reference distribution of 11,800 East Asian faces (percentiles). Four first-impression indicators (trustworthy / approachable / dominant / attractive) are computed from the measurements using relationships reported in peer-reviewed research (Oosterhof & Todorov 2008; Todorov et al. 2013; Sutherland et al. 2013, 2018; Vernon et al. 2014; Rhodes 2006). The report lists the papers and states that the indicators describe face shape only, not personality or ability.
+• Face comparison: two faces are aligned (Procrustes) and compared by geometric similarity, plus harmony and complementarity of their first-impression profiles.
+• Group chemistry: pairwise comparison table for a group.
+
+Nothing in the iOS build reads fortune, destiny, personality traits or zodiac. The onboarding, tab names (First impression / Face comparison / Group chemistry), empty-state texts, permission prompts and result screens have all been rewritten accordingly.
+
+About the app name: "관상은 과학이다" (literally "Face reading is science") is the brand under which the product launched in Korea and is kept for marketing continuity. The name is a brand, not a description of the iOS feature set; the iOS app contains no face-reading content. If the review team considers the name itself an issue, we are open to discussing it.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. Guideline 4 — sign-in outside the app
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Fixed. On iOS, Kakao sign-in now opens inside the app using SFSafariViewController (in-app browser view) instead of the external Safari app. The app also offers native Sign in with Apple. Account deletion is available in Settings → 회원 탈퇴 (Delete account), which removes the account and all face data.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. Guideline 2.1 — face data
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Q1. What face data does the app collect?
+• A front-facing photo taken with the camera or chosen from the album (processed, not stored on any server).
+• The positions of 468 face landmarks detected on the device (numbers, not the photo).
+• 28 facial measurements (ratios, angles, symmetry) computed from the landmarks.
+• Estimated gender and ethnicity categories and an estimated age (an integer read from the photo by a model, shown with a ±6-year margin).
+• First-impression indicators derived from the measurements.
+• One 200×200 low-resolution face thumbnail, used only to tell records apart.
+The app does not perform facial recognition or identification, does not match faces against any database, and does not access Face ID or any biometric authentication data.
+
+Q2. Use, sharing, retention, deletion and storage
+• Use: generating the user's own measurement / first-impression report, comparing two faces, and computing group chemistry; telling records apart in history, share cards and group rooms. Face data is never used for advertising, profiling, training datasets or sale.
+• Processing: landmark detection and all measurements run on the device. Only for the gender/age/ethnicity estimate, a 384×384 px crop of the face is sent through our own server (facely.kr) directly to an analysis server operated by us; it is not written to any storage in transit and is discarded immediately after the estimate is returned.
+• Storage: when the user saves a record, landmark coordinates, measurements, estimates and first-impression indicators are stored in a Supabase (PostgreSQL) database, and the 200×200 thumbnail in Cloudflare R2 behind an unguessable URL with search-engine indexing blocked. The same data is also kept on the device and disappears when the user deletes the record or the app.
+• Sharing with other users happens only through the user's own actions (sending a share link, joining a group, or another user unlocking a comparison with the user's photo). Joining a group asks for confirmation of photo visibility beforehand.
+• Deletion: Settings → 회원 탈퇴 (Delete account) deletes the account and all face data immediately. Deletion can also be requested at https://facely.kr/contact.
+
+Q3. Third parties and storage location
+Face data is not sold or provided to third parties. Infrastructure providers act as processors only: Supabase Inc. (database and auth), Cloudflare Inc. (thumbnail storage and delivery), and our own analysis server for the estimate. Supabase and Cloudflare may store data outside Korea. No face data is sent to Kakao, Google, RevenueCat or any other party.
+
+Q4. Retention
+• Photo and the 384 px analysis crop: discarded immediately after estimation, never stored.
+• Landmark coordinates, measurements, estimates, first-impression indicators and thumbnail: until the user deletes the record or the account. Records made without an account are auto-deleted after 90 days of inactivity.
+• Group chemistry data: auto-deleted 30 days after the group ends.
+• A thumbnail copy inside a face comparison another user paid to unlock: kept as that buyer's content until the buyer deletes their account.
+
+Q5. Where in the privacy policy
+https://facely.kr/privacy — Section 2 "얼굴 데이터의 처리" (Processing of face data), which takes precedence over other sections for face data:
+• 2.1 수집하는 얼굴 데이터 — what is collected
+• 2.2 이용 목적 — use, and what the app does not do (no recognition, no profiling)
+• 2.3 처리 위치와 저장 — processing location and storage
+• 2.4 제3자 제공 및 다른 이용자에게의 공개 — sharing
+• 2.5 보유 기간과 삭제 — retention and deletion
+• 2.6 Face Data — English summary of Section 2
+Related: Section 1 (collected items table), Section 4 (retention periods), Section 6 (processors), Section 7 (user rights).
+
+Q6. Quoted text (Section 2.6, English summary; the Korean sections 2.1–2.5 say the same)
+"Collected: a front-facing photo (camera or album); the positions of 468 face landmarks detected on the device (numbers describing where the eyes, nose, mouth and outline are — not the photo itself); facial measurements (ratios, angles and symmetry computed from those landmarks); estimated gender and ethnicity categories and an estimated age (an integer — the age the model reads from the photo, not the user's real age, shown with a ±6-year margin); first-impression indicators (…); one 200×200 low-resolution face thumbnail."
+"Processing and storage: landmark detection and measurement run on the device. A 384×384 px crop of the face is sent through the service's own server (facely.kr) directly to an analysis server operated by the service provider to estimate gender, age and ethnicity; it is not written to any storage in transit and is discarded immediately after estimation (…). Original photos are not stored on any server. When a record is saved, landmark coordinates, measurements and estimates are stored in a Supabase database and the thumbnail in Cloudflare R2, behind an unguessable URL with search-engine indexing blocked."
+"Sharing: face data is not sold or provided to third parties. Processors listed in Section 6 store or transmit data on our behalf only. Thumbnails and results become visible to other users only through the user's own actions (…)."
+"Retention and deletion: originals and analysis crops are discarded immediately after estimation; landmark coordinates, measurements, estimates, first-impression indicators and thumbnails are deleted on account deletion, and records made without an account are auto-deleted after 90 days of inactivity; chemistry group data is auto-deleted 30 days after the group ends (…). Users can delete their account and all data in the app's Settings screen, or request deletion at /contact."
+Korean, Section 2.2: "서비스는 얼굴 인식(신원 확인)을 하지 않습니다. 얼굴을 다른 사진이나 데이터베이스와 대조하지 않으며, 기기의 Face ID 등 생체인증 정보에 접근하지 않습니다. 얼굴 데이터를 광고, 이용자 프로파일링, 학습용 데이터셋 구축, 판매에 사용하지 않습니다."
+
+The App Privacy labels in App Store Connect have been updated to match Section 2.
+```
+
+답변 전에 형이 할 것: App Store Connect 개인정보 라벨을 제2조와 맞춘다(마지막 문장이 그 전제다). 스크린샷·부제·설명·키워드를 첫인상 화면으로 교체한다. 라벨을 아직 안 고쳤으면 마지막 문장을 지우고 보낸다.
+
