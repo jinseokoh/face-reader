@@ -2369,17 +2369,17 @@ A~D에 해당하지 않는 기능이라면 임의로 추가하지 않는다.
 - emotion-* 마스코트(점술가 캐릭터) — 앱의 마스코트다. **바꾸지 않는다** (2026-09-06 확정). 빈 화면·앱 정보에 그대로 쓴다.
 - 카카오 초대 문구의 앱 이름.
 
-## 81.11 Resolution Center 답변 초안 (2026-09-25, 빌드 19)
+## 81.11 Resolution Center 답변 (2026-09-25, 빌드 20)
 
 2026-09-03 반려(제출 e699a06d, 빌드 18) 세 항목에 대한 답변. App Store Connect 의 해당 메시지에 회신으로 붙여넣는다. 인용문은 `facely.kr/privacy` 2026-09-25 판과 같다.
 
 ```text
-Thank you for the detailed review. Version 2.0.0 (19) addresses all three items. Details below.
+Thank you for the detailed review. Version 2.0.0 (20) addresses all three items. Details below.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 1. Guideline 4.3(b) — app concept
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Build 19 is a different product from build 18. On iOS the app no longer contains any face-reading (physiognomy), fortune-telling, compatibility or zodiac content. Every screen was rebuilt around facial measurement:
+Build 20 is a different product from build 18. On iOS the app no longer contains any face-reading (physiognomy), fortune-telling, compatibility or zodiac content. Every screen was rebuilt around facial measurement:
 
 • Face measurement: MediaPipe detects 468 landmarks on the device; the app computes 28 geometric measurements (ratios and angles) and shows each value with a live measurement overlay.
 • First impression report: each measurement is placed within a reference distribution of 11,800 East Asian faces (percentiles). Four first-impression indicators (trustworthy / approachable / dominant / attractive) are computed from the measurements using relationships reported in peer-reviewed research (Oosterhof & Todorov 2008; Todorov et al. 2013; Sutherland et al. 2013, 2018; Vernon et al. 2014; Rhodes 2006). The report lists the papers and states that the indicators describe face shape only, not personality or ability.
