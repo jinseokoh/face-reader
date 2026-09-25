@@ -73,9 +73,9 @@
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
 		<key>NSCameraUsageDescription</key>
-		<string>Camera access is needed for face mesh detection</string>
+		<string>얼굴을 촬영하여 얼굴 특징점을 검출하고 측정하는 데 사용합니다</string>
 		<key>NSPhotoLibraryUsageDescription</key>
-		<string>앨범에서 사진을 선택하여 관상 분석에 사용합니다</string>
+		<string>앨범에서 사진을 선택하여 얼굴 측정에 사용합니다</string>
 		<!-- AdMob iOS app ID (실 앱 ID). 광고 유닛 ID 는 .env 의
 		     ADMOB_REWARDED_UNIT_ID_IOS (slash 형식) 로 별도 관리. -->
 		<key>GADApplicationIdentifier</key>
