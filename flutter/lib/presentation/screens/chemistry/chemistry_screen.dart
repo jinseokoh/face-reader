@@ -54,7 +54,7 @@ const List<String> _kChemistryCreditsPublic = [
 /// 케미가 무엇인지 먼저 말한다 — 그룹 안에서 나와 가장 맞는 사람 찾기.
 /// 두 탭이 공유하고, 뒤에 그 탭에서 할 일이 붙는다.
 const List<String> _kChemistryIntro = [
-  '케미는 그룹 내에서',
+  '케미는 그룹 방 내에서',
   '나와 조화가 가장 잘 맞는',
   '사람이 누구인지 점수로 알려줍니다.\n',
 ];

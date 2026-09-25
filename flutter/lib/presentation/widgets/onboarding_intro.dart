@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:concentric_transition/concentric_transition.dart';
-import 'package:facely/core/theme.dart';
 import 'package:facely/core/edition.dart';
+import 'package:facely/core/theme.dart';
 import 'package:facely/data/services/app_config_service.dart';
 import 'package:facely/domain/services/life_question_narrative.dart';
 import 'package:facely/presentation/widgets/primary_button.dart';
@@ -25,39 +25,6 @@ const _kPageColors = [
   AppColors.shell,
   AppColors.background,
   AppColors.background,
-];
-
-/// 온보딩 이미지 — 플랫폼별 4장. `onboarding{n}-ios.png` / `onboarding{n}-android.png`.
-/// 코퍼스 버전(v1/v2)과 무관하다 — 이미지 선택 규칙은 이 한 줄뿐이다.
-String onboardingAssetPath(int page) =>
-    'assets/images/onboarding$page-${Platform.isIOS ? 'ios' : 'android'}.png';
-
-/// measure 에디션(iOS v1) 온보딩 — 관상·궁합이라는 말과 도사 삽화가 없다.
-/// 제목은 탭 이름과 같은 단어(측정·비교·케미 → 첫인상·비교·케미, APPLE.md §81.5).
-const _kPagesMeasure = [
-  _OnboardingPageData(
-    title: '얼굴의 구조적 특징을\n수치화하여 계측합니다',
-    body: '얼굴을 기하학적으로 측정하여 첫인상과\n닮은정도, 조화도, 보완도로 케미점수를 측정합니다.',
-    warm: true,
-  ),
-  _OnboardingPageData(
-    title: '첫인상',
-    chips: ['무료'],
-    body: '28개 계측값과 동아시아 11,800장 대비 위치,\n그리고 첫인상 4축 지표를 보여드립니다.',
-    warm: false,
-  ),
-  _OnboardingPageData(
-    title: '얼굴 비교',
-    chips: ['1코인'],
-    body: '두 얼굴의 계측값을 나란히 놓고\n닮은 정도·조화도·보완도를 계산합니다.',
-    warm: true,
-  ),
-  _OnboardingPageData(
-    title: '케미',
-    chips: ['무료'],
-    body: '케미 그룹은 누구나 만들거나 참여할 수 있고\n참가자들의 그룹 케미 비교표를 보여드립니다.',
-    warm: false,
-  ),
 ];
 
 const _kPagesFull = [
@@ -84,25 +51,58 @@ const _kPagesFull = [
     warm: true,
   ),
   _OnboardingPageData(
-    title: '케미',
+    title: '그룹 케미',
     chips: ['무료'],
-    body: '케미 그룹은 누구나 만들거나 참여할 수 있고\n참가자들의 그룹 케미 비교표를 보여드립니다.',
+    body: '그룹 방을 만들면 그 방의 참가자들 간의 궁합 점수를\n비교하여 어떤 조합이 가장 잘 어울리는 한 쌍인지를\n결과표 형태로 알려드립니다.',
     warm: false,
   ),
 ];
 
-/// 에디션별 온보딩 페이지 (플랫폼 판정).
-List<_OnboardingPageData> get _kPages =>
-    kMeasureEdition ? _kPagesMeasure : _kPagesFull;
+/// measure 에디션(iOS v1) 온보딩 — 관상·궁합이라는 말과 도사 삽화가 없다.
+/// 제목은 탭 이름과 같은 단어(측정·비교·케미 → 첫인상·비교·케미, APPLE.md §81.5).
+const _kPagesMeasure = [
+  _OnboardingPageData(
+    title: '얼굴의 구조적 특징을\n수치화하여 계측합니다',
+    body: '얼굴을 기하학적으로 측정하여 첫인상과\n닮은정도, 조화도, 보완도로 케미점수를 측정합니다.',
+    warm: true,
+  ),
+  _OnboardingPageData(
+    title: '첫인상',
+    chips: ['무료'],
+    body: '28개 계측값과 동아시아 11,800장 대비 위치,\n그리고 첫인상 4축 지표를 보여드립니다.',
+    warm: false,
+  ),
+  _OnboardingPageData(
+    title: '얼굴 비교',
+    chips: ['1코인'],
+    body: '두 얼굴의 계측값을 나란히 놓고\n닮은 정도·조화도·보완도를 계산합니다.',
+    warm: true,
+  ),
+  _OnboardingPageData(
+    title: '그룹 케미',
+    chips: ['무료'],
+    body: '그룹 방을 만들면 그 방의 참가자들 간의 조화 점수를\n비교하여 어떤 조합이 가장 잘 어울리는 한 쌍인지를\n결과표 형태로 알려드립니다.',
+    warm: false,
+  ),
+];
+
 /// 동심원 버튼 반지름 + 세로 위치 (화면 높이 비율). 원 중심은
 /// verticalPosition * H + radius — 0.75 를 넘기면 하단 시스템 내비와 겹친다.
 /// 본문은 [_kContentBottomInset] 만큼 하단을 비워 버튼 존과 분리한다.
 const double _kRevealRadius = 32;
-const double _kRevealVerticalPosition = 0.75;
 
+const double _kRevealVerticalPosition = 0.75;
 /// 상단 컨트롤 바 고정 높이 — Align 자식이 세로로 확장돼 화면 중앙까지
 /// 흘러내리는 것을 차단한다.
 const double _kTopBarHeight = 48;
+/// 에디션별 온보딩 페이지 (플랫폼 판정).
+List<_OnboardingPageData> get _kPages =>
+    kMeasureEdition ? _kPagesMeasure : _kPagesFull;
+
+/// 온보딩 이미지 — 플랫폼별 4장. `onboarding{n}-ios.png` / `onboarding{n}-android.png`.
+/// 코퍼스 버전(v1/v2)과 무관하다 — 이미지 선택 규칙은 이 한 줄뿐이다.
+String onboardingAssetPath(int page) =>
+    'assets/images/onboarding$page-${Platform.isIOS ? 'ios' : 'android'}.png';
 
 /// 온보딩 안내 — 전체 흐름 → 관상 → 궁합 → 케미 4페이지 인트로.
 /// 이미지는 [onboardingAssetPath] — 페이지 번호 + 플랫폼으로만 정해진다.
