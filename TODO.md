@@ -50,6 +50,8 @@ JavaScript 안에 평문으로 들어 있다. service_role 은 RLS 를 전부 �
 
 ## 나이 추정 옛 경로 제거 (MiVOLO 직접 업로드 전환 뒤처리)
 
+**진행 (2026-09-26).** Android 19 가 Play 프로덕션 전체 배포됨(9/24). `app_config.android_min_build = 19` 적용(9/26, 형이 SQL Editor 실행). 옛 경로 로그 관찰 시작일 = 2026-09-26 → 10/3 이후 0 이면 아래 실행.
+
 **현재 상태 (2026-09-21).** 앱·웹은 384px 얼굴 크롭을 워커 `/api/analyze` 에 multipart 로
 올린다 (왕복 1번). 그런데 스토어에 나간 Android 앱은 옛 경로를 쓴다 —
 presign(`prefix: temp`) → R2 `temp/{uuid}.jpg` PUT → python `/analyze {image_url}` →
