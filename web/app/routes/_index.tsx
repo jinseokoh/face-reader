@@ -45,7 +45,7 @@ export function headers() {
 
 export async function loader({ context }: Route.LoaderArgs) {
   const env = context.cloudflare.env
-  const rows = await fetchDailyFaces(env, DAILY_FACES)
+  const rows = await fetchDailyFaces(env, DAILY_FACES, context.cloudflare.ctx)
   const cards = rows
     .map((r) => {
       const card = renderDailyFace(r.body, env.R2_CDN_BASE)

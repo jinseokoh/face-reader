@@ -305,28 +305,65 @@ export interface DailyFaceRow {
  * 상태의 배포 순서 문제 포함). opted 컬럼이 없는 구버전 RPC 응답은 전부
  * false(블러) 로 처리.
  */
-export async function fetchDailyFaces(env: Env, f: DailyFacesFilter): Promise<DailyFaceRow[]> {
+/** daily_faces 결과의 Worker 캐시 수명(초). 엣지는 Worker 응답을 캐시하지 않으므로
+ *  RPC 결과를 Cache API 에 직접 넣는다 — 같은 필터의 홈 요청은 60초 안에서 Supabase 로
+ *  가지 않는다 (2026-09-26 egress 실측: 활동일 60행 252KB/요청). */
+const DAILY_FACES_CACHE_SEC = 60;
+
+export async function fetchDailyFaces(
+  env: Env,
+  f: DailyFacesFilter,
+  ctx?: ExecutionContext,
+): Promise<DailyFaceRow[]> {
   if (!env.SUPABASE_URL || !env.SUPABASE_PUBLISHABLE_KEY) return [];
   try {
-    const res = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/daily_faces`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        apikey: env.SUPABASE_PUBLISHABLE_KEY,
-        authorization: `Bearer ${env.SUPABASE_PUBLISHABLE_KEY}`,
-      },
-      body: JSON.stringify({
-        p_today_only: f.todayOnly,
-        p_opted_only: f.optedOnly,
-        p_my_face_only: f.myFaceOnly,
-        p_limit: f.limit ?? 60,
-      }),
-    });
-    if (!res.ok) {
-      console.warn("[fetchDailyFaces] rpc status", res.status, await res.text());
-      return [];
+    const params = {
+      p_today_only: f.todayOnly,
+      p_opted_only: f.optedOnly,
+      p_my_face_only: f.myFaceOnly,
+      p_limit: f.limit ?? 60,
+    };
+    // Cache API 키는 GET 요청이어야 한다 — 필터를 쿼리스트링으로 박은 합성 URL.
+    const cacheKey = new Request(
+      `${env.SUPABASE_URL}/rest/v1/rpc/daily_faces?` +
+        new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)])).toString(),
+      { method: "GET" },
+    );
+    const cache = (globalThis as { caches?: CacheStorage & { default?: Cache } }).caches?.default;
+    const cached = cache ? await cache.match(cacheKey) : undefined;
+    let text: string;
+    if (cached) {
+      text = await cached.text();
+    } else {
+      const res = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/daily_faces`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          apikey: env.SUPABASE_PUBLISHABLE_KEY,
+          authorization: `Bearer ${env.SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify(params),
+      });
+      if (!res.ok) {
+        console.warn("[fetchDailyFaces] rpc status", res.status, await res.text());
+        return [];
+      }
+      text = await res.text();
+      if (cache) {
+        const put = cache.put(
+          cacheKey,
+          new Response(text, {
+            headers: {
+              "content-type": "application/json",
+              "cache-control": `public, max-age=${DAILY_FACES_CACHE_SEC}`,
+            },
+          }),
+        );
+        if (ctx) ctx.waitUntil(put);
+        else await put;
+      }
     }
-    const rows = (await res.json()) as Array<{
+    const rows = JSON.parse(text) as Array<{
       body: string | null;
       opted?: boolean;
     }>;
