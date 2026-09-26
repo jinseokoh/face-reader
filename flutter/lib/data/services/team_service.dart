@@ -76,6 +76,15 @@ class TeamService {
       'room_kind, mode, status, started_at, closed_at, '
       'chemistry_snapshot, result_payload, views, created_at';
 
+  /// 목록용 — `chemistry_snapshot` 제외. snapshot 은 참가자 전원의 얼굴 body
+  /// (좌표 포함, 방 하나 ~75KB)라 목록에서 받으면 방 수만큼 egress 가 난다
+  /// (2026-09-26 실측: 방 4개 232KB). 결과 화면은 [fetchTeam] 으로 따로 받는다.
+  /// `result_payload`(~2KB)는 카드의 결과 유무 표시([Team.hasResult])에 쓰여 남긴다.
+  static const _teamListCols =
+      'id, owner_id, title, is_private, max_players, age_min, age_max, '
+      'room_kind, mode, status, started_at, closed_at, '
+      'result_payload, views, created_at';
+
   String? get myUid => _client.auth.currentUser?.id;
   bool get isLoggedIn => myUid != null;
 
@@ -217,7 +226,8 @@ class TeamService {
         .eq('user_id', uid);
     final ids = [for (final r in memberRows) r['team_id'] as String];
     if (ids.isEmpty) return const [];
-    var teamQuery = _client.from('teams').select(_teamCols).inFilter('id', ids);
+    var teamQuery =
+        _client.from('teams').select(_teamListCols).inFilter('id', ids);
     if (kMeasureEdition) {
       teamQuery = teamQuery.eq('mode', TeamMode.firstImpression.dbValue);
     }

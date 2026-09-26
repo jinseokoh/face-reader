@@ -413,15 +413,21 @@ class FaceReadingReport {
             for (final e in (j['modelVersion'] as Map).entries)
               e.key as String: e.value as String,
           };
-    final landmarks = _parseLandmarks(j['landmarks']);
-    if (landmarks == null || landmarks.length != 468) {
+    // `lite: true` — 서버가 egress 절감을 위해 landmarks 를 뺀 투영
+    // (daily_faces RPC, 0010). 계측·인구통계·유형만 쓰는 홈 그리드용이다.
+    // 좌표가 필요한 경로(대칭 재계산·누락 계측 재계산·얼굴 비교)는 lite 에서 건너뛴다.
+    final lite = j['lite'] == true;
+    final parsedLandmarks = _parseLandmarks(j['landmarks']);
+    if (!lite && (parsedLandmarks == null || parsedLandmarks.length != 468)) {
       throw FormatException(
           'FaceReadingReport landmarks missing or not 468 (schema $kReportSchemaVersion)');
     }
+    final landmarks = parsedLandmarks ?? const <List<double>>[];
+    final hasLandmarks = landmarks.length == 468;
     final lateralLandmarks = _parseLandmarks(j['lateralLandmarks']);
-    // 대칭도 저장이 없으면 좌표에서. (스키마 2 는 항상 좌표가 있다.)
+    // 대칭도 저장이 없으면 좌표에서. (스키마 2 는 항상 좌표가 있다 — lite 제외.)
     final symmetry = j['symmetry'] == null
-        ? computeSymmetry(landmarks)
+        ? (hasLandmarks ? computeSymmetry(landmarks) : null)
         : {
             for (final e in (j['symmetry'] as Map).entries)
               e.key as String: (e.value as num).toDouble(),
@@ -445,7 +451,8 @@ class FaceReadingReport {
     _trace('frontalRefs ${frontalRefs.length} keys=${frontalRefs.keys.toList()}');
     // 저장 뒤에 추가된 계측(§6 등)은 저장 좌표에서 다시 계산한다 — 좌표를 저장하는
     // 이유. 저장된 raw 가 있는 계측은 그대로 둔다(같은 식이라 값도 같다).
-    if (metricInfoList.any((m) => !rawMetrics.containsKey(m.id))) {
+    if (hasLandmarks &&
+        metricInfoList.any((m) => !rawMetrics.containsKey(m.id))) {
       final recomputed = WebFaceMetrics(landmarks).computeAll();
       for (final e in recomputed.entries) {
         rawMetrics.putIfAbsent(e.key, () => e.value);

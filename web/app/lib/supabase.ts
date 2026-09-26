@@ -137,9 +137,12 @@ export async function fetchTeamSSR(
   };
   const q = encodeURIComponent(id);
 
+  // chemistry_snapshot(참가자 전원의 얼굴 body, 방 하나 ~75KB)은 result_payload 가
+  // 없어 클라이언트가 즉석 계산해야 할 때만 받는다 (RevealFallback). 완료 방은
+  // payload(~2KB)만으로 그린다 — 2026-09-26 egress 실측 뒤 분리.
   const teamRes = await fetch(
     `${env.SUPABASE_URL}/rest/v1/teams?id=eq.${q}` +
-      `&select=id,title,is_private,max_players,age_min,age_max,room_kind,mode,status,result_payload,chemistry_snapshot`,
+      `&select=id,title,is_private,max_players,age_min,age_max,room_kind,mode,status,result_payload`,
     { headers },
   );
   if (!teamRes.ok) {
@@ -149,6 +152,17 @@ export async function fetchTeamSSR(
   const teams = (await teamRes.json()) as Record<string, unknown>[];
   if (teams.length === 0) return null;
   const t = teams[0];
+  let snapshot: Record<string, unknown> | null = null;
+  if (t.result_payload == null && t.status !== "recruiting" && t.status !== "expired") {
+    const snapRes = await fetch(
+      `${env.SUPABASE_URL}/rest/v1/teams?id=eq.${q}&select=chemistry_snapshot`,
+      { headers },
+    );
+    if (snapRes.ok) {
+      const rows = (await snapRes.json()) as { chemistry_snapshot?: Record<string, unknown> | null }[];
+      snapshot = rows[0]?.chemistry_snapshot ?? null;
+    }
+  }
 
   const rosterRes = await fetch(
     `${env.SUPABASE_URL}/rest/v1/team_roster?team_id=eq.${q}` +
@@ -159,8 +173,9 @@ export async function fetchTeamSSR(
     ? ((await rosterRes.json()) as Record<string, unknown>[])
     : [];
 
-  // 참가자 my-face metrics body 파싱 — 썸네일 키 + 촬영 경로(source, 아바타
-  // border 규칙) + 인구통계(ageGroup·ethnicity, 칩 라벨).
+  // 참가자 my-face 의 카드 필드 — 썸네일 키 + 촬영 경로(source, 아바타 border
+  // 규칙) + 인구통계(ageGroup·ethnicity, 칩 라벨). body 전문(8×~7KB) 대신
+  // team_roster_cards RPC(0010)가 네 필드만 돌려준다. RPC 미배포면 아바타 없이 렌더.
   const thumbs = new Map<
     string,
     {
@@ -171,31 +186,22 @@ export async function fetchTeamSSR(
     }
   >();
   if (rosterRows.length > 0) {
-    const ids = rosterRows.map((r) => r.user_id as string).join(",");
-    const metricsRes = await fetch(
-      `${env.SUPABASE_URL}/rest/v1/metrics?user_id=in.(${ids})` +
-        `&is_my_face=eq.true&select=user_id,body`,
-      { headers },
-    );
-    if (metricsRes.ok) {
-      for (const m of (await metricsRes.json()) as Record<string, unknown>[]) {
-        try {
-          const body = JSON.parse(m.body as string) as {
-            thumbnailKey?: string;
-            source?: string;
-            ageGroup?: string;
-            ethnicity?: string;
-          };
-          thumbs.set(m.user_id as string, {
-            key: body.thumbnailKey ?? null,
-            source: body.source ?? null,
-            ageGroup: body.ageGroup ?? null,
-            ethnicity: body.ethnicity ?? null,
-          });
-        } catch {
-          /* malformed body — 아바타 없이 렌더 */
-        }
+    const cardsRes = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/team_roster_cards`, {
+      method: "POST",
+      headers: { ...headers, "content-type": "application/json" },
+      body: JSON.stringify({ p_team_id: id }),
+    });
+    if (cardsRes.ok) {
+      for (const c of (await cardsRes.json()) as Record<string, string | null>[]) {
+        thumbs.set(c.user_id as string, {
+          key: c.thumbnail_key ?? null,
+          source: c.source ?? null,
+          ageGroup: c.age_group ?? null,
+          ethnicity: c.ethnicity ?? null,
+        });
       }
+    } else {
+      console.warn("[fetchTeamSSR] team_roster_cards status", cardsRes.status);
     }
   }
 
@@ -211,7 +217,7 @@ export async function fetchTeamSSR(
       mode: (t.mode as "physiognomy" | "first_impression") ?? "physiognomy",
       status: t.status as string,
       resultPayload: t.result_payload ?? null,
-      chemistrySnapshot: (t.chemistry_snapshot as Record<string, unknown>) ?? null,
+      chemistrySnapshot: snapshot,
     },
     roster: rosterRows.map((r) => ({
       userId: r.user_id as string,

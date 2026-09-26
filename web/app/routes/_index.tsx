@@ -32,6 +32,17 @@ const DAILY_FACES = {
   limit: 60,
 }
 
+/**
+ * 엣지 캐시 — 홈은 사용자별 상태가 없고 "오늘 등록된 얼굴" 그리드가 1분 늦어도
+ * 무해하다. 반복 요청(크롤러·재방문)이 Supabase 까지 가지 않게 60초 캐시 +
+ * 5분 stale-while-revalidate (2026-09-26 egress 실측 뒤).
+ */
+export function headers() {
+  return {
+    'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+  }
+}
+
 export async function loader({ context }: Route.LoaderArgs) {
   const env = context.cloudflare.env
   const rows = await fetchDailyFaces(env, DAILY_FACES)
