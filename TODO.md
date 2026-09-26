@@ -105,6 +105,6 @@ tools/face_shape_ml/README.md ③ 하네스에 인종 라벨을 붙여 재면 �
 
 - [x] 웹: /g/ 는 snapshot 을 payload 없는 revealing 방만, 참가자 카드는 `team_roster_cards` RPC · 홈은 Worker Cache API 60초 + s-maxage (0226f551·f46df9e8, 배포됨)
 - [x] 엔진: lite body(landmarks 없음, `lite:true`) 파싱 (0226f551)
-- [ ] **SQL Editor 에서 `web/db/migrations/0010_egress_projection.sql` 실행** — daily_faces 가 lite body 반환(행당 10.2KB→1.9KB), team_roster_cards 생성. 웹이 먼저 배포돼 있어 지금 실행 가능
+- [x] 0010 실행 (2026-09-26, 형). 확인: daily_faces 60행 252KB→118KB(lite, landmarks 없음), team_roster_cards 8행 1.4KB(전엔 body 전문 ~56KB), /g/ 아바타 정상
 - [ ] 앱: fetchMyTeams 가 snapshot 제외 컬럼 — 다음 빌드(21)부터. Android 21 배포 뒤 `android_min_build` 는 별도 판단
 - [ ] 일주일 뒤 Supabase 대시보드 egress 재확인. 그래도 크면 landmarks 를 별도 테이블(metrics_landmarks)로 분리 검토
